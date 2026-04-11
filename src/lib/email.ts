@@ -149,6 +149,7 @@ export async function sendClientBookingConfirmation({
   endTime,
   services,
   totalPrice,
+  appointmentId,
 }: {
   clientEmail: string
   clientName: string
@@ -158,6 +159,7 @@ export async function sendClientBookingConfirmation({
   endTime: string
   services: string[]
   totalPrice?: number | null
+  appointmentId?: string
 }) {
   const [year, month, day] = date.split('-')
   const dateFormatted = `${day}/${month}/${year}`
@@ -169,6 +171,8 @@ export async function sendClientBookingConfirmation({
   const priceLine = totalPrice
     ? `<br>💰 <strong>Total:</strong> ${totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
     : ''
+
+  const cancelUrl = appointmentId ? `${APP_URL}/cancelar?id=${appointmentId}` : null
 
   const body = `
     Olá, <strong>${clientName}</strong>! Seu agendamento na <strong>${businessName}</strong> foi recebido com sucesso.<br><br>
@@ -182,7 +186,11 @@ export async function sendClientBookingConfirmation({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: clientEmail,
     subject: `📋 Agendamento recebido — ${businessName} · ${dateFormatted} às ${startTime}`,
-    html: emailTemplate({ title: '', body }),
+    html: emailTemplate({
+      title: '',
+      body,
+      ...(cancelUrl ? { secondaryUrl: cancelUrl, secondaryLabel: 'Cancelar agendamento' } : {}),
+    }),
   })
 }
 

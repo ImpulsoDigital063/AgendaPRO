@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       endTime: appointment.end_time.slice(0, 5),
       services: serviceNames,
       totalPrice: appointment.total_price,
+      appointmentId,
     })
   }
 
