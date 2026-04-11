@@ -6,8 +6,9 @@ import ProfissionaisTab from './ProfissionaisTab'
 import ServicosTab from './ServicosTab'
 import HorariosTab from './HorariosTab'
 import WhatsAppQRTab from './WhatsAppQRTab'
+import NegocioTab from './NegocioTab'
 
-type Tab = 'profissionais' | 'servicos' | 'horarios' | 'whatsapp'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'whatsapp'
 
 type Props = {
   business: Business
@@ -22,10 +23,11 @@ export default function ConfiguracoesTabs({
   initialServices,
   initialWorkingHours,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('profissionais')
+  const [activeTab, setActiveTab] = useState<Tab>('negocio')
   const [professionals, setProfessionals] = useState(initialProfessionals)
 
   const tabs: { id: Tab; label: string }[] = [
+    { id: 'negocio', label: 'Negócio' },
     { id: 'profissionais', label: 'Profissionais' },
     { id: 'servicos', label: 'Serviços' },
     { id: 'horarios', label: 'Horários' },
@@ -52,6 +54,10 @@ export default function ConfiguracoesTabs({
       </div>
 
       {/* Tab content */}
+      {activeTab === 'negocio' && (
+        <NegocioTab business={business} />
+      )}
+
       {activeTab === 'profissionais' && (
         <ProfissionaisTab
           businessId={business.id}
