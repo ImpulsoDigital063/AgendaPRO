@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import FAQ from '@/components/FAQ'
 
 const BUSINESS_TYPES = [
   { icon: '✂️', name: 'Barbearia' },
@@ -277,6 +278,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* FAQ */}
+      <FAQ />
 
       {/* CTA final */}
       <section className="px-6 py-20 bg-gray-900 text-center">
