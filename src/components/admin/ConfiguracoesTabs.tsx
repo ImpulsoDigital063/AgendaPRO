@@ -5,8 +5,9 @@ import type { Business, Professional, Service, WorkingHours } from '@/lib/types'
 import ProfissionaisTab from './ProfissionaisTab'
 import ServicosTab from './ServicosTab'
 import HorariosTab from './HorariosTab'
+import WhatsAppQRTab from './WhatsAppQRTab'
 
-type Tab = 'profissionais' | 'servicos' | 'horarios'
+type Tab = 'profissionais' | 'servicos' | 'horarios' | 'whatsapp'
 
 type Props = {
   business: Business
@@ -28,17 +29,18 @@ export default function ConfiguracoesTabs({
     { id: 'profissionais', label: 'Profissionais' },
     { id: 'servicos', label: 'Serviços' },
     { id: 'horarios', label: 'Horários' },
+    { id: 'whatsapp', label: 'WhatsApp' },
   ]
 
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex bg-white rounded-2xl border border-gray-100 p-1 mb-6">
+      <div className="flex bg-white rounded-2xl border border-gray-100 p-1 mb-6 overflow-x-auto gap-1">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors ${
+            className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors whitespace-nowrap ${
               activeTab === tab.id
                 ? 'bg-gray-900 text-white'
                 : 'text-gray-500 hover:text-gray-700'
@@ -69,6 +71,13 @@ export default function ConfiguracoesTabs({
         <HorariosTab
           professionals={professionals}
           initialWorkingHours={initialWorkingHours}
+        />
+      )}
+
+      {activeTab === 'whatsapp' && (
+        <WhatsAppQRTab
+          phone={business.phone || ''}
+          businessName={business.name}
         />
       )}
     </div>
