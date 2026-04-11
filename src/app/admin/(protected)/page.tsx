@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import AppointmentCard from '@/components/AppointmentCard'
 import LogoutButton from '@/components/LogoutButton'
 import ShareButton from '@/components/ShareButton'
+import DivulgarCard from '@/components/admin/DivulgarCard'
 import Link from 'next/link'
 
 export default async function AdminPage() {
@@ -80,23 +81,11 @@ export default async function AdminPage() {
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
 
-        {/* Link da página pública */}
-        <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-400">Sua página de agendamento</p>
-            <p className="text-sm font-medium text-gray-700">/{business.slug}</p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href={`/${business.slug}`}
-              target="_blank"
-              className="text-xs px-3 py-2 rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200 transition-colors"
-            >
-              Ver →
-            </Link>
-            <ShareButton slug={business.slug} />
-          </div>
-        </div>
+        {/* Link + guia de divulgação */}
+        <DivulgarCard
+          slug={business.slug}
+          appUrl={process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.com.br'}
+        />
 
         {/* Resumo do dia */}
         <div className="grid grid-cols-3 gap-3">
