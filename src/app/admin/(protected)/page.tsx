@@ -71,25 +71,8 @@ export default async function AdminPage() {
             <h1 className="font-bold text-gray-900">{business?.name || 'Painel'}</h1>
             <p className="text-gray-400 text-xs capitalize">{todayFormatted}</p>
           </div>
-          <div className="flex items-center gap-1">
-            <Link
-              href="/admin/clientes"
-              className="text-sm text-gray-500 hover:text-gray-800 transition-colors px-3 py-2 rounded-xl hover:bg-gray-50"
-            >
-              Clientes
-            </Link>
-            <Link
-              href="/admin/financeiro"
-              className="text-sm text-gray-500 hover:text-gray-800 transition-colors px-3 py-2 rounded-xl hover:bg-gray-50"
-            >
-              Financeiro
-            </Link>
-            <Link
-              href="/admin/configuracoes"
-              className="text-sm text-gray-500 hover:text-gray-800 transition-colors px-3 py-2 rounded-xl hover:bg-gray-50"
-            >
-              ⚙
-            </Link>
+          <div className="flex items-center gap-2">
+            <ShareButton slug={business.slug} />
             <LogoutButton />
           </div>
         </div>

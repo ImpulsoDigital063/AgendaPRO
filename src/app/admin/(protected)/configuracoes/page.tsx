@@ -33,14 +33,9 @@ export default async function ConfiguracoesPage() {
     <main className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/admin" className="text-gray-400 hover:text-gray-700 transition-colors">
-              ← Voltar
-            </Link>
-            <div>
-              <h1 className="font-bold text-gray-900">Configurações</h1>
-              <p className="text-gray-400 text-xs">{business.name}</p>
-            </div>
+          <div>
+            <h1 className="font-bold text-gray-900">Configurações</h1>
+            <p className="text-gray-400 text-xs">{business.name}</p>
           </div>
           <LogoutButton />
         </div>
