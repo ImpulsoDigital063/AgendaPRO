@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
   const ownerId = userData.user.id
 
   // 3. Cria o negócio
+  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+
   const { data: business, error: bizError } = await supabase
     .from('businesses')
     .insert({
@@ -56,6 +58,7 @@ export async function POST(req: NextRequest) {
       phone: phone || null,
       address: address || null,
       owner_id: ownerId,
+      trial_ends_at: trialEndsAt,
     })
     .select('id')
     .single()
