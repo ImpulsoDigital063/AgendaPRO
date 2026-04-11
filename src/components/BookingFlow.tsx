@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Business, Professional, WorkingHours, TimeSlot, Service } from '@/lib/types'
+import { useState, useCallback } from 'react'
+import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -53,7 +53,7 @@ function formatDuration(min: number) {
   return m === 0 ? `${h}h` : `${h}h ${m}min`
 }
 
-type Step = 'service' | 'date' | 'time' | 'form' | 'done'
+type Step = 'service' | 'professional' | 'date' | 'time' | 'form' | 'done'
 
 export default function BookingFlow({
   business,
@@ -67,25 +67,36 @@ export default function BookingFlow({
   services: Service[]
 }) {
   const hasServices = services.length > 0
+  const hasMultipleProfessionals = professionals.length > 1
 
-  const [step, setStep] = useState<Step>(hasServices ? 'service' : 'date')
-  const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [step, setStep] = useState<Step>(hasServices ? 'service' : hasMultipleProfessionals ? 'professional' : 'date')
+  const [selectedServices, setSelectedServices] = useState<Service[]>([])
+  const [selectedProfessional, setSelectedProfessional] = useState<Professional>(professionals[0])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
+
+  // Dados do cliente
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
   const [clientEmail, setClientEmail] = useState('')
+  const [returningClient, setReturningClient] = useState<Client | null>(null)
+  const [lookingUpClient, setLookingUpClient] = useState(false)
+
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Para V1 (Plano Solo), usa o primeiro profissional ativo
-  const professional = professionals[0]
+  // Profissional ativo selecionado
+  const professional = selectedProfessional
 
-  // Duração efetiva: do serviço se selecionado, senão do working_hours
+  // Totais calculados dos serviços selecionados
+  const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0)
+  const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
+  const hasPrice = selectedServices.some((s) => s.price !== null)
+
   function getSlotDuration(date: Date): number {
-    if (selectedService) return selectedService.duration_minutes
+    if (totalDuration > 0) return totalDuration
     const wh = workingHours.find(
       (w) => w.professional_id === professional?.id && w.day_of_week === date.getDay()
     )
@@ -104,8 +115,26 @@ export default function BookingFlow({
     if (hasHours) availableDates.push(d)
   }
 
-  function handleSelectService(service: Service) {
-    setSelectedService(service)
+  // Toggle de serviço (seleciona/deseleciona)
+  function handleToggleService(service: Service) {
+    setSelectedServices((prev) => {
+      const exists = prev.find((s) => s.id === service.id)
+      const next = exists ? prev.filter((s) => s.id !== service.id) : [...prev, service]
+      return next
+    })
+    // Reseta data/hora ao mudar serviços (duração pode mudar)
+    setSelectedDate(null)
+    setSelectedTime(null)
+    setSlots([])
+  }
+
+  function handleProceedFromServices() {
+    if (selectedServices.length === 0) return
+    setStep(hasMultipleProfessionals ? 'professional' : 'date')
+  }
+
+  function handleSelectProfessional(prof: Professional) {
+    setSelectedProfessional(prof)
     setSelectedDate(null)
     setSelectedTime(null)
     setSlots([])
@@ -138,13 +167,36 @@ export default function BookingFlow({
       .in('status', ['pending', 'confirmed'])
 
     const bookedTimes = (existing || []).map((a) => a.start_time.slice(0, 5))
-    const duration = selectedService ? selectedService.duration_minutes : wh.slot_duration
+    const duration = getSlotDuration(date)
     const generated = generateSlots(wh.start_time, wh.end_time, duration, bookedTimes)
 
     setSlots(generated)
     setLoadingSlots(false)
     setStep('time')
   }
+
+  // Busca cliente pelo telefone ao sair do campo
+  const handlePhoneBlur = useCallback(async () => {
+    const phone = clientPhone.trim().replace(/\D/g, '')
+    if (phone.length < 10) return
+
+    setLookingUpClient(true)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('phone', clientPhone.trim())
+      .maybeSingle()
+
+    if (data) {
+      setReturningClient(data as Client)
+      setClientName(data.name)
+      setClientEmail(data.email ?? '')
+    } else {
+      setReturningClient(null)
+    }
+    setLookingUpClient(false)
+  }, [clientPhone])
 
   async function handleSubmit() {
     if (!selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim()) return
@@ -159,43 +211,85 @@ export default function BookingFlow({
     const endTime = `${endH}:${endM}`
 
     const supabase = createClient()
-    const { error: err } = await supabase.from('appointments').insert({
-      business_id: business.id,
-      professional_id: professional.id,
-      client_name: clientName.trim(),
-      client_phone: clientPhone.trim(),
-      client_email: clientEmail.trim() || null,
-      appointment_date: formatDate(selectedDate),
-      start_time: selectedTime,
-      end_time: endTime,
-      status: 'pending',
-      service_id: selectedService?.id ?? null,
-      service_name: selectedService?.name ?? null,
-    })
 
-    if (err) {
+    // 1. Criar ou recuperar cliente
+    let clientId: string | null = returningClient?.id ?? null
+
+    if (!clientId) {
+      const { data: existing } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('phone', clientPhone.trim())
+        .maybeSingle()
+
+      if (existing) {
+        clientId = existing.id
+        // Atualiza nome e email se mudou
+        await supabase
+          .from('clients')
+          .update({ name: clientName.trim(), email: clientEmail.trim() || null })
+          .eq('id', clientId)
+      } else {
+        const { data: created } = await supabase
+          .from('clients')
+          .insert({
+            name: clientName.trim(),
+            phone: clientPhone.trim(),
+            email: clientEmail.trim() || null,
+          })
+          .select('id')
+          .single()
+        clientId = created?.id ?? null
+      }
+    }
+
+    // 2. Criar agendamento
+    const firstService = selectedServices[0] ?? null
+    const { data: appointment, error: apptErr } = await supabase
+      .from('appointments')
+      .insert({
+        business_id: business.id,
+        professional_id: professional.id,
+        client_id: clientId,
+        client_name: clientName.trim(),
+        client_phone: clientPhone.trim(),
+        client_email: clientEmail.trim() || null,
+        service_id: firstService?.id ?? null,
+        service_name: firstService?.name ?? null,
+        total_price: hasPrice ? totalPrice : null,
+        appointment_date: formatDate(selectedDate),
+        start_time: selectedTime,
+        end_time: endTime,
+        status: 'pending',
+      })
+      .select('id')
+      .single()
+
+    if (apptErr || !appointment) {
       setError('Erro ao agendar. Tente novamente.')
       setSubmitting(false)
       return
     }
 
-    // Busca o ID do agendamento recém criado e notifica o barbeiro
-    const { data: created } = await supabase
-      .from('appointments')
-      .select('id')
-      .eq('professional_id', professional.id)
-      .eq('appointment_date', formatDate(selectedDate))
-      .eq('start_time', selectedTime)
-      .eq('client_phone', clientPhone.trim())
-      .single()
-
-    if (created?.id) {
-      fetch('/api/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentId: created.id }),
-      }).catch(() => {})
+    // 3. Inserir serviços do agendamento
+    if (selectedServices.length > 0) {
+      await supabase.from('appointment_services').insert(
+        selectedServices.map((s) => ({
+          appointment_id: appointment.id,
+          service_id: s.id,
+          service_name: s.name,
+          price: s.price,
+          duration_minutes: s.duration_minutes,
+        }))
+      )
     }
+
+    // 4. Notificar profissional
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointmentId: appointment.id }),
+    }).catch(() => {})
 
     setStep('done')
     setSubmitting(false)
@@ -215,8 +309,15 @@ export default function BookingFlow({
       <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
         <div className="text-5xl mb-4">✅</div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Horário reservado!</h2>
-        {selectedService && (
-          <p className="text-gray-700 font-medium mb-1">{selectedService.name}</p>
+        {selectedServices.length > 0 && (
+          <div className="mb-2">
+            {selectedServices.map((s) => (
+              <p key={s.id} className="text-gray-700 font-medium">{s.name}</p>
+            ))}
+            {hasPrice && (
+              <p className="text-gray-900 font-bold mt-1">{formatPrice(totalPrice)}</p>
+            )}
+          </div>
         )}
         <p className="text-gray-500 mb-1">
           {selectedDate &&
@@ -237,28 +338,35 @@ export default function BookingFlow({
   return (
     <div className="p-4 space-y-6">
 
-      {/* ETAPA 0 — ESCOLHER SERVIÇO */}
+      {/* ETAPA 0 — ESCOLHER SERVIÇOS (múltipla seleção) */}
       {hasServices && (
         <section>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Qual serviço?
+            Quais serviços?
           </h2>
           <div className="space-y-2">
             {services.map((service) => {
-              const isSelected = selectedService?.id === service.id
+              const isSelected = selectedServices.some((s) => s.id === service.id)
               return (
                 <button
                   key={service.id}
-                  onClick={() => handleSelectService(service)}
+                  onClick={() => handleToggleService(service)}
                   className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-left transition-colors ${
                     isSelected
                       ? 'bg-gray-900 border-gray-900 text-white'
                       : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
                   }`}
                 >
-                  <span className="font-medium text-sm">{service.name}</span>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      isSelected ? 'border-white bg-white' : 'border-gray-300'
+                    }`}>
+                      {isSelected && <span className="text-gray-900 text-xs font-bold">✓</span>}
+                    </div>
+                    <span className="font-medium text-sm">{service.name}</span>
+                  </div>
                   <div className={`text-right text-xs ${isSelected ? 'text-gray-300' : 'text-gray-400'}`}>
-                    {formatPrice(service.price) && (
+                    {service.price !== null && (
                       <span className="font-semibold text-sm block">{formatPrice(service.price)}</span>
                     )}
                     <span>{formatDuration(service.duration_minutes)}</span>
@@ -267,10 +375,66 @@ export default function BookingFlow({
               )
             })}
           </div>
+
+          {/* Resumo dos serviços selecionados */}
+          {selectedServices.length > 0 && (
+            <div className="mt-3 bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                <span className="font-semibold text-gray-900">{selectedServices.length}</span>{' '}
+                {selectedServices.length === 1 ? 'serviço' : 'serviços'} —{' '}
+                {formatDuration(totalDuration)}
+              </div>
+              {hasPrice && (
+                <span className="font-bold text-gray-900 text-base">{formatPrice(totalPrice)}</span>
+              )}
+            </div>
+          )}
+
+          {selectedServices.length > 0 && step === 'service' && (
+            <button
+              onClick={handleProceedFromServices}
+              className="mt-3 w-full bg-gray-900 text-white py-4 rounded-xl font-semibold text-base hover:bg-gray-800 transition-colors"
+            >
+              {hasMultipleProfessionals ? 'Escolher profissional →' : 'Escolher horário →'}
+            </button>
+          )}
         </section>
       )}
 
-      {/* ETAPA 1 — ESCOLHER DATA */}
+      {/* ETAPA 1 — ESCOLHER PROFISSIONAL (só se tiver mais de um) */}
+      {hasMultipleProfessionals && (step === 'professional' || step === 'date' || step === 'time' || step === 'form') && (
+        <section>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            Escolha o profissional
+          </h2>
+          <div className="space-y-2">
+            {professionals.map((prof) => {
+              const isSelected = selectedProfessional?.id === prof.id
+              return (
+                <button
+                  key={prof.id}
+                  onClick={() => handleSelectProfessional(prof)}
+                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-colors ${
+                    isSelected
+                      ? 'bg-gray-900 border-gray-900 text-white'
+                      : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                    isSelected ? 'bg-white text-gray-900' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {prof.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-medium text-sm">{prof.name}</span>
+                  {isSelected && <span className="ml-auto text-xs opacity-60">selecionado</span>}
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ETAPA 2 — ESCOLHER DATA */}
       {(step === 'date' || step === 'time' || step === 'form') && (
         <section>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
@@ -353,10 +517,26 @@ export default function BookingFlow({
             Seus dados
           </h2>
           <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
+
             {/* Resumo do agendamento */}
             <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-600 space-y-1">
-              {selectedService && (
-                <p className="font-medium text-gray-900">{selectedService.name}</p>
+              {selectedServices.length > 0 && (
+                <div className="space-y-0.5">
+                  {selectedServices.map((s) => (
+                    <div key={s.id} className="flex justify-between">
+                      <span className="font-medium text-gray-900">{s.name}</span>
+                      {s.price !== null && (
+                        <span className="text-gray-500">{formatPrice(s.price)}</span>
+                      )}
+                    </div>
+                  ))}
+                  {hasPrice && selectedServices.length > 1 && (
+                    <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
+                      <span className="font-semibold text-gray-900">Total</span>
+                      <span className="font-bold text-gray-900">{formatPrice(totalPrice)}</span>
+                    </div>
+                  )}
+                </div>
               )}
               <p>
                 📅{' '}
@@ -369,17 +549,7 @@ export default function BookingFlow({
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm text-gray-600 mb-1 font-medium">Seu nome</label>
-              <input
-                type="text"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                placeholder="Ex: João Silva"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 text-sm"
-              />
-            </div>
-
+            {/* Campo telefone — primeiro, pois dispara lookup de cliente */}
             <div>
               <label className="block text-sm text-gray-600 mb-1 font-medium">
                 WhatsApp / Telefone
@@ -387,8 +557,31 @@ export default function BookingFlow({
               <input
                 type="tel"
                 value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value)}
+                onChange={(e) => {
+                  setClientPhone(e.target.value)
+                  setReturningClient(null)
+                }}
+                onBlur={handlePhoneBlur}
                 placeholder="(99) 99999-9999"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 text-sm"
+              />
+              {lookingUpClient && (
+                <p className="text-xs text-gray-400 mt-1">Verificando cadastro...</p>
+              )}
+              {returningClient && (
+                <p className="text-xs text-emerald-600 mt-1 font-medium">
+                  Bem-vindo de volta, {returningClient.name}!
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-600 mb-1 font-medium">Seu nome</label>
+              <input
+                type="text"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Ex: João Silva"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 text-sm"
               />
             </div>

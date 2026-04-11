@@ -16,6 +16,15 @@ export type Professional = {
   name: string
   photo_url: string | null
   active: boolean
+  commission_percentage: number
+  created_at: string
+}
+
+export type Client = {
+  id: string
+  name: string
+  phone: string
+  email: string | null
   created_at: string
 }
 
@@ -26,6 +35,15 @@ export type Service = {
   price: number | null
   duration_minutes: number
   active: boolean
+}
+
+export type AppointmentService = {
+  id: string
+  appointment_id: string
+  service_id: string | null
+  service_name: string
+  price: number | null
+  duration_minutes: number
 }
 
 export type WorkingHours = {
@@ -41,8 +59,13 @@ export type Appointment = {
   id: string
   business_id: string
   professional_id: string
+  client_id: string | null
   client_name: string
   client_phone: string
+  client_email: string | null
+  service_id: string | null
+  service_name: string | null
+  total_price: number | null
   appointment_date: string // "2026-04-10"
   start_time: string       // "14:00"
   end_time: string         // "14:30"

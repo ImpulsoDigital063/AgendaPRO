@@ -15,6 +15,7 @@ type Props = {
     appointment_date: string
     status: string
     service_name?: string | null
+    total_price?: number | null
     professional?: { name: string } | null
   }
   showDate?: boolean
@@ -97,6 +98,11 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
         )}
         {appointment.professional && !appointment.service_name && (
           <span>✂️ {appointment.professional.name}</span>
+        )}
+        {appointment.total_price != null && appointment.total_price > 0 && (
+          <span className="font-semibold text-gray-900">
+            {appointment.total_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </span>
         )}
       </div>
 
