@@ -124,6 +124,58 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Cards por segmento */}
+      <section className="px-6 pb-16 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <p className="text-center text-sm text-gray-400 mb-6">Escolha o seu tipo de negócio</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              {
+                href: '/barbearia',
+                icon: '✂️',
+                title: 'Barbearia',
+                desc: 'Criado para barbeiro que quer a agenda cheia sem depender do WhatsApp.',
+                color: 'hover:border-zinc-400',
+              },
+              {
+                href: '/salao',
+                icon: '💇',
+                title: 'Salão de beleza',
+                desc: 'Pensado para salão com equipe — cada profissional com sua agenda e comissão.',
+                color: 'hover:border-pink-300',
+              },
+              {
+                href: '/nail',
+                icon: '💅',
+                title: 'Nail designer',
+                desc: 'Feito para quem trabalha sozinha e precisa da agenda no piloto automático.',
+                color: 'hover:border-purple-300',
+              },
+              {
+                href: '/estetica',
+                icon: '🧴',
+                title: 'Clínica estética',
+                desc: 'Desenvolvido para clínica com múltiplos procedimentos e controle financeiro.',
+                color: 'hover:border-emerald-300',
+              },
+            ].map((card) => (
+              <a
+                key={card.href}
+                href={card.href}
+                className={`group block bg-white border-2 border-gray-100 ${card.color} rounded-2xl p-5 transition-all hover:shadow-md`}
+              >
+                <span className="text-3xl mb-3 block">{card.icon}</span>
+                <h3 className="font-bold text-gray-900 text-sm mb-1.5">{card.title}</h3>
+                <p className="text-gray-400 text-xs leading-relaxed">{card.desc}</p>
+                <p className="text-xs font-semibold text-gray-900 mt-3 group-hover:underline">
+                  Ver como funciona →
+                </p>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Números */}
       <section className="border-y border-gray-100 bg-gray-50">
         <div className="max-w-3xl mx-auto px-6 py-10 grid grid-cols-3 gap-6 text-center">
@@ -133,23 +185,6 @@ export default function HomePage() {
               <p className="text-xs text-gray-500 leading-snug">{stat.label}</p>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* Para quem é */}
-      <section className="px-6 py-14 bg-white">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-8">
-            Para qualquer negócio de serviço
-          </p>
-          <div className="grid grid-cols-4 md:grid-cols-8 gap-4">
-            {BUSINESS_TYPES.map((type) => (
-              <div key={type.name} className="flex flex-col items-center gap-2">
-                <span className="text-2xl">{type.icon}</span>
-                <span className="text-xs text-gray-500 text-center leading-tight">{type.name}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
