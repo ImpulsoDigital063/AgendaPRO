@@ -1,0 +1,183 @@
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+function emailTemplate({
+  title,
+  body,
+  actionUrl,
+  actionLabel,
+  secondaryUrl,
+  secondaryLabel,
+}: {
+  title: string
+  body: string
+  actionUrl?: string
+  actionLabel?: string
+  secondaryUrl?: string
+  secondaryLabel?: string
+}) {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e4e4e7;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#18181b;padding:24px 32px;">
+              <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;">AgendaPRO</p>
+              <p style="margin:4px 0 0;color:#a1a1aa;font-size:12px;">by Impulso Digital</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 24px;color:#18181b;font-size:16px;line-height:1.6;">${body}</p>
+
+              ${actionUrl && actionLabel ? `
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+                <tr>
+                  <td align="center">
+                    <a href="${actionUrl}" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:600;width:100%;text-align:center;box-sizing:border-box;">
+                      ${actionLabel}
+                    </a>
+                  </td>
+                </tr>
+              </table>` : ''}
+
+              ${secondaryUrl && secondaryLabel ? `
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${secondaryUrl}" style="display:inline-block;background:#f4f4f5;color:#52525b;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:600;width:100%;text-align:center;box-sizing:border-box;">
+                      ${secondaryLabel}
+                    </a>
+                  </td>
+                </tr>
+              </table>` : ''}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:16px 32px;border-top:1px solid #f4f4f5;">
+              <p style="margin:0;color:#a1a1aa;font-size:11px;text-align:center;">
+                AgendaPRO · Impulso Digital
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+}
+
+export async function sendBarberNotification({
+  barberEmail,
+  barberName,
+  businessName,
+  clientName,
+  clientPhone,
+  date,
+  startTime,
+  endTime,
+  appointmentId,
+  serviceName,
+}: {
+  barberEmail: string
+  barberName: string
+  businessName: string
+  clientName: string
+  clientPhone: string
+  date: string
+  startTime: string
+  endTime: string
+  appointmentId: string
+  serviceName?: string | null
+}) {
+  const [year, month, day] = date.split('-')
+  const dateFormatted = `${day}/${month}/${year}`
+
+  const confirmUrl = `${APP_URL}/api/appointment/action?id=${appointmentId}&action=confirmed`
+  const cancelUrl = `${APP_URL}/api/appointment/action?id=${appointmentId}&action=cancelled`
+
+  const body = `
+    Olá, <strong>${barberName}</strong>! Você tem uma nova reserva na <strong>${businessName}</strong>.<br><br>
+    ${serviceName ? `✂️ <strong>Serviço:</strong> ${serviceName}<br>` : ''}
+    👤 <strong>Cliente:</strong> ${clientName}<br>
+    📱 <strong>WhatsApp:</strong> ${clientPhone}<br>
+    📅 <strong>Data:</strong> ${dateFormatted}<br>
+    🕐 <strong>Horário:</strong> ${startTime} – ${endTime}<br><br>
+    Confirme ou cancele o agendamento abaixo:
+  `
+
+  await resend.emails.send({
+    from: 'AgendaPRO <onboarding@resend.dev>',
+    to: barberEmail,
+    subject: `🔔 Nova reserva — ${clientName} · ${dateFormatted} às ${startTime}`,
+    html: emailTemplate({
+      title: 'Nova reserva',
+      body,
+      actionUrl: confirmUrl,
+      actionLabel: '✓ Confirmar agendamento',
+      secondaryUrl: cancelUrl,
+      secondaryLabel: '✕ Cancelar agendamento',
+    }),
+  })
+}
+
+export async function sendClientNotification({
+  clientEmail,
+  clientName,
+  businessName,
+  date,
+  startTime,
+  confirmed,
+  serviceName,
+}: {
+  clientEmail?: string
+  clientName: string
+  businessName: string
+  date: string
+  startTime: string
+  confirmed: boolean
+  serviceName?: string | null
+}) {
+  if (!clientEmail) return
+
+  const [year, month, day] = date.split('-')
+  const dateFormatted = `${day}/${month}/${year}`
+
+  const body = confirmed
+    ? `Olá, <strong>${clientName}</strong>! Seu agendamento na <strong>${businessName}</strong> foi confirmado.<br><br>
+       ${serviceName ? `✂️ <strong>Serviço:</strong> ${serviceName}<br>` : ''}
+       📅 <strong>Data:</strong> ${dateFormatted}<br>
+       🕐 <strong>Horário:</strong> ${startTime}<br><br>
+       Te esperamos lá! 👊`
+    : `Olá, <strong>${clientName}</strong>. Infelizmente seu agendamento na <strong>${businessName}</strong> foi cancelado.<br><br>
+       ${serviceName ? `✂️ <strong>Serviço:</strong> ${serviceName}<br><br>` : ''}
+       Entre em contato com o estabelecimento para remarcar.`
+
+  await resend.emails.send({
+    from: 'AgendaPRO <onboarding@resend.dev>',
+    to: clientEmail,
+    subject: confirmed
+      ? `✅ Agendamento confirmado — ${businessName}`
+      : `❌ Agendamento cancelado — ${businessName}`,
+    html: emailTemplate({ title: '', body }),
+  })
+}

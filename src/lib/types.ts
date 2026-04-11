@@ -1,0 +1,62 @@
+export type Business = {
+  id: string
+  name: string
+  description: string | null
+  phone: string | null
+  address: string | null
+  logo_url: string | null
+  slug: string
+  owner_id: string
+  created_at: string
+}
+
+export type Professional = {
+  id: string
+  business_id: string
+  name: string
+  photo_url: string | null
+  active: boolean
+  created_at: string
+}
+
+export type Service = {
+  id: string
+  business_id: string
+  name: string
+  price: number | null
+  duration_minutes: number
+  active: boolean
+}
+
+export type WorkingHours = {
+  id: string
+  professional_id: string
+  day_of_week: number // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sab
+  start_time: string  // "09:00"
+  end_time: string    // "18:00"
+  slot_duration: number // minutos por atendimento
+}
+
+export type Appointment = {
+  id: string
+  business_id: string
+  professional_id: string
+  client_name: string
+  client_phone: string
+  appointment_date: string // "2026-04-10"
+  start_time: string       // "14:00"
+  end_time: string         // "14:30"
+  status: 'pending' | 'confirmed' | 'cancelled'
+  notes: string | null
+  created_at: string
+}
+
+export type AppointmentWithDetails = Appointment & {
+  professional: Professional
+  business: Business
+}
+
+export type TimeSlot = {
+  time: string      // "14:00"
+  available: boolean
+}
