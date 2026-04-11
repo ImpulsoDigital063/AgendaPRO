@@ -282,6 +282,39 @@ export default function HomePage() {
       {/* FAQ */}
       <FAQ />
 
+      {/* Impulso Digital — outros serviços */}
+      <section className="px-6 py-16 bg-gray-50 border-t border-gray-100">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-xs text-gray-400 uppercase tracking-widest mb-2">Desenvolvido por</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Impulso Digital</h2>
+          <p className="text-gray-400 text-sm mb-8 max-w-md mx-auto">
+            Agência de tecnologia e estratégia digital em Palmas, TO. O AgendaPRO é só um dos serviços que oferecemos.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { icon: '⚡', title: 'Landing Pages', desc: 'Alta conversão para campanhas e lançamentos' },
+              { icon: '🛍️', title: 'Lojas Shopify', desc: 'E-commerce pronto para vender' },
+              { icon: '🌐', title: 'Sites Next.js', desc: 'Rápidos, modernos e otimizados para SEO' },
+              { icon: '🎯', title: 'Consultoria', desc: 'Estratégia digital para escalar seu negócio' },
+            ].map((service) => (
+              <div key={service.title} className="bg-white rounded-2xl border border-gray-100 p-4 text-left">
+                <span className="text-xl mb-2 block">{service.icon}</span>
+                <p className="font-semibold text-gray-900 text-sm mb-1">{service.title}</p>
+                <p className="text-gray-400 text-xs leading-snug">{service.desc}</p>
+              </div>
+            ))}
+          </div>
+          <a
+            href="https://impulsod.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-8 text-sm text-gray-500 hover:text-gray-900 transition-colors border border-gray-200 px-5 py-2.5 rounded-xl"
+          >
+            Conhecer a Impulso Digital →
+          </a>
+        </div>
+      </section>
+
       {/* CTA final */}
       <section className="px-6 py-20 bg-gray-900 text-center">
         <div className="max-w-lg mx-auto">
@@ -302,10 +335,26 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 px-6 py-8 text-center">
-        <p className="text-gray-400 text-sm">
-          AgendaPRO · <a href="https://impulsod.com.br" className="hover:text-gray-600">Impulso Digital</a> · Palmas, TO
-        </p>
+      <footer className="border-t border-gray-100 px-6 py-10">
+        <div className="max-w-3xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <p className="font-bold text-gray-900 text-sm">AgendaPRO</p>
+            <p className="text-gray-400 text-xs mt-0.5">
+              Um produto da{' '}
+              <a href="https://impulsod.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-gray-700 underline underline-offset-2">
+                Impulso Digital
+              </a>
+              {' '}· Palmas, TO
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+            <Link href="/barbearia" className="hover:text-gray-700">Barbearia</Link>
+            <Link href="/salao" className="hover:text-gray-700">Salão de beleza</Link>
+            <Link href="/nail" className="hover:text-gray-700">Nail designer</Link>
+            <Link href="/estetica" className="hover:text-gray-700">Clínica estética</Link>
+            <Link href="/admin/login" className="hover:text-gray-700">Entrar</Link>
+          </div>
+        </div>
       </footer>
 
     </main>

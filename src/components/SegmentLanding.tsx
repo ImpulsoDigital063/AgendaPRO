@@ -200,10 +200,26 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 px-6 py-8 text-center bg-gray-900">
-        <p className="text-gray-500 text-sm">
-          AgendaPRO · <a href="https://impulsod.com.br" className="hover:text-gray-300">Impulso Digital</a> · Palmas, TO
-        </p>
+      <footer className="border-t border-gray-800 px-6 py-10 bg-gray-900">
+        <div className="max-w-3xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <p className="font-bold text-white text-sm">AgendaPRO</p>
+            <p className="text-gray-500 text-xs mt-0.5">
+              Um produto da{' '}
+              <a href="https://impulsod.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 underline underline-offset-2">
+                Impulso Digital
+              </a>
+              {' '}· Palmas, TO
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+            <Link href="/barbearia" className="hover:text-gray-300">Barbearia</Link>
+            <Link href="/salao" className="hover:text-gray-300">Salão de beleza</Link>
+            <Link href="/nail" className="hover:text-gray-300">Nail designer</Link>
+            <Link href="/estetica" className="hover:text-gray-300">Clínica estética</Link>
+            <Link href="/admin/login" className="hover:text-gray-300">Entrar</Link>
+          </div>
+        </div>
       </footer>
 
     </main>
