@@ -140,6 +140,52 @@ export async function sendBarberNotification({
   })
 }
 
+export async function sendClientBookingConfirmation({
+  clientEmail,
+  clientName,
+  businessName,
+  date,
+  startTime,
+  endTime,
+  services,
+  totalPrice,
+}: {
+  clientEmail: string
+  clientName: string
+  businessName: string
+  date: string
+  startTime: string
+  endTime: string
+  services: string[]
+  totalPrice?: number | null
+}) {
+  const [year, month, day] = date.split('-')
+  const dateFormatted = `${day}/${month}/${year}`
+
+  const servicesList = services.length > 0
+    ? services.map(s => `✂️ ${s}`).join('<br>')
+    : ''
+
+  const priceLine = totalPrice
+    ? `<br>💰 <strong>Total:</strong> ${totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+    : ''
+
+  const body = `
+    Olá, <strong>${clientName}</strong>! Seu agendamento na <strong>${businessName}</strong> foi recebido com sucesso.<br><br>
+    ${servicesList ? `${servicesList}<br>` : ''}
+    📅 <strong>Data:</strong> ${dateFormatted}<br>
+    🕐 <strong>Horário:</strong> ${startTime} – ${endTime}${priceLine}<br><br>
+    Aguarde a confirmação do estabelecimento. Você receberá outro email quando confirmado. 👊
+  `
+
+  await resend.emails.send({
+    from: 'AgendaPRO <onboarding@resend.dev>',
+    to: clientEmail,
+    subject: `📋 Agendamento recebido — ${businessName} · ${dateFormatted} às ${startTime}`,
+    html: emailTemplate({ title: '', body }),
+  })
+}
+
 export async function sendClientNotification({
   clientEmail,
   clientName,

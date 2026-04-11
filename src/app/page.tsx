@@ -159,40 +159,45 @@ export default function HomePage() {
               <p className="text-3xl font-bold text-gray-900 mb-1">
                 R$97<span className="text-base font-normal text-gray-400">/mês</span>
               </p>
-              <p className="text-xs text-gray-400 mb-6">+ R$800 de setup</p>
+              <p className="text-xs text-emerald-600 font-medium mb-6">14 dias grátis — sem cartão</p>
               <ul className="space-y-2 text-sm text-gray-600 mb-6">
                 <li>✓ Página de agendamento personalizada</li>
-                <li>✓ Notificação por email</li>
-                <li>✓ Painel de gestão</li>
+                <li>✓ Notificação por email a cada reserva</li>
+                <li>✓ Lembrete automático D-1 para o cliente</li>
+                <li>✓ Painel de gestão + app instalável</li>
                 <li>✓ Serviços ilimitados</li>
               </ul>
               <Link
                 href="/cadastro"
                 className="block text-center bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors text-sm"
               >
-                Começar agora
+                Começar grátis →
               </Link>
             </div>
 
             {/* Equipe */}
-            <div className="bg-gray-900 border border-gray-900 rounded-2xl p-6 text-left">
+            <div className="bg-gray-900 border border-gray-900 rounded-2xl p-6 text-left relative overflow-hidden">
+              <div className="absolute top-4 right-4 bg-white text-gray-900 text-xs font-bold px-2 py-1 rounded-lg">
+                Popular
+              </div>
               <h3 className="font-bold text-white text-lg mb-1">Equipe</h3>
               <p className="text-gray-400 text-sm mb-4">Até 5 profissionais</p>
               <p className="text-3xl font-bold text-white mb-1">
                 R$147<span className="text-base font-normal text-gray-400">/mês</span>
               </p>
-              <p className="text-xs text-gray-400 mb-6">+ R$800 de setup</p>
+              <p className="text-xs text-emerald-400 font-medium mb-6">14 dias grátis — sem cartão</p>
               <ul className="space-y-2 text-sm text-gray-300 mb-6">
                 <li>✓ Tudo do Solo</li>
                 <li>✓ Múltiplos profissionais</li>
                 <li>✓ Agenda individual por profissional</li>
-                <li>✓ Suporte prioritário</li>
+                <li>✓ Relatório de comissão automático</li>
+                <li>✓ Suporte prioritário via WhatsApp</li>
               </ul>
               <Link
                 href="/cadastro"
                 className="block text-center bg-white text-gray-900 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors text-sm"
               >
-                Começar agora
+                Começar grátis →
               </Link>
             </div>
 

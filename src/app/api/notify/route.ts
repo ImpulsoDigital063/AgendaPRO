@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendBarberNotification } from '@/lib/email'
+import { sendBarberNotification, sendClientBookingConfirmation } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   const { appointmentId } = await req.json()
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   const { data: appointment } = await supabase
     .from('appointments')
-    .select(`*, business:businesses(name, slug, owner_id), professional:professionals(name), service:services(name)`)
+    .select(`*, business:businesses(name, slug, owner_id), professional:professionals(name), service:services(name), appointment_services(service_name, price)`)
     .eq('id', appointmentId)
     .single()
 
@@ -36,6 +36,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'email do barbeiro não encontrado' })
   }
 
+  const apptServices: { service_name: string; price: number | null }[] = appointment.appointment_services || []
+  const serviceNames = apptServices.length > 0
+    ? apptServices.map((s: { service_name: string }) => s.service_name)
+    : appointment.service_name ? [appointment.service_name] : []
+
   await sendBarberNotification({
     barberEmail,
     barberName: appointment.professional?.name || 'Profissional',
@@ -46,8 +51,22 @@ export async function POST(req: NextRequest) {
     startTime: appointment.start_time.slice(0, 5),
     endTime: appointment.end_time.slice(0, 5),
     appointmentId,
-    serviceName: appointment.service_name ?? appointment.service?.name ?? null,
+    serviceName: serviceNames.join(', ') || null,
   })
+
+  // Email de confirmação pro cliente (se tiver email)
+  if (appointment.client_email) {
+    await sendClientBookingConfirmation({
+      clientEmail: appointment.client_email,
+      clientName: appointment.client_name,
+      businessName: appointment.business.name,
+      date: appointment.appointment_date,
+      startTime: appointment.start_time.slice(0, 5),
+      endTime: appointment.end_time.slice(0, 5),
+      services: serviceNames,
+      totalPrice: appointment.total_price,
+    })
+  }
 
   return NextResponse.json({ ok: true })
 }

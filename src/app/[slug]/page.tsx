@@ -26,32 +26,66 @@ export default async function BusinessPage({
     .eq('active', true)
     .order('name')
 
+  const category = (business as Business & { category?: string }).category
+
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Cover / Header */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-lg mx-auto px-4 py-6 text-center">
-          {business.logo_url && (
-            <img
-              src={business.logo_url}
-              alt={business.name}
-              className="w-20 h-20 rounded-full mx-auto mb-4 object-cover border-2 border-gray-100"
-            />
-          )}
+        {/* Faixa de cor no topo */}
+        <div className="h-24 bg-gray-900 w-full" />
+
+        <div className="max-w-lg mx-auto px-4 pb-6">
+          {/* Avatar */}
+          <div className="flex items-end gap-4 -mt-10 mb-4">
+            <div className="w-20 h-20 rounded-2xl border-4 border-white bg-gray-800 flex items-center justify-center text-white text-3xl font-bold shadow-sm flex-shrink-0 overflow-hidden">
+              {business.logo_url
+                ? <img src={business.logo_url} alt={business.name} className="w-full h-full object-cover" />
+                : business.name.charAt(0).toUpperCase()
+              }
+            </div>
+            <div className="pb-1">
+              {category && (
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{category}</span>
+              )}
+            </div>
+          </div>
+
           <h1 className="text-2xl font-bold text-gray-900">{business.name}</h1>
           {business.description && (
-            <p className="text-gray-500 text-sm mt-1">{business.description}</p>
+            <p className="text-gray-500 text-sm mt-1 leading-relaxed">{business.description}</p>
           )}
-          {business.address && (
-            <p className="text-gray-400 text-xs mt-1">📍 {business.address}</p>
-          )}
-          {business.phone && (
-            <p className="text-gray-400 text-xs mt-1">📞 {business.phone}</p>
-          )}
+
+          <div className="flex flex-wrap gap-3 mt-3">
+            {business.address && (
+              <span className="text-gray-400 text-xs flex items-center gap-1">
+                📍 {business.address}
+              </span>
+            )}
+            {business.phone && (
+              <a
+                href={`https://wa.me/55${business.phone.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-600 text-xs flex items-center gap-1 hover:underline"
+              >
+                📱 {business.phone}
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
+
+        {/* Botão agendar — destaque total */}
+        <Link
+          href={`/${slug}/agendar`}
+          className="block w-full bg-gray-900 text-white text-center py-4 rounded-2xl font-bold text-lg hover:bg-gray-800 transition-colors shadow-sm"
+        >
+          Agendar horário →
+        </Link>
+
         {/* Serviços */}
         {services && services.length > 0 && (
           <section>
@@ -66,14 +100,18 @@ export default async function BusinessPage({
                     index < services.length - 1 ? 'border-b border-gray-50' : ''
                   }`}
                 >
-                  <span className="text-gray-800 font-medium">{service.name}</span>
+                  <div>
+                    <p className="text-gray-800 font-medium">{service.name}</p>
+                    <p className="text-gray-400 text-xs mt-0.5">{service.duration_minutes} min</p>
+                  </div>
                   <div className="text-right">
-                    {service.price && (
+                    {service.price ? (
                       <p className="text-gray-900 font-semibold">
-                        R$ {Number(service.price).toFixed(2).replace('.', ',')}
+                        {Number(service.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
+                    ) : (
+                      <p className="text-gray-400 text-sm">sob consulta</p>
                     )}
-                    <p className="text-gray-400 text-xs">{service.duration_minutes} min</p>
                   </div>
                 </div>
               ))}
@@ -81,16 +119,8 @@ export default async function BusinessPage({
           </section>
         )}
 
-        {/* Botão agendar */}
-        <Link
-          href={`/${slug}/agendar`}
-          className="block w-full bg-gray-900 text-white text-center py-4 rounded-2xl font-semibold text-lg hover:bg-gray-800 transition-colors"
-        >
-          Agendar horário
-        </Link>
-
-        <p className="text-center text-gray-400 text-xs pb-4">
-          Agendamento online por AgendaPRO · Impulso Digital
+        <p className="text-center text-gray-300 text-xs pb-4">
+          Agendamento por AgendaPRO · Impulso Digital
         </p>
       </div>
     </main>
