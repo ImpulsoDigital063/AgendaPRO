@@ -1,23 +1,6 @@
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
 
-const BUSINESS_TYPES = [
-  { icon: '✂️', name: 'Barbearia' },
-  { icon: '💅', name: 'Nail designer' },
-  { icon: '💇', name: 'Salão de beleza' },
-  { icon: '🧴', name: 'Estética' },
-  { icon: '🧠', name: 'Psicólogo' },
-  { icon: '💪', name: 'Personal' },
-  { icon: '🦷', name: 'Dentista' },
-  { icon: '📋', name: 'Qualquer serviço' },
-]
-
-const STATS = [
-  { number: '24h', label: 'Clientes agendam a qualquer hora' },
-  { number: '-50%', label: 'Menos faltas com lembrete automático' },
-  { number: '5min', label: 'Para configurar e compartilhar' },
-]
-
 const RETENTION_FEATURES = [
   {
     icon: '🏆',
@@ -120,15 +103,16 @@ export default function HomePage() {
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
             Você acabou de ganhar 14 dias de acesso gratuito
           </div>
+
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-5">
-            Agenda online que faz<br />o cliente voltar
+            De agenda no WhatsApp<br />para negócio que cresce sozinho
           </h1>
-          <p className="text-gray-500 text-lg mb-8 max-w-lg mx-auto leading-relaxed">
-            Chega de perder hora no WhatsApp e de cliente ir pro concorrente.
-            Configure em 5 minutos e tenha agenda, fidelidade, indicação e Google Reviews num só lugar.
+
+          <p className="text-gray-500 text-lg mb-8 max-w-xl mx-auto leading-relaxed">
+            Agenda online, programa de fidelidade, indicação automática e Google Reviews num único sistema.
+            Tudo que você pagaria separado — por menos do que uma assinatura de streaming.
           </p>
 
-          {/* Benefícios rápidos */}
           <div className="flex flex-wrap justify-center gap-3 mb-10 text-sm text-gray-500">
             <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
               ✓ Agendamento 24h
@@ -148,16 +132,16 @@ export default function HomePage() {
             href="/cadastro"
             className="inline-block bg-gray-900 text-white px-8 py-4 rounded-2xl font-semibold text-base hover:bg-gray-800 transition-colors"
           >
-            Criar minha página de agendamento →
+            Garantir meu acesso gratuito →
           </Link>
-          <p className="text-gray-400 text-xs mt-4">Funciona hoje mesmo. Cancele quando quiser.</p>
+          <p className="text-gray-400 text-xs mt-4">Funciona hoje mesmo. Sem cartão. Cancele quando quiser.</p>
         </div>
       </section>
 
       {/* Cards por segmento */}
       <section className="px-6 pb-16 bg-white">
         <div className="max-w-4xl mx-auto">
-          <p className="text-center text-sm text-gray-400 mb-6">Escolha o seu tipo de negócio</p>
+          <p className="text-center text-sm text-gray-400 mb-6">Para qualquer negócio de serviço</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               {
@@ -209,7 +193,11 @@ export default function HomePage() {
       {/* Números */}
       <section className="border-y border-gray-100 bg-gray-50">
         <div className="max-w-3xl mx-auto px-6 py-10 grid grid-cols-3 gap-6 text-center">
-          {STATS.map((stat) => (
+          {[
+            { number: '24h', label: 'Clientes agendam a qualquer hora' },
+            { number: '-50%', label: 'Menos faltas com lembrete automático' },
+            { number: '5min', label: 'Para configurar e compartilhar' },
+          ].map((stat) => (
             <div key={stat.number}>
               <p className="text-3xl font-bold text-gray-900 mb-1">{stat.number}</p>
               <p className="text-xs text-gray-500 leading-snug">{stat.label}</p>
@@ -218,7 +206,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Retenção e crescimento */}
+      {/* O que o concorrente não tem */}
       <section className="px-6 py-16 bg-gray-900">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
@@ -252,7 +240,7 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">
-              O que você ganha
+              Tudo incluso
             </p>
             <h2 className="text-2xl font-bold text-gray-900">
               Tudo que você precisa, sem o que não precisa
@@ -308,13 +296,65 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Valor empilhado — âncora de preço */}
+      <section className="px-6 py-16 bg-gray-50 border-t border-gray-100">
+        <div className="max-w-lg mx-auto">
+          <div className="text-center mb-8">
+            <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">
+              Quanto valeria tudo isso separado?
+            </p>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Veja o que você está levando
+            </h2>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            {[
+              { item: 'Agenda online (Trinks, iSalon)', price: 'R$89/mês' },
+              { item: 'Programa de fidelidade com pontos', price: 'R$49/mês' },
+              { item: 'Sistema de indicação entre clientes', price: 'R$79/mês' },
+              { item: 'Gestão de avaliações Google Reviews', price: 'R$39/mês' },
+            ].map((row, i) => (
+              <div key={i} className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+                <p className="text-gray-600 text-sm">{row.item}</p>
+                <p className="text-gray-400 text-sm font-medium line-through">{row.price}</p>
+              </div>
+            ))}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
+              <p className="text-gray-500 text-sm font-medium">Total separado</p>
+              <p className="text-gray-400 text-sm font-bold line-through">R$256/mês</p>
+            </div>
+            <div className="flex items-center justify-between px-5 py-5 bg-gray-900 rounded-b-2xl">
+              <div>
+                <p className="text-white font-bold">AgendaPRO — tudo junto</p>
+                <p className="text-gray-400 text-xs mt-0.5">14 dias grátis · sem cartão</p>
+              </div>
+              <div className="text-right">
+                <p className="text-emerald-400 text-2xl font-bold">R$67<span className="text-sm font-normal text-gray-400">/mês</span></p>
+                <p className="text-gray-500 text-xs">menos de R$2,20/dia</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-8">
+            <Link
+              href="/cadastro"
+              className="inline-block bg-gray-900 text-white px-8 py-4 rounded-2xl font-semibold text-base hover:bg-gray-800 transition-colors"
+            >
+              Quero garantir esse valor →
+            </Link>
+            <p className="text-gray-400 text-xs mt-3">Oferta de lançamento — pode subir a qualquer momento</p>
+          </div>
+        </div>
+      </section>
+
       {/* Preços */}
-      <section className="px-6 py-20 bg-gray-50">
+      <section className="px-6 py-20 bg-white">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">
             Planos
           </p>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Simples, sem surpresa</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha o seu</h2>
           <p className="text-gray-400 text-sm mb-12">14 dias grátis em qualquer plano. Sem cartão, sem fidelidade.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
@@ -323,9 +363,10 @@ export default function HomePage() {
             <div className="bg-white border border-gray-200 rounded-2xl p-6 text-left">
               <h3 className="font-bold text-gray-900 text-lg mb-1">Solo</h3>
               <p className="text-gray-400 text-sm mb-4">1 profissional</p>
-              <p className="text-3xl font-bold text-gray-900 mb-1">
-                R$97<span className="text-base font-normal text-gray-400">/mês</span>
-              </p>
+              <div className="flex items-baseline gap-2 mb-1">
+                <p className="text-3xl font-bold text-gray-900">R$67<span className="text-base font-normal text-gray-400">/mês</span></p>
+                <p className="text-sm text-gray-300 line-through">R$97</p>
+              </div>
               <p className="text-xs text-emerald-600 font-medium mb-6">14 dias grátis — sem cartão</p>
               <ul className="space-y-2 text-sm text-gray-600 mb-6">
                 <li>✓ Página de agendamento personalizada</li>
@@ -354,9 +395,10 @@ export default function HomePage() {
               </div>
               <h3 className="font-bold text-white text-lg mb-1">Equipe</h3>
               <p className="text-gray-400 text-sm mb-4">Até 5 profissionais</p>
-              <p className="text-3xl font-bold text-white mb-1">
-                R$147<span className="text-base font-normal text-gray-400">/mês</span>
-              </p>
+              <div className="flex items-baseline gap-2 mb-1">
+                <p className="text-3xl font-bold text-white">R$97<span className="text-base font-normal text-gray-400">/mês</span></p>
+                <p className="text-sm text-gray-600 line-through">R$147</p>
+              </div>
               <p className="text-xs text-emerald-400 font-medium mb-6">14 dias grátis — sem cartão</p>
               <ul className="space-y-2 text-sm text-gray-300 mb-6">
                 <li>✓ Tudo do Solo</li>
@@ -416,19 +458,21 @@ export default function HomePage() {
       {/* CTA final */}
       <section className="px-6 py-20 bg-gray-900 text-center">
         <div className="max-w-lg mx-auto">
+          <p className="text-emerald-400 text-sm font-semibold mb-4">14 dias grátis · sem cartão · cancele quando quiser</p>
           <h2 className="text-3xl font-bold text-white mb-4">
-            Agenda, fidelidade e indicação — tudo junto
+            Seu concorrente ainda agenda pelo WhatsApp
           </h2>
           <p className="text-gray-400 mb-8 leading-relaxed">
-            Configure em 5 minutos. O sistema trabalha por você: agenda os clientes, faz eles voltarem e ainda traz novos através de indicação.
+            Enquanto você lê isso, ele perde horário, perde cliente e perde avaliação no Google.
+            Configure agora, compartilhe o link e veja a diferença hoje mesmo.
           </p>
           <Link
             href="/cadastro"
             className="inline-block bg-white text-gray-900 px-8 py-4 rounded-2xl font-bold text-base hover:bg-gray-100 transition-colors"
           >
-            Criar conta grátis →
+            Garantir meu acesso gratuito →
           </Link>
-          <p className="text-gray-500 text-xs mt-4">14 dias grátis · Sem cartão · Cancele quando quiser</p>
+          <p className="text-gray-500 text-xs mt-4">R$67/mês após o trial · Oferta de lançamento</p>
         </div>
       </section>
 
@@ -450,6 +494,8 @@ export default function HomePage() {
             <Link href="/salao" className="hover:text-gray-700">Salão de beleza</Link>
             <Link href="/nail" className="hover:text-gray-700">Nail designer</Link>
             <Link href="/estetica" className="hover:text-gray-700">Clínica estética</Link>
+            <Link href="/privacidade" className="hover:text-gray-700">Privacidade</Link>
+            <Link href="/termos" className="hover:text-gray-700">Termos</Link>
             <Link href="/admin/login" className="hover:text-gray-700">Entrar</Link>
           </div>
         </div>
