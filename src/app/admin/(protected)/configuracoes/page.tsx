@@ -18,12 +18,13 @@ export default async function ConfiguracoesPage() {
 
   if (!business) redirect('/cadastro')
 
-  const [{ data: professionals }, { data: services }] = await Promise.all([
+  const [{ data: professionals }, { data: services }, { data: rewards }, { data: customers }] = await Promise.all([
     supabase.from('professionals').select('*').eq('business_id', business.id).order('created_at'),
     supabase.from('services').select('*').eq('business_id', business.id).order('name'),
+    supabase.from('rewards').select('*').eq('business_id', business.id).order('points_required'),
+    supabase.from('customers').select('*').eq('business_id', business.id).order('total_points', { ascending: false }),
   ])
 
-  // Busca horários de todos os profissionais
   const professionalIds = (professionals || []).map((p: { id: string }) => p.id)
   const { data: allWorkingHours } = professionalIds.length > 0
     ? await supabase.from('working_hours').select('*').in('professional_id', professionalIds)
@@ -47,6 +48,8 @@ export default async function ConfiguracoesPage() {
           initialProfessionals={professionals || []}
           initialServices={services || []}
           initialWorkingHours={allWorkingHours || []}
+          initialRewards={rewards || []}
+          initialCustomers={customers || []}
         />
       </div>
     </main>

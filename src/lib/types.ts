@@ -35,6 +35,52 @@ export type Service = {
   price: number | null
   duration_minutes: number
   active: boolean
+  points: number
+}
+
+export type Customer = {
+  id: string
+  business_id: string
+  name: string
+  phone: string
+  email: string | null
+  total_points: number
+  referral_code: string
+  referred_by: string | null
+  created_at: string
+}
+
+export type Reward = {
+  id: string
+  business_id: string
+  name: string
+  description: string | null
+  points_required: number
+  active: boolean
+  created_at: string
+}
+
+export type PointsTransaction = {
+  id: string
+  customer_id: string
+  business_id: string
+  points: number
+  reason: 'service' | 'referral' | 'review' | 'redeem'
+  appointment_id: string | null
+  created_at: string
+}
+
+export type WaitlistEntry = {
+  id: string
+  business_id: string
+  professional_id: string
+  appointment_date: string
+  start_time: string
+  client_name: string
+  client_phone: string
+  client_email: string | null
+  notified_at: string | null
+  created_at: string
 }
 
 export type AppointmentService = {

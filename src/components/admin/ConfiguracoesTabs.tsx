@@ -1,20 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import type { Business, Professional, Service, WorkingHours } from '@/lib/types'
+import type { Business, Professional, Service, WorkingHours, Reward, Customer } from '@/lib/types'
 import ProfissionaisTab from './ProfissionaisTab'
 import ServicosTab from './ServicosTab'
 import HorariosTab from './HorariosTab'
 import WhatsAppQRTab from './WhatsAppQRTab'
 import NegocioTab from './NegocioTab'
+import FidelidadeTab from './FidelidadeTab'
 
-type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'whatsapp'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'whatsapp' | 'fidelidade'
 
 type Props = {
   business: Business
   initialProfessionals: Professional[]
   initialServices: Service[]
   initialWorkingHours: WorkingHours[]
+  initialRewards: Reward[]
+  initialCustomers: Customer[]
 }
 
 export default function ConfiguracoesTabs({
@@ -22,6 +25,8 @@ export default function ConfiguracoesTabs({
   initialProfessionals,
   initialServices,
   initialWorkingHours,
+  initialRewards,
+  initialCustomers,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('negocio')
   const [professionals, setProfessionals] = useState(initialProfessionals)
@@ -31,6 +36,7 @@ export default function ConfiguracoesTabs({
     { id: 'profissionais', label: 'Profissionais' },
     { id: 'servicos', label: 'Serviços' },
     { id: 'horarios', label: 'Horários' },
+    { id: 'fidelidade', label: '⭐ Fidelidade' },
     { id: 'whatsapp', label: 'WhatsApp' },
   ]
 
@@ -77,6 +83,14 @@ export default function ConfiguracoesTabs({
         <HorariosTab
           professionals={professionals}
           initialWorkingHours={initialWorkingHours}
+        />
+      )}
+
+      {activeTab === 'fidelidade' && (
+        <FidelidadeTab
+          businessId={business.id}
+          initialRewards={initialRewards}
+          initialCustomers={initialCustomers}
         />
       )}
 

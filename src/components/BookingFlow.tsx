@@ -86,6 +86,7 @@ export default function BookingFlow({
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pointsEarned, setPointsEarned] = useState(0)
 
   // Profissional ativo selecionado
   const professional = selectedProfessional
@@ -212,7 +213,7 @@ export default function BookingFlow({
 
     const supabase = createClient()
 
-    // 1. Criar ou recuperar cliente
+    // 1. Criar ou recuperar cliente global (clients)
     let clientId: string | null = returningClient?.id ?? null
 
     if (!clientId) {
@@ -224,7 +225,6 @@ export default function BookingFlow({
 
       if (existing) {
         clientId = existing.id
-        // Atualiza nome e email se mudou
         await supabase
           .from('clients')
           .update({ name: clientName.trim(), email: clientEmail.trim() || null })
@@ -241,6 +241,30 @@ export default function BookingFlow({
           .single()
         clientId = created?.id ?? null
       }
+    }
+
+    // 1b. Criar ou recuperar customer do negócio (para pontos)
+    const { data: existingCustomer } = await supabase
+      .from('customers')
+      .select('id, total_points')
+      .eq('business_id', business.id)
+      .eq('phone', clientPhone.trim())
+      .maybeSingle()
+
+    let customerId: string | null = existingCustomer?.id ?? null
+
+    if (!customerId) {
+      const { data: newCustomer } = await supabase
+        .from('customers')
+        .insert({
+          business_id: business.id,
+          name: clientName.trim(),
+          phone: clientPhone.trim(),
+          email: clientEmail.trim() || null,
+        })
+        .select('id')
+        .single()
+      customerId = newCustomer?.id ?? null
     }
 
     // 2. Criar agendamento
@@ -284,7 +308,24 @@ export default function BookingFlow({
       )
     }
 
-    // 4. Notificar profissional
+    // 4. Registrar pontos do agendamento
+    const totalPoints = selectedServices.reduce((sum, s) => sum + (s.points ?? 0), 0)
+    if (customerId && totalPoints > 0) {
+      await supabase.from('points_transactions').insert({
+        customer_id: customerId,
+        business_id: business.id,
+        points: totalPoints,
+        reason: 'service',
+        appointment_id: appointment.id,
+      })
+      await supabase
+        .from('customers')
+        .update({ total_points: (existingCustomer?.total_points ?? 0) + totalPoints })
+        .eq('id', customerId)
+      setPointsEarned(totalPoints)
+    }
+
+    // 5. Notificar profissional
     fetch('/api/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -328,7 +369,16 @@ export default function BookingFlow({
             })}
         </p>
         <p className="text-gray-700 font-semibold text-lg mb-4">{selectedTime}</p>
-        <p className="text-gray-500 text-sm max-w-xs">
+        {pointsEarned > 0 && (
+          <div className="mt-4 mb-2 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3 flex items-center gap-3">
+            <span className="text-2xl">⭐</span>
+            <div className="text-left">
+              <p className="text-amber-800 font-bold text-sm">+{pointsEarned} pontos de fidelidade!</p>
+              <p className="text-amber-600 text-xs">Continue agendando para ganhar recompensas.</p>
+            </div>
+          </div>
+        )}
+        <p className="text-gray-500 text-sm max-w-xs mt-2">
           Aguarde a confirmação do {business.name}. Você receberá uma mensagem em breve.
         </p>
       </div>

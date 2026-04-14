@@ -27,9 +27,10 @@ type FormState = {
   name: string
   price: string
   duration_minutes: number
+  points: string
 }
 
-const emptyForm: FormState = { name: '', price: '', duration_minutes: 30 }
+const emptyForm: FormState = { name: '', price: '', duration_minutes: 30, points: '' }
 
 export default function ServicosTab({ businessId, initialServices }: Props) {
   const [services, setServices] = useState(initialServices)
@@ -53,6 +54,7 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
         name: form.name.trim(),
         price: priceValue,
         duration_minutes: form.duration_minutes,
+        points: form.points ? parseInt(form.points) : 0,
         active: true,
       })
       .select()
@@ -71,6 +73,7 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
       name: service.name,
       price: service.price ? String(service.price) : '',
       duration_minutes: service.duration_minutes,
+      points: service.points ? String(service.points) : '',
     })
   }
 
@@ -84,13 +87,14 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
         name: editForm.name.trim(),
         price: priceValue,
         duration_minutes: editForm.duration_minutes,
+        points: editForm.points ? parseInt(editForm.points) : 0,
       })
       .eq('id', id)
 
     if (!error) {
       setServices(services.map((s) =>
         s.id === id
-          ? { ...s, name: editForm.name.trim(), price: priceValue, duration_minutes: editForm.duration_minutes }
+          ? { ...s, name: editForm.name.trim(), price: priceValue, duration_minutes: editForm.duration_minutes, points: editForm.points ? parseInt(editForm.points) : 0 }
           : s
       ))
       setEditingId(null)
@@ -163,6 +167,17 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
                   </select>
                 </div>
               </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Pontos de fidelidade</label>
+                <input
+                  type="number"
+                  value={editForm.points}
+                  onChange={(e) => setEditForm({ ...editForm, points: e.target.value })}
+                  placeholder="0"
+                  min="0"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-400"
+                />
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleSaveEdit(service.id)}
@@ -190,6 +205,7 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
                   </p>
                   <p className="text-xs text-gray-400">
                     {formatPrice(service.price)} · {formatDuration(service.duration_minutes)}
+                    {service.points > 0 && <span className="text-amber-500"> · {service.points}pts</span>}
                   </p>
                 </div>
               </div>
@@ -253,6 +269,17 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
               ))}
             </select>
           </div>
+        </div>
+        <div>
+          <label className="text-xs text-gray-400 mb-1 block">Pontos de fidelidade</label>
+          <input
+            type="number"
+            value={form.points}
+            onChange={(e) => setForm({ ...form, points: e.target.value })}
+            placeholder="0"
+            min="0"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400"
+          />
         </div>
         <button
           onClick={handleAdd}

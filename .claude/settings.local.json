@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:agenda-pro-seven.vercel.app)",
+      "WebSearch",
+      "WebFetch(domain:negocios.trinks.com)",
+      "WebFetch(domain:booksy.com.br)",
+      "WebFetch(domain:www.simplesagenda.com.br)",
+      "WebFetch(domain:www.prit.app)",
+      "WebFetch(domain:eibarber.com.br)",
+      "Bash(npm show:*)",
+      "Bash(npm install:*)",
+      "WebFetch(domain:blog.agendata.com.br)",
+      "WebFetch(domain:blog.dottovip.com.br)",
+      "WebFetch(domain:gestaoparabarbearia.com.br)",
+      "WebFetch(domain:www.reclameaqui.com.br)",
+      "WebFetch(domain:www.belasis.com.br)",
+      "WebFetch(domain:www.clinicaagilestetica.com.br)",
+      "WebFetch(domain:blog.zapcorte.com.br)",
+      "WebFetch(domain:graces.com.br)",
+      "WebFetch(domain:blog.klickagenda.com.br)",
+      "WebFetch(domain:contourline.com.br)",
+      "WebFetch(domain:www.laylaunhas.com.br)",
+      "WebFetch(domain:revistaft.com.br)",
+      "WebFetch(domain:www.socialhub.pro)",
+      "WebFetch(domain:blog.trinks.com)",
+      "WebFetch(domain:blog.gendo.com.br)",
+      "Read(//c/Users/DELL/segundo-cerebro//**)",
+      "Read(//c/Users/DELL/segundo-cerebro/**)"
+    ]
+  }
+}
