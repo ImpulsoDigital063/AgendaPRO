@@ -405,9 +405,9 @@ export default function HomePage() {
                 <li className="flex items-start gap-2.5 text-sm">
                   <span className="mt-0.5 flex-shrink-0">🎁</span>
                   <span className="font-semibold text-gray-900">
-                    Bônus: Kit de divulgação completo
+                    Bônus: Área de divulgação exclusiva
                     <span className="block font-normal text-gray-500 text-xs mt-0.5">
-                      Scripts prontos para Instagram, Google Meu Negócio e WhatsApp
+                      Textos prontos para copiar e colar no Instagram, Google Meu Negócio e WhatsApp — liberado dentro do painel assim que você ativa a conta
                     </span>
                   </span>
                 </li>
