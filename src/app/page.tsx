@@ -350,66 +350,110 @@ export default function HomePage() {
 
       {/* Preços */}
       <section className="px-6 py-20 bg-white">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">
-            Planos
-          </p>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha o seu</h2>
-          <p className="text-gray-400 text-sm mb-12">14 dias grátis em qualquer plano. Sem cartão, sem fidelidade.</p>
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">Planos</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha o seu</h2>
+            <p className="text-gray-400 text-sm">14 dias grátis em qualquer plano. Sem cartão, sem fidelidade.</p>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="space-y-4">
 
             {/* Solo */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-6 text-left">
-              <h3 className="font-bold text-gray-900 text-lg mb-1">Solo</h3>
-              <p className="text-gray-400 text-sm mb-4">1 profissional</p>
-              <div className="flex items-baseline gap-2 mb-1">
-                <p className="text-3xl font-bold text-gray-900">R$67<span className="text-base font-normal text-gray-400">/mês</span></p>
-                <p className="text-sm text-gray-300 line-through">R$97</p>
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
+              <div className="flex items-start justify-between mb-5">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-xl">Solo</h3>
+                  <p className="text-gray-400 text-sm mt-0.5">1 profissional</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-baseline gap-1.5 justify-end">
+                    <span className="text-3xl font-bold text-gray-900">R$67</span>
+                    <span className="text-gray-400 text-sm">/mês</span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-through text-right">antes R$97</p>
+                </div>
               </div>
-              <p className="text-xs text-emerald-600 font-medium mb-6">14 dias grátis — sem cartão</p>
-              <ul className="space-y-2 text-sm text-gray-600 mb-6">
-                <li>✓ Página de agendamento personalizada</li>
-                <li>✓ Agendamento 24h pelo link ou redes sociais</li>
-                <li>✓ Lembrete automático D-1 para o cliente</li>
-                <li>✓ Notificação por email a cada reserva</li>
-                <li>✓ Painel de gestão pelo celular</li>
-                <li>✓ Serviços ilimitados</li>
-                <li>✓ Programa de fidelidade com pontos</li>
-                <li>✓ Lista de espera automática</li>
-                <li>✓ Link de indicação por cliente</li>
-                <li>✓ Badge Google Reviews + pontos por avaliar</li>
+
+              <ul className="space-y-2.5 mb-5">
+                {[
+                  'Página de agendamento personalizada',
+                  'Agendamento 24h pelo link ou redes sociais',
+                  'Lembrete automático D-1 para o cliente',
+                  'Notificação por email a cada reserva',
+                  'Painel de gestão pelo celular',
+                  'Serviços ilimitados',
+                  'Programa de fidelidade com pontos',
+                  'Lista de espera automática',
+                  'Link de indicação por cliente',
+                  'Badge Google Reviews + pontos por avaliar',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5 text-sm text-gray-600">
+                    <span className="text-gray-400 mt-0.5 flex-shrink-0">☆</span>
+                    {item}
+                  </li>
+                ))}
+                <li className="flex items-start gap-2.5 text-sm">
+                  <span className="mt-0.5 flex-shrink-0">🎁</span>
+                  <span className="font-semibold text-gray-900">
+                    Bônus: Kit de divulgação completo
+                    <span className="block font-normal text-gray-500 text-xs mt-0.5">
+                      Scripts prontos para Instagram, Google Meu Negócio e WhatsApp
+                    </span>
+                  </span>
+                </li>
               </ul>
+
+              <p className="text-xs text-emerald-600 font-medium mb-4">14 dias grátis — sem cartão</p>
               <Link
                 href="/cadastro"
-                className="block text-center bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors text-sm"
+                className="block text-center bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors"
               >
                 Começar grátis →
               </Link>
             </div>
 
             {/* Equipe */}
-            <div className="bg-gray-900 border border-gray-900 rounded-2xl p-6 text-left relative overflow-hidden">
-              <div className="absolute top-4 right-4 bg-white text-gray-900 text-xs font-bold px-2 py-1 rounded-lg">
-                Popular
+            <div className="bg-gray-900 rounded-2xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                <span className="bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
+                  POPULAR
+                </span>
               </div>
-              <h3 className="font-bold text-white text-lg mb-1">Equipe</h3>
-              <p className="text-gray-400 text-sm mb-4">Até 5 profissionais</p>
-              <div className="flex items-baseline gap-2 mb-1">
-                <p className="text-3xl font-bold text-white">R$97<span className="text-base font-normal text-gray-400">/mês</span></p>
-                <p className="text-sm text-gray-600 line-through">R$147</p>
+
+              <div className="flex items-start justify-between mb-5 mt-3">
+                <div>
+                  <h3 className="font-bold text-white text-xl">Equipe</h3>
+                  <p className="text-gray-400 text-sm mt-0.5">De 3 a 5 profissionais</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-baseline gap-1.5 justify-end">
+                    <span className="text-3xl font-bold text-white">R$107</span>
+                    <span className="text-gray-400 text-sm">/mês</span>
+                  </div>
+                  <p className="text-xs text-gray-600 line-through text-right">antes R$147</p>
+                </div>
               </div>
-              <p className="text-xs text-emerald-400 font-medium mb-6">14 dias grátis — sem cartão</p>
-              <ul className="space-y-2 text-sm text-gray-300 mb-6">
-                <li>✓ Tudo do Solo</li>
-                <li>✓ Múltiplos profissionais com agenda individual</li>
-                <li>✓ Relatório de comissão automático</li>
-                <li>✓ Financeiro e faturamento por período</li>
-                <li>✓ Suporte prioritário via WhatsApp</li>
+
+              <ul className="space-y-2.5 mb-5">
+                {[
+                  'Tudo do plano Solo',
+                  'De 3 a 5 profissionais com agenda individual',
+                  'Relatório de comissão automático por profissional',
+                  'Financeiro e faturamento por período',
+                  'Suporte prioritário via WhatsApp',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5 text-sm text-gray-300">
+                    <span className="text-gray-500 mt-0.5 flex-shrink-0">☆</span>
+                    {item}
+                  </li>
+                ))}
               </ul>
+
+              <p className="text-xs text-emerald-400 font-medium mb-4">14 dias grátis — sem cartão</p>
               <Link
                 href="/cadastro"
-                className="block text-center bg-white text-gray-900 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors text-sm"
+                className="block text-center bg-white text-gray-900 py-3.5 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
               >
                 Começar grátis →
               </Link>
