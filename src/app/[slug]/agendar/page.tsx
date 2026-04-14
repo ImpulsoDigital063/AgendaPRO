@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import BookingFlow from '@/components/BookingFlow'
 
 export default async function AgendarPage({
@@ -61,6 +62,15 @@ export default async function AgendarPage({
           services={services || []}
           referralCode={referralCode}
         />
+
+        <div className="text-center space-y-1 py-6 px-4">
+          <p className="text-gray-300 text-xs">AgendaPRO · Impulso Digital</p>
+          <div className="flex justify-center gap-3">
+            <Link href="/privacidade" className="text-gray-300 text-xs hover:text-gray-500">Privacidade</Link>
+            <span className="text-gray-200 text-xs">·</span>
+            <Link href="/termos" className="text-gray-300 text-xs hover:text-gray-500">Termos de Uso</Link>
+          </div>
+        </div>
       </div>
     </main>
   )

@@ -131,9 +131,14 @@ export default async function BusinessPage({
           />
         )}
 
-        <p className="text-center text-gray-300 text-xs pb-4">
-          Agendamento por AgendaPRO · Impulso Digital
-        </p>
+        <div className="text-center space-y-1 pb-4">
+          <p className="text-gray-300 text-xs">Agendamento por AgendaPRO · Impulso Digital</p>
+          <div className="flex justify-center gap-3">
+            <Link href="/privacidade" className="text-gray-300 text-xs hover:text-gray-500">Privacidade</Link>
+            <span className="text-gray-200 text-xs">·</span>
+            <Link href="/termos" className="text-gray-300 text-xs hover:text-gray-500">Termos de Uso</Link>
+          </div>
+        </div>
       </div>
     </main>
   )
