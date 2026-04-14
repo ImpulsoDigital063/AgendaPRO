@@ -396,6 +396,15 @@ export default function HomePage() {
                 <li className="flex items-start gap-2.5 text-sm">
                   <span className="mt-0.5 flex-shrink-0">🎁</span>
                   <span className="font-semibold text-gray-900">
+                    Bônus: 2º profissional incluído
+                    <span className="block font-normal text-gray-500 text-xs mt-0.5">
+                      Normalmente 1 — na oferta de lançamento você cadastra 2
+                    </span>
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm">
+                  <span className="mt-0.5 flex-shrink-0">🎁</span>
+                  <span className="font-semibold text-gray-900">
                     Bônus: Kit de divulgação completo
                     <span className="block font-normal text-gray-500 text-xs mt-0.5">
                       Scripts prontos para Instagram, Google Meu Negócio e WhatsApp
