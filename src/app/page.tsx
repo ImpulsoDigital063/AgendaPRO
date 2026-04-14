@@ -79,8 +79,7 @@ export default function HomePage() {
       <nav className="border-b border-gray-100 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div>
-            <span className="font-bold text-gray-900 text-lg">AgendaPRO</span>
-            <span className="text-gray-400 text-xs ml-2">by Impulso Digital</span>
+            <img src="/logo-agendapro.svg" alt="AgendaPRO" height={40} className="h-10" />
           </div>
           <div className="flex items-center gap-3">
             <Link href="/admin/login" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
