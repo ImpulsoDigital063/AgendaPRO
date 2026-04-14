@@ -12,32 +12,23 @@ export default async function AdminPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
 
-  // Busca o negócio do usuário logado
   const { data: business } = await supabase
     .from('businesses')
     .select('*')
     .eq('owner_id', user.id)
     .single()
 
-  // Se não tem negócio, redireciona pro cadastro
-  if (!business) {
-    redirect('/cadastro')
-  }
+  if (!business) redirect('/cadastro')
 
-  // Agendamentos de hoje
   const today = new Date().toISOString().split('T')[0]
 
   const { data: appointments } = await supabase
     .from('appointments')
-    .select(`
-      *,
-      professional:professionals(name)
-    `)
-    .eq('business_id', business?.id)
+    .select(`*, professional:professionals(name)`)
+    .eq('business_id', business.id)
     .eq('appointment_date', today)
     .order('start_time', { ascending: true })
 
-  // Agendamentos futuros (próximos 7 dias, excluindo hoje)
   const nextWeek = new Date()
   nextWeek.setDate(nextWeek.getDate() + 7)
   const nextWeekStr = nextWeek.toISOString().split('T')[0]
@@ -45,7 +36,7 @@ export default async function AdminPage() {
   const { data: upcoming } = await supabase
     .from('appointments')
     .select(`*, professional:professionals(name)`)
-    .eq('business_id', business?.id)
+    .eq('business_id', business.id)
     .gt('appointment_date', today)
     .lte('appointment_date', nextWeekStr)
     .in('status', ['pending', 'confirmed'])
@@ -59,74 +50,103 @@ export default async function AdminPage() {
     month: 'long',
   })
 
-  const pending = (appointments || []).filter((a) => a.status === 'pending')
-  const confirmed = (appointments || []).filter((a) => a.status === 'confirmed')
-  const cancelled = (appointments || []).filter((a) => a.status === 'cancelled')
+  const list = appointments || []
+  const pending   = list.filter((a) => a.status === 'pending')
+  const confirmed = list.filter((a) => a.status === 'confirmed')
+  const cancelled = list.filter((a) => a.status === 'cancelled')
+  const revenue   = confirmed.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="font-bold text-gray-900">{business?.name || 'Painel'}</h1>
-            <p className="text-gray-400 text-xs capitalize">{todayFormatted}</p>
+
+      {/* Header azul */}
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700">
+        <div className="max-w-lg mx-auto px-4 pt-6 pb-12">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-blue-200 text-xs font-semibold uppercase tracking-widest">
+              AgendaPRO
+            </span>
+            <div className="flex items-center gap-2">
+              <ShareButton slug={business.slug} />
+              <LogoutButton />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <ShareButton slug={business.slug} />
-            <LogoutButton />
+          <h1 className="text-white text-2xl font-bold leading-tight">{business.name}</h1>
+          <p className="text-blue-200 text-sm capitalize mt-1">{todayFormatted}</p>
+        </div>
+      </div>
+
+      {/* Stats sobrepostos ao header */}
+      <div className="max-w-lg mx-auto px-4 -mt-6">
+        <div className="grid grid-cols-4 gap-2">
+          <div className="bg-white rounded-2xl shadow-sm p-3 text-center">
+            <p className="text-lg font-bold text-emerald-600">
+              {revenue > 0
+                ? revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$\u00a0', 'R$')
+                : 'R$0'}
+            </p>
+            <p className="text-gray-400 text-xs mt-0.5 leading-tight">Faturado</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm p-3 text-center">
+            <p className="text-lg font-bold text-yellow-500">{pending.length}</p>
+            <p className="text-gray-400 text-xs mt-0.5 leading-tight">Pendentes</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm p-3 text-center">
+            <p className="text-lg font-bold text-blue-600">{confirmed.length}</p>
+            <p className="text-gray-400 text-xs mt-0.5 leading-tight">Confirmados</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm p-3 text-center">
+            <p className="text-lg font-bold text-gray-300">{cancelled.length}</p>
+            <p className="text-gray-400 text-xs mt-0.5 leading-tight">Cancelados</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
 
-        {/* Link + guia de divulgação */}
+        {/* Divulgação */}
         <DivulgarCard
           slug={business.slug}
           appUrl={process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.com.br'}
         />
 
-        {/* Resumo do dia */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-            <p className="text-2xl font-bold text-yellow-500">{pending.length}</p>
-            <p className="text-xs text-gray-400 mt-1">Pendentes</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-            <p className="text-2xl font-bold text-green-500">{confirmed.length}</p>
-            <p className="text-xs text-gray-400 mt-1">Confirmados</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-            <p className="text-2xl font-bold text-gray-300">{cancelled.length}</p>
-            <p className="text-xs text-gray-400 mt-1">Cancelados</p>
-          </div>
-        </div>
-
         {/* Agendamentos de hoje */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Hoje
-          </h2>
-          {(appointments || []).length === 0 ? (
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+              Hoje
+            </h2>
+            {list.length > 0 && (
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                {list.length} agendamento{list.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          {list.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-              <p className="text-gray-400 text-sm">Nenhum agendamento hoje.</p>
+              <p className="text-3xl mb-2">📭</p>
+              <p className="text-gray-500 text-sm font-medium">Nenhum agendamento hoje</p>
+              <p className="text-gray-400 text-xs mt-1">Compartilhe seu link para receber reservas</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {(appointments || []).map((appointment) => (
+              {list.map((appointment) => (
                 <AppointmentCard key={appointment.id} appointment={appointment} />
               ))}
             </div>
           )}
         </section>
 
-        {/* Próximos agendamentos */}
+        {/* Próximos dias */}
         {upcoming && upcoming.length > 0 && (
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              Próximos dias
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                Próximos dias
+              </h2>
+              <span className="text-xs text-gray-400">7 dias</span>
+            </div>
             <div className="space-y-3">
               {upcoming.map((appointment) => (
                 <AppointmentCard
@@ -139,6 +159,29 @@ export default async function AdminPage() {
           </section>
         )}
 
+        {/* Nav inferior */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          {[
+            { href: '/admin/configuracoes', label: 'Configurações', icon: '⚙️', desc: 'Serviços, horários e profissionais' },
+            { href: '/admin/clientes', label: 'Clientes', icon: '👥', desc: 'Fidelidade e programa de pontos' },
+            { href: '/admin/financeiro', label: 'Financeiro', icon: '💰', desc: 'Faturamento e relatórios' },
+          ].map((item, i, arr) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-4 px-4 py-4 hover:bg-gray-50 transition-colors ${i < arr.length - 1 ? 'border-b border-gray-50' : ''}`}
+            >
+              <span className="text-xl w-8 text-center flex-shrink-0">{item.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-900 font-medium text-sm">{item.label}</p>
+                <p className="text-gray-400 text-xs">{item.desc}</p>
+              </div>
+              <span className="text-gray-300 text-sm">›</span>
+            </Link>
+          ))}
+        </div>
+
+        <p className="text-center text-gray-300 text-xs pb-2">AgendaPRO · Impulso Digital</p>
       </div>
     </main>
   )

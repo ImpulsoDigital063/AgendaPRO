@@ -21,22 +21,18 @@ type Props = {
   showDate?: boolean
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pendente',
-  confirmed: 'Confirmado',
-  cancelled: 'Cancelado',
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  pending: 'bg-yellow-50 text-yellow-600 border-yellow-100',
-  confirmed: 'bg-green-50 text-green-600 border-green-100',
-  cancelled: 'bg-gray-50 text-gray-400 border-gray-100',
+const STATUS_CONFIG: Record<string, { label: string; border: string; badge: string }> = {
+  pending:   { label: 'Pendente',   border: 'border-l-yellow-400', badge: 'bg-yellow-50 text-yellow-600' },
+  confirmed: { label: 'Confirmado', border: 'border-l-blue-500',   badge: 'bg-blue-50 text-blue-600'   },
+  cancelled: { label: 'Cancelado',  border: 'border-l-gray-200',   badge: 'bg-gray-50 text-gray-400'   },
 }
 
 export default function AppointmentCard({ appointment, showDate }: Props) {
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
 
   async function updateStatus(newStatus: 'confirmed' | 'cancelled') {
     setLoading(true)
@@ -47,7 +43,6 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
       .eq('id', appointment.id)
     setStatus(newStatus)
 
-    // Notifica o cliente (WhatsApp via Z-API + email se tiver)
     fetch('/api/notify-client', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -67,73 +62,97 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
     : null
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="font-semibold text-gray-900">{appointment.client_name}</p>
+    <div className={`bg-white rounded-2xl border border-gray-100 border-l-4 ${config.border} overflow-hidden`}>
+      <div className="p-4">
+
+        {/* Linha 1 — horário + nome + status */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="text-center min-w-[48px]">
+              <p className="text-blue-600 font-bold text-base leading-none">
+                {appointment.start_time.slice(0, 5)}
+              </p>
+              <p className="text-gray-300 text-xs mt-0.5">
+                {appointment.end_time.slice(0, 5)}
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 leading-tight">{appointment.client_name}</p>
+              {dateFormatted && (
+                <p className="text-gray-400 text-xs capitalize mt-0.5">{dateFormatted}</p>
+              )}
+            </div>
+          </div>
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${config.badge}`}>
+            {config.label}
+          </span>
+        </div>
+
+        {/* Linha 2 — serviço + preço */}
+        <div className="flex items-center justify-between pl-[60px] mb-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {appointment.service_name && (
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                {appointment.service_name}
+              </span>
+            )}
+            {appointment.professional?.name && (
+              <span className="text-xs text-gray-400">
+                {appointment.professional.name}
+              </span>
+            )}
+          </div>
+          {appointment.total_price != null && appointment.total_price > 0 && (
+            <p className="text-sm font-bold text-gray-900">
+              {appointment.total_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
+          )}
+        </div>
+
+        {/* Linha 3 — telefone */}
+        <div className="pl-[60px] mb-3">
           <a
             href={`https://wa.me/55${appointment.client_phone.replace(/\D/g, '')}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-green-600 hover:underline"
+            className="text-xs text-green-600 hover:underline font-medium"
           >
-            📱 {appointment.client_phone}
+            WhatsApp: {appointment.client_phone}
           </a>
-          {appointment.client_email && (
-            <p className="text-xs text-gray-400 mt-0.5">{appointment.client_email}</p>
-          )}
         </div>
-        <span className={`text-xs font-medium px-2 py-1 rounded-full border ${STATUS_COLOR[status]}`}>
-          {STATUS_LABEL[status]}
-        </span>
+
+        {/* Ações */}
+        {status === 'pending' && (
+          <div className="flex gap-2 pl-[60px]">
+            <button
+              onClick={() => updateStatus('confirmed')}
+              disabled={loading}
+              className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40"
+            >
+              Confirmar
+            </button>
+            <button
+              onClick={() => updateStatus('cancelled')}
+              disabled={loading}
+              className="flex-1 bg-gray-100 text-gray-500 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-40"
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
+
+        {status === 'confirmed' && (
+          <div className="pl-[60px]">
+            <button
+              onClick={() => updateStatus('cancelled')}
+              disabled={loading}
+              className="w-full bg-gray-50 text-gray-400 py-2 rounded-xl text-sm hover:bg-gray-100 transition-colors disabled:opacity-40"
+            >
+              Cancelar agendamento
+            </button>
+          </div>
+        )}
       </div>
-
-      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-4">
-        <span>🕐 {appointment.start_time.slice(0, 5)} – {appointment.end_time.slice(0, 5)}</span>
-        {dateFormatted && <span>📅 {dateFormatted}</span>}
-        {appointment.service_name && (
-          <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full font-medium">
-            {appointment.service_name}
-          </span>
-        )}
-        {appointment.professional && !appointment.service_name && (
-          <span>✂️ {appointment.professional.name}</span>
-        )}
-        {appointment.total_price != null && appointment.total_price > 0 && (
-          <span className="font-semibold text-gray-900">
-            {appointment.total_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </span>
-        )}
-      </div>
-
-      {status === 'pending' && (
-        <div className="flex gap-2">
-          <button
-            onClick={() => updateStatus('confirmed')}
-            disabled={loading}
-            className="flex-1 bg-green-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-600 transition-colors disabled:opacity-40"
-          >
-            ✓ Confirmar
-          </button>
-          <button
-            onClick={() => updateStatus('cancelled')}
-            disabled={loading}
-            className="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-40"
-          >
-            ✕ Cancelar
-          </button>
-        </div>
-      )}
-
-      {status === 'confirmed' && (
-        <button
-          onClick={() => updateStatus('cancelled')}
-          disabled={loading}
-          className="w-full bg-gray-100 text-gray-500 py-2.5 rounded-xl text-sm hover:bg-gray-200 transition-colors disabled:opacity-40"
-        >
-          Cancelar agendamento
-        </button>
-      )}
     </div>
   )
 }
