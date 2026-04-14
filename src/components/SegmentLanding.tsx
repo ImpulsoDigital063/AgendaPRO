@@ -206,7 +206,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
             <p className="font-bold text-white text-sm">AgendaPRO</p>
             <p className="text-gray-500 text-xs mt-0.5">
               Um produto da{' '}
-              <a href="https://impulsod.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 underline underline-offset-2">
+              <a href="https://impulsodigital063.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 underline underline-offset-2">
                 Impulso Digital
               </a>
               {' '}· Palmas, TO

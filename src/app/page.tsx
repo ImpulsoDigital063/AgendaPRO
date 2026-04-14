@@ -340,7 +340,7 @@ export default function HomePage() {
             ))}
           </div>
           <a
-            href="https://impulsod.com.br"
+            href="https://impulsodigital063.com"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block mt-8 text-sm text-gray-500 hover:text-gray-900 transition-colors border border-gray-200 px-5 py-2.5 rounded-xl"
@@ -376,7 +376,7 @@ export default function HomePage() {
             <p className="font-bold text-gray-900 text-sm">AgendaPRO</p>
             <p className="text-gray-400 text-xs mt-0.5">
               Um produto da{' '}
-              <a href="https://impulsod.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-gray-700 underline underline-offset-2">
+              <a href="https://impulsodigital063.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-700 underline underline-offset-2">
                 Impulso Digital
               </a>
               {' '}· Palmas, TO
