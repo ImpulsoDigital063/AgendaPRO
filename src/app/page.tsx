@@ -117,8 +117,8 @@ export default function HomePage() {
       <section className="px-6 py-20 text-center">
         <div className="max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-            14 dias grátis — sem cartão de crédito
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+            Você acabou de ganhar 14 dias de acesso gratuito
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-5">
             Agenda online que faz<br />o cliente voltar
