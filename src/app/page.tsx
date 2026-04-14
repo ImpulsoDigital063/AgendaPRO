@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+import IPhoneMockup from '@/components/IPhoneMockup'
 
 const RETENTION_FEATURES = [
   {
@@ -28,205 +29,204 @@ const RETENTION_FEATURES = [
   },
 ]
 
-const FEATURES = [
-  {
-    icon: '📱',
-    title: 'Controle total pelo celular',
-    desc: 'Veja, confirme e cancele agendamentos de onde estiver. Painel otimizado para celular — sem precisar abrir computador.',
-  },
-  {
-    icon: '⏸️',
-    title: 'Bloqueio rápido da agenda',
-    desc: 'Precisa sair mais cedo? Pause sua agenda online com um clique. Nenhum cliente consegue agendar nesse período.',
-  },
-  {
-    icon: '🔔',
-    title: 'Lembrete automático D-1',
-    desc: 'Um dia antes do horário, o sistema manda email ao cliente lembrando. Reduz em até 50% a falta sem avisar.',
-  },
-  {
-    icon: '🔗',
-    title: 'Agenda pelas redes sociais',
-    desc: 'Cole o link na bio do Instagram, no Google Meu Negócio ou no WhatsApp. Cliente agenda direto, sem te chamar.',
-  },
-  {
-    icon: '👤',
-    title: 'Você cadastra ou o cliente agenda',
-    desc: 'Recebeu um pedido no WhatsApp? Cadastre você mesmo pelo painel em segundos. Flexibilidade total.',
-  },
-  {
-    icon: '🚫',
-    title: 'Sem app para o cliente',
-    desc: 'O cliente acessa pelo link no celular, sem baixar nada. Menos atrito, mais agendamentos.',
-  },
-  {
-    icon: '👥',
-    title: 'Múltiplos profissionais',
-    desc: 'Cada profissional com sua própria agenda, horários e relatório de comissão automático.',
-  },
-  {
-    icon: '💰',
-    title: 'Relatório financeiro incluso',
-    desc: 'Faturamento do dia, da semana e do mês. Comissão por profissional calculada automaticamente.',
-  },
+const VALUE_ITEMS = [
+  { item: 'Agenda online (Trinks, iSalon)',       price: 'R$89/mês'  },
+  { item: 'Programa de fidelidade com pontos',    price: 'R$49/mês'  },
+  { item: 'Sistema de indicação entre clientes',  price: 'R$79/mês'  },
+  { item: 'Gestão de avaliações Google Reviews',  price: 'R$39/mês'  },
+]
+
+const STEPS = [
+  { n: '01', title: 'Cadastre seu negócio',        desc: 'Nome, serviços, horários e profissionais em menos de 5 minutos. Sem técnico, sem burocracia.' },
+  { n: '02', title: 'Compartilhe o link',           desc: 'Cole na bio do Instagram, no Google Meu Negócio ou no WhatsApp. Clientes agendam direto.' },
+  { n: '03', title: 'O sistema trabalha por você', desc: 'Lembretes automáticos, pontos de fidelidade, indicações e Google Reviews — tudo acontece sozinho.' },
 ]
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-white font-sans">
+    <main style={{ background: 'var(--bg-white)', color: 'var(--text-primary)' }}>
 
-      {/* Nav */}
-      <nav className="border-b border-gray-100 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div>
-            <img src="/logo-agendapro.svg" alt="AgendaPRO" height={40} className="h-10" />
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/admin/login" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+      {/* ── Announcement bar ── */}
+      <div style={{ background: 'var(--accent)', color: '#fff', textAlign: 'center', padding: '10px 24px', fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>
+        🎁 Oferta de lançamento — <strong>14 dias grátis</strong> em qualquer plano. Sem cartão de crédito.
+      </div>
+
+      {/* ── Nav ── */}
+      <nav className="sticky top-0 z-50" style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--border)' }}>
+        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '64px' }}>
+          <img src="/logo-agendapro.svg" alt="AgendaPRO" style={{ height: '28px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Link href="/admin/login" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-sec)', textDecoration: 'none' }}>
               Entrar
             </Link>
-            <Link
-              href="/cadastro"
-              className="bg-gray-900 text-white text-sm px-4 py-2 rounded-xl font-medium hover:bg-gray-800 transition-colors"
-            >
+            <Link href="/cadastro" className="btn-primary" style={{ padding: '10px 24px', fontSize: '14px' }}>
               Começar grátis
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="px-6 py-20 text-center">
-        <div className="max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-            Você acabou de ganhar 14 dias de acesso gratuito
+      {/* ── Hero ── */}
+      <section className="section" style={{ background: 'var(--bg-white)', paddingBottom: '60px' }}>
+        <div className="container">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '48px' }}>
+
+            {/* Badge */}
+            <div className="text-center">
+              <span className="section-badge light">Você acabou de ganhar 14 dias de acesso gratuito</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '64px', alignItems: 'center', width: '100%' }}
+              className="hero-grid">
+
+              {/* Texto */}
+              <div>
+                <h1 style={{ fontSize: 'clamp(2.2rem, 4.5vw, 3.5rem)', fontWeight: 900, lineHeight: 1.08, letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: '20px' }}>
+                  De agenda no WhatsApp<br />
+                  para negócio que{' '}
+                  <span style={{ color: 'var(--accent)' }}>cresce sozinho.</span>
+                </h1>
+                <p style={{ fontSize: '1.125rem', color: 'var(--text-sec)', lineHeight: 1.7, maxWidth: '500px', marginBottom: '32px' }}>
+                  Agenda online, fidelidade, indicação e Google Reviews num único lugar.
+                  Configure em 5 minutos. Funciona hoje mesmo.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+                  <Link href="/cadastro" className="btn-primary">
+                    Garantir meu acesso gratuito →
+                  </Link>
+                  <Link href="#como-funciona" className="btn-secondary">
+                    Ver como funciona
+                  </Link>
+                </div>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Sem cartão · Cancele quando quiser · R$67/mês após o trial
+                </p>
+
+                {/* Mini stats */}
+                <div style={{ display: 'flex', gap: '32px', marginTop: '40px', paddingTop: '32px', borderTop: '1px solid var(--border)' }}>
+                  {[
+                    { n: '24h',   l: 'Agendamento online'   },
+                    { n: '-50%',  l: 'Menos faltas'          },
+                    { n: '5 min', l: 'Para configurar'       },
+                  ].map((s) => (
+                    <div key={s.n}>
+                      <p style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>{s.n}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{s.l}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* iPhone */}
+              <div className="hero-phone">
+                <IPhoneMockup />
+              </div>
+            </div>
           </div>
-
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-5">
-            De agenda no WhatsApp<br />para negócio que cresce sozinho
-          </h1>
-
-          <p className="text-gray-500 text-lg mb-8 max-w-xl mx-auto leading-relaxed">
-            Agenda online, programa de fidelidade, indicação automática e Google Reviews num único sistema.
-            Tudo que você pagaria separado — por menos do que uma assinatura de streaming.
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-3 mb-10 text-sm text-gray-500">
-            <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-              ✓ Agendamento 24h
-            </span>
-            <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-              ✓ Programa de fidelidade
-            </span>
-            <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-              ✓ Indicação automática
-            </span>
-            <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-              ✓ Google Reviews integrado
-            </span>
-          </div>
-
-          <Link
-            href="/cadastro"
-            className="inline-block bg-gray-900 text-white px-8 py-4 rounded-2xl font-semibold text-base hover:bg-gray-800 transition-colors"
-          >
-            Garantir meu acesso gratuito →
-          </Link>
-          <p className="text-gray-400 text-xs mt-4">Funciona hoje mesmo. Sem cartão. Cancele quando quiser.</p>
         </div>
       </section>
 
-      {/* Cards por segmento */}
-      <section className="px-6 pb-16 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-center text-sm text-gray-400 mb-6">Para qualquer negócio de serviço</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* ── Stats bar ── */}
+      <section style={{ padding: '0 24px 80px' }}>
+        <div className="container">
+          <div className="stats-bar">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', textAlign: 'center' }}>
+              {[
+                { n: '+800',     l: 'Agendamentos realizados'           },
+                { n: 'R$256',    l: 'Valor separado. Seu preço: R$67'   },
+                { n: '14 dias',  l: 'Grátis para testar, sem cartão'    },
+              ].map((s) => (
+                <div key={s.n}>
+                  <p style={{ fontSize: '2.25rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{s.n}</p>
+                  <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', marginTop: '8px', lineHeight: 1.4 }}>{s.l}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Segmentos ── */}
+      <section style={{ background: 'var(--bg-gray)', padding: '0 24px 80px' }}>
+        <div className="container">
+          <div className="text-center" style={{ marginBottom: '40px' }}>
+            <span className="section-badge light">Para qualquer negócio de serviço</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
             {[
-              {
-                href: '/barbearia',
-                icon: '✂️',
-                title: 'Barbearia',
-                desc: 'Criado para barbeiro que quer a agenda cheia sem depender do WhatsApp.',
-                color: 'hover:border-zinc-400',
-              },
-              {
-                href: '/salao',
-                icon: '💇',
-                title: 'Salão de beleza',
-                desc: 'Pensado para salão com equipe — cada profissional com sua agenda e comissão.',
-                color: 'hover:border-pink-300',
-              },
-              {
-                href: '/nail',
-                icon: '💅',
-                title: 'Nail designer',
-                desc: 'Feito para quem trabalha sozinha e precisa da agenda no piloto automático.',
-                color: 'hover:border-purple-300',
-              },
-              {
-                href: '/estetica',
-                icon: '🧴',
-                title: 'Clínica estética',
-                desc: 'Desenvolvido para clínica com múltiplos procedimentos e controle financeiro.',
-                color: 'hover:border-emerald-300',
-              },
-            ].map((card) => (
-              <a
-                key={card.href}
-                href={card.href}
-                className={`group block bg-white border-2 border-gray-100 ${card.color} rounded-2xl p-5 transition-all hover:shadow-md`}
-              >
-                <span className="text-3xl mb-3 block">{card.icon}</span>
-                <h3 className="font-bold text-gray-900 text-sm mb-1.5">{card.title}</h3>
-                <p className="text-gray-400 text-xs leading-relaxed">{card.desc}</p>
-                <p className="text-xs font-semibold text-gray-900 mt-3 group-hover:underline">
-                  Ver como funciona →
-                </p>
+              { href: '/barbearia', icon: '✂️', title: 'Barbearia',        desc: 'Agenda cheia sem depender do WhatsApp.'     },
+              { href: '/salao',     icon: '💇', title: 'Salão de beleza',  desc: 'Equipe com agenda e comissão individual.'   },
+              { href: '/nail',      icon: '💅', title: 'Nail designer',    desc: 'Agenda no piloto automático.'               },
+              { href: '/estetica',  icon: '🧴', title: 'Clínica estética', desc: 'Procedimentos e controle financeiro.'       },
+            ].map((c) => (
+              <a key={c.href} href={c.href} className="card" style={{ textDecoration: 'none', display: 'block', padding: '28px 24px' }}>
+                <span style={{ fontSize: '2rem', display: 'block', marginBottom: '12px' }}>{c.icon}</span>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>{c.title}</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-sec)', lineHeight: 1.5, marginBottom: '12px' }}>{c.desc}</p>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent)' }}>Ver como funciona →</p>
               </a>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Números */}
-      <section className="border-y border-gray-100 bg-gray-50">
-        <div className="max-w-3xl mx-auto px-6 py-10 grid grid-cols-3 gap-6 text-center">
-          {[
-            { number: '24h', label: 'Clientes agendam a qualquer hora' },
-            { number: '-50%', label: 'Menos faltas com lembrete automático' },
-            { number: '5min', label: 'Para configurar e compartilhar' },
-          ].map((stat) => (
-            <div key={stat.number}>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{stat.number}</p>
-              <p className="text-xs text-gray-500 leading-snug">{stat.label}</p>
-            </div>
-          ))}
+      {/* ── Retenção — O que o concorrente não tem ── */}
+      <section className="section" style={{ background: 'linear-gradient(135deg, var(--dark-from) 0%, var(--dark-to) 100%)', padding: '80px 24px' }}>
+        <div className="container">
+          <div className="text-center" style={{ marginBottom: '56px' }}>
+            <span className="section-badge dark" style={{ marginBottom: '16px' }}>O que o concorrente não tem</span>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.75rem)', fontWeight: 800, color: '#fff', lineHeight: 1.1, marginBottom: '16px' }}>
+              Retenção e crescimento.<br />No mesmo sistema.
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.0625rem', maxWidth: '480px', margin: '0 auto' }}>
+              Todo mundo tem agenda online. Só a AgendaPRO entrega o que faz o cliente voltar.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+            {RETENTION_FEATURES.map((f) => (
+              <div key={f.title} style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '24px',
+                padding: '36px 32px',
+              }}>
+                <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '16px' }}>{f.icon}</span>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>{f.title}</h3>
+                <p style={{ color: '#60A5FA', fontSize: '0.875rem', fontWeight: 500, marginBottom: '10px' }}>{f.result}</p>
+                <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.9375rem', lineHeight: 1.6 }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* O que o concorrente não tem */}
-      <section className="px-6 py-16 bg-gray-900">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">
-              O que o concorrente não tem
-            </p>
-            <h2 className="text-2xl font-bold text-white">
-              Retenção e crescimento no mesmo sistema
+      {/* ── Como funciona ── */}
+      <section id="como-funciona" className="section" style={{ padding: '80px 24px' }}>
+        <div className="container">
+          <div className="text-center" style={{ marginBottom: '56px' }}>
+            <span className="section-badge light">Como funciona</span>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.75rem)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, marginTop: '16px' }}>
+              Três passos.<br />Pronto para usar hoje.
             </h2>
-            <p className="text-gray-400 text-sm mt-3 max-w-lg mx-auto">
-              Todo mundo tem agenda online. Só a AgendaPRO entrega o que faz o cliente voltar — e trazer mais clientes.
-            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {RETENTION_FEATURES.map((feature) => (
-              <div key={feature.title} className="bg-gray-800 rounded-2xl p-5 flex gap-4">
-                <span className="text-2xl flex-shrink-0 mt-0.5">{feature.icon}</span>
+
+          <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '40px' }}>
+            {STEPS.map((s, i) => (
+              <div key={s.n} style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                <div style={{
+                  minWidth: '48px', height: '48px',
+                  background: 'var(--accent)',
+                  borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 800, fontSize: '15px',
+                  flexShrink: 0,
+                }}>
+                  {i + 1}
+                </div>
                 <div>
-                  <h3 className="font-semibold text-white mb-0.5">{feature.title}</h3>
-                  <p className="text-emerald-400 text-xs font-medium mb-2">{feature.result}</p>
-                  <p className="text-gray-400 text-sm leading-relaxed">{feature.desc}</p>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>{s.title}</h3>
+                  <p style={{ color: 'var(--text-sec)', lineHeight: 1.6, fontSize: '0.9375rem' }}>{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -234,152 +234,95 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="px-6 py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">
-              Tudo incluso
-            </p>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Tudo que você precisa, sem o que não precisa
+      {/* ── Valor empilhado ── */}
+      <section style={{ background: 'var(--bg-gray)', padding: '80px 24px' }}>
+        <div className="container">
+          <div className="text-center" style={{ marginBottom: '48px' }}>
+            <span className="section-badge light">Quanto valeria tudo isso separado?</span>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.75rem)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, marginTop: '16px', marginBottom: '12px' }}>
+              Veja o que você está levando.
             </h2>
+            <p style={{ color: 'var(--text-sec)', fontSize: '1.0625rem' }}>
+              Tudo junto, por menos de R$2,20 por dia.
+            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {FEATURES.map((feature) => (
-              <div key={feature.title} className="bg-white rounded-2xl border border-gray-100 p-5 flex gap-4">
-                <span className="text-2xl flex-shrink-0 mt-0.5">{feature.icon}</span>
+
+          <div style={{ maxWidth: '560px', margin: '0 auto' }}>
+            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+              {VALUE_ITEMS.map((r, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '18px 28px',
+                  borderBottom: '1px solid var(--border)',
+                }}>
+                  <p style={{ color: 'var(--text-primary)', fontSize: '0.9375rem' }}>{r.item}</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', textDecoration: 'line-through', flexShrink: 0, marginLeft: '16px' }}>{r.price}</p>
+                </div>
+              ))}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', borderBottom: '1px solid var(--border)', background: 'var(--bg-gray)' }}>
+                <p style={{ color: 'var(--text-sec)', fontWeight: 600 }}>Total separado</p>
+                <p style={{ color: 'var(--text-muted)', fontWeight: 700, textDecoration: 'line-through' }}>R$256/mês</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px', background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%)' }}>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">{feature.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{feature.desc}</p>
+                  <p style={{ color: '#fff', fontWeight: 700, fontSize: '1.0625rem' }}>AgendaPRO — tudo junto</p>
+                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', marginTop: '2px' }}>14 dias grátis · sem cartão</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ color: '#fff', fontSize: '1.875rem', fontWeight: 800, lineHeight: 1 }}>
+                    R$67<span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'rgba(255,255,255,0.7)' }}>/mês</span>
+                  </p>
+                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px', marginTop: '3px' }}>menos de R$2,20/dia</p>
                 </div>
               </div>
-            ))}
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: '24px' }}>
+              <Link href="/cadastro" className="btn-primary">
+                Quero garantir esse valor →
+              </Link>
+              <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '12px' }}>
+                Oferta de lançamento — pode subir a qualquer momento
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Como funciona */}
-      <section className="px-6 py-20 bg-white">
-        <div className="max-w-2xl mx-auto">
-          <p className="text-sm font-medium text-gray-400 uppercase tracking-widest text-center mb-12">
-            Como funciona
-          </p>
-          <div className="space-y-10">
-            {[
-              {
-                n: '01',
-                title: 'Cadastre seu negócio',
-                desc: 'Nome, serviços, horários e profissionais. Tudo em menos de 5 minutos. Sem técnico, sem burocracia.',
-              },
-              {
-                n: '02',
-                title: 'Compartilhe o link onde quiser',
-                desc: 'Você recebe uma página — agendapro.com.br/seu-negocio — para colar no Instagram, Google ou WhatsApp.',
-              },
-              {
-                n: '03',
-                title: 'Clientes agendam, você gerencia',
-                desc: 'Receba notificação a cada reserva. Confirme, cancele ou bloqueie sua agenda em um clique.',
-              },
-            ].map((step) => (
-              <div key={step.n} className="flex items-start gap-6">
-                <span className="text-3xl font-bold text-gray-100 min-w-[48px]">{step.n}</span>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg mb-1">{step.title}</h3>
-                  <p className="text-gray-500">{step.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Valor empilhado — âncora de preço */}
-      <section className="px-6 py-16 bg-gray-50 border-t border-gray-100">
-        <div className="max-w-lg mx-auto">
-          <div className="text-center mb-8">
-            <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">
-              Quanto valeria tudo isso separado?
-            </p>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Veja o que você está levando
+      {/* ── Pricing ── */}
+      <section className="section" style={{ padding: '80px 24px' }}>
+        <div className="container">
+          <div className="text-center" style={{ marginBottom: '48px' }}>
+            <span className="section-badge light">Planos</span>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.75rem)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, marginTop: '16px', marginBottom: '12px' }}>
+              Escolha o seu.
             </h2>
+            <p style={{ color: 'var(--text-sec)', fontSize: '1.0625rem' }}>
+              14 dias grátis em qualquer plano. Sem cartão, sem fidelidade.
+            </p>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            {[
-              { item: 'Agenda online (Trinks, iSalon)', price: 'R$89/mês' },
-              { item: 'Programa de fidelidade com pontos', price: 'R$49/mês' },
-              { item: 'Sistema de indicação entre clientes', price: 'R$79/mês' },
-              { item: 'Gestão de avaliações Google Reviews', price: 'R$39/mês' },
-            ].map((row, i) => (
-              <div key={i} className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-                <p className="text-gray-600 text-sm">{row.item}</p>
-                <p className="text-gray-400 text-sm font-medium line-through">{row.price}</p>
-              </div>
-            ))}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
-              <p className="text-gray-500 text-sm font-medium">Total separado</p>
-              <p className="text-gray-400 text-sm font-bold line-through">R$256/mês</p>
-            </div>
-            <div className="flex items-center justify-between px-5 py-5 bg-gray-900 rounded-b-2xl">
-              <div>
-                <p className="text-white font-bold">AgendaPRO — tudo junto</p>
-                <p className="text-gray-400 text-xs mt-0.5">14 dias grátis · sem cartão</p>
-              </div>
-              <div className="text-right">
-                <p className="text-emerald-400 text-2xl font-bold">R$67<span className="text-sm font-normal text-gray-400">/mês</span></p>
-                <p className="text-gray-500 text-xs">menos de R$2,20/dia</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-8">
-            <Link
-              href="/cadastro"
-              className="inline-block bg-gray-900 text-white px-8 py-4 rounded-2xl font-semibold text-base hover:bg-gray-800 transition-colors"
-            >
-              Quero garantir esse valor →
-            </Link>
-            <p className="text-gray-400 text-xs mt-3">Oferta de lançamento — pode subir a qualquer momento</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Preços */}
-      <section className="px-6 py-20 bg-white">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">Planos</p>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha o seu</h2>
-            <p className="text-gray-400 text-sm">14 dias grátis em qualquer plano. Sem cartão, sem fidelidade.</p>
-          </div>
-
-          <div className="space-y-4">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', maxWidth: '800px', margin: '0 auto' }}>
 
             {/* Solo */}
-            <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
-              <div className="flex items-start justify-between mb-5">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-xl">Solo</h3>
-                  <p className="text-gray-400 text-sm mt-0.5">1 profissional</p>
+            <div className="card" style={{ position: 'relative' }}>
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>Solo</h3>
+                <p style={{ color: 'var(--text-sec)', fontSize: '0.875rem' }}>Profissional independente</p>
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>R$67</span>
+                  <span style={{ color: 'var(--text-sec)', fontSize: '0.875rem' }}>/mês</span>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-baseline gap-1.5 justify-end">
-                    <span className="text-3xl font-bold text-gray-900">R$67</span>
-                    <span className="text-gray-400 text-sm">/mês</span>
-                  </div>
-                  <p className="text-xs text-gray-300 line-through text-right">antes R$97</p>
-                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px', textDecoration: 'line-through' }}>antes R$97</p>
               </div>
 
-              <ul className="space-y-2.5 mb-5">
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {[
                   'Página de agendamento personalizada',
                   'Agendamento 24h pelo link ou redes sociais',
                   'Lembrete automático D-1 para o cliente',
-                  'Notificação por email a cada reserva',
                   'Painel de gestão pelo celular',
                   'Serviços ilimitados',
                   'Programa de fidelidade com pontos',
@@ -387,63 +330,64 @@ export default function HomePage() {
                   'Link de indicação por cliente',
                   'Badge Google Reviews + pontos por avaliar',
                 ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-gray-600">
-                    <span className="text-gray-400 mt-0.5 flex-shrink-0">☆</span>
+                  <li key={item} style={{ display: 'flex', gap: '10px', fontSize: '14px', color: 'var(--text-primary)', alignItems: 'flex-start' }}>
+                    <span style={{ color: 'var(--accent)', fontWeight: 700, flexShrink: 0 }}>✓</span>
                     {item}
                   </li>
                 ))}
-                <li className="flex items-start gap-2.5 text-sm">
-                  <span className="mt-0.5 flex-shrink-0">🎁</span>
-                  <span className="font-semibold text-gray-900">
-                    Bônus: 2º profissional incluído
-                    <span className="block font-normal text-gray-500 text-xs mt-0.5">
-                      Normalmente 1 — na oferta de lançamento você cadastra 2
+                <li style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0 }}>🎁</span>
+                  <span style={{ fontSize: '14px' }}>
+                    <strong style={{ color: 'var(--text-primary)' }}>Bônus: 2º profissional incluído</strong>
+                    <span style={{ display: 'block', color: 'var(--text-sec)', fontSize: '12px', marginTop: '2px' }}>
+                      Normalmente 1 — na oferta você cadastra 2
                     </span>
                   </span>
                 </li>
-                <li className="flex items-start gap-2.5 text-sm">
-                  <span className="mt-0.5 flex-shrink-0">🎁</span>
-                  <span className="font-semibold text-gray-900">
-                    Bônus: Área de divulgação exclusiva
-                    <span className="block font-normal text-gray-500 text-xs mt-0.5">
-                      Textos prontos para copiar e colar no Instagram, Google Meu Negócio e WhatsApp — liberado dentro do painel assim que você ativa a conta
+                <li style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0 }}>🎁</span>
+                  <span style={{ fontSize: '14px' }}>
+                    <strong style={{ color: 'var(--text-primary)' }}>Bônus: Área de divulgação exclusiva</strong>
+                    <span style={{ display: 'block', color: 'var(--text-sec)', fontSize: '12px', marginTop: '2px' }}>
+                      Textos prontos para Instagram, Google e WhatsApp
                     </span>
                   </span>
                 </li>
               </ul>
 
-              <p className="text-xs text-emerald-600 font-medium mb-4">14 dias grátis — sem cartão</p>
-              <Link
-                href="/cadastro"
-                className="block text-center bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors"
-              >
+              <p style={{ color: 'var(--green-ok)', fontSize: '13px', fontWeight: 600, marginBottom: '16px' }}>
+                14 dias grátis — sem cartão
+              </p>
+              <Link href="/cadastro" className="btn-primary" style={{ width: '100%', justifyContent: 'center', display: 'flex' }}>
                 Começar grátis →
               </Link>
             </div>
 
             {/* Equipe */}
-            <div className="bg-gray-900 rounded-2xl p-6 relative overflow-hidden">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                <span className="bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
-                  POPULAR
-                </span>
+            <div className="card-featured" style={{ position: 'relative' }}>
+              <div style={{
+                position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)',
+                background: 'var(--accent)', color: '#fff',
+                fontSize: '11px', fontWeight: 700, letterSpacing: '1px',
+                padding: '5px 16px', borderRadius: '50px',
+                whiteSpace: 'nowrap',
+              }}>
+                MAIS POPULAR
               </div>
 
-              <div className="flex items-start justify-between mb-5 mt-3">
-                <div>
-                  <h3 className="font-bold text-white text-xl">Equipe</h3>
-                  <p className="text-gray-400 text-sm mt-0.5">De 3 a 5 profissionais</p>
+              <div style={{ marginBottom: '24px', marginTop: '8px' }}>
+                <h3 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>Equipe</h3>
+                <p style={{ color: 'var(--text-sec)', fontSize: '0.875rem' }}>De 3 a 5 profissionais</p>
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>R$107</span>
+                  <span style={{ color: 'var(--text-sec)', fontSize: '0.875rem' }}>/mês</span>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-baseline gap-1.5 justify-end">
-                    <span className="text-3xl font-bold text-white">R$107</span>
-                    <span className="text-gray-400 text-sm">/mês</span>
-                  </div>
-                  <p className="text-xs text-gray-600 line-through text-right">antes R$147</p>
-                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px', textDecoration: 'line-through' }}>antes R$147</p>
               </div>
 
-              <ul className="space-y-2.5 mb-5">
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {[
                   'Tudo do plano Solo',
                   'De 3 a 5 profissionais com agenda individual',
@@ -451,18 +395,17 @@ export default function HomePage() {
                   'Financeiro e faturamento por período',
                   'Suporte prioritário via WhatsApp',
                 ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-gray-300">
-                    <span className="text-gray-500 mt-0.5 flex-shrink-0">☆</span>
+                  <li key={item} style={{ display: 'flex', gap: '10px', fontSize: '14px', color: 'var(--text-primary)', alignItems: 'flex-start' }}>
+                    <span style={{ color: 'var(--accent)', fontWeight: 700, flexShrink: 0 }}>✓</span>
                     {item}
                   </li>
                 ))}
               </ul>
 
-              <p className="text-xs text-emerald-400 font-medium mb-4">14 dias grátis — sem cartão</p>
-              <Link
-                href="/cadastro"
-                className="block text-center bg-white text-gray-900 py-3.5 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
-              >
+              <p style={{ color: 'var(--green-ok)', fontSize: '13px', fontWeight: 600, marginBottom: '16px' }}>
+                14 dias grátis — sem cartão
+              </p>
+              <Link href="/cadastro" className="btn-primary" style={{ width: '100%', justifyContent: 'center', display: 'flex' }}>
                 Começar grátis →
               </Link>
             </div>
@@ -471,87 +414,82 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FAQ */}
+      {/* ── FAQ ── */}
       <FAQ />
 
-      {/* Impulso Digital — outros serviços */}
-      <section className="px-6 py-16 bg-gray-50 border-t border-gray-100">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-xs text-gray-400 uppercase tracking-widest mb-2">Desenvolvido por</p>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">Impulso Digital</h2>
-          <p className="text-gray-400 text-sm mb-8 max-w-md mx-auto">
-            Agência de tecnologia e estratégia digital em Palmas, TO. O AgendaPRO é só um dos serviços que oferecemos.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { icon: '⚡', title: 'Landing Pages', desc: 'Alta conversão para campanhas e lançamentos' },
-              { icon: '🛍️', title: 'Lojas Shopify', desc: 'E-commerce pronto para vender' },
-              { icon: '🌐', title: 'Sites Next.js', desc: 'Rápidos, modernos e otimizados para SEO' },
-              { icon: '🎯', title: 'Consultoria', desc: 'Estratégia digital para escalar seu negócio' },
-            ].map((service) => (
-              <div key={service.title} className="bg-white rounded-2xl border border-gray-100 p-4 text-left">
-                <span className="text-xl mb-2 block">{service.icon}</span>
-                <p className="font-semibold text-gray-900 text-sm mb-1">{service.title}</p>
-                <p className="text-gray-400 text-xs leading-snug">{service.desc}</p>
-              </div>
-            ))}
-          </div>
-          <a
-            href="https://impulsodigital063.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block mt-8 text-sm text-gray-500 hover:text-gray-900 transition-colors border border-gray-200 px-5 py-2.5 rounded-xl"
-          >
-            Conhecer a Impulso Digital →
-          </a>
-        </div>
-      </section>
-
-      {/* CTA final */}
-      <section className="px-6 py-20 bg-gray-900 text-center">
-        <div className="max-w-lg mx-auto">
-          <p className="text-emerald-400 text-sm font-semibold mb-4">14 dias grátis · sem cartão · cancele quando quiser</p>
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Seu concorrente ainda agenda pelo WhatsApp
-          </h2>
-          <p className="text-gray-400 mb-8 leading-relaxed">
-            Enquanto você lê isso, ele perde horário, perde cliente e perde avaliação no Google.
-            Configure agora, compartilhe o link e veja a diferença hoje mesmo.
-          </p>
-          <Link
-            href="/cadastro"
-            className="inline-block bg-white text-gray-900 px-8 py-4 rounded-2xl font-bold text-base hover:bg-gray-100 transition-colors"
-          >
-            Garantir meu acesso gratuito →
-          </Link>
-          <p className="text-gray-500 text-xs mt-4">R$67/mês após o trial · Oferta de lançamento</p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-100 px-6 py-10">
-        <div className="max-w-3xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div>
-            <p className="font-bold text-gray-900 text-sm">AgendaPRO</p>
-            <p className="text-gray-400 text-xs mt-0.5">
-              Um produto da{' '}
-              <a href="https://impulsodigital063.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-700 underline underline-offset-2">
-                Impulso Digital
-              </a>
-              {' '}· Palmas, TO
+      {/* ── CTA final ── */}
+      <section style={{ background: 'linear-gradient(135deg, var(--dark-from) 0%, var(--dark-to) 100%)', padding: '120px 24px', textAlign: 'center' }}>
+        <div className="container">
+          <div style={{ maxWidth: '560px', margin: '0 auto' }}>
+            <span className="section-badge dark" style={{ marginBottom: '24px' }}>
+              14 dias grátis · sem cartão · cancele quando quiser
+            </span>
+            <h2 style={{ fontSize: 'clamp(2rem, 4.5vw, 3.5rem)', fontWeight: 800, color: '#fff', lineHeight: 1.05, letterSpacing: '-0.02em', margin: '24px 0' }}>
+              Seu concorrente ainda<br />agenda pelo WhatsApp.
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.125rem', lineHeight: 1.7, marginBottom: '40px' }}>
+              Configure agora, compartilhe o link e veja a diferença hoje mesmo.
+            </p>
+            <Link href="/cadastro" className="btn-primary" style={{ fontSize: '1.0625rem', padding: '18px 40px' }}>
+              Garantir meu acesso gratuito →
+            </Link>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', marginTop: '16px' }}>
+              R$67/mês após o trial · Oferta de lançamento
             </p>
           </div>
-          <div className="flex flex-wrap gap-4 text-xs text-gray-400">
-            <Link href="/barbearia" className="hover:text-gray-700">Barbearia</Link>
-            <Link href="/salao" className="hover:text-gray-700">Salão de beleza</Link>
-            <Link href="/nail" className="hover:text-gray-700">Nail designer</Link>
-            <Link href="/estetica" className="hover:text-gray-700">Clínica estética</Link>
-            <Link href="/privacidade" className="hover:text-gray-700">Privacidade</Link>
-            <Link href="/termos" className="hover:text-gray-700">Termos</Link>
-            <Link href="/admin/login" className="hover:text-gray-700">Entrar</Link>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer style={{ background: 'var(--bg-gray)', borderTop: '1px solid var(--border)', padding: '48px 24px' }}>
+        <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+          <img src="/logo-agendapro.svg" alt="AgendaPRO" style={{ height: '26px' }} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
+            {[
+              { href: '/barbearia',   label: 'Barbearia'       },
+              { href: '/salao',       label: 'Salão de beleza'  },
+              { href: '/nail',        label: 'Nail designer'    },
+              { href: '/estetica',    label: 'Clínica estética' },
+              { href: '/privacidade', label: 'Privacidade'      },
+              { href: '/termos',      label: 'Termos'           },
+              { href: '/admin/login', label: 'Entrar'           },
+            ].map((l) => (
+              <Link key={l.href} href={l.href} style={{ fontSize: '13px', color: 'var(--text-sec)', textDecoration: 'none' }}>
+                {l.label}
+              </Link>
+            ))}
           </div>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+            © 2025 AgendaPRO · Um produto da{' '}
+            <a href="https://impulsodigital063.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-sec)' }}>
+              Impulso Digital
+            </a>
+            {' '}· Palmas, TO
+          </p>
         </div>
       </footer>
+
+      {/* ── Responsive tweaks ── */}
+      <style>{`
+        @media (max-width: 900px) {
+          .hero-grid { grid-template-columns: 1fr !important; }
+          .hero-phone { display: none; }
+        }
+        @media (max-width: 700px) {
+          .container > div[style*="grid-template-columns: repeat(4"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          [style*="grid-template-columns: repeat(3, 1fr)"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          [style*="grid-template-columns: 1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+          [style*="grid-template-columns: repeat(2, 1fr)"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
 
     </main>
   )
