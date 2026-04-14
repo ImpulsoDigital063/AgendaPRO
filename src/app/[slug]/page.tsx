@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Business, Service } from '@/lib/types'
+import GoogleReviewSection from '@/components/GoogleReviewSection'
 
 export default async function BusinessPage({
   params,
@@ -117,6 +118,17 @@ export default async function BusinessPage({
               ))}
             </div>
           </section>
+        )}
+
+        {/* Google Reviews */}
+        {(business as Business).google_place_id && (
+          <GoogleReviewSection
+            businessId={business.id}
+            googleMapsUrl={(business as Business).google_place_id!}
+            rating={(business as Business).google_rating}
+            reviewsCount={(business as Business).google_reviews_count}
+            pointsForReview={(business as Business).points_for_review}
+          />
         )}
 
         <p className="text-center text-gray-300 text-xs pb-4">
