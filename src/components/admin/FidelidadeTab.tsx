@@ -8,15 +8,27 @@ type Props = {
   businessId: string
   initialRewards: Reward[]
   initialCustomers: Customer[]
+  pointsForReferral: number
 }
 
-export default function FidelidadeTab({ businessId, initialRewards, initialCustomers }: Props) {
+export default function FidelidadeTab({ businessId, initialRewards, initialCustomers, pointsForReferral }: Props) {
   const [rewards, setRewards] = useState(initialRewards)
   const [customers, setCustomers] = useState(initialCustomers)
   const [form, setForm] = useState({ name: '', description: '', points_required: '' })
+  const [referralPoints, setReferralPoints] = useState(String(pointsForReferral))
+  const [savingReferral, setSavingReferral] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const supabase = createClient()
+
+  async function handleSaveReferralPoints() {
+    setSavingReferral(true)
+    await supabase
+      .from('businesses')
+      .update({ points_for_referral: parseInt(referralPoints) || 0 })
+      .eq('id', businessId)
+    setSavingReferral(false)
+  }
 
   async function handleAdd() {
     if (!form.name.trim() || !form.points_required) return
@@ -95,6 +107,35 @@ export default function FidelidadeTab({ businessId, initialRewards, initialCusto
             ))}
           </div>
         )}
+      </div>
+
+      {/* Configuração de indicação */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          Pontos por indicação
+        </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+          <p className="text-xs text-gray-500">
+            Quantos pontos o cliente ganha quando um amigo indicado faz o primeiro agendamento.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={referralPoints}
+              onChange={(e) => setReferralPoints(e.target.value)}
+              placeholder="ex: 200"
+              min="0"
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-gray-400"
+            />
+            <button
+              onClick={handleSaveReferralPoints}
+              disabled={savingReferral}
+              className="px-4 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40"
+            >
+              {savingReferral ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Recompensas configuradas */}

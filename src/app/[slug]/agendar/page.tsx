@@ -4,10 +4,13 @@ import BookingFlow from '@/components/BookingFlow'
 
 export default async function AgendarPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ ref?: string }>
 }) {
   const { slug } = await params
+  const { ref: referralCode } = await searchParams
   const supabase = await createClient()
 
   const { data: business } = await supabase
@@ -56,6 +59,7 @@ export default async function AgendarPage({
           professionals={professionals || []}
           workingHours={workingHours || []}
           services={services || []}
+          referralCode={referralCode}
         />
       </div>
     </main>

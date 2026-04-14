@@ -60,11 +60,13 @@ export default function BookingFlow({
   professionals,
   workingHours,
   services,
+  referralCode,
 }: {
   business: Business
   professionals: Professional[]
   workingHours: WorkingHours[]
   services: Service[]
+  referralCode?: string
 }) {
   const hasServices = services.length > 0
   const hasMultipleProfessionals = professionals.length > 1
@@ -87,6 +89,10 @@ export default function BookingFlow({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pointsEarned, setPointsEarned] = useState(0)
+
+  // Referral
+  const [myReferralLink, setMyReferralLink] = useState<string | null>(null)
+  const [referralCopied, setReferralCopied] = useState(false)
 
   // Fila de espera
   const [waitlistSlot, setWaitlistSlot] = useState<string | null>(null)
@@ -289,9 +295,63 @@ export default function BookingFlow({
           phone: clientPhone.trim(),
           email: clientEmail.trim() || null,
         })
-        .select('id')
+        .select('id, referral_code')
         .single()
       customerId = newCustomer?.id ?? null
+      if (newCustomer?.referral_code) {
+        setMyReferralLink(`${window.location.origin}/${business.slug}/agendar?ref=${newCustomer.referral_code}`)
+      }
+    } else {
+      // Cliente existente — busca o referral_code dele
+      const { data: existingFull } = await supabase
+        .from('customers')
+        .select('referral_code')
+        .eq('id', customerId)
+        .single()
+      if (existingFull?.referral_code) {
+        setMyReferralLink(`${window.location.origin}/${business.slug}/agendar?ref=${existingFull.referral_code}`)
+      }
+    }
+
+    // Pontuar quem indicou (se veio por referral)
+    if (referralCode && customerId) {
+      const { data: referrer } = await supabase
+        .from('customers')
+        .select('id, total_points')
+        .eq('referral_code', referralCode)
+        .eq('business_id', business.id)
+        .maybeSingle()
+
+      if (referrer && referrer.id !== customerId) {
+        const { data: bizData } = await supabase
+          .from('businesses')
+          .select('points_for_referral')
+          .eq('id', business.id)
+          .single()
+
+        const pts = bizData?.points_for_referral ?? 0
+        if (pts > 0) {
+          await supabase.from('points_transactions').insert({
+            customer_id: referrer.id,
+            business_id: business.id,
+            points: pts,
+            reason: 'referral',
+            appointment_id: null,
+          })
+          await supabase
+            .from('customers')
+            .update({ total_points: (referrer.total_points ?? 0) + pts })
+            .eq('id', referrer.id)
+        }
+
+        // Marca o referred_by no novo cliente (só se não tiver)
+        if (!existingCustomer) {
+          await supabase
+            .from('customers')
+            .update({ referred_by: referrer.id })
+            .eq('id', customerId)
+        }
+      }
     }
 
     // 2. Criar agendamento
@@ -408,6 +468,32 @@ export default function BookingFlow({
         <p className="text-gray-500 text-sm max-w-xs mt-2">
           Aguarde a confirmação do {business.name}. Você receberá uma mensagem em breve.
         </p>
+
+        {myReferralLink && (
+          <div className="mt-5 w-full max-w-sm bg-gray-50 border border-gray-200 rounded-2xl p-4 text-left">
+            <p className="text-sm font-bold text-gray-900 mb-1">Indique um amigo e ganhe pontos!</p>
+            <p className="text-xs text-gray-500 mb-3">
+              Compartilhe seu link. Quando um amigo agendar por ele, você ganha pontos de fidelidade.
+            </p>
+            <div className="flex gap-2">
+              <input
+                readOnly
+                value={myReferralLink}
+                className="flex-1 text-xs bg-white border border-gray-200 rounded-xl px-3 py-2 text-gray-600 focus:outline-none truncate"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(myReferralLink)
+                  setReferralCopied(true)
+                  setTimeout(() => setReferralCopied(false), 2000)
+                }}
+                className="px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-800 transition-colors whitespace-nowrap"
+              >
+                {referralCopied ? 'Copiado!' : 'Copiar'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

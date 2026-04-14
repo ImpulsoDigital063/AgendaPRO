@@ -91,6 +91,7 @@ export default function ConfiguracoesTabs({
           businessId={business.id}
           initialRewards={initialRewards}
           initialCustomers={initialCustomers}
+          pointsForReferral={business.points_for_referral ?? 0}
         />
       )}
 

@@ -8,6 +8,11 @@ export type Business = {
   slug: string
   owner_id: string
   created_at: string
+  google_place_id: string | null
+  google_rating: number | null
+  google_reviews_count: number | null
+  points_for_review: number
+  points_for_referral: number
 }
 
 export type Professional = {
