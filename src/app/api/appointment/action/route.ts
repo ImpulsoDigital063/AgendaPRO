@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { sendClientNotification } from '@/lib/email'
+import { sendClientNotification, sendWaitlistNotification } from '@/lib/email'
 
 function getAdminClient() {
   return createServiceClient(
@@ -46,6 +46,36 @@ export async function GET(req: NextRequest) {
       confirmed: action === 'confirmed',
       serviceName: appointment.service_name ?? null,
     }).catch(() => {})
+  }
+
+  // Se cancelou, notifica o primeiro da fila de espera
+  if (action === 'cancelled' && appointment) {
+    const { data: waitlistEntry } = await supabase
+      .from('waitlist')
+      .select('*, business:businesses(name, slug)')
+      .eq('professional_id', appointment.professional_id)
+      .eq('appointment_date', appointment.appointment_date)
+      .eq('start_time', appointment.start_time)
+      .is('notified_at', null)
+      .order('created_at')
+      .limit(1)
+      .maybeSingle()
+
+    if (waitlistEntry?.client_email) {
+      await supabase
+        .from('waitlist')
+        .update({ notified_at: new Date().toISOString() })
+        .eq('id', waitlistEntry.id)
+
+      sendWaitlistNotification({
+        clientEmail: waitlistEntry.client_email,
+        clientName: waitlistEntry.client_name,
+        businessName: waitlistEntry.business?.name || 'estabelecimento',
+        businessSlug: waitlistEntry.business?.slug || '',
+        date: waitlistEntry.appointment_date,
+        startTime: waitlistEntry.start_time.slice(0, 5),
+      }).catch(() => {})
+    }
   }
 
   const label = action === 'confirmed' ? 'confirmado ✅' : 'cancelado ❌'

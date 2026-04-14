@@ -88,6 +88,14 @@ export default function BookingFlow({
   const [error, setError] = useState<string | null>(null)
   const [pointsEarned, setPointsEarned] = useState(0)
 
+  // Fila de espera
+  const [waitlistSlot, setWaitlistSlot] = useState<string | null>(null)
+  const [waitlistName, setWaitlistName] = useState('')
+  const [waitlistPhone, setWaitlistPhone] = useState('')
+  const [waitlistEmail, setWaitlistEmail] = useState('')
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false)
+  const [waitlistDone, setWaitlistDone] = useState(false)
+
   // Profissional ativo selecionado
   const professional = selectedProfessional
 
@@ -198,6 +206,25 @@ export default function BookingFlow({
     }
     setLookingUpClient(false)
   }, [clientPhone])
+
+  async function handleJoinWaitlist() {
+    if (!selectedDate || !waitlistSlot || !waitlistName.trim() || !waitlistPhone.trim()) return
+    setWaitlistSubmitting(true)
+
+    const supabase = createClient()
+    await supabase.from('waitlist').insert({
+      business_id: business.id,
+      professional_id: professional.id,
+      appointment_date: formatDate(selectedDate),
+      start_time: waitlistSlot,
+      client_name: waitlistName.trim(),
+      client_phone: waitlistPhone.trim(),
+      client_email: waitlistEmail.trim() || null,
+    })
+
+    setWaitlistSubmitting(false)
+    setWaitlistDone(true)
+  }
 
   async function handleSubmit() {
     if (!selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim()) return
@@ -532,30 +559,106 @@ export default function BookingFlow({
           ) : slots.length === 0 ? (
             <p className="text-gray-400 text-sm">Sem horários disponíveis neste dia.</p>
           ) : (
+            <>
             <div className="grid grid-cols-4 gap-2">
               {slots.map((slot) => {
                 const isSelected = selectedTime === slot.time
                 return (
                   <button
                     key={slot.time}
-                    disabled={!slot.available}
                     onClick={() => {
+                      if (!slot.available) {
+                        setWaitlistSlot(slot.time)
+                        setWaitlistDone(false)
+                        return
+                      }
                       setSelectedTime(slot.time)
+                      setWaitlistSlot(null)
                       setStep('form')
                     }}
                     className={`py-3 rounded-xl border text-sm font-semibold transition-colors ${
                       !slot.available
-                        ? 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
+                        ? 'bg-gray-50 text-gray-400 border-gray-100 cursor-pointer hover:border-gray-300'
                         : isSelected
                         ? 'bg-gray-900 text-white border-gray-900'
                         : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
                     }`}
                   >
                     {slot.time}
+                    {!slot.available && <span className="block text-xs text-gray-300">fila</span>}
                   </button>
                 )
               })}
             </div>
+
+            {/* Modal fila de espera */}
+            {waitlistSlot && selectedDate && (
+              <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                {waitlistDone ? (
+                  <div className="text-center py-2">
+                    <p className="text-2xl mb-2">🎉</p>
+                    <p className="text-amber-800 font-bold text-sm">Você entrou na fila!</p>
+                    <p className="text-amber-600 text-xs mt-1">
+                      Avisaremos por email se a vaga das {waitlistSlot} abrir.
+                    </p>
+                    <button
+                      onClick={() => setWaitlistSlot(null)}
+                      className="mt-3 text-xs text-amber-700 underline"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-amber-800 font-bold text-sm">
+                        Horário {waitlistSlot} ocupado
+                      </p>
+                      <p className="text-amber-600 text-xs mt-0.5">
+                        Quer entrar na fila? Avisamos se a vaga abrir.
+                      </p>
+                    </div>
+                    <input
+                      type="text"
+                      value={waitlistName}
+                      onChange={(e) => setWaitlistName(e.target.value)}
+                      placeholder="Seu nome"
+                      className="w-full border border-amber-200 bg-white rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-amber-400"
+                    />
+                    <input
+                      type="tel"
+                      value={waitlistPhone}
+                      onChange={(e) => setWaitlistPhone(e.target.value)}
+                      placeholder="WhatsApp / Telefone"
+                      className="w-full border border-amber-200 bg-white rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-amber-400"
+                    />
+                    <input
+                      type="email"
+                      value={waitlistEmail}
+                      onChange={(e) => setWaitlistEmail(e.target.value)}
+                      placeholder="Email (para notificação)"
+                      className="w-full border border-amber-200 bg-white rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-amber-400"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleJoinWaitlist}
+                        disabled={waitlistSubmitting || !waitlistName.trim() || !waitlistPhone.trim()}
+                        className="flex-1 bg-amber-500 hover:bg-amber-400 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40"
+                      >
+                        {waitlistSubmitting ? 'Entrando...' : 'Entrar na fila'}
+                      </button>
+                      <button
+                        onClick={() => setWaitlistSlot(null)}
+                        className="px-4 bg-white border border-amber-200 text-amber-700 py-2.5 rounded-xl text-sm font-medium hover:bg-amber-50 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            </>
           )}
         </section>
       )}

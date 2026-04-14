@@ -194,6 +194,45 @@ export async function sendClientBookingConfirmation({
   })
 }
 
+export async function sendWaitlistNotification({
+  clientEmail,
+  clientName,
+  businessName,
+  businessSlug,
+  date,
+  startTime,
+}: {
+  clientEmail: string
+  clientName: string
+  businessName: string
+  businessSlug: string
+  date: string
+  startTime: string
+}) {
+  const [year, month, day] = date.split('-')
+  const dateFormatted = `${day}/${month}/${year}`
+  const bookingUrl = `${APP_URL}/${businessSlug}/agendar`
+
+  const body = `
+    Olá, <strong>${clientName}</strong>! Uma vaga abriu na <strong>${businessName}</strong>.<br><br>
+    📅 <strong>Data:</strong> ${dateFormatted}<br>
+    🕐 <strong>Horário:</strong> ${startTime}<br><br>
+    Corre para garantir seu horário antes que alguém pegue!
+  `
+
+  await resend.emails.send({
+    from: 'AgendaPRO <onboarding@resend.dev>',
+    to: clientEmail,
+    subject: `🔔 Vaga abriu! ${businessName} · ${dateFormatted} às ${startTime}`,
+    html: emailTemplate({
+      title: '',
+      body,
+      actionUrl: bookingUrl,
+      actionLabel: '🗓️ Garantir meu horário',
+    }),
+  })
+}
+
 export async function sendClientNotification({
   clientEmail,
   clientName,
