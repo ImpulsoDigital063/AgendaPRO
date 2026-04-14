@@ -18,6 +18,33 @@ const STATS = [
   { number: '5min', label: 'Para configurar e compartilhar' },
 ]
 
+const RETENTION_FEATURES = [
+  {
+    icon: '🏆',
+    title: 'Programa de fidelidade',
+    result: 'Clientes voltam para você — não para o concorrente',
+    desc: 'Cada serviço gera pontos. Você define as recompensas. O cliente sabe que tem vantagem em voltar.',
+  },
+  {
+    icon: '🔔',
+    title: 'Lista de espera automática',
+    result: 'Zero vaga desperdiçada quando cancela',
+    desc: 'Cancelou um horário? O próximo da fila recebe email na hora e preenche a vaga automaticamente.',
+  },
+  {
+    icon: '🔗',
+    title: 'Indicação com recompensa',
+    result: 'Seus clientes te trazem novos clientes',
+    desc: 'Cada cliente tem um link único de indicação. Indica um amigo — os dois ganham pontos.',
+  },
+  {
+    icon: '⭐',
+    title: 'Badge Google Reviews',
+    result: 'Mais avaliações no Google sem precisar pedir',
+    desc: 'Sua nota aparece na página de agendamento. Cliente ganha pontos por avaliar — incentivo concreto.',
+  },
+]
+
 const FEATURES = [
   {
     icon: '📱',
@@ -94,23 +121,26 @@ export default function HomePage() {
             14 dias grátis — sem cartão de crédito
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-5">
-            Tenha controle da sua<br />agenda no celular
+            Agenda online que faz<br />o cliente voltar
           </h1>
           <p className="text-gray-500 text-lg mb-8 max-w-lg mx-auto leading-relaxed">
-            Chega de cliente te chamando no WhatsApp para marcar horário.
-            Configure em 5 minutos, compartilhe o link e os agendamentos chegam sozinhos — 24 horas por dia.
+            Chega de perder hora no WhatsApp e de cliente ir pro concorrente.
+            Configure em 5 minutos e tenha agenda, fidelidade, indicação e Google Reviews num só lugar.
           </p>
 
           {/* Benefícios rápidos */}
           <div className="flex flex-wrap justify-center gap-3 mb-10 text-sm text-gray-500">
             <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-              ✓ Sem app para o cliente
+              ✓ Agendamento 24h
             </span>
             <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-              ✓ Lembrete automático
+              ✓ Programa de fidelidade
             </span>
             <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-              ✓ Funciona nas redes sociais
+              ✓ Indicação automática
+            </span>
+            <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+              ✓ Google Reviews integrado
             </span>
           </div>
 
@@ -185,6 +215,35 @@ export default function HomePage() {
               <p className="text-xs text-gray-500 leading-snug">{stat.label}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Retenção e crescimento */}
+      <section className="px-6 py-16 bg-gray-900">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-3">
+              O que o concorrente não tem
+            </p>
+            <h2 className="text-2xl font-bold text-white">
+              Retenção e crescimento no mesmo sistema
+            </h2>
+            <p className="text-gray-400 text-sm mt-3 max-w-lg mx-auto">
+              Todo mundo tem agenda online. Só a AgendaPRO entrega o que faz o cliente voltar — e trazer mais clientes.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {RETENTION_FEATURES.map((feature) => (
+              <div key={feature.title} className="bg-gray-800 rounded-2xl p-5 flex gap-4">
+                <span className="text-2xl flex-shrink-0 mt-0.5">{feature.icon}</span>
+                <div>
+                  <h3 className="font-semibold text-white mb-0.5">{feature.title}</h3>
+                  <p className="text-emerald-400 text-xs font-medium mb-2">{feature.result}</p>
+                  <p className="text-gray-400 text-sm leading-relaxed">{feature.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -275,6 +334,10 @@ export default function HomePage() {
                 <li>✓ Notificação por email a cada reserva</li>
                 <li>✓ Painel de gestão pelo celular</li>
                 <li>✓ Serviços ilimitados</li>
+                <li>✓ Programa de fidelidade com pontos</li>
+                <li>✓ Lista de espera automática</li>
+                <li>✓ Link de indicação por cliente</li>
+                <li>✓ Badge Google Reviews + pontos por avaliar</li>
               </ul>
               <Link
                 href="/cadastro"
@@ -354,10 +417,10 @@ export default function HomePage() {
       <section className="px-6 py-20 bg-gray-900 text-center">
         <div className="max-w-lg mx-auto">
           <h2 className="text-3xl font-bold text-white mb-4">
-            Sua agenda nas redes sociais hoje mesmo
+            Agenda, fidelidade e indicação — tudo junto
           </h2>
           <p className="text-gray-400 mb-8 leading-relaxed">
-            Configure em 5 minutos. Compartilhe o link. Dorme tranquilo sabendo que os agendamentos chegam sozinhos.
+            Configure em 5 minutos. O sistema trabalha por você: agenda os clientes, faz eles voltarem e ainda traz novos através de indicação.
           </p>
           <Link
             href="/cadastro"
