@@ -45,16 +45,19 @@ export default function ConfiguracoesTabs({
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex bg-white rounded-2xl border border-gray-100 p-1 mb-6 overflow-x-auto gap-1">
+      <div
+        className="flex rounded-2xl p-1.5 mb-6 overflow-x-auto gap-1"
+        style={{
+          background: 'var(--admin-surface)',
+          border: '1px solid var(--admin-border)',
+          boxShadow: '0 1px 0 0 color-mix(in srgb, white 5%, transparent) inset',
+        }}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
+            className={`admin-tab flex-shrink-0 ${activeTab === tab.id ? 'admin-tab-active' : ''}`}
           >
             {tab.label}
           </button>

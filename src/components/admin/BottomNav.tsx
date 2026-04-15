@@ -29,12 +29,8 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl border-t"
-      style={{
-        background: 'var(--admin-bottomnav-bg)',
-        borderColor: 'var(--admin-border)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
+      className="admin-bottomnav fixed bottom-0 left-0 right-0 z-50"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-stretch max-w-lg mx-auto">
         {tabs.map((tab) => {
@@ -49,14 +45,28 @@ export default function BottomNav() {
               }}
             >
               {active && (
-                <span
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full"
-                  style={{ background: 'var(--admin-accent)' }}
-                />
+                <>
+                  <span
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[2px] rounded-full"
+                    style={{
+                      background:
+                        'linear-gradient(90deg, transparent 0%, var(--admin-accent) 50%, transparent 100%)',
+                      boxShadow:
+                        '0 0 12px color-mix(in srgb, var(--admin-accent) 70%, transparent)',
+                    }}
+                  />
+                  <span
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-10 pointer-events-none"
+                    style={{
+                      background:
+                        'radial-gradient(ellipse at top, color-mix(in srgb, var(--admin-accent) 25%, transparent) 0%, transparent 70%)',
+                    }}
+                  />
+                </>
               )}
               <tab.Icon size={22} strokeWidth={active ? 2.2 : 1.8} />
               <span
-                className="text-[11px] font-medium"
+                className="text-[11px] font-semibold tracking-wide"
                 style={{ color: active ? 'var(--admin-accent)' : 'var(--admin-text-faded)' }}
               >
                 {tab.label}

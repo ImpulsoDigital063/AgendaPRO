@@ -35,23 +35,41 @@ export default function AdminThemeProvider({
 }) {
   const [theme, setThemeState] = useState<AdminTheme>(initial)
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-admin-theme', theme)
-    document.documentElement.style.colorScheme = theme
-  }, [theme])
-
-  const setTheme = useCallback((next: AdminTheme) => {
-    setThemeState(next)
-    writeCookie(next)
+  const applyTheme = useCallback((next: AdminTheme) => {
+    const root = document.documentElement
+    root.classList.add('admin-theme-switching')
+    root.setAttribute('data-admin-theme', next)
+    root.style.colorScheme = next
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        root.classList.remove('admin-theme-switching')
+      })
+    })
   }, [])
+
+  useEffect(() => {
+    if (document.documentElement.getAttribute('data-admin-theme') !== theme) {
+      applyTheme(theme)
+    }
+  }, [theme, applyTheme])
+
+  const setTheme = useCallback(
+    (next: AdminTheme) => {
+      applyTheme(next)
+      writeCookie(next)
+      setThemeState(next)
+    },
+    [applyTheme]
+  )
 
   const toggle = useCallback(() => {
     setThemeState((prev) => {
       const next: AdminTheme = prev === 'dark' ? 'light' : 'dark'
+      applyTheme(next)
       writeCookie(next)
       return next
     })
-  }, [])
+  }, [applyTheme])
 
   const value = useMemo(() => ({ theme, toggle, setTheme }), [theme, toggle, setTheme])
 

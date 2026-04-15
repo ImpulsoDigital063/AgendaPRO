@@ -181,6 +181,15 @@ export function IconClose(p: IconProps) {
   )
 }
 
+export function IconCamera(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M3 8.5h3.5l1.5-2h8l1.5 2H21v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11z" />
+      <circle cx="12" cy="13.5" r="3.5" />
+    </svg>
+  )
+}
+
 export function IconWhatsapp(p: IconProps) {
   const { size = 20, ...rest } = p
   return (

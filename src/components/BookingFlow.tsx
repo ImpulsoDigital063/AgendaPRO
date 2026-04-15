@@ -609,10 +609,15 @@ export default function BookingFlow({
                       : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
                   }`}
                 >
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                    isSelected ? 'bg-white text-gray-900' : 'bg-gray-100 text-gray-600'
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden ${
+                    isSelected ? 'bg-white text-gray-900 ring-2 ring-white/60' : 'bg-gray-100 text-gray-600'
                   }`}>
-                    {prof.name.charAt(0).toUpperCase()}
+                    {prof.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={prof.photo_url} alt={prof.name} className="w-full h-full object-cover" />
+                    ) : (
+                      prof.name.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <span className="font-medium text-sm">{prof.name}</span>
                   {isSelected && <span className="ml-auto text-xs opacity-60">selecionado</span>}
