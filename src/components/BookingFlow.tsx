@@ -7,25 +7,42 @@ import { createClient } from '@/lib/supabase/client'
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
+function toMinutes(t: string) {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+function fromMinutes(n: number) {
+  const h = Math.floor(n / 60).toString().padStart(2, '0')
+  const m = (n % 60).toString().padStart(2, '0')
+  return `${h}:${m}`
+}
+
+/**
+ * Gera os slots de um dia.
+ * - `step`: granularidade configurada no dia (ex: 15min) — "régua" dos horários mostrados.
+ * - `serviceDuration`: tempo total do agendamento (soma dos serviços escolhidos).
+ * - `booked`: agendamentos já existentes no dia, com seu inicio e duração real,
+ *   pra checar sobreposição (não só igualdade).
+ * Um slot é `available` se cabe inteiro dentro do expediente E não sobrepõe nenhum outro.
+ */
 function generateSlots(
   start: string,
   end: string,
-  duration: number,
-  bookedTimes: string[]
+  step: number,
+  serviceDuration: number,
+  booked: { start: number; end: number }[],
 ): TimeSlot[] {
   const slots: TimeSlot[] = []
-  const [startH, startM] = start.split(':').map(Number)
-  const [endH, endM] = end.split(':').map(Number)
+  const startMin = toMinutes(start)
+  const endMin = toMinutes(end)
+  const dur = Math.max(1, serviceDuration)
 
-  let current = startH * 60 + startM
-  const endMinutes = endH * 60 + endM
-
-  while (current + duration <= endMinutes) {
-    const h = Math.floor(current / 60).toString().padStart(2, '0')
-    const m = (current % 60).toString().padStart(2, '0')
-    const time = `${h}:${m}`
-    slots.push({ time, available: !bookedTimes.includes(time) })
-    current += duration
+  for (let current = startMin; current + dur <= endMin; current += step) {
+    const slotStart = current
+    const slotEnd = current + dur
+    const conflicts = booked.some((b) => slotStart < b.end && slotEnd > b.start)
+    slots.push({ time: fromMinutes(current), available: !conflicts })
   }
 
   return slots
@@ -110,12 +127,17 @@ export default function BookingFlow({
   const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
   const hasPrice = selectedServices.some((s) => s.price !== null)
 
-  function getSlotDuration(date: Date): number {
-    if (totalDuration > 0) return totalDuration
+  // Granularidade do dia (step entre horários mostrados). Ex: 15min.
+  function getSlotStep(date: Date): number {
     const wh = workingHours.find(
       (w) => w.professional_id === professional?.id && w.day_of_week === date.getDay()
     )
-    return wh?.slot_duration || 40
+    return wh?.slot_duration || 30
+  }
+
+  // Duração real do agendamento (soma dos serviços). Se nada escolhido, cai no step.
+  function getServiceDuration(date: Date): number {
+    return totalDuration > 0 ? totalDuration : getSlotStep(date)
   }
 
   // Gera os próximos 14 dias disponíveis
@@ -176,14 +198,18 @@ export default function BookingFlow({
 
     const { data: existing } = await supabase
       .from('appointments')
-      .select('start_time')
+      .select('start_time, end_time')
       .eq('professional_id', professional.id)
       .eq('appointment_date', formatDate(date))
       .in('status', ['pending', 'confirmed'])
 
-    const bookedTimes = (existing || []).map((a) => a.start_time.slice(0, 5))
-    const duration = getSlotDuration(date)
-    const generated = generateSlots(wh.start_time, wh.end_time, duration, bookedTimes)
+    const booked = (existing || []).map((a) => ({
+      start: toMinutes(a.start_time.slice(0, 5)),
+      end: toMinutes(a.end_time.slice(0, 5)),
+    }))
+    const step = getSlotStep(date)
+    const serviceDuration = getServiceDuration(date)
+    const generated = generateSlots(wh.start_time, wh.end_time, step, serviceDuration, booked)
 
     setSlots(generated)
     setLoadingSlots(false)
@@ -237,7 +263,7 @@ export default function BookingFlow({
     setSubmitting(true)
     setError(null)
 
-    const duration = getSlotDuration(selectedDate)
+    const duration = getServiceDuration(selectedDate)
     const [h, m] = selectedTime.split(':').map(Number)
     const endMinutes = h * 60 + m + duration
     const endH = Math.floor(endMinutes / 60).toString().padStart(2, '0')
@@ -487,7 +513,7 @@ export default function BookingFlow({
                   setReferralCopied(true)
                   setTimeout(() => setReferralCopied(false), 2000)
                 }}
-                className="px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-800 transition-colors whitespace-nowrap"
+                className="px-3 py-2 bg-[var(--brand-primary,#111827)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
               >
                 {referralCopied ? 'Copiado!' : 'Copiar'}
               </button>
@@ -516,7 +542,7 @@ export default function BookingFlow({
                   onClick={() => handleToggleService(service)}
                   className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-left transition-colors ${
                     isSelected
-                      ? 'bg-gray-900 border-gray-900 text-white'
+                      ? 'bg-[var(--brand-primary,#111827)] border-[var(--brand-primary,#111827)] text-white'
                       : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
                   }`}
                 >
@@ -556,7 +582,7 @@ export default function BookingFlow({
           {selectedServices.length > 0 && step === 'service' && (
             <button
               onClick={handleProceedFromServices}
-              className="mt-3 w-full bg-gray-900 text-white py-4 rounded-xl font-semibold text-base hover:bg-gray-800 transition-colors"
+              className="mt-3 w-full bg-[var(--brand-primary,#111827)] text-white py-4 rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"
             >
               {hasMultipleProfessionals ? 'Escolher profissional →' : 'Escolher horário →'}
             </button>
@@ -579,14 +605,19 @@ export default function BookingFlow({
                   onClick={() => handleSelectProfessional(prof)}
                   className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-colors ${
                     isSelected
-                      ? 'bg-gray-900 border-gray-900 text-white'
+                      ? 'bg-[var(--brand-primary,#111827)] border-[var(--brand-primary,#111827)] text-white'
                       : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
                   }`}
                 >
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                    isSelected ? 'bg-white text-gray-900' : 'bg-gray-100 text-gray-600'
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden ${
+                    isSelected ? 'bg-white text-gray-900 ring-2 ring-white/60' : 'bg-gray-100 text-gray-600'
                   }`}>
-                    {prof.name.charAt(0).toUpperCase()}
+                    {prof.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={prof.photo_url} alt={prof.name} className="w-full h-full object-cover" />
+                    ) : (
+                      prof.name.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <span className="font-medium text-sm">{prof.name}</span>
                   {isSelected && <span className="ml-auto text-xs opacity-60">selecionado</span>}
@@ -615,7 +646,7 @@ export default function BookingFlow({
                     onClick={() => handleSelectDate(date)}
                     className={`flex flex-col items-center py-3 rounded-xl border text-sm font-medium transition-colors ${
                       isSelected
-                        ? 'bg-gray-900 text-white border-gray-900'
+                        ? 'bg-[var(--brand-primary,#111827)] text-white border-[var(--brand-primary,#111827)]'
                         : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
                     }`}
                   >
@@ -666,7 +697,7 @@ export default function BookingFlow({
                       !slot.available
                         ? 'bg-gray-50 text-gray-400 border-gray-100 cursor-pointer hover:border-gray-300'
                         : isSelected
-                        ? 'bg-gray-900 text-white border-gray-900'
+                        ? 'bg-[var(--brand-primary,#111827)] text-white border-[var(--brand-primary,#111827)]'
                         : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
                     }`}
                   >
@@ -843,7 +874,7 @@ export default function BookingFlow({
             <button
               onClick={handleSubmit}
               disabled={submitting || !clientName.trim() || !clientPhone.trim()}
-              className="w-full bg-gray-900 text-white py-4 rounded-xl font-semibold text-base hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full bg-[var(--brand-primary,#111827)] text-white py-4 rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {submitting ? 'Agendando...' : 'Confirmar agendamento'}
             </button>

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import LogoutButton from '@/components/LogoutButton'
+import SubPageHeader from '@/components/admin/SubPageHeader'
 import ClientesView from '@/components/admin/ClientesView'
 
 export default async function ClientesPage() {
@@ -59,17 +59,11 @@ export default async function ClientesPage() {
   }))
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="font-bold text-gray-900">Clientes</h1>
-            <p className="text-gray-400 text-xs">{clientsWithStats.length} cadastrado{clientsWithStats.length !== 1 ? 's' : ''}</p>
-          </div>
-          <LogoutButton />
-        </div>
-      </div>
-
+    <main>
+      <SubPageHeader
+        title="Clientes"
+        subtitle={`${clientsWithStats.length} cadastrado${clientsWithStats.length !== 1 ? 's' : ''}`}
+      />
       <div className="max-w-lg mx-auto px-4 py-6">
         <ClientesView clients={clientsWithStats} />
       </div>

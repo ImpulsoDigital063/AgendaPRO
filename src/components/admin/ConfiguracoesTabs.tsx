@@ -8,8 +8,9 @@ import HorariosTab from './HorariosTab'
 import WhatsAppQRTab from './WhatsAppQRTab'
 import NegocioTab from './NegocioTab'
 import FidelidadeTab from './FidelidadeTab'
+import AparenciaTab from './AparenciaTab'
 
-type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'whatsapp' | 'fidelidade'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'whatsapp' | 'fidelidade' | 'aparencia'
 
 type Props = {
   business: Business
@@ -37,22 +38,26 @@ export default function ConfiguracoesTabs({
     { id: 'servicos', label: 'Serviços' },
     { id: 'horarios', label: 'Horários' },
     { id: 'fidelidade', label: '⭐ Fidelidade' },
+    { id: 'aparencia', label: '🎨 Aparência' },
     { id: 'whatsapp', label: 'WhatsApp' },
   ]
 
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex bg-white rounded-2xl border border-gray-100 p-1 mb-6 overflow-x-auto gap-1">
+      <div
+        className="flex rounded-2xl p-1.5 mb-6 overflow-x-auto gap-1"
+        style={{
+          background: 'var(--admin-surface)',
+          border: '1px solid var(--admin-border)',
+          boxShadow: '0 1px 0 0 color-mix(in srgb, white 5%, transparent) inset',
+        }}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
+            className={`admin-tab flex-shrink-0 ${activeTab === tab.id ? 'admin-tab-active' : ''}`}
           >
             {tab.label}
           </button>
@@ -93,6 +98,10 @@ export default function ConfiguracoesTabs({
           initialCustomers={initialCustomers}
           pointsForReferral={business.points_for_referral ?? 0}
         />
+      )}
+
+      {activeTab === 'aparencia' && (
+        <AparenciaTab business={business} />
       )}
 
       {activeTab === 'whatsapp' && (

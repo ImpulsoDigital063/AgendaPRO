@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import BottomNav from '@/components/admin/BottomNav'
 import InstallBanner from '@/components/admin/InstallBanner'
 import TrialBanner from '@/components/admin/TrialBanner'
+import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 
 export default async function AdminLayout({
   children,
@@ -34,12 +36,19 @@ export default async function AdminLayout({
     ? Math.ceil((new Date(business.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null
 
+  const cookieStore = await cookies()
+  const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as
+    | 'dark'
+    | 'light'
+
   return (
-    <>
-      <InstallBanner />
-      {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} />}
-      <div className="pb-20">{children}</div>
-      <BottomNav />
-    </>
+    <AdminThemeProvider initial={initialTheme}>
+      <div className="admin-shell" data-admin-theme={initialTheme}>
+        <InstallBanner />
+        {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} />}
+        <div className="pb-24">{children}</div>
+        <BottomNav />
+      </div>
+    </AdminThemeProvider>
   )
 }

@@ -1,30 +1,57 @@
 @import "tailwindcss";
 
-/* ─────────────────────────────────────────
-   AgendaPRO Design System — inspirado no Fidelimax
-   Accent: #2563EB (azul) no lugar do amarelo #FFD800
-───────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   AgendaPRO v2 — Design System (dark + glass + gradient future)
+   Refs destiladas: Linear, Stripe, Arc, Cal.com
+   Paleta: deep navy + cyan glow + subtle purple accents
+═══════════════════════════════════════════════════════════ */
 
 :root {
-  --accent:        #2563EB;
+  /* ── Brand — respeita CSS vars do dono (personalização) ── */
+  --brand-primary:   #3B82F6;
+  --brand-secondary: #06B6D4;
+  --brand-tertiary:  #8B5CF6;
+
+  /* ── Backgrounds (dark-first) ── */
+  --bg-base:       #050713;
+  --bg-elevated:   #0A1028;
+  --bg-surface:    #0F1938;
+  --bg-surface-2:  #141F42;
+
+  /* ── Glass ── */
+  --glass-bg:         rgba(15, 25, 56, 0.55);
+  --glass-bg-strong:  rgba(15, 25, 56, 0.78);
+  --glass-border:     rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.18);
+
+  /* ── Texto ── */
+  --text-primary:  #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted:    #94A3B8;
+  --text-faded:    #64748B;
+
+  /* ── Status ── */
+  --green-ok:      #10B981;
+  --yellow-warn:   #F59E0B;
+  --red-no:        #EF4444;
+
+  /* ── Sombras ── */
+  --shadow-glow-primary:   0 0 60px rgba(59, 130, 246, 0.25);
+  --shadow-glow-secondary: 0 0 60px rgba(6, 182, 212, 0.3);
+  --shadow-elevated:       0 20px 60px rgba(0, 0, 0, 0.6);
+
+  /* ── Legacy tokens (mantidos pra não quebrar admin/componentes antigos) ── */
+  --accent:        var(--brand-primary);
   --accent-dark:   #1D4ED8;
-  --accent-shadow: rgba(37, 99, 235, 0.35);
-  --accent-light:  #EFF6FF;
-  --accent-mid:    #DBEAFE;
-
-  --text-primary:  #1F2937;
-  --text-sec:      #6B7280;
-  --text-muted:    #9CA3AF;
-
+  --accent-shadow: rgba(59, 130, 246, 0.35);
+  --accent-light:  #DBEAFE;
+  --accent-mid:    #BFDBFE;
+  --text-sec:      var(--text-secondary);
   --bg-white:      #FFFFFF;
   --bg-gray:       #F9FAFB;
-  --border:        #E5E7EB;
-
-  --dark-from:     #1F2937;
-  --dark-to:       #111827;
-
-  --green-ok:      #10B981;
-  --red-no:        #EF4444;
+  --border:        var(--glass-border);
+  --dark-from:     #0A1028;
+  --dark-to:       #050713;
 }
 
 * {
@@ -33,59 +60,569 @@
   box-sizing: border-box;
 }
 
-body {
-  background: var(--bg-white);
-  color: var(--text-primary);
-  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
+html {
+  background: var(--bg-base);
 }
 
-/* ── Botões ─────────────────────────────── */
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Light pages (admin, cliente final) podem declarar `.light-theme` no root pra inverter */
+.light-theme {
+  --bg-base: #FFFFFF;
+  --bg-elevated: #F9FAFB;
+  --bg-surface: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  background: #FFFFFF;
+  color: #0F172A;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Admin theme — dark (default) e light via data-admin-theme
+   Usado no /admin pra permitir toggle sol/lua pelo dono.
+═══════════════════════════════════════════════════════════ */
+
+[data-admin-theme="dark"] { color-scheme: dark; }
+[data-admin-theme="light"] { color-scheme: light; }
+
+[data-admin-theme="dark"] {
+  --admin-bg:           #030510;
+  --admin-bg-deep:      #01020A;
+  --admin-bg-orb-1:     rgba(59, 130, 246, 0.20);
+  --admin-bg-orb-2:     rgba(59, 130, 246, 0.10);
+  --admin-bg-orb-3:     rgba(139, 92, 246, 0.10);
+  --admin-surface:      rgba(255, 255, 255, 0.05);
+  --admin-surface-hi:   rgba(255, 255, 255, 0.08);
+  --admin-surface-hover: rgba(255, 255, 255, 0.09);
+  --admin-border:       rgba(255, 255, 255, 0.08);
+  --admin-border-hi:    rgba(255, 255, 255, 0.14);
+  --admin-text:         #F8FAFC;
+  --admin-text-2:       #CBD5E1;
+  --admin-text-mute:    #94A3B8;
+  --admin-text-faded:   #64748B;
+  --admin-divider:      rgba(255, 255, 255, 0.06);
+  --admin-input-bg:     rgba(255, 255, 255, 0.04);
+  --admin-logo-filter:  none;
+  --admin-shadow:       0 20px 60px rgba(0, 0, 0, 0.6);
+  --admin-accent:       #60A5FA;
+  --admin-accent-bg:    rgba(59, 130, 246, 0.10);
+  --admin-accent-border: rgba(59, 130, 246, 0.25);
+  --admin-success:      #34D399;
+  --admin-warn:         #FBBF24;
+  --admin-danger:       #F87171;
+  --admin-bottomnav-bg: rgba(5, 7, 19, 0.85);
+}
+
+[data-admin-theme="light"] {
+  --admin-bg:           #E6EBF3;
+  --admin-bg-deep:      #D8DFEA;
+  --admin-bg-orb-1:     rgba(59, 130, 246, 0.12);
+  --admin-bg-orb-2:     rgba(236, 72, 153, 0.06);
+  --admin-bg-orb-3:     rgba(6, 182, 212, 0.08);
+  --admin-surface:      #FFFFFF;
+  --admin-surface-hi:   #FFFFFF;
+  --admin-surface-hover: #F1F5F9;
+  --admin-border:       #E2E8F0;
+  --admin-border-hi:    #CBD5E1;
+  --admin-text:         #0F172A;
+  --admin-text-2:       #334155;
+  --admin-text-mute:    #64748B;
+  --admin-text-faded:   #94A3B8;
+  --admin-divider:      #F1F5F9;
+  --admin-input-bg:     #F8FAFC;
+  --admin-logo-filter:  invert(0.92);
+  --admin-shadow:       0 10px 40px rgba(15, 23, 42, 0.08);
+  --admin-accent:       #2563EB;
+  --admin-accent-bg:    rgba(37, 99, 235, 0.08);
+  --admin-accent-border: rgba(37, 99, 235, 0.22);
+  --admin-success:      #059669;
+  --admin-warn:         #D97706;
+  --admin-danger:       #DC2626;
+  --admin-bottomnav-bg: rgba(255, 255, 255, 0.92);
+}
+
+/* Desabilita todas as transições durante troca de tema pra evitar lag visual */
+html.admin-theme-switching,
+html.admin-theme-switching *,
+html.admin-theme-switching *::before,
+html.admin-theme-switching *::after {
+  transition: none !important;
+  animation-duration: 0s !important;
+}
+
+/* Wrapper .admin-shell pega o bg e coloração do tema.
+   O gradient radial cria vignette sutil + profundidade — fundo escurece nos cantos
+   e clareia no centro, fazendo cards saltarem. */
+.admin-shell {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%,
+      color-mix(in srgb, var(--admin-accent) 8%, var(--admin-bg)) 0%,
+      var(--admin-bg) 45%,
+      var(--admin-bg-deep) 100%);
+  color: var(--admin-text);
+  min-height: 100svh;
+}
+.admin-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 100%, color-mix(in srgb, var(--admin-accent) 10%, transparent) 0%, transparent 50%),
+    radial-gradient(circle at 85% 20%, color-mix(in srgb, var(--admin-accent) 6%, transparent) 0%, transparent 55%);
+  z-index: -1;
+}
+
+.admin-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 1rem;
+  backdrop-filter: blur(12px);
+  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+}
+.admin-card:hover { border-color: var(--admin-border-hi); }
+
+/* Card com profundidade — sombra colorida + borda dupla sutil */
+.admin-card-deep {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, white 6%, transparent) inset,
+    0 20px 50px -24px color-mix(in srgb, var(--admin-accent) 28%, transparent),
+    var(--admin-shadow);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+.admin-card-deep:hover {
+  border-color: color-mix(in srgb, var(--admin-accent) 35%, var(--admin-border));
+}
+
+/* Inputs afundados — leve inset shadow dá sensação de 'campo pra preencher' */
+.admin-shell .admin-input,
+.admin-shell input.admin-input,
+.admin-shell textarea.admin-input,
+.admin-shell select.admin-input {
+  background-color: var(--admin-input-bg);
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.04) inset;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.admin-shell .admin-input:focus,
+.admin-shell input.admin-input:focus,
+.admin-shell textarea.admin-input:focus,
+.admin-shell select.admin-input:focus {
+  border-color: var(--admin-accent);
+  box-shadow:
+    0 1px 2px 0 rgba(15, 23, 42, 0.04) inset,
+    0 0 0 3px color-mix(in srgb, var(--admin-accent) 18%, transparent);
+  outline: none;
+}
+
+/* Tabs com glow quando ativas */
+.admin-tab {
+  position: relative;
+  padding: 0.625rem 1rem;
+  border-radius: 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--admin-text-2);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.admin-tab:hover {
+  color: var(--admin-text);
+  background: var(--admin-surface-hover);
+}
+.admin-tab-active {
+  color: #FFFFFF;
+  background: linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%);
+  border-color: transparent;
+  box-shadow:
+    0 10px 24px -8px color-mix(in srgb, var(--admin-accent) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--admin-accent) 40%, transparent) inset;
+}
+
+/* Label padrão admin — uppercase + tracking, gera hierarquia sem aumentar tamanho */
+.admin-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--admin-text-mute);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* Bottom nav flutuante com blur e borda superior luminosa */
+.admin-bottomnav {
+  background: var(--admin-bottomnav-bg);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-top: 1px solid var(--admin-border);
+  box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Banner trial com gradient em vez de amarelo chapado */
+.admin-trial-banner {
+  background: linear-gradient(90deg, #F59E0B 0%, #FB923C 55%, #F59E0B 100%);
+  color: #1F1300;
+  box-shadow: 0 6px 20px -10px rgba(245, 158, 11, 0.55);
+}
+
+.admin-muted { color: var(--admin-text-mute); }
+.admin-faded { color: var(--admin-text-faded); }
+.admin-divider { border-color: var(--admin-divider); }
+
+/* Mapeamento auto das classes Tailwind usadas em views internos (ClientesView,
+   FinanceiroView, ConfiguracoesTabs, *Tab) pro tema admin. Evita precisar
+   reescrever tudo linha a linha — ainda permite override inline quando preciso. */
+.admin-shell .bg-white            { background-color: var(--admin-surface) !important; }
+.admin-shell .bg-gray-50          { background-color: var(--admin-bg) !important; }
+.admin-shell .bg-gray-100         { background-color: var(--admin-surface-hover) !important; }
+.admin-shell .hover\:bg-gray-100:hover { background-color: var(--admin-surface-hover) !important; }
+.admin-shell .hover\:bg-gray-50:hover  { background-color: var(--admin-surface-hover) !important; }
+
+.admin-shell .border-gray-100     { border-color: var(--admin-divider) !important; }
+.admin-shell .border-gray-200     { border-color: var(--admin-border) !important; }
+.admin-shell .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--admin-divider) !important; }
+.admin-shell .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--admin-border) !important; }
+
+.admin-shell .text-gray-900       { color: var(--admin-text)       !important; }
+.admin-shell .text-gray-800       { color: var(--admin-text)       !important; }
+.admin-shell .text-gray-700       { color: var(--admin-text-2)     !important; }
+.admin-shell .text-gray-600       { color: var(--admin-text-2)     !important; }
+.admin-shell .text-gray-500       { color: var(--admin-text-mute)  !important; }
+.admin-shell .text-gray-400       { color: var(--admin-text-mute)  !important; }
+.admin-shell .text-gray-300       { color: var(--admin-text-faded) !important; }
+
+.admin-shell .placeholder-gray-300::placeholder,
+.admin-shell .placeholder-gray-400::placeholder {
+  color: var(--admin-text-faded) !important;
+  opacity: 1;
+}
+
+.admin-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.admin-shell textarea,
+.admin-shell select {
+  background-color: var(--admin-input-bg);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+  color-scheme: inherit;
+}
+.admin-shell input:focus, .admin-shell textarea:focus, .admin-shell select:focus {
+  border-color: var(--admin-accent);
+  outline: none;
+}
+/* Dropdown nativo (<option>) — garante fundo tematizado em navegadores
+   que respeitam background explícito (Firefox/Chrome modernos) */
+[data-admin-theme="dark"] .admin-shell select option {
+  background-color: #0F1938;
+  color: #F8FAFC;
+}
+[data-admin-theme="light"] .admin-shell select option {
+  background-color: #FFFFFF;
+  color: #0F172A;
+}
+
+/* Transições suaves ao trocar de tema */
+.admin-shell,
+.admin-shell .admin-card,
+.admin-shell .bg-white,
+.admin-shell .bg-gray-50,
+.admin-shell .bg-gray-100,
+.admin-shell .border-gray-100,
+.admin-shell .border-gray-200 {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Container + spacing
+═══════════════════════════════════════════════════════════ */
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (min-width: 768px) {
+  .container { padding: 0 48px; }
+}
+
+.section { padding: 96px 0; }
+.section-lg { padding: 128px 0; }
+@media (min-width: 1024px) {
+  .section { padding: 128px 0; }
+  .section-lg { padding: 160px 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Tipografia — display hero + hierarquia
+═══════════════════════════════════════════════════════════ */
+
+.display-xl {
+  font-size: clamp(3rem, 7vw, 6.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+}
+.display-lg {
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 800;
+}
+.display-md {
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+.display-sm {
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* Gradient text (aplicar em palavras-chave do hero) */
+.text-gradient {
+  background: linear-gradient(135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 50%,
+    var(--brand-tertiary) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: gradient-flow 8s ease infinite;
+}
+
+@keyframes gradient-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Glass cards — base do design
+═══════════════════════════════════════════════════════════ */
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(120%);
+  -webkit-backdrop-filter: blur(24px) saturate(120%);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  transition: border-color 0.4s ease, transform 0.4s ease, box-shadow 0.4s ease;
+}
+.glass:hover {
+  border-color: var(--glass-border-hover);
+}
+
+.glass-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(32px) saturate(140%);
+  -webkit-backdrop-filter: blur(32px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+}
+
+/* Luminous border (rotacionante) — para cards de segmento premium */
+.glow-border {
+  position: relative;
+  isolation: isolate;
+}
+.glow-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--glow-angle, 0deg),
+    transparent 0deg,
+    var(--brand-secondary) 90deg,
+    var(--brand-primary) 180deg,
+    var(--brand-tertiary) 270deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0.5;
+  animation: rotate-border 8s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+.glow-border:hover::before { opacity: 1; }
+
+@property --glow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes rotate-border {
+  to { --glow-angle: 360deg; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Botões v2
+═══════════════════════════════════════════════════════════ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.btn-lg { padding: 18px 36px; font-size: 16px; }
+
+.btn-primary-v2 {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  color: #FFFFFF;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.btn-primary-v2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.btn-primary-v2::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.btn-primary-v2:hover::after { opacity: 1; }
+
+.btn-ghost {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-1px);
+}
+
+/* Legacy button classes (restilizadas, mas preservando nome) */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
   color: #fff;
-  padding: 16px 36px;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 700;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
   border: none;
-  box-shadow: 0 8px 24px var(--accent-shadow);
-  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.35);
+  transition: all 0.25s ease;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
 }
 .btn-primary:hover {
-  background: var(--accent-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 12px 32px var(--accent-shadow);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(59, 130, 246, 0.5);
 }
-
 .btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #fff;
-  color: var(--accent);
-  padding: 16px 36px;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  border: 2px solid var(--accent);
-  transition: all 0.3s ease;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s ease;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
 }
 .btn-secondary:hover {
-  background: var(--accent-light);
+  background: rgba(255,255,255,0.08);
+  border-color: var(--glass-border-hover);
 }
 
-/* ── Section badge/pill ─────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   Pills + Badges
+═══════════════════════════════════════════════════════════ */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.pill-glow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(6,182,212,0.15));
+  border: 1px solid rgba(59,130,246,0.35);
+  font-size: 13px;
+  font-weight: 600;
+  color: #93C5FD;
+  box-shadow: 0 0 24px rgba(59,130,246,0.25);
+}
+
 .section-badge {
   display: inline-block;
   background: var(--accent);
@@ -99,8 +636,9 @@ body {
   margin-bottom: 16px;
 }
 .section-badge.light {
-  background: var(--accent-light);
-  color: var(--accent);
+  background: rgba(59,130,246,0.15);
+  color: #93C5FD;
+  border: 1px solid rgba(59,130,246,0.3);
 }
 .section-badge.dark {
   background: rgba(37,99,235,0.15);
@@ -108,45 +646,102 @@ body {
   border: 1px solid rgba(37,99,235,0.3);
 }
 
-/* ── Cards ──────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   Cards legacy (restilizados)
+═══════════════════════════════════════════════════════════ */
+
 .card {
-  background: #fff;
-  border: 2px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
   border-radius: 24px;
   padding: 40px 32px;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.3s ease, transform 0.3s ease;
 }
 .card:hover {
-  border-color: #C7D2FE;
+  border-color: var(--glass-border-hover);
+  transform: translateY(-4px);
 }
 .card-featured {
-  background: #fff;
-  border: 2px solid var(--accent);
+  background: var(--glass-bg-strong);
+  border: 1px solid rgba(59,130,246,0.4);
   border-radius: 24px;
   padding: 40px 32px;
+  box-shadow: var(--shadow-glow-primary);
 }
 
-/* ── Container ──────────────────────────── */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-.section {
-  padding: 80px 0;
-}
-.section-sm {
-  padding: 48px 0;
+/* ═══════════════════════════════════════════════════════════
+   Hero background — gradient mesh animado + grid + orbs
+═══════════════════════════════════════════════════════════ */
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* ── Animações ──────────────────────────── */
+.hero-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 30%, rgba(30, 64, 175, 0.45) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 70%, rgba(6, 182, 212, 0.3) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(139, 92, 246, 0.25) 0%, transparent 50%);
+  animation: mesh-drift 20s ease-in-out infinite;
+}
+
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 80px 80px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 80%);
+          mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 80%);
+}
+
+@keyframes mesh-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(-3%, 2%) scale(1.05); }
+  66%      { transform: translate(3%, -2%) scale(0.98); }
+}
+
+/* Orbs flutuantes (blur pesado) */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.55;
+  animation: orb-float 18s ease-in-out infinite;
+  pointer-events: none;
+}
+.orb-lg { width: 520px; height: 520px; }
+.orb-md { width: 380px; height: 380px; }
+.orb-sm { width: 260px; height: 260px; }
+
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(40px, -30px); }
+  50%      { transform: translate(-30px, -50px); }
+  75%      { transform: translate(-40px, 30px); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Animações utilitárias
+═══════════════════════════════════════════════════════════ */
+
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-14px); }
+  50%      { transform: translateY(-14px); }
 }
 @keyframes floatSlow {
   0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-8px); }
+  50%      { transform: translateY(-8px); }
 }
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(24px); }
@@ -160,22 +755,89 @@ body {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
 }
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 30px rgba(59,130,246,0.25); }
+  50%      { box-shadow: 0 0 60px rgba(59,130,246,0.55); }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
 
-.animate-float     { animation: float 4s ease-in-out infinite; }
-.animate-floatSlow { animation: floatSlow 6s ease-in-out infinite; }
-.animate-slideUp   { animation: slideUp 0.6s ease forwards; }
-.animate-marquee   { animation: marquee 28s linear infinite; }
+.animate-float      { animation: float 4s ease-in-out infinite; }
+.animate-floatSlow  { animation: floatSlow 6s ease-in-out infinite; }
+.animate-slideUp    { animation: slideUp 0.6s ease forwards; }
+.animate-fadeIn     { animation: fadeIn 0.8s ease forwards; }
+.animate-marquee    { animation: marquee 28s linear infinite; }
+.animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+.animate-breathe    { animation: breathe 4s ease-in-out infinite; }
 
-/* ── Stats bar ──────────────────────────── */
+/* Scroll reveal (ativado via IntersectionObserver no SectionReveal) */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-stagger.revealed > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-stagger.revealed > *:nth-child(1) { transition-delay: 0ms; }
+.reveal-stagger.revealed > *:nth-child(2) { transition-delay: 80ms; }
+.reveal-stagger.revealed > *:nth-child(3) { transition-delay: 160ms; }
+.reveal-stagger.revealed > *:nth-child(4) { transition-delay: 240ms; }
+.reveal-stagger.revealed > *:nth-child(5) { transition-delay: 320ms; }
+.reveal-stagger.revealed > *:nth-child(6) { transition-delay: 400ms; }
+
+/* ═══════════════════════════════════════════════════════════
+   Stats bar (legacy refatorado)
+═══════════════════════════════════════════════════════════ */
+
 .stats-bar {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
   border-radius: 24px;
   padding: 48px;
-  box-shadow: 0 20px 60px var(--accent-shadow);
+  box-shadow: 0 20px 60px rgba(59, 130, 246, 0.35);
   color: #fff;
 }
 
-/* ── Scrollbar ──────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
+/* ═══════════════════════════════════════════════════════════
+   Scrollbar customizada
+═══════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.35);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Reduz motion (acessibilidade)
+═══════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

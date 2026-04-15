@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { IconWhatsapp, IconCheck, IconClose, IconClock } from '@/components/ui/Icon'
 
 type Props = {
   appointment: {
@@ -21,10 +22,28 @@ type Props = {
   showDate?: boolean
 }
 
-const STATUS_CONFIG: Record<string, { label: string; border: string; badge: string }> = {
-  pending:   { label: 'Pendente',   border: '#FBBF24', badge: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' },
-  confirmed: { label: 'Confirmado', border: '#3B82F6', badge: 'bg-blue-500/10 text-blue-400 border border-blue-500/20'       },
-  cancelled: { label: 'Cancelado',  border: '#374151', badge: 'bg-white/5 text-gray-500 border border-white/10'              },
+const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string; chipBg: string; chipColor: string }> = {
+  pending: {
+    label: 'Pendente',
+    border: 'var(--admin-warn)',
+    dot: 'var(--admin-warn)',
+    chipBg: 'rgba(245,158,11,0.12)',
+    chipColor: 'var(--admin-warn)',
+  },
+  confirmed: {
+    label: 'Confirmado',
+    border: 'var(--admin-accent)',
+    dot: 'var(--admin-accent)',
+    chipBg: 'var(--admin-accent-bg)',
+    chipColor: 'var(--admin-accent)',
+  },
+  cancelled: {
+    label: 'Cancelado',
+    border: 'var(--admin-text-faded)',
+    dot: 'var(--admin-text-faded)',
+    chipBg: 'rgba(148,163,184,0.12)',
+    chipColor: 'var(--admin-text-faded)',
+  },
 }
 
 export default function AppointmentCard({ appointment, showDate }: Props) {
@@ -56,98 +75,137 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
 
   return (
     <div
-      className="rounded-2xl overflow-hidden"
+      className="rounded-2xl overflow-hidden admin-card"
       style={{
-        background: 'rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        backdropFilter: 'blur(12px)',
         borderLeft: `3px solid ${config.border}`,
       }}
     >
       <div className="p-4">
-
         {/* Horário + nome + badge */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-3">
-            <div className="text-center min-w-[48px]">
-              <p className="text-blue-400 font-bold text-base leading-none">
+            <div
+              className="text-center min-w-[52px] rounded-xl py-1.5 px-1"
+              style={{
+                background: 'var(--admin-accent-bg)',
+                border: '1px solid var(--admin-accent-border)',
+              }}
+            >
+              <p className="font-bold text-base leading-none" style={{ color: 'var(--admin-accent)' }}>
                 {appointment.start_time.slice(0, 5)}
               </p>
-              <p className="text-gray-600 text-xs mt-0.5">
+              <p className="text-[10px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                <IconClock size={10} className="inline mr-0.5" />
                 {appointment.end_time.slice(0, 5)}
               </p>
             </div>
             <div>
-              <p className="font-semibold text-white leading-tight">{appointment.client_name}</p>
+              <p className="font-semibold leading-tight" style={{ color: 'var(--admin-text)' }}>
+                {appointment.client_name}
+              </p>
               {dateFormatted && (
-                <p className="text-gray-500 text-xs capitalize mt-0.5">{dateFormatted}</p>
+                <p className="text-xs capitalize mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                  {dateFormatted}
+                </p>
               )}
             </div>
           </div>
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${config.badge}`}>
+          <span
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 inline-flex items-center gap-1.5"
+            style={{
+              background: config.chipBg,
+              color: config.chipColor,
+              border: `1px solid ${config.dot}30`,
+            }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: config.dot }} />
             {config.label}
           </span>
         </div>
 
         {/* Serviço + preço */}
-        <div className="flex items-center justify-between pl-[60px] mb-2">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center justify-between pl-[64px] mb-2 gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
             {appointment.service_name && (
-              <span className="text-xs bg-white/8 text-gray-400 px-2 py-0.5 rounded-full border border-white/10">
+              <span
+                className="text-xs px-2 py-0.5 rounded-full truncate"
+                style={{
+                  background: 'var(--admin-surface-hi)',
+                  color: 'var(--admin-text-2)',
+                  border: '1px solid var(--admin-border)',
+                }}
+              >
                 {appointment.service_name}
               </span>
             )}
             {appointment.professional?.name && (
-              <span className="text-xs text-gray-600">{appointment.professional.name}</span>
+              <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                · {appointment.professional.name}
+              </span>
             )}
           </div>
           {appointment.total_price != null && appointment.total_price > 0 && (
-            <p className="text-sm font-bold text-white">
+            <p className="text-sm font-bold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
               {appointment.total_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           )}
         </div>
 
         {/* WhatsApp */}
-        <div className="pl-[60px] mb-3">
+        <div className="pl-[64px] mb-3">
           <a
             href={`https://wa.me/55${appointment.client_phone.replace(/\D/g, '')}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-emerald-400/80 hover:text-emerald-400 font-medium transition-colors"
+            className="text-xs font-medium inline-flex items-center gap-1.5 transition-opacity hover:opacity-80"
+            style={{ color: 'var(--admin-success)' }}
           >
-            WhatsApp: {appointment.client_phone}
+            <IconWhatsapp size={14} />
+            {appointment.client_phone}
           </a>
         </div>
 
         {/* Ações */}
         {status === 'pending' && (
-          <div className="flex gap-2 pl-[60px]">
+          <div className="flex gap-2 pl-[64px]">
             <button
               onClick={() => updateStatus('confirmed')}
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-500 transition-colors disabled:opacity-40"
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+              style={{
+                background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))',
+                color: '#fff',
+                boxShadow: '0 8px 20px rgba(59,130,246,0.35)',
+              }}
             >
-              Confirmar
+              <IconCheck size={14} /> Confirmar
             </button>
             <button
               onClick={() => updateStatus('cancelled')}
               disabled={loading}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40"
-              style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
+              style={{
+                background: 'var(--admin-surface-hi)',
+                color: 'var(--admin-text-mute)',
+                border: '1px solid var(--admin-border)',
+              }}
             >
-              Cancelar
+              <IconClose size={14} /> Cancelar
             </button>
           </div>
         )}
 
         {status === 'confirmed' && (
-          <div className="pl-[60px]">
+          <div className="pl-[64px]">
             <button
               onClick={() => updateStatus('cancelled')}
               disabled={loading}
-              className="w-full py-2 rounded-xl text-sm transition-colors disabled:opacity-40 text-gray-600 hover:text-gray-400"
-              style={{ background: 'rgba(255,255,255,0.04)' }}
+              className="w-full py-2 rounded-xl text-xs transition-colors disabled:opacity-40"
+              style={{
+                background: 'var(--admin-surface-hi)',
+                color: 'var(--admin-text-faded)',
+                border: '1px solid var(--admin-border)',
+              }}
             >
               Cancelar agendamento
             </button>
