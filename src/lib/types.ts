@@ -13,6 +13,9 @@ export type Business = {
   google_reviews_count: number | null
   points_for_review: number
   points_for_referral: number
+  brand_primary?: string | null
+  brand_secondary?: string | null
+  brand_mode?: 'dark' | 'light' | null
 }
 
 export type Professional = {

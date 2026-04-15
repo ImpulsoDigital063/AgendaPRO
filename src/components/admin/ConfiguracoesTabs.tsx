@@ -8,8 +8,9 @@ import HorariosTab from './HorariosTab'
 import WhatsAppQRTab from './WhatsAppQRTab'
 import NegocioTab from './NegocioTab'
 import FidelidadeTab from './FidelidadeTab'
+import AparenciaTab from './AparenciaTab'
 
-type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'whatsapp' | 'fidelidade'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'whatsapp' | 'fidelidade' | 'aparencia'
 
 type Props = {
   business: Business
@@ -37,6 +38,7 @@ export default function ConfiguracoesTabs({
     { id: 'servicos', label: 'Serviços' },
     { id: 'horarios', label: 'Horários' },
     { id: 'fidelidade', label: '⭐ Fidelidade' },
+    { id: 'aparencia', label: '🎨 Aparência' },
     { id: 'whatsapp', label: 'WhatsApp' },
   ]
 
@@ -93,6 +95,10 @@ export default function ConfiguracoesTabs({
           initialCustomers={initialCustomers}
           pointsForReferral={business.points_for_referral ?? 0}
         />
+      )}
+
+      {activeTab === 'aparencia' && (
+        <AparenciaTab business={business} />
       )}
 
       {activeTab === 'whatsapp' && (
