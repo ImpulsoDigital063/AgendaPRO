@@ -182,6 +182,22 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
         </p>
       )}
 
+      {/* Ajuda conceitual */}
+      <div
+        className="rounded-xl px-4 py-3 text-xs leading-relaxed"
+        style={{
+          background: 'var(--admin-accent-bg)',
+          border: '1px solid var(--admin-accent-border)',
+          color: 'var(--admin-text-2)',
+        }}
+      >
+        <strong style={{ color: 'var(--admin-accent)' }}>Intervalo</strong> é a régua de horários
+        que o cliente enxerga (ex: 15min mostra 09:00, 09:15, 09:30…). A
+        <strong> duração real</strong> do agendamento vem do serviço que ele escolher — um corte de
+        30min ocupa 2 intervalos, uma progressiva de 2h ocupa 8. O sistema bloqueia sozinho os
+        horários que não cabem ou que conflitam com outro agendamento.
+      </div>
+
       {/* Grade de dias */}
       <div className="space-y-2">
         {DAYS.map((day) => {
@@ -246,7 +262,9 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Duração slot</label>
+                    <label className="text-xs text-gray-400 mb-1 block" title="Intervalo entre os horários que aparecem pro cliente. Ex: 15min mostra 09:00, 09:15, 09:30... A duração real do agendamento vem do serviço escolhido.">
+                      Intervalo
+                    </label>
                     <select
                       value={config.slot_duration}
                       onChange={(e) => updateDay(day.id, 'slot_duration', Number(e.target.value))}

@@ -7,25 +7,42 @@ import { createClient } from '@/lib/supabase/client'
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
+function toMinutes(t: string) {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+function fromMinutes(n: number) {
+  const h = Math.floor(n / 60).toString().padStart(2, '0')
+  const m = (n % 60).toString().padStart(2, '0')
+  return `${h}:${m}`
+}
+
+/**
+ * Gera os slots de um dia.
+ * - `step`: granularidade configurada no dia (ex: 15min) — "régua" dos horários mostrados.
+ * - `serviceDuration`: tempo total do agendamento (soma dos serviços escolhidos).
+ * - `booked`: agendamentos já existentes no dia, com seu inicio e duração real,
+ *   pra checar sobreposição (não só igualdade).
+ * Um slot é `available` se cabe inteiro dentro do expediente E não sobrepõe nenhum outro.
+ */
 function generateSlots(
   start: string,
   end: string,
-  duration: number,
-  bookedTimes: string[]
+  step: number,
+  serviceDuration: number,
+  booked: { start: number; end: number }[],
 ): TimeSlot[] {
   const slots: TimeSlot[] = []
-  const [startH, startM] = start.split(':').map(Number)
-  const [endH, endM] = end.split(':').map(Number)
+  const startMin = toMinutes(start)
+  const endMin = toMinutes(end)
+  const dur = Math.max(1, serviceDuration)
 
-  let current = startH * 60 + startM
-  const endMinutes = endH * 60 + endM
-
-  while (current + duration <= endMinutes) {
-    const h = Math.floor(current / 60).toString().padStart(2, '0')
-    const m = (current % 60).toString().padStart(2, '0')
-    const time = `${h}:${m}`
-    slots.push({ time, available: !bookedTimes.includes(time) })
-    current += duration
+  for (let current = startMin; current + dur <= endMin; current += step) {
+    const slotStart = current
+    const slotEnd = current + dur
+    const conflicts = booked.some((b) => slotStart < b.end && slotEnd > b.start)
+    slots.push({ time: fromMinutes(current), available: !conflicts })
   }
 
   return slots
@@ -110,12 +127,17 @@ export default function BookingFlow({
   const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
   const hasPrice = selectedServices.some((s) => s.price !== null)
 
-  function getSlotDuration(date: Date): number {
-    if (totalDuration > 0) return totalDuration
+  // Granularidade do dia (step entre horários mostrados). Ex: 15min.
+  function getSlotStep(date: Date): number {
     const wh = workingHours.find(
       (w) => w.professional_id === professional?.id && w.day_of_week === date.getDay()
     )
-    return wh?.slot_duration || 40
+    return wh?.slot_duration || 30
+  }
+
+  // Duração real do agendamento (soma dos serviços). Se nada escolhido, cai no step.
+  function getServiceDuration(date: Date): number {
+    return totalDuration > 0 ? totalDuration : getSlotStep(date)
   }
 
   // Gera os próximos 14 dias disponíveis
@@ -176,14 +198,18 @@ export default function BookingFlow({
 
     const { data: existing } = await supabase
       .from('appointments')
-      .select('start_time')
+      .select('start_time, end_time')
       .eq('professional_id', professional.id)
       .eq('appointment_date', formatDate(date))
       .in('status', ['pending', 'confirmed'])
 
-    const bookedTimes = (existing || []).map((a) => a.start_time.slice(0, 5))
-    const duration = getSlotDuration(date)
-    const generated = generateSlots(wh.start_time, wh.end_time, duration, bookedTimes)
+    const booked = (existing || []).map((a) => ({
+      start: toMinutes(a.start_time.slice(0, 5)),
+      end: toMinutes(a.end_time.slice(0, 5)),
+    }))
+    const step = getSlotStep(date)
+    const serviceDuration = getServiceDuration(date)
+    const generated = generateSlots(wh.start_time, wh.end_time, step, serviceDuration, booked)
 
     setSlots(generated)
     setLoadingSlots(false)
@@ -237,7 +263,7 @@ export default function BookingFlow({
     setSubmitting(true)
     setError(null)
 
-    const duration = getSlotDuration(selectedDate)
+    const duration = getServiceDuration(selectedDate)
     const [h, m] = selectedTime.split(':').map(Number)
     const endMinutes = h * 60 + m + duration
     const endH = Math.floor(endMinutes / 60).toString().padStart(2, '0')

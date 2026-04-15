@@ -92,6 +92,9 @@ body {
    Usado no /admin pra permitir toggle sol/lua pelo dono.
 ═══════════════════════════════════════════════════════════ */
 
+[data-admin-theme="dark"] { color-scheme: dark; }
+[data-admin-theme="light"] { color-scheme: light; }
+
 [data-admin-theme="dark"] {
   --admin-bg:           #050713;
   --admin-bg-orb-1:     rgba(59, 130, 246, 0.20);
@@ -200,10 +203,21 @@ body {
   background-color: var(--admin-input-bg);
   color: var(--admin-text);
   border-color: var(--admin-border);
+  color-scheme: inherit;
 }
 .admin-shell input:focus, .admin-shell textarea:focus, .admin-shell select:focus {
   border-color: var(--admin-accent);
   outline: none;
+}
+/* Dropdown nativo (<option>) — garante fundo tematizado em navegadores
+   que respeitam background explícito (Firefox/Chrome modernos) */
+[data-admin-theme="dark"] .admin-shell select option {
+  background-color: #0F1938;
+  color: #F8FAFC;
+}
+[data-admin-theme="light"] .admin-shell select option {
+  background-color: #FFFFFF;
+  color: #0F172A;
 }
 
 /* Transições suaves ao trocar de tema */
