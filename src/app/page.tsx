@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
-import IPhoneAgendaMockup from '@/components/IPhoneAgendaMockup'
+import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
 import {
   AnimatedGradient,
   SectionReveal,
@@ -192,9 +192,9 @@ export default function HomePage() {
               </div>
             </SectionReveal>
 
-            {/* Coluna direita — mockup iPhone */}
-            <SectionReveal className="flex justify-center lg:justify-end mt-4 lg:mt-0">
-              <IPhoneAgendaMockup />
+            {/* Coluna direita — dashboard mockup */}
+            <SectionReveal className="flex justify-center lg:justify-end mt-8 lg:mt-0">
+              <AgendaDashboardMockup />
             </SectionReveal>
 
           </div>
