@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+import IPhoneAgendaMockup from '@/components/IPhoneAgendaMockup'
 import {
   AnimatedGradient,
   SectionReveal,
@@ -140,54 +141,63 @@ export default function HomePage() {
       <section className="relative">
         <AnimatedGradient />
 
-        <div className="container relative z-10 py-20 md:py-28">
-          <SectionReveal className="flex flex-col items-center text-center gap-8 max-w-4xl mx-auto">
+        <div className="container relative z-10 py-16 md:py-24">
+          <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center">
 
-            <div className="pill-glow animate-pulse-glow">
-              <span>✨</span>
-              <span>Você acabou de ganhar 14 dias de acesso gratuito</span>
-            </div>
+            {/* Coluna esquerda — copy */}
+            <SectionReveal className="flex flex-col items-center lg:items-start text-center lg:text-left gap-7">
 
-            <h1 className="display-xl text-white">
-              Sua agenda agora tem<br />
-              <span className="text-gradient">inteligência</span> própria.
-            </h1>
+              <div className="pill-glow animate-pulse-glow">
+                <span>✨</span>
+                <span>Você acabou de ganhar 14 dias de acesso gratuito</span>
+              </div>
 
-            <p className="text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-              O AgendaPRO é o sistema que confirma horário, preenche cancelamento, traz cliente de volta e cresce sua reputação no Google.
-              <strong className="text-white"> Você atende — ele cuida do resto.</strong>
-            </p>
+              <h1 className="display-xl text-white">
+                Sua agenda agora tem<br />
+                <span className="text-gradient">inteligência</span> própria.
+              </h1>
 
-            <div className="flex flex-col sm:flex-row gap-4 mt-2">
-              <Link href="/cadastro" className="btn btn-lg btn-primary-v2">
-                Garantir meu acesso gratuito
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </Link>
-              <a href="#mecanismos" className="btn btn-lg btn-ghost">
-                Ver como funciona
-              </a>
-            </div>
+              <p className="text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
+                O AgendaPRO confirma horário, preenche cancelamento, traz cliente de volta e cresce sua reputação no Google.
+                <strong className="text-white"> Você atende — ele cuida do resto.</strong>
+              </p>
 
-            <p className="text-sm text-slate-400">
-              Sem cartão · Cancele quando quiser · R$67/mês após o trial
-            </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link href="/cadastro" className="btn btn-lg btn-primary-v2">
+                  Garantir meu acesso gratuito
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </Link>
+                <a href="#mecanismos" className="btn btn-lg btn-ghost">
+                  Ver como funciona
+                </a>
+              </div>
 
-            <div className="grid grid-cols-3 gap-6 md:gap-10 pt-8 mt-2 border-t w-full max-w-xl" style={{ borderColor: 'var(--glass-border)' }}>
-              {[
-                { n: '24h',   l: 'Atende sozinho' },
-                { n: '-50%',  l: 'Menos faltas' },
-                { n: '5 min', l: 'Para configurar' },
-              ].map((s) => (
-                <div key={s.n}>
-                  <p className="text-2xl md:text-3xl font-black text-gradient leading-none">{s.n}</p>
-                  <p className="text-xs text-slate-400 mt-2 leading-tight">{s.l}</p>
-                </div>
-              ))}
-            </div>
+              <p className="text-sm text-slate-400">
+                Sem cartão · Cancele quando quiser · R$67/mês após o trial
+              </p>
 
-          </SectionReveal>
+              <div className="grid grid-cols-3 gap-6 md:gap-10 pt-6 border-t w-full max-w-xl" style={{ borderColor: 'var(--glass-border)' }}>
+                {[
+                  { n: '24h',   l: 'Atende sozinho' },
+                  { n: '-50%',  l: 'Menos faltas' },
+                  { n: '5 min', l: 'Para configurar' },
+                ].map((s) => (
+                  <div key={s.n}>
+                    <p className="text-2xl md:text-3xl font-black text-gradient leading-none">{s.n}</p>
+                    <p className="text-xs text-slate-400 mt-2 leading-tight">{s.l}</p>
+                  </div>
+                ))}
+              </div>
+            </SectionReveal>
+
+            {/* Coluna direita — mockup iPhone */}
+            <SectionReveal className="flex justify-center lg:justify-end mt-4 lg:mt-0">
+              <IPhoneAgendaMockup />
+            </SectionReveal>
+
+          </div>
         </div>
       </section>
 
