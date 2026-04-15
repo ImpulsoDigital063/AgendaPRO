@@ -4,8 +4,22 @@ import AppointmentCard from '@/components/AppointmentCard'
 import LogoutButton from '@/components/LogoutButton'
 import ShareButton from '@/components/ShareButton'
 import DivulgarCard from '@/components/admin/DivulgarCard'
+import ThemeToggle from '@/components/admin/ThemeToggle'
 import Link from 'next/link'
 import Image from 'next/image'
+import {
+  IconCalendar,
+  IconChevronRight,
+  IconDollar,
+  IconInbox,
+  IconPalette,
+  IconSettings,
+  IconUsers,
+  IconWallet,
+  IconCheck,
+  IconClock,
+  IconClose,
+} from '@/components/ui/Icon'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -57,59 +71,149 @@ export default async function AdminPage() {
   const cancelled = list.filter((a) => a.status === 'cancelled')
   const revenue   = confirmed.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
-  return (
-    <main className="min-h-screen relative overflow-x-hidden" style={{ background: '#050713' }}>
+  const stats = [
+    {
+      value: revenue > 0
+        ? 'R$' + revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })
+        : 'R$0',
+      label: 'Faturado',
+      icon: IconDollar,
+      color: 'var(--admin-success)',
+      glow: 'rgba(16,185,129,0.18)',
+    },
+    {
+      value: pending.length,
+      label: 'Pendentes',
+      icon: IconClock,
+      color: 'var(--admin-warn)',
+      glow: 'rgba(245,158,11,0.18)',
+    },
+    {
+      value: confirmed.length,
+      label: 'Confirmados',
+      icon: IconCheck,
+      color: 'var(--admin-accent)',
+      glow: 'rgba(59,130,246,0.18)',
+    },
+    {
+      value: cancelled.length,
+      label: 'Cancelados',
+      icon: IconClose,
+      color: 'var(--admin-text-faded)',
+      glow: 'rgba(148,163,184,0.15)',
+    },
+  ]
 
-      {/* Glow orbs de fundo */}
+  const navItems = [
+    {
+      href: '/admin/configuracoes',
+      label: 'Configurações',
+      desc: 'Serviços, horários e profissionais',
+      icon: IconSettings,
+    },
+    {
+      href: '/admin/configuracoes?tab=aparencia',
+      label: 'Aparência',
+      desc: 'Personalize cores e tema do seu link',
+      icon: IconPalette,
+    },
+    {
+      href: '/admin/clientes',
+      label: 'Clientes',
+      desc: 'Fidelidade e programa de pontos',
+      icon: IconUsers,
+    },
+    {
+      href: '/admin/financeiro',
+      label: 'Financeiro',
+      desc: 'Faturamento e relatórios',
+      icon: IconWallet,
+    },
+  ]
+
+  return (
+    <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
+      {/* Glow orbs de fundo — dimmed no light */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full bg-blue-600/20 blur-[120px]" />
-        <div className="absolute top-[40%] -right-24 w-72 h-72 rounded-full bg-blue-500/10 blur-[80px]" />
-        <div className="absolute bottom-0 -left-20 w-64 h-64 rounded-full bg-indigo-600/10 blur-[80px]" />
+        <div
+          className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full blur-[120px]"
+          style={{ background: 'var(--admin-bg-orb-1)' }}
+        />
+        <div
+          className="absolute top-[40%] -right-24 w-72 h-72 rounded-full blur-[80px]"
+          style={{ background: 'var(--admin-bg-orb-2)' }}
+        />
+        <div
+          className="absolute bottom-0 -left-20 w-64 h-64 rounded-full blur-[80px]"
+          style={{ background: 'var(--admin-bg-orb-3)' }}
+        />
       </div>
 
       {/* Header */}
-      <div className="relative max-w-lg mx-auto px-4 pt-8 pb-6">
-        <div className="flex items-center justify-between mb-5">
-          <Image src="/logo-agendapro-dark.svg" alt="AgendaPRO" width={130} height={26} priority />
+      <header className="relative max-w-lg mx-auto px-4 pt-7 pb-6">
+        <div className="flex items-center justify-between mb-6">
+          <Image
+            src="/logo-agendapro-dark.svg"
+            alt="AgendaPRO"
+            width={130}
+            height={26}
+            priority
+            style={{ filter: 'var(--admin-logo-filter)' }}
+          />
           <div className="flex items-center gap-2">
+            <ThemeToggle compact />
             <ShareButton slug={business.slug} />
             <LogoutButton />
           </div>
         </div>
-        <h1 className="text-white text-2xl font-bold tracking-tight">{business.name}</h1>
-        <p className="text-gray-500 text-sm capitalize mt-1">{todayFormatted}</p>
-      </div>
+        <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
+          {business.name}
+        </h1>
+        <p className="text-sm capitalize mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+          <span className="inline-flex items-center gap-1.5">
+            <IconCalendar size={14} /> {todayFormatted}
+          </span>
+        </p>
+      </header>
 
       {/* Stats */}
-      <div className="relative max-w-lg mx-auto px-4 mb-6">
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            {
-              value: revenue > 0
-                ? 'R$' + revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })
-                : 'R$0',
-              label: 'Faturado',
-              color: 'text-emerald-400',
-            },
-            { value: pending.length,   label: 'Pendentes',   color: 'text-yellow-400' },
-            { value: confirmed.length, label: 'Confirmados', color: 'text-blue-400'   },
-            { value: cancelled.length, label: 'Cancelados',  color: 'text-gray-500'   },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-2xl p-3 text-center"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                backdropFilter: 'blur(12px)',
-              }}
-            >
-              <p className={`text-base font-bold ${stat.color} leading-none`}>{stat.value}</p>
-              <p className="text-gray-500 text-xs mt-1.5 leading-tight">{stat.label}</p>
-            </div>
-          ))}
+      <section className="relative max-w-lg mx-auto px-4 mb-6">
+        <div className="grid grid-cols-2 gap-2.5">
+          {stats.map((stat) => {
+            const Icon = stat.icon
+            return (
+              <div
+                key={stat.label}
+                className="admin-card p-3.5 relative overflow-hidden"
+              >
+                <div
+                  className="absolute -top-4 -right-4 w-16 h-16 rounded-full blur-2xl opacity-70 pointer-events-none"
+                  style={{ background: stat.glow }}
+                />
+                <div className="relative flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                      {stat.label}
+                    </p>
+                    <p className="text-xl font-bold mt-1.5 leading-none" style={{ color: stat.color }}>
+                      {stat.value}
+                    </p>
+                  </div>
+                  <span
+                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background: stat.glow,
+                      color: stat.color,
+                    }}
+                  >
+                    <Icon size={16} />
+                  </span>
+                </div>
+              </div>
+            )
+          })}
         </div>
-      </div>
+      </section>
 
       <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
 
@@ -122,25 +226,40 @@ export default async function AdminPage() {
         {/* Hoje */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Hoje</p>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+              Hoje
+            </p>
             {list.length > 0 && (
-              <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
+              <span
+                className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                style={{
+                  background: 'var(--admin-accent-bg)',
+                  color: 'var(--admin-accent)',
+                  border: '1px solid var(--admin-accent-border)',
+                }}
+              >
                 {list.length} agendamento{list.length > 1 ? 's' : ''}
               </span>
             )}
           </div>
 
           {list.length === 0 ? (
-            <div
-              className="rounded-2xl p-8 text-center"
-              style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.07)',
-              }}
-            >
-              <p className="text-3xl mb-2">📭</p>
-              <p className="text-gray-400 text-sm font-medium">Nenhum agendamento hoje</p>
-              <p className="text-gray-600 text-xs mt-1">Compartilhe seu link para receber reservas</p>
+            <div className="admin-card p-8 text-center">
+              <div
+                className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
+                style={{
+                  background: 'var(--admin-accent-bg)',
+                  color: 'var(--admin-accent)',
+                }}
+              >
+                <IconInbox size={26} />
+              </div>
+              <p className="text-sm font-medium" style={{ color: 'var(--admin-text-2)' }}>
+                Nenhum agendamento hoje
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                Compartilhe seu link para receber reservas
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -153,8 +272,10 @@ export default async function AdminPage() {
         {upcoming && upcoming.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Próximos dias</p>
-              <span className="text-xs text-gray-600">7 dias</span>
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+                Próximos dias
+              </p>
+              <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>7 dias</span>
             </div>
             <div className="space-y-3">
               {upcoming.map((a) => (
@@ -164,36 +285,54 @@ export default async function AdminPage() {
           </section>
         )}
 
-        {/* Nav */}
+        {/* Nav list */}
         <div
           className="rounded-2xl overflow-hidden"
           style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--admin-surface)',
+            border: '1px solid var(--admin-border)',
           }}
         >
-          {[
-            { href: '/admin/configuracoes', label: 'Configurações', icon: '⚙️', desc: 'Serviços, horários e profissionais' },
-            { href: '/admin/configuracoes', label: 'Aparência',     icon: '🎨', desc: 'Personalize as cores do seu link'  },
-            { href: '/admin/clientes',      label: 'Clientes',      icon: '👥', desc: 'Fidelidade e programa de pontos'  },
-            { href: '/admin/financeiro',    label: 'Financeiro',    icon: '💰', desc: 'Faturamento e relatórios'          },
-          ].map((item, i, arr) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-4 px-4 py-4 hover:bg-white/5 transition-colors ${i < arr.length - 1 ? 'border-b border-white/5' : ''}`}
-            >
-              <span className="text-xl w-8 text-center flex-shrink-0">{item.icon}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-200 font-medium text-sm">{item.label}</p>
-                <p className="text-gray-500 text-xs">{item.desc}</p>
-              </div>
-              <span className="text-gray-600 text-sm">›</span>
-            </Link>
-          ))}
+          {navItems.map((item, i, arr) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="flex items-center gap-4 px-4 py-4 transition-colors hover:opacity-100"
+                style={{
+                  borderBottom: i < arr.length - 1 ? '1px solid var(--admin-divider)' : 'none',
+                  color: 'var(--admin-text)',
+                }}
+              >
+                <span
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: 'var(--admin-accent-bg)',
+                    color: 'var(--admin-accent)',
+                  }}
+                >
+                  <Icon size={18} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm leading-tight" style={{ color: 'var(--admin-text)' }}>
+                    {item.label}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                    {item.desc}
+                  </p>
+                </div>
+                <span style={{ color: 'var(--admin-text-faded)' }}>
+                  <IconChevronRight size={18} />
+                </span>
+              </Link>
+            )
+          })}
         </div>
 
-        <p className="text-center text-gray-700 text-xs pb-2">AgendaPRO · Impulso Digital</p>
+        <p className="text-center text-xs pb-2" style={{ color: 'var(--admin-text-faded)' }}>
+          AgendaPRO · Impulso Digital
+        </p>
       </div>
     </main>
   )

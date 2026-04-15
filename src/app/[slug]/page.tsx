@@ -4,6 +4,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Business, Service } from '@/lib/types'
 import GoogleReviewSection from '@/components/GoogleReviewSection'
+import {
+  IconMapPin,
+  IconWhatsapp,
+  IconClock,
+  IconSparkles,
+  IconArrowRight,
+} from '@/components/ui/Icon'
 
 function hexToRgba(hex: string, a: number) {
   const m = /^#([0-9A-Fa-f]{6})$/.exec(hex)
@@ -48,7 +55,7 @@ export default async function BusinessPage({
   const mode = b.brand_mode || 'dark'
   const isDark = mode === 'dark'
 
-  const bg = isDark ? '#050713' : '#F8FAFC'
+  const bg = isDark ? '#050713' : '#F6F8FC'
   const surface = isDark ? 'rgba(15,25,56,0.55)' : '#FFFFFF'
   const surfaceBorder = isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'
   const text = isDark ? '#F8FAFC' : '#0F172A'
@@ -58,9 +65,10 @@ export default async function BusinessPage({
 
   return (
     <main
-      className="min-h-screen"
+      className="relative overflow-x-hidden"
       style={
         {
+          minHeight: '100svh',
           background: bg,
           color: text,
           ['--brand-primary' as string]: primary,
@@ -68,18 +76,31 @@ export default async function BusinessPage({
         } as React.CSSProperties
       }
     >
+      {/* Orbs decorativos em dark */}
+      {isDark && (
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div
+            className="absolute -top-40 right-1/4 w-[420px] h-[420px] rounded-full blur-[110px] opacity-60"
+            style={{ background: hexToRgba(primary, 0.25) }}
+          />
+          <div
+            className="absolute top-1/3 -left-20 w-80 h-80 rounded-full blur-[90px] opacity-50"
+            style={{ background: hexToRgba(secondary, 0.20) }}
+          />
+        </div>
+      )}
+
       {/* Cover */}
       <div className="relative overflow-hidden">
         <div className="h-32 sm:h-40 w-full" style={{ background: cover }} />
-        {isDark && (
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-            }}
-          />
-        )}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: isDark
+              ? 'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.18) 0%, transparent 60%)'
+              : 'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25) 0%, transparent 60%)',
+          }}
+        />
       </div>
 
       <div className="max-w-lg mx-auto px-4 -mt-12 pb-10 relative">
@@ -114,13 +135,14 @@ export default async function BusinessPage({
             <div className="pb-2 flex-1 min-w-0">
               {b.category && (
                 <span
-                  className="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full"
+                  className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full"
                   style={{
                     background: hexToRgba(primary, 0.15),
                     color: primary,
                     border: `1px solid ${hexToRgba(primary, 0.3)}`,
                   }}
                 >
+                  <IconSparkles size={10} />
                   {b.category}
                 </span>
               )}
@@ -139,13 +161,14 @@ export default async function BusinessPage({
           <div className="flex flex-wrap gap-2 mt-4">
             {b.address && (
               <span
-                className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
                 style={{
                   background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
                   color: muted,
                 }}
               >
-                📍 {b.address}
+                <IconMapPin size={12} />
+                {b.address}
               </span>
             )}
             {b.phone && (
@@ -153,14 +176,15 @@ export default async function BusinessPage({
                 href={`https://wa.me/55${b.phone.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-transform hover:scale-105"
+                className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-transform hover:scale-105"
                 style={{
                   background: hexToRgba(primary, 0.15),
                   color: primary,
                   border: `1px solid ${hexToRgba(primary, 0.3)}`,
                 }}
               >
-                💬 {b.phone}
+                <IconWhatsapp size={12} />
+                {b.phone}
               </a>
             )}
           </div>
@@ -169,14 +193,17 @@ export default async function BusinessPage({
         {/* CTA Agendar */}
         <Link
           href={`/${slug}/agendar`}
-          className="block w-full text-center py-4 rounded-2xl font-bold text-lg transition-transform hover:scale-[1.02] active:scale-[0.98] mb-6"
+          className="group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-[0.98] mb-6"
           style={{
             background: cover,
             color: 'white',
             boxShadow: `0 14px 40px -14px ${hexToRgba(primary, 0.7)}`,
           }}
         >
-          Agendar horário →
+          Agendar horário
+          <span className="transition-transform group-hover:translate-x-1">
+            <IconArrowRight size={20} />
+          </span>
         </Link>
 
         {/* Profissionais (se múltiplos) */}
@@ -252,14 +279,19 @@ export default async function BusinessPage({
                     <p className="font-semibold truncate" style={{ color: text }}>
                       {service.name}
                     </p>
-                    <p className="text-xs mt-0.5 flex items-center gap-2" style={{ color: muted }}>
-                      <span>⏱ {service.duration_minutes} min</span>
+                    <div className="text-xs mt-1 flex items-center gap-2 flex-wrap" style={{ color: muted }}>
+                      <span className="inline-flex items-center gap-1">
+                        <IconClock size={11} /> {service.duration_minutes} min
+                      </span>
                       {service.points > 0 && (
-                        <span style={{ color: primary }}>
-                          ✦ +{service.points} pts
+                        <span
+                          className="inline-flex items-center gap-1"
+                          style={{ color: primary }}
+                        >
+                          <IconSparkles size={11} /> +{service.points} pts
                         </span>
                       )}
-                    </p>
+                    </div>
                   </div>
                   <div className="text-right flex-shrink-0">
                     {service.price ? (
@@ -295,7 +327,7 @@ export default async function BusinessPage({
         {/* CTA repetida no fim */}
         <Link
           href={`/${slug}/agendar`}
-          className="block w-full text-center py-4 rounded-2xl font-bold transition-transform hover:scale-[1.02] active:scale-[0.98] mb-6"
+          className="group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] mb-6"
           style={{
             background: cover,
             color: 'white',
@@ -303,13 +335,16 @@ export default async function BusinessPage({
           }}
         >
           Agendar agora
+          <span className="transition-transform group-hover:translate-x-1">
+            <IconArrowRight size={18} />
+          </span>
         </Link>
 
         {/* Footer */}
         <div className="text-center space-y-2 pt-4">
           <Link href="/" className="inline-flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
             <Image
-              src={isDark ? '/logo-agendapro-dark.svg' : '/logo-agendapro-dark.svg'}
+              src="/logo-agendapro-dark.svg"
               alt="AgendaPRO"
               width={100}
               height={20}

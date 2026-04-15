@@ -1,19 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { IconShare, IconCheck } from '@/components/ui/Icon'
 
 export default function ShareButton({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false)
 
-  const url = `${window.location.origin}/${slug}`
-
   async function handleCopy() {
+    const url = `${window.location.origin}/${slug}`
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {
-      // fallback para mobile antigo
       const input = document.createElement('input')
       input.value = url
       document.body.appendChild(input)
@@ -28,23 +27,18 @@ export default function ShareButton({ slug }: { slug: string }) {
   return (
     <button
       onClick={handleCopy}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-        copied
-          ? 'bg-green-50 text-green-700 border border-green-200'
-          : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
-      }`}
+      aria-label="Compartilhar link de agendamento"
+      title={copied ? 'Link copiado!' : 'Compartilhar página'}
+      className="relative inline-flex items-center justify-center rounded-full transition-all hover:scale-[1.04] active:scale-95"
+      style={{
+        width: 36,
+        height: 36,
+        background: copied ? 'rgba(16,185,129,0.15)' : 'var(--admin-surface)',
+        border: `1px solid ${copied ? 'rgba(16,185,129,0.35)' : 'var(--admin-border)'}`,
+        color: copied ? 'var(--admin-success)' : 'var(--admin-text-2)',
+      }}
     >
-      {copied ? (
-        <>✓ Link copiado!</>
-      ) : (
-        <>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
-          </svg>
-          Compartilhar página
-        </>
-      )}
+      {copied ? <IconCheck size={16} /> : <IconShare size={16} />}
     </button>
   )
 }

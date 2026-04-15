@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import BookingFlow from '@/components/BookingFlow'
 import type { Business } from '@/lib/types'
+import { IconArrowLeft } from '@/components/ui/Icon'
 
 export default async function AgendarPage({
   params,
@@ -75,14 +76,15 @@ export default async function AgendarPage({
           >
             <Link
               href={`/${slug}`}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-xl transition-transform hover:scale-110"
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110"
               style={{
                 background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
                 color: isDark ? '#F8FAFC' : '#0F172A',
+                border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
               }}
               aria-label="Voltar"
             >
-              ←
+              <IconArrowLeft size={18} />
             </Link>
             <div className="min-w-0 flex-1">
               <h1 className="font-bold truncate" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>

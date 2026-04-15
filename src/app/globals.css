@@ -88,6 +88,136 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   Admin theme — dark (default) e light via data-admin-theme
+   Usado no /admin pra permitir toggle sol/lua pelo dono.
+═══════════════════════════════════════════════════════════ */
+
+[data-admin-theme="dark"] {
+  --admin-bg:           #050713;
+  --admin-bg-orb-1:     rgba(59, 130, 246, 0.20);
+  --admin-bg-orb-2:     rgba(59, 130, 246, 0.10);
+  --admin-bg-orb-3:     rgba(139, 92, 246, 0.10);
+  --admin-surface:      rgba(255, 255, 255, 0.05);
+  --admin-surface-hi:   rgba(255, 255, 255, 0.08);
+  --admin-surface-hover: rgba(255, 255, 255, 0.09);
+  --admin-border:       rgba(255, 255, 255, 0.08);
+  --admin-border-hi:    rgba(255, 255, 255, 0.14);
+  --admin-text:         #F8FAFC;
+  --admin-text-2:       #CBD5E1;
+  --admin-text-mute:    #94A3B8;
+  --admin-text-faded:   #64748B;
+  --admin-divider:      rgba(255, 255, 255, 0.06);
+  --admin-input-bg:     rgba(255, 255, 255, 0.04);
+  --admin-logo-filter:  none;
+  --admin-shadow:       0 20px 60px rgba(0, 0, 0, 0.6);
+  --admin-accent:       #60A5FA;
+  --admin-accent-bg:    rgba(59, 130, 246, 0.10);
+  --admin-accent-border: rgba(59, 130, 246, 0.25);
+  --admin-success:      #34D399;
+  --admin-warn:         #FBBF24;
+  --admin-danger:       #F87171;
+  --admin-bottomnav-bg: rgba(5, 7, 19, 0.85);
+}
+
+[data-admin-theme="light"] {
+  --admin-bg:           #F6F8FC;
+  --admin-bg-orb-1:     rgba(59, 130, 246, 0.12);
+  --admin-bg-orb-2:     rgba(236, 72, 153, 0.06);
+  --admin-bg-orb-3:     rgba(6, 182, 212, 0.08);
+  --admin-surface:      #FFFFFF;
+  --admin-surface-hi:   #FFFFFF;
+  --admin-surface-hover: #F1F5F9;
+  --admin-border:       #E2E8F0;
+  --admin-border-hi:    #CBD5E1;
+  --admin-text:         #0F172A;
+  --admin-text-2:       #334155;
+  --admin-text-mute:    #64748B;
+  --admin-text-faded:   #94A3B8;
+  --admin-divider:      #F1F5F9;
+  --admin-input-bg:     #F8FAFC;
+  --admin-logo-filter:  invert(0.92);
+  --admin-shadow:       0 10px 40px rgba(15, 23, 42, 0.08);
+  --admin-accent:       #2563EB;
+  --admin-accent-bg:    rgba(37, 99, 235, 0.08);
+  --admin-accent-border: rgba(37, 99, 235, 0.22);
+  --admin-success:      #059669;
+  --admin-warn:         #D97706;
+  --admin-danger:       #DC2626;
+  --admin-bottomnav-bg: rgba(255, 255, 255, 0.92);
+}
+
+/* Wrapper .admin-shell pega o bg e coloração do tema */
+.admin-shell {
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  min-height: 100svh;
+}
+
+.admin-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 1rem;
+  backdrop-filter: blur(12px);
+  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+}
+.admin-card:hover { border-color: var(--admin-border-hi); }
+
+.admin-muted { color: var(--admin-text-mute); }
+.admin-faded { color: var(--admin-text-faded); }
+.admin-divider { border-color: var(--admin-divider); }
+
+/* Mapeamento auto das classes Tailwind usadas em views internos (ClientesView,
+   FinanceiroView, ConfiguracoesTabs, *Tab) pro tema admin. Evita precisar
+   reescrever tudo linha a linha — ainda permite override inline quando preciso. */
+.admin-shell .bg-white            { background-color: var(--admin-surface) !important; }
+.admin-shell .bg-gray-50          { background-color: var(--admin-bg) !important; }
+.admin-shell .bg-gray-100         { background-color: var(--admin-surface-hover) !important; }
+.admin-shell .hover\:bg-gray-100:hover { background-color: var(--admin-surface-hover) !important; }
+.admin-shell .hover\:bg-gray-50:hover  { background-color: var(--admin-surface-hover) !important; }
+
+.admin-shell .border-gray-100     { border-color: var(--admin-divider) !important; }
+.admin-shell .border-gray-200     { border-color: var(--admin-border) !important; }
+.admin-shell .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--admin-divider) !important; }
+.admin-shell .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--admin-border) !important; }
+
+.admin-shell .text-gray-900       { color: var(--admin-text)       !important; }
+.admin-shell .text-gray-800       { color: var(--admin-text)       !important; }
+.admin-shell .text-gray-700       { color: var(--admin-text-2)     !important; }
+.admin-shell .text-gray-600       { color: var(--admin-text-2)     !important; }
+.admin-shell .text-gray-500       { color: var(--admin-text-mute)  !important; }
+.admin-shell .text-gray-400       { color: var(--admin-text-mute)  !important; }
+.admin-shell .text-gray-300       { color: var(--admin-text-faded) !important; }
+
+.admin-shell .placeholder-gray-300::placeholder,
+.admin-shell .placeholder-gray-400::placeholder {
+  color: var(--admin-text-faded) !important;
+  opacity: 1;
+}
+
+.admin-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.admin-shell textarea,
+.admin-shell select {
+  background-color: var(--admin-input-bg);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
+}
+.admin-shell input:focus, .admin-shell textarea:focus, .admin-shell select:focus {
+  border-color: var(--admin-accent);
+  outline: none;
+}
+
+/* Transições suaves ao trocar de tema */
+.admin-shell,
+.admin-shell .admin-card,
+.admin-shell .bg-white,
+.admin-shell .bg-gray-50,
+.admin-shell .bg-gray-100,
+.admin-shell .border-gray-100,
+.admin-shell .border-gray-200 {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════
    Container + spacing
 ═══════════════════════════════════════════════════════════ */
 

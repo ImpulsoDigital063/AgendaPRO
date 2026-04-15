@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import LogoutButton from '@/components/LogoutButton'
+import SubPageHeader from '@/components/admin/SubPageHeader'
 import FinanceiroView, { type AppointmentRow } from '@/components/admin/FinanceiroView'
 
 export default async function FinanceiroPage({
@@ -53,17 +53,8 @@ export default async function FinanceiroPage({
     .order('start_time', { ascending: false })
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="font-bold text-gray-900">Financeiro</h1>
-            <p className="text-gray-400 text-xs">{business.name}</p>
-          </div>
-          <LogoutButton />
-        </div>
-      </div>
-
+    <main>
+      <SubPageHeader title="Financeiro" subtitle={business.name} />
       <div className="max-w-lg mx-auto px-4 py-6">
         <FinanceiroView appointments={(appointments || []) as unknown as AppointmentRow[]} periodo={periodo} />
       </div>
