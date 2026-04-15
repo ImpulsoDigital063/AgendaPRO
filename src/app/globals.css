@@ -776,6 +776,80 @@ html.admin-theme-switching *::after {
 .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
 .animate-breathe    { animation: breathe 4s ease-in-out infinite; }
 
+/* === Animações da LP Barbearia === */
+@keyframes barber-pole-spin {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 -40px; }
+}
+.barber-pole-stripes {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #ef4444 0 8px,
+    #ffffff 8px 16px,
+    #1e3a8a 16px 24px,
+    #ffffff 24px 32px
+  );
+  background-size: 100% 40px;
+  animation: barber-pole-spin 2.4s linear infinite;
+}
+
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.animate-float-soft { animation: float-soft 5s ease-in-out infinite; }
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spin-slow 18s linear infinite; }
+
+/* Card hover lift universal */
+.lift-card {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 320ms ease;
+  will-change: transform;
+}
+.lift-card:hover {
+  transform: translateY(-4px);
+}
+
+/* Botão com shimmer ao hover */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  background-position: -100% 0;
+  transition: background-position 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+.btn-shimmer:hover::after {
+  background-position: 200% 0;
+}
+
+/* Ícone com brilho que pulsa no hover do card */
+.icon-glow-hover {
+  transition: filter 320ms ease, transform 320ms ease;
+}
+.lift-card:hover .icon-glow-hover {
+  filter: drop-shadow(0 0 12px currentColor);
+  transform: scale(1.08);
+}
+
 /* Scroll reveal (ativado via IntersectionObserver no SectionReveal) */
 .reveal {
   opacity: 0;
