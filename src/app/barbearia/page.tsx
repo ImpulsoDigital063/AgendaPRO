@@ -168,6 +168,92 @@ export default function BarbeariaPage() {
           <IconRazor size={56} className="hidden lg:block" />
         </div>
 
+        {/* Mini-UIs flutuantes (MOBILE/TABLET) — "espiam" do canto direito, atrás do texto
+            Desktop já tem o mockup grande na coluna direita, então escondemos com lg:hidden */}
+        <div
+          className="lg:hidden absolute right-0 top-[42%] sm:top-[38%] z-[2] pointer-events-none"
+          aria-hidden
+          style={{
+            maskImage: 'linear-gradient(to right, transparent 0%, black 35%, black 85%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 35%, black 85%, transparent 100%)',
+          }}
+        >
+          <div className="flex flex-col gap-3 items-end">
+            {/* Card 1 — Agendamento confirmado (mais vazado, menor) */}
+            <div
+              className="glass rounded-2xl px-3 py-2.5 flex items-center gap-2.5 animate-float-soft"
+              style={{
+                transform: 'rotate(-5deg) translateX(35%)',
+                boxShadow: '0 12px 40px rgba(6,182,212,0.3), 0 0 0 1px rgba(6,182,212,0.2) inset',
+                minWidth: '200px',
+                animationDelay: '0.2s',
+              }}
+            >
+              <span
+                className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.25), rgba(6,182,212,0.2))', color: '#10B981' }}
+              >
+                <IconCheck size={14} strokeWidth={3} />
+              </span>
+              <div className="text-left">
+                <p className="text-[11px] font-bold text-white leading-tight">Ju confirmou</p>
+                <p className="text-[10px] text-slate-400 leading-tight mt-0.5">14h · Corte + barba</p>
+              </div>
+            </div>
+
+            {/* Card 2 — Nova avaliação Google (mais visível, maior) */}
+            <div
+              className="glass rounded-2xl px-3 py-2.5 flex items-center gap-2.5 animate-float-soft"
+              style={{
+                transform: 'rotate(3deg) translateX(20%)',
+                boxShadow: '0 16px 48px rgba(245,158,11,0.35), 0 0 0 1px rgba(245,158,11,0.25) inset',
+                minWidth: '220px',
+                animationDelay: '1.4s',
+                background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(255,255,255,0.04))',
+              }}
+            >
+              <span
+                className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, #F59E0B, #FBBF24)', color: '#0B0F1F', boxShadow: '0 0 18px rgba(245,158,11,0.55)' }}
+              >
+                <IconStar size={16} />
+              </span>
+              <div className="text-left">
+                <div className="flex items-center gap-0.5 leading-none">
+                  {[0,1,2,3,4].map((i) => (
+                    <IconStar key={i} size={10} className="text-amber-300" />
+                  ))}
+                </div>
+                <p className="text-[11px] font-bold text-white leading-tight mt-0.5">Rafa M. avaliou 5★</p>
+                <p className="text-[10px] text-amber-300 leading-tight mt-0.5">+50 pts no fidelidade</p>
+              </div>
+            </div>
+
+            {/* Card 3 — Fila preencheu cancelamento (mais escondido, decorativo) */}
+            <div
+              className="glass rounded-2xl px-3 py-2 flex items-center gap-2 animate-float-soft hidden sm:flex"
+              style={{
+                transform: 'rotate(-2deg) translateX(50%)',
+                boxShadow: '0 10px 32px rgba(139,92,246,0.28)',
+                minWidth: '200px',
+                animationDelay: '2.6s',
+                opacity: 0.9,
+              }}
+            >
+              <span
+                className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0"
+                style={{ background: 'rgba(139,92,246,0.2)', color: '#A78BFA' }}
+              >
+                <IconBolt size={13} />
+              </span>
+              <div className="text-left">
+                <p className="text-[10px] font-bold text-white leading-tight">Fila preencheu 15h</p>
+                <p className="text-[9px] text-slate-400 leading-tight mt-0.5">Lucas · sem cadeira vazia</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="container relative z-10 px-4 py-12 sm:py-16 lg:py-24">
           <div className="grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-16 items-center">
 
