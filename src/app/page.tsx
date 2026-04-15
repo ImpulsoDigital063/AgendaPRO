@@ -2,6 +2,7 @@ import Link from 'next/link'
 import FAQ from '@/components/FAQ'
 import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
 import { MechanismCard } from '@/components/MechanismCard'
+import { TimelineMicroUI, DorMicroUI, PassoMicroUI } from '@/components/LandingMicroUI'
 import {
   AnimatedGradient,
   SectionReveal,
@@ -15,45 +16,45 @@ import {
 
 const SEGMENTS: Segment[] = ['barbearia', 'salao', 'estetica', 'nail']
 
-const DORES = [
+const DORES: { kind: 'whatsapp' | 'caderno' | 'queda'; titulo: string; detalhe: string; accent: string }[] = [
   {
-    icon: '👻',
-    titulo:  'Cliente some depois do orçamento',
-    detalhe: 'Manda pergunta, você responde, e some. Sem follow-up automático você perde clientes antes deles agendarem.',
-    accent:  '#8B5CF6',
-  },
-  {
-    icon: '📵',
+    kind:    'whatsapp',
     titulo:  'Você virou recepcionista de si mesmo',
     detalhe: '3 horas por dia no WhatsApp confirmando, remarcando, cobrando. Seu talento vira trabalho burocrático.',
     accent:  '#06B6D4',
   },
   {
-    icon: '📉',
+    kind:    'caderno',
+    titulo:  'Cliente some depois do orçamento',
+    detalhe: 'Manda pergunta, você responde, e some. Sem follow-up automático você perde clientes antes deles agendarem.',
+    accent:  '#8B5CF6',
+  },
+  {
+    kind:    'queda',
     titulo:  'Agenda quebra, faturamento quebra',
     detalhe: 'No-show, encaixe perdido, cliente que não volta. Cada vaga vazia custa R$80–R$300 que não entram no caixa.',
     accent:  '#EC4899',
   },
 ]
 
-const TIMELINE = [
-  { hora: '07:00', titulo: 'Seu dia começa tranquilo',     detalhe: 'Lembretes já foram enviados ontem. Agenda do dia confirmada. Sem espiar WhatsApp antes do café.' },
-  { hora: '10:00', titulo: 'Cliente cancela por imprevisto', detalhe: 'O sistema avisa a fila de espera. Próximo da lista aceita a vaga em minutos. Você nem precisa saber.' },
-  { hora: '14:00', titulo: 'Cliente completa 10º serviço',  detalhe: 'Pontos acumulam, ele ganha uma recompensa. Fala no grupo de amigos dele. Indica 2 novos.' },
-  { hora: '20:00', titulo: 'Fim do expediente',             detalhe: 'Dashboard mostra: agenda cheia amanhã, 3 novos clientes, 2 avaliações 5★ no Google. Você fecha o app e vive.' },
+const TIMELINE: { kind: '07' | '10' | '14' | '20'; hora: string; titulo: string; detalhe: string }[] = [
+  { kind: '07', hora: '07:00', titulo: 'Seu dia começa tranquilo',     detalhe: 'Lembretes já foram enviados ontem. Agenda do dia confirmada. Sem espiar WhatsApp antes do café.' },
+  { kind: '10', hora: '10:00', titulo: 'Cliente cancela por imprevisto', detalhe: 'O sistema avisa a fila de espera. Próximo da lista aceita a vaga em minutos. Você nem precisa saber.' },
+  { kind: '14', hora: '14:00', titulo: 'Cliente completa 10º serviço',  detalhe: 'Pontos acumulam, ele ganha uma recompensa. Fala no grupo de amigos dele. Indica 2 novos.' },
+  { kind: '20', hora: '20:00', titulo: 'Fim do expediente',             detalhe: 'Dashboard mostra: agenda cheia amanhã, 3 novos clientes, 2 avaliações 5★ no Google. Você fecha o app e vive.' },
 ]
 
 const MOTORES = ['fidelidade', 'fila', 'indicacao', 'reviews'] as const
 
-const COMPARISON = [
-  { row: 'Cliente agenda sozinho 24h',           ap: true,  whats: false, caderno: false },
-  { row: 'Lembrete automático antes do horário', ap: true,  whats: false, caderno: false },
-  { row: 'Lista de espera quando cancela',       ap: true,  whats: false, caderno: false },
-  { row: 'Programa de fidelidade com pontos',    ap: true,  whats: false, caderno: false },
-  { row: 'Link de indicação por cliente',        ap: true,  whats: false, caderno: false },
-  { row: 'Página personalizada com sua marca',   ap: true,  whats: false, caderno: false },
-  { row: 'Google Reviews integrado',             ap: true,  whats: false, caderno: false },
-  { row: 'Funciona enquanto você dorme',         ap: true,  whats: false, caderno: false },
+const COMPARISON: { ico: string; row: string }[] = [
+  { ico: '📅', row: 'Cliente agenda sozinho 24h' },
+  { ico: '🔔', row: 'Lembrete automático antes do horário' },
+  { ico: '⚡', row: 'Lista de espera quando cancela' },
+  { ico: '🏆', row: 'Programa de fidelidade com pontos' },
+  { ico: '🔗', row: 'Link de indicação por cliente' },
+  { ico: '🎨', row: 'Página personalizada com sua marca' },
+  { ico: '⭐', row: 'Google Reviews integrado' },
+  { ico: '🌙', row: 'Funciona enquanto você dorme' },
 ]
 
 const VALUE_ITEMS = [
@@ -63,7 +64,7 @@ const VALUE_ITEMS = [
   { item: 'Gestão de avaliações Google Reviews',  price: 'R$ 39/mês' },
 ]
 
-const STEPS = [
+const STEPS: { n: '01' | '02' | '03'; title: string; desc: string }[] = [
   { n: '01', title: 'Cadastre seu negócio',        desc: 'Nome, serviços, horários e profissionais em menos de 5 minutos. Sem técnico, sem burocracia.' },
   { n: '02', title: 'Compartilhe o link',          desc: 'Cole na bio do Instagram, no Google Meu Negócio ou no WhatsApp. Cliente agenda direto.' },
   { n: '03', title: 'O sistema trabalha por você', desc: 'Lembretes, fidelidade, fila de espera, indicação e Reviews acontecem sozinhos. Você só atende.' },
@@ -189,15 +190,19 @@ export default function HomePage() {
           </SectionReveal>
 
           <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {DORES.map((d, i) => (
-              <div key={i} className="glass p-8 md:p-10 rounded-3xl relative group">
+            {DORES.map((d) => (
+              <div key={d.kind} className="glass rounded-3xl overflow-hidden flex flex-col">
                 <div
-                  className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl"
+                  className="absolute top-0 left-0 right-0 h-1"
                   style={{ background: `linear-gradient(90deg, transparent, ${d.accent}, transparent)` }}
                 />
-                <div className="text-5xl mb-4">{d.icon}</div>
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-3">{d.titulo}</h3>
-                <p className="text-slate-400 leading-relaxed">{d.detalhe}</p>
+                <div className="p-5 pb-3" style={{ background: `linear-gradient(180deg, ${d.accent}10 0%, transparent 100%)`, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <DorMicroUI kind={d.kind} />
+                </div>
+                <div className="px-6 md:px-7 py-6 flex-1">
+                  <h3 className="text-lg md:text-xl font-bold text-white mb-2">{d.titulo}</h3>
+                  <p className="text-slate-400 leading-relaxed text-sm">{d.detalhe}</p>
+                </div>
               </div>
             ))}
           </SectionReveal>
@@ -272,9 +277,16 @@ export default function HomePage() {
                     <span className="font-mono text-sm text-cyan-300 font-semibold">{t.hora}</span>
                   </div>
 
-                  <div className="glass rounded-2xl p-6 md:p-8 flex-1">
-                    <h3 className="text-lg md:text-xl font-bold text-white mb-2">{t.titulo}</h3>
-                    <p className="text-slate-400 leading-relaxed">{t.detalhe}</p>
+                  <div className="glass rounded-2xl p-6 md:p-7 flex-1">
+                    <div className="flex flex-col md:flex-row gap-5 md:items-center">
+                      <div className="flex-1">
+                        <h3 className="text-lg md:text-xl font-bold text-white mb-2">{t.titulo}</h3>
+                        <p className="text-slate-400 leading-relaxed text-sm md:text-base">{t.detalhe}</p>
+                      </div>
+                      <div className="flex-shrink-0 md:w-[260px]">
+                        <TimelineMicroUI kind={t.kind} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -327,23 +339,89 @@ export default function HomePage() {
           </SectionReveal>
 
           <SectionReveal>
-            <div className="glass rounded-3xl overflow-hidden">
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-4 text-xs md:text-sm font-semibold border-b" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
-                <span className="text-slate-400">Recurso</span>
-                <span className="text-center w-20 md:w-24" style={{ color: '#3B82F6' }}>AgendaPRO</span>
-                <span className="text-center w-16 md:w-20 text-slate-500">WhatsApp</span>
-                <span className="text-center w-16 md:w-20 text-slate-500">Caderno</span>
+            <div
+              className="glass rounded-3xl overflow-hidden"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(8,11,24,0.85) 100%)',
+              }}
+            >
+              {/* Header */}
+              <div
+                className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-4 text-xs md:text-sm font-semibold border-b"
+                style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}
+              >
+                <span className="text-slate-400 uppercase tracking-wider text-[10px] md:text-xs">Recurso</span>
+                <span
+                  className="text-center w-20 md:w-28 font-black uppercase tracking-wide"
+                  style={{
+                    background: 'linear-gradient(135deg, #3B82F6, #06B6D4)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
+                  AgendaPRO
+                </span>
+                <span className="text-center w-16 md:w-20 text-slate-500 uppercase tracking-wider text-[10px] md:text-xs">WhatsApp</span>
+                <span className="text-center w-16 md:w-20 text-slate-500 uppercase tracking-wider text-[10px] md:text-xs">Caderno</span>
               </div>
-              {COMPARISON.map((c) => (
-                <div key={c.row} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-3.5 text-xs md:text-sm border-b" style={{ borderColor: 'var(--glass-border)' }}>
-                  <span className="text-slate-200">{c.row}</span>
-                  <span className="text-center w-20 md:w-24">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-white text-sm font-bold" style={{ background: 'linear-gradient(135deg,#3B82F6,#06B6D4)' }}>✓</span>
+
+              {/* Rows */}
+              {COMPARISON.map((c, i) => (
+                <div
+                  key={c.row}
+                  className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-3.5 text-xs md:text-sm items-center"
+                  style={{
+                    borderBottom: i < COMPARISON.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                  }}
+                >
+                  <span className="text-slate-200 flex items-center gap-2.5">
+                    <span
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-sm flex-shrink-0"
+                      style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
+                    >
+                      {c.ico}
+                    </span>
+                    <span>{c.row}</span>
                   </span>
-                  <span className="text-center w-16 md:w-20 text-slate-600 text-lg leading-none">—</span>
-                  <span className="text-center w-16 md:w-20 text-slate-600 text-lg leading-none">—</span>
+                  <span className="text-center w-20 md:w-28">
+                    <span
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-white text-sm font-bold"
+                      style={{
+                        background: 'linear-gradient(135deg,#3B82F6,#06B6D4)',
+                        boxShadow: '0 0 14px rgba(59,130,246,0.4)',
+                      }}
+                    >
+                      ✓
+                    </span>
+                  </span>
+                  <span className="text-center w-16 md:w-20">
+                    <span
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs"
+                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#F87171' }}
+                    >
+                      ✕
+                    </span>
+                  </span>
+                  <span className="text-center w-16 md:w-20">
+                    <span
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs"
+                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#F87171' }}
+                    >
+                      ✕
+                    </span>
+                  </span>
                 </div>
               ))}
+
+              {/* Footer com CTA sutil */}
+              <div
+                className="px-5 md:px-8 py-4 text-center text-xs text-slate-400"
+                style={{ background: 'rgba(59,130,246,0.06)', borderTop: '1px solid rgba(59,130,246,0.18)' }}
+              >
+                A diferença não é o preço — é o que <strong className="text-white">o sistema faz por você</strong>.
+              </div>
             </div>
           </SectionReveal>
         </div>
@@ -365,20 +443,25 @@ export default function HomePage() {
 
           <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {STEPS.map((p) => (
-              <div key={p.n} className="glass rounded-3xl p-8 md:p-10 relative">
-                <div
-                  className="font-mono text-5xl font-black mb-4"
-                  style={{
-                    background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}
-                >
-                  {p.n}
+              <div key={p.n} className="glass rounded-3xl overflow-hidden flex flex-col">
+                <div className="px-6 pt-6 pb-5" style={{ background: 'linear-gradient(180deg, rgba(59,130,246,0.08) 0%, transparent 100%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <PassoMicroUI kind={p.n} />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">{p.title}</h3>
-                <p className="text-slate-400 leading-relaxed">{p.desc}</p>
+                <div className="px-6 md:px-7 py-6 flex-1">
+                  <div
+                    className="font-mono text-3xl md:text-4xl font-black mb-2 leading-none"
+                    style={{
+                      background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                    }}
+                  >
+                    {p.n}
+                  </div>
+                  <h3 className="text-lg md:text-xl font-bold text-white mb-2">{p.title}</h3>
+                  <p className="text-slate-400 leading-relaxed text-sm">{p.desc}</p>
+                </div>
               </div>
             ))}
           </SectionReveal>
