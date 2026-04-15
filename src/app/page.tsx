@@ -1,42 +1,88 @@
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
-import { AnimatedGradient, SectionReveal, SegmentCard, type Segment } from '@/components/ui'
+import {
+  AnimatedGradient,
+  SectionReveal,
+  SegmentCard,
+  MechanismIcon,
+  type Segment,
+  type Mechanism,
+} from '@/components/ui'
 
 /* ═══════════════════════════════════════════════════════════
-   Dados da página — copy do master (pré v2) em design v2
+   Dados — copy de funil + ângulo IA / automação inteligente
 ═══════════════════════════════════════════════════════════ */
 
 const SEGMENTS: Segment[] = ['barbearia', 'salao', 'estetica', 'nail']
 
-const RETENTION_FEATURES = [
+const DORES = [
   {
-    icon: '🏆',
-    title: 'Programa de fidelidade',
-    result: 'Clientes voltam para você — não para o concorrente',
-    desc: 'Cada serviço gera pontos. Você define as recompensas. O cliente sabe que tem vantagem em voltar.',
+    icon: '👻',
+    titulo:  'Cliente some depois do orçamento',
+    detalhe: 'Manda pergunta, você responde, e some. Sem follow-up automático você perde clientes antes deles agendarem.',
+    accent:  '#8B5CF6',
+  },
+  {
+    icon: '📵',
+    titulo:  'Você virou recepcionista de si mesmo',
+    detalhe: '3 horas por dia no WhatsApp confirmando, remarcando, cobrando. Seu talento vira trabalho burocrático.',
+    accent:  '#06B6D4',
+  },
+  {
+    icon: '📉',
+    titulo:  'Agenda quebra, faturamento quebra',
+    detalhe: 'No-show, encaixe perdido, cliente que não volta. Cada vaga vazia custa R$80–R$300 que não entram no caixa.',
+    accent:  '#EC4899',
+  },
+]
+
+const TIMELINE = [
+  { hora: '07:00', titulo: 'Seu dia começa tranquilo',     detalhe: 'Lembretes já foram enviados ontem. Agenda do dia confirmada. Sem espiar WhatsApp antes do café.' },
+  { hora: '10:00', titulo: 'Cliente cancela por imprevisto', detalhe: 'O sistema avisa a fila de espera. Próximo da lista aceita a vaga em minutos. Você nem precisa saber.' },
+  { hora: '14:00', titulo: 'Cliente completa 10º serviço',  detalhe: 'Pontos acumulam, ele ganha uma recompensa. Fala no grupo de amigos dele. Indica 2 novos.' },
+  { hora: '20:00', titulo: 'Fim do expediente',             detalhe: 'Dashboard mostra: agenda cheia amanhã, 3 novos clientes, 2 avaliações 5★ no Google. Você fecha o app e vive.' },
+]
+
+const MOTORES: { kind: Mechanism; title: string; result: string; desc: string; accent: string }[] = [
+  {
+    kind:   'fidelidade',
+    title:  'Programa de fidelidade',
+    result: 'Cliente volta — não busca o concorrente',
+    desc:   'Cada serviço soma pontos. Você define as recompensas. Ele sabe que tem vantagem em voltar — e volta.',
     accent: '#F59E0B',
   },
   {
-    icon: '🔔',
-    title: 'Lista de espera automática',
-    result: 'Zero vaga desperdiçada quando cancela',
-    desc: 'Cancelou um horário? O próximo da fila recebe email na hora e preenche a vaga automaticamente.',
-    accent: '#06B6D4',
-  },
-  {
-    icon: '🔗',
-    title: 'Indicação com recompensa',
-    result: 'Seus clientes te trazem novos clientes',
-    desc: 'Cada cliente tem um link único de indicação. Indica um amigo — os dois ganham pontos.',
+    kind:   'fila',
+    title:  'Lista de espera automática',
+    result: 'Zero horário desperdiçado em cancelamento',
+    desc:   'Cancelou? O próximo da fila recebe email na hora e preenche a vaga. Sem você mexer no celular.',
     accent: '#8B5CF6',
   },
   {
-    icon: '⭐',
-    title: 'Badge Google Reviews',
-    result: 'Mais avaliações no Google sem precisar pedir',
-    desc: 'Sua nota aparece na página de agendamento. Cliente ganha pontos por avaliar — incentivo concreto.',
+    kind:   'indicacao',
+    title:  'Indicação com link único',
+    result: 'Seus clientes te trazem novos clientes',
+    desc:   'Cada cliente tem um link próprio. Indica um amigo — os dois ganham pontos. Crescimento orgânico, sem anúncio.',
+    accent: '#EC4899',
+  },
+  {
+    kind:   'reviews',
+    title:  'Google Reviews automático',
+    result: 'Mais avaliações sem precisar pedir',
+    desc:   'Sua nota aparece na página de agendamento. Cliente ganha pontos por avaliar — incentivo concreto, todo dia.',
     accent: '#10B981',
   },
+]
+
+const COMPARISON = [
+  { row: 'Cliente agenda sozinho 24h',           ap: true,  whats: false, caderno: false },
+  { row: 'Lembrete automático antes do horário', ap: true,  whats: false, caderno: false },
+  { row: 'Lista de espera quando cancela',       ap: true,  whats: false, caderno: false },
+  { row: 'Programa de fidelidade com pontos',    ap: true,  whats: false, caderno: false },
+  { row: 'Link de indicação por cliente',        ap: true,  whats: false, caderno: false },
+  { row: 'Página personalizada com sua marca',   ap: true,  whats: false, caderno: false },
+  { row: 'Google Reviews integrado',             ap: true,  whats: false, caderno: false },
+  { row: 'Funciona enquanto você dorme',         ap: true,  whats: false, caderno: false },
 ]
 
 const VALUE_ITEMS = [
@@ -46,17 +92,10 @@ const VALUE_ITEMS = [
   { item: 'Gestão de avaliações Google Reviews',  price: 'R$ 39/mês' },
 ]
 
-const TIMELINE = [
-  { hora: '07:00', titulo: 'Seu dia começa tranquilo',     detalhe: 'Lembretes já foram enviados ontem. Agenda do dia confirmada. Sem espiar WhatsApp antes do café.' },
-  { hora: '10:00', titulo: 'Cliente cancela por imprevisto', detalhe: 'Sistema avisa a fila de espera. Próximo da lista aceita a vaga em minutos. Você nem precisa saber.' },
-  { hora: '14:00', titulo: 'Cliente completa 10º serviço',  detalhe: 'Pontos acumulam, ele ganha uma recompensa. Fala no grupo de amigos dele. Indica 2 novos.' },
-  { hora: '20:00', titulo: 'Fim do expediente',             detalhe: 'Dashboard mostra: agenda cheia amanhã, 3 novos clientes, 2 avaliações 5★ no Google. Você fecha o app e vive.' },
-]
-
 const STEPS = [
   { n: '01', title: 'Cadastre seu negócio',        desc: 'Nome, serviços, horários e profissionais em menos de 5 minutos. Sem técnico, sem burocracia.' },
-  { n: '02', title: 'Compartilhe o link',           desc: 'Cole na bio do Instagram, no Google Meu Negócio ou no WhatsApp. Clientes agendam direto.' },
-  { n: '03', title: 'O sistema trabalha por você', desc: 'Lembretes automáticos, pontos de fidelidade, indicações e Google Reviews — tudo acontece sozinho.' },
+  { n: '02', title: 'Compartilhe o link',          desc: 'Cole na bio do Instagram, no Google Meu Negócio ou no WhatsApp. Cliente agenda direto.' },
+  { n: '03', title: 'O sistema trabalha por você', desc: 'Lembretes, fidelidade, fila de espera, indicação e Reviews acontecem sozinhos. Você só atende.' },
 ]
 
 /* ═══════════════════════════════════════════════════════════
@@ -77,7 +116,7 @@ export default function HomePage() {
         }}
       >
         <span className="mr-2">🎁</span>
-        Oferta de lançamento — <strong className="mx-1">14 dias grátis</strong> em qualquer plano. Sem cartão de crédito.
+        Oferta de lançamento — <strong className="mx-1">14 dias grátis</strong>. Sem cartão de crédito.
       </div>
 
       {/* ═══════════ Nav ═══════════ */}
@@ -97,31 +136,28 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* ═══════════ HERO ═══════════ */}
+      {/* ═══════════ 1. HERO — IA toma conta da agenda ═══════════ */}
       <section className="relative">
         <AnimatedGradient />
 
         <div className="container relative z-10 py-20 md:py-28">
           <SectionReveal className="flex flex-col items-center text-center gap-8 max-w-4xl mx-auto">
 
-            {/* Badge */}
             <div className="pill-glow animate-pulse-glow">
               <span>✨</span>
               <span>Você acabou de ganhar 14 dias de acesso gratuito</span>
             </div>
 
-            {/* Headline */}
             <h1 className="display-xl text-white">
-              De agenda no WhatsApp<br />
-              para negócio que <span className="text-gradient">cresce sozinho.</span>
+              Sua agenda agora tem<br />
+              <span className="text-gradient">inteligência</span> própria.
             </h1>
 
-            {/* Subheadline */}
             <p className="text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-              Agenda online, fidelidade, indicação e Google Reviews num único lugar. Configure em 5 minutos. Funciona hoje mesmo.
+              O AgendaPRO é o sistema que confirma horário, preenche cancelamento, traz cliente de volta e cresce sua reputação no Google.
+              <strong className="text-white"> Você atende — ele cuida do resto.</strong>
             </p>
 
-            {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 mt-2">
               <Link href="/cadastro" className="btn btn-lg btn-primary-v2">
                 Garantir meu acesso gratuito
@@ -129,20 +165,18 @@ export default function HomePage() {
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </Link>
-              <a href="#como-funciona" className="btn btn-lg btn-ghost">
+              <a href="#mecanismos" className="btn btn-lg btn-ghost">
                 Ver como funciona
               </a>
             </div>
 
-            {/* Proof line */}
             <p className="text-sm text-slate-400">
               Sem cartão · Cancele quando quiser · R$67/mês após o trial
             </p>
 
-            {/* Mini stats */}
             <div className="grid grid-cols-3 gap-6 md:gap-10 pt-8 mt-2 border-t w-full max-w-xl" style={{ borderColor: 'var(--glass-border)' }}>
               {[
-                { n: '24h',   l: 'Agendamento online' },
+                { n: '24h',   l: 'Atende sozinho' },
                 { n: '-50%',  l: 'Menos faltas' },
                 { n: '5 min', l: 'Para configurar' },
               ].map((s) => (
@@ -157,46 +191,58 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ Stats bar (dark highlight) ═══════════ */}
-      <section className="px-6 pb-20">
+      {/* ═══════════ 2. DOR REAL ═══════════ */}
+      <section id="dor" className="section relative">
         <div className="container">
-          <SectionReveal>
-            <div
-              className="glass rounded-3xl p-8 md:p-10"
-              style={{
-                background: 'linear-gradient(135deg, rgba(30,64,175,0.35) 0%, rgba(6,182,212,0.25) 100%)',
-                border: '1px solid rgba(59,130,246,0.25)',
-              }}
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-                {[
-                  { n: '+800',    l: 'Agendamentos realizados' },
-                  { n: 'R$256',   l: 'Valor separado. Seu preço: R$67' },
-                  { n: '14 dias', l: 'Grátis para testar, sem cartão' },
-                ].map((s) => (
-                  <div key={s.n}>
-                    <p className="text-3xl md:text-4xl font-black text-white leading-none">{s.n}</p>
-                    <p className="text-sm text-slate-300 mt-2 leading-snug">{s.l}</p>
-                  </div>
-                ))}
-              </div>
+          <SectionReveal className="text-center mb-14 max-w-3xl mx-auto">
+            <div className="pill mb-6">
+              <span style={{ color: '#EC4899' }}>●</span>
+              <span>Se você se identifica com isso, leia até o fim</span>
             </div>
+            <h2 className="display-lg text-white mb-4">
+              Hoje sua agenda<br />
+              te <span className="text-gradient">consome</span>.
+            </h2>
+            <p className="text-lg text-slate-400">
+              A maioria dos profissionais perde 3 horas por dia operando o que devia ser automático.
+            </p>
+          </SectionReveal>
+
+          <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {DORES.map((d, i) => (
+              <div key={i} className="glass p-8 md:p-10 rounded-3xl relative group">
+                <div
+                  className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl"
+                  style={{ background: `linear-gradient(90deg, transparent, ${d.accent}, transparent)` }}
+                />
+                <div className="text-5xl mb-4">{d.icon}</div>
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-3">{d.titulo}</h3>
+                <p className="text-slate-400 leading-relaxed">{d.detalhe}</p>
+              </div>
+            ))}
           </SectionReveal>
         </div>
       </section>
 
-      {/* ═══════════ Segmentos ═══════════ */}
+      {/* ═══════════ 3. SOLUÇÃO em 1 frase + Segmentos ═══════════ */}
       <section id="segmentos" className="section relative">
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'radial-gradient(ellipse 50% 40% at 50% 0%, rgba(59,130,246,0.15) 0%, transparent 60%)'
+          background: 'radial-gradient(ellipse 50% 40% at 50% 0%, rgba(59,130,246,0.18) 0%, transparent 60%)'
         }} />
 
         <div className="container relative">
           <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
             <div className="pill mb-6">
               <span style={{ color: '#06B6D4' }}>●</span>
-              <span>Para qualquer negócio de serviço</span>
+              <span>O fim disso tudo</span>
             </div>
+            <h2 className="display-lg text-white mb-4">
+              Um sistema que <span className="text-gradient">opera</span><br />
+              o seu negócio por você.
+            </h2>
+            <p className="text-lg text-slate-400">
+              Funciona pra qualquer negócio de serviço — escolha o seu pra ver os detalhes.
+            </p>
           </SectionReveal>
 
           <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -207,7 +253,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ Seu dia, reescrito (TIMELINE) ═══════════ */}
+      {/* ═══════════ 4. SEU DIA, REESCRITO ═══════════ */}
       <section id="seu-dia" className="section relative">
         <div className="container">
           <SectionReveal className="text-center mb-14 max-w-3xl mx-auto">
@@ -224,7 +270,6 @@ export default function HomePage() {
           </SectionReveal>
 
           <div className="max-w-3xl mx-auto relative">
-            {/* linha vertical */}
             <div
               className="absolute left-4 md:left-1/2 top-0 bottom-0 w-px -translate-x-1/2"
               style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(59,130,246,0.4) 20%, rgba(6,182,212,0.4) 80%, transparent 100%)' }}
@@ -258,10 +303,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ Motor de retenção ═══════════ */}
-      <section id="retencao" className="section relative">
+      {/* ═══════════ 5. 4 MOTORES DE RETENÇÃO (mecanismos com SVG) ═══════════ */}
+      <section id="mecanismos" className="section relative">
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(139,92,246,0.1) 0%, transparent 60%)'
+          background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(139,92,246,0.12) 0%, transparent 60%)'
         }} />
 
         <div className="container relative">
@@ -275,43 +320,73 @@ export default function HomePage() {
               rodando 24/7.
             </h2>
             <p className="text-lg text-slate-400">
-              Outros softwares só anotam horário. A AgendaPRO traz cliente de volta, preenche buraco de agenda e cresce sua reputação.
+              Cada um foi desenhado pra resolver um problema específico — e funciona sozinho, sem você precisar lembrar.
             </p>
           </SectionReveal>
 
           <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {RETENTION_FEATURES.map((f, i) => (
-              <div key={i} className="glass glow-border rounded-3xl p-8 md:p-10 relative group hover:-translate-y-1 transition-all">
-                <div
-                  className="h-14 w-14 rounded-2xl flex items-center justify-center text-3xl mb-5 transition-transform group-hover:scale-110"
-                  style={{
-                    background: `${f.accent}15`,
-                    border: `1px solid ${f.accent}40`,
-                    boxShadow: `0 0 40px ${f.accent}30`,
-                  }}
-                >
-                  {f.icon}
+            {MOTORES.map((m) => (
+              <div key={m.kind} className="glass glow-border rounded-3xl p-8 md:p-10 relative group hover:-translate-y-1 transition-all">
+                <div className="mb-5 transition-transform group-hover:scale-105">
+                  <MechanismIcon kind={m.kind} size={84} />
                 </div>
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-sm font-semibold mb-3" style={{ color: f.accent }}>→ {f.result}</p>
-                <p className="text-slate-400 leading-relaxed">{f.desc}</p>
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-2">{m.title}</h3>
+                <p className="text-sm font-semibold mb-3" style={{ color: m.accent }}>→ {m.result}</p>
+                <p className="text-slate-400 leading-relaxed">{m.desc}</p>
               </div>
             ))}
           </SectionReveal>
         </div>
       </section>
 
-      {/* ═══════════ Como funciona ═══════════ */}
+      {/* ═══════════ 6. COMPARAÇÃO DIRETA ═══════════ */}
+      <section className="section relative">
+        <div className="container max-w-4xl">
+          <SectionReveal className="text-center mb-12">
+            <div className="pill mb-6">
+              <span style={{ color: '#06B6D4' }}>●</span>
+              <span>Comparação direta</span>
+            </div>
+            <h2 className="display-lg text-white mb-4">
+              Por que <span className="text-gradient">WhatsApp + caderno</span><br />
+              está custando seu mês.
+            </h2>
+          </SectionReveal>
+
+          <SectionReveal>
+            <div className="glass rounded-3xl overflow-hidden">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-4 text-xs md:text-sm font-semibold border-b" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
+                <span className="text-slate-400">Recurso</span>
+                <span className="text-center w-20 md:w-24" style={{ color: '#3B82F6' }}>AgendaPRO</span>
+                <span className="text-center w-16 md:w-20 text-slate-500">WhatsApp</span>
+                <span className="text-center w-16 md:w-20 text-slate-500">Caderno</span>
+              </div>
+              {COMPARISON.map((c) => (
+                <div key={c.row} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-3.5 text-xs md:text-sm border-b" style={{ borderColor: 'var(--glass-border)' }}>
+                  <span className="text-slate-200">{c.row}</span>
+                  <span className="text-center w-20 md:w-24">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full text-white text-sm font-bold" style={{ background: 'linear-gradient(135deg,#3B82F6,#06B6D4)' }}>✓</span>
+                  </span>
+                  <span className="text-center w-16 md:w-20 text-slate-600 text-lg leading-none">—</span>
+                  <span className="text-center w-16 md:w-20 text-slate-600 text-lg leading-none">—</span>
+                </div>
+              ))}
+            </div>
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* ═══════════ 7. COMO COMEÇAR (3 passos) ═══════════ */}
       <section id="como-funciona" className="section relative">
         <div className="container">
           <SectionReveal className="text-center mb-14 max-w-3xl mx-auto">
             <div className="pill mb-6">
               <span style={{ color: '#10B981' }}>●</span>
-              <span>Como funciona</span>
+              <span>Como começar</span>
             </div>
             <h2 className="display-lg text-white mb-4">
               Três passos.<br />
-              <span className="text-gradient">Pronto para usar hoje.</span>
+              <span className="text-gradient">Funcionando hoje.</span>
             </h2>
           </SectionReveal>
 
@@ -337,7 +412,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ Valor empilhado ═══════════ */}
+      {/* ═══════════ 8. VALOR EMPILHADO ═══════════ */}
       <section id="valor" className="section relative">
         <div className="absolute inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(245,158,11,0.1) 0%, transparent 60%)'
@@ -347,7 +422,7 @@ export default function HomePage() {
           <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
             <div className="pill mb-6">
               <span style={{ color: '#F59E0B' }}>●</span>
-              <span>Quanto valeria tudo isso separado?</span>
+              <span>Quanto custaria isso separado?</span>
             </div>
             <h2 className="display-lg text-white mb-4">
               Veja o que você está <span className="text-gradient">levando</span>.
@@ -401,7 +476,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ Pricing ═══════════ */}
+      {/* ═══════════ 9. PRICING ═══════════ */}
       <section id="precos" className="section relative">
         <div className="container">
           <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
@@ -517,7 +592,47 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ FAQ ═══════════ */}
+      {/* ═══════════ 10. PROVA SOCIAL — Primeiros parceiros do lançamento ═══════════ */}
+      <section className="section relative">
+        <div className="container max-w-3xl">
+          <SectionReveal>
+            <div
+              className="glass glow-border rounded-3xl p-8 md:p-12 text-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(139,92,246,0.18) 0%, rgba(6,182,212,0.12) 100%)',
+                border: '1px solid rgba(139,92,246,0.25)',
+              }}
+            >
+              <div className="pill mb-5 inline-flex">
+                <span style={{ color: '#8B5CF6' }}>●</span>
+                <span>Lançamento exclusivo</span>
+              </div>
+              <h3 className="text-2xl md:text-3xl font-black text-white mb-4">
+                Estamos abrindo as <span className="text-gradient">primeiras 10 vagas</span> do AgendaPRO.
+              </h3>
+              <p className="text-slate-300 leading-relaxed mb-6 max-w-xl mx-auto">
+                Dois negócios já estão configurando essa semana. Você entra agora com o preço de lançamento — quando virarmos a chave de R$67 pra R$97, quem assinou trava o valor pra sempre.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  2 negócios já confirmados
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                  R$67 travado pra sempre
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
+                  Suporte direto com o fundador
+                </span>
+              </div>
+            </div>
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* ═══════════ 11. FAQ ═══════════ */}
       <section id="faq" className="section relative">
         <div className="container max-w-3xl">
           <SectionReveal className="text-center mb-12">
@@ -534,11 +649,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ CTA FINAL ═══════════ */}
+      {/* ═══════════ 12. CTA FINAL ═══════════ */}
       <section className="section-lg relative">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute inset-0" style={{
-            background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(59,130,246,0.25) 0%, transparent 60%)'
+            background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(59,130,246,0.28) 0%, transparent 60%)'
           }} />
         </div>
 
@@ -569,7 +684,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ FOOTER ═══════════ */}
+      {/* ═══════════ 13. FOOTER ═══════════ */}
       <footer className="py-12 border-t" style={{ borderColor: 'var(--glass-border)' }}>
         <div className="container">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
