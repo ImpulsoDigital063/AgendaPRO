@@ -487,7 +487,7 @@ export default function BookingFlow({
                   setReferralCopied(true)
                   setTimeout(() => setReferralCopied(false), 2000)
                 }}
-                className="px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-800 transition-colors whitespace-nowrap"
+                className="px-3 py-2 bg-[var(--brand-primary,#111827)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
               >
                 {referralCopied ? 'Copiado!' : 'Copiar'}
               </button>
@@ -516,7 +516,7 @@ export default function BookingFlow({
                   onClick={() => handleToggleService(service)}
                   className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-left transition-colors ${
                     isSelected
-                      ? 'bg-gray-900 border-gray-900 text-white'
+                      ? 'bg-[var(--brand-primary,#111827)] border-[var(--brand-primary,#111827)] text-white'
                       : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
                   }`}
                 >
@@ -556,7 +556,7 @@ export default function BookingFlow({
           {selectedServices.length > 0 && step === 'service' && (
             <button
               onClick={handleProceedFromServices}
-              className="mt-3 w-full bg-gray-900 text-white py-4 rounded-xl font-semibold text-base hover:bg-gray-800 transition-colors"
+              className="mt-3 w-full bg-[var(--brand-primary,#111827)] text-white py-4 rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"
             >
               {hasMultipleProfessionals ? 'Escolher profissional →' : 'Escolher horário →'}
             </button>
@@ -579,7 +579,7 @@ export default function BookingFlow({
                   onClick={() => handleSelectProfessional(prof)}
                   className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-colors ${
                     isSelected
-                      ? 'bg-gray-900 border-gray-900 text-white'
+                      ? 'bg-[var(--brand-primary,#111827)] border-[var(--brand-primary,#111827)] text-white'
                       : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
                   }`}
                 >
@@ -615,7 +615,7 @@ export default function BookingFlow({
                     onClick={() => handleSelectDate(date)}
                     className={`flex flex-col items-center py-3 rounded-xl border text-sm font-medium transition-colors ${
                       isSelected
-                        ? 'bg-gray-900 text-white border-gray-900'
+                        ? 'bg-[var(--brand-primary,#111827)] text-white border-[var(--brand-primary,#111827)]'
                         : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
                     }`}
                   >
@@ -666,7 +666,7 @@ export default function BookingFlow({
                       !slot.available
                         ? 'bg-gray-50 text-gray-400 border-gray-100 cursor-pointer hover:border-gray-300'
                         : isSelected
-                        ? 'bg-gray-900 text-white border-gray-900'
+                        ? 'bg-[var(--brand-primary,#111827)] text-white border-[var(--brand-primary,#111827)]'
                         : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
                     }`}
                   >
@@ -843,7 +843,7 @@ export default function BookingFlow({
             <button
               onClick={handleSubmit}
               disabled={submitting || !clientName.trim() || !clientPhone.trim()}
-              className="w-full bg-gray-900 text-white py-4 rounded-xl font-semibold text-base hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full bg-[var(--brand-primary,#111827)] text-white py-4 rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {submitting ? 'Agendando...' : 'Confirmar agendamento'}
             </button>
