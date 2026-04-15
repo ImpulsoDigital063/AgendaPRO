@@ -1,13 +1,12 @@
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
 import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
+import { MechanismCard } from '@/components/MechanismCard'
 import {
   AnimatedGradient,
   SectionReveal,
   SegmentCard,
-  MechanismIcon,
   type Segment,
-  type Mechanism,
 } from '@/components/ui'
 
 /* ═══════════════════════════════════════════════════════════
@@ -44,36 +43,7 @@ const TIMELINE = [
   { hora: '20:00', titulo: 'Fim do expediente',             detalhe: 'Dashboard mostra: agenda cheia amanhã, 3 novos clientes, 2 avaliações 5★ no Google. Você fecha o app e vive.' },
 ]
 
-const MOTORES: { kind: Mechanism; title: string; result: string; desc: string; accent: string }[] = [
-  {
-    kind:   'fidelidade',
-    title:  'Programa de fidelidade',
-    result: 'Cliente volta — não busca o concorrente',
-    desc:   'Cada serviço soma pontos. Você define as recompensas. Ele sabe que tem vantagem em voltar — e volta.',
-    accent: '#F59E0B',
-  },
-  {
-    kind:   'fila',
-    title:  'Lista de espera automática',
-    result: 'Zero horário desperdiçado em cancelamento',
-    desc:   'Cancelou? O próximo da fila recebe email na hora e preenche a vaga. Sem você mexer no celular.',
-    accent: '#8B5CF6',
-  },
-  {
-    kind:   'indicacao',
-    title:  'Indicação com link único',
-    result: 'Seus clientes te trazem novos clientes',
-    desc:   'Cada cliente tem um link próprio. Indica um amigo — os dois ganham pontos. Crescimento orgânico, sem anúncio.',
-    accent: '#EC4899',
-  },
-  {
-    kind:   'reviews',
-    title:  'Google Reviews automático',
-    result: 'Mais avaliações sem precisar pedir',
-    desc:   'Sua nota aparece na página de agendamento. Cliente ganha pontos por avaliar — incentivo concreto, todo dia.',
-    accent: '#10B981',
-  },
-]
+const MOTORES = ['fidelidade', 'fila', 'indicacao', 'reviews'] as const
 
 const COMPARISON = [
   { row: 'Cliente agenda sozinho 24h',           ap: true,  whats: false, caderno: false },
@@ -335,15 +305,8 @@ export default function HomePage() {
           </SectionReveal>
 
           <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {MOTORES.map((m) => (
-              <div key={m.kind} className="glass glow-border rounded-3xl p-8 md:p-10 relative group hover:-translate-y-1 transition-all">
-                <div className="mb-5 transition-transform group-hover:scale-105">
-                  <MechanismIcon kind={m.kind} size={84} />
-                </div>
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-2">{m.title}</h3>
-                <p className="text-sm font-semibold mb-3" style={{ color: m.accent }}>→ {m.result}</p>
-                <p className="text-slate-400 leading-relaxed">{m.desc}</p>
-              </div>
+            {MOTORES.map((kind) => (
+              <MechanismCard key={kind} kind={kind} />
             ))}
           </SectionReveal>
         </div>
