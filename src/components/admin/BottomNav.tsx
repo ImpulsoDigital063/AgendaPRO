@@ -59,8 +59,13 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl border-t"
+      style={{
+        background: 'rgba(5,7,19,0.85)',
+        borderColor: 'rgba(255,255,255,0.08)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
     >
       <div className="flex items-stretch max-w-lg mx-auto">
         {tabs.map((tab) => {
@@ -70,11 +75,11 @@ export default function BottomNav() {
               key={tab.href}
               href={tab.href}
               className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
-                active ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
+                active ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
               {tab.icon(active)}
-              <span className={`text-xs font-medium ${active ? 'text-gray-900' : 'text-gray-400'}`}>
+              <span className={`text-xs font-medium ${active ? 'text-blue-400' : 'text-slate-500'}`}>
                 {tab.label}
               </span>
             </Link>

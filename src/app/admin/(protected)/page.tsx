@@ -5,6 +5,7 @@ import LogoutButton from '@/components/LogoutButton'
 import ShareButton from '@/components/ShareButton'
 import DivulgarCard from '@/components/admin/DivulgarCard'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -57,7 +58,7 @@ export default async function AdminPage() {
   const revenue   = confirmed.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   return (
-    <main className="min-h-screen relative overflow-x-hidden" style={{ background: '#0B0F1A' }}>
+    <main className="min-h-screen relative overflow-x-hidden" style={{ background: '#050713' }}>
 
       {/* Glow orbs de fundo */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -69,15 +70,13 @@ export default async function AdminPage() {
       {/* Header */}
       <div className="relative max-w-lg mx-auto px-4 pt-8 pb-6">
         <div className="flex items-center justify-between mb-5">
-          <span className="text-blue-400/70 text-xs font-semibold uppercase tracking-widest">
-            AgendaPRO
-          </span>
+          <Image src="/logo-agendapro-dark.svg" alt="AgendaPRO" width={130} height={26} priority />
           <div className="flex items-center gap-2">
             <ShareButton slug={business.slug} />
             <LogoutButton />
           </div>
         </div>
-        <h1 className="text-white text-2xl font-bold">{business.name}</h1>
+        <h1 className="text-white text-2xl font-bold tracking-tight">{business.name}</h1>
         <p className="text-gray-500 text-sm capitalize mt-1">{todayFormatted}</p>
       </div>
 
@@ -175,6 +174,7 @@ export default async function AdminPage() {
         >
           {[
             { href: '/admin/configuracoes', label: 'Configurações', icon: '⚙️', desc: 'Serviços, horários e profissionais' },
+            { href: '/admin/configuracoes', label: 'Aparência',     icon: '🎨', desc: 'Personalize as cores do seu link'  },
             { href: '/admin/clientes',      label: 'Clientes',      icon: '👥', desc: 'Fidelidade e programa de pontos'  },
             { href: '/admin/financeiro',    label: 'Financeiro',    icon: '💰', desc: 'Faturamento e relatórios'          },
           ].map((item, i, arr) => (
