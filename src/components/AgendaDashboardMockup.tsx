@@ -11,8 +11,11 @@ import {
   IconBolt,
   IconTrophy,
   IconStar,
-  IconSparkle,
   IconCheck,
+  IconScissors,
+  IconRazor,
+  IconClipper,
+  IconChair,
 } from './BarberIcons'
 
 export default function AgendaDashboardMockup() {
@@ -118,76 +121,106 @@ export default function AgendaDashboardMockup() {
         }}
       />
 
-      {/* Orbs flutuantes — escalam com orbsS */}
-      <div
-        aria-hidden
-        className="animate-float-soft"
-        style={{
-          position: 'absolute',
-          top: '-20px',
-          left: '-30px',
-          width: '12px',
-          height: '12px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #06B6D4, #3B82F6)',
-          boxShadow: '0 0 20px rgba(6,182,212,0.8)',
-          zIndex: 1,
-          opacity: orbsS,
-          animationDelay: '0.5s',
-          animationDuration: '6s',
-        }}
-      />
-      <div
-        aria-hidden
-        className="animate-float-soft"
-        style={{
-          position: 'absolute',
-          top: '40%',
-          right: '-40px',
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
-          boxShadow: '0 0 16px rgba(245,158,11,0.8)',
-          zIndex: 1,
-          opacity: orbsS,
-          animationDelay: '2.2s',
-          animationDuration: '7s',
-        }}
-      />
-      <div
-        aria-hidden
-        className="animate-float-soft"
-        style={{
-          position: 'absolute',
-          bottom: '-15px',
-          right: '20%',
-          width: '10px',
-          height: '10px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)',
-          boxShadow: '0 0 18px rgba(139,92,246,0.8)',
-          zIndex: 1,
-          opacity: orbsS,
-          animationDelay: '3.5s',
-          animationDuration: '8s',
-        }}
-      />
+      {/* ═══ Elementos de BARBEARIA em volta ═══
+          Barber pole rotativo + ferramentas decorativas.
+          Todos em tons sutis (opacity baixa) pra ambientar sem roubar foco. */}
 
-      {/* Camada fantasma 3 */}
+      {/* Barber pole vertical — direita do mockup, listras giratórias */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          right: '-28px',
+          top: '18%',
+          width: '14px',
+          height: '120px',
+          borderRadius: '4px',
+          overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5), inset 0 0 8px rgba(0,0,0,0.3)',
+          zIndex: 3,
+          opacity: orbsS * 0.85,
+          transform: `rotateY(-10deg) translateX(${(1 - orbsS) * 20}px)`,
+        }}
+      >
+        <div
+          className="barber-pole-stripes"
+          style={{
+            width: '100%',
+            height: '100%',
+          }}
+        />
+      </div>
+
+      {/* Tesoura decorativa — canto superior esquerdo, fora do mockup */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: '-18px',
+          left: '-38px',
+          color: 'rgba(148,163,184,0.35)',
+          transform: `rotate(-20deg) scale(${0.8 + orbsS * 0.2})`,
+          transformOrigin: 'center',
+          filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.4))',
+          zIndex: 1,
+          opacity: orbsS,
+        }}
+      >
+        <IconScissors size={42} strokeWidth={1.5} />
+      </div>
+
+      {/* Navalha decorativa — canto inferior esquerdo */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          bottom: '-8px',
+          right: '-30px',
+          color: 'rgba(148,163,184,0.3)',
+          transform: `rotate(35deg) scale(${0.8 + orbsS * 0.2})`,
+          transformOrigin: 'center',
+          filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.4))',
+          zIndex: 1,
+          opacity: orbsS,
+        }}
+      >
+        <IconRazor size={36} strokeWidth={1.5} />
+      </div>
+
+      {/* Máquina de cortar — lateral esquerda, mais discreta */}
+      <div
+        aria-hidden
+        className="hidden sm:block"
+        style={{
+          position: 'absolute',
+          top: '58%',
+          left: '-34px',
+          color: 'rgba(148,163,184,0.28)',
+          transform: `rotate(-15deg) scale(${0.75 + orbsS * 0.15})`,
+          transformOrigin: 'center',
+          filter: 'drop-shadow(0 3px 8px rgba(0,0,0,0.4))',
+          zIndex: 1,
+          opacity: orbsS,
+        }}
+      >
+        <IconClipper size={32} strokeWidth={1.5} />
+      </div>
+
+      {/* Camada fantasma 3 — rotação maior pra profundidade dramática */}
       <div
         aria-hidden
         style={{
           position: 'absolute',
           inset: 0,
-          transform: `rotateY(-12deg) rotateX(6deg) translate(${40 * mainS}px, ${40 * mainS}px) translateZ(-80px)`,
+          transform: `rotateY(-18deg) rotateX(9deg) translate(${50 * mainS}px, ${50 * mainS}px) translateZ(-100px)`,
           transformOrigin: 'center',
-          background: 'rgba(15,23,42,0.3)',
+          background: 'rgba(10,15,28,0.4)',
           borderRadius: '24px',
           border: '1px solid rgba(255,255,255,0.03)',
           zIndex: 1,
           opacity: mainS * 0.35,
-          filter: 'blur(1px)',
+          filter: 'blur(2px)',
         }}
       />
 
@@ -197,9 +230,9 @@ export default function AgendaDashboardMockup() {
         style={{
           position: 'absolute',
           inset: 0,
-          transform: `rotateY(-10deg) rotateX(5deg) translate(${24 * mainS}px, ${24 * mainS}px) translateZ(-40px)`,
+          transform: `rotateY(-16deg) rotateX(8deg) translate(${30 * mainS}px, ${30 * mainS}px) translateZ(-50px)`,
           transformOrigin: 'center',
-          background: 'rgba(15,23,42,0.55)',
+          background: 'rgba(10,15,28,0.6)',
           borderRadius: '24px',
           border: '1px solid rgba(255,255,255,0.05)',
           zIndex: 1,
@@ -207,22 +240,29 @@ export default function AgendaDashboardMockup() {
         }}
       />
 
-      {/* Card principal — emerge com translateY + scale + rotate */}
+      {/* Card principal — rotação mais forte (-15°/8°), realismo aumentado */}
       <div
         className="relative"
         style={{
-          transform: `rotateY(-9deg) rotateX(5deg) translateY(${(1 - mainS) * 50}px) scale(${0.9 + mainS * 0.1})`,
+          transform: `rotateY(-15deg) rotateX(8deg) translateY(${(1 - mainS) * 50}px) scale(${0.9 + mainS * 0.1})`,
           transformOrigin: 'center',
           background:
-            'linear-gradient(180deg, rgba(15,23,42,0.88) 0%, rgba(8,11,24,0.95) 100%)',
+            'linear-gradient(180deg, rgba(17,24,39,0.92) 0%, rgba(8,11,24,0.97) 100%)',
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: '24px',
           boxShadow:
-            '0 60px 120px rgba(0,0,0,0.6), ' +
-            '0 25px 50px rgba(59,130,246,0.15), ' +
-            '0 0 0 1px rgba(255,255,255,0.06), ' +
-            'inset 0 1px 0 rgba(255,255,255,0.1), ' +
-            'inset 0 -1px 0 rgba(0,0,0,0.3)',
+            // sombra dramática embaixo (chão)
+            '0 80px 140px rgba(0,0,0,0.75), ' +
+            // sombra projetada lateral (luz vindo de cima-esquerda)
+            '40px 40px 80px rgba(0,0,0,0.5), ' +
+            // glow frio azul sutil
+            '0 25px 50px rgba(59,130,246,0.12), ' +
+            // borda metálica
+            '0 0 0 1px rgba(255,255,255,0.08), ' +
+            // highlight superior (reflexo de luz)
+            'inset 0 1px 0 rgba(255,255,255,0.12), ' +
+            // sombra interna inferior (profundidade)
+            'inset 0 -2px 4px rgba(0,0,0,0.4)',
           backdropFilter: 'blur(24px)',
           overflow: 'hidden',
           zIndex: 2,
@@ -230,33 +270,34 @@ export default function AgendaDashboardMockup() {
           willChange: 'transform, opacity',
         }}
       >
-        {/* Specular highlight */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: '0 0 auto 0',
-            height: '1px',
-            background:
-              'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 20%, rgba(6,182,212,0.5) 50%, rgba(255,255,255,0.25) 80%, transparent 100%)',
-            zIndex: 20,
-            opacity: mainS,
-          }}
-        />
-
-        {/* Shimmer pass */}
+        {/* Grain/noise overlay — textura sutil pra realismo (SVG data URI) */}
         <div
           aria-hidden
           style={{
             position: 'absolute',
             inset: 0,
-            background:
-              'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.06) 45%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 55%, transparent 70%)',
-            backgroundSize: '200% 100%',
-            animation: 'shimmer 7s ease-in-out infinite',
+            backgroundImage:
+              "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>\")",
+            mixBlendMode: 'overlay',
+            opacity: 0.18,
             pointerEvents: 'none',
-            zIndex: 15,
-            opacity: mainS,
+            zIndex: 14,
+          }}
+        />
+
+        {/* Reflexo superior (highlight de luz vinda de cima) — estático, não em movimento */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '30%',
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 100%)',
+            pointerEvents: 'none',
+            zIndex: 13,
           }}
         />
 
@@ -443,9 +484,9 @@ export default function AgendaDashboardMockup() {
                       position: 'absolute',
                       inset: 0,
                       background:
-                        'linear-gradient(110deg, transparent 40%, rgba(59,130,246,0.15) 50%, transparent 60%)',
+                        'linear-gradient(110deg, transparent 40%, rgba(59,130,246,0.06) 50%, transparent 60%)',
                       backgroundSize: '200% 100%',
-                      animation: 'shimmer 3s ease-in-out infinite',
+                      animation: 'shimmer 8s ease-in-out infinite',
                     }}
                   />
                 )}
@@ -530,7 +571,7 @@ export default function AgendaDashboardMockup() {
             '0 0 0 1px rgba(167,139,250,0.15), ' +
             'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: `translate(${(1 - card1S) * 60}px, ${-10 + (1 - card1S) * -10}px) rotateY(-7deg) rotateX(3deg) scale(${0.85 + card1S * 0.15})`,
+          transform: `translate(${(1 - card1S) * 60}px, ${-10 + (1 - card1S) * -10}px) rotateY(-12deg) rotateX(5deg) scale(${0.85 + card1S * 0.15})`,
           transformOrigin: 'left center',
           opacity: card1S,
           willChange: 'transform, opacity',
@@ -576,7 +617,7 @@ export default function AgendaDashboardMockup() {
             '0 0 0 1px rgba(245,158,11,0.15), ' +
             'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: `translate(${(1 - card2S) * -60}px, ${8 + (1 - card2S) * 12}px) rotateY(9deg) rotateX(3deg) scale(${0.85 + card2S * 0.15})`,
+          transform: `translate(${(1 - card2S) * -60}px, ${8 + (1 - card2S) * 12}px) rotateY(14deg) rotateX(5deg) scale(${0.85 + card2S * 0.15})`,
           transformOrigin: 'right center',
           opacity: card2S,
           willChange: 'transform, opacity',
@@ -622,7 +663,7 @@ export default function AgendaDashboardMockup() {
             '0 0 0 1px rgba(16,185,129,0.15), ' +
             'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: `translate(${(1 - card3S) * 80}px, -50%) rotateY(-5deg) rotateX(2deg) scale(${0.85 + card3S * 0.15})`,
+          transform: `translate(${(1 - card3S) * 80}px, -50%) rotateY(-10deg) rotateX(4deg) scale(${0.85 + card3S * 0.15})`,
           opacity: card3S,
           willChange: 'transform, opacity',
         }}
@@ -668,7 +709,7 @@ export default function AgendaDashboardMockup() {
             '0 0 0 1px rgba(6,182,212,0.15), ' +
             'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: `translateX(${(1 - card4S) * -80}px) rotateY(6deg) rotateX(3deg) scale(${0.85 + card4S * 0.15})`,
+          transform: `translateX(${(1 - card4S) * -80}px) rotateY(11deg) rotateX(5deg) scale(${0.85 + card4S * 0.15})`,
           opacity: card4S,
           willChange: 'transform, opacity',
         }}
@@ -696,23 +737,22 @@ export default function AgendaDashboardMockup() {
         </div>
       </div>
 
-      {/* Sparkle pulsando — última coisa a aparecer */}
+      {/* Cadeira de barbeiro — elemento temático grande, canto inferior */}
       <div
         aria-hidden
-        className="animate-float-soft"
+        className="hidden sm:block"
         style={{
           position: 'absolute',
-          top: '0%',
-          right: '20%',
-          color: '#FBBF24',
-          filter: 'drop-shadow(0 0 10px rgba(251,191,36,0.8))',
-          zIndex: 11,
-          opacity: sparkleS,
-          animationDelay: '1.8s',
-          animationDuration: '5s',
+          bottom: '-28px',
+          left: '12%',
+          color: 'rgba(148,163,184,0.22)',
+          transform: `rotate(5deg) scale(${0.8 + sparkleS * 0.2})`,
+          filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.5))',
+          zIndex: 1,
+          opacity: sparkleS * 0.9,
         }}
       >
-        <IconSparkle size={18} />
+        <IconChair size={44} strokeWidth={1.5} />
       </div>
     </div>
   )
