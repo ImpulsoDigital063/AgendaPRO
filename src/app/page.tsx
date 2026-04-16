@@ -114,13 +114,15 @@ export default function HomePage() {
               </div>
 
               <h1 className="display-xl text-white">
-                Sua agenda agora tem<br />
-                <span className="text-gradient">inteligência</span> própria.
+                WhatsApp, caderno, planilha.<br />
+                <span className="text-gradient">Três ferramentas</span> pro que<br />
+                um link resolve.
               </h1>
 
               <p className="text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-                O AgendaPRO confirma horário, preenche cancelamento, traz cliente de volta e cresce sua reputação no Google.
-                <strong className="text-white"> Você atende — ele cuida do resto.</strong>
+                Enquanto você confirma horário no WhatsApp, preenche planilha e liga pra remarcar,
+                seu concorrente recebe agendamento dormindo.
+                <strong className="text-white"> O AgendaPRO faz isso — e mais 4 coisas que nenhum outro app faz.</strong>
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -631,11 +633,11 @@ export default function HomePage() {
               <span>14 dias grátis · sem cartão · cancele quando quiser</span>
             </div>
             <h2 className="display-xl text-white mb-6">
-              Seu concorrente ainda<br />
-              agenda pelo <span className="text-gradient">WhatsApp</span>.
+              Amanha voce vai abrir o WhatsApp<br />
+              e <span className="text-gradient">perder 3 horas</span> de novo?
             </h2>
             <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
-              Configure agora, compartilhe o link e veja a diferença hoje mesmo.
+              Configura em 5 minutos. Cola o link no Instagram. Amanha voce acorda com a agenda cheia e zero mensagem pra responder.
             </p>
 
             <Link href="/cadastro" className="btn btn-lg btn-primary-v2">
