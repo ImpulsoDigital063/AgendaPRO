@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
 import AgendaDesktopMockup from '@/components/AgendaDesktopMockup'
+import IPhoneMockup from '@/components/IPhoneMockup'
 import { MechanismCard } from '@/components/MechanismCard'
 import { TimelineMicroUI, DorMicroUI, PassoMicroUI } from '@/components/LandingMicroUI'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
@@ -98,16 +99,50 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* ═══════════ 1. HERO — IA toma conta da agenda ═══════════ */}
+      {/* ═══════════ 1. HERO — Mobile-first (cabe na 1ª tela) ═══════════ */}
       <section className="relative">
         <AnimatedGradient />
 
-        <div className="container relative z-10 py-10 md:py-16">
-          <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center">
+        {/* ——— MOBILE HERO ——— */}
+        <div className="lg:hidden relative z-10 px-5 pt-6 pb-8 text-center flex flex-col items-center">
+          <h1 className="text-[1.65rem] leading-[1.15] font-black text-white tracking-tight mb-3">
+            Sua agenda no<br />
+            <span className="text-gradient">piloto automático.</span>
+          </h1>
 
-            {/* Coluna esquerda — copy */}
-            <SectionReveal className="flex flex-col items-center lg:items-start text-center lg:text-left gap-7">
+          <p className="text-sm text-slate-300 leading-relaxed mb-5 max-w-xs">
+            Agendamento 24h, lembretes, fidelidade e fila de espera. Tudo num link só.
+          </p>
 
+          {/* Mockup do iPhone */}
+          <div className="relative mb-5" style={{ transform: 'scale(0.82)', transformOrigin: 'top center' }}>
+            {/* Labels flutuantes */}
+            <div className="absolute -left-3 top-[30%] z-20 px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 4px 20px rgba(139,92,246,0.4)' }}>
+              Lembretes automáticos
+            </div>
+            <div className="absolute -right-3 top-[50%] z-20 px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #06B6D4, #0891B2)', boxShadow: '0 4px 20px rgba(6,182,212,0.4)' }}>
+              Fidelidade com pontos
+            </div>
+            <div className="absolute -left-2 top-[70%] z-20 px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 20px rgba(16,185,129,0.4)' }}>
+              Fila de espera
+            </div>
+            <IPhoneMockup />
+          </div>
+
+          <Link href="/cadastro" className="btn btn-primary-v2 text-sm px-8 py-3.5 w-full max-w-xs justify-center">
+            Começar grátis — 14 dias
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </Link>
+          <p className="text-[11px] text-slate-500 mt-2.5">Sem cartão · Cancele quando quiser</p>
+        </div>
+
+        {/* ——— DESKTOP HERO ——— */}
+        <div className="hidden lg:block container relative z-10 py-16">
+          <div className="grid lg:grid-cols-[1.1fr_1fr] gap-16 items-center">
+
+            <SectionReveal className="flex flex-col items-start text-left gap-7">
               <div className="pill-glow animate-pulse-glow">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-300"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 <span>Você acabou de ganhar 14 dias de acesso gratuito</span>
@@ -119,13 +154,13 @@ export default function HomePage() {
                 um link resolve.
               </h1>
 
-              <p className="text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
+              <p className="text-xl text-slate-300 max-w-2xl leading-relaxed">
                 Enquanto você confirma horário no WhatsApp, preenche planilha e liga pra remarcar,
                 seu concorrente recebe agendamento dormindo.
                 <strong className="text-white"> O AgendaPRO faz isso — e mais 4 coisas que nenhum outro app faz.</strong>
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-row gap-4">
                 <Link href="/cadastro" className="btn btn-lg btn-primary-v2">
                   Garantir meu acesso gratuito
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -142,8 +177,7 @@ export default function HomePage() {
               </p>
             </SectionReveal>
 
-            {/* Coluna direita — dashboard mockup */}
-            <SectionReveal className="flex justify-center lg:justify-end mt-8 lg:mt-0">
+            <SectionReveal className="flex justify-end">
               <AgendaDesktopMockup />
             </SectionReveal>
 
