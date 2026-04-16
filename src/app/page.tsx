@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
-import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
+import AgendaDesktopMockup from '@/components/AgendaDesktopMockup'
 import { MechanismCard } from '@/components/MechanismCard'
 import { TimelineMicroUI, DorMicroUI, PassoMicroUI } from '@/components/LandingMicroUI'
+import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import {
   AnimatedGradient,
   SectionReveal,
@@ -45,17 +46,6 @@ const TIMELINE: { kind: '07' | '10' | '14' | '20'; hora: string; titulo: string;
 ]
 
 const MOTORES = ['fidelidade', 'fila', 'indicacao', 'reviews'] as const
-
-const COMPARISON: { ico: string; row: string }[] = [
-  { ico: '📅', row: 'Cliente agenda sozinho 24h' },
-  { ico: '🔔', row: 'Lembrete automático antes do horário' },
-  { ico: '⚡', row: 'Lista de espera quando cancela' },
-  { ico: '🏆', row: 'Programa de fidelidade com pontos' },
-  { ico: '🔗', row: 'Link de indicação por cliente' },
-  { ico: '🎨', row: 'Página personalizada com sua marca' },
-  { ico: '⭐', row: 'Google Reviews integrado' },
-  { ico: '🌙', row: 'Funciona enquanto você dorme' },
-]
 
 const VALUE_ITEMS = [
   { item: 'Agenda online (Trinks, iSalon)',       price: 'R$ 89/mês' },
@@ -165,7 +155,7 @@ export default function HomePage() {
 
             {/* Coluna direita — dashboard mockup */}
             <SectionReveal className="flex justify-center lg:justify-end mt-8 lg:mt-0">
-              <AgendaDashboardMockup />
+              <AgendaDesktopMockup />
             </SectionReveal>
 
           </div>
@@ -324,105 +314,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ 6. COMPARAÇÃO DIRETA ═══════════ */}
+      {/* ═══════════ 6. COMPARAÇÃO DIRETA — SmartAgenda x Outros apps ═══════════ */}
       <section className="section relative">
-        <div className="container max-w-4xl">
-          <SectionReveal className="text-center mb-12">
+        <div className="container max-w-6xl">
+          <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
             <div className="pill mb-6">
               <span style={{ color: '#06B6D4' }}>●</span>
-              <span>Comparação direta</span>
+              <span>SmartAgenda x Outros apps</span>
             </div>
             <h2 className="display-lg text-white mb-4">
-              Por que <span className="text-gradient">WhatsApp + caderno</span><br />
-              está custando seu mês.
+              Outros apps <span className="text-slate-500">só agendam</span>.<br />
+              <span className="text-gradient">SmartAgenda trabalha.</span>
             </h2>
+            <p className="text-slate-400 text-base md:text-lg leading-relaxed">
+              Mesma tela por fora. Mundos diferentes por dentro.
+              Olha o que acontece em cada uma quando o cliente cancela às 10h.
+            </p>
           </SectionReveal>
 
           <SectionReveal>
-            <div
-              className="glass rounded-3xl overflow-hidden"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(8,11,24,0.85) 100%)',
-              }}
-            >
-              {/* Header */}
-              <div
-                className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-4 text-xs md:text-sm font-semibold border-b"
-                style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}
-              >
-                <span className="text-slate-400 uppercase tracking-wider text-[10px] md:text-xs">Recurso</span>
-                <span
-                  className="text-center w-20 md:w-28 font-black uppercase tracking-wide"
-                  style={{
-                    background: 'linear-gradient(135deg, #3B82F6, #06B6D4)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}
-                >
-                  AgendaPRO
-                </span>
-                <span className="text-center w-16 md:w-20 text-slate-500 uppercase tracking-wider text-[10px] md:text-xs">WhatsApp</span>
-                <span className="text-center w-16 md:w-20 text-slate-500 uppercase tracking-wider text-[10px] md:text-xs">Caderno</span>
-              </div>
-
-              {/* Rows */}
-              {COMPARISON.map((c, i) => (
-                <div
-                  key={c.row}
-                  className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-3.5 text-xs md:text-sm items-center"
-                  style={{
-                    borderBottom: i < COMPARISON.length - 1 ? '1px solid var(--glass-border)' : 'none',
-                  }}
-                >
-                  <span className="text-slate-200 flex items-center gap-2.5">
-                    <span
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-sm flex-shrink-0"
-                      style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
-                    >
-                      {c.ico}
-                    </span>
-                    <span>{c.row}</span>
-                  </span>
-                  <span className="text-center w-20 md:w-28">
-                    <span
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-white text-sm font-bold"
-                      style={{
-                        background: 'linear-gradient(135deg,#3B82F6,#06B6D4)',
-                        boxShadow: '0 0 14px rgba(59,130,246,0.4)',
-                      }}
-                    >
-                      ✓
-                    </span>
-                  </span>
-                  <span className="text-center w-16 md:w-20">
-                    <span
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs"
-                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#F87171' }}
-                    >
-                      ✕
-                    </span>
-                  </span>
-                  <span className="text-center w-16 md:w-20">
-                    <span
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs"
-                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#F87171' }}
-                    >
-                      ✕
-                    </span>
-                  </span>
-                </div>
-              ))}
-
-              {/* Footer com CTA sutil */}
-              <div
-                className="px-5 md:px-8 py-4 text-center text-xs text-slate-400"
-                style={{ background: 'rgba(59,130,246,0.06)', borderTop: '1px solid rgba(59,130,246,0.18)' }}
-              >
-                A diferença não é o preço — é o que <strong className="text-white">o sistema faz por você</strong>.
-              </div>
-            </div>
+            <ComparisonMiniUIs />
           </SectionReveal>
         </div>
       </section>

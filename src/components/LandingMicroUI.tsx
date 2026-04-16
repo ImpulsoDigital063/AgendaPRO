@@ -186,41 +186,54 @@ export function DorMicroUI({ kind }: { kind: 'whatsapp' | 'caderno' | 'queda' })
 
 function WhatsLotado() {
   const msgs = [
-    { from: 'Cliente 1', text: 'oi tem horário?', time: '08:14' },
-    { from: 'Cliente 2', text: 'tá marcado mesmo?', time: '08:16' },
-    { from: 'Cliente 3', text: 'preciso desmarcar', time: '08:19' },
-    { from: 'Cliente 4', text: 'oi vc tá aí??', time: '08:22' },
-    { from: 'Cliente 5', text: 'consigo encaixe?', time: '08:25' },
+    { from: 'Tiago Silva',    init: 'T', color: '#1A73E8', text: 'oi tem horário?',     time: '08:14' },
+    { from: 'Lucas Mendes',   init: 'L', color: '#EA4335', text: 'tá marcado mesmo?',   time: '08:16' },
+    { from: 'Pedro Oliveira', init: 'P', color: '#FBBC04', text: 'preciso desmarcar',   time: '08:19' },
+    { from: 'Rafael Costa',   init: 'R', color: '#34A853', text: 'oi vc tá aí??',       time: '08:22' },
+    { from: 'Marcos Souza',   init: 'M', color: '#8B5CF6', text: 'consigo encaixe?',    time: '08:25' },
   ]
   return (
     <div
       className="rounded-2xl overflow-hidden"
-      style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)' }}
+      style={{
+        background: '#fff',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1)',
+      }}
     >
+      {/* Header estilo WhatsApp real */}
       <div
         className="px-3 py-2 flex items-center gap-2"
-        style={{ background: 'rgba(16,185,129,0.08)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ background: '#075E54' }}
       >
-        <span className="text-emerald-400 text-sm">💬</span>
-        <span className="text-[11px] font-bold text-white">WhatsApp · 12 não lidas</span>
-        <span className="ml-auto px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold">12</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+        </svg>
+        <span className="text-[11px] font-bold text-white">WhatsApp</span>
+        <span className="ml-auto px-1.5 py-0.5 rounded-full text-white text-[9px] font-bold" style={{ background: '#25D366' }}>12</span>
       </div>
-      <div className="p-2 space-y-1">
+      {/* Messages */}
+      <div className="p-2 space-y-0.5" style={{ background: '#ECE5DD' }}>
         {msgs.map((m, i) => (
-          <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md" style={{ background: 'rgba(255,255,255,0.03)' }}>
-            <div className="w-5 h-5 rounded-full bg-slate-700 flex-shrink-0" />
+          <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: '#fff' }}>
+            {/* Avatar com inicial */}
+            <div
+              className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
+              style={{ background: m.color }}
+            >
+              <span className="text-[10px] font-bold text-white leading-none">{m.init}</span>
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-white">{m.from}</span>
-                <span className="text-[9px] text-slate-500 ml-auto">{m.time}</span>
+                <span className="text-[10px] font-bold text-[#202124]">{m.from}</span>
+                <span className="text-[9px] text-[#9AA0A6] ml-auto">{m.time}</span>
               </div>
-              <div className="text-[10px] text-slate-400 truncate">{m.text}</div>
+              <div className="text-[10px] text-[#5F6368] truncate">{m.text}</div>
             </div>
-            <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#25D366' }} />
           </div>
         ))}
       </div>
-      <div className="px-3 py-2 text-[9px] text-slate-500 text-center" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+      <div className="px-3 py-2 text-[9px] text-[#9AA0A6] text-center font-medium" style={{ background: '#fff', borderTop: '1px solid #F1F3F4' }}>
         + 7 mensagens não lidas
       </div>
     </div>
@@ -228,101 +241,149 @@ function WhatsLotado() {
 }
 
 function CadernoBorrado() {
+  const slots = [
+    { hora: '08:00', nome: 'João Silva', servico: 'Corte', status: 'ok' as const },
+    { hora: '09:00', nome: 'Pedro Reis', servico: 'Barba', status: 'cancelou' as const },
+    { hora: '10:00', nome: 'Lucas M.', servico: 'Corte', status: 'pendente' as const },
+    { hora: '11:00', nome: '', servico: '', status: 'vazio' as const },
+    { hora: '14:00', nome: 'Rafael O.', servico: 'Pacote', status: 'cancelou' as const },
+  ]
   return (
     <div
-      className="rounded-2xl p-4 relative overflow-hidden"
+      className="rounded-2xl overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, #1F2937 0%, #0F172A 100%)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: '#fff',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1)',
       }}
     >
-      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Quarta · 15 abr</div>
-      <div className="space-y-1.5 font-mono text-[11px]">
+      {/* Header tipo app de agenda */}
+      <div className="px-3 py-2 flex items-center justify-between" style={{ background: '#F8F9FA', borderBottom: '1px solid #F1F3F4' }}>
         <div className="flex items-center gap-2">
-          <span className="text-slate-500">08:00</span>
-          <span className="text-slate-300">João — corte</span>
-          <span className="ml-auto text-emerald-400 text-[9px]">✓</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6368" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+          <span className="text-[11px] font-medium text-[#202124]">Quarta, 15 abr</span>
         </div>
-        <div className="flex items-center gap-2 relative">
-          <span className="text-slate-500">09:00</span>
-          <span className="text-slate-500 line-through">Pedro — barba</span>
-          <span className="ml-auto text-red-400 text-[9px] font-bold">cancelou</span>
-        </div>
-        <div className="flex items-center gap-2 relative">
-          <span className="text-slate-500">10:00</span>
-          <span className="text-slate-300">Lucas?</span>
-          <span className="text-amber-300 text-[9px] ml-auto">não confirmou</span>
-        </div>
-        <div className="flex items-center gap-2 opacity-50">
-          <span className="text-slate-600">11:00</span>
-          <span className="text-slate-600 italic">— vazio —</span>
-        </div>
-        <div className="flex items-center gap-2 relative">
-          <span className="text-slate-500">14:00</span>
-          <span className="text-slate-500 line-through decoration-2">Rafael — pacote</span>
-          <span className="ml-auto text-red-400 text-[9px] font-bold">remarcar??</span>
-        </div>
+        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: '#FEE2E2', color: '#DC2626' }}>3 problemas</span>
       </div>
-
-      {/* Sobrescrito */}
-      <div className="mt-3 px-2 py-1.5 rounded-md" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
-        <div className="flex items-center gap-2 text-[10px]">
-          <span className="text-red-400">✗</span>
-          <span className="text-slate-300">Esqueci de ligar pro Marcos confirmar</span>
-        </div>
+      {/* Slots */}
+      <div className="px-2 py-1.5 space-y-0.5">
+        {slots.map((s, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px]"
+            style={{
+              background: s.status === 'cancelou' ? '#FEF2F2'
+                : s.status === 'pendente' ? '#FFFBEB'
+                : s.status === 'vazio' ? '#F9FAFB'
+                : '#F0FDF4',
+            }}
+          >
+            <span className="text-[10px] font-mono text-[#9AA0A6] w-8 flex-shrink-0">{s.hora}</span>
+            {s.status === 'vazio' ? (
+              <span className="text-[#D1D5DB] italic flex-1">— vazio —</span>
+            ) : (
+              <span className={`flex-1 truncate ${s.status === 'cancelou' ? 'text-[#9AA0A6] line-through' : 'text-[#202124]'}`}>
+                {s.nome} <span className="text-[#9AA0A6] font-normal">· {s.servico}</span>
+              </span>
+            )}
+            {s.status === 'ok' && (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+            {s.status === 'cancelou' && (
+              <span className="text-[9px] font-bold text-[#DC2626] flex-shrink-0">cancelou</span>
+            )}
+            {s.status === 'pendente' && (
+              <span className="text-[9px] font-bold text-[#D97706] flex-shrink-0">sem confirmar</span>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Alerta footer */}
+      <div className="px-3 py-2 flex items-center gap-2" style={{ background: '#FEF2F2', borderTop: '1px solid #FECACA' }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span className="text-[10px] text-[#7F1D1D]">Esqueci de confirmar com o Marcos</span>
       </div>
     </div>
   )
 }
 
 function FaturamentoQueda() {
-  const bars = [70, 65, 78, 60, 52, 48, 38, 30] // queda visível
+  const profissionais = [
+    { nome: 'Diego',  init: 'D', color: '#1A73E8', feito: 'R$ 820',  pct: '40%', devido: 'R$ 328',  ok: false },
+    { nome: 'Tiago',  init: 'T', color: '#EA4335', feito: 'R$ 640',  pct: '35%', devido: 'R$ 224',  ok: false },
+    { nome: 'Rafael', init: 'R', color: '#34A853', feito: 'R$ 380',  pct: '40%', devido: 'R$ ???',  ok: false },
+  ]
   return (
     <div
-      className="rounded-2xl p-4"
+      className="rounded-2xl overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, rgba(236,72,153,0.08) 0%, rgba(15,23,42,1) 100%)',
-        border: '1px solid rgba(236,72,153,0.25)',
+        background: '#fff',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1)',
       }}
     >
-      <div className="flex items-center justify-between mb-3">
+      {/* Header tipo dashboard */}
+      <div className="px-3 py-2.5 flex items-center justify-between" style={{ background: '#F8F9FA', borderBottom: '1px solid #F1F3F4' }}>
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Faturamento</div>
-          <div className="text-white text-base font-black">R$ 1.840</div>
-          <div className="text-[10px] text-rose-400 font-semibold flex items-center gap-1 mt-0.5">
-            <span>↓</span> -32% vs mês passado
-          </div>
+          <div className="text-[10px] text-[#9AA0A6] font-medium">Abril 2026</div>
+          <div className="text-[14px] font-black text-[#202124]">R$ 1.840</div>
         </div>
-        <span
-          className="px-2 py-0.5 rounded-md text-[9px] font-bold"
-          style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.3)' }}
-        >
-          QUEDA
-        </span>
+        <div className="flex items-center gap-1 px-2 py-1 rounded-full" style={{ background: '#FEE2E2' }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <polyline points="19 12 12 19 5 12" />
+          </svg>
+          <span className="text-[10px] font-bold text-[#DC2626]">-32%</span>
+        </div>
       </div>
 
-      {/* Mini gráfico de barras */}
-      <div className="flex items-end gap-1.5 h-16 mb-2">
-        {bars.map((h, i) => {
-          const isLast = i >= bars.length - 3
-          return (
+      {/* Tabela de comissões */}
+      <div className="px-2 py-1">
+        {/* Header da tabela */}
+        <div className="flex items-center gap-2 px-2 py-1 text-[9px] font-medium text-[#9AA0A6] uppercase tracking-wider">
+          <span className="flex-1">Profissional</span>
+          <span className="w-14 text-right">Feito</span>
+          <span className="w-8 text-center">%</span>
+          <span className="w-14 text-right">Devido</span>
+        </div>
+        {profissionais.map((p, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg mb-0.5"
+            style={{ background: i % 2 === 0 ? '#F9FAFB' : '#fff' }}
+          >
+            {/* Avatar */}
             <div
-              key={i}
-              className="flex-1 rounded-t"
-              style={{
-                height: `${h}%`,
-                background: isLast
-                  ? 'linear-gradient(180deg, #EC4899, #BE185D)'
-                  : 'rgba(148,163,184,0.3)',
-                boxShadow: isLast ? '0 0 12px rgba(236,72,153,0.4)' : 'none',
-              }}
-            />
-          )
-        })}
+              className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: p.color }}
+            >
+              <span className="text-[8px] font-bold text-white">{p.init}</span>
+            </div>
+            <span className="flex-1 text-[11px] font-medium text-[#202124] truncate">{p.nome}</span>
+            <span className="w-14 text-right text-[10px] text-[#202124] font-medium">{p.feito}</span>
+            <span className="w-8 text-center text-[10px] text-[#9AA0A6]">{p.pct}</span>
+            <span className={`w-14 text-right text-[10px] font-bold ${p.devido === 'R$ ???' ? 'text-[#DC2626]' : 'text-[#5F6368]'}`}>{p.devido}</span>
+          </div>
+        ))}
       </div>
 
-      <div className="text-[10px] text-slate-500">
-        <strong className="text-rose-300">3 no-shows</strong> · <strong className="text-rose-300">5 vagas vazias</strong> esta semana
+      {/* Footer — problema */}
+      <div className="px-3 py-2 flex items-center gap-2" style={{ background: '#FEF2F2', borderTop: '1px solid #FECACA' }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span className="text-[10px] text-[#7F1D1D]">Comissão do Rafael sem conferir. Caixa não fecha.</span>
       </div>
     </div>
   )
