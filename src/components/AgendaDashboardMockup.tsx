@@ -207,7 +207,7 @@ export default function AgendaDashboardMockup() {
         <IconClipper size={32} strokeWidth={1.5} />
       </div>
 
-      {/* Camada fantasma 3 — rotação maior pra profundidade dramática */}
+      {/* Camada fantasma 3 — agora com border-radius iPhone */}
       <div
         aria-hidden
         style={{
@@ -216,7 +216,7 @@ export default function AgendaDashboardMockup() {
           transform: `rotateY(-18deg) rotateX(9deg) translate(${50 * mainS}px, ${50 * mainS}px) translateZ(-100px)`,
           transformOrigin: 'center',
           background: 'rgba(10,15,28,0.4)',
-          borderRadius: '24px',
+          borderRadius: '44px',
           border: '1px solid rgba(255,255,255,0.03)',
           zIndex: 1,
           opacity: mainS * 0.35,
@@ -233,43 +233,109 @@ export default function AgendaDashboardMockup() {
           transform: `rotateY(-16deg) rotateX(8deg) translate(${30 * mainS}px, ${30 * mainS}px) translateZ(-50px)`,
           transformOrigin: 'center',
           background: 'rgba(10,15,28,0.6)',
-          borderRadius: '24px',
+          borderRadius: '44px',
           border: '1px solid rgba(255,255,255,0.05)',
           zIndex: 1,
           opacity: mainS * 0.55,
         }}
       />
 
-      {/* Card principal — rotação mais forte (-15°/8°), realismo aumentado */}
+      {/* ═══ iPhone frame — moldura metálica + botões laterais ═══ */}
       <div
         className="relative"
         style={{
           transform: `rotateY(-15deg) rotateX(8deg) translateY(${(1 - mainS) * 50}px) scale(${0.9 + mainS * 0.1})`,
           transformOrigin: 'center',
+          // Moldura: titanium escuro (gradient levemente metálico)
           background:
-            'linear-gradient(180deg, rgba(17,24,39,0.92) 0%, rgba(8,11,24,0.97) 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '24px',
+            'linear-gradient(145deg, #2a2d35 0%, #15171c 45%, #0a0c11 100%)',
+          padding: '8px', // espaço pro "bisel" ao redor da tela
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '44px',
           boxShadow:
             // sombra dramática embaixo (chão)
             '0 80px 140px rgba(0,0,0,0.75), ' +
-            // sombra projetada lateral (luz vindo de cima-esquerda)
+            // sombra projetada lateral
             '40px 40px 80px rgba(0,0,0,0.5), ' +
-            // glow frio azul sutil
-            '0 25px 50px rgba(59,130,246,0.12), ' +
-            // borda metálica
-            '0 0 0 1px rgba(255,255,255,0.08), ' +
-            // highlight superior (reflexo de luz)
-            'inset 0 1px 0 rgba(255,255,255,0.12), ' +
-            // sombra interna inferior (profundidade)
-            'inset 0 -2px 4px rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(24px)',
-          overflow: 'hidden',
+            // glow azul sutil
+            '0 25px 50px rgba(59,130,246,0.1), ' +
+            // borda externa metálica
+            '0 0 0 1px rgba(255,255,255,0.06), ' +
+            // highlight superior (reflexo titanium)
+            'inset 0 1px 0 rgba(255,255,255,0.15), ' +
+            // sombra interna inferior
+            'inset 0 -2px 4px rgba(0,0,0,0.5)',
           zIndex: 2,
           opacity: mainS,
           willChange: 'transform, opacity',
         }}
       >
+        {/* Botão lateral direito (power) */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            right: '-3px',
+            top: '18%',
+            width: '3px',
+            height: '58px',
+            background: 'linear-gradient(90deg, #1a1c21 0%, #0a0c11 100%)',
+            borderRadius: '0 2px 2px 0',
+            boxShadow: 'inset 1px 0 0 rgba(255,255,255,0.08)',
+          }}
+        />
+        {/* Botão lateral esquerdo — silenciar */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: '-3px',
+            top: '14%',
+            width: '3px',
+            height: '24px',
+            background: 'linear-gradient(90deg, #0a0c11 0%, #1a1c21 100%)',
+            borderRadius: '2px 0 0 2px',
+            boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.08)',
+          }}
+        />
+        {/* Botão volume + */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: '-3px',
+            top: '22%',
+            width: '3px',
+            height: '42px',
+            background: 'linear-gradient(90deg, #0a0c11 0%, #1a1c21 100%)',
+            borderRadius: '2px 0 0 2px',
+            boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.08)',
+          }}
+        />
+        {/* Botão volume − */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: '-3px',
+            top: '32%',
+            width: '3px',
+            height: '42px',
+            background: 'linear-gradient(90deg, #0a0c11 0%, #1a1c21 100%)',
+            borderRadius: '2px 0 0 2px',
+            boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.08)',
+          }}
+        />
+
+        {/* ═══ Tela do iPhone ═══ */}
+        <div
+          style={{
+          background:
+            'linear-gradient(180deg, rgba(17,24,39,0.98) 0%, rgba(8,11,24,1) 100%)',
+          borderRadius: '36px',
+          overflow: 'hidden',
+          position: 'relative',
+        }}>
         {/* Grain/noise overlay — textura sutil pra realismo (SVG data URI) */}
         <div
           aria-hidden
@@ -301,59 +367,117 @@ export default function AgendaDashboardMockup() {
           }}
         />
 
-        {/* Top bar */}
+        {/* ═══ iOS Status bar — horário + ícones + Dynamic Island ═══ */}
         <div
           style={{
+            position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            padding: '10px 14px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%)',
-            position: 'relative',
+            justifyContent: 'space-between',
+            padding: '10px 22px 6px',
             zIndex: 5,
+            height: '40px',
           }}
         >
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FF5F57', boxShadow: '0 0 4px rgba(255,95,87,0.5)' }} />
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FEBC2E', boxShadow: '0 0 4px rgba(254,188,46,0.5)' }} />
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#28C840', boxShadow: '0 0 4px rgba(40,200,64,0.5)' }} />
+          {/* Horário (esquerda) */}
           <span
             style={{
-              marginLeft: 'auto',
-              fontSize: '10px',
-              color: '#64748B',
-              fontFamily: 'var(--font-mono, monospace)',
-              letterSpacing: '0.04em',
-            }}
-          >
-            agendapro · hoje
-          </span>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 7px',
-              borderRadius: '999px',
-              background: 'rgba(16,185,129,0.15)',
-              border: '1px solid rgba(16,185,129,0.3)',
-              fontSize: '9px',
+              fontSize: '12px',
               fontWeight: 700,
-              color: '#34D399',
+              color: '#fff',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+              letterSpacing: '-0.02em',
             }}
           >
+            9:41
+          </span>
+
+          {/* Dynamic Island centralizada */}
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '8px',
+              transform: 'translateX(-50%)',
+              width: '96px',
+              height: '26px',
+              background: '#000',
+              borderRadius: '18px',
+              border: '1px solid rgba(0,0,0,0.5)',
+              boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 9px',
+              zIndex: 10,
+            }}
+          >
+            {/* Mini indicador LIVE (speaker-like dot verde) */}
             <span
               className="animate-pulse"
               style={{
-                width: '5px',
-                height: '5px',
+                width: '6px',
+                height: '6px',
                 borderRadius: '50%',
                 background: '#10B981',
-                boxShadow: '0 0 10px #10B981',
+                boxShadow: '0 0 8px #10B981',
               }}
             />
-            LIVE
-          </span>
+            {/* Câmera (ponto preto mais escuro) */}
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#1a1a1a',
+                border: '1px solid #0a0a0a',
+                boxShadow: 'inset 0 0 2px rgba(59,130,246,0.3)',
+              }}
+            />
+          </div>
+
+          {/* Ícones à direita: sinal, wifi, bateria */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            {/* Sinal */}
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+              <rect x="0" y="7" width="2" height="3" rx="0.5" fill="#fff" />
+              <rect x="3.5" y="5" width="2" height="5" rx="0.5" fill="#fff" />
+              <rect x="7" y="3" width="2" height="7" rx="0.5" fill="#fff" />
+              <rect x="10.5" y="0" width="2" height="10" rx="0.5" fill="#fff" />
+            </svg>
+            {/* WiFi */}
+            <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+              <path d="M6.5 0.5C4 0.5 1.7 1.4 0 3l1.4 1.4C2.8 3.1 4.6 2.3 6.5 2.3s3.7 0.8 5.1 2.1L13 3C11.3 1.4 9 0.5 6.5 0.5z" fill="#fff"/>
+              <path d="M6.5 4.3C5.1 4.3 3.8 4.8 2.8 5.8l1.4 1.4c0.6-0.6 1.4-0.9 2.3-0.9s1.7 0.3 2.3 0.9l1.4-1.4C9.2 4.8 7.9 4.3 6.5 4.3z" fill="#fff"/>
+              <circle cx="6.5" cy="8.3" r="1.2" fill="#fff"/>
+            </svg>
+            {/* Bateria */}
+            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+              <div style={{
+                width: '22px',
+                height: '11px',
+                border: '1px solid rgba(255,255,255,0.5)',
+                borderRadius: '3px',
+                padding: '1.5px',
+                display: 'flex',
+              }}>
+                <div style={{
+                  width: '80%',
+                  height: '100%',
+                  background: '#fff',
+                  borderRadius: '1.5px',
+                }} />
+              </div>
+              <div style={{
+                width: '1.5px',
+                height: '4px',
+                background: 'rgba(255,255,255,0.5)',
+                borderRadius: '0 1px 1px 0',
+                marginLeft: '1px',
+              }} />
+            </div>
+          </div>
         </div>
 
         {/* Header */}
@@ -552,7 +676,10 @@ export default function AgendaDashboardMockup() {
             )
           })}
         </div>
+        </div>
+        {/* fim da "tela" do iPhone */}
       </div>
+      {/* fim do frame do iPhone */}
 
       {/* Card flutuante 1 — VAGA PREENCHIDA (vem da direita) */}
       <div
