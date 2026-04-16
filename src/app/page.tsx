@@ -102,7 +102,7 @@ export default function HomePage() {
       <section className="relative">
         <AnimatedGradient />
 
-        <div className="container relative z-10 py-16 md:py-24">
+        <div className="container relative z-10 py-10 md:py-16">
           <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center">
 
             {/* Coluna esquerda — copy */}
@@ -140,19 +140,6 @@ export default function HomePage() {
               <p className="text-sm text-slate-400">
                 Sem cartão · Cancele quando quiser · R$67/mês após o trial
               </p>
-
-              <div className="grid grid-cols-3 gap-6 md:gap-10 pt-6 border-t w-full max-w-xl" style={{ borderColor: 'var(--glass-border)' }}>
-                {[
-                  { n: '24h',   l: 'Atende sozinho' },
-                  { n: '-50%',  l: 'Menos faltas' },
-                  { n: '5 min', l: 'Para configurar' },
-                ].map((s) => (
-                  <div key={s.n}>
-                    <p className="text-2xl md:text-3xl font-black text-gradient leading-none">{s.n}</p>
-                    <p className="text-xs text-slate-400 mt-2 leading-tight">{s.l}</p>
-                  </div>
-                ))}
-              </div>
             </SectionReveal>
 
             {/* Coluna direita — dashboard mockup */}
@@ -633,11 +620,11 @@ export default function HomePage() {
               <span>14 dias grátis · sem cartão · cancele quando quiser</span>
             </div>
             <h2 className="display-xl text-white mb-6">
-              Amanha voce vai abrir o WhatsApp<br />
+              Amanhã você vai abrir o WhatsApp<br />
               e <span className="text-gradient">perder 3 horas</span> de novo?
             </h2>
             <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
-              Configura em 5 minutos. Cola o link no Instagram. Amanha voce acorda com a agenda cheia e zero mensagem pra responder.
+              Configura em 5 minutos. Cola o link no Instagram. Amanhã você acorda com a agenda cheia e zero mensagem pra responder.
             </p>
 
             <Link href="/cadastro" className="btn btn-lg btn-primary-v2">
@@ -659,7 +646,7 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-6">
               <img src="/logo-agendapro-dark.svg" alt="AgendaPRO" className="h-6" />
-              <span className="text-xs text-slate-500">© 2025 AgendaPRO · by Impulso Digital · Palmas, TO</span>
+              <span className="text-xs text-slate-500">© 2026 AgendaPRO · by Impulso Digital · Palmas, TO</span>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
               <Link href="/barbearia" className="text-slate-400 hover:text-white transition-colors">Barbearia</Link>
