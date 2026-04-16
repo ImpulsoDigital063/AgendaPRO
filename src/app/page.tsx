@@ -69,9 +69,9 @@ export default function HomePage() {
   return (
     <main className="relative overflow-hidden" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
 
-      {/* ═══════════ Announcement bar ═══════════ */}
+      {/* ═══════════ Announcement bar (hidden on mobile) ═══════════ */}
       <div
-        className="relative text-center text-sm font-semibold text-white px-6 py-2.5"
+        className="hidden lg:block relative text-center text-sm font-semibold text-white px-6 py-2.5"
         style={{
           background: 'linear-gradient(90deg, #1E40AF 0%, #06B6D4 50%, #8B5CF6 100%)',
           backgroundSize: '200% 100%',
@@ -84,7 +84,7 @@ export default function HomePage() {
 
       {/* ═══════════ Nav ═══════════ */}
       <nav className="sticky top-0 z-50" style={{ background: 'rgba(5, 7, 19, 0.75)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)' }}>
-        <div className="container flex items-center justify-between h-16">
+        <div className="container flex items-center justify-between h-12 sm:h-16">
           <Link href="/" className="flex items-center">
             <img src="/logo-agendapro-dark.svg" alt="AgendaPRO" className="h-7" />
           </Link>
@@ -104,38 +104,40 @@ export default function HomePage() {
         <AnimatedGradient />
 
         {/* ——— MOBILE HERO ——— */}
-        <div className="lg:hidden relative z-10 px-5 pt-6 pb-8 text-center flex flex-col items-center">
-          <h1 className="text-[1.65rem] leading-[1.15] font-black text-white tracking-tight mb-3">
+        <div className="lg:hidden relative z-10 px-5 pt-4 pb-6 text-center flex flex-col items-center">
+          <h1 className="text-[1.55rem] leading-[1.15] font-black text-white tracking-tight mb-2">
             Sua agenda no<br />
-            <span className="text-gradient">piloto automático.</span>
+            <span style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>piloto automático.</span>
           </h1>
 
-          <p className="text-sm text-slate-300 leading-relaxed mb-5 max-w-xs">
+          <p className="text-[13px] text-slate-300 leading-relaxed mb-4 max-w-[280px]">
             Agendamento 24h, lembretes, fidelidade e fila de espera. Tudo num link só.
           </p>
 
-          {/* Mockup do iPhone */}
-          <div className="relative mb-5" style={{ transform: 'scale(0.82)', transformOrigin: 'top center' }}>
-            {/* Labels flutuantes */}
-            <div className="absolute -left-3 top-[30%] z-20 px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 4px 20px rgba(139,92,246,0.4)' }}>
+          {/* Mockup do iPhone + labels */}
+          <div className="relative mb-4 w-full flex justify-center">
+            {/* Labels flutuantes — posicionadas fora do mockup */}
+            <div className="absolute left-2 top-[18%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 4px 20px rgba(139,92,246,0.4)' }}>
               Lembretes automáticos
             </div>
-            <div className="absolute -right-3 top-[50%] z-20 px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #06B6D4, #0891B2)', boxShadow: '0 4px 20px rgba(6,182,212,0.4)' }}>
+            <div className="absolute right-2 top-[42%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #06B6D4, #0891B2)', boxShadow: '0 4px 20px rgba(6,182,212,0.4)' }}>
               Fidelidade com pontos
             </div>
-            <div className="absolute -left-2 top-[70%] z-20 px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 20px rgba(16,185,129,0.4)' }}>
+            <div className="absolute left-4 top-[66%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 20px rgba(16,185,129,0.4)' }}>
               Fila de espera
             </div>
-            <IPhoneMockup />
+            <div style={{ transform: 'scale(0.68)', transformOrigin: 'top center' }}>
+              <IPhoneMockup />
+            </div>
           </div>
 
-          <Link href="/cadastro" className="btn btn-primary-v2 text-sm px-8 py-3.5 w-full max-w-xs justify-center">
+          <Link href="/cadastro" className="btn btn-primary-v2 text-sm px-8 py-3 w-full max-w-xs justify-center">
             Começar grátis — 14 dias
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </Link>
-          <p className="text-[11px] text-slate-500 mt-2.5">Sem cartão · Cancele quando quiser</p>
+          <p className="text-[11px] text-slate-500 mt-2">Sem cartão · Cancele quando quiser</p>
         </div>
 
         {/* ——— DESKTOP HERO ——— */}
