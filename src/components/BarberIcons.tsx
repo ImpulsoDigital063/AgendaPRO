@@ -88,6 +88,136 @@ export function IconChair({ size = 24, className, strokeWidth = 1.8 }: IconProps
   )
 }
 
+/* ═══ Tema Salão ═══ */
+
+export function IconHairDryer({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M3 9h4l3-5h6l3 5h2a2 2 0 0 1 0 4h-2l-3 5h-6l-3-5H3a2 2 0 0 1 0-4z" />
+      <circle cx="14" cy="11" r="2" />
+    </svg>
+  )
+}
+
+export function IconMirror({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <circle cx="12" cy="10" r="7" />
+      <line x1="12" y1="17" x2="12" y2="22" />
+      <line x1="8" y1="22" x2="16" y2="22" />
+    </svg>
+  )
+}
+
+export function IconBrush({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M9.06 11.9l8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08" />
+      <path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z" />
+    </svg>
+  )
+}
+
+export function IconCalendarHeart({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <path d="M12 18l-2.5-2.5a1.8 1.8 0 0 1 2.5-2.5 1.8 1.8 0 0 1 2.5 2.5z" />
+    </svg>
+  )
+}
+
+/* ═══ Tema Estética ═══ */
+
+export function IconSpa({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M12 22c-4.97 0-9-2.24-9-5v0c4.97 0 9 2.24 9 5z" />
+      <path d="M12 22c4.97 0 9-2.24 9-5v0c-4.97 0-9 2.24-9 5z" />
+      <path d="M12 22V12" />
+      <path d="M12 12C12 7.03 9.76 3 7 3v0c0 4.97 2.24 9 5 9z" />
+      <path d="M12 12c0-4.97 2.24-9 5-9v0c0 4.97-2.24 9-5 9z" />
+    </svg>
+  )
+}
+
+export function IconDroplet({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+    </svg>
+  )
+}
+
+export function IconSparkles({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+      <path d="M5 17l.7 2 2 .7-2 .7L5 22.4l-.7-2-2-.7 2-.7z" />
+      <path d="M19 14l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" />
+    </svg>
+  )
+}
+
+export function IconFace({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+      <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="3" />
+      <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="3" />
+    </svg>
+  )
+}
+
+/* ═══ Tema Nail ═══ */
+
+export function IconNailPolish({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M7 11v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-8" />
+      <path d="M10 3h4v3h2l1 5H7l1-5h2V3z" />
+    </svg>
+  )
+}
+
+export function IconHand({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <path d="M18 11V6a2 2 0 0 0-4 0v0" />
+      <path d="M14 10V4a2 2 0 0 0-4 0v6" />
+      <path d="M10 10.5V3a2 2 0 0 0-4 0v10" />
+      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8H9a8 8 0 0 1-3-1" />
+    </svg>
+  )
+}
+
+export function IconPalette({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="10.5" r="0.5" fill="currentColor" stroke="none" />
+      <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor" stroke="none" />
+      <circle cx="6.5" cy="12.5" r="0.5" fill="currentColor" stroke="none" />
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+    </svg>
+  )
+}
+
+export function IconCalendar({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={strokeWidth} className={className}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  )
+}
+
 /* ═══ SmartAgenda — funcionais ═══ */
 
 export function IconBrain({ size = 24, className, strokeWidth = 1.8 }: IconProps) {
