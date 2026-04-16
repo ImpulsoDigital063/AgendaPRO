@@ -153,7 +153,7 @@ export default function FAQ({ items }: { items?: FAQItem[] } = {}) {
       >
         <p className="text-slate-400 text-sm">Ficou com alguma dúvida?</p>
         <a
-          href="https://wa.me/5563984031275?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20o%20AgendaPRO."
+          href="https://wa.me/5563992920080?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20o%20AgendaPRO."
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110"
