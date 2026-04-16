@@ -79,7 +79,7 @@ export default function WhatsAppQRTab({ phone, businessName }: Props) {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-3">
-          📱 {phone}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> {phone}
         </p>
       </div>
 

@@ -484,7 +484,7 @@ export default function BookingFlow({
         <p className="text-gray-700 font-semibold text-lg mb-4">{selectedTime}</p>
         {pointsEarned > 0 && (
           <div className="mt-4 mb-2 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3 flex items-center gap-3">
-            <span className="text-2xl">⭐</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 flex-shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <div className="text-left">
               <p className="text-amber-800 font-bold text-sm">+{pointsEarned} pontos de fidelidade!</p>
               <p className="text-amber-600 text-xs">Continue agendando para ganhar recompensas.</p>
@@ -550,7 +550,7 @@ export default function BookingFlow({
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                       isSelected ? 'border-white bg-white' : 'border-gray-300'
                     }`}>
-                      {isSelected && <span className="text-gray-900 text-xs font-bold">✓</span>}
+                      {isSelected && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                     </div>
                     <span className="font-medium text-sm">{service.name}</span>
                   </div>

@@ -282,7 +282,7 @@ function BarbeariaUI({ accent, accent2 }: { accent: string; accent2: string }) {
             <span className="font-mono text-[10px] font-black" style={{ color: accent }}>{s.h}</span>
             <span className="flex-1 text-[10px] text-slate-300 font-semibold">{s.s}</span>
             <span className="font-mono text-[10px] font-bold text-white">{s.v}</span>
-            <span className="text-emerald-400 text-[10px]">✓</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
         ))}
       </div>
@@ -444,7 +444,7 @@ function EsteticaUI({ accent, accent2 }: { accent: string; accent2: string }) {
       </div>
 
       <div className="text-[10px] text-slate-500">
-        💰 Pacote pré-pago · <strong className="text-white">R$ 1.200</strong> já no caixa
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Pacote pré-pago · <strong className="text-white">R$ 1.200</strong> já no caixa
       </div>
     </div>
   )
@@ -520,7 +520,7 @@ function NailUI({ accent, accent2 }: { accent: string; accent2: string }) {
         className="rounded-lg px-3 py-2 flex items-center gap-2"
         style={{ background: `${accent}10`, border: `1px solid ${accent}30` }}
       >
-        <span className="text-base">💅</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'currentColor' }}><path d="M12 22c-4.97 0-9-2.24-9-5v-2c0-2.76 4.03-5 9-5s9 2.24 9 5v2c0 2.76-4.03 5-9 5z"/><path d="M12 10V2l4 4"/></svg>
         <div className="flex-1">
           <div className="text-[9px] uppercase tracking-wider font-semibold text-slate-500">Top serviço</div>
           <div className="text-white text-xs font-bold">Encapsulada · 12 esta semana</div>

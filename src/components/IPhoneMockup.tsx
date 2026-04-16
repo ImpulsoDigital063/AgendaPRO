@@ -128,7 +128,7 @@ export default function IPhoneMockup() {
                 background: '#fff', borderRadius: '10px', padding: '8px 10px',
                 display: 'flex', alignItems: 'center', gap: '8px',
               }}>
-                <div style={{ fontSize: '16px' }}>⭐</div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#F59E0B" style={{ flexShrink: 0 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 <div>
                   <div style={{ fontSize: '10px', fontWeight: 700, color: '#1C1C1E' }}>4.9 · 127 avaliações</div>
                   <div style={{ fontSize: '9px', color: '#2563EB' }}>+50 pts por avaliar</div>

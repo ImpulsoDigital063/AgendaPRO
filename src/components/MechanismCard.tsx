@@ -92,7 +92,7 @@ function FidelidadeUI({ accent }: { accent: string }) {
               boxShadow: i < filled ? `0 0 12px ${accent}55` : 'none',
             }}
           >
-            {i < filled && <span className="text-white text-[10px]">✓</span>}
+            {i < filled && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="text-white"><polyline points="20 6 9 17 4 12"/></svg>}
           </div>
         ))}
       </div>
@@ -105,7 +105,7 @@ function FidelidadeUI({ accent }: { accent: string }) {
           border: `1px dashed ${accent}55`,
         }}
       >
-        <span className="text-lg">🎁</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 flex-shrink-0"><rect x="3" y="8" width="18" height="14" rx="2"/><path d="M12 8V2"/><path d="M3 14h18"/><path d="M12 14v8"/><path d="M7.5 2L12 8l4.5-6"/></svg>
         <div className="flex-1">
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Próxima recompensa</div>
           <div className="text-white text-xs font-semibold">Corte grátis · falta 1 serviço</div>
@@ -175,7 +175,7 @@ function FilaUI({ accent }: { accent: string }) {
       </div>
 
       <div className="mt-3 text-[10px] text-slate-500 flex items-center gap-1.5">
-        <span>⏱</span> Vaga preenchida em <strong className="text-slate-300">3 min 14s</strong>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Vaga preenchida em <strong className="text-slate-300">3 min 14s</strong>
       </div>
     </div>
   )

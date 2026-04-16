@@ -126,7 +126,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   key={pill}
                   className="glass text-sm text-slate-200 px-4 py-2 rounded-full"
                 >
-                  ✓ {pill}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1"><polyline points="20 6 9 17 4 12"/></svg>{pill}
                 </span>
               ))}
             </div>
@@ -252,11 +252,11 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   14 dias grátis — sem cartão
                 </p>
                 <ul className="space-y-3 text-sm text-slate-300 mb-8 flex-1">
-                  <li>✓ Página de agendamento personalizada</li>
-                  <li>✓ Agendamento 24h pelo link</li>
-                  <li>✓ Lembrete automático D-1</li>
-                  <li>✓ Notificação por email</li>
-                  <li>✓ Painel mobile-first</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Página de agendamento personalizada</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Agendamento 24h pelo link</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Lembrete automático D-1</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Notificação por email</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Painel mobile-first</li>
                   <li className="font-semibold" style={{ color: theme.iconColor }}>
                     ✦ Bônus: 2º profissional grátis
                   </li>
@@ -287,11 +287,11 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   14 dias grátis — sem cartão
                 </p>
                 <ul className="space-y-3 text-sm text-slate-300 mb-8 flex-1">
-                  <li>✓ Tudo do Solo</li>
-                  <li>✓ Múltiplos profissionais com agenda individual</li>
-                  <li>✓ Comissão automática</li>
-                  <li>✓ Financeiro por período</li>
-                  <li>✓ Suporte prioritário no WhatsApp</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Tudo do Solo</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Múltiplos profissionais com agenda individual</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Comissão automática</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Financeiro por período</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Suporte prioritário no WhatsApp</li>
                 </ul>
                 <Link
                   href="/cadastro"

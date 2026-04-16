@@ -37,8 +37,8 @@ export default function ConfiguracoesTabs({
     { id: 'profissionais', label: 'Profissionais' },
     { id: 'servicos', label: 'Serviços' },
     { id: 'horarios', label: 'Horários' },
-    { id: 'fidelidade', label: '⭐ Fidelidade' },
-    { id: 'aparencia', label: '🎨 Aparência' },
+    { id: 'fidelidade', label: 'Fidelidade' },
+    { id: 'aparencia', label: 'Aparência' },
     { id: 'whatsapp', label: 'WhatsApp' },
   ]
 

@@ -337,12 +337,12 @@ export default function EsteticaPage() {
               </div>
 
               <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2.2rem, 7vw, 4.5rem)' }}>
-                Para de perder<br />
-                procedimento por<br /><span className="text-gradient">falta de cliente.</span>
+                Microagulhamento de R$350.<br />
+                Cliente <span className="text-gradient">não apareceu.</span>
               </h1>
 
               <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-                <strong className="text-white">Sua cliente agenda pelo link, recebe lembrete automático e não fura.</strong> Cancelou a drenagem de R$200? A fila de espera preenche em minutos. Comissão de cada profissional calculada sem planilha. E cada procedimento vira avaliação 5 estrelas no Google.
+                <strong className="text-white">Com a SmartAgenda, isso não acontece.</strong> Sua cliente agenda pelo link na bio, recebe lembrete automático na véspera e confirma antes de você preparar a sala. Cancelou? A fila de espera preenche a vaga em minutos. Comissão de cada profissional calculada sem planilha. E cada procedimento vira avaliação 5 estrelas no Google — sua clínica sobe no ranking sem pagar ads.
               </p>
 
               <div className="flex flex-wrap gap-2 sm:gap-3">

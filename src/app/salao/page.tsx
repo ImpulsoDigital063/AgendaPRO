@@ -326,12 +326,12 @@ export default function SalaoPage() {
               </div>
 
               <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2.2rem, 7vw, 4.5rem)' }}>
-                Sua equipe lotada.<br />
-                Sem você <span className="text-gradient">apagar incêndio.</span>
+                Para de gerenciar<br />
+                5 agendas no<br /><span className="text-gradient">caderninho.</span>
               </h1>
 
               <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-                <strong className="text-white">Cada profissional com agenda própria, cliente agendando pelo link.</strong> Lembrete automático na véspera, fila de espera que preenche cancelamento e comissão calculada sem planilha. Você gerencia — não apaga fogo.
+                <strong className="text-white">Cada profissional com agenda própria. Cliente agenda pelo link, escolhe com quem quer.</strong> Lembrete automático na véspera — faltas caem pela metade. Cancelou a escova de R$120? A fila de espera preenche em minutos. Comissão de cada uma calculada sem planilha. E cada atendimento vira avaliação 5 estrelas no Google.
               </p>
 
               <div className="flex flex-wrap gap-2 sm:gap-3">
