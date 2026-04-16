@@ -1,7 +1,9 @@
 import { Resend } from 'resend'
 import { generateActionToken, generateCancelToken } from '@/lib/token'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -138,7 +140,7 @@ export async function sendBarberNotification({
     Confirme ou cancele o agendamento abaixo:
   `
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: barberEmail,
     subject: `🔔 Nova reserva — ${esc(clientName)} · ${dateFormatted} às ${startTime}`,
@@ -197,7 +199,7 @@ export async function sendClientBookingConfirmation({
     Aguarde a confirmação do estabelecimento. Você receberá outro email quando confirmado. 👊
   `
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: clientEmail,
     subject: `📋 Agendamento recebido — ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
@@ -235,7 +237,7 @@ export async function sendWaitlistNotification({
     Corre para garantir seu horário antes que alguém pegue!
   `
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: clientEmail,
     subject: `🔔 Vaga abriu! ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
@@ -284,7 +286,7 @@ export async function sendReminderEmail({
     ${type === '1h' ? 'Não se atrase! Te esperamos lá. 👊' : 'Qualquer dúvida, entre em contato com o estabelecimento. Te esperamos! 👊'}
   `
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: clientEmail,
     subject,
@@ -324,7 +326,7 @@ export async function sendClientNotification({
        ${serviceName ? `✂️ <strong>Serviço:</strong> ${esc(serviceName)}<br><br>` : ''}
        Entre em contato com o estabelecimento para remarcar.`
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: clientEmail,
     subject: confirmed
