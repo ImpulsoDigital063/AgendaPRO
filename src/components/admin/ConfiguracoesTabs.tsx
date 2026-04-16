@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import type { Business, Professional, Service, WorkingHours, Reward, Customer } from '@/lib/types'
 import ProfissionaisTab from './ProfissionaisTab'
 import ServicosTab from './ServicosTab'
@@ -29,7 +30,10 @@ export default function ConfiguracoesTabs({
   initialRewards,
   initialCustomers,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('negocio')
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab') as Tab | null
+  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'whatsapp', 'fidelidade', 'aparencia']
+  const [activeTab, setActiveTab] = useState<Tab>(tabParam && validTabs.includes(tabParam) ? tabParam : 'negocio')
   const [professionals, setProfessionals] = useState(initialProfessionals)
 
   const tabs: { id: Tab; label: string }[] = [
@@ -37,8 +41,8 @@ export default function ConfiguracoesTabs({
     { id: 'profissionais', label: 'Profissionais' },
     { id: 'servicos', label: 'Serviços' },
     { id: 'horarios', label: 'Horários' },
-    { id: 'fidelidade', label: '⭐ Fidelidade' },
-    { id: 'aparencia', label: '🎨 Aparência' },
+    { id: 'fidelidade', label: 'Fidelidade' },
+    { id: 'aparencia', label: 'Aparência' },
     { id: 'whatsapp', label: 'WhatsApp' },
   ]
 

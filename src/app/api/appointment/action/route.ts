@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendClientNotification, sendWaitlistNotification } from '@/lib/email'
+import { verifyActionToken } from '@/lib/token'
+import { rateLimit } from '@/lib/rate-limit'
 
 function getAdminClient() {
   return createServiceClient(
@@ -10,12 +12,24 @@ function getAdminClient() {
 }
 
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const { success } = rateLimit({ key: `action:${ip}`, limit: 20, windowSeconds: 600 })
+  if (!success) {
+    return new NextResponse('Muitas tentativas. Aguarde alguns minutos.', { status: 429 })
+  }
+
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
   const action = searchParams.get('action')
+  const token = searchParams.get('token')
 
   if (!id || !action || !['confirmed', 'cancelled'].includes(action)) {
     return new NextResponse('Ação inválida.', { status: 400 })
+  }
+
+  // Verificação de token HMAC — impede ações por UUID aleatório
+  if (!token || !verifyActionToken(id, action, token)) {
+    return new NextResponse('Link inválido ou expirado.', { status: 403 })
   }
 
   const supabase = getAdminClient()
@@ -30,11 +44,13 @@ export async function GET(req: NextRequest) {
   }
 
   // Busca dados para notificar o cliente
-  const { data: appointment } = await supabase
+  const { data: rawAppt } = await supabase
     .from('appointments')
-    .select('*, business:businesses(name)')
+    .select('client_email, client_name, appointment_date, start_time, service_name, professional_id, business:businesses(name, slug)')
     .eq('id', id)
     .single()
+
+  const appointment = rawAppt as typeof rawAppt & { business: { name: string; slug: string } | null }
 
   if (appointment?.client_email) {
     sendClientNotification({
@@ -50,9 +66,9 @@ export async function GET(req: NextRequest) {
 
   // Se cancelou, notifica o primeiro da fila de espera
   if (action === 'cancelled' && appointment) {
-    const { data: waitlistEntry } = await supabase
+    const { data: rawWaitlist } = await supabase
       .from('waitlist')
-      .select('*, business:businesses(name, slug)')
+      .select('id, client_email, client_name, appointment_date, start_time, business:businesses(name, slug)')
       .eq('professional_id', appointment.professional_id)
       .eq('appointment_date', appointment.appointment_date)
       .eq('start_time', appointment.start_time)
@@ -60,6 +76,8 @@ export async function GET(req: NextRequest) {
       .order('created_at')
       .limit(1)
       .maybeSingle()
+
+    const waitlistEntry = rawWaitlist as typeof rawWaitlist & { business: { name: string; slug: string } | null }
 
     if (waitlistEntry?.client_email) {
       await supabase

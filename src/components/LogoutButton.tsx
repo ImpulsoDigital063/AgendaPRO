@@ -1,16 +1,18 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { IconLogout } from '@/components/ui/Icon'
 
 export default function LogoutButton() {
   const router = useRouter()
+  const pathname = usePathname()
 
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/admin/login')
+    const loginUrl = pathname.startsWith('/profissional') ? '/profissional/login' : '/admin/login'
+    router.push(loginUrl)
     router.refresh()
   }
 

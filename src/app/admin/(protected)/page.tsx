@@ -5,6 +5,7 @@ import LogoutButton from '@/components/LogoutButton'
 import ShareButton from '@/components/ShareButton'
 import DivulgarCard from '@/components/admin/DivulgarCard'
 import ThemeToggle from '@/components/admin/ThemeToggle'
+import ActivityFeed from '@/components/admin/ActivityFeed'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -58,6 +59,14 @@ export default async function AdminPage() {
     .order('appointment_date', { ascending: true })
     .order('start_time', { ascending: true })
     .limit(10)
+
+  // Atividades recentes dos profissionais
+  const { data: recentActivity } = await supabase
+    .from('activity_log')
+    .select('*, professional:professionals(name)')
+    .eq('business_id', business.id)
+    .order('created_at', { ascending: false })
+    .limit(8)
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -282,6 +291,16 @@ export default async function AdminPage() {
                 <AppointmentCard key={a.id} appointment={a} showDate />
               ))}
             </div>
+          </section>
+        )}
+
+        {/* Atividades dos profissionais */}
+        {recentActivity && recentActivity.length > 0 && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+              Atividade da equipe
+            </p>
+            <ActivityFeed activities={recentActivity} />
           </section>
         )}
 

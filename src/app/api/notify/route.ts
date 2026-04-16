@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendBarberNotification, sendClientBookingConfirmation } from '@/lib/email'
 
+function getAdminClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
 export async function POST(req: NextRequest) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
   const { appointmentId } = await req.json()
 
   if (!appointmentId) {
     return NextResponse.json({ error: 'appointmentId obrigatório' }, { status: 400 })
   }
-
-  const supabase = await createClient()
 
   const { data: appointment } = await supabase
     .from('appointments')
@@ -21,8 +34,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'negócio não encontrado' })
   }
 
-  // Busca o email do dono pelo auth do Supabase
-  const { data: userData } = await supabase.auth.admin.getUserById(
+  // Verifica que o user autenticado é dono do negócio
+  if (appointment.business.owner_id !== user.id) {
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+  }
+
+  // Busca o email do dono pelo auth do Supabase (precisa service role)
+  const adminClient = getAdminClient()
+  const { data: userData } = await adminClient.auth.admin.getUserById(
     appointment.business.owner_id
   )
 

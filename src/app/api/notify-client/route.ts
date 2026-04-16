@@ -4,22 +4,32 @@ import { notifyClient } from '@/lib/whatsapp'
 import { sendClientNotification } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
   const { appointmentId, status } = await req.json()
 
-  if (!appointmentId || !status) {
+  if (!appointmentId || !status || !['confirmed', 'cancelled'].includes(status)) {
     return NextResponse.json({ error: 'dados obrigatórios' }, { status: 400 })
   }
 
-  const supabase = await createClient()
-
   const { data: appointment } = await supabase
     .from('appointments')
-    .select(`*, business:businesses(name)`)
+    .select(`*, business:businesses(name, owner_id)`)
     .eq('id', appointmentId)
     .single()
 
   if (!appointment) {
     return NextResponse.json({ ok: false, reason: 'agendamento não encontrado' })
+  }
+
+  // Verifica ownership
+  if (appointment.business?.owner_id !== user.id) {
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
   }
 
   // WhatsApp (Z-API) — silencioso se não configurado

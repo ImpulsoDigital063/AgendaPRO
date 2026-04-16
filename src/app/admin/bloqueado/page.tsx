@@ -19,7 +19,7 @@ export default async function TrialExpiradoPage() {
     redirect('/admin')
   }
 
-  const whatsappLink = 'https://wa.me/5563984031275?text=' +
+  const whatsappLink = 'https://wa.me/5563992920080?text=' +
     encodeURIComponent(`Olá! Quero continuar usando o AgendaPRO para ${business.name}. Qual o próximo passo?`)
 
   return (

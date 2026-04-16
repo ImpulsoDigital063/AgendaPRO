@@ -32,8 +32,8 @@ export default function PrivacidadePage() {
             <h2 className="font-semibold text-gray-900 mb-2">2. Dados que coletamos</h2>
             <ul className="list-disc list-inside space-y-1">
               <li><strong>Nome completo</strong> — para identificação no agendamento</li>
-              <li><strong>Número de WhatsApp</strong> — para confirmação e lembretes do agendamento</li>
-              <li><strong>E-mail</strong> (opcional) — para notificações adicionais</li>
+              <li><strong>Número de WhatsApp</strong> — para identificação e contato pelo estabelecimento</li>
+              <li><strong>E-mail</strong> — para confirmações, lembretes e notificações do agendamento</li>
               <li><strong>Data e horário agendado</strong> — registro do serviço contratado</li>
               <li><strong>Código de indicação</strong> (quando aplicável) — rastreamento do programa de fidelidade</li>
             </ul>

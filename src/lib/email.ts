@@ -1,8 +1,19 @@
 import { Resend } from 'resend'
+import { generateActionToken, generateCancelToken } from '@/lib/token'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+/** Escapa HTML para prevenir XSS em templates de email */
+function esc(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
 
 function emailTemplate({
   title,
@@ -112,14 +123,16 @@ export async function sendBarberNotification({
   const [year, month, day] = date.split('-')
   const dateFormatted = `${day}/${month}/${year}`
 
-  const confirmUrl = `${APP_URL}/api/appointment/action?id=${appointmentId}&action=confirmed`
-  const cancelUrl = `${APP_URL}/api/appointment/action?id=${appointmentId}&action=cancelled`
+  const confirmToken = generateActionToken(appointmentId, 'confirmed')
+  const cancelToken = generateActionToken(appointmentId, 'cancelled')
+  const confirmUrl = `${APP_URL}/api/appointment/action?id=${appointmentId}&action=confirmed&token=${confirmToken}`
+  const cancelUrl = `${APP_URL}/api/appointment/action?id=${appointmentId}&action=cancelled&token=${cancelToken}`
 
   const body = `
-    Olá, <strong>${barberName}</strong>! Você tem uma nova reserva na <strong>${businessName}</strong>.<br><br>
-    ${serviceName ? `✂️ <strong>Serviço:</strong> ${serviceName}<br>` : ''}
-    👤 <strong>Cliente:</strong> ${clientName}<br>
-    📱 <strong>WhatsApp:</strong> ${clientPhone}<br>
+    Olá, <strong>${esc(barberName)}</strong>! Você tem uma nova reserva na <strong>${esc(businessName)}</strong>.<br><br>
+    ${serviceName ? `✂️ <strong>Serviço:</strong> ${esc(serviceName)}<br>` : ''}
+    👤 <strong>Cliente:</strong> ${esc(clientName)}<br>
+    📱 <strong>WhatsApp:</strong> ${esc(clientPhone)}<br>
     📅 <strong>Data:</strong> ${dateFormatted}<br>
     🕐 <strong>Horário:</strong> ${startTime} – ${endTime}<br><br>
     Confirme ou cancele o agendamento abaixo:
@@ -128,7 +141,7 @@ export async function sendBarberNotification({
   await resend.emails.send({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: barberEmail,
-    subject: `🔔 Nova reserva — ${clientName} · ${dateFormatted} às ${startTime}`,
+    subject: `🔔 Nova reserva — ${esc(clientName)} · ${dateFormatted} às ${startTime}`,
     html: emailTemplate({
       title: 'Nova reserva',
       body,
@@ -165,17 +178,19 @@ export async function sendClientBookingConfirmation({
   const dateFormatted = `${day}/${month}/${year}`
 
   const servicesList = services.length > 0
-    ? services.map(s => `✂️ ${s}`).join('<br>')
+    ? services.map(s => `✂️ ${esc(s)}`).join('<br>')
     : ''
 
   const priceLine = totalPrice
     ? `<br>💰 <strong>Total:</strong> ${totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
     : ''
 
-  const cancelUrl = appointmentId ? `${APP_URL}/cancelar?id=${appointmentId}` : null
+  const cancelUrl = appointmentId
+    ? `${APP_URL}/cancelar?id=${appointmentId}&token=${generateCancelToken(appointmentId)}`
+    : null
 
   const body = `
-    Olá, <strong>${clientName}</strong>! Seu agendamento na <strong>${businessName}</strong> foi recebido com sucesso.<br><br>
+    Olá, <strong>${esc(clientName)}</strong>! Seu agendamento na <strong>${esc(businessName)}</strong> foi recebido com sucesso.<br><br>
     ${servicesList ? `${servicesList}<br>` : ''}
     📅 <strong>Data:</strong> ${dateFormatted}<br>
     🕐 <strong>Horário:</strong> ${startTime} – ${endTime}${priceLine}<br><br>
@@ -185,7 +200,7 @@ export async function sendClientBookingConfirmation({
   await resend.emails.send({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: clientEmail,
-    subject: `📋 Agendamento recebido — ${businessName} · ${dateFormatted} às ${startTime}`,
+    subject: `📋 Agendamento recebido — ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
     html: emailTemplate({
       title: '',
       body,
@@ -214,7 +229,7 @@ export async function sendWaitlistNotification({
   const bookingUrl = `${APP_URL}/${businessSlug}/agendar`
 
   const body = `
-    Olá, <strong>${clientName}</strong>! Uma vaga abriu na <strong>${businessName}</strong>.<br><br>
+    Olá, <strong>${esc(clientName)}</strong>! Uma vaga abriu na <strong>${esc(businessName)}</strong>.<br><br>
     📅 <strong>Data:</strong> ${dateFormatted}<br>
     🕐 <strong>Horário:</strong> ${startTime}<br><br>
     Corre para garantir seu horário antes que alguém pegue!
@@ -223,13 +238,57 @@ export async function sendWaitlistNotification({
   await resend.emails.send({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: clientEmail,
-    subject: `🔔 Vaga abriu! ${businessName} · ${dateFormatted} às ${startTime}`,
+    subject: `🔔 Vaga abriu! ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
     html: emailTemplate({
       title: '',
       body,
       actionUrl: bookingUrl,
       actionLabel: '🗓️ Garantir meu horário',
     }),
+  })
+}
+
+export async function sendReminderEmail({
+  clientEmail,
+  clientName,
+  businessName,
+  date,
+  startTime,
+  serviceName,
+  type,
+}: {
+  clientEmail: string
+  clientName: string
+  businessName: string
+  date: string
+  startTime: string
+  serviceName?: string | null
+  type: '1d' | '1h'
+}) {
+  const [year, month, day] = date.split('-')
+  const dateFormatted = `${day}/${month}/${year}`
+
+  const subject = type === '1d'
+    ? `Lembrete: seu horário amanhã na ${esc(businessName)}`
+    : `Falta 1 hora! Seu horário na ${esc(businessName)}`
+
+  const body = `
+    Olá, <strong>${esc(clientName)}</strong>!
+    ${type === '1d'
+      ? `Lembrando que você tem um agendamento <strong>amanhã</strong> na <strong>${esc(businessName)}</strong>.`
+      : `Seu agendamento na <strong>${esc(businessName)}</strong> é <strong>daqui a 1 hora</strong>. Já se prepare!`
+    }<br><br>
+    ${serviceName ? `✂️ <strong>Serviço:</strong> ${esc(serviceName)}<br>` : ''}
+    📅 <strong>Data:</strong> ${dateFormatted}<br>
+    🕐 <strong>Horário:</strong> ${startTime}<br><br>
+    ${type === '1h' ? 'Não se atrase! Te esperamos lá. 👊' : 'Qualquer dúvida, entre em contato com o estabelecimento. Te esperamos! 👊'}
+  `
+
+  await resend.emails.send({
+    from: 'AgendaPRO <onboarding@resend.dev>',
+    to: clientEmail,
+    subject,
+    html: emailTemplate({ title: '', body }),
   })
 }
 
@@ -256,21 +315,21 @@ export async function sendClientNotification({
   const dateFormatted = `${day}/${month}/${year}`
 
   const body = confirmed
-    ? `Olá, <strong>${clientName}</strong>! Seu agendamento na <strong>${businessName}</strong> foi confirmado.<br><br>
-       ${serviceName ? `✂️ <strong>Serviço:</strong> ${serviceName}<br>` : ''}
+    ? `Olá, <strong>${esc(clientName)}</strong>! Seu agendamento na <strong>${esc(businessName)}</strong> foi confirmado.<br><br>
+       ${serviceName ? `✂️ <strong>Serviço:</strong> ${esc(serviceName)}<br>` : ''}
        📅 <strong>Data:</strong> ${dateFormatted}<br>
        🕐 <strong>Horário:</strong> ${startTime}<br><br>
        Te esperamos lá! 👊`
-    : `Olá, <strong>${clientName}</strong>. Infelizmente seu agendamento na <strong>${businessName}</strong> foi cancelado.<br><br>
-       ${serviceName ? `✂️ <strong>Serviço:</strong> ${serviceName}<br><br>` : ''}
+    : `Olá, <strong>${esc(clientName)}</strong>. Infelizmente seu agendamento na <strong>${esc(businessName)}</strong> foi cancelado.<br><br>
+       ${serviceName ? `✂️ <strong>Serviço:</strong> ${esc(serviceName)}<br><br>` : ''}
        Entre em contato com o estabelecimento para remarcar.`
 
   await resend.emails.send({
     from: 'AgendaPRO <onboarding@resend.dev>',
     to: clientEmail,
     subject: confirmed
-      ? `✅ Agendamento confirmado — ${businessName}`
-      : `❌ Agendamento cancelado — ${businessName}`,
+      ? `✅ Agendamento confirmado — ${esc(businessName)}`
+      : `❌ Agendamento cancelado — ${esc(businessName)}`,
     html: emailTemplate({ title: '', body }),
   })
 }

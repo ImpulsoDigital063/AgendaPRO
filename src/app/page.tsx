@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
-import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
+import AgendaDesktopMockup from '@/components/AgendaDesktopMockup'
 import { MechanismCard } from '@/components/MechanismCard'
 import { TimelineMicroUI, DorMicroUI, PassoMicroUI } from '@/components/LandingMicroUI'
+import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import {
   AnimatedGradient,
   SectionReveal,
@@ -46,17 +47,6 @@ const TIMELINE: { kind: '07' | '10' | '14' | '20'; hora: string; titulo: string;
 
 const MOTORES = ['fidelidade', 'fila', 'indicacao', 'reviews'] as const
 
-const COMPARISON: { ico: string; row: string }[] = [
-  { ico: '📅', row: 'Cliente agenda sozinho 24h' },
-  { ico: '🔔', row: 'Lembrete automático antes do horário' },
-  { ico: '⚡', row: 'Lista de espera quando cancela' },
-  { ico: '🏆', row: 'Programa de fidelidade com pontos' },
-  { ico: '🔗', row: 'Link de indicação por cliente' },
-  { ico: '🎨', row: 'Página personalizada com sua marca' },
-  { ico: '⭐', row: 'Google Reviews integrado' },
-  { ico: '🌙', row: 'Funciona enquanto você dorme' },
-]
-
 const VALUE_ITEMS = [
   { item: 'Agenda online (Trinks, iSalon)',       price: 'R$ 89/mês' },
   { item: 'Programa de fidelidade com pontos',    price: 'R$ 49/mês' },
@@ -87,7 +77,7 @@ export default function HomePage() {
           animation: 'gradient-flow 10s linear infinite',
         }}
       >
-        <span className="mr-2">🎁</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 flex-shrink-0"><rect x="3" y="8" width="18" height="14" rx="2"/><path d="M12 8V2"/><path d="M3 14h18"/><path d="M12 14v8"/><path d="M7.5 2L12 8l4.5-6"/></svg>
         Oferta de lançamento — <strong className="mx-1">14 dias grátis</strong>. Sem cartão de crédito.
       </div>
 
@@ -119,18 +109,20 @@ export default function HomePage() {
             <SectionReveal className="flex flex-col items-center lg:items-start text-center lg:text-left gap-7">
 
               <div className="pill-glow animate-pulse-glow">
-                <span>✨</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-300"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 <span>Você acabou de ganhar 14 dias de acesso gratuito</span>
               </div>
 
               <h1 className="display-xl text-white">
-                Sua agenda agora tem<br />
-                <span className="text-gradient">inteligência</span> própria.
+                WhatsApp, caderno, planilha.<br />
+                <span className="text-gradient">Três ferramentas</span> pro que<br />
+                um link resolve.
               </h1>
 
               <p className="text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-                O AgendaPRO confirma horário, preenche cancelamento, traz cliente de volta e cresce sua reputação no Google.
-                <strong className="text-white"> Você atende — ele cuida do resto.</strong>
+                Enquanto você confirma horário no WhatsApp, preenche planilha e liga pra remarcar,
+                seu concorrente recebe agendamento dormindo.
+                <strong className="text-white"> O AgendaPRO faz isso — e mais 4 coisas que nenhum outro app faz.</strong>
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -165,7 +157,7 @@ export default function HomePage() {
 
             {/* Coluna direita — dashboard mockup */}
             <SectionReveal className="flex justify-center lg:justify-end mt-8 lg:mt-0">
-              <AgendaDashboardMockup />
+              <AgendaDesktopMockup />
             </SectionReveal>
 
           </div>
@@ -324,105 +316,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ 6. COMPARAÇÃO DIRETA ═══════════ */}
+      {/* ═══════════ 6. COMPARAÇÃO DIRETA — SmartAgenda x Outros apps ═══════════ */}
       <section className="section relative">
-        <div className="container max-w-4xl">
-          <SectionReveal className="text-center mb-12">
+        <div className="container max-w-6xl">
+          <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
             <div className="pill mb-6">
               <span style={{ color: '#06B6D4' }}>●</span>
-              <span>Comparação direta</span>
+              <span>SmartAgenda x Outros apps</span>
             </div>
             <h2 className="display-lg text-white mb-4">
-              Por que <span className="text-gradient">WhatsApp + caderno</span><br />
-              está custando seu mês.
+              Outros apps <span className="text-slate-500">só agendam</span>.<br />
+              <span className="text-gradient">SmartAgenda trabalha.</span>
             </h2>
+            <p className="text-slate-400 text-base md:text-lg leading-relaxed">
+              Mesma tela por fora. Mundos diferentes por dentro.
+              Olha o que acontece em cada uma quando o cliente cancela às 10h.
+            </p>
           </SectionReveal>
 
           <SectionReveal>
-            <div
-              className="glass rounded-3xl overflow-hidden"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(8,11,24,0.85) 100%)',
-              }}
-            >
-              {/* Header */}
-              <div
-                className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-4 text-xs md:text-sm font-semibold border-b"
-                style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}
-              >
-                <span className="text-slate-400 uppercase tracking-wider text-[10px] md:text-xs">Recurso</span>
-                <span
-                  className="text-center w-20 md:w-28 font-black uppercase tracking-wide"
-                  style={{
-                    background: 'linear-gradient(135deg, #3B82F6, #06B6D4)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}
-                >
-                  AgendaPRO
-                </span>
-                <span className="text-center w-16 md:w-20 text-slate-500 uppercase tracking-wider text-[10px] md:text-xs">WhatsApp</span>
-                <span className="text-center w-16 md:w-20 text-slate-500 uppercase tracking-wider text-[10px] md:text-xs">Caderno</span>
-              </div>
-
-              {/* Rows */}
-              {COMPARISON.map((c, i) => (
-                <div
-                  key={c.row}
-                  className="grid grid-cols-[1fr_auto_auto_auto] gap-3 md:gap-6 px-5 md:px-8 py-3.5 text-xs md:text-sm items-center"
-                  style={{
-                    borderBottom: i < COMPARISON.length - 1 ? '1px solid var(--glass-border)' : 'none',
-                  }}
-                >
-                  <span className="text-slate-200 flex items-center gap-2.5">
-                    <span
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-sm flex-shrink-0"
-                      style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
-                    >
-                      {c.ico}
-                    </span>
-                    <span>{c.row}</span>
-                  </span>
-                  <span className="text-center w-20 md:w-28">
-                    <span
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-white text-sm font-bold"
-                      style={{
-                        background: 'linear-gradient(135deg,#3B82F6,#06B6D4)',
-                        boxShadow: '0 0 14px rgba(59,130,246,0.4)',
-                      }}
-                    >
-                      ✓
-                    </span>
-                  </span>
-                  <span className="text-center w-16 md:w-20">
-                    <span
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs"
-                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#F87171' }}
-                    >
-                      ✕
-                    </span>
-                  </span>
-                  <span className="text-center w-16 md:w-20">
-                    <span
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs"
-                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#F87171' }}
-                    >
-                      ✕
-                    </span>
-                  </span>
-                </div>
-              ))}
-
-              {/* Footer com CTA sutil */}
-              <div
-                className="px-5 md:px-8 py-4 text-center text-xs text-slate-400"
-                style={{ background: 'rgba(59,130,246,0.06)', borderTop: '1px solid rgba(59,130,246,0.18)' }}
-              >
-                A diferença não é o preço — é o que <strong className="text-white">o sistema faz por você</strong>.
-              </div>
-            </div>
+            <ComparisonMiniUIs />
           </SectionReveal>
         </div>
       </section>
@@ -576,19 +489,19 @@ export default function HomePage() {
                   'Badge Google Reviews + pontos por avaliar',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
-                    <span className="text-cyan-400 font-bold mt-0.5 flex-shrink-0">✓</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400 mt-0.5 flex-shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
                     <span>{item}</span>
                   </li>
                 ))}
                 <li className="flex items-start gap-2.5 pt-2">
-                  <span className="flex-shrink-0">🎁</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 mt-0.5 flex-shrink-0"><rect x="3" y="8" width="18" height="14" rx="2"/><path d="M12 8V2"/><path d="M3 14h18"/><path d="M12 14v8"/><path d="M7.5 2L12 8l4.5-6"/></svg>
                   <div>
                     <strong className="text-white text-sm">Bônus: 2º profissional incluído</strong>
                     <p className="text-slate-500 text-xs mt-0.5">Normalmente 1 — na oferta você cadastra 2</p>
                   </div>
                 </li>
                 <li className="flex items-start gap-2.5">
-                  <span className="flex-shrink-0">🎁</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 mt-0.5 flex-shrink-0"><rect x="3" y="8" width="18" height="14" rx="2"/><path d="M12 8V2"/><path d="M3 14h18"/><path d="M12 14v8"/><path d="M7.5 2L12 8l4.5-6"/></svg>
                   <div>
                     <strong className="text-white text-sm">Bônus: Área de divulgação exclusiva</strong>
                     <p className="text-slate-500 text-xs mt-0.5">Textos prontos para Instagram, Google e WhatsApp</p>
@@ -607,7 +520,7 @@ export default function HomePage() {
             {/* Equipe */}
             <div className="glass glow-border rounded-3xl p-8 md:p-10 relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 pill-glow text-xs whitespace-nowrap">
-                ⭐ MAIS POPULAR
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-amber-300"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> MAIS POPULAR
               </div>
 
               <div className="mb-6 mt-2">
@@ -631,7 +544,7 @@ export default function HomePage() {
                   'Suporte prioritário via WhatsApp',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
-                    <span className="text-cyan-400 font-bold mt-0.5 flex-shrink-0">✓</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400 mt-0.5 flex-shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
                     <span>{item}</span>
                   </li>
                 ))}
@@ -716,15 +629,15 @@ export default function HomePage() {
         <div className="container relative text-center max-w-3xl">
           <SectionReveal>
             <div className="pill-glow mb-6 animate-pulse-glow">
-              <span>⏱</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-300"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <span>14 dias grátis · sem cartão · cancele quando quiser</span>
             </div>
             <h2 className="display-xl text-white mb-6">
-              Seu concorrente ainda<br />
-              agenda pelo <span className="text-gradient">WhatsApp</span>.
+              Amanha voce vai abrir o WhatsApp<br />
+              e <span className="text-gradient">perder 3 horas</span> de novo?
             </h2>
             <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
-              Configure agora, compartilhe o link e veja a diferença hoje mesmo.
+              Configura em 5 minutos. Cola o link no Instagram. Amanha voce acorda com a agenda cheia e zero mensagem pra responder.
             </p>
 
             <Link href="/cadastro" className="btn btn-lg btn-primary-v2">

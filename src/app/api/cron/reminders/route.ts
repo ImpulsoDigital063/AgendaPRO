@@ -1,30 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { Resend } from 'resend'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { sendReminderEmail } from '@/lib/email'
+import { sendReminderWhatsApp } from '@/lib/whatsapp'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getAdminClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
-// Protege a rota — só Vercel Cron pode chamar
+// D-1: Lembrete 1 dia antes — roda todo dia às 12h (Vercel Cron)
 export async function GET(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+  }
   const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const supabase = await createClient()
+  const supabase = getAdminClient()
 
-  // Amanhã
-  const tomorrow = new Date()
+  // Vercel roda em UTC — converte pra BRT (UTC-3) pra bater com as datas do banco
+  const nowUTC = new Date()
+  const nowBRT = new Date(nowUTC.getTime() - 3 * 60 * 60 * 1000)
+  const tomorrow = new Date(nowBRT)
   tomorrow.setDate(tomorrow.getDate() + 1)
   const tomorrowStr = tomorrow.toISOString().split('T')[0]
 
-  // Busca agendamentos confirmados ou pendentes para amanhã com email
   const { data: appointments } = await supabase
     .from('appointments')
-    .select(`*, business:businesses(name)`)
+    .select('*, business:businesses(name)')
     .eq('appointment_date', tomorrowStr)
     .in('status', ['pending', 'confirmed'])
-    .not('client_email', 'is', null)
+    .eq('reminded_1d', false)
 
   if (!appointments || appointments.length === 0) {
     return NextResponse.json({ ok: true, sent: 0 })
@@ -33,52 +44,44 @@ export async function GET(req: NextRequest) {
   let sent = 0
 
   for (const appt of appointments) {
-    const [year, month, day] = appt.appointment_date.split('-')
-    const dateFormatted = `${day}/${month}/${year}`
     const businessName = appt.business?.name || 'estabelecimento'
 
-    const body = `
-      Olá, <strong>${appt.client_name}</strong>! Lembrando que você tem um agendamento <strong>amanhã</strong> na <strong>${businessName}</strong>.<br><br>
-      📅 <strong>Data:</strong> ${dateFormatted}<br>
-      🕐 <strong>Horário:</strong> ${appt.start_time.slice(0, 5)}<br>
-      ${appt.service_name ? `✂️ <strong>Serviço:</strong> ${appt.service_name}<br>` : ''}
-      <br>
-      Qualquer dúvida, entre em contato com o estabelecimento. Te esperamos! 👊
-    `
-
     try {
-      await resend.emails.send({
-        from: 'AgendaPRO <onboarding@resend.dev>',
-        to: appt.client_email,
-        subject: `⏰ Lembrete — seu horário amanhã na ${businessName}`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-          <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">
-              <tr><td align="center">
-                <table width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e4e4e7;">
-                  <tr><td style="background:#18181b;padding:24px 32px;">
-                    <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;">AgendaPRO</p>
-                    <p style="margin:4px 0 0;color:#a1a1aa;font-size:12px;">by Impulso Digital</p>
-                  </td></tr>
-                  <tr><td style="padding:32px;">
-                    <p style="margin:0;color:#18181b;font-size:16px;line-height:1.6;">${body}</p>
-                  </td></tr>
-                  <tr><td style="padding:16px 32px;border-top:1px solid #f4f4f5;">
-                    <p style="margin:0;color:#a1a1aa;font-size:11px;text-align:center;">AgendaPRO · Impulso Digital</p>
-                  </td></tr>
-                </table>
-              </td></tr>
-            </table>
-          </body>
-          </html>
-        `,
-      })
+      // Email
+      if (appt.client_email) {
+        await sendReminderEmail({
+          clientEmail: appt.client_email,
+          clientName: appt.client_name,
+          businessName,
+          date: appt.appointment_date,
+          startTime: appt.start_time.slice(0, 5),
+          serviceName: appt.service_name,
+          type: '1d',
+        })
+      }
+
+      // WhatsApp
+      if (appt.client_phone) {
+        await sendReminderWhatsApp({
+          clientPhone: appt.client_phone,
+          clientName: appt.client_name,
+          businessName,
+          date: appt.appointment_date,
+          startTime: appt.start_time.slice(0, 5),
+          serviceName: appt.service_name,
+          type: '1d',
+        })
+      }
+
+      // Marca como enviado
+      await supabase
+        .from('appointments')
+        .update({ reminded_1d: true })
+        .eq('id', appt.id)
+
       sent++
-    } catch {
-      // silencioso — não para o loop por erro de um email
+    } catch (err) {
+      console.error(`[D-1] Erro ao enviar lembrete para ${appt.client_name}:`, err)
     }
   }
 

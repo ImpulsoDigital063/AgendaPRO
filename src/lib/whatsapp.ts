@@ -105,3 +105,40 @@ export async function notifyClient({
 
   return sendMessage(clientPhone, message)
 }
+
+export async function sendReminderWhatsApp({
+  clientPhone,
+  clientName,
+  businessName,
+  date,
+  startTime,
+  serviceName,
+  type,
+}: {
+  clientPhone: string
+  clientName: string
+  businessName: string
+  date: string
+  startTime: string
+  serviceName?: string | null
+  type: '1d' | '1h'
+}) {
+  const [year, month, day] = date.split('-')
+  const dateFormatted = `${day}/${month}/${year}`
+
+  const message = type === '1d'
+    ? `⏰ *Lembrete — AgendaPRO*\n\n` +
+      `Olá, ${clientName}! Lembrando que você tem um agendamento *amanhã* na *${businessName}*.\n\n` +
+      (serviceName ? `✂️ Serviço: ${serviceName}\n` : '') +
+      `📅 Data: ${dateFormatted}\n` +
+      `🕐 Horário: ${startTime}\n\n` +
+      `Te esperamos lá! 👊`
+    : `🔔 *Falta 1 hora! — AgendaPRO*\n\n` +
+      `Olá, ${clientName}! Seu horário na *${businessName}* é *daqui a 1 hora*.\n\n` +
+      (serviceName ? `✂️ Serviço: ${serviceName}\n` : '') +
+      `📅 Data: ${dateFormatted}\n` +
+      `🕐 Horário: ${startTime}\n\n` +
+      `Não se atrase! Te esperamos lá. 👊`
+
+  return sendMessage(clientPhone, message)
+}

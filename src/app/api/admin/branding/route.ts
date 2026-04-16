@@ -28,6 +28,9 @@ export async function PATCH(req: Request) {
     .update(update)
     .eq('owner_id', user.id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Branding update error:', error)
+    return NextResponse.json({ error: 'Erro ao atualizar branding.' }, { status: 500 })
+  }
   return NextResponse.json({ ok: true })
 }

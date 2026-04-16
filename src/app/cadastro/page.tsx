@@ -73,7 +73,9 @@ export default function CadastroPage() {
 
   function validateOwner() {
     if (!email.trim()) return 'Email é obrigatório.'
-    if (password.length < 6) return 'Senha deve ter pelo menos 6 caracteres.'
+    if (password.length < 8) return 'Senha deve ter pelo menos 8 caracteres.'
+    if (!/[A-Z]/.test(password)) return 'Senha deve conter pelo menos uma letra maiúscula.'
+    if (!/[0-9]/.test(password)) return 'Senha deve conter pelo menos um número.'
     if (password !== confirmPassword) return 'As senhas não coincidem.'
     return null
   }
@@ -127,7 +129,7 @@ export default function CadastroPage() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="w-full max-w-sm text-center">
           <div className="bg-white rounded-2xl border border-gray-100 p-8 space-y-4">
-            <p className="text-5xl">🎉</p>
+            <div className="flex justify-center"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg></div>
             <h2 className="text-xl font-bold text-gray-900">Tudo certo!</h2>
             <p className="text-gray-500 text-sm">
               Seu negócio foi cadastrado. Agora configure seus horários e serviços no painel.

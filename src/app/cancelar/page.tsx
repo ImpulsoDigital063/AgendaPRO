@@ -1,6 +1,7 @@
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import CancelarConfirm from './CancelarConfirm'
+import { verifyCancelToken } from '@/lib/token'
 
 function getAdminClient() {
   return createServiceClient(
@@ -12,11 +13,12 @@ function getAdminClient() {
 export default async function CancelarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }>
+  searchParams: Promise<{ id?: string; token?: string }>
 }) {
-  const { id } = await searchParams
+  const { id, token } = await searchParams
 
   if (!id) notFound()
+  if (!token || !verifyCancelToken(id, token)) notFound()
 
   const supabase = getAdminClient()
 
@@ -89,6 +91,7 @@ export default async function CancelarPage({
 
         <CancelarConfirm
           appointmentId={id}
+          token={token}
           alreadyCancelled={appointment.status === 'cancelled'}
           businessSlug={business?.slug}
         />

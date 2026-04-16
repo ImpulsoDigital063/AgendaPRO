@@ -18,6 +18,9 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [editingCommission, setEditingCommission] = useState<string | null>(null)
   const [commissionValue, setCommissionValue] = useState('')
+  const [invitingId, setInvitingId] = useState<string | null>(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteResult, setInviteResult] = useState<{ profId: string; ok: boolean; message: string } | null>(null)
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({})
   const supabase = createClient()
 
@@ -27,7 +30,7 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
 
     const { data, error } = await supabase
       .from('professionals')
-      .insert({ business_id: businessId, name: newName.trim(), active: true })
+      .insert({ business_id: businessId, name: newName.trim(), active: true, commission_percentage: 0, role: 'professional' })
       .select()
       .single()
 
@@ -115,6 +118,32 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
     setUploadingId(null)
   }
 
+  async function handleInvite(prof: Professional) {
+    if (!inviteEmail.trim()) return
+    setLoadingId(prof.id)
+    setInviteResult(null)
+
+    const res = await fetch('/api/admin/invite-professional', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ professionalId: prof.id, email: inviteEmail.trim() }),
+    })
+
+    const data = await res.json()
+
+    if (res.ok && data.ok) {
+      setInviteResult({ profId: prof.id, ok: true, message: data.message })
+      onChange(professionals.map((p) =>
+        p.id === prof.id ? { ...p, email: data.email, auth_user_id: 'linked' } : p
+      ))
+      setInvitingId(null)
+      setInviteEmail('')
+    } else {
+      setInviteResult({ profId: prof.id, ok: false, message: data.error || 'Erro ao convidar.' })
+    }
+    setLoadingId(null)
+  }
+
   async function handleRemovePhoto(prof: Professional) {
     if (!prof.photo_url) return
     if (!confirm('Remover a foto deste profissional?')) return
@@ -151,7 +180,8 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
       )}
 
       {professionals.map((prof) => (
-        <div key={prof.id} className="admin-card-deep px-4 py-3 flex items-center justify-between">
+        <div key={prof.id} className="admin-card-deep overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Avatar com upload */}
             <div className="relative flex-shrink-0">
@@ -285,6 +315,34 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
           </div>
 
           <div className="flex items-center gap-2">
+            {!prof.auth_user_id && (
+              <button
+                onClick={() => {
+                  setInvitingId(invitingId === prof.id ? null : prof.id)
+                  setInviteEmail(prof.email || '')
+                  setInviteResult(null)
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-accent) 15%, transparent)',
+                  color: 'var(--admin-accent)',
+                  border: '1px solid color-mix(in srgb, var(--admin-accent) 30%, transparent)',
+                }}
+              >
+                Dar acesso
+              </button>
+            )}
+            {prof.auth_user_id && (
+              <span
+                className="text-xs px-2.5 py-1 rounded-lg font-medium"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-success) 12%, transparent)',
+                  color: 'var(--admin-success)',
+                }}
+              >
+                Com acesso
+              </span>
+            )}
             <button
               onClick={() => toggleActive(prof)}
               disabled={loadingId === prof.id}
@@ -319,6 +377,80 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
             </button>
           </div>
         </div>
+
+        {/* Painel de convite expandido */}
+        {invitingId === prof.id && (
+          <div
+            className="px-4 pb-4 pt-2 space-y-2"
+            style={{ borderTop: '1px solid var(--admin-divider)' }}
+          >
+            <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+              Informe o email de {prof.name} para criar o acesso ao painel.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleInvite(prof)}
+                placeholder="email@profissional.com"
+                className="admin-input flex-1 px-3 py-2 text-sm"
+              />
+              <button
+                onClick={() => handleInvite(prof)}
+                disabled={loadingId === prof.id || !inviteEmail.trim()}
+                className="px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
+                style={{
+                  background: 'var(--admin-accent)',
+                  color: '#fff',
+                }}
+              >
+                {loadingId === prof.id ? '...' : 'Convidar'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Resultado do convite */}
+        {inviteResult && inviteResult.profId === prof.id && (
+          <div
+            className="px-4 pb-4 pt-2 space-y-2"
+            style={{ borderTop: '1px solid var(--admin-divider)' }}
+          >
+            {inviteResult.ok ? (
+              <div
+                className="rounded-xl p-3"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-success) 10%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--admin-success) 25%, transparent)',
+                }}
+              >
+                <p className="text-sm font-semibold" style={{ color: 'var(--admin-success)' }}>
+                  Acesso criado!
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+                  As credenciais foram enviadas para o email do profissional.
+                </p>
+                <div
+                  className="mt-2 rounded-lg p-2.5 text-xs"
+                  style={{
+                    background: 'var(--admin-surface)',
+                    color: 'var(--admin-text)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                >
+                  <p>Email enviado para: <strong>{inviteEmail}</strong></p>
+                  <p>Acesso em: /profissional/login</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--admin-danger)' }}>
+                {inviteResult.message}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
       ))}
 
       {/* Adicionar profissional */}
