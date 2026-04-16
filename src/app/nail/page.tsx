@@ -1,5 +1,15 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+
+export const metadata: Metadata = {
+  title: 'AgendaPRO para Nail Designers — Agenda Online com Lembrete Automático',
+  description: 'Sistema de agendamento online para nail designers. Cliente agenda pelo link na bio, recebe lembrete por e-mail, fila de espera preenche cancelamentos. R$67/mês.',
+  openGraph: {
+    title: 'AgendaPRO para Nail Designers',
+    description: 'Agenda online para nail designer. Lembrete automático, fila de espera, financeiro completo e Google Reviews integrado.',
+  },
+}
 import type { FAQItem } from '@/components/FAQ'
 import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
@@ -22,7 +32,7 @@ import {
   IconArrowRight,
   IconCheck,
   IconStar,
-  IconWhatsapp,
+  IconMail,
 } from '@/components/BarberIcons'
 
 /* ═══════════════════════════════════════════════════════════
@@ -61,7 +71,7 @@ const DORES = [
 ]
 
 const MOTORES = [
-  { Icon: IconBrain,   tag: 'Anti-falta',     titulo: 'Lembrete que salva sua sessão',        desc: 'Na véspera, a cliente recebe lembrete automático. Confirma ou avisa que não vem. Você sabe se vai ter cliente antes de separar o material.', color: '#F472B6', stat: '-50%',  statLabel: 'faltas' },
+  { Icon: IconBrain,   tag: 'Anti-falta',     titulo: 'Lembrete que salva sua sessão',        desc: 'Lembrete automático por e-mail na véspera e 1h antes. Confirma ou avisa que não vem. Você sabe se vai ter cliente antes de separar o material.', color: '#F472B6', stat: '-50%',  statLabel: 'faltas' },
   { Icon: IconTrophy,  tag: 'Ranking',         titulo: 'Google mostra seu trabalho primeiro',  desc: 'Depois do atendimento, a cliente ganha pontos pra avaliar no Google. Sua nota sobe e quem pesquisa "nail designer perto de mim" te acha.',  color: '#F59E0B', stat: '+0.6',  statLabel: 'nota/mês' },
   { Icon: IconLink,    tag: 'Indicação',       titulo: 'Cliente traz a amiga pelo link',       desc: 'Cada cliente recebe link de indicação. A amiga agenda, as duas ganham pontos. Você rastreia de onde vem cada cliente nova.',                 color: '#8B5CF6', stat: 'x2.3',  statLabel: 'clientes' },
   { Icon: IconBolt,    tag: 'Fila de espera',   titulo: 'Cancelou? Vaga preenchida',            desc: 'Gel de R$150 cancelado? O sistema avisa quem tá na fila. A primeira que aceitar fica com o horário. Sem você abrir o Instagram.',          color: '#06B6D4', stat: '3 min', statLabel: 'pra preencher' },
@@ -111,7 +121,7 @@ const NAIL_FAQS: FAQItem[] = [
   },
   {
     q: 'Como funciona o lembrete?',
-    a: 'Na véspera, o sistema manda lembrete automático. A cliente confirma ou avisa que não vem. Você sabe se vai ter atendimento antes de separar o material.',
+    a: 'O sistema envia lembretes automáticos por e-mail: um na véspera e outro 1 hora antes. Usamos e-mail em vez de WhatsApp pra proteger seu número — sem risco de bloqueio por disparo em massa. Você sabe se vai ter atendimento antes de separar o material.',
   },
   {
     q: 'É difícil de configurar?',
@@ -470,8 +480,8 @@ export default function NailPage() {
                   {i === 0 && (
                     <div className="rounded-xl p-3 space-y-1.5" style={{ background: 'rgba(8,11,24,0.6)', border: `1px solid ${m.color}25` }}>
                       <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(244,114,182,0.08)', border: '1px solid rgba(244,114,182,0.2)' }}>
-                        <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-white flex-shrink-0" style={{ background: '#F472B6' }}><IconWhatsapp size={11} strokeWidth={2} /></span>
-                        <div className="flex-1 min-w-0"><span className="text-[10px] text-white font-bold">Lembrete enviado</span><span className="text-[9px] text-slate-500"> · ontem 18:00</span></div>
+                        <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-white flex-shrink-0" style={{ background: '#F472B6' }}><IconMail size={11} strokeWidth={2} /></span>
+                        <div className="flex-1 min-w-0"><span className="text-[10px] text-white font-bold">Lembrete por e-mail</span><span className="text-[9px] text-slate-500"> · ontem 18:00</span></div>
                       </div>
                       <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
                         <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-white flex-shrink-0" style={{ background: '#10B981' }}><IconCheck size={11} strokeWidth={3} /></span>
@@ -780,7 +790,7 @@ export default function NailPage() {
                 <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-gradient">R$67</span><span className="text-slate-400 text-sm">/mês</span></div>
                 <div className="flex items-center gap-3 mt-2">
                   <span className="text-slate-500 text-xs line-through">R$97</span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Economia R$189/mês</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Economia R$360/ano</span>
                 </div>
                 <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$2,23/dia — menos que um esmalte</p>
               </div>

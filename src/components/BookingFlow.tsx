@@ -225,7 +225,7 @@ export default function BookingFlow({
     const supabase = createClient()
     const { data } = await supabase
       .from('clients')
-      .select('*')
+      .select('id, name, phone, email, created_at')
       .eq('phone', clientPhone.trim())
       .maybeSingle()
 
@@ -380,7 +380,25 @@ export default function BookingFlow({
       }
     }
 
-    // 2. Criar agendamento
+    // 2. Verificação de conflito antes de inserir (proteção client-side)
+    const { data: conflict } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('professional_id', professional.id)
+      .eq('appointment_date', formatDate(selectedDate))
+      .in('status', ['pending', 'confirmed'])
+      .lt('start_time', endTime)
+      .gt('end_time', selectedTime)
+      .limit(1)
+      .maybeSingle()
+
+    if (conflict) {
+      setError('Esse horário acabou de ser reservado. Escolha outro.')
+      setSubmitting(false)
+      return
+    }
+
+    // 3. Criar agendamento
     const firstService = selectedServices[0] ?? null
     const { data: appointment, error: apptErr } = await supabase
       .from('appointments')
@@ -403,7 +421,10 @@ export default function BookingFlow({
       .single()
 
     if (apptErr || !appointment) {
-      setError('Erro ao agendar. Tente novamente.')
+      const msg = apptErr?.message?.includes('horário')
+        ? 'Esse horário acabou de ser reservado. Escolha outro.'
+        : 'Erro ao agendar. Tente novamente.'
+      setError(msg)
       setSubmitting(false)
       return
     }

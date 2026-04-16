@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import BookingFlow from '@/components/BookingFlow'
-import type { Business } from '@/lib/types'
+import type { Business, Professional } from '@/lib/types'
 import { IconArrowLeft } from '@/components/ui/Icon'
 
 export default async function AgendarPage({
@@ -19,7 +19,7 @@ export default async function AgendarPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('*')
+    .select('id, name, slug, description, phone, address, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, whatsapp_instance_id, whatsapp_token, slot_interval_minutes, max_daily_appointments')
     .eq('slug', slug)
     .single()
 
@@ -27,18 +27,18 @@ export default async function AgendarPage({
 
   const { data: professionals } = await supabase
     .from('professionals')
-    .select('*')
+    .select('id, name, photo_url, active, business_id')
     .eq('business_id', business.id)
     .eq('active', true)
 
   const [{ data: workingHours }, { data: services }] = await Promise.all([
     supabase
       .from('working_hours')
-      .select('*')
+      .select('id, professional_id, day_of_week, start_time, end_time, is_off, slot_duration')
       .in('professional_id', (professionals || []).map((p) => p.id)),
     supabase
       .from('services')
-      .select('*')
+      .select('id, name, price, duration_minutes, points, active, business_id')
       .eq('business_id', business.id)
       .eq('active', true)
       .order('name'),
@@ -103,7 +103,7 @@ export default async function AgendarPage({
         >
           <BookingFlow
             business={b}
-            professionals={professionals || []}
+            professionals={(professionals || []) as Professional[]}
             workingHours={workingHours || []}
             services={services || []}
             referralCode={referralCode}

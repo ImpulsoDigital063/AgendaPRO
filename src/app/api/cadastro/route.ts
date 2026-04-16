@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { rateLimit } from '@/lib/rate-limit'
 
 // Usa service role para criar usuário no auth + inserir dados
 function getAdminClient() {
@@ -10,11 +11,31 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const { success } = rateLimit({ key: `cadastro:${ip}`, limit: 5, windowSeconds: 3600 })
+  if (!success) {
+    return NextResponse.json({ error: 'Muitas tentativas. Tente novamente em 1 hora.' }, { status: 429 })
+  }
+
   const { businessName, category, phone, address, slug, email, password, professionalName } =
     await req.json()
 
   if (!businessName || !slug || !email || !password) {
     return NextResponse.json({ error: 'Campos obrigatórios faltando.' }, { status: 400 })
+  }
+
+  // Validação de input
+  if (typeof businessName !== 'string' || businessName.trim().length < 2 || businessName.trim().length > 100) {
+    return NextResponse.json({ error: 'Nome do negócio inválido.' }, { status: 400 })
+  }
+  if (typeof slug !== 'string' || !/^[a-z0-9-]+$/.test(slug) || slug.length < 3 || slug.length > 50) {
+    return NextResponse.json({ error: 'Endereço (slug) inválido. Use apenas letras minúsculas, números e hífen.' }, { status: 400 })
+  }
+  if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'Email inválido.' }, { status: 400 })
+  }
+  if (typeof password !== 'string' || password.length < 8) {
+    return NextResponse.json({ error: 'Senha deve ter pelo menos 8 caracteres.' }, { status: 400 })
   }
 
   const supabase = getAdminClient()
@@ -41,7 +62,8 @@ export async function POST(req: NextRequest) {
     if (authError?.message?.includes('already registered')) {
       return NextResponse.json({ error: 'Esse email já está cadastrado.' }, { status: 409 })
     }
-    return NextResponse.json({ error: authError?.message || 'Erro ao criar usuário.' }, { status: 500 })
+    console.error('Auth error:', authError)
+    return NextResponse.json({ error: 'Erro ao criar usuário.' }, { status: 500 })
   }
 
   const ownerId = userData.user.id
@@ -66,7 +88,8 @@ export async function POST(req: NextRequest) {
   if (bizError || !business) {
     // Rollback: deleta o usuário criado
     await supabase.auth.admin.deleteUser(ownerId)
-    return NextResponse.json({ error: bizError?.message || 'Erro ao criar negócio.' }, { status: 500 })
+    console.error('Business creation error:', bizError)
+    return NextResponse.json({ error: 'Erro ao criar negócio.' }, { status: 500 })
   }
 
   // 4. Cria o profissional padrão

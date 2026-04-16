@@ -10,7 +10,7 @@ function getAdminClient() {
   )
 }
 
-// D-1: Lembrete 1 dia antes — roda todo dia às 12h (Vercel Cron)
+// H-1: Lembrete 1 hora antes — roda a cada 15 min (Vercel Cron)
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {
@@ -23,19 +23,27 @@ export async function GET(req: NextRequest) {
 
   const supabase = getAdminClient()
 
-  // Vercel roda em UTC — converte pra BRT (UTC-3) pra bater com as datas do banco
+  // Vercel roda em UTC — converte pra BRT (UTC-3) pra bater com os horários do banco
   const nowUTC = new Date()
   const nowBRT = new Date(nowUTC.getTime() - 3 * 60 * 60 * 1000)
-  const tomorrow = new Date(nowBRT)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+  const today = nowBRT.toISOString().split('T')[0]
+
+  // Janela: agendamentos entre 45min e 75min a partir de agora (BRT)
+  // Isso garante que o cron de 15 em 15 min pega todos sem duplicar
+  const minTime = new Date(nowBRT.getTime() + 45 * 60 * 1000)
+  const maxTime = new Date(nowBRT.getTime() + 75 * 60 * 1000)
+
+  const minTimeStr = minTime.toISOString().slice(11, 16) // "HH:MM"
+  const maxTimeStr = maxTime.toISOString().slice(11, 16)
 
   const { data: appointments } = await supabase
     .from('appointments')
     .select('*, business:businesses(name)')
-    .eq('appointment_date', tomorrowStr)
+    .eq('appointment_date', today)
     .in('status', ['pending', 'confirmed'])
-    .eq('reminded_1d', false)
+    .eq('reminded_1h', false)
+    .gte('start_time', minTimeStr)
+    .lte('start_time', maxTimeStr)
 
   if (!appointments || appointments.length === 0) {
     return NextResponse.json({ ok: true, sent: 0 })
@@ -56,7 +64,7 @@ export async function GET(req: NextRequest) {
           date: appt.appointment_date,
           startTime: appt.start_time.slice(0, 5),
           serviceName: appt.service_name,
-          type: '1d',
+          type: '1h',
         })
       }
 
@@ -69,19 +77,19 @@ export async function GET(req: NextRequest) {
           date: appt.appointment_date,
           startTime: appt.start_time.slice(0, 5),
           serviceName: appt.service_name,
-          type: '1d',
+          type: '1h',
         })
       }
 
       // Marca como enviado
       await supabase
         .from('appointments')
-        .update({ reminded_1d: true })
+        .update({ reminded_1h: true })
         .eq('id', appt.id)
 
       sent++
     } catch (err) {
-      console.error(`[D-1] Erro ao enviar lembrete para ${appt.client_name}:`, err)
+      console.error(`[H-1] Erro ao enviar lembrete para ${appt.client_name}:`, err)
     }
   }
 

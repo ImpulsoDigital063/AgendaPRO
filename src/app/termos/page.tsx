@@ -47,7 +47,7 @@ export default function TermosPage() {
               <li>Fornecer informações verdadeiras no momento do agendamento</li>
               <li>Comparecer ao horário agendado ou cancelar com antecedência</li>
               <li>Não utilizar a plataforma para fins ilícitos ou fraudulentos</li>
-              <li>Manter seu número de WhatsApp atualizado para receber notificações</li>
+              <li>Manter seu e-mail atualizado para receber confirmações e lembretes</li>
             </ul>
           </section>
 

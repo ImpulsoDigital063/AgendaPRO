@@ -61,7 +61,7 @@ export default function WhatsAppQRTab({ phone, businessName }: Props) {
       <div className="admin-card p-6">
         <h3 className="font-semibold mb-1" style={{ color: 'var(--admin-text)' }}>QR Code WhatsApp</h3>
         <p className="text-xs mb-6 leading-relaxed" style={{ color: 'var(--admin-text-faded)' }}>
-          Imprima e cole no seu estabelecimento. O cliente escaneia e abre o WhatsApp direto com voce — sem custo de API.
+          Imprima e cole no seu estabelecimento. O cliente escaneia e abre o WhatsApp direto com você — sem custo de API.
         </p>
 
         {/* QR Code */}

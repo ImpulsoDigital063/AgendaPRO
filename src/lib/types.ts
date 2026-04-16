@@ -25,6 +25,10 @@ export type Professional = {
   photo_url: string | null
   active: boolean
   commission_percentage: number
+  email: string | null
+  auth_user_id: string | null
+  role: 'owner' | 'professional'
+  password_changed: boolean
   created_at: string
 }
 
@@ -125,6 +129,8 @@ export type Appointment = {
   end_time: string         // "14:30"
   status: 'pending' | 'confirmed' | 'cancelled'
   notes: string | null
+  reminded_1d: boolean
+  reminded_1h: boolean
   created_at: string
 }
 
@@ -136,4 +142,16 @@ export type AppointmentWithDetails = Appointment & {
 export type TimeSlot = {
   time: string      // "14:00"
   available: boolean
+}
+
+export type ActivityLog = {
+  id: string
+  business_id: string
+  professional_id: string | null
+  action: 'confirm' | 'cancel' | 'reschedule' | 'login'
+  target_type: string | null
+  target_id: string | null
+  description: string | null
+  created_at: string
+  professional?: Professional
 }

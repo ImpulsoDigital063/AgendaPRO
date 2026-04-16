@@ -5,11 +5,12 @@ import Link from 'next/link'
 
 type Props = {
   appointmentId: string
+  token: string
   alreadyCancelled: boolean
   businessSlug?: string
 }
 
-export default function CancelarConfirm({ appointmentId, alreadyCancelled, businessSlug }: Props) {
+export default function CancelarConfirm({ appointmentId, token, alreadyCancelled, businessSlug }: Props) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
     alreadyCancelled ? 'done' : 'idle'
   )
@@ -18,7 +19,7 @@ export default function CancelarConfirm({ appointmentId, alreadyCancelled, busin
     setStatus('loading')
     try {
       const res = await fetch(
-        `/api/appointment/action?id=${appointmentId}&action=cancelled`
+        `/api/appointment/action?id=${appointmentId}&action=cancelled&token=${token}`
       )
       if (res.ok) {
         setStatus('done')

@@ -1,72 +1,61 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import AppointmentCard from '@/components/AppointmentCard'
-import LogoutButton from '@/components/LogoutButton'
-import ShareButton from '@/components/ShareButton'
-import DivulgarCard from '@/components/admin/DivulgarCard'
-import ThemeToggle from '@/components/admin/ThemeToggle'
-import ActivityFeed from '@/components/admin/ActivityFeed'
-import Link from 'next/link'
 import Image from 'next/image'
+import LogoutButton from '@/components/LogoutButton'
+import ThemeToggle from '@/components/admin/ThemeToggle'
+import ProfAppointmentCard from '@/components/profissional/ProfAppointmentCard'
+import WelcomeCard from '@/components/profissional/WelcomeCard'
 import {
   IconCalendar,
-  IconChevronRight,
   IconDollar,
-  IconInbox,
-  IconPalette,
-  IconSettings,
-  IconUsers,
-  IconWallet,
   IconCheck,
   IconClock,
   IconClose,
+  IconInbox,
 } from '@/components/ui/Icon'
 
-export default async function AdminPage() {
+export default async function ProfissionalPage() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/admin/login')
+  if (!user) redirect('/profissional/login')
 
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('*')
-    .eq('owner_id', user.id)
+  // Busca o profissional logado
+  const { data: professional } = await supabase
+    .from('professionals')
+    .select('*, business:businesses(name, slug)')
+    .eq('auth_user_id', user.id)
     .single()
 
-  if (!business) redirect('/cadastro')
+  if (!professional) redirect('/profissional/login')
+
+  const business = professional.business as { name: string; slug: string }
 
   const today = new Date().toISOString().split('T')[0]
 
+  // Agendamentos de hoje — só deste profissional
   const { data: appointments } = await supabase
     .from('appointments')
-    .select(`*, professional:professionals(name)`)
-    .eq('business_id', business.id)
+    .select('*')
+    .eq('professional_id', professional.id)
     .eq('appointment_date', today)
     .order('start_time', { ascending: true })
 
+  // Próximos 7 dias
   const nextWeek = new Date()
   nextWeek.setDate(nextWeek.getDate() + 7)
   const nextWeekStr = nextWeek.toISOString().split('T')[0]
 
   const { data: upcoming } = await supabase
     .from('appointments')
-    .select(`*, professional:professionals(name)`)
-    .eq('business_id', business.id)
+    .select('*')
+    .eq('professional_id', professional.id)
     .gt('appointment_date', today)
     .lte('appointment_date', nextWeekStr)
     .in('status', ['pending', 'confirmed'])
     .order('appointment_date', { ascending: true })
     .order('start_time', { ascending: true })
     .limit(10)
-
-  // Atividades recentes dos profissionais
-  const { data: recentActivity } = await supabase
-    .from('activity_log')
-    .select('*, professional:professionals(name)')
-    .eq('business_id', business.id)
-    .order('created_at', { ascending: false })
-    .limit(8)
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -113,36 +102,9 @@ export default async function AdminPage() {
     },
   ]
 
-  const navItems = [
-    {
-      href: '/admin/configuracoes',
-      label: 'Configurações',
-      desc: 'Serviços, horários e profissionais',
-      icon: IconSettings,
-    },
-    {
-      href: '/admin/configuracoes?tab=aparencia',
-      label: 'Aparência',
-      desc: 'Personalize cores e tema do seu link',
-      icon: IconPalette,
-    },
-    {
-      href: '/admin/clientes',
-      label: 'Clientes',
-      desc: 'Fidelidade e programa de pontos',
-      icon: IconUsers,
-    },
-    {
-      href: '/admin/financeiro',
-      label: 'Financeiro',
-      desc: 'Faturamento e relatórios',
-      icon: IconWallet,
-    },
-  ]
-
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
-      {/* Glow orbs de fundo — dimmed no light */}
+      {/* Glow orbs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div
           className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full blur-[120px]"
@@ -151,10 +113,6 @@ export default async function AdminPage() {
         <div
           className="absolute top-[40%] -right-24 w-72 h-72 rounded-full blur-[80px]"
           style={{ background: 'var(--admin-bg-orb-2)' }}
-        />
-        <div
-          className="absolute bottom-0 -left-20 w-64 h-64 rounded-full blur-[80px]"
-          style={{ background: 'var(--admin-bg-orb-3)' }}
         />
       </div>
 
@@ -171,14 +129,16 @@ export default async function AdminPage() {
           />
           <div className="flex items-center gap-2">
             <ThemeToggle compact />
-            <ShareButton slug={business.slug} />
             <LogoutButton />
           </div>
         </div>
         <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
-          {business.name}
+          {professional.name}
         </h1>
-        <p className="text-sm capitalize mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+        <p className="text-sm mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+          {business.name}
+        </p>
+        <p className="text-sm capitalize mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
           <span className="inline-flex items-center gap-1.5">
             <IconCalendar size={14} /> {todayFormatted}
           </span>
@@ -191,10 +151,7 @@ export default async function AdminPage() {
           {stats.map((stat) => {
             const Icon = stat.icon
             return (
-              <div
-                key={stat.label}
-                className="admin-card p-3.5 relative overflow-hidden"
-              >
+              <div key={stat.label} className="admin-card p-3.5 relative overflow-hidden">
                 <div
                   className="absolute -top-4 -right-4 w-16 h-16 rounded-full blur-2xl opacity-70 pointer-events-none"
                   style={{ background: stat.glow }}
@@ -210,10 +167,7 @@ export default async function AdminPage() {
                   </div>
                   <span
                     className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{
-                      background: stat.glow,
-                      color: stat.color,
-                    }}
+                    style={{ background: stat.glow, color: stat.color }}
                   >
                     <Icon size={16} />
                   </span>
@@ -225,12 +179,8 @@ export default async function AdminPage() {
       </section>
 
       <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
-
-        {/* Divulgação */}
-        <DivulgarCard
-          slug={business.slug}
-          appUrl={process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.com.br'}
-        />
+        {/* Boas-vindas */}
+        <WelcomeCard professionalName={professional.name} />
 
         {/* Hoje */}
         <section>
@@ -267,12 +217,12 @@ export default async function AdminPage() {
                 Nenhum agendamento hoje
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                Compartilhe seu link para receber reservas
+                Seus agendamentos aparecem aqui automaticamente
               </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {list.map((a) => <AppointmentCard key={a.id} appointment={a} />)}
+              {list.map((a) => <ProfAppointmentCard key={a.id} appointment={a} />)}
             </div>
           )}
         </section>
@@ -282,72 +232,17 @@ export default async function AdminPage() {
           <section>
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-                Próximos dias
+                Proximos dias
               </p>
               <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>7 dias</span>
             </div>
             <div className="space-y-3">
               {upcoming.map((a) => (
-                <AppointmentCard key={a.id} appointment={a} showDate />
+                <ProfAppointmentCard key={a.id} appointment={a} showDate />
               ))}
             </div>
           </section>
         )}
-
-        {/* Atividades dos profissionais */}
-        {recentActivity && recentActivity.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-              Atividade da equipe
-            </p>
-            <ActivityFeed activities={recentActivity} />
-          </section>
-        )}
-
-        {/* Nav list */}
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{
-            background: 'var(--admin-surface)',
-            border: '1px solid var(--admin-border)',
-          }}
-        >
-          {navItems.map((item, i, arr) => {
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="flex items-center gap-4 px-4 py-4 transition-colors hover:opacity-100"
-                style={{
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--admin-divider)' : 'none',
-                  color: 'var(--admin-text)',
-                }}
-              >
-                <span
-                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{
-                    background: 'var(--admin-accent-bg)',
-                    color: 'var(--admin-accent)',
-                  }}
-                >
-                  <Icon size={18} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm leading-tight" style={{ color: 'var(--admin-text)' }}>
-                    {item.label}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                    {item.desc}
-                  </p>
-                </div>
-                <span style={{ color: 'var(--admin-text-faded)' }}>
-                  <IconChevronRight size={18} />
-                </span>
-              </Link>
-            )
-          })}
-        </div>
 
         <p className="text-center text-xs pb-2" style={{ color: 'var(--admin-text-faded)' }}>
           AgendaPRO · Impulso Digital

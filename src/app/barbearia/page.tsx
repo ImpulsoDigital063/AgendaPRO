@@ -1,5 +1,15 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+
+export const metadata: Metadata = {
+  title: 'AgendaPRO para Barbearias — Agenda Online com Lembrete Automático',
+  description: 'Sistema de agendamento online para barbearias. Cliente agenda pelo link, recebe lembrete por e-mail, fila de espera preenche cancelamentos. A partir de R$67/mês.',
+  openGraph: {
+    title: 'AgendaPRO para Barbearias',
+    description: 'Seu cliente agenda sozinho pelo link na bio. Lembrete automático, fila de espera e Google Reviews integrado.',
+  },
+}
 import type { FAQItem } from '@/components/FAQ'
 import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
 import { TimelineMicroUI, DorMicroUI } from '@/components/LandingMicroUI'
@@ -24,7 +34,7 @@ import {
   IconCheck,
   IconStar,
   IconPin,
-  IconWhatsapp,
+  IconMail,
 } from '@/components/BarberIcons'
 
 /* ═══════════════════════════════════════════════════════════
@@ -40,7 +50,7 @@ const DORES = [
 ]
 
 const MOTORES = [
-  { Icon: IconBrain,   tag: 'Atendimento',   titulo: 'Confirma e lembra sozinha',       desc: 'Lembrete automático no dia anterior pelo WhatsApp. Cliente confirma, fila avança ou recua, agenda do dia chega na sua mão limpa.', color: '#06B6D4', stat: '-50%',  statLabel: 'faltas' },
+  { Icon: IconBrain,   tag: 'Atendimento',   titulo: 'Confirma e lembra sozinha',       desc: 'Lembrete automático por e-mail na véspera e 1h antes. Cliente confirma, fila avança ou recua, agenda do dia chega na sua mão limpa.', color: '#06B6D4', stat: '-50%',  statLabel: 'faltas' },
   { Icon: IconTrophy,  tag: 'Ranking',        titulo: 'Sobe no Google sem pagar',        desc: 'Cliente sai do corte, ganha pontos pra avaliar no Google. Sua nota sobe, o Maps te coloca em cima da concorrência.',              color: '#F59E0B', stat: '+0.6',  statLabel: 'nota/mês' },
   { Icon: IconLink,    tag: 'Multiplicação',  titulo: 'Transforma cliente em vendedor',  desc: 'Link de indicação único por cliente. Quando o amigo agenda, ambos ganham pontos. Cliente vira promotor.',                       color: '#8B5CF6', stat: 'x2.3',  statLabel: 'clientes' },
   { Icon: IconBolt,    tag: 'Recuperação',    titulo: 'Preenche cancelamento sozinha',   desc: 'Cancelou 10:00? O sistema chama os 3 primeiros da fila. Quem aceitar primeiro fica com a vaga.',                                 color: '#A78BFA', stat: '3 min', statLabel: 'pra preencher' },
@@ -85,7 +95,7 @@ const BARBER_FAQS: FAQItem[] = [
   },
   {
     q: 'Como funciona o lembrete anti-falta?',
-    a: 'Na véspera do horário, o sistema dispara um lembrete automático pro cliente. Isso reduz faltas em até 50%. Você não precisa lembrar, mandar mensagem ou correr atrás. O sistema resolve.',
+    a: 'O sistema envia lembretes automáticos por e-mail: um na véspera e outro 1 hora antes do horário. Reduz faltas em até 50%. Usamos e-mail em vez de WhatsApp pra proteger seu número — sem risco de bloqueio por disparo em massa.',
   },
   {
     q: 'E se alguém cancelar em cima da hora?',
@@ -426,17 +436,17 @@ export default function BarbeariaPage() {
                 {/* Mini-UI por motor */}
                 <div className="mt-1">
                   {i === 0 && (
-                    /* Atendimento — lembrete WhatsApp */
+                    /* Atendimento — lembrete por e-mail */
                     <div
                       className="rounded-xl p-3 space-y-1.5"
                       style={{ background: 'rgba(8,11,24,0.6)', border: `1px solid ${m.color}25` }}
                     >
                       <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
                         <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-white flex-shrink-0" style={{ background: '#10B981' }}>
-                          <IconWhatsapp size={11} strokeWidth={2} />
+                          <IconMail size={11} strokeWidth={2} />
                         </span>
                         <div className="flex-1 min-w-0">
-                          <span className="text-[10px] text-white font-bold">Lembrete enviado</span>
+                          <span className="text-[10px] text-white font-bold">Lembrete por e-mail</span>
                           <span className="text-[9px] text-slate-500"> · ontem 18:00</span>
                         </div>
                       </div>
@@ -928,7 +938,7 @@ export default function BarbeariaPage() {
                     }}
                   >
                     <IconBolt size={10} strokeWidth={2.5} />
-                    Economia R$189/mês
+                    Economia R$360/ano
                   </span>
                 </div>
                 <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5">
@@ -1049,7 +1059,7 @@ export default function BarbeariaPage() {
                     }}
                   >
                     <IconBolt size={10} strokeWidth={2.5} />
-                    Economia R$189/mês
+                    Economia R$480/ano
                   </span>
                 </div>
                 <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5">

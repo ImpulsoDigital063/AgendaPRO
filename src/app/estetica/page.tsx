@@ -1,5 +1,15 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+
+export const metadata: Metadata = {
+  title: 'AgendaPRO para Clínicas de Estética — Agenda Online com Lembrete Automático',
+  description: 'Sistema de agendamento online para estética. Lembrete por e-mail na véspera e 1h antes, fila de espera e comissão automática. A partir de R$67/mês.',
+  openGraph: {
+    title: 'AgendaPRO para Clínicas de Estética',
+    description: 'Agenda online para estética. Lembrete automático, fila de espera, relatório financeiro e Google Reviews integrado.',
+  },
+}
 import type { FAQItem } from '@/components/FAQ'
 import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
@@ -24,6 +34,7 @@ import {
   IconCheck,
   IconStar,
   IconWhatsapp,
+  IconMail,
 } from '@/components/BarberIcons'
 
 /* ═══════════════════════════════════════════════════════════
@@ -60,7 +71,7 @@ const DORES = [
 ]
 
 const MOTORES = [
-  { Icon: IconBrain,   tag: 'Anti-falta',     titulo: 'Lembrete que salva seu procedimento',  desc: 'Na véspera, a cliente recebe lembrete automático. Confirma ou avisa que não vem. Você reorganiza a agenda antes de preparar a sala.', color: '#10B981', stat: '-50%',  statLabel: 'faltas' },
+  { Icon: IconBrain,   tag: 'Anti-falta',     titulo: 'Lembrete que salva seu procedimento',  desc: 'Lembrete automático por e-mail na véspera e 1h antes. Confirma ou avisa que não vem. Você reorganiza a agenda antes de preparar a sala.', color: '#10B981', stat: '-50%',  statLabel: 'faltas' },
   { Icon: IconTrophy,  tag: 'Ranking',         titulo: 'Google cheio de avaliações reais',     desc: 'Depois do procedimento, a cliente ganha pontos pra avaliar no Google. Nota 4.9 e o Maps mostra sua clínica primeiro.',              color: '#F59E0B', stat: '+0.6',  statLabel: 'nota/mês' },
   { Icon: IconLink,    tag: 'Indicação',       titulo: 'Cliente indica a amiga com link',      desc: 'Cada cliente tem link de indicação. A amiga agenda, as duas ganham pontos. Boca a boca rastreado — você sabe quem trouxe quem.',     color: '#8B5CF6', stat: 'x2.3',  statLabel: 'clientes' },
   { Icon: IconBolt,    tag: 'Fila de espera',   titulo: 'Cancelou? Outra assume o horário',     desc: 'Drenagem de R$200 cancelada? O sistema avisa quem tá na fila. A primeira que aceitar fica com a vaga. Sem você tocar no celular.',  color: '#06B6D4', stat: '3 min', statLabel: 'pra preencher' },
@@ -114,7 +125,7 @@ const ESTETICA_FAQS: FAQItem[] = [
   },
   {
     q: 'Como funciona o lembrete?',
-    a: 'Na véspera, o sistema manda lembrete automático. Reduz faltas em até 50%. Num ticket de R$200+, isso é dinheiro sério que para de vazar.',
+    a: 'O sistema envia lembretes automáticos por e-mail: um na véspera e outro 1 hora antes. Reduz faltas em até 50%. Usamos e-mail em vez de WhatsApp pra proteger seu número — sem risco de bloqueio por disparo em massa. Num ticket de R$200+, isso é dinheiro sério que para de vazar.',
   },
   {
     q: 'É difícil de configurar?',
@@ -476,8 +487,8 @@ export default function EsteticaPage() {
                   {i === 0 && (
                     <div className="rounded-xl p-3 space-y-1.5" style={{ background: 'rgba(8,11,24,0.6)', border: `1px solid ${m.color}25` }}>
                       <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                        <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-white flex-shrink-0" style={{ background: '#10B981' }}><IconWhatsapp size={11} strokeWidth={2} /></span>
-                        <div className="flex-1 min-w-0"><span className="text-[10px] text-white font-bold">Lembrete enviado</span><span className="text-[9px] text-slate-500"> · ontem 18:00</span></div>
+                        <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-white flex-shrink-0" style={{ background: '#10B981' }}><IconMail size={11} strokeWidth={2} /></span>
+                        <div className="flex-1 min-w-0"><span className="text-[10px] text-white font-bold">Lembrete por e-mail</span><span className="text-[9px] text-slate-500"> · ontem 18:00</span></div>
                       </div>
                       <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)' }}>
                         <span className="w-5 h-5 rounded-md inline-flex items-center justify-center text-white flex-shrink-0" style={{ background: '#06B6D4' }}><IconCheck size={11} strokeWidth={3} /></span>
@@ -788,7 +799,7 @@ export default function EsteticaPage() {
                 <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-white">R$67</span><span className="text-slate-400 text-sm">/mês</span></div>
                 <div className="flex items-center gap-3 mt-2">
                   <span className="text-slate-500 text-xs line-through">R$97</span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Economia R$219/mês</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Economia R$360/ano</span>
                 </div>
                 <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$2,23/dia — menos que um café</p>
               </div>
@@ -815,7 +826,7 @@ export default function EsteticaPage() {
                 <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-gradient">R$107</span><span className="text-slate-400 text-sm">/mês</span></div>
                 <div className="flex items-center gap-3 mt-2">
                   <span className="text-slate-500 text-xs line-through">R$147</span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Economia R$219/mês</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Economia R$480/ano</span>
                 </div>
                 <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$3,57/dia — por profissional sai R$0,71/dia</p>
               </div>

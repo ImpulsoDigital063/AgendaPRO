@@ -73,7 +73,9 @@ export default function CadastroPage() {
 
   function validateOwner() {
     if (!email.trim()) return 'Email é obrigatório.'
-    if (password.length < 6) return 'Senha deve ter pelo menos 6 caracteres.'
+    if (password.length < 8) return 'Senha deve ter pelo menos 8 caracteres.'
+    if (!/[A-Z]/.test(password)) return 'Senha deve conter pelo menos uma letra maiúscula.'
+    if (!/[0-9]/.test(password)) return 'Senha deve conter pelo menos um número.'
     if (password !== confirmPassword) return 'As senhas não coincidem.'
     return null
   }

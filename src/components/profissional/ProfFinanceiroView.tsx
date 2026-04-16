@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 
-export type AppointmentRow = {
+type AppointmentRow = {
   id: string
   client_name: string
   client_phone: string
@@ -11,12 +11,12 @@ export type AppointmentRow = {
   status: string
   service_name: string | null
   total_price: number | null
-  professional: { id: string; name: string; commission_percentage: number } | null
 }
 
 type Props = {
   appointments: AppointmentRow[]
   periodo: string
+  commissionPercentage: number
 }
 
 function formatPrice(value: number) {
@@ -41,7 +41,7 @@ const PERIODO_LABEL: Record<string, string> = {
   mes: 'Este mês',
 }
 
-export default function FinanceiroView({ appointments, periodo }: Props) {
+export default function ProfFinanceiroView({ appointments, periodo, commissionPercentage }: Props) {
   const router = useRouter()
   const pathname = usePathname()
 
@@ -52,38 +52,13 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
   const comPrice = appointments.filter((a) => a.total_price !== null && a.total_price > 0)
   const confirmados = appointments.filter((a) => a.status === 'confirmed' && a.total_price)
 
-  const totalFaturado = comPrice.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const totalGerado = comPrice.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const totalConfirmado = confirmados.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-
-  // Agrupamento por profissional
-  type ProfEntry = {
-    name: string
-    commission_percentage: number
-    total: number
-    count: number
-  }
-  const profMap: Record<string, ProfEntry> = {}
-
-  for (const a of comPrice) {
-    const prof = a.professional
-    if (!prof) continue
-    if (!profMap[prof.id]) {
-      profMap[prof.id] = {
-        name: prof.name,
-        commission_percentage: prof.commission_percentage ?? 0,
-        total: 0,
-        count: 0,
-      }
-    }
-    profMap[prof.id].total += a.total_price ?? 0
-    profMap[prof.id].count += 1
-  }
-
-  const profList = Object.values(profMap)
+  const minhaComissao = totalConfirmado * (commissionPercentage / 100)
 
   return (
     <div className="space-y-6">
-      {/* Seletor de período */}
+      {/* Seletor de periodo */}
       <div
         className="flex rounded-2xl p-1"
         style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
@@ -106,54 +81,23 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
       {/* Cards resumo */}
       <div className="grid grid-cols-2 gap-3">
         <div className="admin-card p-4">
-          <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Total faturado</p>
-          <p className="text-xl font-bold" style={{ color: 'var(--admin-text)' }}>{formatPrice(totalFaturado)}</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{comPrice.length} agendamentos</p>
+          <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Total gerado</p>
+          <p className="text-xl font-bold" style={{ color: 'var(--admin-text)' }}>{formatPrice(totalGerado)}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{comPrice.length} atendimentos</p>
         </div>
         <div className="admin-card p-4">
-          <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Confirmados</p>
-          <p className="text-xl font-bold" style={{ color: 'var(--admin-success)' }}>{formatPrice(totalConfirmado)}</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{confirmados.length} agendamentos</p>
+          <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Minha comissão</p>
+          <p className="text-xl font-bold" style={{ color: 'var(--admin-success)' }}>{formatPrice(minhaComissao)}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{commissionPercentage}% do total</p>
         </div>
       </div>
 
-      {/* Comissão por profissional */}
-      {profList.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-            Comissao por profissional
-          </h2>
-          <div className="space-y-2">
-            {profList.map((prof) => {
-              const commission = prof.total * (prof.commission_percentage / 100)
-              return (
-                <div key={prof.name} className="admin-card px-4 py-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium" style={{ color: 'var(--admin-text)' }}>{prof.name}</p>
-                    <span
-                      className="text-xs px-2 py-1 rounded-lg"
-                      style={{ color: 'var(--admin-text-faded)', background: 'var(--admin-accent-bg)', border: '1px solid var(--admin-border)' }}
-                    >
-                      {prof.commission_percentage}% comissão
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Gerado</p>
-                      <p className="font-semibold text-sm" style={{ color: 'var(--admin-text-2)' }}>{formatPrice(prof.total)}</p>
-                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>{prof.count} atendimento{prof.count !== 1 ? 's' : ''}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>A pagar</p>
-                      <p className="font-bold" style={{ color: 'var(--admin-text)' }}>{formatPrice(commission)}</p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
+      {/* Confirmados */}
+      <div className="admin-card p-4">
+        <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Confirmados</p>
+        <p className="text-lg font-bold" style={{ color: 'var(--admin-accent)' }}>{formatPrice(totalConfirmado)}</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{confirmados.length} agendamentos</p>
+      </div>
 
       {/* Lista de agendamentos */}
       <section>
@@ -172,19 +116,13 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
                 month: 'short',
               })
               return (
-                <div
-                  key={a.id}
-                  className="admin-card px-4 py-3 flex items-center justify-between"
-                >
+                <div key={a.id} className="admin-card px-4 py-3 flex items-center justify-between">
                   <div>
                     <p className="font-medium text-sm" style={{ color: 'var(--admin-text)' }}>{a.client_name}</p>
                     <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
                       {date} · {a.start_time.slice(0, 5)}
                       {a.service_name ? ` · ${a.service_name}` : ''}
                     </p>
-                    {a.professional && (
-                      <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{a.professional.name}</p>
-                    )}
                   </div>
                   <div className="text-right flex flex-col items-end gap-1">
                     {a.total_price ? (

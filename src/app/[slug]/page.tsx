@@ -29,7 +29,7 @@ export default async function BusinessPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('*')
+    .select('id, name, slug, description, address, phone, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral')
     .eq('slug', slug)
     .single()
 
@@ -38,13 +38,13 @@ export default async function BusinessPage({
   const [{ data: services }, { data: professionals }] = await Promise.all([
     supabase
       .from('services')
-      .select('*')
+      .select('id, name, price, duration_minutes, points, active')
       .eq('business_id', business.id)
       .eq('active', true)
       .order('name'),
     supabase
       .from('professionals')
-      .select('*')
+      .select('id, name, photo_url, active')
       .eq('business_id', business.id)
       .eq('active', true),
   ])
