@@ -1,12 +1,12 @@
-/* Dashboard mockup 3D modernizado — estilo Linear/Vercel/Arc com depth real
-   - 3 camadas fantasma empilhadas atrás do card principal
-   - Perspectiva 1400px com rotação dramática
-   - 4 cards flutuantes orbitando em eixos e planos distintos
-   - Shimmer atravessando o vidro em loop
-   - Micro-animações em todos elementos (float/pulse/shine)
-   - Ícones SVG em vez de emojis pra coerência visual 3D
+'use client'
+
+/* Dashboard mockup 3D — scroll-driven reveal bidirecional
+   Conforme o usuário scrolla, o dashboard emerge e as notificações
+   chegam em cascata. Ao scrollar de volta, tudo reverte
+   naturalmente (opacity/transform ligados ao progress do scroll).
 */
 
+import { useEffect, useRef, useState } from 'react'
 import {
   IconBolt,
   IconTrophy,
@@ -16,31 +16,91 @@ import {
 } from './BarberIcons'
 
 export default function AgendaDashboardMockup() {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [p, setP] = useState(0) // 0..1 = progress de entrada baseado no scroll
+
+  useEffect(() => {
+    let ticking = false
+    const update = () => {
+      ticking = false
+      const el = rootRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const vh = window.innerHeight || 800
+      // Começa a revelar quando o topo do mockup entra na parte inferior do viewport (vh)
+      // Completa quando o topo chega a 30% do viewport (bem no meio-alto)
+      const start = vh
+      const end = vh * 0.3
+      const raw = 1 - (rect.top - end) / (start - end)
+      const progress = Math.max(0, Math.min(1, raw))
+      setP(progress)
+    }
+
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(update)
+    }
+
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+
+  // Helper: clamp(0..1) dentro da faixa [from, to]
+  const stage = (from: number, to: number) =>
+    Math.max(0, Math.min(1, (p - from) / (to - from)))
+  // Easing easeOutCubic — começa rápido, desacelera
+  const ease = (t: number) => 1 - Math.pow(1 - t, 3)
+
+  // Stages de reveal — cascateado conforme scroll
+  const mainS    = ease(stage(0.00, 0.25)) // card principal emerge primeiro
+  const kpiS     = ease(stage(0.12, 0.35)) // KPIs aparecem
+  const listS    = ease(stage(0.18, 0.50)) // lista de agendamentos cascateia
+  const card1S   = ease(stage(0.32, 0.55)) // VAGA PREENCHIDA (esquerda → direita)
+  const card2S   = ease(stage(0.42, 0.68)) // +50 PONTOS (direita → esquerda)
+  const card3S   = ease(stage(0.52, 0.75)) // Nova avaliação (direita)
+  const card4S   = ease(stage(0.60, 0.85)) // Ju CONFIRMOU (esquerda)
+  const orbsS    = ease(stage(0.55, 0.95)) // orbs acendem
+  const sparkleS = ease(stage(0.65, 1.00)) // sparkle final
+
+  // Lista com stagger interno baseado em listS
+  const rowStage = (i: number, total: number) => {
+    const slice = 1 / total
+    return ease(Math.max(0, Math.min(1, (listS - i * slice * 0.7) / (1 - i * slice * 0.3))))
+  }
+
   const slots = [
-    { hora: '08:00', cliente: 'João Marcelo',  servico: 'Corte + Barba',   status: 'done',     valor: 'R$ 55' },
-    { hora: '09:00', cliente: 'Pedro Sousa',   servico: 'Barba',           status: 'done',     valor: 'R$ 25' },
-    { hora: '10:00', cliente: 'Lucas Almeida', servico: 'Corte',           status: 'now',      valor: 'R$ 35' },
-    { hora: '11:00', cliente: 'Rafael Torres', servico: 'Pacote completo', status: 'confirmed',valor: 'R$ 90' },
-    { hora: '14:00', cliente: 'Marcos (fila)', servico: 'Vaga preenchida', status: 'auto',     valor: 'R$ 35' },
+    { hora: '08:00', cliente: 'João Marcelo',  servico: 'Corte + Barba',   status: 'done',      valor: 'R$ 55' },
+    { hora: '09:00', cliente: 'Pedro Sousa',   servico: 'Barba',           status: 'done',      valor: 'R$ 25' },
+    { hora: '10:00', cliente: 'Lucas Almeida', servico: 'Corte',           status: 'now',       valor: 'R$ 35' },
+    { hora: '11:00', cliente: 'Rafael Torres', servico: 'Pacote completo', status: 'confirmed', valor: 'R$ 90' },
+    { hora: '14:00', cliente: 'Marcos (fila)', servico: 'Vaga preenchida', status: 'auto',      valor: 'R$ 35' },
   ]
 
   function statusStyle(s: string) {
     if (s === 'done')      return { dot: '#10B981', label: 'Pago',        bg: 'rgba(16,185,129,0.12)',  text: '#34D399' }
     if (s === 'now')       return { dot: '#3B82F6', label: 'Em curso',    bg: 'rgba(59,130,246,0.15)',  text: '#60A5FA' }
     if (s === 'confirmed') return { dot: '#94A3B8', label: 'Confirmado',  bg: 'rgba(148,163,184,0.12)', text: '#CBD5E1' }
-    if (s === 'auto')      return { dot: '#A78BFA', label: 'Auto',        bg: 'rgba(167,139,250,0.16)', text: '#C4B5FD' }
+    if (s === 'auto')      return { dot: '#A78BFA', label: 'Auto',        bg: 'rgba(167,139,250,0.16)', type: '' , text: '#C4B5FD' }
     return { dot: '#94A3B8', label: '', bg: 'rgba(148,163,184,0.12)', text: '#CBD5E1' }
   }
 
   return (
     <div
+      ref={rootRef}
       className="relative w-full max-w-[460px] mx-auto"
       style={{
         perspective: '1400px',
         perspectiveOrigin: '50% 30%',
+        willChange: 'contents',
       }}
     >
-      {/* Glow base — mais denso e colorido */}
+      {/* Glow base — sempre com vida ambient, mas intensidade cresce com progress */}
       <div
         aria-hidden
         className="animate-float-soft"
@@ -53,11 +113,12 @@ export default function AgendaDashboardMockup() {
             'radial-gradient(ellipse 40% 35% at 50% 85%, rgba(6,182,212,0.35) 0%, transparent 70%)',
           filter: 'blur(50px)',
           zIndex: 0,
+          opacity: 0.25 + mainS * 0.75,
           animationDuration: '8s',
         }}
       />
 
-      {/* Partículas/orbs flutuantes decorativos — dão profundidade 3D */}
+      {/* Orbs flutuantes — escalam com orbsS */}
       <div
         aria-hidden
         className="animate-float-soft"
@@ -71,6 +132,7 @@ export default function AgendaDashboardMockup() {
           background: 'linear-gradient(135deg, #06B6D4, #3B82F6)',
           boxShadow: '0 0 20px rgba(6,182,212,0.8)',
           zIndex: 1,
+          opacity: orbsS,
           animationDelay: '0.5s',
           animationDuration: '6s',
         }}
@@ -88,6 +150,7 @@ export default function AgendaDashboardMockup() {
           background: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
           boxShadow: '0 0 16px rgba(245,158,11,0.8)',
           zIndex: 1,
+          opacity: orbsS,
           animationDelay: '2.2s',
           animationDuration: '7s',
         }}
@@ -105,49 +168,50 @@ export default function AgendaDashboardMockup() {
           background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)',
           boxShadow: '0 0 18px rgba(139,92,246,0.8)',
           zIndex: 1,
+          opacity: orbsS,
           animationDelay: '3.5s',
           animationDuration: '8s',
         }}
       />
 
-      {/* Camada fantasma 3 (mais distante) */}
+      {/* Camada fantasma 3 */}
       <div
         aria-hidden
         style={{
           position: 'absolute',
           inset: 0,
-          transform: 'rotateY(-12deg) rotateX(6deg) translate(40px, 40px) translateZ(-80px)',
+          transform: `rotateY(-12deg) rotateX(6deg) translate(${40 * mainS}px, ${40 * mainS}px) translateZ(-80px)`,
           transformOrigin: 'center',
           background: 'rgba(15,23,42,0.3)',
           borderRadius: '24px',
           border: '1px solid rgba(255,255,255,0.03)',
           zIndex: 1,
-          opacity: 0.35,
+          opacity: mainS * 0.35,
           filter: 'blur(1px)',
         }}
       />
 
-      {/* Camada fantasma 2 (intermediária) */}
+      {/* Camada fantasma 2 */}
       <div
         aria-hidden
         style={{
           position: 'absolute',
           inset: 0,
-          transform: 'rotateY(-10deg) rotateX(5deg) translate(24px, 24px) translateZ(-40px)',
+          transform: `rotateY(-10deg) rotateX(5deg) translate(${24 * mainS}px, ${24 * mainS}px) translateZ(-40px)`,
           transformOrigin: 'center',
           background: 'rgba(15,23,42,0.55)',
           borderRadius: '24px',
           border: '1px solid rgba(255,255,255,0.05)',
           zIndex: 1,
-          opacity: 0.55,
+          opacity: mainS * 0.55,
         }}
       />
 
-      {/* Card principal — dashboard em 3D */}
+      {/* Card principal — emerge com translateY + scale + rotate */}
       <div
-        className="relative animate-float-soft"
+        className="relative"
         style={{
-          transform: 'rotateY(-9deg) rotateX(5deg)',
+          transform: `rotateY(-9deg) rotateX(5deg) translateY(${(1 - mainS) * 50}px) scale(${0.9 + mainS * 0.1})`,
           transformOrigin: 'center',
           background:
             'linear-gradient(180deg, rgba(15,23,42,0.88) 0%, rgba(8,11,24,0.95) 100%)',
@@ -162,11 +226,11 @@ export default function AgendaDashboardMockup() {
           backdropFilter: 'blur(24px)',
           overflow: 'hidden',
           zIndex: 2,
-          animationDuration: '10s',
-          animationDelay: '0.3s',
+          opacity: mainS,
+          willChange: 'transform, opacity',
         }}
       >
-        {/* Specular highlight no topo (glass shine) */}
+        {/* Specular highlight */}
         <div
           aria-hidden
           style={{
@@ -176,10 +240,11 @@ export default function AgendaDashboardMockup() {
             background:
               'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 20%, rgba(6,182,212,0.5) 50%, rgba(255,255,255,0.25) 80%, transparent 100%)',
             zIndex: 20,
+            opacity: mainS,
           }}
         />
 
-        {/* Shimmer pass — luz atravessando o vidro */}
+        {/* Shimmer pass */}
         <div
           aria-hidden
           style={{
@@ -191,10 +256,11 @@ export default function AgendaDashboardMockup() {
             animation: 'shimmer 7s ease-in-out infinite',
             pointerEvents: 'none',
             zIndex: 15,
+            opacity: mainS,
           }}
         />
 
-        {/* Top bar (window controls) */}
+        {/* Top bar */}
         <div
           style={{
             display: 'flex',
@@ -278,7 +344,7 @@ export default function AgendaDashboardMockup() {
           </div>
         </div>
 
-        {/* KPIs com depth 3D */}
+        {/* KPIs com stagger individual */}
         <div
           style={{
             display: 'grid',
@@ -293,53 +359,59 @@ export default function AgendaDashboardMockup() {
             { n: '6',     l: 'Horários',   c: '#3B82F6', bg: 'rgba(59,130,246,0.08)' },
             { n: 'R$275', l: 'Previsto',   c: '#06B6D4', bg: 'rgba(6,182,212,0.08)' },
             { n: '+1',    l: 'Auto-fill',  c: '#A78BFA', bg: 'rgba(167,139,250,0.08)' },
-          ].map((k) => (
-            <div
-              key={k.l}
-              style={{
-                padding: '10px 12px',
-                borderRadius: '12px',
-                background: `linear-gradient(135deg, ${k.bg} 0%, rgba(255,255,255,0.02) 100%)`,
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.2)`,
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-            >
-              {/* shine corner */}
+          ].map((k, i) => {
+            const s = ease(Math.max(0, Math.min(1, (kpiS - i * 0.12) / (1 - i * 0.1))))
+            return (
               <div
-                aria-hidden
+                key={k.l}
                 style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  width: '40px',
-                  height: '40px',
-                  background: `radial-gradient(circle at top right, ${k.c}30 0%, transparent 70%)`,
-                }}
-              />
-              <div
-                style={{
-                  fontSize: '15px',
-                  fontWeight: 800,
-                  color: k.c,
-                  lineHeight: 1,
-                  fontFamily: 'var(--font-mono, monospace)',
-                  textShadow: `0 0 12px ${k.c}50`,
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  background: `linear-gradient(135deg, ${k.bg} 0%, rgba(255,255,255,0.02) 100%)`,
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.2)`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  opacity: s,
+                  transform: `translateY(${(1 - s) * 14}px)`,
+                  willChange: 'transform, opacity',
                 }}
               >
-                {k.n}
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '40px',
+                    height: '40px',
+                    background: `radial-gradient(circle at top right, ${k.c}30 0%, transparent 70%)`,
+                  }}
+                />
+                <div
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 800,
+                    color: k.c,
+                    lineHeight: 1,
+                    fontFamily: 'var(--font-mono, monospace)',
+                    textShadow: `0 0 12px ${k.c}50`,
+                  }}
+                >
+                  {k.n}
+                </div>
+                <div style={{ fontSize: '9px', color: '#64748B', marginTop: '4px', fontWeight: 600 }}>{k.l}</div>
               </div>
-              <div style={{ fontSize: '9px', color: '#64748B', marginTop: '4px', fontWeight: 600 }}>{k.l}</div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
-        {/* Lista */}
+        {/* Lista com stagger linha a linha */}
         <div style={{ padding: '0 14px 16px', position: 'relative', zIndex: 5 }}>
           {slots.map((s, i) => {
             const c = statusStyle(s.status)
             const isNow = s.status === 'now'
+            const rs = rowStage(i, slots.length)
             return (
               <div
                 key={i}
@@ -359,6 +431,9 @@ export default function AgendaDashboardMockup() {
                     : 'inset 0 1px 0 rgba(255,255,255,0.03)',
                   position: 'relative',
                   overflow: 'hidden',
+                  opacity: rs,
+                  transform: `translateX(${(1 - rs) * -16}px)`,
+                  willChange: 'transform, opacity',
                 }}
               >
                 {isNow && (
@@ -438,9 +513,8 @@ export default function AgendaDashboardMockup() {
         </div>
       </div>
 
-      {/* Card flutuante 1 — Automação (VAGA PREENCHIDA) */}
+      {/* Card flutuante 1 — VAGA PREENCHIDA (vem da direita) */}
       <div
-        className="animate-float-soft"
         style={{
           position: 'absolute',
           top: '14%',
@@ -456,10 +530,10 @@ export default function AgendaDashboardMockup() {
             '0 0 0 1px rgba(167,139,250,0.15), ' +
             'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: 'translateY(-10px) rotateY(-7deg) rotateX(3deg)',
+          transform: `translate(${(1 - card1S) * 60}px, ${-10 + (1 - card1S) * -10}px) rotateY(-7deg) rotateX(3deg) scale(${0.85 + card1S * 0.15})`,
           transformOrigin: 'left center',
-          animationDuration: '6s',
-          animationDelay: '0.8s',
+          opacity: card1S,
+          willChange: 'transform, opacity',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '6px' }}>
@@ -485,9 +559,8 @@ export default function AgendaDashboardMockup() {
         </div>
       </div>
 
-      {/* Card flutuante 2 — Fidelidade (+50 PONTOS) */}
+      {/* Card flutuante 2 — +50 PONTOS (vem da esquerda) */}
       <div
-        className="animate-float-soft"
         style={{
           position: 'absolute',
           bottom: '8%',
@@ -503,10 +576,10 @@ export default function AgendaDashboardMockup() {
             '0 0 0 1px rgba(245,158,11,0.15), ' +
             'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: 'translateY(8px) rotateY(9deg) rotateX(3deg)',
+          transform: `translate(${(1 - card2S) * -60}px, ${8 + (1 - card2S) * 12}px) rotateY(9deg) rotateX(3deg) scale(${0.85 + card2S * 0.15})`,
           transformOrigin: 'right center',
-          animationDuration: '7s',
-          animationDelay: '2.1s',
+          opacity: card2S,
+          willChange: 'transform, opacity',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '4px' }}>
@@ -532,9 +605,8 @@ export default function AgendaDashboardMockup() {
         </div>
       </div>
 
-      {/* Card flutuante 3 — Google Reviews */}
+      {/* Card flutuante 3 — Nova avaliação (vem da direita, mais tarde) */}
       <div
-        className="animate-float-soft"
         style={{
           position: 'absolute',
           top: '50%',
@@ -550,9 +622,9 @@ export default function AgendaDashboardMockup() {
             '0 0 0 1px rgba(16,185,129,0.15), ' +
             'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: 'translateY(-50%) rotateY(-5deg) rotateX(2deg)',
-          animationDuration: '8s',
-          animationDelay: '3.4s',
+          transform: `translate(${(1 - card3S) * 80}px, -50%) rotateY(-5deg) rotateX(2deg) scale(${0.85 + card3S * 0.15})`,
+          opacity: card3S,
+          willChange: 'transform, opacity',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
@@ -578,9 +650,9 @@ export default function AgendaDashboardMockup() {
         </div>
       </div>
 
-      {/* Card flutuante 4 — NOVO: Cliente confirmando (top-left pra equilibrar) */}
+      {/* Card flutuante 4 — Ju confirmou (vem da esquerda, última) */}
       <div
-        className="animate-float-soft hidden sm:block"
+        className="hidden sm:block"
         style={{
           position: 'absolute',
           top: '32%',
@@ -596,9 +668,9 @@ export default function AgendaDashboardMockup() {
             '0 0 0 1px rgba(6,182,212,0.15), ' +
             'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: 'rotateY(6deg) rotateX(3deg)',
-          animationDuration: '9s',
-          animationDelay: '1.4s',
+          transform: `translateX(${(1 - card4S) * -80}px) rotateY(6deg) rotateX(3deg) scale(${0.85 + card4S * 0.15})`,
+          opacity: card4S,
+          willChange: 'transform, opacity',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px' }}>
@@ -624,7 +696,7 @@ export default function AgendaDashboardMockup() {
         </div>
       </div>
 
-      {/* Mini badge — Sparkle pulsando (depth final) */}
+      {/* Sparkle pulsando — última coisa a aparecer */}
       <div
         aria-hidden
         className="animate-float-soft"
@@ -635,6 +707,7 @@ export default function AgendaDashboardMockup() {
           color: '#FBBF24',
           filter: 'drop-shadow(0 0 10px rgba(251,191,36,0.8))',
           zIndex: 11,
+          opacity: sparkleS,
           animationDelay: '1.8s',
           animationDuration: '5s',
         }}
