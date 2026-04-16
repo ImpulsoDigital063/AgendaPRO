@@ -1,5 +1,19 @@
-/* Dashboard mockup moderno — estilo Linear/Vercel/Arc
-   Cards de UI flutuando em perspectiva, sem moldura de celular */
+/* Dashboard mockup 3D modernizado — estilo Linear/Vercel/Arc com depth real
+   - 3 camadas fantasma empilhadas atrás do card principal
+   - Perspectiva 1400px com rotação dramática
+   - 4 cards flutuantes orbitando em eixos e planos distintos
+   - Shimmer atravessando o vidro em loop
+   - Micro-animações em todos elementos (float/pulse/shine)
+   - Ícones SVG em vez de emojis pra coerência visual 3D
+*/
+
+import {
+  IconBolt,
+  IconTrophy,
+  IconStar,
+  IconSparkle,
+  IconCheck,
+} from './BarberIcons'
 
 export default function AgendaDashboardMockup() {
   const slots = [
@@ -21,54 +35,166 @@ export default function AgendaDashboardMockup() {
   return (
     <div
       className="relative w-full max-w-[460px] mx-auto"
-      style={{ perspective: '1600px' }}
+      style={{
+        perspective: '1400px',
+        perspectiveOrigin: '50% 30%',
+      }}
     >
-      {/* Glow base */}
+      {/* Glow base — mais denso e colorido */}
       <div
         aria-hidden
+        className="animate-float-soft"
         style={{
           position: 'absolute',
-          inset: '-40px -60px',
+          inset: '-60px -80px',
           background:
-            'radial-gradient(ellipse 60% 50% at 50% 60%, rgba(59,130,246,0.45) 0%, rgba(139,92,246,0.25) 35%, transparent 70%)',
-          filter: 'blur(40px)',
+            'radial-gradient(ellipse 55% 45% at 40% 55%, rgba(59,130,246,0.55) 0%, transparent 70%),' +
+            'radial-gradient(ellipse 40% 40% at 70% 40%, rgba(139,92,246,0.45) 0%, transparent 70%),' +
+            'radial-gradient(ellipse 40% 35% at 50% 85%, rgba(6,182,212,0.35) 0%, transparent 70%)',
+          filter: 'blur(50px)',
           zIndex: 0,
+          animationDuration: '8s',
         }}
       />
 
-      {/* Card sombra atrás */}
+      {/* Partículas/orbs flutuantes decorativos — dão profundidade 3D */}
+      <div
+        aria-hidden
+        className="animate-float-soft"
+        style={{
+          position: 'absolute',
+          top: '-20px',
+          left: '-30px',
+          width: '12px',
+          height: '12px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #06B6D4, #3B82F6)',
+          boxShadow: '0 0 20px rgba(6,182,212,0.8)',
+          zIndex: 1,
+          animationDelay: '0.5s',
+          animationDuration: '6s',
+        }}
+      />
+      <div
+        aria-hidden
+        className="animate-float-soft"
+        style={{
+          position: 'absolute',
+          top: '40%',
+          right: '-40px',
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
+          boxShadow: '0 0 16px rgba(245,158,11,0.8)',
+          zIndex: 1,
+          animationDelay: '2.2s',
+          animationDuration: '7s',
+        }}
+      />
+      <div
+        aria-hidden
+        className="animate-float-soft"
+        style={{
+          position: 'absolute',
+          bottom: '-15px',
+          right: '20%',
+          width: '10px',
+          height: '10px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)',
+          boxShadow: '0 0 18px rgba(139,92,246,0.8)',
+          zIndex: 1,
+          animationDelay: '3.5s',
+          animationDuration: '8s',
+        }}
+      />
+
+      {/* Camada fantasma 3 (mais distante) */}
       <div
         aria-hidden
         style={{
           position: 'absolute',
           inset: 0,
-          transform: 'rotateY(-8deg) rotateX(4deg) translate(24px, 24px)',
+          transform: 'rotateY(-12deg) rotateX(6deg) translate(40px, 40px) translateZ(-80px)',
           transformOrigin: 'center',
-          background: 'rgba(15,23,42,0.5)',
+          background: 'rgba(15,23,42,0.3)',
           borderRadius: '24px',
-          border: '1px solid rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.03)',
           zIndex: 1,
-          opacity: 0.5,
+          opacity: 0.35,
+          filter: 'blur(1px)',
         }}
       />
 
-      {/* Card principal — dashboard */}
+      {/* Camada fantasma 2 (intermediária) */}
       <div
-        className="relative"
+        aria-hidden
         style={{
-          transform: 'rotateY(-8deg) rotateX(4deg)',
+          position: 'absolute',
+          inset: 0,
+          transform: 'rotateY(-10deg) rotateX(5deg) translate(24px, 24px) translateZ(-40px)',
           transformOrigin: 'center',
-          background: 'linear-gradient(180deg, rgba(15,23,42,0.85) 0%, rgba(8,11,24,0.92) 100%)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(15,23,42,0.55)',
+          borderRadius: '24px',
+          border: '1px solid rgba(255,255,255,0.05)',
+          zIndex: 1,
+          opacity: 0.55,
+        }}
+      />
+
+      {/* Card principal — dashboard em 3D */}
+      <div
+        className="relative animate-float-soft"
+        style={{
+          transform: 'rotateY(-9deg) rotateX(5deg)',
+          transformOrigin: 'center',
+          background:
+            'linear-gradient(180deg, rgba(15,23,42,0.88) 0%, rgba(8,11,24,0.95) 100%)',
+          border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: '24px',
           boxShadow:
-            '0 50px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)',
-          backdropFilter: 'blur(20px)',
+            '0 60px 120px rgba(0,0,0,0.6), ' +
+            '0 25px 50px rgba(59,130,246,0.15), ' +
+            '0 0 0 1px rgba(255,255,255,0.06), ' +
+            'inset 0 1px 0 rgba(255,255,255,0.1), ' +
+            'inset 0 -1px 0 rgba(0,0,0,0.3)',
+          backdropFilter: 'blur(24px)',
           overflow: 'hidden',
           zIndex: 2,
+          animationDuration: '10s',
+          animationDelay: '0.3s',
         }}
       >
-        {/* Top bar fake (window controls) */}
+        {/* Specular highlight no topo (glass shine) */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: '0 0 auto 0',
+            height: '1px',
+            background:
+              'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 20%, rgba(6,182,212,0.5) 50%, rgba(255,255,255,0.25) 80%, transparent 100%)',
+            zIndex: 20,
+          }}
+        />
+
+        {/* Shimmer pass — luz atravessando o vidro */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.06) 45%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 55%, transparent 70%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 7s ease-in-out infinite',
+            pointerEvents: 'none',
+            zIndex: 15,
+          }}
+        />
+
+        {/* Top bar (window controls) */}
         <div
           style={{
             display: 'flex',
@@ -76,12 +202,14 @@ export default function AgendaDashboardMockup() {
             gap: '6px',
             padding: '10px 14px',
             borderBottom: '1px solid rgba(255,255,255,0.06)',
-            background: 'rgba(255,255,255,0.02)',
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%)',
+            position: 'relative',
+            zIndex: 5,
           }}
         >
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FF5F57' }} />
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FEBC2E' }} />
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#28C840' }} />
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FF5F57', boxShadow: '0 0 4px rgba(255,95,87,0.5)' }} />
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FEBC2E', boxShadow: '0 0 4px rgba(254,188,46,0.5)' }} />
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#28C840', boxShadow: '0 0 4px rgba(40,200,64,0.5)' }} />
           <span
             style={{
               marginLeft: 'auto',
@@ -108,12 +236,13 @@ export default function AgendaDashboardMockup() {
             }}
           >
             <span
+              className="animate-pulse"
               style={{
                 width: '5px',
                 height: '5px',
                 borderRadius: '50%',
                 background: '#10B981',
-                boxShadow: '0 0 8px #10B981',
+                boxShadow: '0 0 10px #10B981',
               }}
             />
             LIVE
@@ -121,7 +250,7 @@ export default function AgendaDashboardMockup() {
         </div>
 
         {/* Header */}
-        <div style={{ padding: '18px 20px 14px' }}>
+        <div style={{ padding: '18px 20px 14px', position: 'relative', zIndex: 5 }}>
           <div
             style={{
               fontSize: '10px',
@@ -149,29 +278,46 @@ export default function AgendaDashboardMockup() {
           </div>
         </div>
 
-        {/* KPIs */}
+        {/* KPIs com depth 3D */}
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr 1fr',
             gap: '8px',
             padding: '0 20px 16px',
+            position: 'relative',
+            zIndex: 5,
           }}
         >
           {[
-            { n: '6',     l: 'Horários',   c: '#3B82F6' },
-            { n: 'R$275', l: 'Previsto',   c: '#06B6D4' },
-            { n: '+1',    l: 'Auto-fill',  c: '#A78BFA' },
+            { n: '6',     l: 'Horários',   c: '#3B82F6', bg: 'rgba(59,130,246,0.08)' },
+            { n: 'R$275', l: 'Previsto',   c: '#06B6D4', bg: 'rgba(6,182,212,0.08)' },
+            { n: '+1',    l: 'Auto-fill',  c: '#A78BFA', bg: 'rgba(167,139,250,0.08)' },
           ].map((k) => (
             <div
               key={k.l}
               style={{
                 padding: '10px 12px',
                 borderRadius: '12px',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: `linear-gradient(135deg, ${k.bg} 0%, rgba(255,255,255,0.02) 100%)`,
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.2)`,
+                position: 'relative',
+                overflow: 'hidden',
               }}
             >
+              {/* shine corner */}
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '40px',
+                  height: '40px',
+                  background: `radial-gradient(circle at top right, ${k.c}30 0%, transparent 70%)`,
+                }}
+              />
               <div
                 style={{
                   fontSize: '15px',
@@ -179,6 +325,7 @@ export default function AgendaDashboardMockup() {
                   color: k.c,
                   lineHeight: 1,
                   fontFamily: 'var(--font-mono, monospace)',
+                  textShadow: `0 0 12px ${k.c}50`,
                 }}
               >
                 {k.n}
@@ -189,7 +336,7 @@ export default function AgendaDashboardMockup() {
         </div>
 
         {/* Lista */}
-        <div style={{ padding: '0 14px 16px' }}>
+        <div style={{ padding: '0 14px 16px', position: 'relative', zIndex: 5 }}>
           {slots.map((s, i) => {
             const c = statusStyle(s.status)
             const isNow = s.status === 'now'
@@ -203,11 +350,30 @@ export default function AgendaDashboardMockup() {
                   padding: '10px 12px',
                   marginBottom: '4px',
                   borderRadius: '12px',
-                  background: isNow ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.025)',
-                  border: isNow ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.05)',
-                  boxShadow: isNow ? '0 0 20px rgba(59,130,246,0.2)' : 'none',
+                  background: isNow
+                    ? 'linear-gradient(90deg, rgba(59,130,246,0.15) 0%, rgba(6,182,212,0.08) 100%)'
+                    : 'rgba(255,255,255,0.025)',
+                  border: isNow ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(255,255,255,0.05)',
+                  boxShadow: isNow
+                    ? '0 0 24px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.08)'
+                    : 'inset 0 1px 0 rgba(255,255,255,0.03)',
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
+                {isNow && (
+                  <div
+                    aria-hidden
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background:
+                        'linear-gradient(110deg, transparent 40%, rgba(59,130,246,0.15) 50%, transparent 60%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'shimmer 3s ease-in-out infinite',
+                    }}
+                  />
+                )}
                 <div
                   style={{
                     fontSize: '11px',
@@ -216,11 +382,12 @@ export default function AgendaDashboardMockup() {
                     width: '38px',
                     flexShrink: 0,
                     fontFamily: 'var(--font-mono, monospace)',
+                    position: 'relative',
                   }}
                 >
                   {s.hora}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
                   <div
                     style={{
                       fontSize: '11px',
@@ -235,7 +402,7 @@ export default function AgendaDashboardMockup() {
                   </div>
                   <div style={{ fontSize: '9px', color: '#64748B', marginTop: '1px' }}>{s.servico}</div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', position: 'relative' }}>
                   <div
                     style={{
                       fontSize: '11px',
@@ -258,9 +425,10 @@ export default function AgendaDashboardMockup() {
                       fontWeight: 700,
                       color: c.text,
                       letterSpacing: '0.02em',
+                      border: `1px solid ${c.dot}30`,
                     }}
                   >
-                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: c.dot }} />
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: c.dot, boxShadow: `0 0 6px ${c.dot}` }} />
                     {c.label.toUpperCase()}
                   </div>
                 </div>
@@ -270,110 +438,208 @@ export default function AgendaDashboardMockup() {
         </div>
       </div>
 
-      {/* Card flutuante — notificação automação */}
+      {/* Card flutuante 1 — Automação (VAGA PREENCHIDA) */}
       <div
+        className="animate-float-soft"
         style={{
           position: 'absolute',
           top: '14%',
           right: '-8%',
-          background: 'rgba(15,23,42,0.92)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(167,139,250,0.4)',
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,27,75,0.92) 100%)',
+          backdropFilter: 'blur(18px)',
+          border: '1px solid rgba(167,139,250,0.5)',
           borderRadius: '16px',
           padding: '12px 14px',
           maxWidth: '210px',
-          boxShadow: '0 25px 60px rgba(139,92,246,0.4), 0 0 0 1px rgba(255,255,255,0.05)',
+          boxShadow:
+            '0 30px 70px rgba(139,92,246,0.45), ' +
+            '0 0 0 1px rgba(167,139,250,0.15), ' +
+            'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: 'translateY(-10px) rotateY(-6deg) rotateX(2deg)',
+          transform: 'translateY(-10px) rotateY(-7deg) rotateX(3deg)',
           transformOrigin: 'left center',
+          animationDuration: '6s',
+          animationDelay: '0.8s',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '6px' }}>
           <span
             style={{
-              width: '20px',
-              height: '20px',
-              borderRadius: '6px',
+              width: '22px',
+              height: '22px',
+              borderRadius: '7px',
               background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '11px',
+              color: '#fff',
+              boxShadow: '0 4px 12px rgba(139,92,246,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
             }}
           >
-            ⚡
+            <IconBolt size={12} strokeWidth={2.5} />
           </span>
-          <strong style={{ fontSize: '10px', color: '#fff', letterSpacing: '0.04em' }}>VAGA PREENCHIDA</strong>
+          <strong style={{ fontSize: '10px', color: '#fff', letterSpacing: '0.05em' }}>VAGA PREENCHIDA</strong>
         </div>
         <div style={{ color: '#94A3B8', lineHeight: 1.4, fontSize: '11px' }}>
           Cancelaram 14h. Sistema chamou a fila e <strong style={{ color: '#fff' }}>Marcos confirmou</strong>.
         </div>
       </div>
 
-      {/* Card flutuante — fidelidade */}
+      {/* Card flutuante 2 — Fidelidade (+50 PONTOS) */}
       <div
+        className="animate-float-soft"
         style={{
           position: 'absolute',
           bottom: '8%',
           left: '-12%',
-          background: 'rgba(15,23,42,0.92)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(245,158,11,0.4)',
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(69,26,3,0.88) 100%)',
+          backdropFilter: 'blur(18px)',
+          border: '1px solid rgba(245,158,11,0.5)',
           borderRadius: '16px',
           padding: '11px 13px',
           maxWidth: '200px',
-          boxShadow: '0 25px 60px rgba(245,158,11,0.3), 0 0 0 1px rgba(255,255,255,0.05)',
+          boxShadow:
+            '0 30px 70px rgba(245,158,11,0.35), ' +
+            '0 0 0 1px rgba(245,158,11,0.15), ' +
+            'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: 'translateY(8px) rotateY(8deg) rotateX(2deg)',
+          transform: 'translateY(8px) rotateY(9deg) rotateX(3deg)',
           transformOrigin: 'right center',
+          animationDuration: '7s',
+          animationDelay: '2.1s',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '4px' }}>
           <span
             style={{
-              width: '20px',
-              height: '20px',
-              borderRadius: '6px',
+              width: '22px',
+              height: '22px',
+              borderRadius: '7px',
               background: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '11px',
+              color: '#0B0F1F',
+              boxShadow: '0 4px 12px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
             }}
           >
-            🏆
+            <IconTrophy size={12} strokeWidth={2.5} />
           </span>
-          <strong style={{ fontSize: '10px', color: '#fff', letterSpacing: '0.04em' }}>+50 PONTOS</strong>
+          <strong style={{ fontSize: '10px', color: '#fff', letterSpacing: '0.05em' }}>+50 PONTOS</strong>
         </div>
         <div style={{ color: '#94A3B8', lineHeight: 1.4, fontSize: '11px' }}>
           João completou 10º serviço. <strong style={{ color: '#fff' }}>Recompensa liberada</strong>.
         </div>
       </div>
 
-      {/* Card flutuante — Google Reviews */}
+      {/* Card flutuante 3 — Google Reviews */}
       <div
+        className="animate-float-soft"
         style={{
           position: 'absolute',
           top: '50%',
           right: '-14%',
-          background: 'rgba(15,23,42,0.92)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(16,185,129,0.4)',
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(4,47,46,0.9) 100%)',
+          backdropFilter: 'blur(18px)',
+          border: '1px solid rgba(16,185,129,0.5)',
           borderRadius: '14px',
           padding: '10px 12px',
           maxWidth: '170px',
-          boxShadow: '0 20px 50px rgba(16,185,129,0.25), 0 0 0 1px rgba(255,255,255,0.05)',
+          boxShadow:
+            '0 25px 60px rgba(16,185,129,0.3), ' +
+            '0 0 0 1px rgba(16,185,129,0.15), ' +
+            'inset 0 1px 0 rgba(255,255,255,0.1)',
           zIndex: 10,
-          transform: 'translateY(-50%) rotateY(-4deg)',
+          transform: 'translateY(-50%) rotateY(-5deg) rotateX(2deg)',
+          animationDuration: '8s',
+          animationDelay: '3.4s',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
-          <span style={{ fontSize: '12px' }}>⭐</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+          <span
+            style={{
+              width: '18px',
+              height: '18px',
+              borderRadius: '6px',
+              background: 'linear-gradient(135deg, #FBBF24, #F59E0B)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#0B0F1F',
+              boxShadow: '0 2px 8px rgba(245,158,11,0.5)',
+            }}
+          >
+            <IconStar size={10} />
+          </span>
           <strong style={{ fontSize: '11px', color: '#fff' }}>Nova avaliação</strong>
         </div>
         <div style={{ color: '#94A3B8', lineHeight: 1.3, fontSize: '10px' }}>
           <strong style={{ color: '#fff' }}>4.9</strong> · 128 avaliações no Google
         </div>
+      </div>
+
+      {/* Card flutuante 4 — NOVO: Cliente confirmando (top-left pra equilibrar) */}
+      <div
+        className="animate-float-soft hidden sm:block"
+        style={{
+          position: 'absolute',
+          top: '32%',
+          left: '-14%',
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(5,46,58,0.9) 100%)',
+          backdropFilter: 'blur(18px)',
+          border: '1px solid rgba(6,182,212,0.5)',
+          borderRadius: '14px',
+          padding: '9px 12px',
+          maxWidth: '180px',
+          boxShadow:
+            '0 22px 55px rgba(6,182,212,0.35), ' +
+            '0 0 0 1px rgba(6,182,212,0.15), ' +
+            'inset 0 1px 0 rgba(255,255,255,0.1)',
+          zIndex: 10,
+          transform: 'rotateY(6deg) rotateX(3deg)',
+          animationDuration: '9s',
+          animationDelay: '1.4s',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px' }}>
+          <span
+            style={{
+              width: '18px',
+              height: '18px',
+              borderRadius: '6px',
+              background: 'linear-gradient(135deg, #06B6D4, #0891B2)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              boxShadow: '0 2px 8px rgba(6,182,212,0.5)',
+            }}
+          >
+            <IconCheck size={11} strokeWidth={3} />
+          </span>
+          <strong style={{ fontSize: '10px', color: '#fff', letterSpacing: '0.04em' }}>CONFIRMOU</strong>
+        </div>
+        <div style={{ color: '#94A3B8', lineHeight: 1.3, fontSize: '10px' }}>
+          <strong style={{ color: '#fff' }}>Ju · 14h</strong> · via WhatsApp
+        </div>
+      </div>
+
+      {/* Mini badge — Sparkle pulsando (depth final) */}
+      <div
+        aria-hidden
+        className="animate-float-soft"
+        style={{
+          position: 'absolute',
+          top: '0%',
+          right: '20%',
+          color: '#FBBF24',
+          filter: 'drop-shadow(0 0 10px rgba(251,191,36,0.8))',
+          zIndex: 11,
+          animationDelay: '1.8s',
+          animationDuration: '5s',
+        }}
+      >
+        <IconSparkle size={18} />
       </div>
     </div>
   )
