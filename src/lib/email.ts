@@ -5,7 +5,7 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY)
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agenda-pro-seven.vercel.app'
 
 /** Escapa HTML para prevenir XSS em templates de email */
 function esc(text: string): string {

@@ -43,7 +43,7 @@ export default function AparenciaTab({ business }: { business: Business }) {
     <div className="space-y-6">
       <div className="admin-card p-5">
         <h2 className="font-bold mb-1" style={{ color: 'var(--admin-text)' }}>Aparencia da sua pagina</h2>
-        <p className="text-sm" style={{ color: 'var(--admin-text-mute)' }}>Personalize as cores que o seu cliente ve quando entra em <span className="font-mono" style={{ color: 'var(--admin-accent)' }}>agendapro.com.br/{business.slug}</span></p>
+        <p className="text-sm" style={{ color: 'var(--admin-text-mute)' }}>Personalize as cores que o seu cliente ve quando entra em <span className="font-mono" style={{ color: 'var(--admin-accent)' }}>agenda-pro-seven.vercel.app/{business.slug}</span></p>
       </div>
 
       {/* Presets */}

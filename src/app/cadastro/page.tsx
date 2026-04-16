@@ -210,7 +210,7 @@ export default function CadastroPage() {
               </label>
               <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400">
                 <span className="bg-gray-50 text-gray-400 text-xs px-3 py-3 border-r border-gray-200 whitespace-nowrap">
-                  agendapro.com.br/
+                  agenda-pro-seven.vercel.app/
                 </span>
                 <input
                   type="text"
