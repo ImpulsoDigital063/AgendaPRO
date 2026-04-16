@@ -205,7 +205,7 @@ export default function NegocioTab({ business }: Props) {
           }}
         >
           <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-            agenda-pro-seven.vercel.app/
+            agendapro.net.br/
           </span>
           <span className="text-sm font-semibold" style={{ color: 'var(--admin-accent)' }}>
             {business.slug}

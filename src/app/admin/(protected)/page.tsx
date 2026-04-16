@@ -229,7 +229,7 @@ export default async function AdminPage() {
         {/* Divulgação */}
         <DivulgarCard
           slug={business.slug}
-          appUrl={process.env.NEXT_PUBLIC_APP_URL || 'https://agenda-pro-seven.vercel.app'}
+          appUrl={process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'}
         />
 
         {/* Hoje */}
