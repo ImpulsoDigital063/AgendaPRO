@@ -461,7 +461,7 @@ export default function BookingFlow({
   if (step === 'done') {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className="text-5xl mb-4">✅</div>
+        <div className="mb-4"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg></div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Horário reservado!</h2>
         {selectedServices.length > 0 && (
           <div className="mb-2">
@@ -713,7 +713,7 @@ export default function BookingFlow({
               <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
                 {waitlistDone ? (
                   <div className="text-center py-2">
-                    <p className="text-2xl mb-2">🎉</p>
+                    <div className="flex justify-center mb-2"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 3-2 5.5-4 7.5L12 19l-2-2.5C8 14.5 6 12 6 9z"/><circle cx="12" cy="9" r="1"/></svg></div>
                     <p className="text-amber-800 font-bold text-sm">Você entrou na fila!</p>
                     <p className="text-amber-600 text-xs mt-1">
                       Avisaremos por email se a vaga das {waitlistSlot} abrir.
@@ -809,7 +809,7 @@ export default function BookingFlow({
                 </div>
               )}
               <p>
-                📅{' '}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>{' '}
                 {selectedDate?.toLocaleDateString('pt-BR', {
                   weekday: 'long',
                   day: 'numeric',

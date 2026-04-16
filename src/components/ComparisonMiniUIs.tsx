@@ -141,7 +141,7 @@ function SmartAgendaCard() {
     { ico: <IconTrophy size={12} strokeWidth={2.2} />,  t: 'Pontos por avaliação — cliente volta mais' },
     { ico: <IconLink size={12} strokeWidth={2.2} />,    t: 'Link de indicação rastreado por cliente' },
     { ico: <IconStar size={12} strokeWidth={2.2} />,    t: 'Google Reviews sobem no automático' },
-    { ico: <span className="text-[11px]">🌙</span>,     t: 'Anti-falta dispara sozinho na véspera' },
+    { ico: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>, t: 'Anti-falta dispara sozinho na véspera' },
   ]
 
   return (

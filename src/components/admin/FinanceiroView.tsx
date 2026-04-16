@@ -84,14 +84,19 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
   return (
     <div className="space-y-6">
       {/* Seletor de período */}
-      <div className="flex bg-white rounded-2xl border border-gray-100 p-1">
+      <div
+        className="flex rounded-2xl p-1"
+        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+      >
         {(['hoje', 'semana', 'mes'] as const).map((p) => (
           <button
             key={p}
             onClick={() => setPeriodo(p)}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors ${
-              periodo === p ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
-            }`}
+            className="flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors"
+            style={{
+              background: periodo === p ? 'var(--admin-accent)' : 'transparent',
+              color: periodo === p ? '#fff' : 'var(--admin-text-mute)',
+            }}
           >
             {p === 'hoje' ? 'Hoje' : p === 'semana' ? '7 dias' : 'Mês'}
           </button>
@@ -100,44 +105,47 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
 
       {/* Cards resumo */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 mb-1">Total faturado</p>
-          <p className="text-xl font-bold text-gray-900">{formatPrice(totalFaturado)}</p>
-          <p className="text-xs text-gray-400 mt-1">{comPrice.length} agendamentos</p>
+        <div className="admin-card p-4">
+          <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Total faturado</p>
+          <p className="text-xl font-bold" style={{ color: 'var(--admin-text)' }}>{formatPrice(totalFaturado)}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{comPrice.length} agendamentos</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 mb-1">Confirmados</p>
-          <p className="text-xl font-bold text-green-600">{formatPrice(totalConfirmado)}</p>
-          <p className="text-xs text-gray-400 mt-1">{confirmados.length} agendamentos</p>
+        <div className="admin-card p-4">
+          <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Confirmados</p>
+          <p className="text-xl font-bold" style={{ color: 'var(--admin-success)' }}>{formatPrice(totalConfirmado)}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{confirmados.length} agendamentos</p>
         </div>
       </div>
 
       {/* Comissão por profissional */}
       {profList.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Comissão por profissional
+          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+            Comissao por profissional
           </h2>
           <div className="space-y-2">
             {profList.map((prof) => {
               const commission = prof.total * (prof.commission_percentage / 100)
               return (
-                <div key={prof.name} className="bg-white rounded-2xl border border-gray-100 px-4 py-3">
+                <div key={prof.name} className="admin-card px-4 py-3">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-gray-900">{prof.name}</p>
-                    <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-                      {prof.commission_percentage}% comissão
+                    <p className="font-medium" style={{ color: 'var(--admin-text)' }}>{prof.name}</p>
+                    <span
+                      className="text-xs px-2 py-1 rounded-lg"
+                      style={{ color: 'var(--admin-text-faded)', background: 'var(--admin-accent-bg)', border: '1px solid var(--admin-border)' }}
+                    >
+                      {prof.commission_percentage}% comissao
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-gray-400">Gerado</p>
-                      <p className="font-semibold text-gray-700 text-sm">{formatPrice(prof.total)}</p>
-                      <p className="text-xs text-gray-400">{prof.count} atendimento{prof.count !== 1 ? 's' : ''}</p>
+                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Gerado</p>
+                      <p className="font-semibold text-sm" style={{ color: 'var(--admin-text-2)' }}>{formatPrice(prof.total)}</p>
+                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>{prof.count} atendimento{prof.count !== 1 ? 's' : ''}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-gray-400">A pagar</p>
-                      <p className="font-bold text-gray-900">{formatPrice(commission)}</p>
+                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>A pagar</p>
+                      <p className="font-bold" style={{ color: 'var(--admin-text)' }}>{formatPrice(commission)}</p>
                     </div>
                   </div>
                 </div>
@@ -149,12 +157,12 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
 
       {/* Lista de agendamentos */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
           Agendamentos — {PERIODO_LABEL[periodo]}
         </h2>
         {appointments.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-            <p className="text-gray-400 text-sm">Nenhum agendamento neste período.</p>
+          <div className="admin-card p-8 text-center">
+            <p className="text-sm" style={{ color: 'var(--admin-text-faded)' }}>Nenhum agendamento neste periodo.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -166,23 +174,23 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
               return (
                 <div
                   key={a.id}
-                  className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center justify-between"
+                  className="admin-card px-4 py-3 flex items-center justify-between"
                 >
                   <div>
-                    <p className="font-medium text-gray-900 text-sm">{a.client_name}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="font-medium text-sm" style={{ color: 'var(--admin-text)' }}>{a.client_name}</p>
+                    <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
                       {date} · {a.start_time.slice(0, 5)}
                       {a.service_name ? ` · ${a.service_name}` : ''}
                     </p>
                     {a.professional && (
-                      <p className="text-xs text-gray-300">{a.professional.name}</p>
+                      <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{a.professional.name}</p>
                     )}
                   </div>
                   <div className="text-right flex flex-col items-end gap-1">
                     {a.total_price ? (
-                      <p className="font-bold text-gray-900 text-sm">{formatPrice(a.total_price)}</p>
+                      <p className="font-bold text-sm" style={{ color: 'var(--admin-text)' }}>{formatPrice(a.total_price)}</p>
                     ) : (
-                      <p className="text-gray-300 text-xs">—</p>
+                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>—</p>
                     )}
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[a.status]}`}>
                       {STATUS_LABEL[a.status]}

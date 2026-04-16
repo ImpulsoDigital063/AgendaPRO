@@ -362,7 +362,7 @@ function SalaoUI({ accent, accent2 }: { accent: string; accent2: string }) {
             <div className="text-[9px] uppercase tracking-wider font-semibold text-slate-500">Próximo agendamento</div>
             <div className="text-white text-xs font-bold mt-0.5">Coloração + Escova · sex 18h</div>
           </div>
-          <span className="text-base">💎</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </div>
       </div>
 
