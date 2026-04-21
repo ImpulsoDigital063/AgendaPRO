@@ -9,6 +9,16 @@ type Transaction = {
   created_at: string
 }
 
+type UpcomingAppointment = {
+  id: string
+  appointment_date: string
+  start_time: string
+  end_time: string
+  service_name: string | null
+  professional_name: string | null
+  cancel_token: string
+}
+
 type LookupResult = {
   found: boolean
   message?: string
@@ -20,6 +30,7 @@ type LookupResult = {
   transactions?: Transaction[]
   review_claim?: { status: 'pending' | 'approved' | 'rejected'; requested_at: string } | null
   has_review_program?: boolean
+  upcoming_appointments?: UpcomingAppointment[]
 }
 
 const REASON_LABEL: Record<Transaction['reason'], string> = {
@@ -141,6 +152,57 @@ export default function MeusPontosClient({
               pontos de fidelidade
             </p>
           </div>
+
+          {/* Próximos agendamentos — cancelamento direto */}
+          {result.upcoming_appointments && result.upcoming_appointments.length > 0 && (
+            <div
+              className="rounded-2xl p-4 space-y-3"
+              style={{ background: cardBg, border: cardBorder }}
+            >
+              <p className="text-xs uppercase tracking-wider" style={{ color: textMute }}>
+                Próximos agendamentos
+              </p>
+              <div className="space-y-2">
+                {result.upcoming_appointments.map((appt) => {
+                  const [year, month, day] = appt.appointment_date.split('-')
+                  const dateFormatted = `${day}/${month}/${year}`
+                  return (
+                    <div
+                      key={appt.id}
+                      className="rounded-xl p-3 flex items-center justify-between gap-2"
+                      style={{
+                        background: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC',
+                        border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0',
+                      }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                          {dateFormatted} · {appt.start_time.slice(0, 5)}
+                        </p>
+                        {appt.service_name && (
+                          <p className="text-xs truncate" style={{ color: textMute }}>
+                            {appt.service_name}
+                            {appt.professional_name && ` · ${appt.professional_name}`}
+                          </p>
+                        )}
+                      </div>
+                      <a
+                        href={`/cancelar?id=${appt.id}&token=${appt.cancel_token}`}
+                        className="text-xs font-medium px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
+                        style={{
+                          background: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2',
+                          color: isDark ? '#FCA5A5' : '#B91C1C',
+                          border: isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid #FECACA',
+                        }}
+                      >
+                        Cancelar
+                      </a>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Status do pedido de review */}
           {result.review_claim && (

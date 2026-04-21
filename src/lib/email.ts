@@ -160,6 +160,7 @@ export async function sendClientBookingConfirmation({
   clientEmail,
   clientName,
   businessName,
+  businessSlug,
   date,
   startTime,
   endTime,
@@ -170,6 +171,7 @@ export async function sendClientBookingConfirmation({
   clientEmail: string
   clientName: string
   businessName: string
+  businessSlug?: string
   date: string
   startTime: string
   endTime: string
@@ -192,21 +194,25 @@ export async function sendClientBookingConfirmation({
     ? `${APP_URL}/cancelar?id=${appointmentId}&token=${generateCancelToken(appointmentId)}`
     : null
 
+  const meusPontosUrl = businessSlug ? `${APP_URL}/${businessSlug}/meus-pontos` : null
+
   const body = `
-    Olá, <strong>${esc(clientName)}</strong>! Seu agendamento na <strong>${esc(businessName)}</strong> foi recebido com sucesso.<br><br>
+    Olá, <strong>${esc(clientName)}</strong>! Seu agendamento na <strong>${esc(businessName)}</strong> está confirmado.<br><br>
     ${servicesList ? `${servicesList}<br>` : ''}
     📅 <strong>Data:</strong> ${dateFormatted}<br>
     🕐 <strong>Horário:</strong> ${startTime} – ${endTime}${priceLine}<br><br>
-    Aguarde a confirmação do estabelecimento. Você receberá outro email quando confirmado. 👊
+    Te esperamos no horário marcado! 👊<br><br>
+    ${meusPontosUrl ? `<small>Acompanhe seus pontos e gerencie seus agendamentos em:<br><a href="${meusPontosUrl}" style="color:#3B82F6">${meusPontosUrl}</a></small>` : ''}
   `
 
   await getResend().emails.send({
     from: FROM_EMAIL,
     to: clientEmail,
-    subject: `📋 Agendamento recebido — ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
+    subject: `✅ Agendamento confirmado — ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
     html: emailTemplate({
       title: '',
       body,
+      ...(meusPontosUrl ? { actionUrl: meusPontosUrl, actionLabel: 'Meus pontos e agendamentos' } : {}),
       ...(cancelUrl ? { secondaryUrl: cancelUrl, secondaryLabel: 'Cancelar agendamento' } : {}),
     }),
   })

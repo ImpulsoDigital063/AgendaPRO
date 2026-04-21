@@ -32,11 +32,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'negócio não encontrado' })
   }
 
+  // cancelUrl SEMPRE vai no retorno — independente de email dar certo
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'
+  const cancelUrl = `${appUrl}/cancelar?id=${appointmentId}&token=${generateCancelToken(appointmentId)}`
+
   // Anti-spam: so notifica agendamentos criados ha menos de 10 min
   const createdAt = new Date(appointment.created_at).getTime()
   const age = Date.now() - createdAt
   if (age > 10 * 60 * 1000) {
-    return NextResponse.json({ ok: false, reason: 'agendamento antigo' })
+    return NextResponse.json({ ok: false, reason: 'agendamento antigo', cancelUrl })
   }
 
   // Busca o email do dono
@@ -51,39 +55,45 @@ export async function POST(req: NextRequest) {
     ? apptServices.map((s: { service_name: string }) => s.service_name)
     : appointment.service_name ? [appointment.service_name] : []
 
-  // Email pro barbeiro
+  // Email pro barbeiro (tolerante a falha)
   if (barberEmail) {
-    await sendBarberNotification({
-      barberEmail,
-      barberName: appointment.professional?.name || 'Profissional',
-      businessName: appointment.business.name,
-      clientName: appointment.client_name,
-      clientPhone: appointment.client_phone,
-      date: appointment.appointment_date,
-      startTime: appointment.start_time.slice(0, 5),
-      endTime: appointment.end_time.slice(0, 5),
-      appointmentId,
-      serviceName: serviceNames.join(', ') || null,
-    })
+    try {
+      await sendBarberNotification({
+        barberEmail,
+        barberName: appointment.professional?.name || 'Profissional',
+        businessName: appointment.business.name,
+        clientName: appointment.client_name,
+        clientPhone: appointment.client_phone,
+        date: appointment.appointment_date,
+        startTime: appointment.start_time.slice(0, 5),
+        endTime: appointment.end_time.slice(0, 5),
+        appointmentId,
+        serviceName: serviceNames.join(', ') || null,
+      })
+    } catch (err) {
+      console.error('[notify] falha ao enviar email pro barbeiro:', err)
+    }
   }
 
-  // Email de confirmação pro cliente (se tiver email)
+  // Email de confirmação pro cliente (tolerante a falha)
   if (appointment.client_email) {
-    await sendClientBookingConfirmation({
-      clientEmail: appointment.client_email,
-      clientName: appointment.client_name,
-      businessName: appointment.business.name,
-      date: appointment.appointment_date,
-      startTime: appointment.start_time.slice(0, 5),
-      endTime: appointment.end_time.slice(0, 5),
-      services: serviceNames,
-      totalPrice: appointment.total_price,
-      appointmentId,
-    })
+    try {
+      await sendClientBookingConfirmation({
+        clientEmail: appointment.client_email,
+        clientName: appointment.client_name,
+        businessName: appointment.business.name,
+        date: appointment.appointment_date,
+        startTime: appointment.start_time.slice(0, 5),
+        endTime: appointment.end_time.slice(0, 5),
+        services: serviceNames,
+        totalPrice: appointment.total_price,
+        appointmentId,
+        businessSlug: appointment.business.slug,
+      })
+    } catch (err) {
+      console.error('[notify] falha ao enviar email pro cliente:', err)
+    }
   }
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'
-  const cancelUrl = `${appUrl}/cancelar?id=${appointmentId}&token=${generateCancelToken(appointmentId)}`
 
   return NextResponse.json({ ok: true, cancelUrl })
 }

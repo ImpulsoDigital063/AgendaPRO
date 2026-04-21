@@ -196,7 +196,7 @@ export default async function BusinessPage({
         {/* CTA Agendar */}
         <Link
           href={`/${slug}/agendar`}
-          className="group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-[0.98] mb-6"
+          className="group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-[0.98] mb-3"
           style={{
             background: cover,
             color: 'white',
@@ -207,6 +207,19 @@ export default async function BusinessPage({
           <span className="transition-transform group-hover:translate-x-1">
             <IconArrowRight size={20} />
           </span>
+        </Link>
+
+        {/* Secundário: meus pontos + agendamentos ativos */}
+        <Link
+          href={`/${slug}/meus-pontos`}
+          className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-sm transition-all hover:opacity-90 mb-6"
+          style={{
+            background: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9',
+            color: isDark ? '#F8FAFC' : '#0F172A',
+            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0',
+          }}
+        >
+          Meus pontos e agendamentos
         </Link>
 
         {/* Profissionais (se múltiplos) */}

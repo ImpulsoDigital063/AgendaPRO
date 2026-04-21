@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
+import { generateCancelToken } from '@/lib/token'
 
 function getAdminClient() {
   return createServiceClient(
@@ -67,6 +68,32 @@ export async function POST(req: NextRequest) {
     .limit(1)
     .maybeSingle()
 
+  // Agendamentos futuros (confirmed) — cliente identifica pelo telefone
+  const today = new Date().toISOString().split('T')[0]
+  const { data: rawAppointments } = await adminClient
+    .from('appointments')
+    .select('id, appointment_date, start_time, end_time, service_name, status, professional:professionals(name)')
+    .eq('business_id', businessId)
+    .eq('client_phone', phone.trim())
+    .eq('status', 'confirmed')
+    .gte('appointment_date', today)
+    .order('appointment_date', { ascending: true })
+    .order('start_time', { ascending: true })
+    .limit(10)
+
+  const upcoming = (rawAppointments || []).map((a) => {
+    const prof = a.professional as unknown as { name: string } | null
+    return {
+      id: a.id,
+      appointment_date: a.appointment_date,
+      start_time: a.start_time,
+      end_time: a.end_time,
+      service_name: a.service_name,
+      professional_name: prof?.name || null,
+      cancel_token: generateCancelToken(a.id),
+    }
+  })
+
   return NextResponse.json({
     found: true,
     customer: {
@@ -77,5 +104,6 @@ export async function POST(req: NextRequest) {
     transactions: transactions || [],
     review_claim: pendingReview || null,
     has_review_program: (business.points_for_review ?? 0) > 0,
+    upcoming_appointments: upcoming,
   })
 }
