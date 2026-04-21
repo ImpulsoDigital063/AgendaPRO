@@ -16,15 +16,18 @@ type Props = {
   initialRewards: Reward[]
   initialCustomers: Customer[]
   pointsForReferral: number
+  pointsForReview: number
   pointsMode: 'business' | 'professional'
 }
 
-export default function FidelidadeTab({ businessId, initialRewards, initialCustomers, pointsForReferral, pointsMode: initialPointsMode }: Props) {
+export default function FidelidadeTab({ businessId, initialRewards, initialCustomers, pointsForReferral, pointsForReview, pointsMode: initialPointsMode }: Props) {
   const [rewards, setRewards] = useState(initialRewards)
   const [customers] = useState(initialCustomers)
   const [form, setForm] = useState({ name: '', description: '', points_required: '' })
   const [referralPoints, setReferralPoints] = useState(String(pointsForReferral))
   const [savingReferral, setSavingReferral] = useState(false)
+  const [reviewPoints, setReviewPoints] = useState(String(pointsForReview))
+  const [savingReview, setSavingReview] = useState(false)
   const [pointsMode, setPointsMode] = useState<'business' | 'professional'>(initialPointsMode)
   const [savingMode, setSavingMode] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -83,6 +86,15 @@ export default function FidelidadeTab({ businessId, initialRewards, initialCusto
       .update({ points_for_referral: parseInt(referralPoints) || 0 })
       .eq('id', businessId)
     setSavingReferral(false)
+  }
+
+  async function handleSaveReviewPoints() {
+    setSavingReview(true)
+    await supabase
+      .from('businesses')
+      .update({ points_for_review: parseInt(reviewPoints) || 0 })
+      .eq('id', businessId)
+    setSavingReview(false)
   }
 
   async function handleAdd() {
@@ -368,6 +380,37 @@ export default function FidelidadeTab({ businessId, initialRewards, initialCusto
               style={{ background: 'var(--admin-accent)', color: '#fff' }}
             >
               {savingReferral ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Configuração de avaliação Google */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+          Pontos por avaliacao no Google
+        </h3>
+        <div className="admin-card p-4 space-y-3">
+          <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+            Quantos pontos o cliente ganha quando avalia o estabelecimento no Google.
+            Coloque 0 pra desativar o programa.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={reviewPoints}
+              onChange={(e) => setReviewPoints(e.target.value)}
+              placeholder="ex: 100"
+              min="0"
+              className="admin-input flex-1"
+            />
+            <button
+              onClick={handleSaveReviewPoints}
+              disabled={savingReview}
+              className="px-4 rounded-xl text-sm font-semibold disabled:opacity-40 transition-colors"
+              style={{ background: 'var(--admin-accent)', color: '#fff' }}
+            >
+              {savingReview ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </div>
