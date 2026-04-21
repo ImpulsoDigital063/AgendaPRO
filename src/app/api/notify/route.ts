@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendBarberNotification, sendClientBookingConfirmation } from '@/lib/email'
+import { generateCancelToken } from '@/lib/token'
 
 function getAdminClient() {
   return createServiceClient(
@@ -81,5 +82,8 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  return NextResponse.json({ ok: true })
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'
+  const cancelUrl = `${appUrl}/cancelar?id=${appointmentId}&token=${generateCancelToken(appointmentId)}`
+
+  return NextResponse.json({ ok: true, cancelUrl })
 }

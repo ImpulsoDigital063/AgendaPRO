@@ -106,6 +106,7 @@ export default function BookingFlow({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pointsEarned, setPointsEarned] = useState(0)
+  const [cancelUrl, setCancelUrl] = useState<string | null>(null)
 
   // Referral
   const [myReferralLink, setMyReferralLink] = useState<string | null>(null)
@@ -429,12 +430,17 @@ export default function BookingFlow({
       }
     }
 
-    // 6. Notificar profissional
+    // 6. Notificar profissional + cliente + capturar cancelUrl
     fetch('/api/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ appointmentId: appointment.id }),
-    }).catch(() => {})
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.cancelUrl) setCancelUrl(data.cancelUrl)
+      })
+      .catch(() => {})
 
     setStep('done')
     setSubmitting(false)
@@ -518,6 +524,15 @@ export default function BookingFlow({
         >
           Ver meus pontos
         </a>
+
+        {cancelUrl && (
+          <a
+            href={cancelUrl}
+            className="mt-2 text-xs text-gray-400 underline underline-offset-2 hover:text-red-500 transition-colors"
+          >
+            Preciso cancelar
+          </a>
+        )}
       </div>
     )
   }
