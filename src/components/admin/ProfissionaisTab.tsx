@@ -20,7 +20,23 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
   const [commissionValue, setCommissionValue] = useState('')
   const [invitingId, setInvitingId] = useState<string | null>(null)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteResult, setInviteResult] = useState<{ profId: string; ok: boolean; message: string } | null>(null)
+  const [inviteResult, setInviteResult] = useState<{
+    profId: string
+    ok: boolean
+    message?: string
+    email?: string
+    tempPassword?: string
+    professionalName?: string
+    loginUrl?: string
+    emailSent?: boolean
+  } | null>(null)
+  const [copiedField, setCopiedField] = useState<string | null>(null)
+
+  function copyToClipboard(text: string, field: string) {
+    navigator.clipboard.writeText(text)
+    setCopiedField(field)
+    setTimeout(() => setCopiedField(null), 2000)
+  }
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({})
   const supabase = createClient()
 
@@ -132,7 +148,15 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
     const data = await res.json()
 
     if (res.ok && data.ok) {
-      setInviteResult({ profId: prof.id, ok: true, message: data.message })
+      setInviteResult({
+        profId: prof.id,
+        ok: true,
+        email: data.email,
+        tempPassword: data.tempPassword,
+        professionalName: data.professionalName,
+        loginUrl: data.loginUrl,
+        emailSent: data.emailSent,
+      })
       onChange(professionals.map((p) =>
         p.id === prof.id ? { ...p, email: data.email, auth_user_id: 'linked' } : p
       ))
@@ -419,29 +443,80 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
           >
             {inviteResult.ok ? (
               <div
-                className="rounded-xl p-3"
+                className="rounded-xl p-3 space-y-3"
                 style={{
                   background: 'color-mix(in srgb, var(--admin-success) 10%, transparent)',
                   border: '1px solid color-mix(in srgb, var(--admin-success) 25%, transparent)',
                 }}
               >
-                <p className="text-sm font-semibold" style={{ color: 'var(--admin-success)' }}>
-                  Acesso criado!
-                </p>
-                <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-                  As credenciais foram enviadas para o email do profissional.
-                </p>
-                <div
-                  className="mt-2 rounded-lg p-2.5 text-xs"
-                  style={{
-                    background: 'var(--admin-surface)',
-                    color: 'var(--admin-text)',
-                    border: '1px solid var(--admin-border)',
-                  }}
-                >
-                  <p>Email enviado para: <strong>{inviteEmail}</strong></p>
-                  <p>Acesso em: /profissional/login</p>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--admin-success)' }}>
+                    Acesso criado!
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+                    {inviteResult.emailSent
+                      ? 'Email com as credenciais foi enviado pro profissional.'
+                      : 'Copie as credenciais abaixo e mande pro profissional via WhatsApp.'}
+                  </p>
                 </div>
+
+                {/* Credenciais copiáveis */}
+                <div className="space-y-2">
+                  {[
+                    { label: 'Email', value: inviteResult.email || '', field: `email-${prof.id}` },
+                    { label: 'Senha temporária', value: inviteResult.tempPassword || '', field: `pwd-${prof.id}` },
+                    {
+                      label: 'Link de acesso',
+                      value: typeof window !== 'undefined' ? `${window.location.origin}${inviteResult.loginUrl || '/profissional/login'}` : '',
+                      field: `url-${prof.id}`,
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.field}
+                      className="rounded-lg p-2.5 flex items-center justify-between gap-2"
+                      style={{
+                        background: 'var(--admin-surface)',
+                        border: '1px solid var(--admin-border)',
+                      }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                          {item.label}
+                        </p>
+                        <p className="text-xs font-mono truncate" style={{ color: 'var(--admin-text)' }}>
+                          {item.value}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(item.value, item.field)}
+                        className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider flex-shrink-0"
+                        style={{
+                          background: copiedField === item.field ? 'var(--admin-success)' : 'var(--admin-accent)',
+                          color: '#fff',
+                        }}
+                      >
+                        {copiedField === item.field ? 'Copiado' : 'Copiar'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Botão WhatsApp pré-formatado */}
+                <button
+                  onClick={() => {
+                    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+                    const msg = `Olá ${inviteResult.professionalName}! Seu acesso ao painel:\n\n` +
+                      `Link: ${origin}${inviteResult.loginUrl}\n` +
+                      `Email: ${inviteResult.email}\n` +
+                      `Senha: ${inviteResult.tempPassword}\n\n` +
+                      `Troque a senha no primeiro login.`
+                    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
+                  }}
+                  className="w-full px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2"
+                  style={{ background: '#25D366', color: '#fff' }}
+                >
+                  Abrir WhatsApp com mensagem pronta
+                </button>
               </div>
             ) : (
               <p className="text-sm" style={{ color: 'var(--admin-danger)' }}>

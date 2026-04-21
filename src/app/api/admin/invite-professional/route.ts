@@ -85,28 +85,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Erro ao vincular acesso.' }, { status: 500 })
   }
 
-  // 7. Envia email com credenciais para o profissional
-  const { Resend } = await import('resend')
-  const resend = new Resend(process.env.RESEND_API_KEY)
+  // 7. Tenta enviar email — se Resend não estiver configurado ou domínio não verificado, falha silencioso.
+  // Retorna a senha pra UI mostrar pro dono passar via WhatsApp/manual.
+  let emailSent = false
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const { Resend } = await import('resend')
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      const result = await resend.emails.send({
+        from: process.env.RESEND_FROM_EMAIL || 'AgendaPRO <onboarding@resend.dev>',
+        to: emailNorm,
+        subject: `Seu acesso ao AgendaPRO`,
+        html: `
+          <p>Olá, <strong>${prof.name}</strong>!</p>
+          <p>Seu acesso ao painel do profissional foi criado.</p>
+          <p><strong>Email:</strong> ${emailNorm}</p>
+          <p><strong>Senha temporária:</strong> ${tempPassword}</p>
+          <p>Acesse e troque sua senha no primeiro login.</p>
+          <p>— AgendaPRO</p>
+        `,
+      })
+      emailSent = !result.error
+      if (result.error) console.error('Resend send error:', result.error)
+    } catch (err) {
+      console.error('Resend exception:', err)
+    }
+  }
 
-  await resend.emails.send({
-    from: 'AgendaPRO <onboarding@resend.dev>',
-    to: emailNorm,
-    subject: `Seu acesso ao AgendaPRO`,
-    html: `
-      <p>Olá, <strong>${prof.name}</strong>!</p>
-      <p>Seu acesso ao painel do profissional foi criado.</p>
-      <p><strong>Email:</strong> ${emailNorm}</p>
-      <p><strong>Senha temporária:</strong> ${tempPassword}</p>
-      <p>Acesse e troque sua senha no primeiro login.</p>
-      <p>— AgendaPRO</p>
-    `,
-  }).catch(() => {})
-
-  // Não retorna a senha na resposta — ela vai por email
   return NextResponse.json({
     ok: true,
     email: emailNorm,
-    message: `Acesso criado para ${prof.name}. As credenciais foram enviadas por email.`,
+    tempPassword,
+    professionalName: prof.name,
+    loginUrl: '/profissional/login',
+    emailSent,
   })
 }
