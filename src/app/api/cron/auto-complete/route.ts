@@ -55,5 +55,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: updErr.message }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true, completed: ids.length })
+  // Limpa fila de espera de datas passadas
+  const { count: deletedWaitlist } = await supabase
+    .from('waitlist')
+    .delete({ count: 'exact' })
+    .lt('appointment_date', today)
+
+  return NextResponse.json({
+    ok: true,
+    completed: ids.length,
+    waitlist_cleaned: deletedWaitlist ?? 0,
+  })
 }

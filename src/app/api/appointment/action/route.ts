@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { sendClientNotification, sendWaitlistNotification } from '@/lib/email'
+import { sendClientNotification } from '@/lib/email'
+import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
 import { verifyActionToken } from '@/lib/token'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -64,36 +65,13 @@ export async function GET(req: NextRequest) {
     }).catch(() => {})
   }
 
-  // Se cancelou, notifica o primeiro da fila de espera
+  // Se cancelou, notifica TODOS da fila pra esse slot
   if (action === 'cancelled' && appointment) {
-    const { data: rawWaitlist } = await supabase
-      .from('waitlist')
-      .select('id, client_email, client_name, appointment_date, start_time, business:businesses(name, slug)')
-      .eq('professional_id', appointment.professional_id)
-      .eq('appointment_date', appointment.appointment_date)
-      .eq('start_time', appointment.start_time)
-      .is('notified_at', null)
-      .order('created_at')
-      .limit(1)
-      .maybeSingle()
-
-    const waitlistEntry = rawWaitlist as typeof rawWaitlist & { business: { name: string; slug: string } | null }
-
-    if (waitlistEntry?.client_email) {
-      await supabase
-        .from('waitlist')
-        .update({ notified_at: new Date().toISOString() })
-        .eq('id', waitlistEntry.id)
-
-      sendWaitlistNotification({
-        clientEmail: waitlistEntry.client_email,
-        clientName: waitlistEntry.client_name,
-        businessName: waitlistEntry.business?.name || 'estabelecimento',
-        businessSlug: waitlistEntry.business?.slug || '',
-        date: waitlistEntry.appointment_date,
-        startTime: waitlistEntry.start_time.slice(0, 5),
-      }).catch(() => {})
-    }
+    notifyWaitlistForCancelledSlot({
+      professional_id: appointment.professional_id,
+      appointment_date: appointment.appointment_date,
+      start_time: appointment.start_time,
+    }).catch(() => {})
   }
 
   const label = action === 'confirmed' ? 'confirmado ✅' : 'cancelado ❌'

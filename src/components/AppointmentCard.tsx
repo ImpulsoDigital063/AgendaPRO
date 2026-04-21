@@ -77,6 +77,13 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ appointmentId: appointment.id, status: newStatus }),
     }).catch(() => {})
+    if (newStatus === 'cancelled') {
+      fetch('/api/waitlist/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId: appointment.id }),
+      }).catch(() => {})
+    }
     setLoading(false)
     router.refresh()
   }
