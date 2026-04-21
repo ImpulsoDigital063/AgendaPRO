@@ -304,16 +304,18 @@ export default function MeusPontosClient({
             </ul>
           </div>
 
-          {/* Histórico */}
-          {result.transactions && result.transactions.length > 0 && (
-            <div>
-              <p className="text-xs uppercase tracking-wider mb-2 px-1" style={{ color: textMute }}>
-                Últimas movimentações
-              </p>
-              <div className="space-y-2">
-                {result.transactions.map((t) => {
-                  const isNegative = t.points < 0
-                  return (
+          {/* Histórico — só mostra ganhos/resgates, esconde estornos pra não confundir.
+              Estornos negativos já são refletidos no saldo total no topo. */}
+          {(() => {
+            const positive = (result.transactions || []).filter((t) => t.points !== 0 && t.points > 0)
+            if (positive.length === 0) return null
+            return (
+              <div>
+                <p className="text-xs uppercase tracking-wider mb-2 px-1" style={{ color: textMute }}>
+                  Últimas movimentações
+                </p>
+                <div className="space-y-2">
+                  {positive.map((t) => (
                     <div
                       key={t.id}
                       className="rounded-xl p-3 flex items-center justify-between"
@@ -330,19 +332,15 @@ export default function MeusPontosClient({
                           })}
                         </p>
                       </div>
-                      <p
-                        className="text-sm font-bold"
-                        style={{ color: isNegative ? (isDark ? '#F87171' : '#B91C1C') : '#F59E0B' }}
-                      >
-                        {isNegative ? '' : '+'}
-                        {t.points} pts
+                      <p className="text-sm font-bold" style={{ color: '#F59E0B' }}>
+                        +{t.points} pts
                       </p>
                     </div>
-                  )
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
         </>
       )}
     </div>
