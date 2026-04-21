@@ -38,13 +38,16 @@ export default function AdminThemeProvider({
   const applyTheme = useCallback((next: AdminTheme) => {
     const root = document.documentElement
     root.classList.add('admin-theme-switching')
+    // Força reflow pra garantir que o `transition: none` colou antes de mudar as vars
+    void root.offsetHeight
     root.setAttribute('data-admin-theme', next)
     root.style.colorScheme = next
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        root.classList.remove('admin-theme-switching')
-      })
-    })
+    // Remove a classe só depois que o browser pintou as novas cores.
+    // 80ms cobre a janela de paint mesmo em mobile fraco — RAF aninhado (~32ms)
+    // estava muito curto e algumas transições de 0.25s ainda animavam de cor antiga pra nova.
+    window.setTimeout(() => {
+      root.classList.remove('admin-theme-switching')
+    }, 80)
   }, [])
 
   useEffect(() => {

@@ -13,7 +13,7 @@ export default function ThemeToggle({ compact = false }: { compact?: boolean }) 
       onClick={toggle}
       aria-label={isDark ? 'Trocar para tema claro' : 'Trocar para tema escuro'}
       title={isDark ? 'Tema claro' : 'Tema escuro'}
-      className="relative inline-flex items-center justify-center rounded-full transition-all hover:scale-[1.04] active:scale-95"
+      className="relative inline-flex items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.04] active:scale-95"
       style={{
         width: compact ? 36 : 40,
         height: compact ? 36 : 40,

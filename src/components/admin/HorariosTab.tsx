@@ -242,11 +242,11 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
               }}
             >
               {/* Linha principal */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between px-4 py-3 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <button
                     onClick={() => toggleDay(day.id)}
-                    className="relative w-11 h-6 rounded-full transition-all duration-200"
+                    className="relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0"
                     style={
                       config.active
                         ? {
@@ -264,7 +264,7 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
                     aria-label={`${config.active ? 'Desativar' : 'Ativar'} ${day.full}`}
                   >
                     <span
-                      className="absolute top-0.5 w-5 h-5 rounded-full shadow-md transition-transform duration-200"
+                      className="absolute top-0.5 left-0 w-5 h-5 rounded-full shadow-md transition-transform duration-200"
                       style={{
                         background: '#FFFFFF',
                         transform: config.active ? 'translateX(22px)' : 'translateX(2px)',
@@ -272,7 +272,7 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
                     />
                   </button>
                   <span
-                    className="text-sm font-semibold"
+                    className="text-sm font-semibold truncate"
                     style={{
                       color: config.active ? 'var(--admin-text)' : 'var(--admin-text-mute)',
                     }}
@@ -283,7 +283,7 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
 
                 {config.active ? (
                   <span
-                    className="text-xs font-medium px-2.5 py-1 rounded-lg"
+                    className="text-xs font-medium px-2.5 py-1 rounded-lg flex-shrink-0"
                     style={{
                       background: 'var(--admin-accent-bg)',
                       color: 'var(--admin-accent)',
@@ -293,7 +293,7 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
                     {config.start_time} – {config.end_time}
                   </span>
                 ) : (
-                  <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                  <span className="text-xs flex-shrink-0" style={{ color: 'var(--admin-text-faded)' }}>
                     Fechado
                   </span>
                 )}
