@@ -339,7 +339,7 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
           </div>
 
           <div className="flex items-center gap-2">
-            {!prof.auth_user_id && (
+            {!prof.auth_user_id && prof.role !== 'owner' && (
               <button
                 onClick={() => {
                   setInvitingId(invitingId === prof.id ? null : prof.id)
