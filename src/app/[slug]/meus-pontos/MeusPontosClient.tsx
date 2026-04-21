@@ -181,7 +181,7 @@ export default function MeusPontosClient({
               Indique um amigo e ganhe pontos
             </p>
             <p className="text-xs" style={{ color: textMute }}>
-              Quando ele agendar por esse link E o estabelecimento confirmar, você ganha pontos.
+              Quando ele agendar por esse link e comparecer ao atendimento, você ganha pontos.
             </p>
             <div className="flex gap-2">
               <input

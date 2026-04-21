@@ -37,6 +37,20 @@ const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string
     chipBg: 'var(--admin-accent-bg)',
     chipColor: 'var(--admin-accent)',
   },
+  completed: {
+    label: 'Concluído',
+    border: 'var(--admin-success)',
+    dot: 'var(--admin-success)',
+    chipBg: 'rgba(34,197,94,0.12)',
+    chipColor: 'var(--admin-success)',
+  },
+  no_show: {
+    label: 'Não veio',
+    border: 'var(--admin-text-faded)',
+    dot: 'var(--admin-text-faded)',
+    chipBg: 'rgba(148,163,184,0.12)',
+    chipColor: 'var(--admin-text-faded)',
+  },
   cancelled: {
     label: 'Cancelado',
     border: 'var(--admin-text-faded)',
@@ -53,7 +67,7 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
 
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
 
-  async function updateStatus(newStatus: 'confirmed' | 'cancelled') {
+  async function updateStatus(newStatus: 'confirmed' | 'cancelled' | 'no_show' | 'completed') {
     setLoading(true)
     const supabase = createClient()
     await supabase.from('appointments').update({ status: newStatus }).eq('id', appointment.id)
@@ -196,18 +210,31 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
         )}
 
         {status === 'confirmed' && (
-          <div className="pl-[64px]">
+          <div className="flex gap-2 pl-[64px]">
+            <button
+              onClick={() => updateStatus('no_show')}
+              disabled={loading}
+              className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
+              style={{
+                background: 'var(--admin-surface-hi)',
+                color: 'var(--admin-warn)',
+                border: '1px solid var(--admin-border)',
+              }}
+              title="Cliente não apareceu — não recebe pontos"
+            >
+              Não veio
+            </button>
             <button
               onClick={() => updateStatus('cancelled')}
               disabled={loading}
-              className="w-full py-2 rounded-xl text-xs transition-colors disabled:opacity-40"
+              className="flex-1 py-2 rounded-xl text-xs transition-colors disabled:opacity-40"
               style={{
                 background: 'var(--admin-surface-hi)',
                 color: 'var(--admin-text-faded)',
                 border: '1px solid var(--admin-border)',
               }}
             >
-              Cancelar agendamento
+              Cancelar
             </button>
           </div>
         )}

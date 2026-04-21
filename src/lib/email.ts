@@ -5,6 +5,7 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY)
 }
 
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'AgendaPRO <onboarding@resend.dev>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'
 
 /** Escapa HTML para prevenir XSS em templates de email */
@@ -141,7 +142,7 @@ export async function sendBarberNotification({
   `
 
   await getResend().emails.send({
-    from: 'AgendaPRO <onboarding@resend.dev>',
+    from: FROM_EMAIL,
     to: barberEmail,
     subject: `🔔 Nova reserva — ${esc(clientName)} · ${dateFormatted} às ${startTime}`,
     html: emailTemplate({
@@ -200,7 +201,7 @@ export async function sendClientBookingConfirmation({
   `
 
   await getResend().emails.send({
-    from: 'AgendaPRO <onboarding@resend.dev>',
+    from: FROM_EMAIL,
     to: clientEmail,
     subject: `📋 Agendamento recebido — ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
     html: emailTemplate({
@@ -238,7 +239,7 @@ export async function sendWaitlistNotification({
   `
 
   await getResend().emails.send({
-    from: 'AgendaPRO <onboarding@resend.dev>',
+    from: FROM_EMAIL,
     to: clientEmail,
     subject: `🔔 Vaga abriu! ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
     html: emailTemplate({
@@ -287,7 +288,7 @@ export async function sendReminderEmail({
   `
 
   await getResend().emails.send({
-    from: 'AgendaPRO <onboarding@resend.dev>',
+    from: FROM_EMAIL,
     to: clientEmail,
     subject,
     html: emailTemplate({ title: '', body }),
@@ -327,7 +328,7 @@ export async function sendClientNotification({
        Entre em contato com o estabelecimento para remarcar.`
 
   await getResend().emails.send({
-    from: 'AgendaPRO <onboarding@resend.dev>',
+    from: FROM_EMAIL,
     to: clientEmail,
     subject: confirmed
       ? `✅ Agendamento confirmado — ${esc(businessName)}`

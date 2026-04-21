@@ -374,7 +374,7 @@ export default function BookingFlow({
         appointment_date: formatDate(selectedDate),
         start_time: selectedTime,
         end_time: endTime,
-        status: 'pending',
+        status: 'confirmed',
       })
       .select('id')
       .single()
@@ -401,9 +401,9 @@ export default function BookingFlow({
       )
     }
 
-    // 4. Calcular pontos que o cliente VAI ganhar quando o agendamento for confirmado.
-    // Os pontos só são creditados pelo trigger SQL 'credit_points_on_confirm' (V13)
-    // quando o status vira 'confirmed'. Aqui só mostramos o valor esperado na UI.
+    // 4. Calcular pontos que o cliente VAI ganhar após o atendimento.
+    // Os pontos só são creditados pelo trigger SQL 'credit_points_on_confirm' (V15)
+    // quando o status vira 'completed' (cron auto-fecha agendamentos passados).
     const totalPoints = selectedServices.reduce((sum, s) => sum + (s.points ?? 0), 0)
     if (totalPoints > 0) {
       setPointsEarned(totalPoints)
@@ -411,8 +411,8 @@ export default function BookingFlow({
 
     // 5. Marcar referred_by quando é cliente NOVO vindo por link de indicação.
     // Os pontos do indicador são creditados pelo trigger SQL quando o agendamento
-    // vira 'confirmed' (ver migration V13). Se o agendamento for cancelado, o
-    // indicador nunca ganha pontos.
+    // vira 'completed' (ver migration V15). Se o agendamento for cancelado ou
+    // marcado como no_show, o indicador nunca ganha pontos.
     if (referralCode && customerId && !existingCustomer) {
       const { data: referrer } = await supabase
         .from('customers')
@@ -453,7 +453,7 @@ export default function BookingFlow({
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
         <div className="mb-4"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg></div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Horário reservado!</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Agendamento confirmado!</h2>
         {selectedServices.length > 0 && (
           <div className="mb-2">
             {selectedServices.map((s) => (
@@ -478,12 +478,12 @@ export default function BookingFlow({
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 flex-shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <div className="text-left">
               <p className="text-amber-800 font-bold text-sm">Você vai ganhar +{pointsEarned} pontos</p>
-              <p className="text-amber-600 text-xs">Os pontos entram quando o {business.name} confirmar.</p>
+              <p className="text-amber-600 text-xs">Os pontos entram após o atendimento.</p>
             </div>
           </div>
         )}
         <p className="text-gray-500 text-sm max-w-xs mt-2">
-          Aguarde a confirmação do {business.name}. Você receberá uma mensagem em breve.
+          Enviamos um email de confirmação. Te esperamos no horário marcado!
         </p>
 
         {myReferralLink && (
