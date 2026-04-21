@@ -700,7 +700,7 @@ export default function BookingFlow({
                 }}
               >
                 <span>
-                  <strong>Na fila pro {waitlistSlot}.</strong> Avisamos por email se abrir. Pode agendar outro horário abaixo.
+                  Você está na fila das <strong>{waitlistSlot}</strong> — se vagar, te avisamos por email. Pode agendar outro horário também: a fila continua valendo.
                 </span>
                 <button
                   onClick={() => {
@@ -712,6 +712,26 @@ export default function BookingFlow({
                 >
                   ✕
                 </button>
+              </div>
+            )}
+            {!waitlistDone && !waitlistSlot && slots.some((s) => !s.available) && (
+              <div
+                className="mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
+                style={{
+                  background: 'rgba(148,163,184,0.10)',
+                  border: '1px solid rgba(148,163,184,0.25)',
+                  color: '#64748B',
+                }}
+              >
+                <span
+                  className="inline-flex items-center justify-center text-[10px] font-bold rounded-md px-1.5 py-0.5 shrink-0"
+                  style={{ background: '#F1F5F9', color: '#94A3B8', border: '1px solid #E2E8F0' }}
+                >
+                  fila
+                </span>
+                <span>
+                  Horário ocupado? Toque no slot marcado como <strong>fila</strong> e a gente te avisa se abrir vaga.
+                </span>
               </div>
             )}
             <div className="grid grid-cols-4 gap-2">
