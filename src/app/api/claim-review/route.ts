@@ -16,11 +16,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Muitas tentativas. Aguarde 1 hora.' }, { status: 429 })
   }
 
-  const { businessId, phone } = await req.json()
+  const { businessId, phone, googleReviewName } = await req.json()
 
   if (!businessId || !phone || typeof phone !== 'string') {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
   }
+
+  const reviewName = typeof googleReviewName === 'string' ? googleReviewName.trim().slice(0, 80) : null
 
   const adminClient = getAdminClient()
 
@@ -87,6 +89,7 @@ export async function POST(req: NextRequest) {
     customer_id: customer.id,
     customer_phone: customer.phone,
     customer_name: customer.name,
+    google_review_name: reviewName || null,
     status: 'pending',
   })
 

@@ -8,6 +8,7 @@ type ReviewClaim = {
   id: string
   customer_name: string | null
   customer_phone: string
+  google_review_name: string | null
   requested_at: string
 }
 
@@ -52,7 +53,7 @@ export default function FidelidadeTab({ businessId, initialRewards, initialCusto
     async function loadClaims() {
       const { data } = await supabase
         .from('review_claims')
-        .select('id, customer_name, customer_phone, requested_at')
+        .select('id, customer_name, customer_phone, google_review_name, requested_at')
         .eq('business_id', businessId)
         .eq('status', 'pending')
         .order('requested_at', { ascending: true })
@@ -319,6 +320,11 @@ export default function FidelidadeTab({ businessId, initialRewards, initialCusto
                       month: 'short',
                     })}
                   </p>
+                  {claim.google_review_name && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--admin-text)' }}>
+                      Nome no Google: <span className="font-semibold">{claim.google_review_name}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-1.5 flex-shrink-0">
                   <button

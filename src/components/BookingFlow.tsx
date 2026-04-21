@@ -158,6 +158,7 @@ export default function BookingFlow({
   const [reviewClaiming, setReviewClaiming] = useState(false)
   const [reviewClaimMsg, setReviewClaimMsg] = useState<string | null>(null)
   const [reviewClaimError, setReviewClaimError] = useState<string | null>(null)
+  const [reviewName, setReviewName] = useState('')
 
   // Fila de espera
   const [waitlistSlot, setWaitlistSlot] = useState<string | null>(null)
@@ -613,36 +614,46 @@ export default function BookingFlow({
                 Abrir Google
               </a>
               {reviewOpened && !reviewClaimMsg && (
-                <button
-                  disabled={reviewClaiming}
-                  onClick={async () => {
-                    setReviewClaiming(true)
-                    setReviewClaimError(null)
-                    try {
-                      const res = await fetch('/api/claim-review', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          businessId: business.id,
-                          phone: clientPhone.trim(),
-                        }),
-                      })
-                      const data = await res.json()
-                      if (!res.ok) {
-                        setReviewClaimError(data.error || 'Erro ao registrar pedido.')
-                      } else {
-                        setReviewClaimMsg(data.message || 'Pedido enviado!')
+                <>
+                  <input
+                    type="text"
+                    value={reviewName}
+                    onChange={(e) => setReviewName(e.target.value)}
+                    placeholder="Qual nome você usou na avaliação?"
+                    className="w-full text-sm bg-white border border-blue-200 rounded-xl px-3 py-2 text-gray-700 placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                  />
+                  <button
+                    disabled={reviewClaiming || !reviewName.trim()}
+                    onClick={async () => {
+                      setReviewClaiming(true)
+                      setReviewClaimError(null)
+                      try {
+                        const res = await fetch('/api/claim-review', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            businessId: business.id,
+                            phone: clientPhone.trim(),
+                            googleReviewName: reviewName.trim(),
+                          }),
+                        })
+                        const data = await res.json()
+                        if (!res.ok) {
+                          setReviewClaimError(data.error || 'Erro ao registrar pedido.')
+                        } else {
+                          setReviewClaimMsg(data.message || 'Pedido enviado!')
+                        }
+                      } catch {
+                        setReviewClaimError('Erro ao registrar pedido. Tente novamente.')
+                      } finally {
+                        setReviewClaiming(false)
                       }
-                    } catch {
-                      setReviewClaimError('Erro ao registrar pedido. Tente novamente.')
-                    } finally {
-                      setReviewClaiming(false)
-                    }
-                  }}
-                  className="block text-center px-3 py-2 bg-white border border-blue-300 text-blue-700 text-sm font-semibold rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-50"
-                >
-                  {reviewClaiming ? 'Enviando...' : 'Já avaliei, quero meus pontos'}
-                </button>
+                    }}
+                    className="block text-center px-3 py-2 bg-white border border-blue-300 text-blue-700 text-sm font-semibold rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-50"
+                  >
+                    {reviewClaiming ? 'Enviando...' : 'Já avaliei, quero meus pontos'}
+                  </button>
+                </>
               )}
               {reviewClaimMsg && (
                 <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
