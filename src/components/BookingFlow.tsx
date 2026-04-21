@@ -153,6 +153,12 @@ export default function BookingFlow({
   const [myReferralLink, setMyReferralLink] = useState<string | null>(null)
   const [referralCopied, setReferralCopied] = useState(false)
 
+  // Claim de pontos por review no Google
+  const [reviewOpened, setReviewOpened] = useState(false)
+  const [reviewClaiming, setReviewClaiming] = useState(false)
+  const [reviewClaimMsg, setReviewClaimMsg] = useState<string | null>(null)
+  const [reviewClaimError, setReviewClaimError] = useState<string | null>(null)
+
   // Fila de espera
   const [waitlistSlot, setWaitlistSlot] = useState<string | null>(null)
   const [waitlistName, setWaitlistName] = useState('')
@@ -559,7 +565,7 @@ export default function BookingFlow({
           </div>
         )}
         <p className="text-gray-500 text-sm max-w-xs mt-2">
-          Enviamos um email de confirmação. Te esperamos no horário marcado!
+          Tá tudo certo. Te esperamos no horário marcado!
         </p>
 
         {myReferralLink && (
@@ -584,6 +590,70 @@ export default function BookingFlow({
               >
                 {referralCopied ? 'Copiado!' : 'Copiar'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {business.points_for_review > 0 && business.google_place_id && (
+          <div className="mt-5 w-full max-w-sm bg-blue-50 border border-blue-200 rounded-2xl p-4 text-left">
+            <p className="text-sm font-bold text-gray-900 mb-1">
+              Avalie a gente no Google e ganhe +{business.points_for_review} pontos
+            </p>
+            <p className="text-xs text-gray-600 mb-3">
+              Abra o Google, deixe sua avaliação e clique em "Já avaliei". O estabelecimento confirma e seus pontos entram.
+            </p>
+            <div className="flex flex-col gap-2">
+              <a
+                href={business.google_place_id}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setReviewOpened(true)}
+                className="block text-center px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+              >
+                Abrir Google
+              </a>
+              {reviewOpened && !reviewClaimMsg && (
+                <button
+                  disabled={reviewClaiming}
+                  onClick={async () => {
+                    setReviewClaiming(true)
+                    setReviewClaimError(null)
+                    try {
+                      const res = await fetch('/api/claim-review', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          businessId: business.id,
+                          phone: clientPhone.trim(),
+                        }),
+                      })
+                      const data = await res.json()
+                      if (!res.ok) {
+                        setReviewClaimError(data.error || 'Erro ao registrar pedido.')
+                      } else {
+                        setReviewClaimMsg(data.message || 'Pedido enviado!')
+                      }
+                    } catch {
+                      setReviewClaimError('Erro ao registrar pedido. Tente novamente.')
+                    } finally {
+                      setReviewClaiming(false)
+                    }
+                  }}
+                  className="block text-center px-3 py-2 bg-white border border-blue-300 text-blue-700 text-sm font-semibold rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-50"
+                >
+                  {reviewClaiming ? 'Enviando...' : 'Já avaliei, quero meus pontos'}
+                </button>
+              )}
+              {reviewClaimMsg && (
+                <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                  {reviewClaimMsg}
+                </p>
+              )}
+              {reviewClaimError && (
+                <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                  {reviewClaimError}
+                </p>
+              )}
             </div>
           </div>
         )}
