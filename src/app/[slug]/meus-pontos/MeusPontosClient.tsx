@@ -7,6 +7,7 @@ type Transaction = {
   points: number
   reason: 'service' | 'referral' | 'review' | 'redeem'
   created_at: string
+  appointment_id: string | null
 }
 
 type UpcomingAppointment = {
@@ -304,10 +305,22 @@ export default function MeusPontosClient({
             </ul>
           </div>
 
-          {/* Histórico — só mostra ganhos/resgates, esconde estornos pra não confundir.
-              Estornos negativos já são refletidos no saldo total no topo. */}
+          {/* Histórico — só mostra ganhos que ainda valem.
+              Esconde estornos negativos E os créditos positivos que foram revertidos
+              (status do appointment voltou pra cancelled/no_show depois de completed). */}
           {(() => {
-            const positive = (result.transactions || []).filter((t) => t.points !== 0 && t.points > 0)
+            const all = result.transactions || []
+            // Soma por (appointment_id, reason). Se ficou 0 (ou negativo), foi revertido.
+            const sums = new Map<string, number>()
+            for (const t of all) {
+              const key = `${t.appointment_id ?? 'null'}:${t.reason}`
+              sums.set(key, (sums.get(key) ?? 0) + t.points)
+            }
+            const positive = all.filter((t) => {
+              if (t.points <= 0) return false
+              const key = `${t.appointment_id ?? 'null'}:${t.reason}`
+              return (sums.get(key) ?? 0) > 0
+            })
             if (positive.length === 0) return null
             return (
               <div>

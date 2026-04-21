@@ -49,13 +49,13 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // Histórico de transações (últimas 20)
+  // Histórico de transações (últimas 50 pra dar conta de pares positivo+negativo)
   const { data: transactions } = await adminClient
     .from('points_transactions')
-    .select('id, points, reason, created_at')
+    .select('id, points, reason, created_at, appointment_id')
     .eq('customer_id', customer.id)
     .order('created_at', { ascending: false })
-    .limit(20)
+    .limit(50)
 
   // Status de review claim pendente (se houver)
   const { data: pendingReview } = await adminClient
