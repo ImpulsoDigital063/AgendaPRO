@@ -518,7 +518,9 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
                     { label: 'Senha temporária', value: inviteResult.tempPassword || '', field: `pwd-${prof.id}` },
                     {
                       label: 'Link de acesso',
-                      value: typeof window !== 'undefined' ? `${window.location.origin}${inviteResult.loginUrl || '/profissional/login'}` : '',
+                      value: inviteResult.loginUrl?.startsWith('http')
+                        ? inviteResult.loginUrl
+                        : (typeof window !== 'undefined' ? `${window.location.origin}${inviteResult.loginUrl || '/profissional/login'}` : ''),
                       field: `url-${prof.id}`,
                     },
                   ].map((item) => (
@@ -556,8 +558,11 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
                 <button
                   onClick={() => {
                     const origin = typeof window !== 'undefined' ? window.location.origin : ''
+                    const link = inviteResult.loginUrl?.startsWith('http')
+                      ? inviteResult.loginUrl
+                      : `${origin}${inviteResult.loginUrl || '/profissional/login'}`
                     const msg = `Olá ${inviteResult.professionalName}! Seu acesso ao painel:\n\n` +
-                      `Link: ${origin}${inviteResult.loginUrl}\n` +
+                      `Link: ${link}\n` +
                       `Email: ${inviteResult.email}\n` +
                       `Senha: ${inviteResult.tempPassword}\n\n` +
                       `Troque a senha no primeiro login.`
