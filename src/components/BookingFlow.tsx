@@ -11,6 +11,7 @@ type Prefill = {
   date: string
   time: string
   professionalId: string
+  serviceIds: string[]
   otherAppointment: { id: string; start_time: string; cancel_token: string } | null
 } | null
 
@@ -104,8 +105,22 @@ export default function BookingFlow({
   const initialProf =
     (prefill && professionals.find((p) => p.id === prefill.professionalId)) || professionals[0]
 
-  const [step, setStep] = useState<Step>(hasServices ? 'service' : hasMultipleProfessionals ? 'professional' : 'date')
-  const [selectedServices, setSelectedServices] = useState<Service[]>([])
+  // Serviços iniciais: se prefill traz service_ids da fila, pré-seleciona
+  const initialServices: Service[] = prefill?.serviceIds?.length
+    ? services.filter((s) => prefill.serviceIds.includes(s.id))
+    : []
+  const profMatchesPrefill = !!prefill && initialProf.id === prefill.professionalId
+
+  // Step inicial respeitando o que prefill já resolveu
+  const initialStep: Step =
+    hasServices && initialServices.length === 0
+      ? 'service'
+      : hasMultipleProfessionals && !profMatchesPrefill
+      ? 'professional'
+      : 'date'
+
+  const [step, setStep] = useState<Step>(initialStep)
+  const [selectedServices, setSelectedServices] = useState<Service[]>(initialServices)
   const [selectedProfessional, setSelectedProfessional] = useState<Professional>(initialProf)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
@@ -307,6 +322,7 @@ export default function BookingFlow({
       client_name: waitlistName.trim(),
       client_phone: waitlistPhone.trim(),
       client_email: waitlistEmail.trim() || null,
+      service_ids: selectedServices.length > 0 ? selectedServices.map((s) => s.id) : null,
     })
 
     setWaitlistSubmitting(false)

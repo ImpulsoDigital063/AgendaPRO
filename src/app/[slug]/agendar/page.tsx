@@ -58,6 +58,7 @@ export default async function AgendarPage({
     date: string
     time: string
     professionalId: string
+    serviceIds: string[]
     otherAppointment: { id: string; start_time: string; cancel_token: string } | null
   } | null
 
@@ -69,7 +70,7 @@ export default async function AgendarPage({
     )
     const { data: w } = await admin
       .from('waitlist')
-      .select('client_name, client_phone, client_email, business_id, professional_id, appointment_date, start_time')
+      .select('client_name, client_phone, client_email, business_id, professional_id, appointment_date, start_time, service_ids')
       .eq('id', waitlistId)
       .maybeSingle()
 
@@ -92,6 +93,7 @@ export default async function AgendarPage({
         date: prefillDate,
         time: prefillTime,
         professionalId: prefillProf,
+        serviceIds: (w.service_ids as string[] | null) || [],
         otherAppointment: other
           ? {
               id: other.id,
