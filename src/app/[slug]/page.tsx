@@ -12,6 +12,9 @@ import {
   IconArrowRight,
 } from '@/components/ui/Icon'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 function hexToRgba(hex: string, a: number) {
   const m = /^#([0-9A-Fa-f]{6})$/.exec(hex)
   if (!m) return `rgba(59,130,246,${a})`

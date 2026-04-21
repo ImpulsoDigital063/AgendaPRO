@@ -6,6 +6,9 @@ import { IconArrowLeft } from '@/components/ui/Icon'
 import MeusPontosClient from './MeusPontosClient'
 import type { Business } from '@/lib/types'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function MeusPontosPage({
   params,
 }: {

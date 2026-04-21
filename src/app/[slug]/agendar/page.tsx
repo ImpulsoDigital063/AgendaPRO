@@ -6,6 +6,9 @@ import BookingFlow from '@/components/BookingFlow'
 import type { Business, Professional } from '@/lib/types'
 import { IconArrowLeft } from '@/components/ui/Icon'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function AgendarPage({
   params,
   searchParams,
