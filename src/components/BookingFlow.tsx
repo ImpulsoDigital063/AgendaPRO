@@ -730,7 +730,7 @@ export default function BookingFlow({
                   fila
                 </span>
                 <span>
-                  Horário ocupado? Toque no slot marcado como <strong>fila</strong> e a gente te avisa se abrir vaga.
+                  Se o horário que você quer estiver ocupado, é só entrar na <strong>fila</strong> — avisamos por email se abrir vaga.
                 </span>
               </div>
             )}
