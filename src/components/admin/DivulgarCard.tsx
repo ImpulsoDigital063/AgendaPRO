@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   IconChevronDown,
   IconCopy,
@@ -17,8 +17,15 @@ type Props = {
 export default function DivulgarCard({ slug, appUrl }: Props) {
   const [copied, setCopied] = useState(false)
   const [open, setOpen] = useState(false)
+  const [origin, setOrigin] = useState(appUrl)
 
-  const bookingLink = `${appUrl}/${slug}/agendar`
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin)
+    }
+  }, [])
+
+  const bookingLink = `${origin}/${slug}/agendar`
 
   function handleCopy() {
     navigator.clipboard.writeText(bookingLink).then(() => {
@@ -41,8 +48,8 @@ export default function DivulgarCard({ slug, appUrl }: Props) {
           <p className="text-[11px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--admin-text-faded)' }}>
             Link de agendamento
           </p>
-          <p className="text-sm font-medium truncate" style={{ color: 'var(--admin-text)' }}>
-            /{slug}/agendar
+          <p className="text-sm font-medium truncate" style={{ color: 'var(--admin-text)' }} title={bookingLink}>
+            {bookingLink.replace(/^https?:\/\//, '')}
           </p>
         </div>
         <button
