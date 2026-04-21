@@ -217,32 +217,47 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
         )}
 
         {status === 'confirmed' && (
-          <div className="flex gap-2 pl-[64px]">
+          <div className="pl-[64px] space-y-2">
             <button
-              onClick={() => updateStatus('no_show')}
+              onClick={() => updateStatus('completed')}
               disabled={loading}
-              className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
+              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
               style={{
-                background: 'var(--admin-surface-hi)',
-                color: 'var(--admin-warn)',
-                border: '1px solid var(--admin-border)',
+                background: 'linear-gradient(135deg, #10B981, #059669)',
+                color: '#fff',
+                boxShadow: '0 8px 20px rgba(16,185,129,0.3)',
               }}
-              title="Cliente não apareceu — não recebe pontos"
+              title="Atendimento concluído — credita os pontos do cliente"
             >
-              Não veio
+              <IconCheck size={14} /> Atendi
             </button>
-            <button
-              onClick={() => updateStatus('cancelled')}
-              disabled={loading}
-              className="flex-1 py-2 rounded-xl text-xs transition-colors disabled:opacity-40"
-              style={{
-                background: 'var(--admin-surface-hi)',
-                color: 'var(--admin-text-faded)',
-                border: '1px solid var(--admin-border)',
-              }}
-            >
-              Cancelar
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => updateStatus('no_show')}
+                disabled={loading}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
+                style={{
+                  background: 'var(--admin-surface-hi)',
+                  color: 'var(--admin-warn)',
+                  border: '1px solid var(--admin-border)',
+                }}
+                title="Cliente não apareceu — não recebe pontos"
+              >
+                Não veio
+              </button>
+              <button
+                onClick={() => updateStatus('cancelled')}
+                disabled={loading}
+                className="flex-1 py-2 rounded-xl text-xs transition-colors disabled:opacity-40"
+                style={{
+                  background: 'var(--admin-surface-hi)',
+                  color: 'var(--admin-text-faded)',
+                  border: '1px solid var(--admin-border)',
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         )}
       </div>

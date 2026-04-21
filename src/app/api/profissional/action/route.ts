@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   const { appointmentId, action } = await req.json()
 
-  if (!appointmentId || !['confirmed', 'cancelled'].includes(action)) {
+  if (!appointmentId || !['confirmed', 'cancelled', 'completed', 'no_show'].includes(action)) {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
   }
 
@@ -58,11 +58,17 @@ export async function POST(req: NextRequest) {
   }
 
   // Registra no activity log
-  const actionLabel = action === 'confirmed' ? 'confirmou' : 'cancelou'
+  const actionLabels: Record<string, { label: string; key: string }> = {
+    confirmed: { label: 'confirmou', key: 'confirm' },
+    cancelled: { label: 'cancelou', key: 'cancel' },
+    completed: { label: 'concluiu', key: 'complete' },
+    no_show: { label: 'marcou no-show de', key: 'no_show' },
+  }
+  const { label: actionLabel, key: actionKey } = actionLabels[action]
   await adminClient.from('activity_log').insert({
     business_id: professional.business_id,
     professional_id: professional.id,
-    action: action === 'confirmed' ? 'confirm' : 'cancel',
+    action: actionKey,
     target_type: 'appointment',
     target_id: appointmentId,
     description: `${professional.name} ${actionLabel} agendamento de ${appointment.client_name} (${appointment.appointment_date} às ${appointment.start_time.slice(0, 5)})`,
