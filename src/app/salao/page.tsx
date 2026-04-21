@@ -4,7 +4,7 @@ import FAQ from '@/components/FAQ'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Salões de Beleza — Agenda Online com Lembrete Automático',
-  description: 'Sistema de agendamento online para salões. Cada profissional com agenda própria, lembrete por e-mail, fila de espera e comissão automática. A partir de R$67/mês.',
+  description: 'Sistema de agendamento online para salões. Cada profissional com agenda própria, lembrete por e-mail, fila de espera e comissão automática. A partir de R$47/mês. Garantia de 7 dias.',
   openGraph: {
     title: 'AgendaPRO para Salões de Beleza',
     description: 'Agenda online para salão. Lembrete automático, fila de espera, comissão por profissional e Google Reviews integrado.',
@@ -86,12 +86,12 @@ const TIMELINE = [
 
 const SALAO_FAQS: FAQItem[] = [
   {
-    q: 'Preciso de cartão pra testar?',
-    a: 'Não. 14 dias grátis, sem cartão, sem compromisso. Configura tudo e usa de verdade. Decide depois.',
+    q: 'Como funciona a garantia?',
+    a: '7 dias de garantia após o pagamento. Se não fizer sentido pro seu salão, devolvo sem burocracia. Sem trial pré-pago — você paga, testa com cliente real e decide.',
   },
   {
-    q: 'Quanto custa depois do teste?',
-    a: 'Plano Solo (1-2 profissionais): R$67/mês. Plano Equipe (3-5 profissionais): R$107/mês. Menos que uma escova por mês. Se 1 cliente da fila voltar por semana, já pagou o plano inteiro.',
+    q: 'Quanto custa?',
+    a: 'Plano Solo (admin + 1 profissional comissionado): setup R$147 + R$47/mês. Plano Equipe (admin + múltiplos profissionais + recepção): setup R$197 + R$67/mês. Setup é one-shot, vitalício. Primeiros 10 clientes travam o preço pra sempre — Clube Fundador.',
   },
   {
     q: 'Posso cancelar quando quiser?',
@@ -159,7 +159,7 @@ function CTAInline({ titulo, sub }: { titulo: string; sub: string }) {
           className="btn btn-primary-v2 btn-shimmer w-full sm:w-auto justify-center text-sm font-bold px-5 py-3 sm:py-3.5 min-h-[48px]"
         >
           <span className="relative z-10 flex items-center gap-2">
-            Começar grátis
+            Entrar no Clube
             <IconArrowRight size={18} />
           </span>
         </Link>
@@ -288,7 +288,7 @@ export default function SalaoPage() {
         }}
       >
         <IconHairDryer size={14} className="flex-shrink-0" />
-        <span>Oferta de lançamento — <strong>14 dias grátis</strong>. Sem cartão.</span>
+        <span><strong>Clube Fundador</strong> — 10 primeiros travam R$47/mês vitalício.</span>
       </div>
 
       {/* Nav */}
@@ -309,8 +309,8 @@ export default function SalaoPage() {
             className="btn btn-primary-v2 btn-shimmer text-[11px] sm:text-[13px] font-bold px-2.5 sm:px-3.5 py-1.5 sm:py-2 min-h-[32px] sm:min-h-[36px] whitespace-nowrap inline-flex items-center"
           >
             <span className="relative z-10 flex items-center gap-1">
-              <span className="hidden sm:inline">Acesso grátis</span>
-              <span className="sm:hidden">Grátis</span>
+              <span className="hidden sm:inline">Entrar no Clube</span>
+              <span className="sm:hidden">Clube</span>
               <IconArrowRight size={12} />
             </span>
           </Link>
@@ -376,12 +376,12 @@ export default function SalaoPage() {
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
                 <Link href="/cadastro" className="btn btn-primary-v2 btn-shimmer w-full sm:w-auto justify-center font-black text-base px-6 py-4 min-h-[52px]">
-                  <span className="relative z-10 flex items-center gap-2">Testar 14 dias grátis<IconArrowRight size={20} /></span>
+                  <span className="relative z-10 flex items-center gap-2">Garantir meu lugar<IconArrowRight size={20} /></span>
                 </Link>
                 <a href="#dor" className="btn btn-ghost w-full sm:w-auto justify-center font-semibold text-base px-6 py-4 min-h-[52px]">Ver como funciona</a>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-400">14 dias grátis · sem cartão · R$67/mês depois</p>
+              <p className="text-xs sm:text-sm text-slate-400">Setup R$147 · R$47/mês · Garantia de 7 dias</p>
             </SectionReveal>
 
             <SectionReveal className="flex justify-center lg:justify-end mt-4 lg:mt-0">
@@ -433,7 +433,7 @@ export default function SalaoPage() {
         </div>
       </section>
 
-      <CTAInline titulo="A SmartAgenda resolve tudo isso" sub="14 dias grátis. Configure em 5 minutos." />
+      <CTAInline titulo="A SmartAgenda resolve tudo isso" sub="Setup em 5 minutos. Garantia de 7 dias. Clube Fundador aberto pros 10 primeiros." />
 
       {/* ═══════════ 3. MOTORES ═══════════ */}
       <section id="mecanismos" className="relative py-16 sm:py-20 lg:py-28">
@@ -769,7 +769,7 @@ export default function SalaoPage() {
                 <span className="text-sm sm:text-base font-black text-gradient">AgendaPRO tudo junto</span>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-md" style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}>-74%</span>
-                  <span className="text-base sm:text-lg font-black text-white">a partir de R$ 67/mês</span>
+                  <span className="text-base sm:text-lg font-black text-white">a partir de R$ 47/mês</span>
                 </div>
               </div>
             </div>
@@ -780,26 +780,26 @@ export default function SalaoPage() {
             {/* Solo */}
             <div className="glass rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 lift-card">
               <div className="flex items-start justify-between mb-5">
-                <div><h3 className="text-xl sm:text-2xl font-black text-white mb-1">Solo</h3><p className="text-slate-400 text-xs sm:text-sm">1 a 2 profissionais</p></div>
+                <div><h3 className="text-xl sm:text-2xl font-black text-white mb-1">Solo</h3><p className="text-slate-400 text-xs sm:text-sm">Admin + 1 profissional comissionado</p></div>
                 <div className="text-pink-400"><IconHairDryer size={28} /></div>
               </div>
               <div className="mb-5 sm:mb-6">
-                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-white">R$67</span><span className="text-slate-400 text-sm">/mês</span></div>
+                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-white">R$47</span><span className="text-slate-400 text-sm">/mês</span></div>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-slate-500 text-xs line-through">R$97</span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Economia R$360/ano</span>
+                  <span className="text-slate-500 text-xs">Setup único R$147 (vitalício)</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Clube Fundador</span>
                 </div>
-                <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$2,23/dia — menos que um café</p>
+                <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$1,60/dia — menos que um café</p>
               </div>
               <div className="rounded-xl px-3 py-2.5 mb-5 text-[11px] sm:text-xs" style={{ background: 'rgba(236,72,153,0.08)', border: '1px solid rgba(236,72,153,0.25)' }}>
-                <span className="text-slate-300">1 cliente da fila/semana = </span><span className="text-white font-black">R$300/mês</span><span className="text-slate-300">. AgendaPRO = R$67. </span><span className="font-black" style={{ color: '#34D399' }}>Sobra R$233.</span>
+                <span className="text-slate-300">1 cliente da fila/semana = </span><span className="text-white font-black">R$300/mês</span><span className="text-slate-300">. AgendaPRO = R$47. </span><span className="font-black" style={{ color: '#34D399' }}>Sobra R$253.</span>
               </div>
               <ul className="space-y-2.5 mb-4 text-xs sm:text-sm text-slate-300">
                 {['Link pra bio do Insta e Google', 'Lembrete automático anti-falta', 'Fila de espera pra cancelamentos', 'Sistema de pontos + indicação', 'Google Reviews integrado', 'Lista de clientes completa', 'Relatório financeiro por profissional'].map((item) => (
                   <li key={item} className="flex items-start gap-2.5"><span className="text-pink-400 mt-0.5 flex-shrink-0"><IconCheck size={14} /></span><span>{item}</span></li>
                 ))}
               </ul>
-              <Link href="/cadastro" className="btn btn-primary-v2 btn-shimmer w-full justify-center font-bold text-sm sm:text-base px-5 py-3.5 min-h-[48px]"><span className="relative z-10">Pegar acesso gratuito</span></Link>
+              <Link href="/cadastro" className="btn btn-primary-v2 btn-shimmer w-full justify-center font-bold text-sm sm:text-base px-5 py-3.5 min-h-[48px]"><span className="relative z-10">Entrar no Clube</span></Link>
             </div>
 
             {/* Equipe */}
@@ -807,26 +807,26 @@ export default function SalaoPage() {
               <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full opacity-40 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.5), transparent 70%)', filter: 'blur(40px)' }} aria-hidden />
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 pill-glow text-[10px] sm:text-xs whitespace-nowrap"><IconStar size={10} className="text-amber-300" /> MAIS POPULAR</div>
               <div className="flex items-start justify-between mb-5 mt-2 relative z-10">
-                <div><h3 className="text-xl sm:text-2xl font-black text-white mb-1">Equipe</h3><p className="text-slate-400 text-xs sm:text-sm">3 a 5 profissionais</p></div>
+                <div><h3 className="text-xl sm:text-2xl font-black text-white mb-1">Equipe</h3><p className="text-slate-400 text-xs sm:text-sm">Admin + múltiplos profissionais + recepção</p></div>
                 <div className="text-violet-400"><IconCalendarHeart size={28} /></div>
               </div>
               <div className="mb-5 sm:mb-6 relative z-10">
-                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-gradient">R$107</span><span className="text-slate-400 text-sm">/mês</span></div>
+                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-gradient">R$67</span><span className="text-slate-400 text-sm">/mês</span></div>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-slate-500 text-xs line-through">R$147</span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Economia R$480/ano</span>
+                  <span className="text-slate-500 text-xs">Setup único R$197 (vitalício)</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Clube Fundador</span>
                 </div>
-                <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$3,57/dia — por profissional sai R$0,71/dia</p>
+                <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$2,23/dia — por profissional sai ainda menos</p>
               </div>
               <div className="rounded-xl px-3 py-2.5 mb-5 text-[11px] sm:text-xs relative z-10" style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)' }}>
-                <span className="text-slate-300">5 profissionais x 1 fila/semana = </span><span className="text-white font-black">R$1.500/mês</span><span className="text-slate-300">. Plano = R$107. </span><span className="font-black" style={{ color: '#34D399' }}>Sobra R$1.393.</span>
+                <span className="text-slate-300">5 profissionais x 1 fila/semana = </span><span className="text-white font-black">R$1.500/mês</span><span className="text-slate-300">. Plano = R$67. </span><span className="font-black" style={{ color: '#34D399' }}>Sobra R$1.433.</span>
               </div>
               <ul className="space-y-2.5 mb-6 text-xs sm:text-sm text-slate-300 relative z-10">
-                {['Tudo do Solo', 'Até 5 profissionais com agenda separada', 'Comissão automática por profissional', 'Lista de clientes compartilhada', 'Financeiro consolidado do salão', 'Suporte prioritário no WhatsApp'].map((item) => (
+                {['Tudo do Solo', 'Múltiplos profissionais com agenda separada', 'Role de recepção (atendimento no balcão)', 'Comissão automática por profissional', 'Lista de clientes compartilhada', 'Financeiro consolidado do salão', 'Suporte prioritário no WhatsApp'].map((item) => (
                   <li key={item} className="flex items-start gap-2.5"><span className="text-cyan-400 mt-0.5 flex-shrink-0"><IconCheck size={14} /></span><span>{item}</span></li>
                 ))}
               </ul>
-              <div className="relative z-10"><Link href="/cadastro" className="btn btn-primary-v2 btn-shimmer w-full justify-center font-bold text-sm sm:text-base px-5 py-3.5 min-h-[48px]"><span className="relative z-10">Pegar acesso gratuito</span></Link></div>
+              <div className="relative z-10"><Link href="/cadastro" className="btn btn-primary-v2 btn-shimmer w-full justify-center font-bold text-sm sm:text-base px-5 py-3.5 min-h-[48px]"><span className="relative z-10">Entrar no Clube</span></Link></div>
             </div>
           </SectionReveal>
 
@@ -839,7 +839,7 @@ export default function SalaoPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-white font-bold text-sm sm:text-base mb-0.5">Zero risco pra testar</div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs text-slate-400">
-                  {['14 dias grátis', 'Sem cartão no cadastro', 'Cancela em 1 clique', 'Seus dados ficam seus'].map((t) => (
+                  {['Garantia 7 dias', 'Preço travado vitalício', 'Cancela em 1 clique', 'Seus dados ficam seus'].map((t) => (
                     <span key={t} className="flex items-center gap-1"><IconCheck size={11} strokeWidth={3} className="text-emerald-400" />{t}</span>
                   ))}
                 </div>
@@ -915,9 +915,9 @@ export default function SalaoPage() {
 
           <SectionReveal className="flex flex-wrap justify-center gap-2.5 sm:gap-3 mb-10 sm:mb-12">
             {[
-              { ico: <IconCheck size={12} strokeWidth={3} />, t: 'Sem cartão pra testar' },
+              { ico: <IconCheck size={12} strokeWidth={3} />, t: 'Garantia de 7 dias' },
               { ico: <IconClock24 size={12} strokeWidth={2.2} />, t: '5 minutos pra configurar' },
-              { ico: <IconCash size={12} strokeWidth={2.2} />, t: 'R$2,23/dia depois' },
+              { ico: <IconCash size={12} strokeWidth={2.2} />, t: 'R$1,60/dia no Solo' },
               { ico: <IconBolt size={12} strokeWidth={2.4} />, t: 'Cancela em 1 clique' },
             ].map((c) => (
               <span key={c.t} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', color: '#6EE7B7' }}>
@@ -931,7 +931,7 @@ export default function SalaoPage() {
               <span className="relative z-10 flex items-center gap-2">Quero minha SmartAgenda agora<IconArrowRight size={20} /></span>
             </Link>
             <p className="text-slate-400 text-xs sm:text-sm mt-4 sm:mt-5 max-w-md mx-auto">
-              14 dias grátis. Depois R$67/mês no plano Solo.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
+              Setup R$147 + R$47/mês no plano Solo. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
             </p>
           </SectionReveal>
         </div>

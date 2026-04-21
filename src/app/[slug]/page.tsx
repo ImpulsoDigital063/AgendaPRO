@@ -324,6 +324,19 @@ export default async function BusinessPage({
           </section>
         )}
 
+        {/* Atalho meus pontos (se o negócio usa programa de fidelidade) */}
+        {((b.points_for_review ?? 0) > 0 || (b.points_for_referral ?? 0) > 0) && (
+          <div className="text-center mb-6">
+            <Link
+              href={`/${slug}/meus-pontos`}
+              className="inline-block text-sm font-medium underline underline-offset-2 hover:opacity-80 transition-opacity"
+              style={{ color: muted }}
+            >
+              Ver meus pontos de fidelidade
+            </Link>
+          </div>
+        )}
+
         {/* CTA repetida no fim */}
         <Link
           href={`/${slug}/agendar`}

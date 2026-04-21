@@ -1,8 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Reward, Customer } from '@/lib/types'
+
+type ReviewClaim = {
+  id: string
+  customer_name: string | null
+  customer_phone: string
+  requested_at: string
+}
 
 type Props = {
   businessId: string
@@ -13,13 +20,45 @@ type Props = {
 
 export default function FidelidadeTab({ businessId, initialRewards, initialCustomers, pointsForReferral }: Props) {
   const [rewards, setRewards] = useState(initialRewards)
-  const [customers, setCustomers] = useState(initialCustomers)
+  const [customers] = useState(initialCustomers)
   const [form, setForm] = useState({ name: '', description: '', points_required: '' })
   const [referralPoints, setReferralPoints] = useState(String(pointsForReferral))
   const [savingReferral, setSavingReferral] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [pendingClaims, setPendingClaims] = useState<ReviewClaim[]>([])
+  const [claimActionId, setClaimActionId] = useState<string | null>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadClaims() {
+      const { data } = await supabase
+        .from('review_claims')
+        .select('id, customer_name, customer_phone, requested_at')
+        .eq('business_id', businessId)
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: true })
+      if (!cancelled && data) setPendingClaims(data as ReviewClaim[])
+    }
+    loadClaims()
+    return () => {
+      cancelled = true
+    }
+  }, [businessId, supabase])
+
+  async function handleClaimAction(claimId: string, action: 'approve' | 'reject') {
+    setClaimActionId(claimId)
+    const res = await fetch('/api/admin/review-claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claimId, action }),
+    })
+    if (res.ok) {
+      setPendingClaims((prev) => prev.filter((c) => c.id !== claimId))
+    }
+    setClaimActionId(null)
+  }
 
   async function handleSaveReferralPoints() {
     setSavingReferral(true)
@@ -78,6 +117,76 @@ export default function FidelidadeTab({ businessId, initialRewards, initialCusto
   return (
     <div className="space-y-6">
 
+      {/* Como funciona o programa de pontos */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+          Como funciona
+        </h3>
+        <div className="admin-card p-4 space-y-4">
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+            Use isso no atendimento pra incentivar o cliente a indicar amigos e avaliar no Google.
+            Os pontos só entram depois que <strong>você confirma</strong> o agendamento.
+          </p>
+
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold" style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>1</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>Pontos por atendimento</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  Cada serviço tem um valor em pontos (você configura em Serviços).
+                  Quando você confirma o agendamento, o cliente ganha a soma dos pontos.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold" style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>2</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>Pontos por indicação</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  Cada cliente tem um link próprio. Quando alguém <strong>novo</strong> agenda por esse link
+                  e você confirma, o indicador ganha pontos. Uma vez por cliente indicado.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold" style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>3</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>Pontos por avaliação no Google</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  Cliente avalia no Google e pede os pontos. O pedido cai aqui nessa tela pra você
+                  conferir. Você aprova se viu a review, rejeita se não. Uma vez por cliente.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold" style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>4</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>Trocar por recompensas</p>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  Configure aqui embaixo quais recompensas o cliente pode trocar
+                  (ex: corte grátis, desconto, produto). Você define o nome e quantos pontos custa.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl p-3" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: 'var(--admin-text)' }}>
+              Dica pro atendimento
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+              Fale pro cliente na hora do atendimento: <em>&ldquo;Tu pode ganhar pontos
+              avaliando a gente no Google e indicando amigo pelo link da agenda.
+              Troca por corte grátis depois.&rdquo;</em> Cliente que conhece o programa indica mais.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Ranking de clientes */}
       <div>
         <h3 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
@@ -110,6 +219,59 @@ export default function FidelidadeTab({ businessId, initialRewards, initialCusto
           </div>
         )}
       </div>
+
+      {/* Pedidos pendentes de pontos por avaliação */}
+      {pendingClaims.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+            Pedidos de pontos por avaliação
+            <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+              {pendingClaims.length}
+            </span>
+          </h3>
+          <div className="admin-card p-3 mb-2">
+            <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+              Confira no Google se a pessoa realmente avaliou. Só aprovar se viu a review.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {pendingClaims.map((claim) => (
+              <div key={claim.id} className="admin-card p-3 flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate" style={{ color: 'var(--admin-text)' }}>
+                    {claim.customer_name || 'Cliente'}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                    {claim.customer_phone} ·{' '}
+                    {new Date(claim.requested_at).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: 'short',
+                    })}
+                  </p>
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => handleClaimAction(claim.id, 'reject')}
+                    disabled={claimActionId === claim.id}
+                    className="text-xs px-3 py-1.5 rounded-lg text-red-400 disabled:opacity-40 transition-opacity"
+                    style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+                  >
+                    Rejeitar
+                  </button>
+                  <button
+                    onClick={() => handleClaimAction(claim.id, 'approve')}
+                    disabled={claimActionId === claim.id}
+                    className="text-xs px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40 transition-opacity"
+                    style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                  >
+                    Aprovar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Configuração de indicação */}
       <div>

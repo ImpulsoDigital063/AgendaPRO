@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -17,41 +16,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Muitas tentativas. Aguarde 1 hora.' }, { status: 429 })
   }
 
-  // Requer autenticação — só o dono do negócio pode creditar pontos
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
-  }
-
   const { businessId, phone } = await req.json()
 
-  if (!businessId || !phone) {
+  if (!businessId || !phone || typeof phone !== 'string') {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
-  }
-
-  // Verifica que o user é dono do negócio
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('id, points_for_review')
-    .eq('id', businessId)
-    .eq('owner_id', user.id)
-    .single()
-
-  if (!business) {
-    return NextResponse.json({ error: 'Negócio não encontrado.' }, { status: 403 })
-  }
-
-  if (!business.points_for_review || business.points_for_review <= 0) {
-    return NextResponse.json({ error: 'Pontos por review não configurados.' }, { status: 400 })
   }
 
   const adminClient = getAdminClient()
 
+  // Valida que o negócio existe + tem programa de pontos por review ativo
+  const { data: business } = await adminClient
+    .from('businesses')
+    .select('id, points_for_review')
+    .eq('id', businessId)
+    .single()
+
+  if (!business) {
+    return NextResponse.json({ error: 'Negócio não encontrado.' }, { status: 404 })
+  }
+
+  if (!business.points_for_review || business.points_for_review <= 0) {
+    return NextResponse.json({ error: 'Programa de pontos por avaliação não está ativo.' }, { status: 400 })
+  }
+
   // Busca o customer
   const { data: customer } = await adminClient
     .from('customers')
-    .select('id, total_points')
+    .select('id, name, phone')
     .eq('business_id', businessId)
     .eq('phone', phone.trim())
     .maybeSingle()
@@ -60,31 +51,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Telefone não encontrado. Faça um agendamento primeiro.' }, { status: 404 })
   }
 
-  // Verifica se já resgatou pontos de review
-  const { data: alreadyClaimed } = await adminClient
-    .from('points_transactions')
+  // Já tem claim approved? Não pode pedir de novo.
+  const { data: existingApproved } = await adminClient
+    .from('review_claims')
     .select('id')
+    .eq('business_id', businessId)
     .eq('customer_id', customer.id)
-    .eq('reason', 'review')
+    .eq('status', 'approved')
     .maybeSingle()
 
-  if (alreadyClaimed) {
-    return NextResponse.json({ error: 'Você já resgatou pontos por avaliação.' }, { status: 409 })
+  if (existingApproved) {
+    return NextResponse.json({ error: 'Você já recebeu pontos por avaliação neste estabelecimento.' }, { status: 409 })
   }
 
-  // Credita os pontos
-  await adminClient.from('points_transactions').insert({
-    customer_id: customer.id,
+  // Já tem claim pending? Não duplica.
+  const { data: existingPending } = await adminClient
+    .from('review_claims')
+    .select('id')
+    .eq('business_id', businessId)
+    .eq('customer_id', customer.id)
+    .eq('status', 'pending')
+    .maybeSingle()
+
+  if (existingPending) {
+    return NextResponse.json({
+      ok: true,
+      pending: true,
+      message: 'Pedido já registrado. Aguarde o estabelecimento aprovar.',
+    })
+  }
+
+  // Cria claim pending
+  const { error: insertError } = await adminClient.from('review_claims').insert({
     business_id: businessId,
-    points: business.points_for_review,
-    reason: 'review',
-    appointment_id: null,
+    customer_id: customer.id,
+    customer_phone: customer.phone,
+    customer_name: customer.name,
+    status: 'pending',
   })
 
-  await adminClient
-    .from('customers')
-    .update({ total_points: (customer.total_points ?? 0) + business.points_for_review })
-    .eq('id', customer.id)
+  if (insertError) {
+    return NextResponse.json({ error: 'Erro ao registrar pedido. Tente novamente.' }, { status: 500 })
+  }
 
-  return NextResponse.json({ points: business.points_for_review })
+  return NextResponse.json({
+    ok: true,
+    pending: true,
+    message: 'Pedido enviado! O estabelecimento vai confirmar tua avaliação em breve.',
+  })
 }

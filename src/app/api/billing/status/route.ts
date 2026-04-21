@@ -21,7 +21,13 @@ export async function GET() {
 
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('plan, status, trial_ends_at, current_period_end, grace_ends_at, public_blocked_at, cancelled_at')
+    .select(`
+      plan, status, price_cents, setup_cents,
+      setup_paid_at, refund_deadline_at, refunded_at,
+      current_period_start, current_period_end,
+      grace_ends_at, public_blocked_at, cancelled_at,
+      founders_club
+    `)
     .eq('business_id', business.id)
     .single()
 
@@ -29,26 +35,39 @@ export async function GET() {
     return NextResponse.json({ subscription: null })
   }
 
-  // Verificar se trial expirou
   const now = new Date()
-  let effectiveStatus = subscription.status
 
-  if (subscription.status === 'trial' && new Date(subscription.trial_ends_at) < now) {
-    effectiveStatus = 'expired'
-  }
+  // Admin bloqueado quando: past_due + grace expirou | cancelado | refund executado
+  const graceExpired = subscription.grace_ends_at && new Date(subscription.grace_ends_at) < now
+  const adminBlocked =
+    subscription.status === 'cancelled' ||
+    !!subscription.refunded_at ||
+    (subscription.status === 'past_due' && graceExpired)
 
-  // Verificar se grace period expirou (admin bloqueado)
-  const adminBlocked = subscription.grace_ends_at && new Date(subscription.grace_ends_at) < now
-
-  // Verificar se página pública deve ser bloqueada
+  // Página pública bloqueada: public_blocked_at passou
   const publicBlocked = subscription.public_blocked_at && new Date(subscription.public_blocked_at) < now
+
+  // Dentro da janela de garantia: pagou, ainda não pediu refund, e dentro dos 7 dias
+  const withinRefundWindow =
+    subscription.status === 'active' &&
+    !subscription.refunded_at &&
+    subscription.refund_deadline_at &&
+    new Date(subscription.refund_deadline_at) > now
+
+  const refundDaysLeft = withinRefundWindow && subscription.refund_deadline_at
+    ? Math.max(0, Math.ceil(
+        (new Date(subscription.refund_deadline_at).getTime() - now.getTime())
+        / (1000 * 60 * 60 * 24)
+      ))
+    : null
 
   return NextResponse.json({
     subscription: {
       ...subscription,
-      effective_status: effectiveStatus,
       admin_blocked: !!adminBlocked,
       public_blocked: !!publicBlocked,
+      within_refund_window: !!withinRefundWindow,
+      refund_days_left: refundDaysLeft,
     },
   })
 }

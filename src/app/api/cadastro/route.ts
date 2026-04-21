@@ -17,12 +17,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Muitas tentativas. Tente novamente em 1 hora.' }, { status: 429 })
   }
 
-  const { businessName, category, phone, address, slug, email, password, professionalName } =
+  const { businessName, category, phone, address, slug, email, password, professionalName, plan } =
     await req.json()
 
   if (!businessName || !slug || !email || !password) {
     return NextResponse.json({ error: 'Campos obrigatórios faltando.' }, { status: 400 })
   }
+
+  const chosenPlan: 'solo' | 'equipe' = plan === 'equipe' ? 'equipe' : 'solo'
+  const priceCents = chosenPlan === 'equipe' ? 6700 : 4700
+  const setupCents = chosenPlan === 'equipe' ? 19700 : 14700
 
   // Validação de input
   if (typeof businessName !== 'string' || businessName.trim().length < 2 || businessName.trim().length > 100) {
@@ -68,9 +72,7 @@ export async function POST(req: NextRequest) {
 
   const ownerId = userData.user.id
 
-  // 3. Cria o negócio
-  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-
+  // 3. Cria o negócio (sem trial_ends_at — lógica agora é 100% via subscriptions)
   const { data: business, error: bizError } = await supabase
     .from('businesses')
     .insert({
@@ -80,7 +82,6 @@ export async function POST(req: NextRequest) {
       phone: phone || null,
       address: address || null,
       owner_id: ownerId,
-      trial_ends_at: trialEndsAt,
     })
     .select('id')
     .single()
@@ -92,7 +93,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Erro ao criar negócio.' }, { status: 500 })
   }
 
-  // 4. Cria o profissional padrão
+  // 4. Cria assinatura em pending_payment (garantia ativa só após webhook MP)
+  const { error: subError } = await supabase
+    .from('subscriptions')
+    .insert({
+      business_id: business.id,
+      plan: chosenPlan,
+      status: 'pending_payment',
+      price_cents: priceCents,
+      setup_cents: setupCents,
+    })
+
+  if (subError) {
+    console.error('Erro ao criar subscription:', subError)
+    // Não é fatal — admin pode regenerar depois. Mas loga pra debug.
+  }
+
+  // 5. Cria o profissional padrão
   const { error: profError } = await supabase
     .from('professionals')
     .insert({
@@ -106,5 +123,5 @@ export async function POST(req: NextRequest) {
     console.error('Erro ao criar profissional padrão:', profError)
   }
 
-  return NextResponse.json({ ok: true, slug })
+  return NextResponse.json({ ok: true, slug, plan: chosenPlan })
 }

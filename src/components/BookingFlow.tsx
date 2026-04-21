@@ -339,47 +339,6 @@ export default function BookingFlow({
       }
     }
 
-    // Pontuar quem indicou (se veio por referral)
-    if (referralCode && customerId) {
-      const { data: referrer } = await supabase
-        .from('customers')
-        .select('id, total_points')
-        .eq('referral_code', referralCode)
-        .eq('business_id', business.id)
-        .maybeSingle()
-
-      if (referrer && referrer.id !== customerId) {
-        const { data: bizData } = await supabase
-          .from('businesses')
-          .select('points_for_referral')
-          .eq('id', business.id)
-          .single()
-
-        const pts = bizData?.points_for_referral ?? 0
-        if (pts > 0) {
-          await supabase.from('points_transactions').insert({
-            customer_id: referrer.id,
-            business_id: business.id,
-            points: pts,
-            reason: 'referral',
-            appointment_id: null,
-          })
-          await supabase
-            .from('customers')
-            .update({ total_points: (referrer.total_points ?? 0) + pts })
-            .eq('id', referrer.id)
-        }
-
-        // Marca o referred_by no novo cliente (só se não tiver)
-        if (!existingCustomer) {
-          await supabase
-            .from('customers')
-            .update({ referred_by: referrer.id })
-            .eq('id', customerId)
-        }
-      }
-    }
-
     // 2. Verificação de conflito antes de inserir (proteção client-side)
     const { data: conflict } = await supabase
       .from('appointments')
@@ -442,24 +401,35 @@ export default function BookingFlow({
       )
     }
 
-    // 4. Registrar pontos do agendamento
+    // 4. Calcular pontos que o cliente VAI ganhar quando o agendamento for confirmado.
+    // Os pontos só são creditados pelo trigger SQL 'credit_points_on_confirm' (V13)
+    // quando o status vira 'confirmed'. Aqui só mostramos o valor esperado na UI.
     const totalPoints = selectedServices.reduce((sum, s) => sum + (s.points ?? 0), 0)
-    if (customerId && totalPoints > 0) {
-      await supabase.from('points_transactions').insert({
-        customer_id: customerId,
-        business_id: business.id,
-        points: totalPoints,
-        reason: 'service',
-        appointment_id: appointment.id,
-      })
-      await supabase
-        .from('customers')
-        .update({ total_points: (existingCustomer?.total_points ?? 0) + totalPoints })
-        .eq('id', customerId)
+    if (totalPoints > 0) {
       setPointsEarned(totalPoints)
     }
 
-    // 5. Notificar profissional
+    // 5. Marcar referred_by quando é cliente NOVO vindo por link de indicação.
+    // Os pontos do indicador são creditados pelo trigger SQL quando o agendamento
+    // vira 'confirmed' (ver migration V13). Se o agendamento for cancelado, o
+    // indicador nunca ganha pontos.
+    if (referralCode && customerId && !existingCustomer) {
+      const { data: referrer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('referral_code', referralCode)
+        .eq('business_id', business.id)
+        .maybeSingle()
+
+      if (referrer && referrer.id !== customerId) {
+        await supabase
+          .from('customers')
+          .update({ referred_by: referrer.id })
+          .eq('id', customerId)
+      }
+    }
+
+    // 6. Notificar profissional
     fetch('/api/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -507,8 +477,8 @@ export default function BookingFlow({
           <div className="mt-4 mb-2 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3 flex items-center gap-3">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 flex-shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <div className="text-left">
-              <p className="text-amber-800 font-bold text-sm">+{pointsEarned} pontos de fidelidade!</p>
-              <p className="text-amber-600 text-xs">Continue agendando para ganhar recompensas.</p>
+              <p className="text-amber-800 font-bold text-sm">Você vai ganhar +{pointsEarned} pontos</p>
+              <p className="text-amber-600 text-xs">Os pontos entram quando o {business.name} confirmar.</p>
             </div>
           </div>
         )}
@@ -520,7 +490,7 @@ export default function BookingFlow({
           <div className="mt-5 w-full max-w-sm bg-gray-50 border border-gray-200 rounded-2xl p-4 text-left">
             <p className="text-sm font-bold text-gray-900 mb-1">Indique um amigo e ganhe pontos!</p>
             <p className="text-xs text-gray-500 mb-3">
-              Compartilhe seu link. Quando um amigo agendar por ele, você ganha pontos de fidelidade.
+              Quando um amigo agendar por esse link e o estabelecimento confirmar, você ganha pontos.
             </p>
             <div className="flex gap-2">
               <input
@@ -541,6 +511,13 @@ export default function BookingFlow({
             </div>
           </div>
         )}
+
+        <a
+          href={`/${business.slug}/meus-pontos`}
+          className="mt-4 text-sm font-medium text-gray-500 underline underline-offset-2 hover:text-gray-700 transition-colors"
+        >
+          Ver meus pontos
+        </a>
       </div>
     )
   }

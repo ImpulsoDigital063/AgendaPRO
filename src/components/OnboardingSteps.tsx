@@ -492,7 +492,7 @@ export default function OnboardingSteps() {
           <div className="text-white font-black text-base sm:text-lg">Pronto. Sua barbearia online.</div>
           <div className="text-slate-400 text-xs sm:text-sm mt-1 inline-flex items-center gap-1.5">
             <IconStar size={11} className="text-amber-400" />
-            Em menos de 5 minutos, sem técnico, sem cartão.
+            Em menos de 5 minutos, sem técnico. Garantia de 7 dias.
           </div>
         </div>
       </div>

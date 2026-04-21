@@ -28,12 +28,12 @@ const DEFAULT_FAQS: FAQItem[] = [
     a: 'Sim. No plano Equipe, cada profissional tem agenda e horários independentes. O cliente escolhe com quem quer ser atendido. Você acompanha a comissão de cada um pelo painel.',
   },
   {
-    q: 'Preciso de cartão pra testar?',
-    a: 'Não. São 14 dias grátis, sem cartão, sem compromisso. Você testa tudo e só decide depois.',
+    q: 'Como funciona a garantia?',
+    a: '7 dias de garantia após o pagamento. Se não fizer sentido pro seu negócio, devolvo sem burocracia. Sem trial pré-pago — você paga, testa com cliente real e decide.',
   },
   {
-    q: 'O que acontece quando o teste acaba?',
-    a: 'Você recebe um aviso antes do prazo. Para continuar, escolhe um plano. Se não contratar, o acesso ao painel é pausado — mas nenhum dado é apagado.',
+    q: 'Quanto custa?',
+    a: 'Plano Solo (admin + 1 profissional comissionado): setup R$147 + R$47/mês. Plano Equipe (admin + múltiplos profissionais + recepção): setup R$197 + R$67/mês. Setup é one-shot, vitalício. Primeiros 10 clientes travam o preço pra sempre — Clube Fundador.',
   },
   {
     q: 'Posso cancelar quando quiser?',

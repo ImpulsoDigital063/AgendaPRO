@@ -75,7 +75,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
               Entrar
             </Link>
             <Link href="/cadastro" className="btn-primary-v2 text-sm">
-              Começar grátis
+              Entrar no Clube
             </Link>
           </div>
         </div>
@@ -144,7 +144,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
               </Link>
             </div>
             <p className="text-slate-400 text-xs mt-4">
-              Funciona hoje mesmo · Sem cartão · Cancele quando quiser
+              Funciona hoje mesmo · Garantia de 7 dias · Cancele quando quiser
             </p>
           </SectionReveal>
         </div>
@@ -237,19 +237,20 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
               Planos
             </p>
             <h2 className="display-md text-white mb-3">Simples. Sem surpresa.</h2>
-            <p className="text-slate-400">14 dias grátis em qualquer plano. Sem cartão, sem fidelidade.</p>
+            <p className="text-slate-400">Primeiros 10 clientes travam o preço vitalício. Garantia de 7 dias.</p>
           </SectionReveal>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             <SectionReveal className="reveal-stagger">
               <div className="glass rounded-3xl p-8 h-full flex flex-col">
                 <h3 className="font-bold text-white text-xl mb-1">Solo</h3>
-                <p className="text-slate-400 text-sm mb-6">1 profissional + bônus</p>
+                <p className="text-slate-400 text-sm mb-6">Admin + 1 profissional comissionado</p>
                 <p className="text-5xl font-extrabold text-white mb-1">
-                  R$67<span className="text-base font-normal text-slate-400">/mês</span>
+                  R$47<span className="text-base font-normal text-slate-400">/mês</span>
                 </p>
+                <p className="text-xs text-slate-500 mb-1">Setup único R$147 (vitalício)</p>
                 <p className="text-xs font-semibold mb-6" style={{ color: theme.iconColor }}>
-                  14 dias grátis — sem cartão
+                  Garantia de 7 dias
                 </p>
                 <ul className="space-y-3 text-sm text-slate-300 mb-8 flex-1">
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Página de agendamento personalizada</li>
@@ -258,11 +259,11 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Notificação por email</li>
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Painel mobile-first</li>
                   <li className="font-semibold" style={{ color: theme.iconColor }}>
-                    ✦ Bônus: 2º profissional grátis
+                    ✦ Clube Fundador: R$47/mês vitalício (10 primeiros)
                   </li>
                 </ul>
                 <Link href="/cadastro" className="btn-ghost text-center">
-                  Começar grátis
+                  Entrar no Clube
                 </Link>
               </div>
             </SectionReveal>
@@ -279,16 +280,18 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   Popular
                 </div>
                 <h3 className="font-bold text-white text-xl mb-1">Equipe</h3>
-                <p className="text-slate-400 text-sm mb-6">Até 5 profissionais</p>
+                <p className="text-slate-400 text-sm mb-6">Admin + múltiplos profissionais + recepção</p>
                 <p className="text-5xl font-extrabold text-white mb-1">
-                  R$107<span className="text-base font-normal text-slate-400">/mês</span>
+                  R$67<span className="text-base font-normal text-slate-400">/mês</span>
                 </p>
+                <p className="text-xs text-slate-500 mb-1">Setup único R$197 (vitalício)</p>
                 <p className="text-xs font-semibold mb-6" style={{ color: theme.iconColor }}>
-                  14 dias grátis — sem cartão
+                  Garantia de 7 dias
                 </p>
                 <ul className="space-y-3 text-sm text-slate-300 mb-8 flex-1">
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Tudo do Solo</li>
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Múltiplos profissionais com agenda individual</li>
+                  <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Role de recepção (atendimento no balcão)</li>
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Comissão automática</li>
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Financeiro por período</li>
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Suporte prioritário no WhatsApp</li>
@@ -298,7 +301,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   className="text-center font-semibold py-3 px-6 rounded-xl transition-transform hover:scale-[1.02]"
                   style={{ background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.iconColor} 100%)`, color: 'white' }}
                 >
-                  Começar grátis
+                  Entrar no Clube
                 </Link>
               </div>
             </SectionReveal>
@@ -330,9 +333,9 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
               boxShadow: `0 20px 60px -20px ${theme.accent}80`,
             }}
           >
-            Criar conta grátis →
+            Garantir meu lugar →
           </Link>
-          <p className="text-slate-400 text-xs mt-5">14 dias grátis · Sem cartão · Cancele quando quiser</p>
+          <p className="text-slate-400 text-xs mt-5">Garantia de 7 dias · Preço travado vitalício · Cancele quando quiser</p>
         </SectionReveal>
       </section>
 

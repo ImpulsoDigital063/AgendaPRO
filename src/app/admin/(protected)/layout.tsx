@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import BottomNav from '@/components/admin/BottomNav'
 import InstallBanner from '@/components/admin/InstallBanner'
-import TrialBanner from '@/components/admin/TrialBanner'
+import GarantiaBanner from '@/components/admin/GarantiaBanner'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 
 export default async function AdminLayout({
@@ -20,21 +20,49 @@ export default async function AdminLayout({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('trial_ends_at')
+    .select('id')
     .eq('owner_id', user.id)
     .single()
 
-  // trial_ends_at = null → conta antiga/paga, sem restrição
-  if (business?.trial_ends_at) {
-    const expired = new Date(business.trial_ends_at) < new Date()
-    if (expired) {
-      redirect('/admin/bloqueado')
+  // Sem negócio associado — pode ser estado temporário pós-cadastro; deixa passar
+  let refundDaysLeft: number | null = null
+
+  if (business) {
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('status, setup_paid_at, refund_deadline_at, refunded_at, grace_ends_at')
+      .eq('business_id', business.id)
+      .single()
+
+    if (subscription) {
+      const now = new Date()
+
+      const graceExpired =
+        subscription.grace_ends_at && new Date(subscription.grace_ends_at) < now
+
+      // Bloqueios que redirecionam pra /admin/bloqueado
+      const blocked =
+        subscription.status === 'pending_payment' ||
+        subscription.status === 'cancelled' ||
+        !!subscription.refunded_at ||
+        (subscription.status === 'past_due' && graceExpired)
+
+      if (blocked) {
+        redirect('/admin/bloqueado')
+      }
+
+      // Banner verde de garantia (apenas dentro dos 7 dias pós-pagamento)
+      if (
+        subscription.status === 'active' &&
+        !subscription.refunded_at &&
+        subscription.refund_deadline_at
+      ) {
+        const deadline = new Date(subscription.refund_deadline_at).getTime()
+        const daysLeft = Math.ceil((deadline - now.getTime()) / (1000 * 60 * 60 * 24))
+        if (daysLeft > 0) refundDaysLeft = daysLeft
+      }
     }
   }
-
-  const trialDaysLeft = business?.trial_ends_at
-    ? Math.ceil((new Date(business.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : null
 
   const cookieStore = await cookies()
   const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as
@@ -45,7 +73,7 @@ export default async function AdminLayout({
     <AdminThemeProvider initial={initialTheme}>
       <div className="admin-shell" data-admin-theme={initialTheme}>
         <InstallBanner />
-        {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} />}
+        {refundDaysLeft !== null && <GarantiaBanner daysLeft={refundDaysLeft} />}
         <div className="pb-24">{children}</div>
         <BottomNav />
       </div>

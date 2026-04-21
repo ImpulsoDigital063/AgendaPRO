@@ -79,7 +79,7 @@ export default function HomePage() {
         }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 flex-shrink-0"><rect x="3" y="8" width="18" height="14" rx="2"/><path d="M12 8V2"/><path d="M3 14h18"/><path d="M12 14v8"/><path d="M7.5 2L12 8l4.5-6"/></svg>
-        Oferta de lançamento — <strong className="mx-1">14 dias grátis</strong>. Sem cartão de crédito.
+        Clube Fundador — <strong className="mx-1">10 primeiros</strong> travam o preço vitalício. Garantia de 7 dias.
       </div>
 
       {/* ═══════════ Nav ═══════════ */}
@@ -93,7 +93,7 @@ export default function HomePage() {
               Entrar
             </Link>
             <Link href="/cadastro" className="btn btn-primary-v2 text-sm px-5 py-2.5">
-              Começar grátis
+              Entrar no Clube
             </Link>
           </div>
         </div>
@@ -132,12 +132,12 @@ export default function HomePage() {
           </div>
 
           <Link href="/cadastro" className="btn btn-primary-v2 text-sm px-8 py-3 w-full max-w-xs justify-center">
-            Começar grátis — 14 dias
+            Entrar no Clube Fundador
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </Link>
-          <p className="text-[11px] text-slate-500 mt-2">Sem cartão · Cancele quando quiser</p>
+          <p className="text-[11px] text-slate-500 mt-2">Setup R$147 · R$47/mês · Garantia de 7 dias</p>
         </div>
 
         {/* ——— DESKTOP HERO ——— */}
@@ -147,7 +147,7 @@ export default function HomePage() {
             <SectionReveal className="flex flex-col items-start text-left gap-7">
               <div className="pill-glow animate-pulse-glow">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-300"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <span>Você acabou de ganhar 14 dias de acesso gratuito</span>
+                <span>Clube Fundador — 10 primeiros travam R$47/mês vitalício</span>
               </div>
 
               <h1 className="display-xl text-white">
@@ -164,7 +164,7 @@ export default function HomePage() {
 
               <div className="flex flex-row gap-4">
                 <Link href="/cadastro" className="btn btn-lg btn-primary-v2">
-                  Garantir meu acesso gratuito
+                  Garantir meu lugar
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
@@ -175,7 +175,7 @@ export default function HomePage() {
               </div>
 
               <p className="text-sm text-slate-400">
-                Sem cartão · Cancele quando quiser · R$67/mês após o trial
+                Setup R$147 · R$47/mês · Garantia de 7 dias
               </p>
             </SectionReveal>
 
@@ -420,7 +420,7 @@ export default function HomePage() {
               Veja o que você está <span className="text-gradient">levando</span>.
             </h2>
             <p className="text-lg text-slate-400">
-              Tudo junto, por menos de R$2,20 por dia.
+              Tudo junto, por menos de R$1,60 por dia.
             </p>
           </SectionReveal>
 
@@ -442,13 +442,13 @@ export default function HomePage() {
               >
                 <div>
                   <p className="text-white font-bold text-base md:text-lg">AgendaPRO — tudo junto</p>
-                  <p className="text-white/70 text-xs mt-0.5">14 dias grátis · sem cartão</p>
+                  <p className="text-white/70 text-xs mt-0.5">Setup R$147 · Garantia 7 dias</p>
                 </div>
                 <div className="text-right">
                   <p className="text-white text-2xl md:text-3xl font-black leading-none">
-                    R$67<span className="text-sm font-normal text-white/70">/mês</span>
+                    R$47<span className="text-sm font-normal text-white/70">/mês</span>
                   </p>
-                  <p className="text-white/70 text-[11px] mt-1">menos de R$2,20/dia</p>
+                  <p className="text-white/70 text-[11px] mt-1">menos de R$1,60/dia</p>
                 </div>
               </div>
             </div>
@@ -461,7 +461,7 @@ export default function HomePage() {
                 </svg>
               </Link>
               <p className="text-slate-500 text-xs mt-3">
-                Oferta de lançamento — pode subir a qualquer momento
+                Clube Fundador — pode subir quando fechar as 10 vagas
               </p>
             </div>
           </SectionReveal>
@@ -480,7 +480,7 @@ export default function HomePage() {
               Escolha o <span className="text-gradient">seu</span>.
             </h2>
             <p className="text-lg text-slate-400">
-              14 dias grátis em qualquer plano. Sem cartão, sem fidelidade.
+              Primeiros 10 clientes travam o preço vitalício. Garantia de 7 dias.
             </p>
           </SectionReveal>
 
@@ -489,14 +489,14 @@ export default function HomePage() {
             <div className="glass rounded-3xl p-8 md:p-10 relative">
               <div className="mb-6">
                 <h3 className="text-2xl font-black text-white mb-1">Solo</h3>
-                <p className="text-slate-400 text-sm">Profissional independente</p>
+                <p className="text-slate-400 text-sm">Admin + 1 profissional comissionado</p>
               </div>
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-black text-white">R$67</span>
+                  <span className="text-5xl font-black text-white">R$47</span>
                   <span className="text-slate-400 text-sm">/mês</span>
                 </div>
-                <p className="text-slate-500 text-xs line-through mt-1">antes R$97</p>
+                <p className="text-slate-500 text-xs mt-1">Setup único R$147 (vitalício)</p>
               </div>
 
               <ul className="space-y-2.5 mb-6 text-sm text-slate-300">
@@ -519,13 +519,6 @@ export default function HomePage() {
                 <li className="flex items-start gap-2.5 pt-2">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 mt-0.5 flex-shrink-0"><rect x="3" y="8" width="18" height="14" rx="2"/><path d="M12 8V2"/><path d="M3 14h18"/><path d="M12 14v8"/><path d="M7.5 2L12 8l4.5-6"/></svg>
                   <div>
-                    <strong className="text-white text-sm">Bônus: 2º profissional incluído</strong>
-                    <p className="text-slate-500 text-xs mt-0.5">Normalmente 1 — na oferta você cadastra 2</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 mt-0.5 flex-shrink-0"><rect x="3" y="8" width="18" height="14" rx="2"/><path d="M12 8V2"/><path d="M3 14h18"/><path d="M12 14v8"/><path d="M7.5 2L12 8l4.5-6"/></svg>
-                  <div>
                     <strong className="text-white text-sm">Bônus: Área de divulgação exclusiva</strong>
                     <p className="text-slate-500 text-xs mt-0.5">Textos prontos para Instagram, Google e WhatsApp</p>
                   </div>
@@ -533,10 +526,10 @@ export default function HomePage() {
               </ul>
 
               <p className="text-emerald-400 text-xs font-semibold mb-4">
-                14 dias grátis — sem cartão
+                Garantia de 7 dias
               </p>
               <Link href="/cadastro" className="btn btn-primary-v2 w-full justify-center">
-                Começar grátis
+                Entrar no Clube
               </Link>
             </div>
 
@@ -548,20 +541,21 @@ export default function HomePage() {
 
               <div className="mb-6 mt-2">
                 <h3 className="text-2xl font-black text-white mb-1">Equipe</h3>
-                <p className="text-slate-400 text-sm">De 3 a 5 profissionais</p>
+                <p className="text-slate-400 text-sm">Admin + múltiplos profissionais + recepção</p>
               </div>
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-black text-gradient">R$107</span>
+                  <span className="text-5xl font-black text-gradient">R$67</span>
                   <span className="text-slate-400 text-sm">/mês</span>
                 </div>
-                <p className="text-slate-500 text-xs line-through mt-1">antes R$147</p>
+                <p className="text-slate-500 text-xs mt-1">Setup único R$197 (vitalício)</p>
               </div>
 
               <ul className="space-y-2.5 mb-6 text-sm text-slate-300">
                 {[
                   'Tudo do plano Solo',
-                  'De 3 a 5 profissionais com agenda individual',
+                  'Múltiplos profissionais com agenda individual',
+                  'Role de recepção (atendimento no balcão)',
                   'Relatório de comissão automático por profissional',
                   'Financeiro e faturamento por período',
                   'Suporte prioritário via WhatsApp',
@@ -574,10 +568,10 @@ export default function HomePage() {
               </ul>
 
               <p className="text-emerald-400 text-xs font-semibold mb-4">
-                14 dias grátis — sem cartão
+                Garantia de 7 dias
               </p>
               <Link href="/cadastro" className="btn btn-primary-v2 w-full justify-center">
-                Começar grátis
+                Entrar no Clube
               </Link>
             </div>
           </SectionReveal>
@@ -603,16 +597,16 @@ export default function HomePage() {
                 Estamos abrindo as <span className="text-gradient">primeiras 10 vagas</span> do AgendaPRO.
               </h3>
               <p className="text-slate-300 leading-relaxed mb-6 max-w-xl mx-auto">
-                Dois negócios já estão configurando essa semana. Você entra agora com o preço de lançamento — quando virarmos a chave de R$67 pra R$97, quem assinou trava o valor pra sempre.
+                Os 10 primeiros clientes entram no Clube Fundador e travam R$47/mês vitalício no Solo (R$67/mês no Equipe). Depois que fechar os 10, o preço sobe — quem entrou antes mantém o valor pra sempre.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
                 <span className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  2 negócios já confirmados
+                  Vagas limitadas aos 10 primeiros
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-                  R$67 travado pra sempre
+                  Preço travado vitalício
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
@@ -653,7 +647,7 @@ export default function HomePage() {
           <SectionReveal>
             <div className="pill-glow mb-6 animate-pulse-glow">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-300"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span>14 dias grátis · sem cartão · cancele quando quiser</span>
+              <span>Garantia de 7 dias · preço vitalício · cancele quando quiser</span>
             </div>
             <h2 className="display-xl text-white mb-6">
               Amanhã você vai abrir o WhatsApp<br />
@@ -664,13 +658,13 @@ export default function HomePage() {
             </p>
 
             <Link href="/cadastro" className="btn btn-lg btn-primary-v2">
-              Garantir meu acesso gratuito
+              Garantir meu lugar
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </Link>
             <p className="text-slate-500 text-xs mt-5">
-              R$67/mês após o trial · Oferta de lançamento
+              Setup R$147 · R$47/mês · Clube Fundador (10 primeiros)
             </p>
           </SectionReveal>
         </div>
