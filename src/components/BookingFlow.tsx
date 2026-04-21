@@ -591,8 +591,33 @@ export default function BookingFlow({
     )
   }
 
+  // Banner explicando que o cliente veio do email da fila e o que vai acontecer
+  const prefillProfName = prefill
+    ? professionals.find((p) => p.id === prefill.professionalId)?.name
+    : null
+  const prefillDateLabel = prefill ? `${prefill.date.split('-')[2]}/${prefill.date.split('-')[1]}` : ''
+
   return (
     <div className="p-4 space-y-6">
+
+      {/* Banner de fila — quando vem do email com prefill */}
+      {prefill && (
+        <div
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{
+            background: 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.08))',
+            border: '1px solid rgba(245,158,11,0.35)',
+            color: '#F59E0B',
+          }}
+        >
+          <p className="font-bold">🔔 Vamos garantir sua vaga das {prefill.time} ({prefillDateLabel}){prefillProfName ? ` com ${prefillProfName}` : ''}</p>
+          <p className="text-xs mt-1 opacity-90">
+            {hasServices && selectedServices.length === 0
+              ? 'Escolha o serviço pra continuar — o resto já está pronto.'
+              : 'Confirme abaixo. Seus dados já estão preenchidos.'}
+          </p>
+        </div>
+      )}
 
       {/* ETAPA 0 — ESCOLHER SERVIÇOS (múltipla seleção) */}
       {hasServices && (
