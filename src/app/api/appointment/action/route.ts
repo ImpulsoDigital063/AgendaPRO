@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendClientNotification } from '@/lib/email'
 import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
-import { verifyActionToken } from '@/lib/token'
+import { verifyActionToken, verifyCancelToken } from '@/lib/token'
 import { rateLimit } from '@/lib/rate-limit'
 
 function getAdminClient() {
@@ -28,8 +28,14 @@ export async function GET(req: NextRequest) {
     return new NextResponse('Ação inválida.', { status: 400 })
   }
 
-  // Verificação de token HMAC — impede ações por UUID aleatório
-  if (!token || !verifyActionToken(id, action, token)) {
+  // Verificação de token HMAC — impede ações por UUID aleatório.
+  // Para 'cancelled', aceita também o token de cancelamento do cliente
+  // (gerado por generateCancelToken — usado no link enviado pro convidado).
+  const tokenValid =
+    !!token &&
+    (verifyActionToken(id, action, token) ||
+      (action === 'cancelled' && verifyCancelToken(id, token)))
+  if (!tokenValid) {
     return new NextResponse('Link inválido ou expirado.', { status: 403 })
   }
 
