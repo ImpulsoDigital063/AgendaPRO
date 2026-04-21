@@ -100,6 +100,7 @@ export default function BookingFlow({
 }) {
   const hasServices = services.length > 0
   const hasMultipleProfessionals = professionals.length > 1
+  const isDark = (business.brand_mode || 'dark') === 'dark'
 
   // Profissional inicial: se prefill bater com algum, usa; senão primeiro.
   const initialProf =
@@ -557,11 +558,17 @@ export default function BookingFlow({
         </p>
         <p className="text-gray-700 font-semibold text-lg mb-4">{selectedTime}</p>
         {pointsEarned > 0 && (
-          <div className="mt-4 mb-2 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3 flex items-center gap-3">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 flex-shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <div
+            className="mt-4 mb-2 rounded-2xl px-5 py-3 flex items-center gap-3"
+            style={{
+              background: isDark ? 'rgba(251,191,36,0.10)' : 'rgb(255,251,235)',
+              border: `1px solid ${isDark ? 'rgba(251,191,36,0.28)' : 'rgb(254,215,170)'}`,
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#FBBF24' }} className="flex-shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <div className="text-left">
-              <p className="text-amber-800 font-bold text-sm">Você vai ganhar +{pointsEarned} pontos</p>
-              <p className="text-amber-600 text-xs">Os pontos entram após o atendimento.</p>
+              <p className="font-bold text-sm" style={{ color: isDark ? '#FCD34D' : '#92400E' }}>Você vai ganhar +{pointsEarned} pontos</p>
+              <p className="text-xs" style={{ color: isDark ? '#FBBF24' : '#B45309' }}>Os pontos entram após o atendimento.</p>
             </div>
           </div>
         )}
@@ -570,16 +577,27 @@ export default function BookingFlow({
         </p>
 
         {myReferralLink && (
-          <div className="mt-5 w-full max-w-sm bg-gray-50 border border-gray-200 rounded-2xl p-4 text-left">
-            <p className="text-sm font-bold text-gray-900 mb-1">Indique um amigo e ganhe pontos!</p>
-            <p className="text-xs text-gray-500 mb-3">
+          <div
+            className="mt-5 w-full max-w-sm rounded-2xl p-4 text-left"
+            style={{
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgb(248,250,252)',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgb(226,232,240)'}`,
+            }}
+          >
+            <p className="text-sm font-bold mb-1" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>Indique um amigo e ganhe pontos!</p>
+            <p className="text-xs mb-3" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
               Quando um amigo agendar por esse link e o estabelecimento confirmar, você ganha pontos.
             </p>
             <div className="flex gap-2">
               <input
                 readOnly
                 value={myReferralLink}
-                className="flex-1 text-xs bg-white border border-gray-200 rounded-xl px-3 py-2 text-gray-600 focus:outline-none truncate"
+                className="flex-1 text-xs rounded-xl px-3 py-2 focus:outline-none truncate"
+                style={{
+                  background: isDark ? 'rgba(0,0,0,0.25)' : '#FFFFFF',
+                  color: isDark ? '#CBD5E1' : '#475569',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgb(226,232,240)'}`,
+                }}
               />
               <button
                 onClick={() => {
@@ -596,11 +614,17 @@ export default function BookingFlow({
         )}
 
         {business.points_for_review > 0 && business.google_place_id && (
-          <div className="mt-5 w-full max-w-sm bg-blue-50 border border-blue-200 rounded-2xl p-4 text-left">
-            <p className="text-sm font-bold text-gray-900 mb-1">
+          <div
+            className="mt-5 w-full max-w-sm rounded-2xl p-4 text-left"
+            style={{
+              background: isDark ? 'rgba(59,130,246,0.10)' : 'rgb(239,246,255)',
+              border: `1px solid ${isDark ? 'rgba(59,130,246,0.28)' : 'rgb(191,219,254)'}`,
+            }}
+          >
+            <p className="text-sm font-bold mb-1" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
               Avalie a gente no Google e ganhe +{business.points_for_review} pontos
             </p>
-            <p className="text-xs text-gray-600 mb-3">
+            <p className="text-xs mb-3" style={{ color: isDark ? '#94A3B8' : '#475569' }}>
               Abra o Google, deixe sua avaliação e clique em "Já avaliei". O estabelecimento confirma e seus pontos entram.
             </p>
             <div className="flex flex-col gap-2">
@@ -620,7 +644,12 @@ export default function BookingFlow({
                     value={reviewName}
                     onChange={(e) => setReviewName(e.target.value)}
                     placeholder="Qual nome você usou na avaliação?"
-                    className="w-full text-sm bg-white border border-blue-200 rounded-xl px-3 py-2 text-gray-700 placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                    className="w-full text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-400"
+                    style={{
+                      background: isDark ? 'rgba(0,0,0,0.25)' : '#FFFFFF',
+                      color: isDark ? '#F1F5F9' : '#1F2937',
+                      border: `1px solid ${isDark ? 'rgba(59,130,246,0.28)' : 'rgb(191,219,254)'}`,
+                    }}
                   />
                   <button
                     disabled={reviewClaiming || !reviewName.trim()}
@@ -649,19 +678,38 @@ export default function BookingFlow({
                         setReviewClaiming(false)
                       }
                     }}
-                    className="block text-center px-3 py-2 bg-white border border-blue-300 text-blue-700 text-sm font-semibold rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-50"
+                    className="block text-center px-3 py-2 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+                    style={{
+                      background: isDark ? 'rgba(59,130,246,0.15)' : '#FFFFFF',
+                      color: isDark ? '#93C5FD' : '#1D4ED8',
+                      border: `1px solid ${isDark ? 'rgba(59,130,246,0.4)' : 'rgb(147,197,253)'}`,
+                    }}
                   >
                     {reviewClaiming ? 'Enviando...' : 'Já avaliei, quero meus pontos'}
                   </button>
                 </>
               )}
               {reviewClaimMsg && (
-                <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                <p
+                  className="text-xs rounded-xl px-3 py-2"
+                  style={{
+                    color: isDark ? '#86EFAC' : '#15803D',
+                    background: isDark ? 'rgba(34,197,94,0.12)' : 'rgb(240,253,244)',
+                    border: `1px solid ${isDark ? 'rgba(34,197,94,0.3)' : 'rgb(187,247,208)'}`,
+                  }}
+                >
                   {reviewClaimMsg}
                 </p>
               )}
               {reviewClaimError && (
-                <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                <p
+                  className="text-xs rounded-xl px-3 py-2"
+                  style={{
+                    color: isDark ? '#FCA5A5' : '#B91C1C',
+                    background: isDark ? 'rgba(239,68,68,0.12)' : 'rgb(254,242,242)',
+                    border: `1px solid ${isDark ? 'rgba(239,68,68,0.3)' : 'rgb(254,202,202)'}`,
+                  }}
+                >
                   {reviewClaimError}
                 </p>
               )}
@@ -943,36 +991,40 @@ export default function BookingFlow({
 
             {/* Form de fila — só enquanto o cliente está preenchendo (ao confirmar, vira o banner acima) */}
             {waitlistSlot && !waitlistDone && selectedDate && (
-              <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+              <div
+                className="mt-4 rounded-2xl p-4 space-y-3"
+                style={{
+                  background: isDark ? 'rgba(251,191,36,0.08)' : 'rgb(255,251,235)',
+                  border: `1px solid ${isDark ? 'rgba(251,191,36,0.28)' : 'rgb(254,215,170)'}`,
+                }}
+              >
                 <div>
-                  <p className="text-amber-800 font-bold text-sm">
+                  <p className="font-bold text-sm" style={{ color: isDark ? '#FCD34D' : '#92400E' }}>
                     Horário {waitlistSlot} ocupado
                   </p>
-                  <p className="text-amber-600 text-xs mt-0.5">
+                  <p className="text-xs mt-0.5" style={{ color: isDark ? '#FBBF24' : '#B45309' }}>
                     Quer entrar na fila? Avisamos se a vaga abrir.
                   </p>
                 </div>
-                <input
-                  type="text"
-                  value={waitlistName}
-                  onChange={(e) => setWaitlistName(e.target.value)}
-                  placeholder="Seu nome"
-                  className="w-full border border-amber-200 bg-white rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-amber-400"
-                />
-                <input
-                  type="tel"
-                  value={waitlistPhone}
-                  onChange={(e) => setWaitlistPhone(e.target.value)}
-                  placeholder="WhatsApp / Telefone"
-                  className="w-full border border-amber-200 bg-white rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-amber-400"
-                />
-                <input
-                  type="email"
-                  value={waitlistEmail}
-                  onChange={(e) => setWaitlistEmail(e.target.value)}
-                  placeholder="Email (para notificação)"
-                  className="w-full border border-amber-200 bg-white rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:border-amber-400"
-                />
+                {([
+                  { val: waitlistName, set: setWaitlistName, type: 'text', ph: 'Seu nome' },
+                  { val: waitlistPhone, set: setWaitlistPhone, type: 'tel', ph: 'WhatsApp / Telefone' },
+                  { val: waitlistEmail, set: setWaitlistEmail, type: 'email', ph: 'Email (para notificação)' },
+                ] as const).map((f, i) => (
+                  <input
+                    key={i}
+                    type={f.type}
+                    value={f.val}
+                    onChange={(e) => f.set(e.target.value)}
+                    placeholder={f.ph}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400"
+                    style={{
+                      background: isDark ? 'rgba(0,0,0,0.25)' : '#FFFFFF',
+                      color: isDark ? '#F1F5F9' : '#0F172A',
+                      border: `1px solid ${isDark ? 'rgba(251,191,36,0.28)' : 'rgb(254,215,170)'}`,
+                    }}
+                  />
+                ))}
                 <div className="flex gap-2">
                   <button
                     onClick={handleJoinWaitlist}
@@ -983,7 +1035,12 @@ export default function BookingFlow({
                   </button>
                   <button
                     onClick={() => setWaitlistSlot(null)}
-                    className="px-4 bg-white border border-amber-200 text-amber-700 py-2.5 rounded-xl text-sm font-medium hover:bg-amber-50 transition-colors"
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                    style={{
+                      background: isDark ? 'rgba(0,0,0,0.25)' : '#FFFFFF',
+                      color: isDark ? '#FCD34D' : '#B45309',
+                      border: `1px solid ${isDark ? 'rgba(251,191,36,0.3)' : 'rgb(254,215,170)'}`,
+                    }}
                   >
                     Cancelar
                   </button>
