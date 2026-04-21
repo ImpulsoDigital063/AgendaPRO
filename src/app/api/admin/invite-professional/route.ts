@@ -87,6 +87,9 @@ export async function POST(req: NextRequest) {
 
   // 7. Tenta enviar email — se Resend não estiver configurado ou domínio não verificado, falha silencioso.
   // Retorna a senha pra UI mostrar pro dono passar via WhatsApp/manual.
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br').replace(/\/$/, '')
+  const loginUrl = `${appUrl}/profissional/login`
+
   let emailSent = false
   if (process.env.RESEND_API_KEY) {
     try {
@@ -97,12 +100,22 @@ export async function POST(req: NextRequest) {
         to: emailNorm,
         subject: `Seu acesso ao AgendaPRO`,
         html: `
-          <p>Olá, <strong>${prof.name}</strong>!</p>
-          <p>Seu acesso ao painel do profissional foi criado.</p>
-          <p><strong>Email:</strong> ${emailNorm}</p>
-          <p><strong>Senha temporária:</strong> ${tempPassword}</p>
-          <p>Acesse e troque sua senha no primeiro login.</p>
-          <p>— AgendaPRO</p>
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;color:#0F172A">
+            <p>Olá, <strong>${prof.name}</strong>!</p>
+            <p>Seu acesso ao painel do profissional foi criado.</p>
+            <p><strong>Email:</strong> ${emailNorm}<br/>
+            <strong>Senha temporária:</strong> ${tempPassword}</p>
+            <p style="margin:24px 0">
+              <a href="${loginUrl}" style="display:inline-block;background:#3B82F6;color:#fff;font-weight:600;text-decoration:none;padding:12px 22px;border-radius:10px">
+                Acessar painel
+              </a>
+            </p>
+            <p style="color:#64748B;font-size:13px">
+              Ou copie e cole no navegador: <a href="${loginUrl}" style="color:#3B82F6">${loginUrl}</a>
+            </p>
+            <p style="color:#64748B;font-size:13px">Você vai trocar sua senha no primeiro login.</p>
+            <p style="color:#94A3B8;font-size:12px;margin-top:28px">— AgendaPRO</p>
+          </div>
         `,
       })
       emailSent = !result.error
@@ -117,7 +130,7 @@ export async function POST(req: NextRequest) {
     email: emailNorm,
     tempPassword,
     professionalName: prof.name,
-    loginUrl: '/profissional/login',
+    loginUrl,
     emailSent,
   })
 }
