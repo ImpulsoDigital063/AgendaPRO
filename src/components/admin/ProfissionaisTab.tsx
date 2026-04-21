@@ -13,6 +13,7 @@ type Props = {
 
 export default function ProfissionaisTab({ businessId, professionals, onChange }: Props) {
   const [newName, setNewName] = useState('')
+  const [newType, setNewType] = useState<'commissioned' | 'employed'>('commissioned')
   const [adding, setAdding] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -46,15 +47,35 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
 
     const { data, error } = await supabase
       .from('professionals')
-      .insert({ business_id: businessId, name: newName.trim(), active: true, commission_percentage: 0, role: 'professional' })
+      .insert({
+        business_id: businessId,
+        name: newName.trim(),
+        active: true,
+        commission_percentage: 0,
+        role: 'professional',
+        employment_type: newType,
+      })
       .select()
       .single()
 
     if (!error && data) {
       onChange([...professionals, data])
       setNewName('')
+      setNewType('commissioned')
     }
     setAdding(false)
+  }
+
+  async function handleChangeType(prof: Professional, type: 'commissioned' | 'employed') {
+    setLoadingId(prof.id)
+    const { error } = await supabase
+      .from('professionals')
+      .update({ employment_type: type })
+      .eq('id', prof.id)
+    if (!error) {
+      onChange(professionals.map((p) => p.id === prof.id ? { ...p, employment_type: type } : p))
+    }
+    setLoadingId(null)
   }
 
   async function toggleActive(prof: Professional) {
@@ -339,6 +360,36 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
           </div>
 
           <div className="flex items-center gap-2">
+            {prof.role !== 'owner' && (
+              <div
+                className="hidden sm:flex items-center rounded-lg overflow-hidden"
+                style={{ border: '1px solid var(--admin-border)' }}
+              >
+                {[
+                  { value: 'commissioned' as const, label: 'Comiss.' },
+                  { value: 'employed'    as const, label: 'Contrat.' },
+                ].map((opt) => {
+                  const current = prof.employment_type ?? 'commissioned'
+                  const isActive = current === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => !isActive && handleChangeType(prof, opt.value)}
+                      disabled={loadingId === prof.id}
+                      className="px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50"
+                      style={
+                        isActive
+                          ? { background: 'var(--admin-accent)', color: '#fff' }
+                          : { background: 'transparent', color: 'var(--admin-text-mute)' }
+                      }
+                      title={opt.value === 'commissioned' ? 'Controla a propria agenda' : 'Voce controla a agenda dele'}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             {!prof.auth_user_id && prof.role !== 'owner' && (
               <button
                 onClick={() => {
@@ -530,37 +581,79 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
 
       {/* Adicionar profissional */}
       <div
-        className="rounded-2xl p-4"
+        className="rounded-2xl p-4 space-y-3"
         style={{
           background: 'var(--admin-surface)',
           border: '1px dashed var(--admin-border-hi)',
         }}
       >
         <p className="admin-label">Adicionar profissional</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            placeholder="Nome do profissional"
-            className="admin-input flex-1 px-3 py-2.5 text-sm"
-          />
-          <button
-            onClick={handleAdd}
-            disabled={adding || !newName.trim()}
-            className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
-            style={{
-              background:
-                'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
-              color: '#FFFFFF',
-              boxShadow:
-                '0 8px 20px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
-            }}
-          >
-            {adding ? '...' : 'Adicionar'}
-          </button>
+
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          placeholder="Nome do profissional"
+          className="admin-input w-full px-3 py-2.5 text-sm"
+        />
+
+        {/* Tipo: comissionado vs contratado */}
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Tipo
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: 'commissioned' as const, label: 'Comissionado', desc: 'Controla a propria agenda' },
+              { value: 'employed'    as const, label: 'Contratado',   desc: 'Voce define a agenda dele' },
+            ].map((opt) => {
+              const isActive = newType === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setNewType(opt.value)}
+                  className="rounded-xl p-3 text-left transition-all"
+                  style={
+                    isActive
+                      ? {
+                          background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)',
+                          border: '1px solid color-mix(in srgb, var(--admin-accent) 45%, transparent)',
+                          boxShadow: '0 4px 14px -6px color-mix(in srgb, var(--admin-accent) 35%, transparent)',
+                        }
+                      : {
+                          background: 'var(--admin-surface)',
+                          border: '1px solid var(--admin-border)',
+                        }
+                  }
+                >
+                  <p className="text-sm font-semibold" style={{ color: isActive ? 'var(--admin-accent)' : 'var(--admin-text)' }}>
+                    {opt.label}
+                  </p>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                    {opt.desc}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
         </div>
+
+        <button
+          onClick={handleAdd}
+          disabled={adding || !newName.trim()}
+          className="w-full px-4 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
+          style={{
+            background:
+              'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+            color: '#FFFFFF',
+            boxShadow:
+              '0 8px 20px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
+          }}
+        >
+          {adding ? '...' : 'Adicionar'}
+        </button>
       </div>
     </div>
   )

@@ -20,6 +20,7 @@ export default async function ProfHorariosPage() {
     .single()
 
   if (!professional) redirect('/profissional/login')
+  if ((professional.employment_type ?? 'commissioned') === 'employed') redirect('/profissional')
 
   const { data: workingHours } = await supabase
     .from('working_hours')

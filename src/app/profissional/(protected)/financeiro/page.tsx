@@ -15,11 +15,12 @@ export default async function ProfissionalFinanceiroPage({
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, name, commission_percentage, business_id')
+    .select('id, name, commission_percentage, business_id, employment_type')
     .eq('auth_user_id', user.id)
     .single()
 
   if (!professional) redirect('/profissional/login')
+  if ((professional.employment_type ?? 'commissioned') === 'employed') redirect('/profissional')
 
   const { periodo: periodoParam } = await searchParams
   const periodo = periodoParam || 'mes'

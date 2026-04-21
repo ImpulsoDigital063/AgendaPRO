@@ -12,15 +12,20 @@ import {
 
 type Tab = { href: string; label: string; Icon: (p: { size?: number; strokeWidth?: number }) => ReactNode }
 
-const tabs: Tab[] = [
+const ALL_TABS: Tab[] = [
   { href: '/profissional',              label: 'Agenda',     Icon: IconCalendar },
   { href: '/profissional/horarios',     label: 'Horários',   Icon: IconClock    },
   { href: '/profissional/financeiro',   label: 'Financeiro', Icon: IconWallet   },
   { href: '/profissional/trocar-senha', label: 'Conta',      Icon: IconSettings },
 ]
 
-export default function ProfissionalBottomNav() {
+type Props = { employmentType?: 'commissioned' | 'employed' }
+
+export default function ProfissionalBottomNav({ employmentType = 'commissioned' }: Props) {
   const pathname = usePathname()
+  const tabs = employmentType === 'employed'
+    ? ALL_TABS.filter((t) => t.href !== '/profissional/horarios' && t.href !== '/profissional/financeiro')
+    : ALL_TABS
 
   function isActive(href: string) {
     if (href === '/profissional') return pathname === '/profissional'

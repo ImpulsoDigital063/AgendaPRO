@@ -29,6 +29,7 @@ export type Professional = {
   email: string | null
   auth_user_id: string | null
   role: 'owner' | 'professional'
+  employment_type?: 'commissioned' | 'employed'
   password_changed: boolean
   created_at: string
 }

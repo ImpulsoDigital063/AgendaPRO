@@ -106,14 +106,16 @@ export default async function ProfissionalPage() {
     },
   ]
 
+  const isEmployed = (professional.employment_type ?? 'commissioned') === 'employed'
+
   const navItems = [
-    {
+    !isEmployed && {
       href: '/profissional/horarios',
       label: 'Meus horários',
       desc: 'Dias e janelas de atendimento',
       icon: IconClock,
     },
-    {
+    !isEmployed && {
       href: '/profissional/financeiro',
       label: 'Financeiro',
       desc: 'Comissão e faturamento',
@@ -125,7 +127,12 @@ export default async function ProfissionalPage() {
       desc: 'Atualize sua senha de acesso',
       icon: IconSettings,
     },
-  ]
+  ].filter(Boolean) as Array<{
+    href: string
+    label: string
+    desc: string
+    icon: typeof IconClock
+  }>
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>

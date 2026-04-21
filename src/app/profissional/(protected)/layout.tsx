@@ -20,7 +20,7 @@ export default async function ProfissionalLayout({
   // Verifica se e um profissional com auth_user_id
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed')
+    .select('id, business_id, password_changed, employment_type')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -37,12 +37,14 @@ export default async function ProfissionalLayout({
   const cookieStore = await cookies()
   const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as 'dark' | 'light'
 
+  const employmentType = (professional.employment_type ?? 'commissioned') as 'commissioned' | 'employed'
+
   return (
     <AdminThemeProvider initial={initialTheme}>
       <div className="admin-shell" data-admin-theme={initialTheme}>
         <InstallBanner />
         <div className="pb-24">{children}</div>
-        <ProfissionalBottomNav />
+        <ProfissionalBottomNav employmentType={employmentType} />
       </div>
     </AdminThemeProvider>
   )
