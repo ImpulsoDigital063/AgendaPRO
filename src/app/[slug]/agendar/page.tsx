@@ -37,7 +37,7 @@ export default async function AgendarPage({
   const [{ data: workingHours }, { data: services }] = await Promise.all([
     supabase
       .from('working_hours')
-      .select('id, professional_id, day_of_week, start_time, end_time, is_off, slot_duration')
+      .select('id, professional_id, day_of_week, start_time, end_time, slot_duration')
       .in('professional_id', (professionals || []).map((p) => p.id)),
     supabase
       .from('services')
