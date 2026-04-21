@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconWhatsapp, IconCheck, IconClose, IconClock } from '@/components/ui/Icon'
+import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 
 type Props = {
   appointment: {
@@ -47,6 +48,7 @@ const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string
 export default function ProfAppointmentCard({ appointment, showDate }: Props) {
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
+  const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
   const router = useRouter()
 
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
@@ -169,7 +171,7 @@ export default function ProfAppointmentCard({ appointment, showDate }: Props) {
               <IconCheck size={14} /> Confirmar
             </button>
             <button
-              onClick={() => updateStatus('cancelled')}
+              onClick={() => setConfirm('cancelled')}
               disabled={loading}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
               style={{
@@ -200,7 +202,7 @@ export default function ProfAppointmentCard({ appointment, showDate }: Props) {
             </button>
             <div className="flex gap-2">
               <button
-                onClick={() => updateStatus('no_show')}
+                onClick={() => setConfirm('no_show')}
                 disabled={loading}
                 className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
                 style={{
@@ -213,7 +215,7 @@ export default function ProfAppointmentCard({ appointment, showDate }: Props) {
                 Não veio
               </button>
               <button
-                onClick={() => updateStatus('cancelled')}
+                onClick={() => setConfirm('cancelled')}
                 disabled={loading}
                 className="flex-1 py-2 rounded-xl text-xs transition-colors disabled:opacity-40"
                 style={{
@@ -228,6 +230,35 @@ export default function ProfAppointmentCard({ appointment, showDate }: Props) {
           </div>
         )}
       </div>
+
+      <ConfirmActionModal
+        open={confirm === 'cancelled'}
+        title="Cancelar agendamento?"
+        message={`Vai cancelar o agendamento de ${appointment.client_name} às ${appointment.start_time.slice(0, 5)}. O cliente é notificado e a vaga vira pra fila de espera.`}
+        confirmLabel="Sim, cancelar"
+        cancelLabel="Voltar"
+        tone="danger"
+        loading={loading}
+        onConfirm={async () => {
+          await updateStatus('cancelled')
+          setConfirm(null)
+        }}
+        onClose={() => setConfirm(null)}
+      />
+      <ConfirmActionModal
+        open={confirm === 'no_show'}
+        title="Marcar como não veio?"
+        message={`${appointment.client_name} não apareceu no horário das ${appointment.start_time.slice(0, 5)}? O agendamento fica registrado e o cliente não recebe pontos.`}
+        confirmLabel="Sim, não veio"
+        cancelLabel="Voltar"
+        tone="warn"
+        loading={loading}
+        onConfirm={async () => {
+          await updateStatus('no_show')
+          setConfirm(null)
+        }}
+        onClose={() => setConfirm(null)}
+      />
     </div>
   )
 }

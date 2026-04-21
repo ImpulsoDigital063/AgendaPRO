@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Professional } from '@/lib/types'
 import { IconCamera, IconClose } from '@/components/ui/Icon'
+import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 
 type Props = {
   businessId: string
@@ -32,6 +33,8 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
     emailSent?: boolean
   } | null>(null)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<Professional | null>(null)
+  const [confirmRemovePhoto, setConfirmRemovePhoto] = useState<Professional | null>(null)
 
   function copyToClipboard(text: string, field: string) {
     navigator.clipboard.writeText(text)
@@ -107,7 +110,6 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover este profissional? Os agendamentos existentes não serão afetados.')) return
     setLoadingId(id)
 
     const { error } = await supabase.from('professionals').delete().eq('id', id)
@@ -191,7 +193,6 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
 
   async function handleRemovePhoto(prof: Professional) {
     if (!prof.photo_url) return
-    if (!confirm('Remover a foto deste profissional?')) return
     setUploadingId(prof.id)
 
     const { data: files } = await supabase.storage
@@ -282,7 +283,7 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
               {prof.photo_url && uploadingId !== prof.id && (
                 <button
                   type="button"
-                  onClick={() => handleRemovePhoto(prof)}
+                  onClick={() => setConfirmRemovePhoto(prof)}
                   className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-md"
                   style={{
                     background: 'var(--admin-danger)',
@@ -439,7 +440,7 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
               {prof.active ? 'Desativar' : 'Ativar'}
             </button>
             <button
-              onClick={() => handleDelete(prof.id)}
+              onClick={() => setConfirmDelete(prof)}
               disabled={loadingId === prof.id}
               className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-40"
               style={{
@@ -660,6 +661,38 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
           {adding ? '...' : 'Adicionar'}
         </button>
       </div>
+
+      <ConfirmActionModal
+        open={!!confirmDelete}
+        title={`Remover ${confirmDelete?.name || 'profissional'}?`}
+        message="Os agendamentos existentes desse profissional não são apagados, mas ele some das listas e dos relatórios. Essa ação não pode ser desfeita."
+        confirmLabel="Sim, remover"
+        cancelLabel="Voltar"
+        tone="danger"
+        loading={!!confirmDelete && loadingId === confirmDelete.id}
+        onConfirm={async () => {
+          if (!confirmDelete) return
+          await handleDelete(confirmDelete.id)
+          setConfirmDelete(null)
+        }}
+        onClose={() => setConfirmDelete(null)}
+      />
+
+      <ConfirmActionModal
+        open={!!confirmRemovePhoto}
+        title="Remover foto?"
+        message={`A foto de ${confirmRemovePhoto?.name || ''} vai ser removida. Você pode subir outra depois.`}
+        confirmLabel="Sim, remover"
+        cancelLabel="Voltar"
+        tone="warn"
+        loading={!!confirmRemovePhoto && uploadingId === confirmRemovePhoto.id}
+        onConfirm={async () => {
+          if (!confirmRemovePhoto) return
+          await handleRemovePhoto(confirmRemovePhoto)
+          setConfirmRemovePhoto(null)
+        }}
+        onClose={() => setConfirmRemovePhoto(null)}
+      />
     </div>
   )
 }
