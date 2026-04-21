@@ -226,8 +226,8 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
 
       {professionals.map((prof) => (
         <div key={prof.id} className="admin-card-deep overflow-hidden">
-          <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             {/* Avatar com upload */}
             <div className="relative flex-shrink-0">
               <button
@@ -359,10 +359,10 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {prof.role !== 'owner' && (
               <div
-                className="hidden sm:flex items-center rounded-lg overflow-hidden"
+                className="flex items-center rounded-lg overflow-hidden"
                 style={{ border: '1px solid var(--admin-border)' }}
               >
                 {[

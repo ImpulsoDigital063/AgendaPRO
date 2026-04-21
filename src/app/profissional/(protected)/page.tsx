@@ -73,8 +73,10 @@ export default async function ProfissionalPage() {
   const cancelled = list.filter((a) => a.status === 'cancelled' || a.status === 'no_show')
   const revenue   = confirmed.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
-  const stats = [
-    {
+  const isEmployed = (professional.employment_type ?? 'commissioned') === 'employed'
+
+  const stats = ([
+    !isEmployed && {
       value: revenue > 0
         ? 'R$' + revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })
         : 'R$0',
@@ -104,9 +106,13 @@ export default async function ProfissionalPage() {
       color: 'var(--admin-text-faded)',
       glow: 'rgba(148,163,184,0.15)',
     },
-  ]
-
-  const isEmployed = (professional.employment_type ?? 'commissioned') === 'employed'
+  ].filter(Boolean)) as Array<{
+    value: string | number
+    label: string
+    icon: typeof IconClock
+    color: string
+    glow: string
+  }>
 
   const navItems = [
     !isEmployed && {
