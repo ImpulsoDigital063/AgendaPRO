@@ -68,6 +68,13 @@ export default async function AdminPage() {
     .order('created_at', { ascending: false })
     .limit(8)
 
+  // Pedidos de pontos por avaliacao aguardando aprovacao
+  const { count: pendingClaimsCount } = await supabase
+    .from('review_claims')
+    .select('id', { count: 'exact', head: true })
+    .eq('business_id', business.id)
+    .eq('status', 'pending')
+
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
@@ -225,6 +232,36 @@ export default async function AdminPage() {
       </section>
 
       <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
+
+        {/* Pedidos de pontos por avaliacao aguardando */}
+        {pendingClaimsCount && pendingClaimsCount > 0 ? (
+          <Link
+            href="/admin/configuracoes?tab=fidelidade"
+            className="block rounded-2xl p-4 transition-opacity hover:opacity-90"
+            style={{
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06))',
+              border: '1px solid rgba(245,158,11,0.4)',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(245,158,11,0.25)', color: '#F59E0B' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+                  {pendingClaimsCount} pedido{pendingClaimsCount > 1 ? 's' : ''} de pontos por avaliação
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                  Confira no Google e aprove pra liberar os pontos
+                </p>
+              </div>
+              <IconChevronRight size={18} style={{ color: '#F59E0B' }} />
+            </div>
+          </Link>
+        ) : null}
 
         {/* Divulgação */}
         <DivulgarCard
