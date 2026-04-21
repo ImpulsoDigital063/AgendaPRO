@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { generateCancelToken } from '@/lib/token'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -14,10 +16,10 @@ export default async function AgendarPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ ref?: string }>
+  searchParams: Promise<{ ref?: string; date?: string; time?: string; prof?: string; w?: string }>
 }) {
   const { slug } = await params
-  const { ref: referralCode } = await searchParams
+  const { ref: referralCode, date: prefillDate, time: prefillTime, prof: prefillProf, w: waitlistId } = await searchParams
   const supabase = await createClient()
 
   const { data: business } = await supabase
@@ -46,6 +48,60 @@ export default async function AgendarPage({
       .eq('active', true)
       .order('name'),
   ])
+
+  // Prefill vindo do email da fila de espera (?w=<waitlist_id>).
+  // Busca dados do registro + checa se o cliente já tem outro agendamento no mesmo dia.
+  type Prefill = {
+    name: string
+    phone: string
+    email: string
+    date: string
+    time: string
+    professionalId: string
+    otherAppointment: { id: string; start_time: string; cancel_token: string } | null
+  } | null
+
+  let prefill: Prefill = null
+  if (waitlistId && prefillDate && prefillTime && prefillProf) {
+    const admin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const { data: w } = await admin
+      .from('waitlist')
+      .select('client_name, client_phone, client_email, business_id, professional_id, appointment_date, start_time')
+      .eq('id', waitlistId)
+      .maybeSingle()
+
+    if (w && w.business_id === business.id) {
+      const { data: other } = await admin
+        .from('appointments')
+        .select('id, start_time')
+        .eq('business_id', business.id)
+        .eq('client_phone', w.client_phone)
+        .eq('appointment_date', prefillDate)
+        .eq('status', 'confirmed')
+        .order('start_time')
+        .limit(1)
+        .maybeSingle()
+
+      prefill = {
+        name: w.client_name,
+        phone: w.client_phone,
+        email: w.client_email || '',
+        date: prefillDate,
+        time: prefillTime,
+        professionalId: prefillProf,
+        otherAppointment: other
+          ? {
+              id: other.id,
+              start_time: other.start_time.slice(0, 5),
+              cancel_token: generateCancelToken(other.id),
+            }
+          : null,
+      }
+    }
+  }
 
   const b = business as Business
   const primary = b.brand_primary || '#3B82F6'
@@ -110,6 +166,7 @@ export default async function AgendarPage({
             workingHours={workingHours || []}
             services={services || []}
             referralCode={referralCode}
+            prefill={prefill}
           />
         </div>
 

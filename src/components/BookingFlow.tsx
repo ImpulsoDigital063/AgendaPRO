@@ -1,8 +1,18 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+
+type Prefill = {
+  name: string
+  phone: string
+  email: string
+  date: string
+  time: string
+  professionalId: string
+  otherAppointment: { id: string; start_time: string; cancel_token: string } | null
+} | null
 
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -78,28 +88,44 @@ export default function BookingFlow({
   workingHours,
   services,
   referralCode,
+  prefill,
 }: {
   business: Business
   professionals: Professional[]
   workingHours: WorkingHours[]
   services: Service[]
   referralCode?: string
+  prefill?: Prefill
 }) {
   const hasServices = services.length > 0
   const hasMultipleProfessionals = professionals.length > 1
 
+  // Profissional inicial: se prefill bater com algum, usa; senão primeiro.
+  const initialProf =
+    (prefill && professionals.find((p) => p.id === prefill.professionalId)) || professionals[0]
+
   const [step, setStep] = useState<Step>(hasServices ? 'service' : hasMultipleProfessionals ? 'professional' : 'date')
   const [selectedServices, setSelectedServices] = useState<Service[]>([])
-  const [selectedProfessional, setSelectedProfessional] = useState<Professional>(professionals[0])
+  const [selectedProfessional, setSelectedProfessional] = useState<Professional>(initialProf)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
 
-  // Dados do cliente
-  const [clientName, setClientName] = useState('')
-  const [clientPhone, setClientPhone] = useState('')
-  const [clientEmail, setClientEmail] = useState('')
+  // Dados do cliente — pre-preenchidos se vier da fila
+  const [clientName, setClientName] = useState(prefill?.name || '')
+  const [clientPhone, setClientPhone] = useState(prefill?.phone || '')
+  const [clientEmail, setClientEmail] = useState(prefill?.email || '')
+
+  // Modal "você já tem outro agendamento esse dia"
+  const [showOtherApptAlert, setShowOtherApptAlert] = useState(!!prefill?.otherAppointment)
+  const [cancelingOther, setCancelingOther] = useState(false)
+  const [otherCancelled, setOtherCancelled] = useState(false)
+
+  // Marca quando já tentamos auto-selecionar a data, pra não repetir
+  const autoSelectedDateRef = useRef(false)
+  // Marca quando já tentamos auto-selecionar o horario, pra não repetir
+  const autoSelectedTimeRef = useRef(false)
   const [returningClient, setReturningClient] = useState<Client | null>(null)
   const [lookingUpClient, setLookingUpClient] = useState(false)
 
@@ -168,6 +194,11 @@ export default function BookingFlow({
 
   function handleProceedFromServices() {
     if (selectedServices.length === 0) return
+    // Se prefill já tem o profissional certo, pula a etapa "professional"
+    if (prefill && professional?.id === prefill.professionalId) {
+      setStep('date')
+      return
+    }
     setStep(hasMultipleProfessionals ? 'professional' : 'date')
   }
 
@@ -178,6 +209,29 @@ export default function BookingFlow({
     setSlots([])
     setStep('date')
   }
+
+  // Auto-seleção da data quando vem da fila (após user escolher serviço).
+  useEffect(() => {
+    if (!prefill || autoSelectedDateRef.current) return
+    if (step !== 'date') return
+    if (selectedServices.length === 0 && hasServices) return
+    const target = availableDates.find((d) => formatDate(d) === prefill.date)
+    if (!target) return
+    autoSelectedDateRef.current = true
+    handleSelectDate(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, selectedServices.length])
+
+  // Auto-seleção do horário quando os slots carregam.
+  useEffect(() => {
+    if (!prefill || autoSelectedTimeRef.current) return
+    if (step !== 'time' || loadingSlots) return
+    const target = slots.find((s) => s.time === prefill.time && s.available)
+    if (!target) return
+    autoSelectedTimeRef.current = true
+    setSelectedTime(prefill.time)
+    setStep('form')
+  }, [step, slots, loadingSlots, prefill])
 
   async function handleSelectDate(date: Date) {
     setSelectedDate(date)
@@ -822,6 +876,54 @@ export default function BookingFlow({
       {/* ETAPA 3 — DADOS DO CLIENTE */}
       {step === 'form' && selectedTime && (
         <section>
+          {/* Banner: cliente já tem outro agendamento esse dia */}
+          {showOtherApptAlert && prefill?.otherAppointment && !otherCancelled && (
+            <div className="mb-3 rounded-2xl p-4 space-y-3" style={{ background: '#FEF3C7', border: '1px solid #FCD34D' }}>
+              <div>
+                <p className="text-sm font-bold" style={{ color: '#92400E' }}>
+                  Você já tem agendamento das {prefill.otherAppointment.start_time} nesse dia
+                </p>
+                <p className="text-xs mt-1" style={{ color: '#92400E' }}>
+                  Quer cancelar o das {prefill.otherAppointment.start_time} pra ficar só com as {prefill.time}, ou manter os dois?
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  disabled={cancelingOther}
+                  onClick={async () => {
+                    if (!prefill?.otherAppointment) return
+                    setCancelingOther(true)
+                    try {
+                      const res = await fetch(
+                        `/api/appointment/action?id=${prefill.otherAppointment.id}&action=cancelled&token=${prefill.otherAppointment.cancel_token}`
+                      )
+                      if (res.ok) {
+                        setOtherCancelled(true)
+                        setShowOtherApptAlert(false)
+                      }
+                    } finally {
+                      setCancelingOther(false)
+                    }
+                  }}
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40"
+                >
+                  {cancelingOther ? 'Cancelando...' : `Trocar (cancela o das ${prefill.otherAppointment.start_time})`}
+                </button>
+                <button
+                  onClick={() => setShowOtherApptAlert(false)}
+                  className="px-4 bg-white border border-amber-200 text-amber-700 py-2.5 rounded-xl text-sm font-medium hover:bg-amber-50 transition-colors"
+                >
+                  Manter os dois
+                </button>
+              </div>
+            </div>
+          )}
+          {otherCancelled && (
+            <div className="mb-3 rounded-xl px-3 py-2 text-xs" style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', color: '#065F46' }}>
+              ✅ Outro agendamento cancelado. Continue confirmando o novo abaixo.
+            </div>
+          )}
+
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
             Seus dados
           </h2>

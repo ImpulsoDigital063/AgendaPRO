@@ -225,6 +225,8 @@ export async function sendWaitlistNotification({
   businessSlug,
   date,
   startTime,
+  professionalId,
+  waitlistId,
 }: {
   clientEmail: string
   clientName: string
@@ -232,22 +234,21 @@ export async function sendWaitlistNotification({
   businessSlug: string
   date: string
   startTime: string
+  professionalId: string
+  waitlistId: string
 }) {
   const [year, month, day] = date.split('-')
   const dateFormatted = `${day}/${month}/${year}`
-  const bookingUrl = `${APP_URL}/${businessSlug}/agendar`
+  const bookingUrl = `${APP_URL}/${businessSlug}/agendar?date=${date}&time=${encodeURIComponent(startTime)}&prof=${professionalId}&w=${waitlistId}`
 
   const body = `
-    Olá, <strong>${esc(clientName)}</strong>! Uma vaga abriu na <strong>${esc(businessName)}</strong>.<br><br>
-    📅 <strong>Data:</strong> ${dateFormatted}<br>
-    🕐 <strong>Horário:</strong> ${startTime}<br><br>
-    Corre para garantir seu horário antes que alguém pegue!
+    ${esc(clientName.split(' ')[0])}, abriu vaga das <strong>${startTime} (${dateFormatted})</strong> na <strong>${esc(businessName)}</strong>. Corre pra garantir.
   `
 
   await getResend().emails.send({
     from: FROM_EMAIL,
     to: clientEmail,
-    subject: `🔔 Vaga abriu! ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
+    subject: `🔔 Surgiu uma vaga — ${esc(businessName)} · ${dateFormatted} às ${startTime}`,
     html: emailTemplate({
       title: '',
       body,

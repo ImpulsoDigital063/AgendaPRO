@@ -63,6 +63,8 @@ export async function notifyWaitlistForCancelledSlot({
           businessSlug: entry.business?.slug || '',
           date: entry.appointment_date,
           startTime: entry.start_time.slice(0, 5),
+          professionalId: professional_id,
+          waitlistId: entry.id,
         })
         sent++
       } catch (err) {
