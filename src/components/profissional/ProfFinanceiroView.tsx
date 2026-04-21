@@ -26,13 +26,17 @@ function formatPrice(value: number) {
 const STATUS_COLOR: Record<string, string> = {
   pending: 'text-yellow-600 bg-yellow-50',
   confirmed: 'text-green-600 bg-green-50',
+  completed: 'text-blue-600 bg-blue-50',
   cancelled: 'text-gray-400 bg-gray-50',
+  no_show: 'text-red-500 bg-red-50',
 }
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Pendente',
   confirmed: 'Confirmado',
+  completed: 'Realizado',
   cancelled: 'Cancelado',
+  no_show: 'Não compareceu',
 }
 
 const PERIODO_LABEL: Record<string, string> = {
@@ -49,12 +53,14 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
     router.push(`${pathname}?periodo=${p}`)
   }
 
-  const comPrice = appointments.filter((a) => a.total_price !== null && a.total_price > 0)
-  const confirmados = appointments.filter((a) => a.status === 'confirmed' && a.total_price)
+  const ativos = appointments.filter(
+    (a) => a.total_price !== null && a.total_price > 0 && (a.status === 'confirmed' || a.status === 'completed')
+  )
+  const realizados = appointments.filter((a) => a.status === 'completed' && a.total_price)
 
-  const totalGerado = comPrice.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  const totalConfirmado = confirmados.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  const minhaComissao = totalConfirmado * (commissionPercentage / 100)
+  const totalGerado = ativos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const totalRealizado = realizados.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const minhaComissao = totalRealizado * (commissionPercentage / 100)
 
   return (
     <div className="space-y-6">
@@ -83,20 +89,20 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
         <div className="admin-card p-4">
           <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Total gerado</p>
           <p className="text-xl font-bold" style={{ color: 'var(--admin-text)' }}>{formatPrice(totalGerado)}</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{comPrice.length} atendimentos</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{ativos.length} atendimentos</p>
         </div>
         <div className="admin-card p-4">
           <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Minha comissão</p>
           <p className="text-xl font-bold" style={{ color: 'var(--admin-success)' }}>{formatPrice(minhaComissao)}</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{commissionPercentage}% do total</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{commissionPercentage}% dos realizados</p>
         </div>
       </div>
 
-      {/* Confirmados */}
+      {/* Realizados */}
       <div className="admin-card p-4">
-        <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Confirmados</p>
-        <p className="text-lg font-bold" style={{ color: 'var(--admin-accent)' }}>{formatPrice(totalConfirmado)}</p>
-        <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{confirmados.length} agendamentos</p>
+        <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Realizados</p>
+        <p className="text-lg font-bold" style={{ color: 'var(--admin-accent)' }}>{formatPrice(totalRealizado)}</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{realizados.length} atendimentos</p>
       </div>
 
       {/* Lista de agendamentos */}

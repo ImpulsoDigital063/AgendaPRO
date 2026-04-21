@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
   const { data: customer } = await adminClient
     .from('customers')
-    .select('id, total_points')
+    .select('id, phone, total_points')
     .eq('id', claim.customer_id)
     .single()
 
@@ -77,10 +77,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Cliente não encontrado.' }, { status: 404 })
   }
 
+  // Atribui ao profissional do ultimo atendimento completo do cliente
+  // (usado quando o negocio esta no modo 'professional' — no modo 'business' fica registrado mas nao afeta a leitura).
+  const { data: lastCompleted } = await adminClient
+    .from('appointments')
+    .select('professional_id')
+    .eq('business_id', claim.business_id)
+    .eq('client_phone', customer.phone)
+    .eq('status', 'completed')
+    .order('appointment_date', { ascending: false })
+    .order('start_time', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const professionalId = lastCompleted?.professional_id ?? null
+
   // 1. Insert points_transactions
   const { error: ptError } = await adminClient.from('points_transactions').insert({
     customer_id: customer.id,
     business_id: claim.business_id,
+    professional_id: professionalId,
     points: pts,
     reason: 'review',
     appointment_id: null,

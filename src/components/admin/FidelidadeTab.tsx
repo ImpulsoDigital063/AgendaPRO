@@ -16,19 +16,35 @@ type Props = {
   initialRewards: Reward[]
   initialCustomers: Customer[]
   pointsForReferral: number
+  pointsMode: 'business' | 'professional'
 }
 
-export default function FidelidadeTab({ businessId, initialRewards, initialCustomers, pointsForReferral }: Props) {
+export default function FidelidadeTab({ businessId, initialRewards, initialCustomers, pointsForReferral, pointsMode: initialPointsMode }: Props) {
   const [rewards, setRewards] = useState(initialRewards)
   const [customers] = useState(initialCustomers)
   const [form, setForm] = useState({ name: '', description: '', points_required: '' })
   const [referralPoints, setReferralPoints] = useState(String(pointsForReferral))
   const [savingReferral, setSavingReferral] = useState(false)
+  const [pointsMode, setPointsMode] = useState<'business' | 'professional'>(initialPointsMode)
+  const [savingMode, setSavingMode] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [pendingClaims, setPendingClaims] = useState<ReviewClaim[]>([])
   const [claimActionId, setClaimActionId] = useState<string | null>(null)
   const supabase = createClient()
+
+  async function handleChangePointsMode(next: 'business' | 'professional') {
+    if (next === pointsMode || savingMode) return
+    setSavingMode(true)
+    const prev = pointsMode
+    setPointsMode(next)
+    const { error } = await supabase
+      .from('businesses')
+      .update({ points_mode: next })
+      .eq('id', businessId)
+    if (error) setPointsMode(prev)
+    setSavingMode(false)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -184,6 +200,60 @@ export default function FidelidadeTab({ businessId, initialRewards, initialCusto
               Troca por corte grátis depois.&rdquo;</em> Cliente que conhece o programa indica mais.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Modo de pontos */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+          Modo de pontos
+        </h3>
+        <div className="admin-card p-4 space-y-3">
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+            Escolha se os pontos do cliente somam no estabelecimento como um todo ou se ficam
+            separados por profissional. As recompensas continuam iguais pros dois.
+          </p>
+
+          <div
+            className="flex rounded-xl p-1"
+            style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+          >
+            {([
+              { id: 'business' as const, label: 'Estabelecimento', desc: 'Um saldo só' },
+              { id: 'professional' as const, label: 'Profissional', desc: 'Um saldo por atendente' },
+            ]).map((opt) => {
+              const active = pointsMode === opt.id
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => handleChangePointsMode(opt.id)}
+                  disabled={savingMode}
+                  className="flex-1 py-2.5 px-3 text-sm rounded-lg transition-colors disabled:opacity-60"
+                  style={{
+                    background: active ? 'var(--admin-accent)' : 'transparent',
+                    color: active ? '#fff' : 'var(--admin-text-mute)',
+                  }}
+                >
+                  <span className="block font-semibold">{opt.label}</span>
+                  <span className="block text-[11px] mt-0.5 opacity-80">{opt.desc}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {pointsMode === 'professional' && (
+            <div
+              className="rounded-xl p-3"
+              style={{ background: 'var(--admin-accent-bg)', border: '1px solid var(--admin-accent-border)' }}
+            >
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text)' }}>
+                <strong>Modo por profissional ativo.</strong> Cada cliente vai ver o saldo separado
+                com cada atendente em &ldquo;Meus pontos&rdquo;. Pontos de indicação vão pra conta
+                de quem atendeu; pontos de avaliação no Google vão pro último profissional que
+                atendeu aquele cliente.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

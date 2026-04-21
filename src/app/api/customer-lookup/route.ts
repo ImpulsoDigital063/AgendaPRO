@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const { data: business } = await adminClient
     .from('businesses')
-    .select('id, slug, points_for_review')
+    .select('id, slug, points_for_review, points_mode')
     .eq('id', businessId)
     .single()
 
@@ -52,10 +52,55 @@ export async function POST(req: NextRequest) {
   // Histórico de transações (últimas 50 pra dar conta de pares positivo+negativo)
   const { data: transactions } = await adminClient
     .from('points_transactions')
-    .select('id, points, reason, created_at, appointment_id')
+    .select('id, points, reason, created_at, appointment_id, professional_id')
     .eq('customer_id', customer.id)
     .order('created_at', { ascending: false })
     .limit(50)
+
+  // Quando o modo eh 'professional', calcula saldo por profissional.
+  // Agrupa por (appointment_id, reason, professional_id) e ignora pares revertidos.
+  const pointsMode: 'business' | 'professional' = business.points_mode === 'professional' ? 'professional' : 'business'
+  let pointsByProfessional: { professional_id: string; professional_name: string; total_points: number }[] = []
+
+  if (pointsMode === 'professional' && transactions && transactions.length > 0) {
+    type Row = { appointment_id: string | null; professional_id: string | null; reason: string; points: number }
+    const rows = transactions as unknown as Row[]
+
+    const groupSums = new Map<string, number>()
+    for (const t of rows) {
+      const key = `${t.appointment_id ?? 'null'}:${t.reason}:${t.professional_id ?? 'null'}`
+      groupSums.set(key, (groupSums.get(key) ?? 0) + t.points)
+    }
+
+    const totalsByProf = new Map<string, number>()
+    for (const t of rows) {
+      const key = `${t.appointment_id ?? 'null'}:${t.reason}:${t.professional_id ?? 'null'}`
+      const net = groupSums.get(key) ?? 0
+      if (net <= 0) continue
+      if (t.points <= 0) continue
+      if (!t.professional_id) continue
+      totalsByProf.set(t.professional_id, (totalsByProf.get(t.professional_id) ?? 0) + t.points)
+    }
+
+    if (totalsByProf.size > 0) {
+      const profIds = Array.from(totalsByProf.keys())
+      const { data: profs } = await adminClient
+        .from('professionals')
+        .select('id, name')
+        .in('id', profIds)
+
+      const nameById = new Map<string, string>()
+      for (const p of profs || []) nameById.set(p.id as string, p.name as string)
+
+      pointsByProfessional = profIds
+        .map((pid) => ({
+          professional_id: pid,
+          professional_name: nameById.get(pid) ?? 'Profissional',
+          total_points: totalsByProf.get(pid) ?? 0,
+        }))
+        .sort((a, b) => b.total_points - a.total_points)
+    }
+  }
 
   // Status de review claim pendente (se houver)
   const { data: pendingReview } = await adminClient
@@ -105,5 +150,7 @@ export async function POST(req: NextRequest) {
     review_claim: pendingReview || null,
     has_review_program: (business.points_for_review ?? 0) > 0,
     upcoming_appointments: upcoming,
+    points_mode: pointsMode,
+    points_by_professional: pointsByProfessional,
   })
 }

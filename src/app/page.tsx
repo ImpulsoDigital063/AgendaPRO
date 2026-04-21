@@ -686,6 +686,7 @@ export default function HomePage() {
               <Link href="/privacidade" className="text-slate-400 hover:text-white transition-colors">Privacidade</Link>
               <Link href="/termos" className="text-slate-400 hover:text-white transition-colors">Termos</Link>
               <Link href="/admin/login" className="text-slate-400 hover:text-white transition-colors">Entrar</Link>
+              <Link href="/profissional/login" className="text-slate-400 hover:text-white transition-colors">Sou profissional</Link>
             </div>
           </div>
         </div>

@@ -101,6 +101,7 @@ export default function ConfiguracoesTabs({
           initialRewards={initialRewards}
           initialCustomers={initialCustomers}
           pointsForReferral={business.points_for_referral ?? 0}
+          pointsMode={business.points_mode ?? 'business'}
         />
       )}
 

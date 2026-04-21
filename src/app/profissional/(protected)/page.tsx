@@ -5,13 +5,17 @@ import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import ProfAppointmentCard from '@/components/profissional/ProfAppointmentCard'
 import WelcomeCard from '@/components/profissional/WelcomeCard'
+import Link from 'next/link'
 import {
   IconCalendar,
+  IconChevronRight,
   IconDollar,
   IconCheck,
   IconClock,
   IconClose,
   IconInbox,
+  IconSettings,
+  IconWallet,
 } from '@/components/ui/Icon'
 
 export default async function ProfissionalPage() {
@@ -65,8 +69,8 @@ export default async function ProfissionalPage() {
 
   const list = appointments || []
   const pending   = list.filter((a) => a.status === 'pending')
-  const confirmed = list.filter((a) => a.status === 'confirmed')
-  const cancelled = list.filter((a) => a.status === 'cancelled')
+  const confirmed = list.filter((a) => a.status === 'confirmed' || a.status === 'completed')
+  const cancelled = list.filter((a) => a.status === 'cancelled' || a.status === 'no_show')
   const revenue   = confirmed.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   const stats = [
@@ -99,6 +103,21 @@ export default async function ProfissionalPage() {
       icon: IconClose,
       color: 'var(--admin-text-faded)',
       glow: 'rgba(148,163,184,0.15)',
+    },
+  ]
+
+  const navItems = [
+    {
+      href: '/profissional/financeiro',
+      label: 'Financeiro',
+      desc: 'Comissão e faturamento',
+      icon: IconWallet,
+    },
+    {
+      href: '/profissional/trocar-senha',
+      label: 'Trocar senha',
+      desc: 'Atualize sua senha de acesso',
+      icon: IconSettings,
     },
   ]
 
@@ -243,6 +262,51 @@ export default async function ProfissionalPage() {
             </div>
           </section>
         )}
+
+        {/* Nav list */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: 'var(--admin-surface)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          {navItems.map((item, i, arr) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="flex items-center gap-4 px-4 py-4 transition-colors hover:opacity-100"
+                style={{
+                  borderBottom: i < arr.length - 1 ? '1px solid var(--admin-divider)' : 'none',
+                  color: 'var(--admin-text)',
+                }}
+              >
+                <span
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: 'var(--admin-accent-bg)',
+                    color: 'var(--admin-accent)',
+                  }}
+                >
+                  <Icon size={18} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm leading-tight" style={{ color: 'var(--admin-text)' }}>
+                    {item.label}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                    {item.desc}
+                  </p>
+                </div>
+                <span style={{ color: 'var(--admin-text-faded)' }}>
+                  <IconChevronRight size={18} />
+                </span>
+              </Link>
+            )
+          })}
+        </div>
 
         <p className="text-center text-xs pb-2" style={{ color: 'var(--admin-text-faded)' }}>
           AgendaPRO · Impulso Digital

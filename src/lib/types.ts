@@ -13,6 +13,7 @@ export type Business = {
   google_reviews_count: number | null
   points_for_review: number
   points_for_referral: number
+  points_mode?: 'business' | 'professional'
   brand_primary?: string | null
   brand_secondary?: string | null
   brand_mode?: 'dark' | 'light' | null
@@ -76,6 +77,7 @@ export type PointsTransaction = {
   id: string
   customer_id: string
   business_id: string
+  professional_id: string | null
   points: number
   reason: 'service' | 'referral' | 'review' | 'redeem'
   appointment_id: string | null

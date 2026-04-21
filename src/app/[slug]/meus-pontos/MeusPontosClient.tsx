@@ -8,6 +8,7 @@ type Transaction = {
   reason: 'service' | 'referral' | 'review' | 'redeem'
   created_at: string
   appointment_id: string | null
+  professional_id: string | null
 }
 
 type UpcomingAppointment = {
@@ -18,6 +19,12 @@ type UpcomingAppointment = {
   service_name: string | null
   professional_name: string | null
   cancel_token: string
+}
+
+type ProfessionalPoints = {
+  professional_id: string
+  professional_name: string
+  total_points: number
 }
 
 type LookupResult = {
@@ -32,6 +39,8 @@ type LookupResult = {
   review_claim?: { status: 'pending' | 'approved' | 'rejected'; requested_at: string } | null
   has_review_program?: boolean
   upcoming_appointments?: UpcomingAppointment[]
+  points_mode?: 'business' | 'professional'
+  points_by_professional?: ProfessionalPoints[]
 }
 
 const REASON_LABEL: Record<Transaction['reason'], string> = {
@@ -136,23 +145,63 @@ export default function MeusPontosClient({
       {result?.found && result.customer && (
         <>
           {/* Saldo */}
-          <div
-            className="rounded-2xl p-5 text-center"
-            style={{
-              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.05))',
-              border: '1px solid rgba(251, 191, 36, 0.3)',
-            }}
-          >
-            <p className="text-xs uppercase tracking-wider" style={{ color: textMute }}>
-              Olá, {result.customer.name.split(' ')[0]}
-            </p>
-            <p className="text-4xl font-bold mt-2" style={{ color: '#F59E0B' }}>
-              {result.customer.total_points}
-            </p>
-            <p className="text-xs mt-1" style={{ color: textMute }}>
-              pontos de fidelidade
-            </p>
-          </div>
+          {result.points_mode === 'professional' && result.points_by_professional && result.points_by_professional.length > 0 ? (
+            <div className="space-y-3">
+              <div
+                className="rounded-2xl p-4 text-center"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.05))',
+                  border: '1px solid rgba(251, 191, 36, 0.3)',
+                }}
+              >
+                <p className="text-xs uppercase tracking-wider" style={{ color: textMute }}>
+                  Olá, {result.customer.name.split(' ')[0]}
+                </p>
+                <p className="text-xs mt-1.5" style={{ color: textMute }}>
+                  Seus pontos por profissional
+                </p>
+              </div>
+              <div className="space-y-2">
+                {result.points_by_professional.map((p) => (
+                  <div
+                    key={p.professional_id}
+                    className="rounded-xl p-3.5 flex items-center justify-between"
+                    style={{ background: cardBg, border: cardBorder }}
+                  >
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                        {p.professional_name}
+                      </p>
+                      <p className="text-[11px]" style={{ color: textMute }}>
+                        Pontos acumulados com este profissional
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold" style={{ color: '#F59E0B' }}>
+                      {p.total_points}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div
+              className="rounded-2xl p-5 text-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.05))',
+                border: '1px solid rgba(251, 191, 36, 0.3)',
+              }}
+            >
+              <p className="text-xs uppercase tracking-wider" style={{ color: textMute }}>
+                Olá, {result.customer.name.split(' ')[0]}
+              </p>
+              <p className="text-4xl font-bold mt-2" style={{ color: '#F59E0B' }}>
+                {result.customer.total_points}
+              </p>
+              <p className="text-xs mt-1" style={{ color: textMute }}>
+                pontos de fidelidade
+              </p>
+            </div>
+          )}
 
           {/* Próximos agendamentos — cancelamento direto */}
           {result.upcoming_appointments && result.upcoming_appointments.length > 0 && (
