@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import {
   IconCalendar,
+  IconClock,
   IconWallet,
   IconSettings,
 } from '@/components/ui/Icon'
@@ -13,6 +14,7 @@ type Tab = { href: string; label: string; Icon: (p: { size?: number; strokeWidth
 
 const tabs: Tab[] = [
   { href: '/profissional',              label: 'Agenda',     Icon: IconCalendar },
+  { href: '/profissional/horarios',     label: 'Horários',   Icon: IconClock    },
   { href: '/profissional/financeiro',   label: 'Financeiro', Icon: IconWallet   },
   { href: '/profissional/trocar-senha', label: 'Conta',      Icon: IconSettings },
 ]

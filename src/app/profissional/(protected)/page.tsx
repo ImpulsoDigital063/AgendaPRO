@@ -108,6 +108,12 @@ export default async function ProfissionalPage() {
 
   const navItems = [
     {
+      href: '/profissional/horarios',
+      label: 'Meus horários',
+      desc: 'Dias e janelas de atendimento',
+      icon: IconClock,
+    },
+    {
       href: '/profissional/financeiro',
       label: 'Financeiro',
       desc: 'Comissão e faturamento',
