@@ -678,7 +678,7 @@ export default function BookingFlow({
 
       {/* ETAPA 2 — ESCOLHER HORÁRIO */}
       {(step === 'time' || step === 'form') && selectedDate && (
-        <section>
+        <section id="horarios-disponiveis">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
             Horários disponíveis —{' '}
             {DAYS_FULL[selectedDate.getDay()]}, {selectedDate.getDate()}/
@@ -729,13 +729,20 @@ export default function BookingFlow({
                     <div className="flex justify-center mb-2"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 3-2 5.5-4 7.5L12 19l-2-2.5C8 14.5 6 12 6 9z"/><circle cx="12" cy="9" r="1"/></svg></div>
                     <p className="text-amber-800 font-bold text-sm">Você entrou na fila!</p>
                     <p className="text-amber-600 text-xs mt-1">
-                      Avisaremos por email se a vaga das {waitlistSlot} abrir.
+                      Avisamos por email quando a vaga das {waitlistSlot} abrir. Se preferir, escolha outro horário disponível.
                     </p>
                     <button
-                      onClick={() => setWaitlistSlot(null)}
-                      className="mt-3 text-xs text-amber-700 underline"
+                      onClick={() => {
+                        setWaitlistSlot(null)
+                        requestAnimationFrame(() => {
+                          document
+                            .getElementById('horarios-disponiveis')
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        })
+                      }}
+                      className="mt-3 inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors"
                     >
-                      Fechar
+                      Escolher outro horário
                     </button>
                   </div>
                 ) : (
