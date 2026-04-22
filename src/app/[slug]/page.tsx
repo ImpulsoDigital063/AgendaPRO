@@ -39,7 +39,7 @@ export default async function BusinessPage({
 
   if (!business) notFound()
 
-  const [{ data: services }, { data: professionals }] = await Promise.all([
+  const [{ data: services }, { data: professionals }, { data: cheapestReward }] = await Promise.all([
     supabase
       .from('services')
       .select('id, name, price, duration_minutes, points, active')
@@ -52,6 +52,14 @@ export default async function BusinessPage({
       .eq('business_id', business.id)
       .eq('active', true)
       .order('created_at', { ascending: true }),
+    supabase
+      .from('rewards')
+      .select('id, name, points_required')
+      .eq('business_id', business.id)
+      .eq('active', true)
+      .order('points_required', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
   ])
 
   const b = business as Business & { category?: string }
@@ -423,6 +431,11 @@ export default async function BusinessPage({
               pointsForReview={b.points_for_review}
               brandMode={mode}
               slug={slug}
+              cheapestReward={
+                cheapestReward
+                  ? { name: cheapestReward.name, pointsRequired: cheapestReward.points_required }
+                  : null
+              }
             />
           </section>
         )}
