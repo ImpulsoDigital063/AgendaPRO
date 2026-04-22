@@ -6,6 +6,7 @@ import ShareButton from '@/components/ShareButton'
 import DivulgarCard from '@/components/admin/DivulgarCard'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import ActivityFeed from '@/components/admin/ActivityFeed'
+import TodayList from '@/components/admin/TodayList'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -86,6 +87,10 @@ export default async function AdminPage() {
   const confirmed = list.filter((a) => a.status === 'confirmed')
   const cancelled = list.filter((a) => a.status === 'cancelled')
   const revenue   = confirmed.reduce((sum, a) => sum + (a.total_price || 0), 0)
+
+  // Cancelados + não-veio vão pro grupo colapsado no fim — não poluem a agenda do dia
+  const activeToday   = list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')
+  const archivedToday = list.filter((a) => a.status === 'cancelled' || a.status === 'no_show')
 
   const stats = [
     {
@@ -308,9 +313,7 @@ export default async function AdminPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {list.map((a) => <AppointmentCard key={a.id} appointment={a} />)}
-            </div>
+            <TodayList active={activeToday} archived={archivedToday} />
           )}
         </section>
 
