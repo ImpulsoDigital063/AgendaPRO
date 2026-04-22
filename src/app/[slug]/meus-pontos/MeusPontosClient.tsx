@@ -75,14 +75,15 @@ export default function MeusPontosClient({
   const [copied, setCopied] = useState(false)
 
   async function handleSearch() {
-    if (!phone.trim()) return
+    const digits = phone.replace(/\D/g, '')
+    if (!digits) return
     setLoading(true)
     setResult(null)
 
     const res = await fetch('/api/customer-lookup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessId, phone: phone.trim() }),
+      body: JSON.stringify({ businessId, phone: digits }),
     })
     const data = await res.json()
     setLoading(false)

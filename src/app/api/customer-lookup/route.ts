@@ -23,6 +23,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
   }
 
+  // Telefones na base podem ter sido salvos com ou sem máscara — normaliza pra dígitos-só.
+  const phoneDigits = phone.replace(/\D/g, '')
+  if (phoneDigits.length < 10) {
+    return NextResponse.json({ error: 'Telefone inválido.' }, { status: 400 })
+  }
+
   const adminClient = getAdminClient()
 
   const { data: business } = await adminClient
@@ -35,12 +41,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Negócio não encontrado.' }, { status: 404 })
   }
 
-  const { data: customer } = await adminClient
+  // Match tolerante: tenta exato primeiro (rápido), senão fetch + filtra por dígitos.
+  let { data: customer } = await adminClient
     .from('customers')
     .select('id, name, phone, total_points, referral_code')
     .eq('business_id', businessId)
-    .eq('phone', phone.trim())
+    .eq('phone', phoneDigits)
     .maybeSingle()
+
+  if (!customer) {
+    const { data: candidates } = await adminClient
+      .from('customers')
+      .select('id, name, phone, total_points, referral_code')
+      .eq('business_id', businessId)
+    customer =
+      (candidates || []).find((c) => (c.phone || '').replace(/\D/g, '') === phoneDigits) || null
+  }
 
   if (!customer) {
     return NextResponse.json({
@@ -113,18 +129,21 @@ export async function POST(req: NextRequest) {
     .limit(1)
     .maybeSingle()
 
-  // Agendamentos futuros (confirmed) — cliente identifica pelo telefone
+  // Agendamentos futuros (confirmed) — busca tolerante por dígitos do telefone
   const today = new Date().toISOString().split('T')[0]
-  const { data: rawAppointments } = await adminClient
+  const { data: rawAppointmentsAll } = await adminClient
     .from('appointments')
-    .select('id, appointment_date, start_time, end_time, service_name, status, professional:professionals(name)')
+    .select('id, appointment_date, start_time, end_time, service_name, status, client_phone, professional:professionals(name)')
     .eq('business_id', businessId)
-    .eq('client_phone', phone.trim())
     .eq('status', 'confirmed')
     .gte('appointment_date', today)
     .order('appointment_date', { ascending: true })
     .order('start_time', { ascending: true })
-    .limit(10)
+    .limit(50)
+
+  const rawAppointments = (rawAppointmentsAll || [])
+    .filter((a) => (a.client_phone || '').replace(/\D/g, '') === phoneDigits)
+    .slice(0, 10)
 
   const upcoming = (rawAppointments || []).map((a) => {
     const prof = a.professional as unknown as { name: string } | null
