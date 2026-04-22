@@ -92,21 +92,30 @@ export default async function AdminPage() {
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
-      {/* Glow orbs de fundo — dimmed no light */}
+      {/* Glow orbs de fundo — animados pra dar atmosfera viva */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div
-          className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full blur-[120px]"
+          className="admin-orb-1 absolute -top-32 left-1/2 w-[520px] h-[520px] rounded-full blur-[120px]"
           style={{ background: 'var(--admin-bg-orb-1)' }}
         />
         <div
-          className="absolute top-[40%] -right-24 w-72 h-72 rounded-full blur-[80px]"
+          className="admin-orb-2 absolute top-[40%] -right-24 w-72 h-72 rounded-full blur-[80px]"
           style={{ background: 'var(--admin-bg-orb-2)' }}
         />
         <div
-          className="absolute bottom-0 -left-20 w-64 h-64 rounded-full blur-[80px]"
+          className="admin-orb-3 absolute bottom-0 -left-20 w-64 h-64 rounded-full blur-[80px]"
           style={{ background: 'var(--admin-bg-orb-3)' }}
         />
       </div>
+
+      {/* Vignette escurecendo cantos — destaca o conteúdo central */}
+      <div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 100% 80% at 50% 50%, transparent 55%, rgba(0,0,0,0.18) 100%)',
+        }}
+      />
 
       {/* Header */}
       <header className="relative max-w-lg mx-auto px-4 pt-5 pb-5">
