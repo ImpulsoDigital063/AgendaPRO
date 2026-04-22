@@ -447,6 +447,46 @@ export function IconInfo(p: IconProps) {
   )
 }
 
+export function IconPencil(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  )
+}
+
+export function IconTrash(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+    </svg>
+  )
+}
+
+export function IconKey(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="7.5" cy="15.5" r="4.5" />
+      <line x1="11" y1="12" x2="22" y2="2" />
+      <path d="M19 5l3-3" />
+      <path d="M17 7l3-3" />
+    </svg>
+  )
+}
+
+export function IconPower(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+      <line x1="12" y1="2" x2="12" y2="12" />
+    </svg>
+  )
+}
+
 export function IconAlert(p: IconProps) {
   return (
     <svg {...base(p)}>
