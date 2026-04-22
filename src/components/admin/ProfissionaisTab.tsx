@@ -25,6 +25,7 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
   const [inviteResult, setInviteResult] = useState<{
     profId: string
     ok: boolean
+    mode: 'invite' | 'reset'
     message?: string
     email?: string
     tempPassword?: string
@@ -35,6 +36,7 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Professional | null>(null)
   const [confirmRemovePhoto, setConfirmRemovePhoto] = useState<Professional | null>(null)
+  const [confirmReset, setConfirmReset] = useState<Professional | null>(null)
 
   function copyToClipboard(text: string, field: string) {
     navigator.clipboard.writeText(text)
@@ -174,6 +176,7 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
       setInviteResult({
         profId: prof.id,
         ok: true,
+        mode: 'invite',
         email: data.email,
         tempPassword: data.tempPassword,
         professionalName: data.professionalName,
@@ -186,7 +189,36 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
       setInvitingId(null)
       setInviteEmail('')
     } else {
-      setInviteResult({ profId: prof.id, ok: false, message: data.error || 'Erro ao convidar.' })
+      setInviteResult({ profId: prof.id, ok: false, mode: 'invite', message: data.error || 'Erro ao convidar.' })
+    }
+    setLoadingId(null)
+  }
+
+  async function handleResetPassword(prof: Professional) {
+    setLoadingId(prof.id)
+    setInviteResult(null)
+    setConfirmReset(null)
+
+    const res = await fetch('/api/admin/regenerate-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ professionalId: prof.id }),
+    })
+    const data = await res.json()
+
+    if (res.ok && data.ok) {
+      setInviteResult({
+        profId: prof.id,
+        ok: true,
+        mode: 'reset',
+        email: data.email,
+        tempPassword: data.tempPassword,
+        professionalName: data.professionalName,
+        loginUrl: data.loginUrl,
+        emailSent: data.emailSent,
+      })
+    } else {
+      setInviteResult({ profId: prof.id, ok: false, mode: 'reset', message: data.error || 'Erro ao resetar senha.' })
     }
     setLoadingId(null)
   }
@@ -409,15 +441,32 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
               </button>
             )}
             {prof.auth_user_id && (
-              <span
-                className="text-xs px-2.5 py-1 rounded-lg font-medium"
-                style={{
-                  background: 'color-mix(in srgb, var(--admin-success) 12%, transparent)',
-                  color: 'var(--admin-success)',
-                }}
-              >
-                Com acesso
-              </span>
+              <>
+                <span
+                  className="text-xs px-2.5 py-1 rounded-lg font-medium"
+                  style={{
+                    background: 'color-mix(in srgb, var(--admin-success) 12%, transparent)',
+                    color: 'var(--admin-success)',
+                  }}
+                >
+                  Com acesso
+                </span>
+                {prof.role !== 'owner' && (
+                  <button
+                    onClick={() => setConfirmReset(prof)}
+                    disabled={loadingId === prof.id}
+                    className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-40"
+                    style={{
+                      background: 'var(--admin-surface-hover)',
+                      color: 'var(--admin-text-2)',
+                      border: '1px solid var(--admin-border)',
+                    }}
+                    title="Gera uma nova senha temporária e força troca no próximo login"
+                  >
+                    Resetar senha
+                  </button>
+                )}
+              </>
             )}
             <button
               onClick={() => toggleActive(prof)}
@@ -503,12 +552,16 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
               >
                 <div>
                   <p className="text-sm font-semibold" style={{ color: 'var(--admin-success)' }}>
-                    Acesso criado!
+                    {inviteResult.mode === 'reset' ? 'Senha resetada!' : 'Acesso criado!'}
                   </p>
                   <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
                     {inviteResult.emailSent
-                      ? 'Email com as credenciais foi enviado pro profissional.'
-                      : 'Copie as credenciais abaixo e mande pro profissional via WhatsApp.'}
+                      ? inviteResult.mode === 'reset'
+                        ? 'Email com a nova senha foi enviado pro profissional.'
+                        : 'Email com as credenciais foi enviado pro profissional.'
+                      : inviteResult.mode === 'reset'
+                        ? 'Copie a nova senha abaixo e mande pro profissional via WhatsApp.'
+                        : 'Copie as credenciais abaixo e mande pro profissional via WhatsApp.'}
                   </p>
                 </div>
 
@@ -562,11 +615,17 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
                     const link = inviteResult.loginUrl?.startsWith('http')
                       ? inviteResult.loginUrl
                       : `${origin}${inviteResult.loginUrl || '/profissional/login'}`
-                    const msg = `Olá ${inviteResult.professionalName}! Seu acesso ao painel:\n\n` +
-                      `Link: ${link}\n` +
-                      `Email: ${inviteResult.email}\n` +
-                      `Senha: ${inviteResult.tempPassword}\n\n` +
-                      `Troque a senha no primeiro login.`
+                    const msg = inviteResult.mode === 'reset'
+                      ? `Olá ${inviteResult.professionalName}! Sua nova senha do painel:\n\n` +
+                        `Link: ${link}\n` +
+                        `Email: ${inviteResult.email}\n` +
+                        `Nova senha: ${inviteResult.tempPassword}\n\n` +
+                        `Você vai trocar a senha no próximo login.`
+                      : `Olá ${inviteResult.professionalName}! Seu acesso ao painel:\n\n` +
+                        `Link: ${link}\n` +
+                        `Email: ${inviteResult.email}\n` +
+                        `Senha: ${inviteResult.tempPassword}\n\n` +
+                        `Troque a senha no primeiro login.`
                     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
                   }}
                   className="w-full px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2"
@@ -692,6 +751,21 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
           setConfirmRemovePhoto(null)
         }}
         onClose={() => setConfirmRemovePhoto(null)}
+      />
+
+      <ConfirmActionModal
+        open={!!confirmReset}
+        title={`Resetar senha de ${confirmReset?.name || ''}?`}
+        message="Uma nova senha temporária vai ser gerada. A senha atual para de funcionar na hora, e o profissional vai precisar trocar a nova no próximo login."
+        confirmLabel="Sim, resetar"
+        cancelLabel="Voltar"
+        tone="warn"
+        loading={!!confirmReset && loadingId === confirmReset.id}
+        onConfirm={async () => {
+          if (!confirmReset) return
+          await handleResetPassword(confirmReset)
+        }}
+        onClose={() => setConfirmReset(null)}
       />
     </div>
   )

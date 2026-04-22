@@ -11,6 +11,7 @@ export default function ProfissionalLoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showForgot, setShowForgot] = useState(false)
   const router = useRouter()
 
   async function handleLogin(e: React.FormEvent) {
@@ -142,6 +143,14 @@ export default function ProfissionalLoginPage() {
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowForgot(true)}
+            className="w-full text-xs text-slate-400 hover:text-slate-200 transition-colors pt-1"
+          >
+            Esqueci a senha
+          </button>
         </form>
 
         <p className="text-center text-sm text-slate-400 mt-5">
@@ -150,6 +159,41 @@ export default function ProfissionalLoginPage() {
             Acessar painel admin
           </Link>
         </p>
+
+        {showForgot && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.65)' }}
+            onClick={() => setShowForgot(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl p-5"
+              style={{
+                background: 'rgba(15, 23, 42, 0.96)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                boxShadow: '0 24px 50px -20px rgba(0,0,0,0.7)',
+              }}
+            >
+              <p className="font-bold text-base text-white mb-2">Esqueceu a senha?</p>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Peça pro dono do estabelecimento abrir o painel admin em{' '}
+                <span className="font-semibold text-emerald-400">Profissionais</span> e clicar em{' '}
+                <span className="font-semibold text-emerald-400">&quot;Resetar senha&quot;</span> no seu card. Ele vai te mandar uma senha nova na hora.
+              </p>
+              <button
+                onClick={() => setShowForgot(false)}
+                className="mt-5 w-full py-2.5 rounded-xl text-sm font-semibold transition-transform active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(135deg, #10B981 0%, #06B6D4 100%)',
+                  color: '#fff',
+                }}
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        )}
 
         <p className="text-center text-slate-600 text-xs mt-6">
           AgendaPRO · Impulso Digital
