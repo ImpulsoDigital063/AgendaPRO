@@ -428,7 +428,7 @@ export default function BookingFlow({
         .single()
       customerId = newCustomer?.id ?? null
       if (newCustomer?.referral_code) {
-        setMyReferralLink(`${window.location.origin}/${business.slug}/agendar?ref=${newCustomer.referral_code}`)
+        setMyReferralLink(`${window.location.origin}/${business.slug}?ref=${newCustomer.referral_code}`)
       }
     } else {
       // Cliente existente — busca o referral_code dele
@@ -438,7 +438,7 @@ export default function BookingFlow({
         .eq('id', customerId)
         .single()
       if (existingFull?.referral_code) {
-        setMyReferralLink(`${window.location.origin}/${business.slug}/agendar?ref=${existingFull.referral_code}`)
+        setMyReferralLink(`${window.location.origin}/${business.slug}?ref=${existingFull.referral_code}`)
       }
     }
 

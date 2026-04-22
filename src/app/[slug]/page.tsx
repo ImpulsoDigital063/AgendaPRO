@@ -25,10 +25,14 @@ function hexToRgba(hex: string, a: number) {
 
 export default async function BusinessPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ ref?: string }>
 }) {
   const { slug } = await params
+  const { ref } = await searchParams
+  const agendarHref = ref ? `/${slug}/agendar?ref=${ref}` : `/${slug}/agendar`
   const supabase = await createClient()
 
   const { data: business } = await supabase
@@ -282,7 +286,7 @@ export default async function BusinessPage({
 
         {/* CTA Agendar */}
         <Link
-          href={`/${slug}/agendar`}
+          href={agendarHref}
           className="group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-[0.98] mb-3"
           style={{
             background: cover,
@@ -442,7 +446,7 @@ export default async function BusinessPage({
 
         {/* CTA repetida no fim */}
         <Link
-          href={`/${slug}/agendar`}
+          href={agendarHref}
           className="group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] mb-6"
           style={{
             background: cover,

@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
     customer: {
       name: customer.name,
       total_points: customer.total_points ?? 0,
-      referral_link: `/${business.slug}/agendar?ref=${customer.referral_code}`,
+      referral_link: `/${business.slug}?ref=${customer.referral_code}`,
     },
     transactions: transactions || [],
     review_claim: pendingReview || null,
