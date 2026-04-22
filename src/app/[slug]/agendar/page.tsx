@@ -44,7 +44,7 @@ export default async function AgendarPage({
       .in('professional_id', (professionals || []).map((p) => p.id)),
     supabase
       .from('services')
-      .select('id, name, price, duration_minutes, points, active, business_id')
+      .select('id, name, description, price, duration_minutes, points, active, business_id')
       .eq('business_id', business.id)
       .eq('active', true)
       .order('name'),

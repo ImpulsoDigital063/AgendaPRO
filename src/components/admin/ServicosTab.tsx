@@ -41,12 +41,15 @@ function isCustomDuration(min: number) {
 
 type FormState = {
   name: string
+  description: string
   price: string
   duration_minutes: number
   points: string
 }
 
-const emptyForm: FormState = { name: '', price: '', duration_minutes: 30, points: '' }
+const emptyForm: FormState = { name: '', description: '', price: '', duration_minutes: 30, points: '' }
+
+const DESCRIPTION_MAX = 400
 
 type Filter = 'active' | 'inactive' | 'all'
 
@@ -116,6 +119,7 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
       .insert({
         business_id: businessId,
         name: form.name.trim(),
+        description: form.description.trim() || null,
         price: priceValue,
         duration_minutes: form.duration_minutes,
         points: form.points ? parseInt(form.points) : 0,
@@ -136,6 +140,7 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
     setEditingId(service.id)
     setEditForm({
       name: service.name,
+      description: service.description ?? '',
       price: service.price ? String(service.price) : '',
       duration_minutes: service.duration_minutes,
       points: service.points ? String(service.points) : '',
@@ -148,10 +153,13 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
     setLoadingId(id)
     const priceValue = editForm.price ? parseFloat(editForm.price.replace(',', '.')) : null
 
+    const description = editForm.description.trim() || null
+
     const { error } = await supabase
       .from('services')
       .update({
         name: editForm.name.trim(),
+        description,
         price: priceValue,
         duration_minutes: editForm.duration_minutes,
         points: editForm.points ? parseInt(editForm.points) : 0,
@@ -165,6 +173,7 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
             ? {
                 ...s,
                 name: editForm.name.trim(),
+                description,
                 price: priceValue,
                 duration_minutes: editForm.duration_minutes,
                 points: editForm.points ? parseInt(editForm.points) : 0,
@@ -359,6 +368,35 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
           className="admin-input w-full px-3 py-2.5 text-sm"
         />
 
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="admin-label !mb-0">Descrição (opcional)</label>
+            <span
+              className="text-[10px] tabular-nums"
+              style={{
+                color:
+                  form.description.length > DESCRIPTION_MAX
+                    ? 'var(--admin-danger)'
+                    : 'var(--admin-text-faded)',
+              }}
+            >
+              {form.description.length}/{DESCRIPTION_MAX}
+            </span>
+          </div>
+          <textarea
+            value={form.description}
+            onChange={(e) =>
+              setForm({ ...form, description: e.target.value.slice(0, DESCRIPTION_MAX) })
+            }
+            placeholder="Ex: Inclui hidratação e finalização. Recomendado para cabelos secos."
+            rows={2}
+            className="admin-input w-full px-3 py-2.5 text-sm resize-none"
+          />
+          <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Aparece pro cliente abaixo do nome no momento de escolher.
+          </p>
+        </div>
+
         <div className="flex gap-2">
           <div className="flex-1">
             <label className="admin-label">Preço (R$)</label>
@@ -522,6 +560,31 @@ function ServiceCard({
           className="admin-input w-full px-3 py-2.5 text-sm"
           placeholder="Nome do serviço"
         />
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="admin-label !mb-0">Descrição (opcional)</label>
+            <span
+              className="text-[10px] tabular-nums"
+              style={{
+                color:
+                  editForm.description.length > DESCRIPTION_MAX
+                    ? 'var(--admin-danger)'
+                    : 'var(--admin-text-faded)',
+              }}
+            >
+              {editForm.description.length}/{DESCRIPTION_MAX}
+            </span>
+          </div>
+          <textarea
+            value={editForm.description}
+            onChange={(e) =>
+              setEditForm({ ...editForm, description: e.target.value.slice(0, DESCRIPTION_MAX) })
+            }
+            placeholder="Ex: Inclui hidratação e finalização."
+            rows={2}
+            className="admin-input w-full px-3 py-2.5 text-sm resize-none"
+          />
+        </div>
         <div className="flex gap-2">
           <div className="flex-1">
             <label className="admin-label">Preço (R$)</label>
@@ -681,6 +744,14 @@ function ServiceCard({
             </span>
           )}
         </p>
+        {service.description && (
+          <p
+            className="text-[11px] mt-1 line-clamp-2 leading-snug"
+            style={{ color: 'var(--admin-text-mute)' }}
+          >
+            {service.description}
+          </p>
+        )}
       </div>
       <MoreActionsMenu actions={actions} />
     </div>

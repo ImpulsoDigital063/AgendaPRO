@@ -1168,6 +1168,14 @@ export default function BookingFlow({
                       </span>
                     )}
                   </div>
+                  {service.description && (
+                    <p
+                      className="mt-1.5 text-xs leading-snug pl-8"
+                      style={{ color: isSelected ? 'rgba(255,255,255,0.92)' : C.mute }}
+                    >
+                      {service.description}
+                    </p>
+                  )}
                   <div
                     className="mt-2 flex items-center gap-3 text-xs pl-8"
                     style={{ color: isSelected ? 'rgba(255,255,255,0.85)' : C.mute }}

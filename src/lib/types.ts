@@ -50,6 +50,7 @@ export type Service = {
   id: string
   business_id: string
   name: string
+  description: string | null
   price: number | null
   duration_minutes: number
   active: boolean
