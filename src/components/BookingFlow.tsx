@@ -3,7 +3,17 @@
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { IconClock, IconSparkles, IconCheck, IconArrowRight } from '@/components/ui/Icon'
+import {
+  IconClock,
+  IconSparkles,
+  IconCheck,
+  IconArrowRight,
+  IconCalendar,
+  IconCopy,
+  IconWhatsapp,
+  IconClose,
+  IconUsers,
+} from '@/components/ui/Icon'
 
 type Prefill = {
   name: string
@@ -80,6 +90,17 @@ function formatDuration(min: number) {
   const h = Math.floor(min / 60)
   const m = min % 60
   return m === 0 ? `${h}h` : `${h}h ${m}min`
+}
+
+function GoogleGLogo({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
+      <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+      <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+      <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
+    </svg>
+  )
 }
 
 type Step = 'service' | 'professional' | 'date' | 'time' | 'form' | 'done'
@@ -185,6 +206,9 @@ export default function BookingFlow({
   const [reviewClaimMsg, setReviewClaimMsg] = useState<string | null>(null)
   const [reviewClaimError, setReviewClaimError] = useState<string | null>(null)
   const [reviewName, setReviewName] = useState('')
+
+  // Modal de cancelamento na tela done (evita toque acidental)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   // Fila de espera
   const [waitlistSlot, setWaitlistSlot] = useState<string | null>(null)
@@ -560,105 +584,266 @@ export default function BookingFlow({
 
   // TELA: AGENDAMENTO CONFIRMADO
   if (step === 'done') {
+    // Google Calendar URL (template) com início/fim e metadados
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const fmtCalDate = (d: Date) =>
+      `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`
+    let gcalUrl: string | null = null
+    if (selectedDate && selectedTime) {
+      const [sh, sm] = selectedTime.split(':').map(Number)
+      const startDt = new Date(selectedDate)
+      startDt.setHours(sh, sm, 0, 0)
+      const endDt = new Date(startDt.getTime() + Math.max(totalDuration, 30) * 60 * 1000)
+      const serviceNames = selectedServices.map((s) => s.name).join(', ') || 'Agendamento'
+      const title = `${serviceNames} — ${business.name}`
+      const details =
+        `Profissional: ${professional.name}` +
+        (business.phone ? `\nContato: ${business.phone}` : '') +
+        (cancelUrl ? `\nCancelar: ${cancelUrl}` : '')
+      const qp: Record<string, string> = {
+        action: 'TEMPLATE',
+        text: title,
+        dates: `${fmtCalDate(startDt)}/${fmtCalDate(endDt)}`,
+        details,
+      }
+      if (business.address) qp.location = business.address
+      gcalUrl = `https://www.google.com/calendar/render?${new URLSearchParams(qp).toString()}`
+    }
+
+    // Mensagem pronta para compartilhar no WhatsApp
+    const waShareMsg = myReferralLink
+      ? `Agendei em ${business.name} e tá top — se você também agendar por esse link a gente ganha pontos: ${myReferralLink}`
+      : ''
+    const waShareUrl = myReferralLink
+      ? `https://wa.me/?text=${encodeURIComponent(waShareMsg)}`
+      : null
+
     return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center" style={{ color: C.text }}>
+      <div className="p-4 space-y-4" style={{ color: C.text }}>
+        {/* A) HERO BRANDED com resumo dentro */}
         <div
-          className="mb-5 w-16 h-16 rounded-full flex items-center justify-center"
+          className="relative overflow-hidden rounded-3xl p-6 text-white"
           style={{
-            background: isDark ? 'rgba(34,197,94,0.15)' : 'rgb(220,252,231)',
-            boxShadow: `0 12px 32px -8px ${isDark ? 'rgba(34,197,94,0.4)' : 'rgba(34,197,94,0.25)'}`,
+            background:
+              'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+            boxShadow: '0 18px 40px -16px rgba(0,0,0,0.45)',
           }}
         >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg>
-        </div>
-        <h2 className="text-2xl font-bold mb-3" style={{ color: C.text }}>Agendamento confirmado!</h2>
-        {selectedServices.length > 0 && (
-          <div className="mb-3">
-            {selectedServices.map((s) => (
-              <p key={s.id} className="font-medium" style={{ color: C.text }}>{s.name}</p>
-            ))}
-            {hasPrice && (
-              <p className="font-bold mt-1 text-lg" style={{ color: C.text }}>{formatPrice(totalPrice)}</p>
+          <div
+            aria-hidden
+            className="absolute -top-10 -right-10 w-40 h-40 rounded-full"
+            style={{ background: 'rgba(255,255,255,0.12)', filter: 'blur(12px)' }}
+          />
+          <div
+            aria-hidden
+            className="absolute -bottom-14 -left-10 w-44 h-44 rounded-full"
+            style={{ background: 'rgba(255,255,255,0.08)', filter: 'blur(16px)' }}
+          />
+          <div className="relative">
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: 'rgba(255,255,255,0.22)',
+                  border: '1px solid rgba(255,255,255,0.4)',
+                  backdropFilter: 'blur(6px)',
+                }}
+              >
+                <IconCheck size={26} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wider opacity-80">
+                  Tudo certo
+                </p>
+                <h2 className="text-xl font-bold leading-tight">Agendamento confirmado!</h2>
+              </div>
+            </div>
+
+            {selectedServices.length > 0 && (
+              <div
+                className="rounded-2xl p-4 space-y-3"
+                style={{
+                  background: 'rgba(255,255,255,0.14)',
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  backdropFilter: 'blur(6px)',
+                }}
+              >
+                {/* data + hora */}
+                {selectedDate && (
+                  <div className="flex items-center gap-2">
+                    <IconCalendar size={16} />
+                    <p className="text-sm font-semibold capitalize">
+                      {selectedDate.toLocaleDateString('pt-BR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                      })}
+                      <span className="mx-1.5 opacity-70">•</span>
+                      {selectedTime}
+                    </p>
+                  </div>
+                )}
+                {/* serviços */}
+                <div className="space-y-1">
+                  {selectedServices.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between text-sm">
+                      <span className="opacity-95">{s.name}</span>
+                      {s.price !== null && (
+                        <span className="font-semibold tabular-nums">{formatPrice(s.price)}</span>
+                      )}
+                    </div>
+                  ))}
+                  {hasPrice && selectedServices.length > 1 && (
+                    <div
+                      className="flex items-center justify-between pt-2 mt-1 text-sm font-bold"
+                      style={{ borderTop: '1px solid rgba(255,255,255,0.22)' }}
+                    >
+                      <span>Total</span>
+                      <span className="tabular-nums">{formatPrice(totalPrice)}</span>
+                    </div>
+                  )}
+                </div>
+                {/* profissional */}
+                <div className="flex items-center gap-2 text-xs opacity-90">
+                  <IconUsers size={14} />
+                  <span>com {professional.name}</span>
+                </div>
+              </div>
             )}
           </div>
-        )}
-        <p className="mb-1" style={{ color: C.mute }}>
-          {selectedDate &&
-            selectedDate.toLocaleDateString('pt-BR', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-            })}
-        </p>
-        <p className="font-semibold text-lg mb-4" style={{ color: C.text }}>{selectedTime}</p>
-        {pointsEarned > 0 && (
-          <div
-            className="mt-4 mb-2 rounded-2xl px-5 py-3 flex items-center gap-3"
+        </div>
+
+        {/* E) Adicionar à agenda */}
+        {gcalUrl && (
+          <a
+            href={gcalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full rounded-2xl py-3 text-sm font-semibold transition-transform active:scale-[0.98]"
             style={{
-              background: isDark ? 'rgba(251,191,36,0.10)' : 'rgb(255,251,235)',
-              border: `1px solid ${isDark ? 'rgba(251,191,36,0.28)' : 'rgb(254,215,170)'}`,
+              background: C.surface,
+              color: C.text,
+              border: `1px solid ${C.border}`,
             }}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#FBBF24' }} className="flex-shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            <div className="text-left">
-              <p className="font-bold text-sm" style={{ color: isDark ? '#FCD34D' : '#92400E' }}>Você vai ganhar +{pointsEarned} pontos</p>
-              <p className="text-xs" style={{ color: isDark ? '#FBBF24' : '#B45309' }}>Os pontos entram após o atendimento.</p>
+            <IconCalendar size={16} />
+            Adicionar à minha agenda
+          </a>
+        )}
+
+        {/* B) PONTOS — brand-tinted */}
+        {pointsEarned > 0 && (
+          <div
+            className="rounded-2xl px-4 py-3 flex items-center gap-3"
+            style={{
+              background:
+                'color-mix(in srgb, var(--brand-primary, #3B82F6) 12%, transparent)',
+              border:
+                '1px solid color-mix(in srgb, var(--brand-primary, #3B82F6) 28%, transparent)',
+            }}
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white"
+              style={{
+                background:
+                  'linear-gradient(135deg, var(--brand-primary, #3B82F6), var(--brand-secondary, #06B6D4))',
+              }}
+            >
+              <IconSparkles size={18} />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-sm" style={{ color: C.text }}>
+                Você vai ganhar +{pointsEarned} pontos
+              </p>
+              <p className="text-xs" style={{ color: C.mute }}>
+                Os pontos entram após o atendimento.
+              </p>
             </div>
           </div>
         )}
-        <p className="text-sm max-w-xs mt-2" style={{ color: C.mute }}>
-          Tá tudo certo. Te esperamos no horário marcado!
-        </p>
 
+        {/* C) INDIQUE UM AMIGO — WhatsApp share + copiar */}
         {myReferralLink && (
           <div
-            className="mt-5 w-full max-w-sm rounded-2xl p-4 text-left"
+            className="rounded-2xl p-4"
             style={{
-              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgb(248,250,252)',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgb(226,232,240)'}`,
+              background: C.surface,
+              border: `1px solid ${C.border}`,
             }}
           >
-            <p className="text-sm font-bold mb-1" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>Indique um amigo e ganhe pontos!</p>
-            <p className="text-xs mb-3" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                style={{
+                  background:
+                    'linear-gradient(135deg, var(--brand-primary, #3B82F6), var(--brand-secondary, #06B6D4))',
+                }}
+              >
+                <IconSparkles size={14} />
+              </div>
+              <p className="text-sm font-bold" style={{ color: C.text }}>
+                Indique um amigo e ganhe pontos
+              </p>
+            </div>
+            <p className="text-xs mb-3" style={{ color: C.mute }}>
               Quando um amigo agendar por esse link e o estabelecimento confirmar, você ganha pontos.
             </p>
             <div className="flex gap-2">
-              <input
-                readOnly
-                value={myReferralLink}
-                className="flex-1 text-xs rounded-xl px-3 py-2 focus:outline-none truncate"
-                style={{
-                  background: isDark ? 'rgba(0,0,0,0.25)' : '#FFFFFF',
-                  color: isDark ? '#CBD5E1' : '#475569',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgb(226,232,240)'}`,
-                }}
-              />
+              {waShareUrl && (
+                <a
+                  href={waShareUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-white transition-transform active:scale-[0.98]"
+                  style={{ background: '#25D366' }}
+                >
+                  <IconWhatsapp size={16} />
+                  Enviar no WhatsApp
+                </a>
+              )}
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(myReferralLink)
                   setReferralCopied(true)
                   setTimeout(() => setReferralCopied(false), 2000)
                 }}
-                className="px-3 py-2 bg-[var(--brand-primary,#111827)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-transform active:scale-[0.98]"
+                style={{
+                  background: C.surfaceHi,
+                  color: C.text,
+                  border: `1px solid ${C.border}`,
+                }}
               >
-                {referralCopied ? 'Copiado!' : 'Copiar'}
+                {referralCopied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                {referralCopied ? 'Copiado' : 'Copiar'}
               </button>
             </div>
           </div>
         )}
 
+        {/* D) REVIEW GOOGLE — brand card + GoogleGLogo */}
         {business.points_for_review > 0 && business.google_place_id && (
           <div
-            className="mt-5 w-full max-w-sm rounded-2xl p-4 text-left"
+            className="rounded-2xl p-4"
             style={{
-              background: isDark ? 'rgba(59,130,246,0.10)' : 'rgb(239,246,255)',
-              border: `1px solid ${isDark ? 'rgba(59,130,246,0.28)' : 'rgb(191,219,254)'}`,
+              background:
+                'color-mix(in srgb, var(--brand-primary, #3B82F6) 10%, transparent)',
+              border:
+                '1px solid color-mix(in srgb, var(--brand-primary, #3B82F6) 24%, transparent)',
             }}
           >
-            <p className="text-sm font-bold mb-1" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-              Avalie a gente no Google e ganhe +{business.points_for_review} pontos
-            </p>
-            <p className="text-xs mb-3" style={{ color: isDark ? '#94A3B8' : '#475569' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <span
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: '#FFFFFF', border: `1px solid ${C.border}` }}
+              >
+                <GoogleGLogo size={14} />
+              </span>
+              <p className="text-sm font-bold" style={{ color: C.text }}>
+                Avalie no Google e ganhe +{business.points_for_review} pontos
+              </p>
+            </div>
+            <p className="text-xs mb-3" style={{ color: C.mute }}>
               Abra o Google, deixe sua avaliação e clique em &quot;Já avaliei&quot;. O estabelecimento confirma e seus pontos entram.
             </p>
             <div className="flex flex-col gap-2">
@@ -667,8 +852,15 @@ export default function BookingFlow({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setReviewOpened(true)}
-                className="block text-center px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-white transition-transform active:scale-[0.98]"
+                style={{
+                  background:
+                    'linear-gradient(135deg, var(--brand-primary, #3B82F6), var(--brand-secondary, #06B6D4))',
+                  boxShadow:
+                    '0 8px 20px -8px color-mix(in srgb, var(--brand-primary, #3B82F6) 70%, transparent)',
+                }}
               >
+                <GoogleGLogo size={16} />
                 Abrir Google
               </a>
               {reviewOpened && !reviewClaimMsg && (
@@ -678,11 +870,11 @@ export default function BookingFlow({
                     value={reviewName}
                     onChange={(e) => setReviewName(e.target.value)}
                     placeholder="Qual nome você usou na avaliação?"
-                    className="w-full text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-400"
+                    className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none"
                     style={{
-                      background: isDark ? 'rgba(0,0,0,0.25)' : '#FFFFFF',
-                      color: isDark ? '#F1F5F9' : '#1F2937',
-                      border: `1px solid ${isDark ? 'rgba(59,130,246,0.28)' : 'rgb(191,219,254)'}`,
+                      background: C.input,
+                      color: C.text,
+                      border: `1px solid ${C.border}`,
                     }}
                   />
                   <button
@@ -712,11 +904,11 @@ export default function BookingFlow({
                         setReviewClaiming(false)
                       }
                     }}
-                    className="block text-center px-3 py-2 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-transform active:scale-[0.98] disabled:opacity-50"
                     style={{
-                      background: isDark ? 'rgba(59,130,246,0.15)' : '#FFFFFF',
-                      color: isDark ? '#93C5FD' : '#1D4ED8',
-                      border: `1px solid ${isDark ? 'rgba(59,130,246,0.4)' : 'rgb(147,197,253)'}`,
+                      background: C.surfaceHi,
+                      color: C.text,
+                      border: `1px solid ${C.border}`,
                     }}
                   >
                     {reviewClaiming ? 'Enviando...' : 'Já avaliei, quero meus pontos'}
@@ -751,22 +943,91 @@ export default function BookingFlow({
           </div>
         )}
 
-        <a
-          href={`/${business.slug}/meus-pontos`}
-          className="mt-4 text-sm font-medium underline underline-offset-2 transition-opacity hover:opacity-70"
-          style={{ color: C.mute }}
-        >
-          Ver meus pontos
-        </a>
-
-        {cancelUrl && (
+        {/* Ações inferiores */}
+        <div className="pt-2 space-y-2">
           <a
-            href={cancelUrl}
-            className="mt-2 text-xs underline underline-offset-2 transition-colors hover:text-red-500"
-            style={{ color: C.faded }}
+            href={`/${business.slug}/meus-pontos`}
+            className="flex items-center justify-center gap-2 w-full rounded-2xl py-3 text-sm font-semibold transition-transform active:scale-[0.98]"
+            style={{
+              background:
+                'linear-gradient(135deg, var(--brand-primary, #3B82F6), var(--brand-secondary, #06B6D4))',
+              color: '#FFFFFF',
+              boxShadow:
+                '0 10px 22px -10px color-mix(in srgb, var(--brand-primary, #3B82F6) 70%, transparent)',
+            }}
           >
-            Preciso cancelar
+            Ver meus pontos
+            <IconArrowRight size={16} />
           </a>
+
+          {cancelUrl && (
+            <button
+              onClick={() => setShowCancelConfirm(true)}
+              className="w-full rounded-2xl py-2.5 text-xs font-medium transition-opacity hover:opacity-80"
+              style={{ color: C.faded, background: 'transparent' }}
+            >
+              Preciso cancelar este agendamento
+            </button>
+          )}
+        </div>
+
+        {/* F) MODAL de confirmação de cancelamento */}
+        {showCancelConfirm && cancelUrl && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+            onClick={() => setShowCancelConfirm(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl p-5"
+              style={{
+                background: isDark ? '#0B1220' : '#FFFFFF',
+                border: `1px solid ${C.border}`,
+                boxShadow: '0 24px 50px -20px rgba(0,0,0,0.6)',
+              }}
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: isDark ? 'rgba(239,68,68,0.15)' : 'rgb(254,242,242)',
+                    color: '#EF4444',
+                  }}
+                >
+                  <IconClose size={20} />
+                </div>
+                <div>
+                  <p className="font-bold text-base" style={{ color: C.text }}>
+                    Cancelar este agendamento?
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: C.mute }}>
+                    O horário volta a ficar livre para outros clientes. Você pode agendar novamente depois.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-transform active:scale-[0.98]"
+                  style={{
+                    background: C.surfaceHi,
+                    color: C.text,
+                    border: `1px solid ${C.border}`,
+                  }}
+                >
+                  Voltar
+                </button>
+                <a
+                  href={cancelUrl}
+                  className="flex-1 text-center rounded-xl py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98]"
+                  style={{ background: '#EF4444' }}
+                >
+                  Sim, cancelar
+                </a>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     )
