@@ -126,30 +126,32 @@ export default function NegocioTab({ business }: Props) {
 
         {/* Logo */}
         <div className="flex items-center gap-4">
-          <div
-            className="relative w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center flex-shrink-0"
-            style={{
-              background: logoUrl ? 'transparent' : 'var(--admin-input-bg)',
-              border: '1px solid var(--admin-border)',
-            }}
-          >
-            {logoUrl ? (
-              <>
+          <div className="relative w-20 h-20 flex-shrink-0">
+            <div
+              className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center"
+              style={{
+                background: logoUrl ? 'transparent' : 'var(--admin-input-bg)',
+                border: '1px solid var(--admin-border)',
+              }}
+            >
+              {logoUrl ? (
                 <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setConfirmRemoveLogo(true)}
-                  disabled={uploadingLogo}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-md disabled:opacity-50"
-                  style={{ background: 'var(--admin-danger)', color: '#FFFFFF' }}
-                  title="Remover logo"
-                  aria-label="Remover logo"
-                >
-                  <IconClose size={12} strokeWidth={2.5} />
-                </button>
-              </>
-            ) : (
-              <IconCamera size={28} className="opacity-40" />
+              ) : (
+                <IconCamera size={28} className="opacity-40" />
+              )}
+            </div>
+            {logoUrl && (
+              <button
+                type="button"
+                onClick={() => setConfirmRemoveLogo(true)}
+                disabled={uploadingLogo}
+                className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center shadow-md disabled:opacity-50 ring-2 ring-[var(--admin-bg)]"
+                style={{ background: 'var(--admin-danger)', color: '#FFFFFF' }}
+                title="Remover logo"
+                aria-label="Remover logo"
+              >
+                <IconClose size={12} strokeWidth={2.5} />
+              </button>
             )}
           </div>
           <div className="flex-1 min-w-0">
@@ -157,7 +159,7 @@ export default function NegocioTab({ business }: Props) {
               Logo do negócio
             </p>
             <p className="text-xs mb-2" style={{ color: 'var(--admin-text-mute)' }}>
-              PNG, JPG ou WEBP. Máximo 4MB. Aparece nas telas públicas.
+              PNG, JPG ou WEBP. Ideal quadrada, 512×512px. Máximo 4MB. Aparece nas telas públicas.
             </p>
             <input
               ref={fileInput}
