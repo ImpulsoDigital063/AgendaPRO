@@ -17,6 +17,10 @@ export type Business = {
   brand_primary?: string | null
   brand_secondary?: string | null
   brand_mode?: 'dark' | 'light' | null
+  instagram_url?: string | null
+  facebook_url?: string | null
+  tiktok_url?: string | null
+  website_url?: string | null
 }
 
 export type Professional = {

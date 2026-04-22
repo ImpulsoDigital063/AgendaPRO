@@ -10,6 +10,7 @@ import {
   IconClock,
   IconSparkles,
   IconArrowRight,
+  IconInstagram,
 } from '@/components/ui/Icon'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +33,7 @@ export default async function BusinessPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, slug, description, address, phone, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral')
+    .select('id, name, slug, description, address, phone, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url')
     .eq('slug', slug)
     .single()
 
@@ -47,9 +48,10 @@ export default async function BusinessPage({
       .order('name'),
     supabase
       .from('professionals')
-      .select('id, name, photo_url, active')
+      .select('id, name, photo_url, active, created_at')
       .eq('business_id', business.id)
-      .eq('active', true),
+      .eq('active', true)
+      .order('created_at', { ascending: true }),
   ])
 
   const b = business as Business & { category?: string }
@@ -191,6 +193,83 @@ export default async function BusinessPage({
               </a>
             )}
           </div>
+
+          {(b.instagram_url || b.facebook_url || b.tiktok_url || b.website_url) && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {b.instagram_url && (
+                <a
+                  href={b.instagram_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="w-9 h-9 rounded-full inline-flex items-center justify-center transition-transform hover:scale-110"
+                  style={{
+                    background: hexToRgba(primary, 0.12),
+                    color: primary,
+                    border: `1px solid ${hexToRgba(primary, 0.3)}`,
+                  }}
+                >
+                  <IconInstagram size={16} />
+                </a>
+              )}
+              {b.facebook_url && (
+                <a
+                  href={b.facebook_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="w-9 h-9 rounded-full inline-flex items-center justify-center transition-transform hover:scale-110"
+                  style={{
+                    background: hexToRgba(primary, 0.12),
+                    color: primary,
+                    border: `1px solid ${hexToRgba(primary, 0.3)}`,
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z" />
+                  </svg>
+                </a>
+              )}
+              {b.tiktok_url && (
+                <a
+                  href={b.tiktok_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="TikTok"
+                  className="w-9 h-9 rounded-full inline-flex items-center justify-center transition-transform hover:scale-110"
+                  style={{
+                    background: hexToRgba(primary, 0.12),
+                    color: primary,
+                    border: `1px solid ${hexToRgba(primary, 0.3)}`,
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.16a8.07 8.07 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.84-.59z" />
+                  </svg>
+                </a>
+              )}
+              {b.website_url && (
+                <a
+                  href={b.website_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Site"
+                  className="w-9 h-9 rounded-full inline-flex items-center justify-center transition-transform hover:scale-110"
+                  style={{
+                    background: hexToRgba(primary, 0.12),
+                    color: primary,
+                    border: `1px solid ${hexToRgba(primary, 0.3)}`,
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                  </svg>
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         {/* CTA Agendar */}
@@ -342,21 +421,10 @@ export default async function BusinessPage({
               rating={b.google_rating}
               reviewsCount={b.google_reviews_count}
               pointsForReview={b.points_for_review}
+              brandMode={mode}
+              slug={slug}
             />
           </section>
-        )}
-
-        {/* Atalho meus pontos (se o negócio usa programa de fidelidade) */}
-        {((b.points_for_review ?? 0) > 0 || (b.points_for_referral ?? 0) > 0) && (
-          <div className="text-center mb-6">
-            <Link
-              href={`/${slug}/meus-pontos`}
-              className="inline-block text-sm font-medium underline underline-offset-2 hover:opacity-80 transition-opacity"
-              style={{ color: muted }}
-            >
-              Ver meus pontos de fidelidade
-            </Link>
-          </div>
         )}
 
         {/* CTA repetida no fim */}

@@ -20,6 +20,10 @@ export default function NegocioTab({ business }: Props) {
   const [googleRating, setGoogleRating] = useState(business.google_rating ? String(business.google_rating) : '')
   const [googleReviewsCount, setGoogleReviewsCount] = useState(business.google_reviews_count ? String(business.google_reviews_count) : '')
   const [pointsForReview, setPointsForReview] = useState(business.points_for_review ? String(business.points_for_review) : '')
+  const [instagramUrl, setInstagramUrl] = useState(business.instagram_url || '')
+  const [facebookUrl, setFacebookUrl] = useState(business.facebook_url || '')
+  const [tiktokUrl, setTiktokUrl] = useState(business.tiktok_url || '')
+  const [websiteUrl, setWebsiteUrl] = useState(business.website_url || '')
   const [logoUrl, setLogoUrl] = useState(business.logo_url || '')
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [confirmRemoveLogo, setConfirmRemoveLogo] = useState(false)
@@ -108,6 +112,10 @@ export default function NegocioTab({ business }: Props) {
         google_rating: googleRating ? parseFloat(googleRating) : null,
         google_reviews_count: googleReviewsCount ? parseInt(googleReviewsCount) : null,
         points_for_review: pointsForReview ? parseInt(pointsForReview) : 0,
+        instagram_url: instagramUrl.trim() || null,
+        facebook_url: facebookUrl.trim() || null,
+        tiktok_url: tiktokUrl.trim() || null,
+        website_url: websiteUrl.trim() || null,
       })
       .eq('id', business.id)
 
@@ -307,6 +315,61 @@ export default function NegocioTab({ business }: Props) {
               min="0"
               className="admin-input w-full px-3 py-2.5 text-sm"
               placeholder="ex: 150"
+            />
+          </div>
+        </div>
+
+        <div
+          className="pt-4 space-y-3"
+          style={{ borderTop: '1px solid var(--admin-divider)' }}
+        >
+          <h4
+            className="text-xs font-semibold uppercase tracking-[0.15em]"
+            style={{ color: 'var(--admin-text-mute)' }}
+          >
+            Redes sociais
+          </h4>
+          <p className="text-xs -mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+            Aparecem como ícones na sua página pública. Cole o link completo de cada uma.
+          </p>
+          <div>
+            <label className="admin-label">Instagram</label>
+            <input
+              type="url"
+              value={instagramUrl}
+              onChange={e => setInstagramUrl(e.target.value)}
+              className="admin-input w-full px-3 py-2.5 text-sm"
+              placeholder="https://instagram.com/seunegocio"
+            />
+          </div>
+          <div>
+            <label className="admin-label">Facebook</label>
+            <input
+              type="url"
+              value={facebookUrl}
+              onChange={e => setFacebookUrl(e.target.value)}
+              className="admin-input w-full px-3 py-2.5 text-sm"
+              placeholder="https://facebook.com/seunegocio"
+            />
+          </div>
+          <div>
+            <label className="admin-label">TikTok</label>
+            <input
+              type="url"
+              value={tiktokUrl}
+              onChange={e => setTiktokUrl(e.target.value)}
+              className="admin-input w-full px-3 py-2.5 text-sm"
+              placeholder="https://tiktok.com/@seunegocio"
+            />
+          </div>
+          <div>
+            <label className="admin-label">Site</label>
+            <input
+              type="url"
+              value={websiteUrl}
+              onChange={e => setWebsiteUrl(e.target.value)}
+              className="admin-input w-full px-3 py-2.5 text-sm"
+              placeholder="https://seunegocio.com.br"
             />
           </div>
         </div>

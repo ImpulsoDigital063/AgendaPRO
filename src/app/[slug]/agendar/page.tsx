@@ -24,7 +24,7 @@ export default async function AgendarPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, slug, description, phone, address, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, whatsapp_instance_id, whatsapp_token, slot_interval_minutes, max_daily_appointments')
+    .select('id, name, slug, description, phone, address, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url, whatsapp_instance_id, whatsapp_token, slot_interval_minutes, max_daily_appointments')
     .eq('slug', slug)
     .single()
 
@@ -32,9 +32,10 @@ export default async function AgendarPage({
 
   const { data: professionals } = await supabase
     .from('professionals')
-    .select('id, name, photo_url, active, business_id')
+    .select('id, name, photo_url, active, business_id, created_at')
     .eq('business_id', business.id)
     .eq('active', true)
+    .order('created_at', { ascending: true })
 
   const [{ data: workingHours }, { data: services }] = await Promise.all([
     supabase
