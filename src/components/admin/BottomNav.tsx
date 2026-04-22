@@ -5,18 +5,23 @@ import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import {
   IconCalendar,
+  IconCalendarSolid,
   IconUsers,
+  IconUsersSolid,
   IconWallet,
+  IconWalletSolid,
   IconSettings,
+  IconSettingsSolid,
 } from '@/components/ui/Icon'
 
-type Tab = { href: string; label: string; Icon: (p: { size?: number; strokeWidth?: number }) => ReactNode }
+type IconCmp = (p: { size?: number; strokeWidth?: number }) => ReactNode
+type Tab = { href: string; label: string; Icon: IconCmp; IconSolid: IconCmp }
 
 const tabs: Tab[] = [
-  { href: '/admin',              label: 'Agenda',     Icon: IconCalendar },
-  { href: '/admin/clientes',     label: 'Clientes',   Icon: IconUsers    },
-  { href: '/admin/financeiro',   label: 'Financeiro', Icon: IconWallet   },
-  { href: '/admin/configuracoes', label: 'Config',    Icon: IconSettings },
+  { href: '/admin',               label: 'Agenda',     Icon: IconCalendar, IconSolid: IconCalendarSolid },
+  { href: '/admin/clientes',      label: 'Clientes',   Icon: IconUsers,    IconSolid: IconUsersSolid    },
+  { href: '/admin/financeiro',    label: 'Financeiro', Icon: IconWallet,   IconSolid: IconWalletSolid   },
+  { href: '/admin/configuracoes', label: 'Config',     Icon: IconSettings, IconSolid: IconSettingsSolid },
 ]
 
 export default function BottomNav() {
@@ -64,7 +69,7 @@ export default function BottomNav() {
                   />
                 </>
               )}
-              <tab.Icon size={22} strokeWidth={active ? 2.2 : 1.8} />
+              {active ? <tab.IconSolid size={22} /> : <tab.Icon size={22} strokeWidth={1.7} />}
               <span
                 className="text-[11px] font-semibold tracking-wide"
                 style={{ color: active ? 'var(--admin-accent)' : 'var(--admin-text-faded)' }}

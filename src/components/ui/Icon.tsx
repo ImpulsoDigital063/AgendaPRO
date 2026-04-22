@@ -30,13 +30,38 @@ export function IconCalendar(p: IconProps) {
   )
 }
 
+export function IconCalendarSolid(p: IconProps) {
+  const { size = 20, ...rest } = p
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...rest}>
+      <path d="M8 1.5a1 1 0 0 1 1 1V4h6V2.5a1 1 0 1 1 2 0V4h1a3 3 0 0 1 3 3v2H3V7a3 3 0 0 1 3-3h1V2.5a1 1 0 0 1 1-1z" />
+      <path d="M3 11h18v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-8z" opacity="0.95" />
+      <circle cx="8" cy="16" r="1.3" fill="#fff" opacity="0.9" />
+      <circle cx="12" cy="16" r="1.3" fill="#fff" opacity="0.9" />
+      <circle cx="16" cy="16" r="1.3" fill="#fff" opacity="0.9" />
+    </svg>
+  )
+}
+
 export function IconUsers(p: IconProps) {
   return (
     <svg {...base(p)}>
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 4.13a4 4 0 0 1 0 7.75" />
+      <circle cx="9" cy="8" r="4" />
+      <path d="M2 21c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5" />
+      <circle cx="17" cy="9" r="3" />
+      <path d="M22 19.5c0-2.5-1.7-4.5-4-5" />
+    </svg>
+  )
+}
+
+export function IconUsersSolid(p: IconProps) {
+  const { size = 20, ...rest } = p
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...rest}>
+      <circle cx="9" cy="8" r="4" />
+      <path d="M2 20.5C2 16.9 5.1 14 9 14s7 2.9 7 6.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" />
+      <circle cx="17.5" cy="9" r="3" />
+      <path d="M19 14.6c1.7.7 3 2.4 3 4.4a1 1 0 0 1-1 1h-3.2a8.7 8.7 0 0 0-1.7-4.6c.9-.5 1.9-.8 2.9-.8z" />
     </svg>
   )
 }
@@ -55,6 +80,19 @@ export function IconSettings(p: IconProps) {
     <svg {...base(p)}>
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+
+export function IconSettingsSolid(p: IconProps) {
+  const { size = 20, ...rest } = p
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...rest}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M14 2.5a1.5 1.5 0 0 1 1.5 1.5v.4c.5.2 1 .4 1.4.7l.3-.3a1.5 1.5 0 0 1 2.1 0l1 1a1.5 1.5 0 0 1 0 2.1l-.3.3c.3.4.5.9.7 1.4H21a1.5 1.5 0 0 1 1.5 1.5v1.4a1.5 1.5 0 0 1-1.5 1.5h-.3c-.2.5-.4 1-.7 1.4l.3.3a1.5 1.5 0 0 1 0 2.1l-1 1a1.5 1.5 0 0 1-2.1 0l-.3-.3c-.4.3-.9.5-1.4.7V21a1.5 1.5 0 0 1-1.5 1.5h-1.4a1.5 1.5 0 0 1-1.5-1.5v-.3c-.5-.2-1-.4-1.4-.7l-.3.3a1.5 1.5 0 0 1-2.1 0l-1-1a1.5 1.5 0 0 1 0-2.1l.3-.3c-.3-.4-.5-.9-.7-1.4H3A1.5 1.5 0 0 1 1.5 14v-1.4A1.5 1.5 0 0 1 3 11.1h.3c.2-.5.4-1 .7-1.4l-.3-.3a1.5 1.5 0 0 1 0-2.1l1-1a1.5 1.5 0 0 1 2.1 0l.3.3c.4-.3.9-.5 1.4-.7V4A1.5 1.5 0 0 1 9.9 2.5h4.1zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"
+      />
     </svg>
   )
 }
@@ -272,10 +310,20 @@ export function IconPalette(p: IconProps) {
 export function IconWallet(p: IconProps) {
   return (
     <svg {...base(p)}>
-      <path d="M20 12V8a2 2 0 0 0-2-2H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h13v0" />
-      <path d="M4 6v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4" />
-      <circle cx="17" cy="14" r="1.3" fill="currentColor" stroke="none" />
-      <path d="M22 10h-5a2 2 0 0 0 0 4h5" />
+      <rect x="2.5" y="6" width="19" height="14" rx="2.5" />
+      <path d="M2.5 10h19" />
+      <path d="M6 6V4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 18 4.5V6" />
+      <circle cx="17" cy="15" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+export function IconWalletSolid(p: IconProps) {
+  const { size = 20, ...rest } = p
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...rest}>
+      <path d="M7.5 3h9A2.5 2.5 0 0 1 19 5.5V6H5v-.5A2.5 2.5 0 0 1 7.5 3z" opacity="0.85" />
+      <path d="M2.5 8.5A2.5 2.5 0 0 1 5 6h14a2.5 2.5 0 0 1 2.5 2.5V19a3 3 0 0 1-3 3h-13a3 3 0 0 1-3-3V8.5zm16 5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
     </svg>
   )
 }
