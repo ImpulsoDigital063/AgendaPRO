@@ -137,7 +137,7 @@ export default async function AgendarPage({
           >
             <Link
               href={`/${slug}`}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 flex-shrink-0"
               style={{
                 background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
                 color: isDark ? '#F8FAFC' : '#0F172A',
@@ -147,6 +147,21 @@ export default async function AgendarPage({
             >
               <IconArrowLeft size={18} />
             </Link>
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold flex-shrink-0 overflow-hidden"
+              style={{
+                background: b.logo_url ? (isDark ? '#050713' : '#FFFFFF') : cover,
+                color: '#FFFFFF',
+                border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid #E2E8F0',
+              }}
+            >
+              {b.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={b.logo_url} alt={b.name} className="w-full h-full object-contain p-0.5" />
+              ) : (
+                b.name.charAt(0).toUpperCase()
+              )}
+            </div>
             <div className="min-w-0 flex-1">
               <h1 className="font-bold truncate" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
                 {b.name}

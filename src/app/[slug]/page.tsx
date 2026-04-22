@@ -118,19 +118,19 @@ export default async function BusinessPage({
               : '0 12px 40px -12px rgba(15,23,42,0.15)',
           }}
         >
-          <div className="flex items-end gap-4 -mt-12 mb-3">
+          <div className="flex items-end gap-4 -mt-16 mb-3">
             <div
-              className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold flex-shrink-0 overflow-hidden"
+              className="w-28 h-28 rounded-3xl flex items-center justify-center text-4xl font-bold flex-shrink-0 overflow-hidden"
               style={{
-                background: cover,
+                background: b.logo_url ? (isDark ? '#050713' : '#FFFFFF') : cover,
                 color: 'white',
                 border: `4px solid ${isDark ? '#050713' : '#FFFFFF'}`,
-                boxShadow: `0 10px 30px -10px ${hexToRgba(primary, 0.6)}`,
+                boxShadow: `0 16px 44px -14px ${hexToRgba(primary, 0.65)}`,
               }}
             >
               {b.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={b.logo_url} alt={b.name} className="w-full h-full object-cover" />
+                <img src={b.logo_url} alt={b.name} className="w-full h-full object-contain p-1" />
               ) : (
                 b.name.charAt(0).toUpperCase()
               )}
@@ -240,14 +240,20 @@ export default async function BusinessPage({
                   <div
                     className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-lg overflow-hidden"
                     style={{
-                      background: hexToRgba(primary, 0.15),
-                      color: primary,
+                      background: pro.photo_url ? 'transparent' : cover,
+                      color: '#FFFFFF',
                       border: `2px solid ${hexToRgba(primary, 0.3)}`,
+                      boxShadow: `0 6px 16px -6px ${hexToRgba(primary, 0.45)}`,
                     }}
                   >
                     {pro.photo_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={pro.photo_url} alt={pro.name} className="w-full h-full object-cover" />
+                      <img
+                        src={pro.photo_url}
+                        alt={pro.name}
+                        className="w-full h-full object-cover"
+                        style={{ objectPosition: 'center 20%' }}
+                      />
                     ) : (
                       pro.name.charAt(0).toUpperCase()
                     )}

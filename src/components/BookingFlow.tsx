@@ -906,16 +906,33 @@ export default function BookingFlow({
                   }
                 >
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden"
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0 overflow-hidden"
                     style={
-                      isSelected
-                        ? { background: '#FFFFFF', color: '#111827', boxShadow: '0 0 0 2px rgba(255,255,255,0.6)' }
-                        : { background: C.surfaceHi, color: C.body }
+                      prof.photo_url
+                        ? {
+                            background: 'transparent',
+                            boxShadow: isSelected
+                              ? '0 0 0 2px rgba(255,255,255,0.6)'
+                              : `0 0 0 2px ${C.borderHi}`,
+                          }
+                        : {
+                            background:
+                              'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+                            color: '#FFFFFF',
+                            boxShadow: isSelected
+                              ? '0 0 0 2px rgba(255,255,255,0.6)'
+                              : 'none',
+                          }
                     }
                   >
                     {prof.photo_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={prof.photo_url} alt={prof.name} className="w-full h-full object-cover" />
+                      <img
+                        src={prof.photo_url}
+                        alt={prof.name}
+                        className="w-full h-full object-cover"
+                        style={{ objectPosition: 'center 20%' }}
+                      />
                     ) : (
                       prof.name.charAt(0).toUpperCase()
                     )}
