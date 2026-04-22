@@ -5,14 +5,25 @@ import { useEffect, useRef, useState } from 'react'
 type Props = {
   value: number
   duration?: number
-  format?: (n: number) => string
+  prefix?: string
+  suffix?: string
+  /** Se true, formata com pt-BR (separador de milhar). */
+  localized?: boolean
   className?: string
   style?: React.CSSProperties
 }
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
 
-export default function CountUp({ value, duration = 700, format, className, style }: Props) {
+export default function CountUp({
+  value,
+  duration = 700,
+  prefix = '',
+  suffix = '',
+  localized = false,
+  className,
+  style,
+}: Props) {
   const [display, setDisplay] = useState(0)
   const startedRef = useRef(false)
 
@@ -30,20 +41,25 @@ export default function CountUp({ value, duration = 700, format, className, styl
 
     let raf = 0
     const start = performance.now()
-    const from = 0
     const tick = (now: number) => {
       const progress = Math.min(1, (now - start) / duration)
       const eased = easeOutCubic(progress)
-      setDisplay(Math.round(from + (value - from) * eased))
+      setDisplay(Math.round((value) * eased))
       if (progress < 1) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [value, duration])
 
+  const text = localized
+    ? display.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    : String(display)
+
   return (
     <span className={className} style={style}>
-      {format ? format(display) : display}
+      {prefix}
+      {text}
+      {suffix}
     </span>
   )
 }

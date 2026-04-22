@@ -176,12 +176,7 @@ export default async function AdminPage() {
                 className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
                 style={{ color: 'var(--admin-text)' }}
               >
-                <CountUp
-                  value={revenue}
-                  format={(n) =>
-                    'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-                  }
-                />
+                <CountUp value={revenue} prefix="R$ " localized />
               </p>
               <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
                 {confirmed.length + completed.length} atendimento{confirmed.length + completed.length === 1 ? '' : 's'} pago{confirmed.length + completed.length === 1 ? '' : 's'}
