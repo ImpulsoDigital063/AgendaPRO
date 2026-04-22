@@ -25,7 +25,7 @@ export default function DivulgarCard({ slug, appUrl }: Props) {
     }
   }, [])
 
-  const bookingLink = `${origin}/${slug}/agendar`
+  const bookingLink = `${origin}/${slug}`
 
   function handleCopy() {
     navigator.clipboard.writeText(bookingLink).then(() => {
