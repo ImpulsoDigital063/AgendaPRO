@@ -44,7 +44,7 @@ export default async function FinanceiroPage({
     .select(`
       id, client_name, client_phone, appointment_date, start_time,
       status, service_name, total_price,
-      professional:professionals(id, name, commission_percentage)
+      professional:professionals(id, name, commission_percentage, employment_type)
     `)
     .eq('business_id', business.id)
     .gte('appointment_date', startDate)

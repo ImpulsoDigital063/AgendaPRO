@@ -14,7 +14,7 @@ export type AppointmentRow = {
   status: string
   service_name: string | null
   total_price: number | null
-  professional: { id: string; name: string; commission_percentage: number } | null
+  professional: { id: string; name: string; commission_percentage: number; employment_type?: string | null } | null
 }
 
 type Props = {
@@ -56,6 +56,8 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
   for (const a of realizados) {
     const prof = a.professional
     if (!prof) continue
+    // Contratados (salário fixo) não entram no rateio de comissão
+    if ((prof.employment_type ?? 'commissioned') === 'employed') continue
     if (!profMap[prof.id]) {
       profMap[prof.id] = {
         id: prof.id,
