@@ -25,6 +25,15 @@ export default async function MeusPontosPage({
 
   if (!business) notFound()
 
+  const { data: cheapestReward } = await supabase
+    .from('rewards')
+    .select('id, name, points_required')
+    .eq('business_id', business.id)
+    .eq('active', true)
+    .order('points_required', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
   const b = business as Business
   const primary = b.brand_primary || '#3B82F6'
   const secondary = b.brand_secondary || '#06B6D4'
@@ -77,7 +86,17 @@ export default async function MeusPontosPage({
           </div>
         </div>
 
-        <MeusPontosClient businessId={b.id} slug={b.slug} isDark={isDark} />
+        <MeusPontosClient
+          businessId={b.id}
+          slug={b.slug}
+          businessName={b.name}
+          isDark={isDark}
+          cheapestReward={
+            cheapestReward
+              ? { name: cheapestReward.name, pointsRequired: cheapestReward.points_required }
+              : null
+          }
+        />
 
         <div className="text-center space-y-2 py-8 px-4">
           <Link href="/" className="inline-flex items-center opacity-70 hover:opacity-100 transition-opacity">

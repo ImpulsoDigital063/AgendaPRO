@@ -1,7 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { IconSparkles, IconCalendar, IconUsers, IconCheck, IconClose, IconClock, IconArrowRight } from '@/components/ui/Icon'
+import {
+  IconSparkles,
+  IconCalendar,
+  IconUsers,
+  IconCheck,
+  IconClose,
+  IconClock,
+  IconArrowRight,
+  IconGift,
+  IconStar,
+  IconCopy,
+  IconWhatsapp,
+} from '@/components/ui/Icon'
 
 type Transaction = {
   id: string
@@ -63,16 +75,21 @@ const REASON_LABEL: Record<Transaction['reason'], string> = {
 export default function MeusPontosClient({
   businessId,
   slug,
+  businessName,
   isDark,
+  cheapestReward,
 }: {
   businessId: string
   slug: string
+  businessName: string
   isDark: boolean
+  cheapestReward: { name: string; pointsRequired: number } | null
 }) {
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<LookupResult | null>(null)
   const [copied, setCopied] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState<UpcomingAppointment | null>(null)
 
   async function handleSearch() {
     const digits = phone.replace(/\D/g, '')
@@ -221,23 +238,10 @@ export default function MeusPontosClient({
       {/* Resultado: encontrado */}
       {result?.found && result.customer && (
         <>
-          {/* Saldo */}
+          {/* Saldo + progress até recompensa + CTA agendar */}
           {result.points_mode === 'professional' && result.points_by_professional && result.points_by_professional.length > 0 ? (
             <div className="space-y-3">
-              <div
-                className="rounded-2xl p-4 text-center"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.05))',
-                  border: '1px solid rgba(251, 191, 36, 0.3)',
-                }}
-              >
-                <p className="text-xs uppercase tracking-wider" style={{ color: textMute }}>
-                  Olá, {result.customer.name.split(' ')[0]}
-                </p>
-                <p className="text-xs mt-1.5" style={{ color: textMute }}>
-                  Seus pontos por profissional
-                </p>
-              </div>
+              <SaldoBrandHeader name={result.customer.name} subtitle="Seus pontos por profissional" />
               <div className="space-y-2">
                 {result.points_by_professional.map((p) => (
                   <div
@@ -253,31 +257,22 @@ export default function MeusPontosClient({
                         Pontos acumulados com este profissional
                       </p>
                     </div>
-                    <p className="text-2xl font-bold" style={{ color: '#F59E0B' }}>
+                    <p className="text-2xl font-bold inline-flex items-center gap-1" style={{ color: 'var(--brand-primary, #3B82F6)' }}>
+                      <IconSparkles size={16} color="currentColor" />
                       {p.total_points}
                     </p>
                   </div>
                 ))}
               </div>
+              <BookAgainCta slug={slug} />
             </div>
           ) : (
-            <div
-              className="rounded-2xl p-5 text-center"
-              style={{
-                background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.05))',
-                border: '1px solid rgba(251, 191, 36, 0.3)',
-              }}
-            >
-              <p className="text-xs uppercase tracking-wider" style={{ color: textMute }}>
-                Olá, {result.customer.name.split(' ')[0]}
-              </p>
-              <p className="text-4xl font-bold mt-2" style={{ color: '#F59E0B' }}>
-                {result.customer.total_points}
-              </p>
-              <p className="text-xs mt-1" style={{ color: textMute }}>
-                pontos de fidelidade
-              </p>
-            </div>
+            <SaldoBrandCard
+              name={result.customer.name}
+              points={result.customer.total_points}
+              cheapestReward={cheapestReward}
+              slug={slug}
+            />
           )}
 
           {/* Próximos agendamentos — cancelamento direto */}
@@ -313,8 +308,8 @@ export default function MeusPontosClient({
                           </p>
                         )}
                       </div>
-                      <a
-                        href={`/cancelar?id=${appt.id}&token=${appt.cancel_token}`}
+                      <button
+                        onClick={() => setCancelTarget(appt)}
                         className="text-xs font-medium px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
                         style={{
                           background: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2',
@@ -323,7 +318,7 @@ export default function MeusPontosClient({
                         }}
                       >
                         Cancelar
-                      </a>
+                      </button>
                     </div>
                   )
                 })}
@@ -366,26 +361,56 @@ export default function MeusPontosClient({
 
           {/* Link de indicação */}
           <div
-            className="rounded-2xl p-4 space-y-2"
+            className="rounded-2xl p-4 space-y-3"
             style={{ background: cardBg, border: cardBorder }}
           >
-            <p className="text-xs uppercase tracking-wider" style={{ color: textMute }}>
-              Indique um amigo e ganhe pontos
-            </p>
-            <p className="text-xs" style={{ color: textMute }}>
-              Quando ele agendar por esse link e comparecer ao atendimento, você ganha pontos.
-            </p>
-            <div className="flex gap-2">
-              <input
-                readOnly
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}${result.customer.referral_link}`}
-                className="flex-1 border rounded-xl px-3 py-2 text-xs focus:outline-none"
+            <div className="flex items-start gap-2">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{
-                  background: isDark ? 'rgba(0,0,0,0.3)' : '#fff',
-                  borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
-                  color: isDark ? '#F8FAFC' : '#0F172A',
+                  background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+                  color: '#FFFFFF',
                 }}
-              />
+              >
+                <IconUsers size={16} color="#FFFFFF" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: textMute }}>
+                  Indique um amigo e ganhe pontos
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: textMute }}>
+                  Quando ele agendar pelo seu link e comparecer, você ganha.
+                </p>
+              </div>
+            </div>
+            <div
+              className="rounded-xl px-3 py-2 text-[11px] truncate"
+              style={{
+                background: isDark ? 'rgba(0,0,0,0.3)' : '#F8FAFC',
+                border: cardBorder,
+                color: textMute,
+              }}
+            >
+              {`${typeof window !== 'undefined' ? window.location.origin : ''}${result.customer.referral_link}`}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <a
+                href={(() => {
+                  const link = `${typeof window !== 'undefined' ? window.location.origin : ''}${result.customer.referral_link}`
+                  const text = `Olá! Marquei minhas próximas no ${businessName}. Se você agendar pelo meu link, eu ganho pontos: ${link}`
+                  return `https://wa.me/?text=${encodeURIComponent(text)}`
+                })()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-white rounded-xl transition-transform active:scale-[0.97]"
+                style={{
+                  background: '#25D366',
+                  boxShadow: '0 6px 16px -6px rgba(37,211,102,0.5)',
+                }}
+              >
+                <IconWhatsapp size={14} color="#FFFFFF" />
+                Compartilhar
+              </a>
               <button
                 onClick={() => {
                   const link = `${window.location.origin}${result.customer!.referral_link}`
@@ -393,13 +418,15 @@ export default function MeusPontosClient({
                   setCopied(true)
                   setTimeout(() => setCopied(false), 2000)
                 }}
-                className="px-3 text-xs font-semibold rounded-xl transition-opacity"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold rounded-xl transition-colors"
                 style={{
                   background: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
                   color: isDark ? '#F8FAFC' : '#0F172A',
+                  border: cardBorder,
                 }}
               >
-                {copied ? 'Copiado' : 'Copiar'}
+                {copied ? <IconCheck size={14} color="currentColor" /> : <IconCopy size={14} color="currentColor" />}
+                {copied ? 'Copiado' : 'Copiar link'}
               </button>
             </div>
           </div>
@@ -412,25 +439,21 @@ export default function MeusPontosClient({
             <p className="text-xs uppercase tracking-wider" style={{ color: textMute }}>
               Como ganhar mais pontos
             </p>
-            <ul className="space-y-2 text-xs" style={{ color: isDark ? '#CBD5E1' : '#334155' }}>
-              <li className="flex gap-2">
-                <span style={{ color: '#F59E0B' }}>•</span>
-                <span><strong>Agendando e sendo atendido.</strong> Cada serviço tem uma pontuação. Entra quando o estabelecimento confirma.</span>
-              </li>
-              <li className="flex gap-2">
-                <span style={{ color: '#F59E0B' }}>•</span>
-                <span><strong>Indicando amigo pelo teu link.</strong> Quando ele agendar e for atendido, os pontos caem na tua conta.</span>
-              </li>
+            <ul className="space-y-2.5 text-xs" style={{ color: isDark ? '#CBD5E1' : '#334155' }}>
+              <HowToItem icon={<IconCalendar size={14} color="currentColor" />}>
+                <strong>Agendando e sendo atendido.</strong> Cada serviço tem uma pontuação. Entra quando o estabelecimento confirma.
+              </HowToItem>
+              <HowToItem icon={<IconUsers size={14} color="currentColor" />}>
+                <strong>Indicando amigo pelo teu link.</strong> Quando ele agendar e for atendido, os pontos caem na tua conta.
+              </HowToItem>
               {result.has_review_program && (
-                <li className="flex gap-2">
-                  <span style={{ color: '#F59E0B' }}>•</span>
-                  <span><strong>Avaliando no Google.</strong> Depois da avaliação, o estabelecimento confirma e os pontos entram.</span>
-                </li>
+                <HowToItem icon={<IconStar size={14} color="currentColor" />}>
+                  <strong>Avaliando no Google.</strong> Depois da avaliação, o estabelecimento confirma e os pontos entram.
+                </HowToItem>
               )}
-              <li className="flex gap-2">
-                <span style={{ color: '#F59E0B' }}>•</span>
-                <span><strong>Trocando por recompensas.</strong> Acumulou? Pergunta no atendimento o que dá pra trocar.</span>
-              </li>
+              <HowToItem icon={<IconGift size={14} color="currentColor" />}>
+                <strong>Trocando por recompensas.</strong> Acumulou? Pergunta no atendimento o que dá pra trocar.
+              </HowToItem>
             </ul>
           </div>
 
@@ -451,6 +474,12 @@ export default function MeusPontosClient({
               return (sums.get(key) ?? 0) > 0
             })
             if (positive.length === 0) return null
+            const reasonIcon: Record<Transaction['reason'], React.ReactNode> = {
+              service: <IconCalendar size={14} color="currentColor" />,
+              referral: <IconUsers size={14} color="currentColor" />,
+              review: <IconStar size={14} color="currentColor" />,
+              redeem: <IconGift size={14} color="currentColor" />,
+            }
             return (
               <div>
                 <p className="text-xs uppercase tracking-wider mb-2 px-1" style={{ color: textMute }}>
@@ -460,21 +489,32 @@ export default function MeusPontosClient({
                   {positive.map((t) => (
                     <div
                       key={t.id}
-                      className="rounded-xl p-3 flex items-center justify-between"
+                      className="rounded-xl p-3 flex items-center justify-between gap-3"
                       style={{ background: cardBg, border: cardBorder }}
                     >
-                      <div>
-                        <p className="text-sm font-medium" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                          {REASON_LABEL[t.reason] ?? t.reason}
-                        </p>
-                        <p className="text-xs" style={{ color: textMute }}>
-                          {new Date(t.created_at).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: 'short',
-                          })}
-                        </p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{
+                            background: 'color-mix(in srgb, var(--brand-primary, #3B82F6) 12%, transparent)',
+                            color: 'var(--brand-primary, #3B82F6)',
+                          }}
+                        >
+                          {reasonIcon[t.reason] ?? <IconSparkles size={14} color="currentColor" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                            {REASON_LABEL[t.reason] ?? t.reason}
+                          </p>
+                          <p className="text-xs" style={{ color: textMute }}>
+                            {new Date(t.created_at).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: 'short',
+                            })}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-sm font-bold" style={{ color: '#F59E0B' }}>
+                      <p className="text-sm font-bold flex-shrink-0" style={{ color: 'var(--brand-primary, #3B82F6)' }}>
                         +{t.points} pts
                       </p>
                     </div>
@@ -485,6 +525,199 @@ export default function MeusPontosClient({
           })()}
         </>
       )}
+
+      {/* Modal de confirmação — evita cancelamento acidental no mobile */}
+      {cancelTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.55)' }}
+          onClick={() => setCancelTarget(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-5 space-y-4"
+            style={{
+              background: isDark ? '#0B1023' : '#FFFFFF',
+              border: cardBorder,
+              boxShadow: '0 24px 48px -12px rgba(0,0,0,0.4)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2',
+                  color: isDark ? '#FCA5A5' : '#B91C1C',
+                }}
+              >
+                <IconClose size={18} color="currentColor" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                  Cancelar agendamento?
+                </p>
+                <p className="text-xs mt-1" style={{ color: textMute }}>
+                  {(() => {
+                    const [y, m, d] = cancelTarget.appointment_date.split('-')
+                    return `${d}/${m}/${y} · ${cancelTarget.start_time.slice(0, 5)}`
+                  })()}
+                  {cancelTarget.service_name && ` — ${cancelTarget.service_name}`}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs" style={{ color: textMute }}>
+              Você libera o horário pra outra pessoa. Essa ação não pode ser desfeita por aqui.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setCancelTarget(null)}
+                className="px-3 py-2.5 text-xs font-semibold rounded-xl transition-colors"
+                style={{
+                  background: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
+                  color: isDark ? '#F8FAFC' : '#0F172A',
+                  border: cardBorder,
+                }}
+              >
+                Voltar
+              </button>
+              <a
+                href={`/cancelar?id=${cancelTarget.id}&token=${cancelTarget.cancel_token}`}
+                className="px-3 py-2.5 text-xs font-semibold text-white rounded-xl text-center"
+                style={{
+                  background: '#DC2626',
+                  boxShadow: '0 6px 16px -6px rgba(220,38,38,0.5)',
+                }}
+              >
+                Sim, cancelar
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+// ────────────────────────────────────────────────
+// Sub-componentes
+// ────────────────────────────────────────────────
+
+function SaldoBrandCard({
+  name,
+  points,
+  cheapestReward,
+  slug,
+}: {
+  name: string
+  points: number
+  cheapestReward: { name: string; pointsRequired: number } | null
+  slug: string
+}) {
+  const reached = cheapestReward ? points >= cheapestReward.pointsRequired : false
+  const progress = cheapestReward
+    ? Math.min(100, Math.round((points / cheapestReward.pointsRequired) * 100))
+    : 0
+  const remaining = cheapestReward ? Math.max(0, cheapestReward.pointsRequired - points) : 0
+
+  return (
+    <div className="space-y-3">
+      <div
+        className="rounded-2xl p-5 relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+          color: '#FFFFFF',
+          boxShadow: '0 14px 38px -16px var(--brand-primary, #3B82F6)',
+        }}
+      >
+        <p className="text-[11px] uppercase tracking-wider opacity-90">
+          Olá, {name.split(' ')[0]}
+        </p>
+        <div className="mt-1 flex items-baseline gap-2">
+          <IconSparkles size={26} color="#FFFFFF" />
+          <span className="text-5xl font-bold leading-none">{points}</span>
+          <span className="text-sm opacity-90">pts</span>
+        </div>
+
+        {cheapestReward && (
+          <div className="mt-4 space-y-1.5">
+            <div
+              className="h-2 rounded-full overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.22)' }}
+            >
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${progress}%`,
+                  background: '#FFFFFF',
+                }}
+              />
+            </div>
+            <p className="text-[11px] font-medium opacity-95">
+              {reached ? (
+                <>
+                  <strong>Você pode trocar por {cheapestReward.name}!</strong> Pergunta no atendimento.
+                </>
+              ) : (
+                <>
+                  Faltam <strong>{remaining} pts</strong> pra trocar por <strong>{cheapestReward.name}</strong> ({cheapestReward.pointsRequired} pts)
+                </>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
+      <BookAgainCta slug={slug} />
+    </div>
+  )
+}
+
+function SaldoBrandHeader({ name, subtitle }: { name: string; subtitle: string }) {
+  return (
+    <div
+      className="rounded-2xl p-4"
+      style={{
+        background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+        color: '#FFFFFF',
+      }}
+    >
+      <p className="text-[11px] uppercase tracking-wider opacity-90">
+        Olá, {name.split(' ')[0]}
+      </p>
+      <p className="text-sm font-semibold mt-0.5">{subtitle}</p>
+    </div>
+  )
+}
+
+function BookAgainCta({ slug }: { slug: string }) {
+  return (
+    <a
+      href={`/${slug}/agendar`}
+      className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-semibold text-sm text-white transition-transform active:scale-[0.97]"
+      style={{
+        background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+        boxShadow: '0 8px 20px -8px rgba(59,130,246,0.5)',
+      }}
+    >
+      <IconCalendar size={14} color="#FFFFFF" />
+      Agendar próximo serviço
+      <IconArrowRight size={14} color="#FFFFFF" />
+    </a>
+  )
+}
+
+function HowToItem({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <li className="flex gap-2.5 items-start">
+      <span
+        className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
+        style={{
+          background: 'color-mix(in srgb, var(--brand-primary, #3B82F6) 12%, transparent)',
+          color: 'var(--brand-primary, #3B82F6)',
+        }}
+      >
+        {icon}
+      </span>
+      <span className="leading-snug">{children}</span>
+    </li>
   )
 }
