@@ -5,10 +5,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { IconEye, IconEyeOff, IconArrowLeft } from '@/components/ui/Icon'
 
 export default function ProfissionalLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showForgot, setShowForgot] = useState(false)
@@ -19,8 +21,14 @@ export default function ProfissionalLoginPage() {
     setLoading(true)
     setError(null)
 
+    // Normaliza email — evita fail quando usuário digita com caps/espaço
+    const emailNorm = email.trim().toLowerCase()
+
     const supabase = createClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: emailNorm,
+      password,
+    })
 
     if (authError) {
       setError('Email ou senha incorretos.')
@@ -80,6 +88,15 @@ export default function ProfissionalLoginPage() {
         }}
       />
 
+      {/* Link de volta pra home — canto superior esquerdo */}
+      <Link
+        href="/"
+        className="absolute top-5 left-5 inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+      >
+        <IconArrowLeft size={14} />
+        Voltar
+      </Link>
+
       <div className="w-full max-w-sm relative">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-4">
@@ -102,6 +119,8 @@ export default function ProfissionalLoginPage() {
             <label className="block text-sm font-medium text-slate-200 mb-1.5">Email</label>
             <input
               type="email"
+              autoComplete="email"
+              inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seu@email.com"
@@ -116,47 +135,78 @@ export default function ProfissionalLoginPage() {
 
           <div>
             <label className="block text-sm font-medium text-slate-200 mb-1.5">Senha</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Senha fornecida pelo gestor"
-              required
-              className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none text-sm"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-              }}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Sua senha"
+                required
+                className="w-full rounded-xl pl-4 pr-11 py-3 text-white placeholder-slate-500 focus:outline-none text-sm"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                tabIndex={-1}
+              >
+                {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+              </button>
+            </div>
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && (
+            <div
+              className="rounded-xl px-3 py-2.5 text-sm"
+              style={{
+                background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                color: '#FCA5A5',
+              }}
+            >
+              {error}
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40"
+            className="w-full py-3.5 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             style={{
               background: 'linear-gradient(135deg, #10B981 0%, #06B6D4 100%)',
               boxShadow: '0 8px 20px -6px rgba(16,185,129,0.5)',
             }}
           >
+            {loading && (
+              <span
+                className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                aria-hidden
+              />
+            )}
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
 
-          <button
-            type="button"
-            onClick={() => setShowForgot(true)}
-            className="w-full text-xs text-slate-400 hover:text-slate-200 transition-colors pt-1"
-          >
-            Esqueci a senha
-          </button>
+          <div className="pt-1 text-center">
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400/80 hover:text-emerald-300 underline underline-offset-4 decoration-emerald-400/40 hover:decoration-emerald-300 transition-colors"
+            >
+              Esqueci a senha
+            </button>
+          </div>
         </form>
 
         <p className="text-center text-sm text-slate-400 mt-5">
-          E o dono do negocio?{' '}
+          É o dono do negócio?{' '}
           <Link href="/admin/login" className="text-blue-400 font-medium hover:text-blue-300 transition-colors">
-            Acessar painel admin
+            Entrar pelo admin
           </Link>
         </p>
 
