@@ -21,6 +21,29 @@ type Props = {
     professional?: { name: string } | null
   }
   showDate?: boolean
+  nextUp?: boolean
+}
+
+function initialsFor(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function avatarGradient(name: string) {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+  const palette = [
+    ['#3B82F6', '#06B6D4'],
+    ['#8B5CF6', '#EC4899'],
+    ['#10B981', '#06B6D4'],
+    ['#F59E0B', '#EF4444'],
+    ['#6366F1', '#A855F7'],
+    ['#0EA5E9', '#22D3EE'],
+  ]
+  const [from, to] = palette[hash % palette.length]
+  return `linear-gradient(135deg, ${from}, ${to})`
 }
 
 const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string; chipBg: string; chipColor: string }> = {
@@ -61,7 +84,7 @@ const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string
   },
 }
 
-export default function AppointmentCard({ appointment, showDate }: Props) {
+export default function AppointmentCard({ appointment, showDate, nextUp }: Props) {
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
@@ -135,15 +158,27 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
                 até {appointment.end_time.slice(0, 5)}
               </p>
             </div>
-            <div>
-              <p className="font-semibold leading-tight" style={{ color: 'var(--admin-text)' }}>
-                {appointment.client_name}
-              </p>
-              {dateFormatted && (
-                <p className="text-xs capitalize mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                  {dateFormatted}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span
+                aria-hidden
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0"
+                style={{
+                  background: avatarGradient(appointment.client_name),
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 10px -4px rgba(0,0,0,0.25)',
+                }}
+              >
+                {initialsFor(appointment.client_name)}
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold leading-tight truncate" style={{ color: 'var(--admin-text)' }}>
+                  {appointment.client_name}
                 </p>
-              )}
+                {dateFormatted && (
+                  <p className="text-xs capitalize mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                    {dateFormatted}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           <span
@@ -154,7 +189,10 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
               border: `1px solid ${config.dot}30`,
             }}
           >
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: config.dot }} />
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${nextUp && status === 'confirmed' ? 'admin-dot-pulse' : ''}`}
+              style={{ background: config.dot }}
+            />
             {config.label}
           </span>
         </div>

@@ -24,10 +24,19 @@ export default function TodayList({ active, archived }: Props) {
     .filter(Boolean)
     .join(' · ')
 
+  // O "próximo" é o primeiro confirmado/pendente na lista — recebe dot pulsante no chip
+  const nextUpId = active.find((a) => a.status === 'confirmed' || a.status === 'pending')?.id
+
   return (
     <div className="space-y-3">
-      {active.map((a) => (
-        <AppointmentCard key={a.id} appointment={a} />
+      {active.map((a, i) => (
+        <div
+          key={a.id}
+          className="admin-enter"
+          style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 60}ms` }}
+        >
+          <AppointmentCard appointment={a} nextUp={a.id === nextUpId} />
+        </div>
       ))}
 
       {archived.length > 0 && (

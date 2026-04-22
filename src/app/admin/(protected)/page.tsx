@@ -7,13 +7,15 @@ import DivulgarCard from '@/components/admin/DivulgarCard'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import ActivityFeed from '@/components/admin/ActivityFeed'
 import TodayList from '@/components/admin/TodayList'
+import CountUp from '@/components/admin/CountUp'
+import Greeting from '@/components/admin/Greeting'
+import EmptyTodayCTA from '@/components/admin/EmptyTodayCTA'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
   IconCalendar,
   IconChevronRight,
   IconDollar,
-  IconInbox,
   IconCheck,
   IconClock,
 } from '@/components/ui/Icon'
@@ -87,9 +89,6 @@ export default async function AdminPage() {
   const activeToday   = list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')
   const archivedToday = list.filter((a) => a.status === 'cancelled' || a.status === 'no_show')
 
-  const revenueLabel =
-    'R$ ' + revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       {/* Glow orbs de fundo — animados pra dar atmosfera viva */}
@@ -134,6 +133,12 @@ export default async function AdminPage() {
             <LogoutButton />
           </div>
         </div>
+        <p
+          className="text-[13px] font-medium mb-1"
+          style={{ color: 'var(--admin-text-faded)' }}
+        >
+          <Greeting />
+        </p>
         <h1 className="text-[28px] font-bold tracking-tight leading-tight" style={{ color: 'var(--admin-text)' }}>
           {business.name}
         </h1>
@@ -171,7 +176,12 @@ export default async function AdminPage() {
                 className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
                 style={{ color: 'var(--admin-text)' }}
               >
-                {revenueLabel}
+                <CountUp
+                  value={revenue}
+                  format={(n) =>
+                    'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                  }
+                />
               </p>
               <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
                 {confirmed.length + completed.length} atendimento{confirmed.length + completed.length === 1 ? '' : 's'} pago{confirmed.length + completed.length === 1 ? '' : 's'}
@@ -205,11 +215,11 @@ export default async function AdminPage() {
                   className="text-xl font-bold mt-1.5 leading-none tabular-nums"
                   style={{ color: 'var(--admin-warn)' }}
                 >
-                  {pending.length}
+                  <CountUp value={pending.length} duration={500} />
                 </p>
               </div>
               <span
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${pending.length > 0 ? 'admin-pulse-warn' : ''}`}
                 style={{
                   background: 'rgba(245,158,11,0.15)',
                   color: 'var(--admin-warn)',
@@ -233,7 +243,7 @@ export default async function AdminPage() {
                   className="text-xl font-bold mt-1.5 leading-none tabular-nums"
                   style={{ color: 'var(--admin-accent)' }}
                 >
-                  {confirmed.length}
+                  <CountUp value={confirmed.length} duration={500} />
                 </p>
               </div>
               <span
@@ -309,23 +319,7 @@ export default async function AdminPage() {
           </div>
 
           {list.length === 0 ? (
-            <div className="admin-card p-8 text-center">
-              <div
-                className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
-                style={{
-                  background: 'var(--admin-accent-bg)',
-                  color: 'var(--admin-accent)',
-                }}
-              >
-                <IconInbox size={26} />
-              </div>
-              <p className="text-sm font-medium" style={{ color: 'var(--admin-text-2)' }}>
-                Nenhum agendamento hoje
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                Compartilhe seu link para receber reservas
-              </p>
-            </div>
+            <EmptyTodayCTA slug={business.slug} />
           ) : (
             <TodayList active={activeToday} archived={archivedToday} />
           )}
@@ -341,8 +335,14 @@ export default async function AdminPage() {
               <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>7 dias</span>
             </div>
             <div className="space-y-3">
-              {upcoming.map((a) => (
-                <AppointmentCard key={a.id} appointment={a} showDate />
+              {upcoming.map((a, i) => (
+                <div
+                  key={a.id}
+                  className="admin-enter"
+                  style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 60}ms` }}
+                >
+                  <AppointmentCard appointment={a} showDate />
+                </div>
               ))}
             </div>
           </section>
