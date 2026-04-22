@@ -5,6 +5,7 @@ import type { Business } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { IconCheck, IconCamera, IconClose } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
+import GoogleReviewGuide from '@/components/admin/GoogleReviewGuide'
 
 type Props = {
   business: Business
@@ -22,6 +23,7 @@ export default function NegocioTab({ business }: Props) {
   const [logoUrl, setLogoUrl] = useState(business.logo_url || '')
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [confirmRemoveLogo, setConfirmRemoveLogo] = useState(false)
+  const [showReviewGuide, setShowReviewGuide] = useState(false)
   const fileInput = useRef<HTMLInputElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -245,14 +247,32 @@ export default function NegocioTab({ business }: Props) {
             Google Reviews
           </h4>
           <div>
-            <label className="admin-label">Link do Google Maps</label>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <label className="admin-label !mb-0">Link direto pra avaliar</label>
+              <button
+                type="button"
+                onClick={() => setShowReviewGuide(true)}
+                className="text-xs font-semibold flex items-center gap-1 hover:opacity-80 transition-opacity"
+                style={{ color: 'var(--admin-accent)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                Como pegar?
+              </button>
+            </div>
             <input
               type="url"
               value={googleMapsUrl}
               onChange={e => setGoogleMapsUrl(e.target.value)}
               className="admin-input w-full px-3 py-2.5 text-sm"
-              placeholder="https://g.page/r/..."
+              placeholder="https://g.page/r/SEU_ID/review"
             />
+            <p className="text-xs mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+              Use o link <strong>direto de avaliação</strong>. Link do Google Maps comum pede pra baixar o app no celular do cliente.
+            </p>
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
@@ -357,6 +377,8 @@ export default function NegocioTab({ business }: Props) {
         }}
         onClose={() => setConfirmRemoveLogo(false)}
       />
+
+      {showReviewGuide && <GoogleReviewGuide onClose={() => setShowReviewGuide(false)} />}
     </div>
   )
 }
