@@ -1,6 +1,9 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
+import FinancePeriodTabs from './FinancePeriodTabs'
+import FinanceAppointmentList, { type FinanceRow } from './FinanceAppointmentList'
+import { IconDollar, IconClock, IconCheck } from '@/components/ui/Icon'
+import { initialsFor, avatarGradient } from '@/lib/client-display'
 
 export type AppointmentRow = {
   id: string
@@ -23,22 +26,6 @@ function formatPrice(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: 'text-yellow-600 bg-yellow-50',
-  confirmed: 'text-green-600 bg-green-50',
-  completed: 'text-blue-600 bg-blue-50',
-  cancelled: 'text-gray-400 bg-gray-50',
-  no_show: 'text-red-500 bg-red-50',
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pendente',
-  confirmed: 'Confirmado',
-  completed: 'Realizado',
-  cancelled: 'Cancelado',
-  no_show: 'Não compareceu',
-}
-
 const PERIODO_LABEL: Record<string, string> = {
   hoje: 'Hoje',
   semana: 'Últimos 7 dias',
@@ -46,35 +33,32 @@ const PERIODO_LABEL: Record<string, string> = {
 }
 
 export default function FinanceiroView({ appointments, periodo }: Props) {
-  const router = useRouter()
-  const pathname = usePathname()
-
-  function setPeriodo(p: string) {
-    router.push(`${pathname}?periodo=${p}`)
-  }
-
   const ativos = appointments.filter(
     (a) => a.total_price !== null && a.total_price > 0 && (a.status === 'confirmed' || a.status === 'completed')
   )
   const realizados = appointments.filter((a) => a.status === 'completed' && a.total_price)
+  const pendentes = appointments.filter((a) => a.status === 'confirmed' && a.total_price)
 
   const totalFaturado = ativos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const totalRealizado = realizados.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const totalPendente = pendentes.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const ticketMedio = ativos.length > 0 ? totalFaturado / ativos.length : 0
 
-  // Agrupamento por profissional
+  // Agrupamento por profissional (só aparece se tem >1 prof OU comissão > 0)
   type ProfEntry = {
+    id: string
     name: string
     commission_percentage: number
     total: number
     count: number
   }
   const profMap: Record<string, ProfEntry> = {}
-
   for (const a of realizados) {
     const prof = a.professional
     if (!prof) continue
     if (!profMap[prof.id]) {
       profMap[prof.id] = {
+        id: prof.id,
         name: prof.name,
         commission_percentage: prof.commission_percentage ?? 0,
         total: 0,
@@ -84,75 +68,135 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
     profMap[prof.id].total += a.total_price ?? 0
     profMap[prof.id].count += 1
   }
-
   const profList = Object.values(profMap)
+  const showCommission = profList.length > 1 || profList.some((p) => p.commission_percentage > 0)
+
+  const rows: FinanceRow[] = appointments.map((a) => ({
+    id: a.id,
+    client_name: a.client_name,
+    appointment_date: a.appointment_date,
+    start_time: a.start_time,
+    status: a.status,
+    service_name: a.service_name,
+    total_price: a.total_price,
+    professional_name: a.professional?.name ?? null,
+  }))
 
   return (
-    <div className="space-y-6">
-      {/* Seletor de período */}
+    <div className="space-y-5">
+      <FinancePeriodTabs periodo={periodo} />
+
+      {/* Hero KPI: Realizado (dinheiro real no caixa) */}
       <div
-        className="flex rounded-2xl p-1"
-        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+        className="rounded-2xl p-4 relative overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(135deg, rgba(16,185,129,0.18) 0%, color-mix(in srgb, var(--brand-primary) 12%, var(--admin-surface)) 100%)',
+          border: '1px solid var(--admin-border)',
+        }}
       >
-        {(['hoje', 'semana', 'mes'] as const).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriodo(p)}
-            className="flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors"
+        <div
+          className="absolute -top-6 -right-6 w-28 h-28 rounded-full blur-2xl opacity-70 pointer-events-none"
+          style={{ background: 'rgba(16,185,129,0.35)' }}
+        />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-wider"
+              style={{ color: 'var(--admin-text-faded)' }}
+            >
+              Realizado · {PERIODO_LABEL[periodo]}
+            </p>
+            <p
+              className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
+              style={{ color: 'var(--admin-text)' }}
+            >
+              {formatPrice(totalRealizado)}
+            </p>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
+              {realizados.length} atendimento{realizados.length === 1 ? '' : 's'} pago{realizados.length === 1 ? '' : 's'}
+            </p>
+          </div>
+          <span
+            className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
             style={{
-              background: periodo === p ? 'var(--admin-accent)' : 'transparent',
-              color: periodo === p ? '#fff' : 'var(--admin-text-mute)',
+              background: 'rgba(16,185,129,0.2)',
+              color: '#16A34A',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12)',
             }}
           >
-            {p === 'hoje' ? 'Hoje' : p === 'semana' ? '7 dias' : 'Mês'}
-          </button>
-        ))}
-      </div>
-
-      {/* Cards resumo */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="admin-card p-4">
-          <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Total faturado</p>
-          <p className="text-xl font-bold" style={{ color: 'var(--admin-text)' }}>{formatPrice(totalFaturado)}</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{ativos.length} agendamentos</p>
-        </div>
-        <div className="admin-card p-4">
-          <p className="text-xs mb-1" style={{ color: 'var(--admin-text-faded)' }}>Realizados</p>
-          <p className="text-xl font-bold" style={{ color: 'var(--admin-success)' }}>{formatPrice(totalRealizado)}</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>{realizados.length} atendimentos</p>
+            <IconCheck size={22} />
+          </span>
         </div>
       </div>
 
-      {/* Comissão por profissional */}
-      {profList.length > 0 && (
+      {/* Pendente + Faturado total + Ticket médio */}
+      <div className="grid grid-cols-3 gap-2">
+        <KpiTile
+          label="A receber"
+          value={formatPrice(totalPendente)}
+          sub={`${pendentes.length} confirmados`}
+          icon={<IconClock size={14} />}
+          tone="warn"
+        />
+        <KpiTile
+          label="Faturado"
+          value={formatPrice(totalFaturado)}
+          sub={`${ativos.length} no total`}
+          icon={<IconDollar size={14} />}
+          tone="neutral"
+        />
+        <KpiTile
+          label="Ticket médio"
+          value={formatPrice(ticketMedio)}
+          sub="por atendimento"
+          tone="accent"
+        />
+      </div>
+
+      {/* Comissão por profissional (só se relevante) */}
+      {showCommission && (
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-            Comissao por profissional
+          <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+            Comissão por profissional
           </h2>
           <div className="space-y-2">
             {profList.map((prof) => {
               const commission = prof.total * (prof.commission_percentage / 100)
               return (
-                <div key={prof.name} className="admin-card px-4 py-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium" style={{ color: 'var(--admin-text)' }}>{prof.name}</p>
+                <div key={prof.id} className="admin-card p-3.5">
+                  <div className="flex items-center gap-3 mb-2.5">
                     <span
-                      className="text-xs px-2 py-1 rounded-lg"
-                      style={{ color: 'var(--admin-text-faded)', background: 'var(--admin-accent-bg)', border: '1px solid var(--admin-border)' }}
+                      aria-hidden
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0"
+                      style={{
+                        background: avatarGradient(prof.name),
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)',
+                      }}
                     >
-                      {prof.commission_percentage}% comissão
+                      {initialsFor(prof.name)}
+                    </span>
+                    <p className="font-semibold text-sm flex-1 truncate" style={{ color: 'var(--admin-text)' }}>
+                      {prof.name}
+                    </p>
+                    <span
+                      className="text-[10px] font-bold px-2 py-1 rounded-full"
+                      style={{
+                        background: 'var(--admin-accent-bg)',
+                        color: 'var(--admin-accent)',
+                        border: '1px solid var(--admin-accent-border)',
+                      }}
+                    >
+                      {prof.commission_percentage}%
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Gerado</p>
-                      <p className="font-semibold text-sm" style={{ color: 'var(--admin-text-2)' }}>{formatPrice(prof.total)}</p>
-                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>{prof.count} atendimento{prof.count !== 1 ? 's' : ''}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>A pagar</p>
-                      <p className="font-bold" style={{ color: 'var(--admin-text)' }}>{formatPrice(commission)}</p>
-                    </div>
+                  <div
+                    className="grid grid-cols-3 gap-2 pt-2.5"
+                    style={{ borderTop: '1px solid var(--admin-divider)' }}
+                  >
+                    <ProfStat label="Gerou" value={formatPrice(prof.total)} />
+                    <ProfStat label="Atendeu" value={`${prof.count}`} />
+                    <ProfStat label="A pagar" value={formatPrice(commission)} highlight />
                   </div>
                 </div>
               )
@@ -163,51 +207,63 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
 
       {/* Lista de agendamentos */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-          Agendamentos — {PERIODO_LABEL[periodo]}
+        <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+          Agendamentos · {PERIODO_LABEL[periodo]}
         </h2>
-        {appointments.length === 0 ? (
-          <div className="admin-card p-8 text-center">
-            <p className="text-sm" style={{ color: 'var(--admin-text-faded)' }}>Nenhum agendamento neste periodo.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {appointments.map((a) => {
-              const date = new Date(a.appointment_date + 'T00:00:00').toLocaleDateString('pt-BR', {
-                day: 'numeric',
-                month: 'short',
-              })
-              return (
-                <div
-                  key={a.id}
-                  className="admin-card px-4 py-3 flex items-center justify-between"
-                >
-                  <div>
-                    <p className="font-medium text-sm" style={{ color: 'var(--admin-text)' }}>{a.client_name}</p>
-                    <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
-                      {date} · {a.start_time.slice(0, 5)}
-                      {a.service_name ? ` · ${a.service_name}` : ''}
-                    </p>
-                    {a.professional && (
-                      <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{a.professional.name}</p>
-                    )}
-                  </div>
-                  <div className="text-right flex flex-col items-end gap-1">
-                    {a.total_price ? (
-                      <p className="font-bold text-sm" style={{ color: 'var(--admin-text)' }}>{formatPrice(a.total_price)}</p>
-                    ) : (
-                      <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>—</p>
-                    )}
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[a.status]}`}>
-                      {STATUS_LABEL[a.status]}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <FinanceAppointmentList items={rows} />
       </section>
+    </div>
+  )
+}
+
+function KpiTile({
+  label,
+  value,
+  sub,
+  icon,
+  tone,
+}: {
+  label: string
+  value: string
+  sub: string
+  icon?: React.ReactNode
+  tone: 'warn' | 'neutral' | 'accent'
+}) {
+  const colorMap = {
+    warn: 'var(--admin-warn)',
+    neutral: 'var(--admin-text)',
+    accent: 'var(--admin-accent)',
+  }
+  return (
+    <div className="admin-card p-2.5">
+      <div className="flex items-center gap-1 mb-0.5" style={{ color: 'var(--admin-text-faded)' }}>
+        {icon}
+        <p className="text-[10px] font-semibold uppercase tracking-wider truncate">
+          {label}
+        </p>
+      </div>
+      <p className="text-sm font-bold leading-tight tabular-nums truncate" style={{ color: colorMap[tone] }}>
+        {value}
+      </p>
+      <p className="text-[10px] mt-1 truncate" style={{ color: 'var(--admin-text-faded)' }}>
+        {sub}
+      </p>
+    </div>
+  )
+}
+
+function ProfStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+        {label}
+      </p>
+      <p
+        className="font-bold text-sm mt-0.5 tabular-nums leading-tight"
+        style={{ color: highlight ? 'var(--admin-success)' : 'var(--admin-text)' }}
+      >
+        {value}
+      </p>
     </div>
   )
 }
