@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { IconSparkles, IconCalendar, IconUsers, IconCheck, IconClose, IconClock, IconArrowRight } from '@/components/ui/Icon'
 
 type Transaction = {
   id: string
@@ -9,6 +10,15 @@ type Transaction = {
   created_at: string
   appointment_id: string | null
   professional_id: string | null
+}
+
+function formatPhoneMask(raw: string) {
+  const d = raw.replace(/\D/g, '').slice(0, 11)
+  if (d.length === 0) return ''
+  if (d.length <= 2) return `(${d}`
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
 }
 
 type UpcomingAppointment = {
@@ -88,38 +98,104 @@ export default function MeusPontosClient({
   const cardBorder = isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0'
   const textMute = isDark ? '#94A3B8' : '#64748B'
 
+  const phoneDigits = phone.replace(/\D/g, '').length
+  const isReady = phoneDigits >= 10
+  const showHero = !result?.found
+
   return (
     <div className="px-4 py-6 space-y-5">
+      {/* Hero — só aparece antes de encontrar o cliente */}
+      {showHero && (
+        <div
+          className="rounded-2xl p-5 relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+            color: '#FFFFFF',
+          }}
+        >
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider opacity-90">
+            <IconSparkles size={14} color="#FFFFFF" />
+            Programa de fidelidade
+          </div>
+          <h2 className="mt-2 text-xl font-bold leading-tight">
+            Veja seu saldo e acumule pontos
+          </h2>
+          <p className="mt-1 text-sm opacity-90">
+            Cada serviço, indicação e avaliação vira ponto pra trocar por recompensa.
+          </p>
+          <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold">
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg backdrop-blur-sm"
+              style={{ background: 'rgba(255,255,255,0.18)' }}
+            >
+              <IconSparkles size={11} color="#FFFFFF" /> Saldo
+            </span>
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg backdrop-blur-sm"
+              style={{ background: 'rgba(255,255,255,0.18)' }}
+            >
+              <IconCalendar size={11} color="#FFFFFF" /> Agendamentos
+            </span>
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg backdrop-blur-sm"
+              style={{ background: 'rgba(255,255,255,0.18)' }}
+            >
+              <IconUsers size={11} color="#FFFFFF" /> Indicar amigo
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Form de consulta */}
       <div
         className="rounded-2xl p-4 space-y-3"
         style={{ background: cardBg, border: cardBorder }}
       >
-        <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: textMute }}>
-          Seu WhatsApp
-        </label>
-        <div className="flex gap-2">
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="(99) 99999-9999"
-            className="flex-1 border rounded-xl px-3 py-2.5 text-sm focus:outline-none"
-            style={{
-              background: isDark ? 'rgba(0,0,0,0.3)' : '#fff',
-              borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
-              color: isDark ? '#F8FAFC' : '#0F172A',
-            }}
-          />
-          <button
-            onClick={handleSearch}
-            disabled={loading || !phone.trim()}
-            className="px-4 text-white text-sm font-semibold rounded-xl transition-opacity disabled:opacity-40"
-            style={{ background: 'var(--brand-primary)' }}
-          >
-            {loading ? '...' : 'Ver pontos'}
-          </button>
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: textMute }}>
+            Seu WhatsApp
+          </label>
+          <p className="text-[11px] mt-0.5" style={{ color: textMute }}>
+            Use o mesmo número do seu agendamento
+          </p>
         </div>
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(formatPhoneMask(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && isReady && !loading) handleSearch()
+          }}
+          placeholder="(11) 99999-9999"
+          inputMode="numeric"
+          className="w-full border rounded-xl px-4 py-3 text-base focus:outline-none transition-colors"
+          style={{
+            background: isDark ? 'rgba(0,0,0,0.3)' : '#fff',
+            borderColor: isReady
+              ? 'var(--brand-primary, #3B82F6)'
+              : isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+            color: isDark ? '#F8FAFC' : '#0F172A',
+          }}
+        />
+        <button
+          onClick={handleSearch}
+          disabled={loading || !isReady}
+          className="w-full px-4 py-3.5 text-white text-sm font-semibold rounded-xl transition-all inline-flex items-center justify-center gap-1.5 disabled:cursor-not-allowed"
+          style={{
+            background: isReady
+              ? 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)'
+              : isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+            color: isReady ? '#FFFFFF' : textMute,
+            boxShadow: isReady ? '0 8px 20px -8px rgba(59,130,246,0.5)' : 'none',
+          }}
+        >
+          {loading ? 'Buscando...' : (
+            <>
+              Ver meus pontos
+              {isReady && <IconArrowRight size={14} color="#FFFFFF" />}
+            </>
+          )}
+        </button>
       </div>
 
       {/* Resultado: não encontrado */}
@@ -267,18 +343,21 @@ export default function MeusPontosClient({
                 Pedido de pontos por avaliação
               </p>
               {result.review_claim.status === 'pending' && (
-                <p style={{ color: isDark ? '#FBBF24' : '#92400E' }}>
-                  ⏳ Aguardando o estabelecimento confirmar tua avaliação no Google.
+                <p className="inline-flex items-center gap-2" style={{ color: isDark ? '#FBBF24' : '#92400E' }}>
+                  <IconClock size={14} color="currentColor" />
+                  Aguardando o estabelecimento confirmar tua avaliação no Google.
                 </p>
               )}
               {result.review_claim.status === 'approved' && (
-                <p style={{ color: isDark ? '#34D399' : '#047857' }}>
-                  ✅ Pontos da avaliação já foram creditados.
+                <p className="inline-flex items-center gap-2" style={{ color: isDark ? '#34D399' : '#047857' }}>
+                  <IconCheck size={14} color="currentColor" />
+                  Pontos da avaliação já foram creditados.
                 </p>
               )}
               {result.review_claim.status === 'rejected' && (
-                <p style={{ color: isDark ? '#F87171' : '#991B1B' }}>
-                  ❌ Pedido não confirmado. Fala com o estabelecimento.
+                <p className="inline-flex items-center gap-2" style={{ color: isDark ? '#F87171' : '#991B1B' }}>
+                  <IconClose size={14} color="currentColor" />
+                  Pedido não confirmado. Fala com o estabelecimento.
                 </p>
               )}
             </div>
