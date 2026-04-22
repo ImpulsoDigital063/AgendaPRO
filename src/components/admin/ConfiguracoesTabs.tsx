@@ -103,6 +103,10 @@ export default function ConfiguracoesTabs({
           pointsForReferral={business.points_for_referral ?? 0}
           pointsForReview={business.points_for_review ?? 0}
           pointsMode={business.points_mode ?? 'business'}
+          onNavigateToNegocio={() => {
+            setActiveTab('negocio')
+            if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
         />
       )}
 
