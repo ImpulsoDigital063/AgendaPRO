@@ -158,19 +158,15 @@ export default async function AgendarPage({
           </div>
         </div>
 
-        {/* BookingFlow — usa var(--brand-primary) automaticamente nos botões */}
-        <div
-          className={isDark ? 'text-white [&_h2]:!text-slate-300 [&_p]:!text-slate-300' : ''}
-        >
-          <BookingFlow
-            business={b}
-            professionals={(professionals || []) as Professional[]}
-            workingHours={workingHours || []}
-            services={services || []}
-            referralCode={referralCode}
-            prefill={prefill}
-          />
-        </div>
+        {/* BookingFlow — controla suas próprias cores via business.brand_mode */}
+        <BookingFlow
+          business={b}
+          professionals={(professionals || []) as Professional[]}
+          workingHours={workingHours || []}
+          services={services || []}
+          referralCode={referralCode}
+          prefill={prefill}
+        />
 
         {/* Footer */}
         <div className="text-center space-y-2 py-8 px-4">

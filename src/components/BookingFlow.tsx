@@ -101,6 +101,30 @@ export default function BookingFlow({
   const hasServices = services.length > 0
   const hasMultipleProfessionals = professionals.length > 1
   const isDark = (business.brand_mode || 'dark') === 'dark'
+  // Paleta unificada — todos os steps usam essas vars pra consistência dark/light
+  const C = isDark
+    ? {
+        text:    '#F1F5F9',
+        body:    '#CBD5E1',
+        mute:    '#94A3B8',
+        faded:   '#64748B',
+        surface: 'rgba(255,255,255,0.04)',
+        surfaceHi: 'rgba(255,255,255,0.07)',
+        border:  'rgba(255,255,255,0.10)',
+        borderHi:'rgba(255,255,255,0.18)',
+        input:   'rgba(0,0,0,0.30)',
+      }
+    : {
+        text:    '#0F172A',
+        body:    '#334155',
+        mute:    '#64748B',
+        faded:   '#94A3B8',
+        surface: '#FFFFFF',
+        surfaceHi: '#F8FAFC',
+        border:  '#E2E8F0',
+        borderHi:'#CBD5E1',
+        input:   '#FFFFFF',
+      }
 
   // Profissional inicial: se prefill bater com algum, usa; senão primeiro.
   const initialProf =
@@ -526,7 +550,7 @@ export default function BookingFlow({
 
   if (!professional) {
     return (
-      <div className="p-6 text-center text-gray-500">
+      <div className="p-6 text-center" style={{ color: C.mute }}>
         Nenhum profissional disponível no momento.
       </div>
     )
@@ -535,20 +559,28 @@ export default function BookingFlow({
   // TELA: AGENDAMENTO CONFIRMADO
   if (step === 'done') {
     return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className="mb-4"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg></div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Agendamento confirmado!</h2>
+      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center" style={{ color: C.text }}>
+        <div
+          className="mb-5 w-16 h-16 rounded-full flex items-center justify-center"
+          style={{
+            background: isDark ? 'rgba(34,197,94,0.15)' : 'rgb(220,252,231)',
+            boxShadow: `0 12px 32px -8px ${isDark ? 'rgba(34,197,94,0.4)' : 'rgba(34,197,94,0.25)'}`,
+          }}
+        >
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <h2 className="text-2xl font-bold mb-3" style={{ color: C.text }}>Agendamento confirmado!</h2>
         {selectedServices.length > 0 && (
-          <div className="mb-2">
+          <div className="mb-3">
             {selectedServices.map((s) => (
-              <p key={s.id} className="text-gray-700 font-medium">{s.name}</p>
+              <p key={s.id} className="font-medium" style={{ color: C.text }}>{s.name}</p>
             ))}
             {hasPrice && (
-              <p className="text-gray-900 font-bold mt-1">{formatPrice(totalPrice)}</p>
+              <p className="font-bold mt-1 text-lg" style={{ color: C.text }}>{formatPrice(totalPrice)}</p>
             )}
           </div>
         )}
-        <p className="text-gray-500 mb-1">
+        <p className="mb-1" style={{ color: C.mute }}>
           {selectedDate &&
             selectedDate.toLocaleDateString('pt-BR', {
               weekday: 'long',
@@ -556,7 +588,7 @@ export default function BookingFlow({
               month: 'long',
             })}
         </p>
-        <p className="text-gray-700 font-semibold text-lg mb-4">{selectedTime}</p>
+        <p className="font-semibold text-lg mb-4" style={{ color: C.text }}>{selectedTime}</p>
         {pointsEarned > 0 && (
           <div
             className="mt-4 mb-2 rounded-2xl px-5 py-3 flex items-center gap-3"
@@ -572,7 +604,7 @@ export default function BookingFlow({
             </div>
           </div>
         )}
-        <p className="text-gray-500 text-sm max-w-xs mt-2">
+        <p className="text-sm max-w-xs mt-2" style={{ color: C.mute }}>
           Tá tudo certo. Te esperamos no horário marcado!
         </p>
 
@@ -625,7 +657,7 @@ export default function BookingFlow({
               Avalie a gente no Google e ganhe +{business.points_for_review} pontos
             </p>
             <p className="text-xs mb-3" style={{ color: isDark ? '#94A3B8' : '#475569' }}>
-              Abra o Google, deixe sua avaliação e clique em "Já avaliei". O estabelecimento confirma e seus pontos entram.
+              Abra o Google, deixe sua avaliação e clique em &quot;Já avaliei&quot;. O estabelecimento confirma e seus pontos entram.
             </p>
             <div className="flex flex-col gap-2">
               <a
@@ -719,7 +751,8 @@ export default function BookingFlow({
 
         <a
           href={`/${business.slug}/meus-pontos`}
-          className="mt-4 text-sm font-medium text-gray-500 underline underline-offset-2 hover:text-gray-700 transition-colors"
+          className="mt-4 text-sm font-medium underline underline-offset-2 transition-opacity hover:opacity-70"
+          style={{ color: C.mute }}
         >
           Ver meus pontos
         </a>
@@ -727,7 +760,8 @@ export default function BookingFlow({
         {cancelUrl && (
           <a
             href={cancelUrl}
-            className="mt-2 text-xs text-gray-400 underline underline-offset-2 hover:text-red-500 transition-colors"
+            className="mt-2 text-xs underline underline-offset-2 transition-colors hover:text-red-500"
+            style={{ color: C.faded }}
           >
             Preciso cancelar
           </a>
@@ -767,7 +801,7 @@ export default function BookingFlow({
       {/* ETAPA 0 — ESCOLHER SERVIÇOS (múltipla seleção) */}
       {hasServices && (
         <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
             Quais serviços?
           </h2>
           <div className="space-y-2">
@@ -777,23 +811,36 @@ export default function BookingFlow({
                 <button
                   key={service.id}
                   onClick={() => handleToggleService(service)}
-                  className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-left transition-colors ${
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-left transition-colors"
+                  style={
                     isSelected
-                      ? 'bg-[var(--brand-primary,#111827)] border-[var(--brand-primary,#111827)] text-white'
-                      : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
-                  }`}
+                      ? {
+                          background: 'var(--brand-primary, #111827)',
+                          borderColor: 'var(--brand-primary, #111827)',
+                          color: '#FFFFFF',
+                        }
+                      : {
+                          background: C.surface,
+                          borderColor: C.border,
+                          color: C.text,
+                        }
+                  }
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                      isSelected ? 'border-white bg-white' : 'border-gray-300'
-                    }`}>
+                    <div
+                      className="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background: isSelected ? '#FFFFFF' : 'transparent',
+                        borderColor: isSelected ? '#FFFFFF' : C.borderHi,
+                      }}
+                    >
                       {isSelected && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                     </div>
                     <span className="font-medium text-sm">{service.name}</span>
                   </div>
-                  <div className={`text-right text-xs ${isSelected ? 'text-gray-300' : 'text-gray-400'}`}>
+                  <div className="text-right text-xs" style={{ color: isSelected ? 'rgba(255,255,255,0.75)' : C.mute }}>
                     {service.price !== null && (
-                      <span className="font-semibold text-sm block">{formatPrice(service.price)}</span>
+                      <span className="font-semibold text-sm block" style={{ color: isSelected ? '#FFFFFF' : C.text }}>{formatPrice(service.price)}</span>
                     )}
                     <span>{formatDuration(service.duration_minutes)}</span>
                   </div>
@@ -804,14 +851,17 @@ export default function BookingFlow({
 
           {/* Resumo dos serviços selecionados */}
           {selectedServices.length > 0 && (
-            <div className="mt-3 bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900">{selectedServices.length}</span>{' '}
+            <div
+              className="mt-3 rounded-xl px-4 py-3 flex items-center justify-between"
+              style={{ background: C.surfaceHi, border: `1px solid ${C.border}` }}
+            >
+              <div className="text-sm" style={{ color: C.body }}>
+                <span className="font-semibold" style={{ color: C.text }}>{selectedServices.length}</span>{' '}
                 {selectedServices.length === 1 ? 'serviço' : 'serviços'} —{' '}
                 {formatDuration(totalDuration)}
               </div>
               {hasPrice && (
-                <span className="font-bold text-gray-900 text-base">{formatPrice(totalPrice)}</span>
+                <span className="font-bold text-base" style={{ color: C.text }}>{formatPrice(totalPrice)}</span>
               )}
             </div>
           )}
@@ -830,7 +880,7 @@ export default function BookingFlow({
       {/* ETAPA 1 — ESCOLHER PROFISSIONAL (só se tiver mais de um) */}
       {hasMultipleProfessionals && (step === 'professional' || step === 'date' || step === 'time' || step === 'form') && (
         <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
             Escolha o profissional
           </h2>
           <div className="space-y-2">
@@ -840,15 +890,29 @@ export default function BookingFlow({
                 <button
                   key={prof.id}
                   onClick={() => handleSelectProfessional(prof)}
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-colors ${
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-colors"
+                  style={
                     isSelected
-                      ? 'bg-[var(--brand-primary,#111827)] border-[var(--brand-primary,#111827)] text-white'
-                      : 'bg-white border-gray-200 text-gray-700 hover:border-gray-400'
-                  }`}
+                      ? {
+                          background: 'var(--brand-primary, #111827)',
+                          borderColor: 'var(--brand-primary, #111827)',
+                          color: '#FFFFFF',
+                        }
+                      : {
+                          background: C.surface,
+                          borderColor: C.border,
+                          color: C.text,
+                        }
+                  }
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden ${
-                    isSelected ? 'bg-white text-gray-900 ring-2 ring-white/60' : 'bg-gray-100 text-gray-600'
-                  }`}>
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden"
+                    style={
+                      isSelected
+                        ? { background: '#FFFFFF', color: '#111827', boxShadow: '0 0 0 2px rgba(255,255,255,0.6)' }
+                        : { background: C.surfaceHi, color: C.body }
+                    }
+                  >
                     {prof.photo_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={prof.photo_url} alt={prof.name} className="w-full h-full object-cover" />
@@ -857,7 +921,7 @@ export default function BookingFlow({
                     )}
                   </div>
                   <span className="font-medium text-sm">{prof.name}</span>
-                  {isSelected && <span className="ml-auto text-xs opacity-60">selecionado</span>}
+                  {isSelected && <span className="ml-auto text-xs opacity-70">selecionado</span>}
                 </button>
               )
             })}
@@ -868,11 +932,11 @@ export default function BookingFlow({
       {/* ETAPA 2 — ESCOLHER DATA */}
       {(step === 'date' || step === 'time' || step === 'form') && (
         <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
             Escolha o dia
           </h2>
           {availableDates.length === 0 ? (
-            <p className="text-gray-400 text-sm">Nenhuma data disponível nos próximos 14 dias.</p>
+            <p className="text-sm" style={{ color: C.faded }}>Nenhuma data disponível nos próximos 14 dias.</p>
           ) : (
             <div className="grid grid-cols-4 gap-2">
               {availableDates.map((date) => {
@@ -881,11 +945,20 @@ export default function BookingFlow({
                   <button
                     key={formatDate(date)}
                     onClick={() => handleSelectDate(date)}
-                    className={`flex flex-col items-center py-3 rounded-xl border text-sm font-medium transition-colors ${
+                    className="flex flex-col items-center py-3 rounded-xl border text-sm font-medium transition-colors"
+                    style={
                       isSelected
-                        ? 'bg-[var(--brand-primary,#111827)] text-white border-[var(--brand-primary,#111827)]'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
-                    }`}
+                        ? {
+                            background: 'var(--brand-primary, #111827)',
+                            borderColor: 'var(--brand-primary, #111827)',
+                            color: '#FFFFFF',
+                          }
+                        : {
+                            background: C.surface,
+                            borderColor: C.border,
+                            color: C.text,
+                          }
+                    }
                   >
                     <span className="text-xs opacity-70">{DAYS[date.getDay()]}</span>
                     <span className="text-lg font-bold leading-tight">{date.getDate()}</span>
@@ -903,15 +976,15 @@ export default function BookingFlow({
       {/* ETAPA 2 — ESCOLHER HORÁRIO */}
       {(step === 'time' || step === 'form') && selectedDate && (
         <section id="horarios-disponiveis">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
             Horários disponíveis —{' '}
             {DAYS_FULL[selectedDate.getDay()]}, {selectedDate.getDate()}/
             {selectedDate.getMonth() + 1}
           </h2>
           {loadingSlots ? (
-            <p className="text-gray-400 text-sm">Carregando horários...</p>
+            <p className="text-sm" style={{ color: C.faded }}>Carregando horários...</p>
           ) : slots.length === 0 ? (
-            <p className="text-gray-400 text-sm">Sem horários disponíveis neste dia.</p>
+            <p className="text-sm" style={{ color: C.faded }}>Sem horários disponíveis neste dia.</p>
           ) : (
             <>
             {waitlistDone && waitlistSlot && (
@@ -942,14 +1015,18 @@ export default function BookingFlow({
               <div
                 className="mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
                 style={{
-                  background: 'rgba(148,163,184,0.10)',
-                  border: '1px solid rgba(148,163,184,0.25)',
-                  color: '#64748B',
+                  background: isDark ? 'rgba(148,163,184,0.10)' : 'rgb(248,250,252)',
+                  border: `1px solid ${isDark ? 'rgba(148,163,184,0.25)' : 'rgb(226,232,240)'}`,
+                  color: C.mute,
                 }}
               >
                 <span
                   className="inline-flex items-center justify-center text-[10px] font-bold rounded-md px-1.5 py-0.5 shrink-0"
-                  style={{ background: '#F1F5F9', color: '#94A3B8', border: '1px solid #E2E8F0' }}
+                  style={{
+                    background: isDark ? 'rgba(255,255,255,0.10)' : '#F1F5F9',
+                    color: C.mute,
+                    border: `1px solid ${C.border}`,
+                  }}
                 >
                   fila
                 </span>
@@ -974,16 +1051,29 @@ export default function BookingFlow({
                       setWaitlistSlot(null)
                       setStep('form')
                     }}
-                    className={`py-3 rounded-xl border text-sm font-semibold transition-colors ${
+                    className="py-3 rounded-xl border text-sm font-semibold transition-colors cursor-pointer"
+                    style={
                       !slot.available
-                        ? 'bg-gray-50 text-gray-400 border-gray-100 cursor-pointer hover:border-gray-300'
+                        ? {
+                            background: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC',
+                            color: C.faded,
+                            borderColor: C.border,
+                          }
                         : isSelected
-                        ? 'bg-[var(--brand-primary,#111827)] text-white border-[var(--brand-primary,#111827)]'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
-                    }`}
+                        ? {
+                            background: 'var(--brand-primary, #111827)',
+                            color: '#FFFFFF',
+                            borderColor: 'var(--brand-primary, #111827)',
+                          }
+                        : {
+                            background: C.surface,
+                            color: C.text,
+                            borderColor: C.border,
+                          }
+                    }
                   >
                     {slot.time}
-                    {!slot.available && <span className="block text-xs text-gray-300">fila</span>}
+                    {!slot.available && <span className="block text-xs" style={{ color: C.faded }}>fila</span>}
                   </button>
                 )
               })}
@@ -1103,27 +1193,33 @@ export default function BookingFlow({
             </div>
           )}
 
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
             Seus dados
           </h2>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
+          <div
+            className="rounded-2xl p-4 space-y-4"
+            style={{ background: C.surface, border: `1px solid ${C.border}` }}
+          >
 
             {/* Resumo do agendamento */}
-            <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-600 space-y-1">
+            <div
+              className="rounded-xl px-4 py-3 text-sm space-y-1"
+              style={{ background: C.surfaceHi, border: `1px solid ${C.border}`, color: C.body }}
+            >
               {selectedServices.length > 0 && (
                 <div className="space-y-0.5">
                   {selectedServices.map((s) => (
                     <div key={s.id} className="flex justify-between">
-                      <span className="font-medium text-gray-900">{s.name}</span>
+                      <span className="font-medium" style={{ color: C.text }}>{s.name}</span>
                       {s.price !== null && (
-                        <span className="text-gray-500">{formatPrice(s.price)}</span>
+                        <span style={{ color: C.mute }}>{formatPrice(s.price)}</span>
                       )}
                     </div>
                   ))}
                   {hasPrice && selectedServices.length > 1 && (
-                    <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                      <span className="font-semibold text-gray-900">Total</span>
-                      <span className="font-bold text-gray-900">{formatPrice(totalPrice)}</span>
+                    <div className="flex justify-between pt-1 mt-1" style={{ borderTop: `1px solid ${C.border}` }}>
+                      <span className="font-semibold" style={{ color: C.text }}>Total</span>
+                      <span className="font-bold" style={{ color: C.text }}>{formatPrice(totalPrice)}</span>
                     </div>
                   )}
                 </div>
@@ -1135,13 +1231,13 @@ export default function BookingFlow({
                   day: 'numeric',
                   month: 'long',
                 })}{' '}
-                às <strong>{selectedTime}</strong>
+                às <strong style={{ color: C.text }}>{selectedTime}</strong>
               </p>
             </div>
 
             {/* Campo telefone — primeiro, pois dispara lookup de cliente */}
             <div>
-              <label className="block text-sm text-gray-600 mb-1 font-medium">
+              <label className="block text-sm mb-1 font-medium" style={{ color: C.body }}>
                 WhatsApp / Telefone
               </label>
               <input
@@ -1153,43 +1249,58 @@ export default function BookingFlow({
                 }}
                 onBlur={handlePhoneBlur}
                 placeholder="(99) 99999-9999"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 text-sm"
+                className="w-full rounded-xl px-4 py-3 focus:outline-none text-sm"
+                style={{
+                  background: C.input,
+                  border: `1px solid ${C.border}`,
+                  color: C.text,
+                }}
               />
               {lookingUpClient && (
-                <p className="text-xs text-gray-400 mt-1">Verificando cadastro...</p>
+                <p className="text-xs mt-1" style={{ color: C.faded }}>Verificando cadastro...</p>
               )}
               {returningClient && (
-                <p className="text-xs text-emerald-600 mt-1 font-medium">
+                <p className="text-xs mt-1 font-medium" style={{ color: isDark ? '#34D399' : '#059669' }}>
                   Bem-vindo de volta, {returningClient.name}!
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1 font-medium">Seu nome</label>
+              <label className="block text-sm mb-1 font-medium" style={{ color: C.body }}>Seu nome</label>
               <input
                 type="text"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Ex: João Silva"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 text-sm"
+                className="w-full rounded-xl px-4 py-3 focus:outline-none text-sm"
+                style={{
+                  background: C.input,
+                  border: `1px solid ${C.border}`,
+                  color: C.text,
+                }}
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1 font-medium">
-                Email <span className="text-gray-400 font-normal">(opcional — para receber confirmação)</span>
+              <label className="block text-sm mb-1 font-medium" style={{ color: C.body }}>
+                Email <span className="font-normal" style={{ color: C.faded }}>(opcional — para receber confirmação)</span>
               </label>
               <input
                 type="email"
                 value={clientEmail}
                 onChange={(e) => setClientEmail(e.target.value)}
                 placeholder="seu@email.com"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 text-sm"
+                className="w-full rounded-xl px-4 py-3 focus:outline-none text-sm"
+                style={{
+                  background: C.input,
+                  border: `1px solid ${C.border}`,
+                  color: C.text,
+                }}
               />
             </div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-sm" style={{ color: '#EF4444' }}>{error}</p>}
 
             <button
               onClick={handleSubmit}
