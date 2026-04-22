@@ -1,18 +1,41 @@
 'use client'
 
-import { IconAlert, IconGift } from '@/components/ui/Icon'
+import { useEffect, useState } from 'react'
+import { IconAlert, IconClose, IconGift } from '@/components/ui/Icon'
+
+const STORAGE_KEY = 'agp-garantia-dismissed'
 
 /**
  * Banner mostrado durante a janela de garantia (7 dias pós-pagamento).
  * Some automaticamente quando a janela acaba.
  *
- * Substitui o antigo TrialBanner (modelo "14 dias grátis sem cartão",
- * descontinuado em 2026-04-20 a favor da política de garantia).
+ * Pode ser dispensado pelo dono. Mas se entrar em modo urgent (≤2 dias),
+ * volta a aparecer mesmo que tenha sido dispensado antes — alerta crítico.
  */
 export default function GarantiaBanner({ daysLeft }: { daysLeft: number }) {
-  if (daysLeft <= 0) return null
-
   const urgent = daysLeft <= 2
+  const [hidden, setHidden] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
+    // Se urgent, só esconde se já dismissou DEPOIS de virar urgent
+    if (urgent) {
+      if (stored === 'urgent') setHidden(true)
+    } else {
+      if (stored) setHidden(true)
+    }
+    setMounted(true)
+  }, [urgent])
+
+  function handleDismiss() {
+    localStorage.setItem(STORAGE_KEY, urgent ? 'urgent' : 'normal')
+    setHidden(true)
+  }
+
+  if (daysLeft <= 0) return null
+  if (!mounted) return null
+  if (hidden) return null
 
   return (
     <div
@@ -47,6 +70,15 @@ export default function GarantiaBanner({ daysLeft }: { daysLeft: number }) {
       {urgent
         ? `Garantia termina em ${daysLeft} dia${daysLeft === 1 ? '' : 's'}. Se quiser reembolso, fala com a gente agora.`
         : `Garantia ativa — ${daysLeft} dias restantes pra pedir reembolso sem burocracia.`}
+      <button
+        type="button"
+        onClick={handleDismiss}
+        aria-label="Fechar aviso"
+        className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-6 h-6 rounded-full transition-opacity hover:opacity-100 opacity-70"
+        style={{ color: 'inherit' }}
+      >
+        <IconClose size={12} />
+      </button>
     </div>
   )
 }

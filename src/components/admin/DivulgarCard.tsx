@@ -7,6 +7,8 @@ import {
   IconCheck,
   IconInstagram,
   IconWhatsapp,
+  IconClose,
+  IconShare,
 } from '@/components/ui/Icon'
 
 type Props = {
@@ -17,6 +19,7 @@ type Props = {
 export default function DivulgarCard({ slug, appUrl }: Props) {
   const [copied, setCopied] = useState(false)
   const [open, setOpen] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
   const [origin, setOrigin] = useState(appUrl)
 
   useEffect(() => {
@@ -26,6 +29,9 @@ export default function DivulgarCard({ slug, appUrl }: Props) {
   }, [])
 
   const bookingLink = `${origin}/${slug}`
+  const waText = `Agende seu horário comigo: ${bookingLink}`
+  const waUrl = `https://wa.me/?text=${encodeURIComponent(waText)}`
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=10&data=${encodeURIComponent(bookingLink)}`
 
   function handleCopy() {
     navigator.clipboard.writeText(bookingLink).then(() => {
@@ -54,6 +60,7 @@ export default function DivulgarCard({ slug, appUrl }: Props) {
         </div>
         <button
           onClick={handleCopy}
+          aria-label="Copiar link"
           className="flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all"
           style={
             copied
@@ -78,6 +85,59 @@ export default function DivulgarCard({ slug, appUrl }: Props) {
               <IconCopy size={14} /> Copiar
             </>
           )}
+        </button>
+      </div>
+
+      {/* Ações rápidas */}
+      <div
+        className="px-4 pb-3 grid grid-cols-3 gap-2"
+        style={{ borderTop: '1px solid var(--admin-divider)', paddingTop: '0.75rem' }}
+      >
+        <a
+          href={waUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-semibold transition-transform active:scale-95"
+          style={{
+            background: 'rgba(37,211,102,0.12)',
+            color: '#16A34A',
+            border: '1px solid rgba(37,211,102,0.25)',
+          }}
+        >
+          <IconWhatsapp size={16} />
+          WhatsApp
+        </a>
+        <a
+          href={bookingLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-semibold transition-transform active:scale-95"
+          style={{
+            background: 'var(--admin-accent-bg)',
+            color: 'var(--admin-accent)',
+            border: '1px solid var(--admin-accent-border)',
+          }}
+        >
+          <IconShare size={16} />
+          Ver página
+        </a>
+        <button
+          type="button"
+          onClick={() => setQrOpen(true)}
+          className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-semibold transition-transform active:scale-95"
+          style={{
+            background: 'var(--admin-surface-hi)',
+            color: 'var(--admin-text-2)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <path d="M14 14h3v3h-3zM20 14h1v1h-1zM14 20h1v1h-1zM20 20h1v1h-1zM18 18h3" />
+          </svg>
+          QR Code
         </button>
       </div>
 
@@ -159,6 +219,56 @@ export default function DivulgarCard({ slug, appUrl }: Props) {
             ]}
             last
           />
+        </div>
+      )}
+
+      {qrOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.7)' }}
+          onClick={() => setQrOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-xs rounded-2xl p-5 relative"
+            style={{
+              background: 'var(--admin-surface)',
+              border: '1px solid var(--admin-border)',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setQrOpen(false)}
+              aria-label="Fechar"
+              className="absolute right-3 top-3 w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:opacity-100"
+              style={{
+                background: 'var(--admin-surface-hi)',
+                color: 'var(--admin-text-mute)',
+              }}
+            >
+              <IconClose size={14} />
+            </button>
+            <p className="text-sm font-bold text-center mb-1" style={{ color: 'var(--admin-text)' }}>
+              QR Code do seu link
+            </p>
+            <p className="text-xs text-center mb-4" style={{ color: 'var(--admin-text-mute)' }}>
+              Cliente aponta a câmera e cai direto na sua página
+            </p>
+            <div className="rounded-xl p-3 bg-white flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrUrl}
+                alt="QR code do link de agendamento"
+                width={280}
+                height={280}
+                className="w-full h-auto"
+              />
+            </div>
+            <p className="text-[10px] text-center mt-3 truncate" style={{ color: 'var(--admin-text-faded)' }}>
+              {bookingLink.replace(/^https?:\/\//, '')}
+            </p>
+          </div>
         </div>
       )}
     </div>

@@ -74,7 +74,9 @@ export default async function AdminLayout({
       <div className="admin-shell" data-admin-theme={initialTheme}>
         <InstallBanner />
         {refundDaysLeft !== null && <GarantiaBanner daysLeft={refundDaysLeft} />}
-        <div className="pb-24">{children}</div>
+        <div style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
+          {children}
+        </div>
         <BottomNav />
       </div>
     </AdminThemeProvider>

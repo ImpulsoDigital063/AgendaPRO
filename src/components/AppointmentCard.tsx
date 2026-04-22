@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { IconWhatsapp, IconCheck, IconClose, IconClock } from '@/components/ui/Icon'
+import { IconWhatsapp, IconCheck, IconClose } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 
 type Props = {
@@ -65,9 +65,21 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
 
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function onDocClick(e: MouseEvent) {
+      if (!menuRef.current) return
+      if (!menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [menuOpen])
 
   async function updateStatus(newStatus: 'confirmed' | 'cancelled' | 'no_show' | 'completed') {
     setLoading(true)
@@ -108,18 +120,17 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-3">
             <div
-              className="text-center min-w-[52px] rounded-xl py-1.5 px-1"
+              className="text-center min-w-[58px] rounded-xl py-1.5 px-1.5"
               style={{
                 background: 'var(--admin-accent-bg)',
                 border: '1px solid var(--admin-accent-border)',
               }}
             >
-              <p className="font-bold text-base leading-none" style={{ color: 'var(--admin-accent)' }}>
+              <p className="font-bold text-base leading-none tabular-nums" style={{ color: 'var(--admin-accent)' }}>
                 {appointment.start_time.slice(0, 5)}
               </p>
-              <p className="text-[10px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                <IconClock size={10} className="inline mr-0.5" />
-                {appointment.end_time.slice(0, 5)}
+              <p className="text-[10px] mt-1 tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
+                até {appointment.end_time.slice(0, 5)}
               </p>
             </div>
             <div>
@@ -219,11 +230,11 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
         )}
 
         {status === 'confirmed' && (
-          <div className="pl-[64px] space-y-2">
+          <div className="pl-[64px] flex items-stretch gap-2">
             <button
               onClick={() => updateStatus('completed')}
               disabled={loading}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
               style={{
                 background: 'linear-gradient(135deg, #10B981, #059669)',
                 color: '#fff',
@@ -233,32 +244,59 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
             >
               <IconCheck size={14} /> Atendi
             </button>
-            <div className="flex gap-2">
+            <div className="relative flex-shrink-0" ref={menuRef}>
               <button
-                onClick={() => setConfirm('no_show')}
+                type="button"
+                onClick={() => setMenuOpen((o) => !o)}
                 disabled={loading}
-                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
+                aria-label="Mais ações"
+                title="Mais ações"
+                className="h-full w-11 rounded-xl flex items-center justify-center transition-colors disabled:opacity-40"
                 style={{
                   background: 'var(--admin-surface-hi)',
-                  color: 'var(--admin-warn)',
-                  border: '1px solid var(--admin-border)',
-                }}
-                title="Cliente não apareceu — não recebe pontos"
-              >
-                Não veio
-              </button>
-              <button
-                onClick={() => setConfirm('cancelled')}
-                disabled={loading}
-                className="flex-1 py-2 rounded-xl text-xs transition-colors disabled:opacity-40"
-                style={{
-                  background: 'var(--admin-surface-hi)',
-                  color: 'var(--admin-text-faded)',
+                  color: 'var(--admin-text-mute)',
                   border: '1px solid var(--admin-border)',
                 }}
               >
-                Cancelar
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <circle cx="5" cy="12" r="1.6" />
+                  <circle cx="12" cy="12" r="1.6" />
+                  <circle cx="19" cy="12" r="1.6" />
+                </svg>
               </button>
+              {menuOpen && (
+                <div
+                  className="absolute right-0 top-full mt-1.5 z-30 rounded-xl py-1.5 min-w-[160px] shadow-lg"
+                  style={{
+                    background: 'var(--admin-surface)',
+                    border: '1px solid var(--admin-border)',
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      setConfirm('no_show')
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium transition-colors hover:opacity-80"
+                    style={{ color: 'var(--admin-warn)' }}
+                  >
+                    Não veio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      setConfirm('cancelled')
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium transition-colors hover:opacity-80"
+                    style={{ color: 'var(--admin-text-faded)' }}
+                  >
+                    Cancelar agendamento
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
