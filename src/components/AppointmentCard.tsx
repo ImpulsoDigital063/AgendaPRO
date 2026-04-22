@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { IconWhatsapp, IconCheck, IconClose } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
+import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
 
 type Props = {
   appointment: {
@@ -24,27 +25,6 @@ type Props = {
   nextUp?: boolean
 }
 
-function initialsFor(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
-
-function avatarGradient(name: string) {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
-  const palette = [
-    ['#3B82F6', '#06B6D4'],
-    ['#8B5CF6', '#EC4899'],
-    ['#10B981', '#06B6D4'],
-    ['#F59E0B', '#EF4444'],
-    ['#6366F1', '#A855F7'],
-    ['#0EA5E9', '#22D3EE'],
-  ]
-  const [from, to] = palette[hash % palette.length]
-  return `linear-gradient(135deg, ${from}, ${to})`
-}
 
 const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string; chipBg: string; chipColor: string }> = {
   pending: {
@@ -235,7 +215,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp }: Props
             style={{ color: 'var(--admin-success)' }}
           >
             <IconWhatsapp size={14} />
-            {appointment.client_phone}
+            {maskPhone(appointment.client_phone)}
           </a>
         </div>
 
