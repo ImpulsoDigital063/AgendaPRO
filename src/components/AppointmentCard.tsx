@@ -110,9 +110,11 @@ export default function AppointmentCard({ appointment, showDate }: Props) {
 
   return (
     <div
-      className="rounded-2xl overflow-hidden admin-card"
+      className="rounded-2xl admin-card relative"
       style={{
         borderLeft: `3px solid ${config.border}`,
+        overflow: menuOpen ? 'visible' : 'hidden',
+        zIndex: menuOpen ? 40 : undefined,
       }}
     >
       <div className="p-4">
