@@ -1,19 +1,39 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import type { Business } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { IconCheck, IconCamera, IconClose } from '@/components/ui/Icon'
+import {
+  IconCheck,
+  IconCamera,
+  IconInstagram,
+  IconFacebook,
+  IconTiktok,
+  IconGlobe,
+  IconCopy,
+  IconExternalLink,
+  IconAlert,
+  IconInfo,
+} from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import GoogleReviewGuide from '@/components/admin/GoogleReviewGuide'
+import StickyActionBar from '@/components/admin/StickyActionBar'
 
 type Props = {
   business: Business
 }
 
+function maskPhoneProgressive(raw: string): string {
+  const d = (raw || '').replace(/\D/g, '').slice(0, 11)
+  if (d.length === 0) return ''
+  if (d.length <= 2) return `(${d}`
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+}
+
 export default function NegocioTab({ business }: Props) {
   const [name, setName] = useState(business.name)
-  const [phone, setPhone] = useState(business.phone || '')
+  const [phone, setPhone] = useState(maskPhoneProgressive(business.phone || ''))
   const [address, setAddress] = useState(business.address || '')
   const [description, setDescription] = useState(business.description || '')
   const [googleMapsUrl, setGoogleMapsUrl] = useState(business.google_place_id || '')
@@ -28,12 +48,45 @@ export default function NegocioTab({ business }: Props) {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [confirmRemoveLogo, setConfirmRemoveLogo] = useState(false)
   const [showReviewGuide, setShowReviewGuide] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const fileInput = useRef<HTMLInputElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
   const supabase = createClient()
+
+  const [snapshot, setSnapshot] = useState({
+    name: business.name,
+    phone: maskPhoneProgressive(business.phone || ''),
+    address: business.address || '',
+    description: business.description || '',
+    googleMapsUrl: business.google_place_id || '',
+    googleRating: business.google_rating ? String(business.google_rating) : '',
+    googleReviewsCount: business.google_reviews_count ? String(business.google_reviews_count) : '',
+    pointsForReview: business.points_for_review ? String(business.points_for_review) : '',
+    instagramUrl: business.instagram_url || '',
+    facebookUrl: business.facebook_url || '',
+    tiktokUrl: business.tiktok_url || '',
+    websiteUrl: business.website_url || '',
+  })
+
+  const isDirty = useMemo(
+    () =>
+      name !== snapshot.name ||
+      phone !== snapshot.phone ||
+      address !== snapshot.address ||
+      description !== snapshot.description ||
+      googleMapsUrl !== snapshot.googleMapsUrl ||
+      googleRating !== snapshot.googleRating ||
+      googleReviewsCount !== snapshot.googleReviewsCount ||
+      pointsForReview !== snapshot.pointsForReview ||
+      instagramUrl !== snapshot.instagramUrl ||
+      facebookUrl !== snapshot.facebookUrl ||
+      tiktokUrl !== snapshot.tiktokUrl ||
+      websiteUrl !== snapshot.websiteUrl,
+    [name, phone, address, description, googleMapsUrl, googleRating, googleReviewsCount, pointsForReview, instagramUrl, facebookUrl, tiktokUrl, websiteUrl, snapshot]
+  )
 
   async function handleUploadLogo(file: File) {
     if (!file.type.startsWith('image/')) {
@@ -47,7 +100,6 @@ export default function NegocioTab({ business }: Props) {
     setError('')
     setUploadingLogo(true)
     const ext = (file.name.split('.').pop() || 'png').toLowerCase()
-    // Path com underscore evita colidir com fotos de profissional (UUID puro)
     const path = `${business.id}/_logo.${ext}`
 
     const { error: uploadError } = await supabase.storage
@@ -101,11 +153,13 @@ export default function NegocioTab({ business }: Props) {
     setError('')
     setSaved(false)
 
+    const phoneDigits = phone.replace(/\D/g, '')
+
     const { error: err } = await supabase
       .from('businesses')
       .update({
         name: name.trim(),
-        phone: phone.trim() || null,
+        phone: phoneDigits || null,
         address: address.trim() || null,
         description: description.trim() || null,
         google_place_id: googleMapsUrl.trim() || null,
@@ -124,17 +178,42 @@ export default function NegocioTab({ business }: Props) {
     if (err) {
       setError('Erro ao salvar. Tente novamente.')
     } else {
+      setSnapshot({
+        name: name.trim(),
+        phone,
+        address: address.trim(),
+        description: description.trim(),
+        googleMapsUrl: googleMapsUrl.trim(),
+        googleRating,
+        googleReviewsCount,
+        pointsForReview,
+        instagramUrl: instagramUrl.trim(),
+        facebookUrl: facebookUrl.trim(),
+        tiktokUrl: tiktokUrl.trim(),
+        websiteUrl: websiteUrl.trim(),
+      })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     }
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="admin-card-deep p-5 space-y-4">
-        <h3 className="font-semibold" style={{ color: 'var(--admin-text)' }}>Dados do negócio</h3>
+  const publicUrl = `agendapro.net.br/${business.slug}`
+  const fullUrl = `https://${publicUrl}`
 
-        {/* Logo */}
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div className="space-y-4 pb-24">
+      {/* Sub-card 1: Identidade visual */}
+      <Section title="Identidade visual" subtitle="Como seu negócio aparece nas telas públicas">
         <div className="flex items-center gap-4">
           <div className="relative w-20 h-20 flex-shrink-0">
             <div
@@ -150,26 +229,13 @@ export default function NegocioTab({ business }: Props) {
                 <IconCamera size={28} className="opacity-40" />
               )}
             </div>
-            {logoUrl && (
-              <button
-                type="button"
-                onClick={() => setConfirmRemoveLogo(true)}
-                disabled={uploadingLogo}
-                className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center shadow-md disabled:opacity-50 ring-2 ring-[var(--admin-bg)]"
-                style={{ background: 'var(--admin-danger)', color: '#FFFFFF' }}
-                title="Remover logo"
-                aria-label="Remover logo"
-              >
-                <IconClose size={12} strokeWidth={2.5} />
-              </button>
-            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
               Logo do negócio
             </p>
-            <p className="text-xs mb-2" style={{ color: 'var(--admin-text-mute)' }}>
-              PNG, JPG ou WEBP. Ideal quadrada, 512×512px. Máximo 4MB. Aparece nas telas públicas.
+            <p className="text-[11px] mb-2" style={{ color: 'var(--admin-text-mute)' }}>
+              PNG, JPG ou WEBP · quadrada 512×512 · até 4MB
             </p>
             <input
               ref={fileInput}
@@ -182,43 +248,63 @@ export default function NegocioTab({ business }: Props) {
                 e.target.value = ''
               }}
             />
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              disabled={uploadingLogo}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-              style={{
-                background: 'var(--admin-accent-bg)',
-                color: 'var(--admin-accent)',
-                border: '1px solid var(--admin-accent-border)',
-              }}
-            >
-              {uploadingLogo ? 'Enviando...' : logoUrl ? 'Trocar logo' : 'Enviar logo'}
-            </button>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                disabled={uploadingLogo}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                style={{
+                  background: 'var(--admin-accent-bg)',
+                  color: 'var(--admin-accent)',
+                  border: '1px solid var(--admin-accent-border)',
+                }}
+              >
+                {uploadingLogo ? 'Enviando...' : logoUrl ? 'Trocar logo' : 'Enviar logo'}
+              </button>
+              {logoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmRemoveLogo(true)}
+                  disabled={uploadingLogo}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--admin-text-faded)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                >
+                  Remover
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid var(--admin-divider)' }} />
-
         <div>
-          <label className="admin-label">Nome *</label>
+          <label className="admin-label">Nome do negócio *</label>
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
             className="admin-input w-full px-3 py-2.5 text-sm"
-            placeholder="Nome do seu negócio"
+            placeholder="Nome que vai aparecer pra seus clientes"
           />
         </div>
+      </Section>
 
+      {/* Sub-card 2: Contato e localização */}
+      <Section title="Contato e localização" subtitle="Como o cliente fala com você">
         <div>
           <label className="admin-label">WhatsApp</label>
           <input
             type="tel"
+            inputMode="numeric"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={e => setPhone(maskPhoneProgressive(e.target.value))}
             className="admin-input w-full px-3 py-2.5 text-sm"
             placeholder="(63) 99999-9999"
+            maxLength={15}
           />
         </div>
 
@@ -232,181 +318,150 @@ export default function NegocioTab({ business }: Props) {
             placeholder="Rua, número, bairro"
           />
         </div>
+      </Section>
 
+      {/* Sub-card 3: Sobre o negócio */}
+      <Section title="Sobre o negócio" subtitle="Aparece como subtítulo na sua página pública">
         <div>
-          <label className="admin-label">Descrição ou categoria</label>
+          <label className="admin-label">Categoria ou descrição curta</label>
           <textarea
             value={description}
             onChange={e => setDescription(e.target.value)}
             rows={3}
             className="admin-input w-full px-3 py-2.5 text-sm resize-none"
-            placeholder="Ex: Barbearia, Salão de beleza, Clínica de estética..."
+            placeholder="Ex: Barbearia · Salão de beleza · Clínica de estética"
           />
         </div>
+      </Section>
 
-        <div
-          className="pt-4 space-y-3"
-          style={{ borderTop: '1px solid var(--admin-divider)' }}
-        >
-          <h4
-            className="text-xs font-semibold uppercase tracking-[0.15em]"
-            style={{ color: 'var(--admin-text-mute)' }}
-          >
-            Google Reviews
-          </h4>
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <label className="admin-label !mb-0">Link direto pra avaliar</label>
-              <button
-                type="button"
-                onClick={() => setShowReviewGuide(true)}
-                className="text-xs font-semibold flex items-center gap-1 hover:opacity-80 transition-opacity"
-                style={{ color: 'var(--admin-accent)' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
-                Como pegar?
-              </button>
-            </div>
-            <input
-              type="url"
-              value={googleMapsUrl}
-              onChange={e => setGoogleMapsUrl(e.target.value)}
-              className="admin-input w-full px-3 py-2.5 text-sm"
-              placeholder="https://g.page/r/SEU_ID/review"
-            />
-            <p className="text-xs mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-              Use o link <strong>direto de avaliação</strong>. Link do Google Maps comum pede pra baixar o app no celular do cliente.
-            </p>
+      {/* Sub-card 4: Reputação Google */}
+      <Section
+        title="Reputação no Google"
+        subtitle="Mostra prova social na sua página e dá pontos pra quem avaliar"
+      >
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <label className="admin-label !mb-0">Link direto pra avaliar</label>
+            <button
+              type="button"
+              onClick={() => setShowReviewGuide(true)}
+              className="text-xs font-semibold flex items-center gap-1 hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--admin-accent)' }}
+            >
+              <IconInfo size={14} />
+              Como pegar?
+            </button>
           </div>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="admin-label">Nota atual</label>
-              <input
-                type="number"
-                value={googleRating}
-                onChange={e => setGoogleRating(e.target.value)}
-                min="1" max="5" step="0.1"
-                className="admin-input w-full px-3 py-2.5 text-sm"
-                placeholder="4.8"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="admin-label">Nº de avaliações</label>
-              <input
-                type="number"
-                value={googleReviewsCount}
-                onChange={e => setGoogleReviewsCount(e.target.value)}
-                min="0"
-                className="admin-input w-full px-3 py-2.5 text-sm"
-                placeholder="127"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="admin-label">Pontos por avaliar no Google</label>
+          <input
+            type="url"
+            value={googleMapsUrl}
+            onChange={e => setGoogleMapsUrl(e.target.value)}
+            className="admin-input w-full px-3 py-2.5 text-sm"
+            placeholder="https://g.page/r/SEU_ID/review"
+          />
+          <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Use o link <strong>direto de avaliação</strong>. Link comum do Maps pede pra baixar o app.
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="admin-label">Nota atual</label>
             <input
               type="number"
-              value={pointsForReview}
-              onChange={e => setPointsForReview(e.target.value)}
+              value={googleRating}
+              onChange={e => setGoogleRating(e.target.value)}
+              min="1" max="5" step="0.1"
+              className="admin-input w-full px-3 py-2.5 text-sm"
+              placeholder="4.8"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="admin-label">Nº de avaliações</label>
+            <input
+              type="number"
+              value={googleReviewsCount}
+              onChange={e => setGoogleReviewsCount(e.target.value)}
               min="0"
               className="admin-input w-full px-3 py-2.5 text-sm"
-              placeholder="ex: 150"
+              placeholder="127"
             />
           </div>
         </div>
 
         <div
-          className="pt-4 space-y-3"
-          style={{ borderTop: '1px solid var(--admin-divider)' }}
+          className="flex items-start gap-2 rounded-lg px-3 py-2.5"
+          style={{
+            background: 'color-mix(in srgb, var(--admin-warn) 10%, var(--admin-input-bg))',
+            border: '1px solid color-mix(in srgb, var(--admin-warn) 30%, var(--admin-border))',
+          }}
         >
-          <h4
-            className="text-xs font-semibold uppercase tracking-[0.15em]"
-            style={{ color: 'var(--admin-text-mute)' }}
-          >
-            Redes sociais
-          </h4>
-          <p className="text-xs -mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-            Aparecem como ícones na sua página pública. Cole o link completo de cada uma.
+          <IconAlert size={14} style={{ color: 'var(--admin-warn)', marginTop: 2, flexShrink: 0 }} />
+          <p className="text-[11px] leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+            Use os números reais do seu Google. Mentir aqui prejudica sua credibilidade quando o cliente clica e vê o número diferente.
           </p>
-          <div>
-            <label className="admin-label">Instagram</label>
-            <input
-              type="url"
-              value={instagramUrl}
-              onChange={e => setInstagramUrl(e.target.value)}
-              className="admin-input w-full px-3 py-2.5 text-sm"
-              placeholder="https://instagram.com/seunegocio"
-            />
-          </div>
-          <div>
-            <label className="admin-label">Facebook</label>
-            <input
-              type="url"
-              value={facebookUrl}
-              onChange={e => setFacebookUrl(e.target.value)}
-              className="admin-input w-full px-3 py-2.5 text-sm"
-              placeholder="https://facebook.com/seunegocio"
-            />
-          </div>
-          <div>
-            <label className="admin-label">TikTok</label>
-            <input
-              type="url"
-              value={tiktokUrl}
-              onChange={e => setTiktokUrl(e.target.value)}
-              className="admin-input w-full px-3 py-2.5 text-sm"
-              placeholder="https://tiktok.com/@seunegocio"
-            />
-          </div>
-          <div>
-            <label className="admin-label">Site</label>
-            <input
-              type="url"
-              value={websiteUrl}
-              onChange={e => setWebsiteUrl(e.target.value)}
-              className="admin-input w-full px-3 py-2.5 text-sm"
-              placeholder="https://seunegocio.com.br"
-            />
-          </div>
         </div>
 
-        {error && (
-          <p className="text-xs" style={{ color: 'var(--admin-danger)' }}>{error}</p>
-        )}
+        <div>
+          <label className="admin-label">Pontos por avaliar no Google</label>
+          <input
+            type="number"
+            value={pointsForReview}
+            onChange={e => setPointsForReview(e.target.value)}
+            min="0"
+            className="admin-input w-full px-3 py-2.5 text-sm"
+            placeholder="ex: 150"
+          />
+          <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Cliente ganha esses pontos no programa de fidelidade ao confirmar que avaliou.
+          </p>
+        </div>
+      </Section>
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full py-3 rounded-2xl font-bold text-sm transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
-          style={
-            saved
-              ? {
-                  background: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
-                  color: '#FFFFFF',
-                  boxShadow: '0 10px 30px -8px rgba(16, 185, 129, 0.55)',
-                }
-              : {
-                  background:
-                    'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
-                  color: '#FFFFFF',
-                  boxShadow:
-                    '0 12px 32px -8px color-mix(in srgb, var(--admin-accent) 55%, transparent)',
-                }
-          }
-        >
-          {saving ? 'Salvando...' : saved ? (<><IconCheck size={16} /> Salvo!</>) : 'Salvar alterações'}
-        </button>
-      </div>
+      {/* Sub-card 5: Redes sociais */}
+      <Section
+        title="Redes sociais"
+        subtitle="Aparecem como ícones na sua página pública"
+      >
+        <SocialInput
+          icon={<IconInstagram size={16} />}
+          iconColor="#E1306C"
+          label="Instagram"
+          value={instagramUrl}
+          onChange={setInstagramUrl}
+          placeholder="https://instagram.com/seunegocio"
+        />
+        <SocialInput
+          icon={<IconFacebook size={16} />}
+          iconColor="#1877F2"
+          label="Facebook"
+          value={facebookUrl}
+          onChange={setFacebookUrl}
+          placeholder="https://facebook.com/seunegocio"
+        />
+        <SocialInput
+          icon={<IconTiktok size={16} />}
+          iconColor="var(--admin-text)"
+          label="TikTok"
+          value={tiktokUrl}
+          onChange={setTiktokUrl}
+          placeholder="https://tiktok.com/@seunegocio"
+        />
+        <SocialInput
+          icon={<IconGlobe size={16} />}
+          iconColor="var(--admin-text-faded)"
+          label="Site"
+          value={websiteUrl}
+          onChange={setWebsiteUrl}
+          placeholder="https://seunegocio.com.br"
+        />
+      </Section>
 
-      <div className="admin-card-deep p-5">
-        <h3 className="font-semibold mb-1" style={{ color: 'var(--admin-text)' }}>Link público</h3>
-        <p className="text-xs mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-          Seu endereço de agendamento online.
-        </p>
+      {/* Sub-card 6: Link público */}
+      <Section
+        title="Link público de agendamento"
+        subtitle="Compartilhe esse link no Instagram, WhatsApp e cartões"
+      >
         <div
           className="flex items-center gap-2 rounded-xl px-3 py-2.5"
           style={{
@@ -414,17 +469,51 @@ export default function NegocioTab({ business }: Props) {
             border: '1px solid var(--admin-border)',
           }}
         >
-          <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+          <span className="text-xs whitespace-nowrap" style={{ color: 'var(--admin-text-mute)' }}>
             agendapro.net.br/
           </span>
-          <span className="text-sm font-semibold" style={{ color: 'var(--admin-accent)' }}>
+          <span
+            className="text-sm font-semibold truncate"
+            style={{ color: 'var(--admin-accent)' }}
+          >
             {business.slug}
           </span>
         </div>
-        <p className="text-xs mt-2" style={{ color: 'var(--admin-text-faded)' }}>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5"
+            style={{
+              background: linkCopied ? 'rgba(16,185,129,0.15)' : 'var(--admin-input-bg)',
+              color: linkCopied ? '#16A34A' : 'var(--admin-text)',
+              border: `1px solid ${linkCopied ? 'rgba(16,185,129,0.4)' : 'var(--admin-border)'}`,
+            }}
+          >
+            {linkCopied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+            {linkCopied ? 'Copiado!' : 'Copiar link'}
+          </button>
+          <a
+            href={fullUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5"
+            style={{
+              background: 'var(--admin-accent-bg)',
+              color: 'var(--admin-accent)',
+              border: '1px solid var(--admin-accent-border)',
+            }}
+          >
+            <IconExternalLink size={14} />
+            Abrir página
+          </a>
+        </div>
+
+        <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
           O endereço não pode ser alterado após o cadastro.
         </p>
-      </div>
+      </Section>
 
       <ConfirmActionModal
         open={confirmRemoveLogo}
@@ -442,6 +531,76 @@ export default function NegocioTab({ business }: Props) {
       />
 
       {showReviewGuide && <GoogleReviewGuide onClose={() => setShowReviewGuide(false)} />}
+
+      <StickyActionBar
+        dirty={isDirty}
+        saving={saving}
+        saved={saved}
+        error={error}
+        onSave={handleSave}
+        offsetBottom={72}
+      />
+    </div>
+  )
+}
+
+function Section({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string
+  subtitle?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="admin-card-deep p-5 space-y-4">
+      <div>
+        <h3 className="font-semibold text-sm" style={{ color: 'var(--admin-text)' }}>
+          {title}
+        </h3>
+        {subtitle && (
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function SocialInput({
+  icon,
+  iconColor,
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  icon: React.ReactNode
+  iconColor: string
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+}) {
+  return (
+    <div>
+      <label
+        className="admin-label flex items-center gap-1.5"
+        style={{ color: 'var(--admin-text-mute)' }}
+      >
+        <span style={{ color: iconColor, display: 'inline-flex' }}>{icon}</span>
+        {label}
+      </label>
+      <input
+        type="url"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="admin-input w-full px-3 py-2.5 text-sm"
+        placeholder={placeholder}
+      />
     </div>
   )
 }
