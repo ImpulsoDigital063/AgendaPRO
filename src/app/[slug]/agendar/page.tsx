@@ -126,11 +126,11 @@ export default async function AgendarPage({
       }
     >
       <div className="max-w-lg mx-auto">
-        {/* Header com cover branded */}
-        <div className="relative overflow-hidden">
+        {/* Header com cover branded — sticky pra "respirar" ao rolar */}
+        <div className="relative">
           <div className="h-20 w-full" style={{ background: cover }} />
           <div
-            className="px-4 py-4 flex items-center gap-3 backdrop-blur-xl border-b"
+            className="sticky top-0 z-30 px-4 py-3 flex items-center gap-3 backdrop-blur-xl border-b"
             style={{
               background: isDark ? 'rgba(5,7,19,0.85)' : 'rgba(255,255,255,0.85)',
               borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
@@ -168,7 +168,7 @@ export default async function AgendarPage({
                 {b.name}
               </h1>
               <p className="text-xs" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                Escolha um horário
+                Agendamento online
               </p>
             </div>
           </div>

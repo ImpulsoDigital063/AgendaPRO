@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { IconClock, IconSparkles, IconCheck, IconArrowRight } from '@/components/ui/Icon'
 
 type Prefill = {
   name: string
@@ -199,6 +200,7 @@ export default function BookingFlow({
   // Totais calculados dos serviços selecionados
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0)
   const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
+  const totalPoints = selectedServices.reduce((sum, s) => sum + (s.points ?? 0), 0)
   const hasPrice = selectedServices.some((s) => s.price !== null)
 
   // Granularidade do dia (step entre horários mostrados). Ex: 15min.
@@ -776,8 +778,64 @@ export default function BookingFlow({
     : null
   const prefillDateLabel = prefill ? `${prefill.date.split('-')[2]}/${prefill.date.split('-')[1]}` : ''
 
+  // Stepper visual + título dinâmico — só pra fluxo "vivo" (não 'done')
+  const stepKeys: Step[] = []
+  if (hasServices) stepKeys.push('service')
+  if (hasMultipleProfessionals) stepKeys.push('professional')
+  stepKeys.push('date', 'time', 'form')
+  const stepLabels: Record<Step, string> = {
+    service: 'Serviço',
+    professional: 'Profissional',
+    date: 'Dia',
+    time: 'Horário',
+    form: 'Dados',
+    done: '',
+  }
+  const stepTitles: Record<Step, string> = {
+    service: 'Escolha o serviço',
+    professional: 'Escolha o profissional',
+    date: 'Escolha o dia',
+    time: 'Escolha o horário',
+    form: 'Confirme seus dados',
+    done: '',
+  }
+  const currentIdx = Math.max(0, stepKeys.indexOf(step))
+  const showStepper = stepKeys.length > 1
+  const showStickyBar = step === 'service' && selectedServices.length > 0
+
   return (
-    <div className="p-4 space-y-6">
+    <div className={`p-4 space-y-6 ${showStickyBar ? 'pb-32' : ''}`}>
+      {/* Stepper + título dinâmico */}
+      {showStepper && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-1.5">
+            {stepKeys.map((k, i) => {
+              const isActive = i === currentIdx
+              const isDone = i < currentIdx
+              return (
+                <div key={k} className="flex-1 flex items-center gap-1.5">
+                  <div
+                    className="h-1.5 flex-1 rounded-full transition-all"
+                    style={{
+                      background: isDone || isActive
+                        ? 'linear-gradient(90deg, var(--brand-primary, #3B82F6), var(--brand-secondary, #06B6D4))'
+                        : C.border,
+                    }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold" style={{ color: C.text }}>
+              {stepTitles[step]}
+            </h2>
+            <span className="text-xs font-medium" style={{ color: C.mute }}>
+              {currentIdx + 1} de {stepKeys.length} · {stepLabels[step]}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Banner de fila — quando vem do email com prefill */}
       {prefill && (
@@ -801,23 +859,24 @@ export default function BookingFlow({
       {/* ETAPA 0 — ESCOLHER SERVIÇOS (múltipla seleção) */}
       {hasServices && (
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
-            Quais serviços?
-          </h2>
-          <div className="space-y-2">
+          <p className="text-xs mb-3" style={{ color: C.mute }}>
+            Selecione um ou mais serviços abaixo
+          </p>
+          <div className="space-y-2.5">
             {services.map((service) => {
               const isSelected = selectedServices.some((s) => s.id === service.id)
               return (
                 <button
                   key={service.id}
                   onClick={() => handleToggleService(service)}
-                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border text-left transition-colors"
+                  className="w-full px-4 py-3.5 rounded-2xl border text-left transition-all"
                   style={
                     isSelected
                       ? {
-                          background: 'var(--brand-primary, #111827)',
-                          borderColor: 'var(--brand-primary, #111827)',
+                          background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+                          borderColor: 'transparent',
                           color: '#FFFFFF',
+                          boxShadow: '0 8px 24px -8px rgba(59,130,246,0.4)',
                         }
                       : {
                           background: C.surface,
@@ -826,63 +885,62 @@ export default function BookingFlow({
                         }
                   }
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0"
-                      style={{
-                        background: isSelected ? '#FFFFFF' : 'transparent',
-                        borderColor: isSelected ? '#FFFFFF' : C.borderHi,
-                      }}
-                    >
-                      {isSelected && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors"
+                        style={{
+                          background: isSelected ? '#FFFFFF' : 'transparent',
+                          borderColor: isSelected ? '#FFFFFF' : C.borderHi,
+                        }}
+                      >
+                        {isSelected && <IconCheck size={12} color="var(--brand-primary, #111827)" strokeWidth={4} />}
+                      </div>
+                      <span className="font-semibold text-sm truncate">{service.name}</span>
                     </div>
-                    <span className="font-medium text-sm">{service.name}</span>
-                  </div>
-                  <div className="text-right text-xs" style={{ color: isSelected ? 'rgba(255,255,255,0.75)' : C.mute }}>
                     {service.price !== null && (
-                      <span className="font-semibold text-sm block" style={{ color: isSelected ? '#FFFFFF' : C.text }}>{formatPrice(service.price)}</span>
+                      <span
+                        className="font-bold text-sm flex-shrink-0"
+                        style={{ color: isSelected ? '#FFFFFF' : C.text }}
+                      >
+                        {formatPrice(service.price)}
+                      </span>
                     )}
-                    <span>{formatDuration(service.duration_minutes)}</span>
+                  </div>
+                  <div
+                    className="mt-2 flex items-center gap-3 text-xs pl-8"
+                    style={{ color: isSelected ? 'rgba(255,255,255,0.85)' : C.mute }}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <IconClock size={12} color="currentColor" />
+                      {formatDuration(service.duration_minutes)}
+                    </span>
+                    {service.points > 0 && (
+                      <span
+                        className="inline-flex items-center gap-1 font-semibold"
+                        style={{ color: isSelected ? '#FFFFFF' : 'var(--brand-primary, #3B82F6)' }}
+                      >
+                        <IconSparkles size={12} color="currentColor" />
+                        +{service.points} pts
+                      </span>
+                    )}
                   </div>
                 </button>
               )
             })}
           </div>
 
-          {/* Resumo dos serviços selecionados */}
-          {selectedServices.length > 0 && (
-            <div
-              className="mt-3 rounded-xl px-4 py-3 flex items-center justify-between"
-              style={{ background: C.surfaceHi, border: `1px solid ${C.border}` }}
-            >
-              <div className="text-sm" style={{ color: C.body }}>
-                <span className="font-semibold" style={{ color: C.text }}>{selectedServices.length}</span>{' '}
-                {selectedServices.length === 1 ? 'serviço' : 'serviços'} —{' '}
-                {formatDuration(totalDuration)}
-              </div>
-              {hasPrice && (
-                <span className="font-bold text-base" style={{ color: C.text }}>{formatPrice(totalPrice)}</span>
-              )}
-            </div>
-          )}
-
-          {selectedServices.length > 0 && step === 'service' && (
-            <button
-              onClick={handleProceedFromServices}
-              className="mt-3 w-full bg-[var(--brand-primary,#111827)] text-white py-4 rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"
-            >
-              {hasMultipleProfessionals ? 'Escolher profissional →' : 'Escolher horário →'}
-            </button>
-          )}
         </section>
       )}
 
       {/* ETAPA 1 — ESCOLHER PROFISSIONAL (só se tiver mais de um) */}
       {hasMultipleProfessionals && (step === 'professional' || step === 'date' || step === 'time' || step === 'form') && (
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
-            Escolha o profissional
-          </h2>
+          {step !== 'professional' && (
+            <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
+              Profissional
+            </h2>
+          )}
           <div className="space-y-2">
             {professionals.map((prof) => {
               const isSelected = selectedProfessional?.id === prof.id
@@ -949,9 +1007,11 @@ export default function BookingFlow({
       {/* ETAPA 2 — ESCOLHER DATA */}
       {(step === 'date' || step === 'time' || step === 'form') && (
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
-            Escolha o dia
-          </h2>
+          {step !== 'date' && (
+            <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
+              Dia
+            </h2>
+          )}
           {availableDates.length === 0 ? (
             <p className="text-sm" style={{ color: C.faded }}>Nenhuma data disponível nos próximos 14 dias.</p>
           ) : (
@@ -1328,6 +1388,58 @@ export default function BookingFlow({
             </button>
           </div>
         </section>
+      )}
+
+      {/* Sticky bar — totalizador + Continuar (passo de serviços) */}
+      {showStickyBar && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-xl"
+          style={{
+            background: isDark ? 'rgba(5,7,19,0.92)' : 'rgba(255,255,255,0.92)',
+            borderTop: `1px solid ${C.border}`,
+            paddingBottom: 'env(safe-area-inset-bottom, 0)',
+          }}
+        >
+          <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2">
+                {hasPrice && (
+                  <span className="text-lg font-bold" style={{ color: C.text }}>
+                    {formatPrice(totalPrice)}
+                  </span>
+                )}
+                {totalPoints > 0 && (
+                  <span
+                    className="text-xs font-semibold inline-flex items-center gap-0.5"
+                    style={{ color: 'var(--brand-primary, #3B82F6)' }}
+                  >
+                    <IconSparkles size={10} color="currentColor" />
+                    +{totalPoints} pts
+                  </span>
+                )}
+              </div>
+              <div className="text-xs flex items-center gap-2" style={{ color: C.mute }}>
+                <span>{selectedServices.length} {selectedServices.length === 1 ? 'serviço' : 'serviços'}</span>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1">
+                  <IconClock size={10} color="currentColor" />
+                  {formatDuration(totalDuration)}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleProceedFromServices}
+              className="flex-shrink-0 px-5 py-3 rounded-xl font-semibold text-sm text-white inline-flex items-center gap-1.5 transition-transform active:scale-[0.97]"
+              style={{
+                background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+                boxShadow: '0 8px 20px -8px rgba(59,130,246,0.5)',
+              }}
+            >
+              Continuar
+              <IconArrowRight size={14} color="#FFFFFF" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
