@@ -42,6 +42,12 @@ export default function AdminThemeProvider({
     void root.offsetHeight
     root.setAttribute('data-admin-theme', next)
     root.style.colorScheme = next
+    // As divs .admin-shell (admin + profissional) recebem data-admin-theme server-side
+    // a partir do cookie. Precisamos atualizá-las também, senão as CSS vars da div
+    // sobrescrevem as do html e o tema só muda depois de um F5.
+    document.querySelectorAll<HTMLElement>('.admin-shell').forEach((el) => {
+      el.setAttribute('data-admin-theme', next)
+    })
     // Remove a classe só depois que o browser pintou as novas cores.
     // 80ms cobre a janela de paint mesmo em mobile fraco — RAF aninhado (~32ms)
     // estava muito curto e algumas transições de 0.25s ainda animavam de cor antiga pra nova.
