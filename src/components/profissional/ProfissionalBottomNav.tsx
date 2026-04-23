@@ -36,7 +36,7 @@ export default function ProfissionalBottomNav({
       IconSolid: IconWalletSolid,
     },
     {
-      href: '/profissional/trocar-senha',
+      href: '/profissional/conta',
       label: 'Conta',
       Icon: IconSettings,
       IconSolid: IconSettingsSolid,
