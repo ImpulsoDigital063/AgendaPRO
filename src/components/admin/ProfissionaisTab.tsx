@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { compressImage } from '@/lib/compress-image'
 import type { Professional } from '@/lib/types'
 import {
   IconCamera,
@@ -193,22 +194,22 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
   }
 
   async function handleUploadPhoto(prof: Professional, file: File) {
-    if (!file.type.startsWith('image/')) {
-      alert('Envie uma imagem (PNG, JPG ou WEBP).')
-      return
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      alert('Imagem muito grande. Máximo 4MB.')
+    setUploadingId(prof.id)
+
+    const result = await compressImage(file, 'photo')
+    if (!result.ok) {
+      alert(result.reason)
+      setUploadingId(null)
       return
     }
 
-    setUploadingId(prof.id)
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const optimized = result.file
+    const ext = (optimized.name.split('.').pop() || 'webp').toLowerCase()
     const path = `${businessId}/${prof.id}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from('professional-photos')
-      .upload(path, file, { upsert: true, cacheControl: '3600' })
+      .upload(path, optimized, { upsert: true, cacheControl: '3600', contentType: optimized.type })
 
     if (uploadError) {
       alert('Erro ao enviar foto: ' + uploadError.message)

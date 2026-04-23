@@ -3,6 +3,7 @@
 import { useRef, useState, useMemo } from 'react'
 import type { Business } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { compressImage } from '@/lib/compress-image'
 import {
   IconCheck,
   IconCamera,
@@ -89,22 +90,23 @@ export default function NegocioTab({ business }: Props) {
   )
 
   async function handleUploadLogo(file: File) {
-    if (!file.type.startsWith('image/')) {
-      setError('Envie uma imagem (PNG, JPG ou WEBP).')
-      return
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      setError('Imagem muito grande. Máximo 4MB.')
-      return
-    }
     setError('')
     setUploadingLogo(true)
-    const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+
+    const result = await compressImage(file, 'logo')
+    if (!result.ok) {
+      setError(result.reason)
+      setUploadingLogo(false)
+      return
+    }
+
+    const optimized = result.file
+    const ext = (optimized.name.split('.').pop() || 'webp').toLowerCase()
     const path = `${business.id}/_logo.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from('professional-photos')
-      .upload(path, file, { upsert: true, cacheControl: '3600' })
+      .upload(path, optimized, { upsert: true, cacheControl: '3600', contentType: optimized.type })
 
     if (uploadError) {
       setError('Erro ao enviar logo: ' + uploadError.message)
