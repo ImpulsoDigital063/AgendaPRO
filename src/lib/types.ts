@@ -21,6 +21,7 @@ export type Business = {
   facebook_url?: string | null
   tiktok_url?: string | null
   website_url?: string | null
+  whatsapp_intro_message?: string | null
 }
 
 export type Professional = {

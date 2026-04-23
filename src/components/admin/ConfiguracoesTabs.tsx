@@ -116,8 +116,11 @@ export default function ConfiguracoesTabs({
 
       {activeTab === 'whatsapp' && (
         <WhatsAppQRTab
-          phone={business.phone || ''}
-          businessName={business.name}
+          business={business}
+          onNavigateToNegocio={() => {
+            setActiveTab('negocio')
+            if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
         />
       )}
     </div>
