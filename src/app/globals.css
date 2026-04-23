@@ -378,7 +378,7 @@ html.admin-theme-switching *::after {
   box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, 0.25);
 }
 
-/* === Aurora Dock — bottom nav flutuante === */
+/* === Capsule Dock — bottom nav flutuante === */
 .admin-dock {
   position: relative;
   border-radius: 28px;
@@ -396,21 +396,18 @@ html.admin-theme-switching *::after {
 
 .admin-dock-aurora {
   position: absolute;
-  inset: -40%;
+  inset: -30%;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(40% 60% at 20% 30%, color-mix(in srgb, var(--admin-accent) 18%, transparent), transparent 70%),
-    radial-gradient(40% 60% at 80% 70%, color-mix(in srgb, #06B6D4 16%, transparent), transparent 70%),
-    radial-gradient(35% 55% at 50% 50%, color-mix(in srgb, #A78BFA 14%, transparent), transparent 75%);
-  filter: blur(20px) saturate(140%);
-  opacity: 0.55;
+    radial-gradient(40% 60% at 20% 30%, color-mix(in srgb, var(--admin-accent) 22%, transparent), transparent 70%),
+    radial-gradient(40% 60% at 80% 70%, color-mix(in srgb, #06B6D4 18%, transparent), transparent 70%);
+  filter: blur(18px) saturate(140%);
+  opacity: 0.45;
   animation: dock-aurora 18s ease-in-out infinite alternate;
 }
 
-[data-admin-theme='light'] .admin-dock-aurora { opacity: 0.35; }
-
-.admin-dock .dock-tab { z-index: 1; }
+[data-admin-theme='light'] .admin-dock-aurora { opacity: 0.25; }
 
 @keyframes dock-aurora {
   0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
@@ -420,11 +417,97 @@ html.admin-theme-switching *::after {
 
 @media (prefers-reduced-motion: reduce) {
   .admin-dock-aurora { animation: none; }
+  .dock-capsule, .dock-label { transition: none !important; }
 }
 
-.admin-dock .dock-tab:active span[class*='dock-pill'] {
-  transform: translateX(-50%) scale(0.96);
-  transition: transform 120ms ease-out;
+/* === Cápsula horizontal (Material You) === */
+.dock-capsule {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: var(--admin-text-faded);
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background 260ms ease,
+    color 220ms ease,
+    padding 320ms cubic-bezier(.34, 1.2, .55, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dock-capsule:hover { color: var(--admin-text-2); }
+
+.dock-capsule.is-active {
+  color: var(--admin-accent);
+  padding: 0 18px;
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--admin-accent) 18%, transparent) 0%,
+      color-mix(in srgb, #06B6D4 14%, transparent) 100%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--admin-accent) 35%, transparent),
+    0 6px 18px -8px color-mix(in srgb, var(--admin-accent) 50%, transparent);
+}
+
+.dock-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.dock-label {
+  display: inline-block;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateX(-4px);
+  transition:
+    max-width 320ms cubic-bezier(.34, 1.2, .55, 1),
+    margin-left 320ms cubic-bezier(.34, 1.2, .55, 1),
+    opacity 220ms ease,
+    transform 320ms cubic-bezier(.34, 1.2, .55, 1);
+}
+
+.dock-capsule.is-active .dock-label {
+  max-width: 140px;
+  margin-left: 8px;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.dock-capsule:active { transform: scale(0.97); }
+
+/* Badge vermelho de notificação */
+.dock-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--admin-danger, #EF4444);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow:
+    0 4px 10px -2px color-mix(in srgb, var(--admin-danger, #EF4444) 60%, transparent);
+  border: 1.5px solid var(--admin-bottomnav-bg);
 }
 
 /* Banner trial com gradient em vez de amarelo chapado */
