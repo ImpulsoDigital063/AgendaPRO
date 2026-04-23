@@ -39,12 +39,31 @@ export default async function ProfissionalLayout({
 
   const employmentType = (professional.employment_type ?? 'commissioned') as 'commissioned' | 'employed'
 
+  // Badge: agendamentos pendentes de hoje pra esse profissional
+  const today = new Date()
+  const yyyy = today.getFullYear()
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const dd = String(today.getDate()).padStart(2, '0')
+  const todayStr = `${yyyy}-${mm}-${dd}`
+
+  const { count: pendingCount } = await supabase
+    .from('appointments')
+    .select('id', { count: 'exact', head: true })
+    .eq('professional_id', professional.id)
+    .eq('status', 'pending')
+    .gte('appointment_date', todayStr)
+
   return (
     <AdminThemeProvider initial={initialTheme}>
       <div className="admin-shell" data-admin-theme={initialTheme}>
         <InstallBanner />
-        <div className="pb-24">{children}</div>
-        <ProfissionalBottomNav employmentType={employmentType} />
+        <div style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
+          {children}
+        </div>
+        <ProfissionalBottomNav
+          employmentType={employmentType}
+          pendingAppointments={pendingCount ?? 0}
+        />
       </div>
     </AdminThemeProvider>
   )

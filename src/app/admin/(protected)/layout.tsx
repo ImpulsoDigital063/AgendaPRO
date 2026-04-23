@@ -26,6 +26,8 @@ export default async function AdminLayout({
 
   // Sem negócio associado — pode ser estado temporário pós-cadastro; deixa passar
   let refundDaysLeft: number | null = null
+  let pendingAppointments = 0
+  let pendingClaims = 0
 
   if (business) {
     const { data: subscription } = await supabase
@@ -62,6 +64,22 @@ export default async function AdminLayout({
         if (daysLeft > 0) refundDaysLeft = daysLeft
       }
     }
+
+    // Badges da bottom nav (aprovam-se em paralelo, ignoram erros silenciosamente)
+    const [apptRes, claimsRes] = await Promise.all([
+      supabase
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('business_id', business.id)
+        .eq('status', 'pending'),
+      supabase
+        .from('review_claims')
+        .select('id', { count: 'exact', head: true })
+        .eq('business_id', business.id)
+        .eq('status', 'pending'),
+    ])
+    pendingAppointments = apptRes.count ?? 0
+    pendingClaims = claimsRes.count ?? 0
   }
 
   const cookieStore = await cookies()
@@ -74,10 +92,13 @@ export default async function AdminLayout({
       <div className="admin-shell" data-admin-theme={initialTheme}>
         <InstallBanner />
         {refundDaysLeft !== null && <GarantiaBanner daysLeft={refundDaysLeft} />}
-        <div style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
+        <div style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
           {children}
         </div>
-        <BottomNav />
+        <BottomNav
+          pendingAppointments={pendingAppointments}
+          pendingClaims={pendingClaims}
+        />
       </div>
     </AdminThemeProvider>
   )

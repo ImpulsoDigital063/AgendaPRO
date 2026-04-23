@@ -369,13 +369,62 @@ html.admin-theme-switching *::after {
   margin-bottom: 0.5rem;
 }
 
-/* Bottom nav flutuante com blur e borda superior luminosa */
+/* Bottom nav flutuante com blur e borda superior luminosa (LEGADO) */
 .admin-bottomnav {
   background: var(--admin-bottomnav-bg);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   border-top: 1px solid var(--admin-border);
   box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* === Aurora Dock — bottom nav flutuante === */
+.admin-dock {
+  position: relative;
+  border-radius: 28px;
+  background: var(--admin-bottomnav-bg);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--admin-border) 70%, transparent);
+  box-shadow:
+    0 18px 50px -12px rgba(0, 0, 0, 0.45),
+    0 4px 12px -4px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 0 color-mix(in srgb, white 8%, transparent);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.admin-dock-aurora {
+  position: absolute;
+  inset: -40%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 60% at 20% 30%, color-mix(in srgb, var(--admin-accent) 18%, transparent), transparent 70%),
+    radial-gradient(40% 60% at 80% 70%, color-mix(in srgb, #06B6D4 16%, transparent), transparent 70%),
+    radial-gradient(35% 55% at 50% 50%, color-mix(in srgb, #A78BFA 14%, transparent), transparent 75%);
+  filter: blur(20px) saturate(140%);
+  opacity: 0.55;
+  animation: dock-aurora 18s ease-in-out infinite alternate;
+}
+
+[data-admin-theme='light'] .admin-dock-aurora { opacity: 0.35; }
+
+.admin-dock .dock-tab { z-index: 1; }
+
+@keyframes dock-aurora {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%  { transform: translate3d(-6%, 4%, 0) rotate(8deg); }
+  100% { transform: translate3d(4%, -3%, 0) rotate(-6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-dock-aurora { animation: none; }
+}
+
+.admin-dock .dock-tab:active span[class*='dock-pill'] {
+  transform: translateX(-50%) scale(0.96);
+  transition: transform 120ms ease-out;
 }
 
 /* Banner trial com gradient em vez de amarelo chapado */
