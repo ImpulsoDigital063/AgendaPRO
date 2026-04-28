@@ -102,6 +102,7 @@ export default function ConfiguracoesTabs({
           initialCustomers={initialCustomers}
           pointsForReferral={business.points_for_referral ?? 0}
           pointsForReview={business.points_for_review ?? 0}
+          pointsForPunctuality={business.punctuality_bonus_points ?? 10}
           pointsMode={business.points_mode ?? 'business'}
           onNavigateToNegocio={() => {
             setActiveTab('negocio')

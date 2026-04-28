@@ -27,13 +27,14 @@ export default async function ProfissionalPage() {
   // Busca o profissional logado
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, business:businesses(name, slug)')
+    .select('*, business:businesses(name, slug, punctuality_bonus_points)')
     .eq('auth_user_id', user.id)
     .single()
 
   if (!professional) redirect('/profissional/login')
 
-  const business = professional.business as { name: string; slug: string }
+  const business = professional.business as { name: string; slug: string; punctuality_bonus_points?: number }
+  const punctualityBonus = business.punctuality_bonus_points ?? 10
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -260,7 +261,7 @@ export default async function ProfissionalPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {list.map((a) => <ProfAppointmentCard key={a.id} appointment={a} />)}
+              {list.map((a) => <ProfAppointmentCard key={a.id} appointment={a} punctualityBonus={punctualityBonus} />)}
             </div>
           )}
         </section>
@@ -276,7 +277,7 @@ export default async function ProfissionalPage() {
             </div>
             <div className="space-y-3">
               {upcoming.map((a) => (
-                <ProfAppointmentCard key={a.id} appointment={a} showDate />
+                <ProfAppointmentCard key={a.id} appointment={a} showDate punctualityBonus={punctualityBonus} />
               ))}
             </div>
           </section>

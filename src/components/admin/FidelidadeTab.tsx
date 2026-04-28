@@ -36,6 +36,7 @@ type Props = {
   initialCustomers: Customer[]
   pointsForReferral: number
   pointsForReview: number
+  pointsForPunctuality: number
   pointsMode: 'business' | 'professional'
   onNavigateToNegocio?: () => void
 }
@@ -74,6 +75,7 @@ export default function FidelidadeTab({
   initialCustomers,
   pointsForReferral,
   pointsForReview,
+  pointsForPunctuality,
   pointsMode: initialPointsMode,
   onNavigateToNegocio,
 }: Props) {
@@ -84,6 +86,9 @@ export default function FidelidadeTab({
   const [pointsMode, setPointsMode] = useState<'business' | 'professional'>(initialPointsMode)
   const [referralPoints, setReferralPoints] = useState(String(pointsForReferral))
   const [referralSavedAt, setReferralSavedAt] = useState<number | null>(null)
+
+  const [punctualityPoints, setPunctualityPoints] = useState(String(pointsForPunctuality))
+  const [punctualitySavedAt, setPunctualitySavedAt] = useState<number | null>(null)
 
   const [pendingClaims, setPendingClaims] = useState<ReviewClaim[]>([])
   const [claimActionId, setClaimActionId] = useState<string | null>(null)
@@ -103,6 +108,7 @@ export default function FidelidadeTab({
 
   const addFormRef = useRef<HTMLDivElement | null>(null)
   const referralSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const punctualitySavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Carrega claims pendentes
   useEffect(() => {
@@ -125,6 +131,7 @@ export default function FidelidadeTab({
   useEffect(() => {
     return () => {
       if (referralSavedTimerRef.current) clearTimeout(referralSavedTimerRef.current)
+      if (punctualitySavedTimerRef.current) clearTimeout(punctualitySavedTimerRef.current)
     }
   }, [])
 
@@ -186,6 +193,19 @@ export default function FidelidadeTab({
     setReferralSavedAt(Date.now())
     if (referralSavedTimerRef.current) clearTimeout(referralSavedTimerRef.current)
     referralSavedTimerRef.current = setTimeout(() => setReferralSavedAt(null), 2000)
+  }
+
+  // ---- Bônus de pontualidade (autosave em blur) ----
+  async function handlePunctualityBlur() {
+    const value = parseInt(punctualityPoints) || 0
+    if (value === pointsForPunctuality) return
+    await supabase
+      .from('businesses')
+      .update({ punctuality_bonus_points: value })
+      .eq('id', businessId)
+    setPunctualitySavedAt(Date.now())
+    if (punctualitySavedTimerRef.current) clearTimeout(punctualitySavedTimerRef.current)
+    punctualitySavedTimerRef.current = setTimeout(() => setPunctualitySavedAt(null), 2000)
   }
 
   // ---- Recompensas ----
@@ -562,6 +582,41 @@ export default function FidelidadeTab({
               onChange={(e) => setReferralPoints(e.target.value)}
               onBlur={handleReferralBlur}
               placeholder="ex: 200"
+              min="0"
+              className="admin-input flex-1 px-3 py-2 text-sm"
+            />
+            <span className="text-xs font-medium" style={{ color: 'var(--admin-text-mute)' }}>
+              pontos
+            </span>
+          </div>
+        </div>
+
+        {/* Bônus de pontualidade */}
+        <div className="admin-card p-4 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+              Bônus de pontualidade
+            </p>
+            {punctualitySavedAt && (
+              <span
+                className="text-[10px] font-bold flex items-center gap-1 transition-opacity"
+                style={{ color: 'var(--admin-success, #16A34A)' }}
+              >
+                <IconCheck size={11} /> Salvo
+              </span>
+            )}
+          </div>
+          <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+            Pts extras pra cliente que chega no horário. O profissional decide na hora — clica
+            <strong> +Pontualidade</strong> ao lado do botão Atendi.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={punctualityPoints}
+              onChange={(e) => setPunctualityPoints(e.target.value)}
+              onBlur={handlePunctualityBlur}
+              placeholder="ex: 10"
               min="0"
               className="admin-input flex-1 px-3 py-2 text-sm"
             />

@@ -17,8 +17,10 @@ type Props = {
     status: string
     service_name?: string | null
     total_price?: number | null
+    punctuality_awarded?: boolean
   }
   showDate?: boolean
+  punctualityBonus?: number
 }
 
 const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string; chipBg: string; chipColor: string }> = {
@@ -45,7 +47,7 @@ const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string
   },
 }
 
-export default function ProfAppointmentCard({ appointment, showDate }: Props) {
+export default function ProfAppointmentCard({ appointment, showDate, punctualityBonus = 10 }: Props) {
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
@@ -62,6 +64,27 @@ export default function ProfAppointmentCard({ appointment, showDate }: Props) {
     })
     if (res.ok) {
       setStatus(newStatus)
+    }
+    setLoading(false)
+    router.refresh()
+  }
+
+  async function completeWithPunctuality() {
+    setLoading(true)
+    // 1. Marca como completed via API existente (dispara trigger SQL de pts de serviço)
+    const res = await fetch('/api/profissional/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointmentId: appointment.id, action: 'completed' }),
+    })
+    if (res.ok) {
+      setStatus('completed')
+      // 2. Concede bônus de pontualidade
+      fetch('/api/appointment/award-punctuality', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId: appointment.id }),
+      }).catch(() => {})
     }
     setLoading(false)
     router.refresh()
@@ -187,19 +210,36 @@ export default function ProfAppointmentCard({ appointment, showDate }: Props) {
 
         {status === 'confirmed' && (
           <div className="pl-[64px] space-y-2">
-            <button
-              onClick={() => updateStatus('completed')}
-              disabled={loading}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
-              style={{
-                background: 'linear-gradient(135deg, #10B981, #059669)',
-                color: '#fff',
-                boxShadow: '0 8px 20px rgba(16,185,129,0.3)',
-              }}
-              title="Atendimento concluído — credita os pontos do cliente"
-            >
-              <IconCheck size={14} /> Atendi
-            </button>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => updateStatus('completed')}
+                disabled={loading}
+                className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+                style={{
+                  background: 'linear-gradient(135deg, #10B981, #059669)',
+                  color: '#fff',
+                  boxShadow: '0 8px 20px rgba(16,185,129,0.3)',
+                }}
+                title="Atendimento concluído — credita os pontos do serviço"
+              >
+                <IconCheck size={14} /> Atendi
+              </button>
+              {punctualityBonus > 0 && (
+                <button
+                  onClick={completeWithPunctuality}
+                  disabled={loading}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+                  style={{
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    color: '#fff',
+                    boxShadow: '0 8px 20px rgba(245,158,11,0.3)',
+                  }}
+                  title={`Atendi + bônus de pontualidade (+${punctualityBonus} pts pro cliente)`}
+                >
+                  <IconCheck size={14} /> Atendi +{punctualityBonus}
+                </button>
+              )}
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirm('no_show')}

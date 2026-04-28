@@ -9,9 +9,10 @@ type Appointment = React.ComponentProps<typeof AppointmentCard>['appointment']
 type Props = {
   active: Appointment[]
   archived: Appointment[]
+  punctualityBonus?: number
 }
 
-export default function TodayList({ active, archived }: Props) {
+export default function TodayList({ active, archived, punctualityBonus }: Props) {
   const [showArchived, setShowArchived] = useState(false)
 
   const cancelledCount = archived.filter((a) => a.status === 'cancelled').length
@@ -35,7 +36,7 @@ export default function TodayList({ active, archived }: Props) {
           className="admin-enter"
           style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 60}ms` }}
         >
-          <AppointmentCard appointment={a} nextUp={a.id === nextUpId} />
+          <AppointmentCard appointment={a} nextUp={a.id === nextUpId} punctualityBonus={punctualityBonus} />
         </div>
       ))}
 
@@ -70,7 +71,7 @@ export default function TodayList({ active, archived }: Props) {
           {showArchived && (
             <div className="space-y-3 mt-3">
               {archived.map((a) => (
-                <AppointmentCard key={a.id} appointment={a} />
+                <AppointmentCard key={a.id} appointment={a} punctualityBonus={punctualityBonus} />
               ))}
             </div>
           )}

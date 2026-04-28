@@ -20,9 +20,11 @@ type Props = {
     service_name?: string | null
     total_price?: number | null
     professional?: { name: string } | null
+    punctuality_awarded?: boolean
   }
   showDate?: boolean
   nextUp?: boolean
+  punctualityBonus?: number
 }
 
 
@@ -64,7 +66,7 @@ const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string
   },
 }
 
-export default function AppointmentCard({ appointment, showDate, nextUp }: Props) {
+export default function AppointmentCard({ appointment, showDate, nextUp, punctualityBonus = 10 }: Props) {
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
@@ -101,6 +103,27 @@ export default function AppointmentCard({ appointment, showDate, nextUp }: Props
         body: JSON.stringify({ appointmentId: appointment.id }),
       }).catch(() => {})
     }
+    setLoading(false)
+    router.refresh()
+  }
+
+  async function completeWithPunctuality() {
+    setLoading(true)
+    const supabase = createClient()
+    // 1. Marca o appointment como completed (dispara trigger SQL que credita pts de serviço)
+    await supabase.from('appointments').update({ status: 'completed' }).eq('id', appointment.id)
+    setStatus('completed')
+    // 2. Concede o bônus de pontualidade via API (que cria a transaction com reason='punctuality')
+    fetch('/api/appointment/award-punctuality', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointmentId: appointment.id }),
+    }).catch(() => {})
+    fetch('/api/notify-client', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointmentId: appointment.id, status: 'completed' }),
+    }).catch(() => {})
     setLoading(false)
     router.refresh()
   }
@@ -250,20 +273,35 @@ export default function AppointmentCard({ appointment, showDate, nextUp }: Props
         )}
 
         {status === 'confirmed' && (
-          <div className="pl-[64px] flex items-stretch gap-2">
+          <div className="pl-[64px] flex items-stretch gap-2 flex-wrap">
             <button
               onClick={() => updateStatus('completed')}
               disabled={loading}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+              className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
               style={{
                 background: 'linear-gradient(135deg, #10B981, #059669)',
                 color: '#fff',
                 boxShadow: '0 8px 20px rgba(16,185,129,0.3)',
               }}
-              title="Atendimento concluído — credita os pontos do cliente"
+              title="Atendimento concluído — credita os pontos do serviço"
             >
               <IconCheck size={14} /> Atendi
             </button>
+            {punctualityBonus > 0 && (
+              <button
+                onClick={completeWithPunctuality}
+                disabled={loading}
+                className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+                style={{
+                  background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                  color: '#fff',
+                  boxShadow: '0 8px 20px rgba(245,158,11,0.3)',
+                }}
+                title={`Atendi + bônus de pontualidade (+${punctualityBonus} pts pro cliente)`}
+              >
+                <IconCheck size={14} /> Atendi +{punctualityBonus}
+              </button>
+            )}
             <div className="relative flex-shrink-0" ref={menuRef}>
               <button
                 type="button"

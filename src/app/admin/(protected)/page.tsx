@@ -316,7 +316,7 @@ export default async function AdminPage() {
           {list.length === 0 ? (
             <EmptyTodayCTA slug={business.slug} />
           ) : (
-            <TodayList active={activeToday} archived={archivedToday} />
+            <TodayList active={activeToday} archived={archivedToday} punctualityBonus={business.punctuality_bonus_points ?? 10} />
           )}
         </section>
 
@@ -336,7 +336,7 @@ export default async function AdminPage() {
                   className="admin-enter"
                   style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 60}ms` }}
                 >
-                  <AppointmentCard appointment={a} showDate />
+                  <AppointmentCard appointment={a} showDate punctualityBonus={business.punctuality_bonus_points ?? 10} />
                 </div>
               ))}
             </div>
