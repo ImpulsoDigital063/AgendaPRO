@@ -19,7 +19,7 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'AgendaPRO — Sua agenda virou o turno da noite do seu negócio',
   description:
-    'Agendamento online com fidelidade, lista de espera automática, indicação e reputação Google. Enquanto você vive, o AgendaPRO agenda, lembra, cobra e traz cliente de volta. A partir de R$47/mês com garantia de 7 dias.',
+    'Agendamento online com fidelidade, lista de espera automática, indicação e reputação Google. Enquanto você vive, o AgendaPRO agenda, lembra, cobra e traz cliente de volta. A partir de R$67/mês com garantia de 7 dias.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'AgendaPRO — Agenda inteligente pro seu negócio crescer sozinho',
-    description: 'Fidelidade, lista de espera automática, indicação e reputação Google. A partir de R$47/mês. Garantia de 7 dias.',
+    description: 'Fidelidade, lista de espera automática, indicação e reputação Google. A partir de R$67/mês. Garantia de 7 dias.',
     type: 'website',
   },
 };

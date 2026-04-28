@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
+import { PRICING } from '@/config/pricing'
 
 // Usa service role para criar usuário no auth + inserir dados
 function getAdminClient() {
@@ -25,8 +26,9 @@ export async function POST(req: NextRequest) {
   }
 
   const chosenPlan: 'solo' | 'equipe' = plan === 'equipe' ? 'equipe' : 'solo'
-  const priceCents = chosenPlan === 'equipe' ? 6700 : 4700
-  const setupCents = chosenPlan === 'equipe' ? 19700 : 14700
+  const priceCents = PRICING[chosenPlan].mensalidadeCentavos
+  // Setup R$197 isento pros 10 primeiros (Clube Fundador) — UI marca founders_club=true
+  const setupCents = 0
 
   // Validação de input
   if (typeof businessName !== 'string' || businessName.trim().length < 2 || businessName.trim().length > 100) {
@@ -102,6 +104,7 @@ export async function POST(req: NextRequest) {
       status: 'pending_payment',
       price_cents: priceCents,
       setup_cents: setupCents,
+      founders_club: true,
     })
 
   if (subError) {

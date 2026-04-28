@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { PRICING } from '@/config/pricing'
 
 function getAdminClient() {
   return createServiceClient(
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   }
 
   const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'
-  const priceBRL = plan === 'solo' ? 67 : 107
+  const priceBRL = PRICING[plan as 'solo' | 'equipe'].mensalidadeReais
 
   // Criar preferência de assinatura no Mercado Pago
   const mpResponse = await fetch('https://api.mercadopago.com/preapproval', {
