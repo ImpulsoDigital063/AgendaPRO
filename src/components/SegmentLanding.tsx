@@ -244,11 +244,11 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
             <SectionReveal className="reveal-stagger">
               <div className="glass rounded-3xl p-8 h-full flex flex-col">
                 <h3 className="font-bold text-white text-xl mb-1">Solo</h3>
-                <p className="text-slate-400 text-sm mb-6">Admin + 1 profissional comissionado</p>
+                <p className="text-slate-400 text-sm mb-6">Admin + 1 colaborador</p>
                 <p className="text-5xl font-extrabold text-white mb-1">
-                  R$47<span className="text-base font-normal text-slate-400">/mês</span>
+                  R$67<span className="text-base font-normal text-slate-400">/mês</span>
                 </p>
-                <p className="text-xs text-slate-500 mb-1">Setup único R$147 (vitalício)</p>
+                <p className="text-xs text-slate-500 mb-1">Sem setup pros 10 primeiros (Clube Fundador)</p>
                 <p className="text-xs font-semibold mb-6" style={{ color: theme.iconColor }}>
                   Garantia de 7 dias
                 </p>
@@ -259,7 +259,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Notificação por email</li>
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Painel mobile-first</li>
                   <li className="font-semibold" style={{ color: theme.iconColor }}>
-                    ✦ Clube Fundador: R$47/mês vitalício (10 primeiros)
+                    ✦ Clube Fundador: setup R$197 isento pra sempre (10 primeiros)
                   </li>
                 </ul>
                 <Link href="/cadastro" className="btn-ghost text-center">
@@ -280,11 +280,11 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   Popular
                 </div>
                 <h3 className="font-bold text-white text-xl mb-1">Equipe</h3>
-                <p className="text-slate-400 text-sm mb-6">Admin + múltiplos profissionais + recepção</p>
+                <p className="text-slate-400 text-sm mb-6">Até 5 profissionais</p>
                 <p className="text-5xl font-extrabold text-white mb-1">
-                  R$67<span className="text-base font-normal text-slate-400">/mês</span>
+                  R$97<span className="text-base font-normal text-slate-400">/mês</span>
                 </p>
-                <p className="text-xs text-slate-500 mb-1">Setup único R$197 (vitalício)</p>
+                <p className="text-xs text-slate-500 mb-1">Sem setup pros 10 primeiros (Clube Fundador)</p>
                 <p className="text-xs font-semibold mb-6" style={{ color: theme.iconColor }}>
                   Garantia de 7 dias
                 </p>

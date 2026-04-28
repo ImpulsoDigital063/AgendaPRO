@@ -49,8 +49,8 @@ export default async function AdminBloqueadoPage() {
 
   const plan: 'solo' | 'equipe' = subscription?.plan === 'equipe' ? 'equipe' : 'solo'
   const planLabel = plan === 'equipe' ? 'Equipe' : 'Solo'
-  const planSetup = plan === 'equipe' ? 'R$ 197' : 'R$ 147'
-  const planMonthly = plan === 'equipe' ? 'R$ 67' : 'R$ 47'
+  const planSetup = 'R$ 197 (isento Clube Fundador)'
+  const planMonthly = plan === 'equipe' ? 'R$ 97' : 'R$ 67'
 
   const title =
     reason === 'pending_payment' ? 'Última etapa: liberar o painel' :

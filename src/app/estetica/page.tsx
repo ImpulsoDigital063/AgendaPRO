@@ -4,7 +4,7 @@ import FAQ from '@/components/FAQ'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Clínicas de Estética — Agenda Online com Lembrete Automático',
-  description: 'Sistema de agendamento online para estética. Lembrete por e-mail na véspera e 1h antes, fila de espera e comissão automática. A partir de R$47/mês. Garantia de 7 dias.',
+  description: 'Sistema de agendamento online para estética. Lembrete por e-mail na véspera e 1h antes, fila de espera e comissão automática. A partir de R$67/mês, sem setup pros 10 primeiros. Garantia de 7 dias.',
   openGraph: {
     title: 'AgendaPRO para Clínicas de Estética',
     description: 'Agenda online para estética. Lembrete automático, fila de espera, relatório financeiro e Google Reviews integrado.',
@@ -93,7 +93,7 @@ const ESTETICA_FAQS: FAQItem[] = [
   },
   {
     q: 'Quanto custa?',
-    a: 'Plano Solo (admin + 1 profissional comissionado): setup R$147 + R$47/mês. Plano Equipe (admin + múltiplos profissionais + recepção): setup R$197 + R$67/mês. Setup é one-shot, vitalício. Primeiros 10 clientes travam o preço pra sempre — Clube Fundador.',
+    a: 'Plano Solo (admin + 1 colaborador): R$67/mês sem setup. Plano Equipe (até 5 profissionais): R$97/mês sem setup. Setup oficial R$197 só volta a ser cobrado a partir do cliente 11+ — os 10 primeiros entram isentos pra sempre (Clube Fundador). Sem fidelidade. Garantia de 7 dias.',
   },
   {
     q: 'Posso cancelar quando quiser?',
@@ -300,7 +300,7 @@ export default function EsteticaPage() {
         }}
       >
         <IconSpa size={14} className="flex-shrink-0" />
-        <span><strong>Clube Fundador</strong> — 10 primeiros travam R$47/mês vitalício.</span>
+        <span><strong>Clube Fundador</strong> — 10 primeiros entram sem setup (R$197) pra sempre.</span>
       </div>
 
       {/* Nav */}
@@ -393,7 +393,7 @@ export default function EsteticaPage() {
                 <a href="#dor" className="btn btn-ghost w-full sm:w-auto justify-center font-semibold text-base px-6 py-4 min-h-[52px]">Ver como funciona</a>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-400">Setup R$147 · R$47/mês · Garantia de 7 dias</p>
+              <p className="text-xs sm:text-sm text-slate-400">R$67/mês · Sem setup (Clube Fundador) · Garantia de 7 dias</p>
             </SectionReveal>
 
             <SectionReveal className="flex justify-center lg:justify-end mt-4 lg:mt-0">
@@ -781,7 +781,7 @@ export default function EsteticaPage() {
                 <span className="text-sm sm:text-base font-black text-gradient">AgendaPRO tudo junto</span>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-md" style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}>-77%</span>
-                  <span className="text-base sm:text-lg font-black text-white">a partir de R$ 47/mês</span>
+                  <span className="text-base sm:text-lg font-black text-white">a partir de R$ 67/mês</span>
                 </div>
               </div>
             </div>
@@ -796,15 +796,15 @@ export default function EsteticaPage() {
                 <div className="text-emerald-400"><IconSpa size={28} /></div>
               </div>
               <div className="mb-5 sm:mb-6">
-                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-white">R$47</span><span className="text-slate-400 text-sm">/mês</span></div>
+                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-white">R$67</span><span className="text-slate-400 text-sm">/mês</span></div>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-slate-500 text-xs">Setup único R$147 (vitalício)</span>
+                  <span className="text-slate-500 text-xs">Sem setup pros 10 primeiros (Clube Fundador)</span>
                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Clube Fundador</span>
                 </div>
                 <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$1,60/dia — menos que um café</p>
               </div>
               <div className="rounded-xl px-3 py-2.5 mb-5 text-[11px] sm:text-xs" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                <span className="text-slate-300">1 falta a menos/mês no ticket de R$250 = </span><span className="text-white font-black">R$250 salvos</span><span className="text-slate-300">. AgendaPRO = R$47. </span><span className="font-black" style={{ color: '#34D399' }}>Sobra R$203.</span>
+                <span className="text-slate-300">1 falta a menos/mês no ticket de R$250 = </span><span className="text-white font-black">R$250 salvos</span><span className="text-slate-300">. AgendaPRO = R$67. </span><span className="font-black" style={{ color: '#34D399' }}>Sobra R$183.</span>
               </div>
               <ul className="space-y-2.5 mb-4 text-xs sm:text-sm text-slate-300">
                 {['Link pra bio do Insta e Google', 'Lembrete automático anti-falta', 'Fila de espera pra cancelamentos', 'Sistema de pontos + indicação', 'Google Reviews integrado', 'Lista de clientes completa', 'Relatório financeiro por profissional'].map((item) => (
@@ -823,15 +823,15 @@ export default function EsteticaPage() {
                 <div className="text-violet-400"><IconDroplet size={28} /></div>
               </div>
               <div className="mb-5 sm:mb-6 relative z-10">
-                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-gradient">R$67</span><span className="text-slate-400 text-sm">/mês</span></div>
+                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-gradient">R$97</span><span className="text-slate-400 text-sm">/mês</span></div>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-slate-500 text-xs">Setup único R$197 (vitalício)</span>
+                  <span className="text-slate-500 text-xs">Sem setup pros 10 primeiros (Clube Fundador)</span>
                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Clube Fundador</span>
                 </div>
                 <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$2,23/dia — por profissional sai ainda menos</p>
               </div>
               <div className="rounded-xl px-3 py-2.5 mb-5 text-[11px] sm:text-xs relative z-10" style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)' }}>
-                <span className="text-slate-300">3 profissionais x 1 falta salva/mês = </span><span className="text-white font-black">R$750 recuperados</span><span className="text-slate-300">. Plano = R$67. </span><span className="font-black" style={{ color: '#34D399' }}>ROI de 11x.</span>
+                <span className="text-slate-300">3 profissionais x 1 falta salva/mês = </span><span className="text-white font-black">R$750 recuperados</span><span className="text-slate-300">. Plano = R$97. </span><span className="font-black" style={{ color: '#34D399' }}>ROI de 7,7x.</span>
               </div>
               <ul className="space-y-2.5 mb-6 text-xs sm:text-sm text-slate-300 relative z-10">
                 {['Tudo do Solo', 'Múltiplos profissionais com agenda separada', 'Role de recepção (atendimento no balcão)', 'Comissão automática por profissional', 'Lista de clientes compartilhada', 'Financeiro consolidado da clínica', 'Suporte prioritário no WhatsApp'].map((item) => (
@@ -943,7 +943,7 @@ export default function EsteticaPage() {
               <span className="relative z-10 flex items-center gap-2">Quero minha SmartAgenda agora<IconArrowRight size={20} /></span>
             </Link>
             <p className="text-slate-400 text-xs sm:text-sm mt-4 sm:mt-5 max-w-md mx-auto">
-              Setup R$147 + R$47/mês no plano Solo. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
+              R$67/mês no plano Solo, sem setup pros 10 primeiros. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
             </p>
           </SectionReveal>
         </div>

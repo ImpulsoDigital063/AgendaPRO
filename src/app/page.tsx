@@ -137,7 +137,7 @@ export default function HomePage() {
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </Link>
-          <p className="text-[11px] text-slate-500 mt-2">Setup R$147 · R$47/mês · Garantia de 7 dias</p>
+          <p className="text-[11px] text-slate-500 mt-2">R$67/mês · Sem setup (Clube Fundador) · Garantia de 7 dias</p>
         </div>
 
         {/* ——— DESKTOP HERO ——— */}
@@ -147,7 +147,7 @@ export default function HomePage() {
             <SectionReveal className="flex flex-col items-start text-left gap-7">
               <div className="pill-glow animate-pulse-glow">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-300"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <span>Clube Fundador — 10 primeiros travam R$47/mês vitalício</span>
+                <span>Clube Fundador — 10 primeiros entram sem setup (R$197) pra sempre</span>
               </div>
 
               <h1 className="display-xl text-white">
@@ -175,7 +175,7 @@ export default function HomePage() {
               </div>
 
               <p className="text-sm text-slate-400">
-                Setup R$147 · R$47/mês · Garantia de 7 dias
+                R$67/mês · Sem setup (Clube Fundador) · Garantia de 7 dias
               </p>
             </SectionReveal>
 
@@ -442,11 +442,11 @@ export default function HomePage() {
               >
                 <div>
                   <p className="text-white font-bold text-base md:text-lg">AgendaPRO — tudo junto</p>
-                  <p className="text-white/70 text-xs mt-0.5">Setup R$147 · Garantia 7 dias</p>
+                  <p className="text-white/70 text-xs mt-0.5">Sem setup (Clube Fundador) · Garantia 7 dias</p>
                 </div>
                 <div className="text-right">
                   <p className="text-white text-2xl md:text-3xl font-black leading-none">
-                    R$47<span className="text-sm font-normal text-white/70">/mês</span>
+                    R$67<span className="text-sm font-normal text-white/70">/mês</span>
                   </p>
                   <p className="text-white/70 text-[11px] mt-1">menos de R$1,60/dia</p>
                 </div>
@@ -493,10 +493,10 @@ export default function HomePage() {
               </div>
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-black text-white">R$47</span>
+                  <span className="text-5xl font-black text-white">R$67</span>
                   <span className="text-slate-400 text-sm">/mês</span>
                 </div>
-                <p className="text-slate-500 text-xs mt-1">Setup único R$147 (vitalício)</p>
+                <p className="text-slate-500 text-xs mt-1">Sem setup pros 10 primeiros (Clube Fundador)</p>
               </div>
 
               <ul className="space-y-2.5 mb-6 text-sm text-slate-300">
@@ -545,10 +545,10 @@ export default function HomePage() {
               </div>
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-black text-gradient">R$67</span>
+                  <span className="text-5xl font-black text-gradient">R$97</span>
                   <span className="text-slate-400 text-sm">/mês</span>
                 </div>
-                <p className="text-slate-500 text-xs mt-1">Setup único R$197 (vitalício)</p>
+                <p className="text-slate-500 text-xs mt-1">Sem setup pros 10 primeiros (Clube Fundador)</p>
               </div>
 
               <ul className="space-y-2.5 mb-6 text-sm text-slate-300">
@@ -597,7 +597,7 @@ export default function HomePage() {
                 Estamos abrindo as <span className="text-gradient">primeiras 10 vagas</span> do AgendaPRO.
               </h3>
               <p className="text-slate-300 leading-relaxed mb-6 max-w-xl mx-auto">
-                Os 10 primeiros clientes entram no Clube Fundador e travam R$47/mês vitalício no Solo (R$67/mês no Equipe). Depois que fechar os 10, o preço sobe — quem entrou antes mantém o valor pra sempre.
+                Os 10 primeiros clientes entram no Clube Fundador SEM PAGAR setup (R$197) pra sempre. Solo R$67/mês ou Equipe R$97/mês. Depois que fechar os 10, o setup volta normal — quem entrou antes nunca paga.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
                 <span className="flex items-center gap-2">
@@ -664,7 +664,7 @@ export default function HomePage() {
               </svg>
             </Link>
             <p className="text-slate-500 text-xs mt-5">
-              Setup R$147 · R$47/mês · Clube Fundador (10 primeiros)
+              R$67/mês · Sem setup pros 10 primeiros (Clube Fundador)
             </p>
           </SectionReveal>
         </div>

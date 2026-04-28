@@ -33,7 +33,7 @@ const DEFAULT_FAQS: FAQItem[] = [
   },
   {
     q: 'Quanto custa?',
-    a: 'Plano Solo (admin + 1 profissional comissionado): setup R$147 + R$47/mês. Plano Equipe (admin + múltiplos profissionais + recepção): setup R$197 + R$67/mês. Setup é one-shot, vitalício. Primeiros 10 clientes travam o preço pra sempre — Clube Fundador.',
+    a: 'Plano Solo (admin + 1 colaborador): R$67/mês sem setup. Plano Equipe (até 5 profissionais): R$97/mês sem setup. Setup oficial R$197 só volta a ser cobrado a partir do cliente 11+ — os 10 primeiros entram isentos pra sempre (Clube Fundador). Sem fidelidade. Garantia de 7 dias.',
   },
   {
     q: 'Posso cancelar quando quiser?',

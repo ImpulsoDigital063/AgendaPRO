@@ -4,7 +4,7 @@ import FAQ from '@/components/FAQ'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Nail Designers — Agenda Online com Lembrete Automático',
-  description: 'Sistema de agendamento online para nail designers. Cliente agenda pelo link na bio, recebe lembrete por e-mail, fila de espera preenche cancelamentos. R$47/mês. Garantia de 7 dias.',
+  description: 'Sistema de agendamento online para nail designers. Cliente agenda pelo link na bio, recebe lembrete por e-mail, fila de espera preenche cancelamentos. R$67/mês, sem setup pros 10 primeiros. Garantia de 7 dias.',
   openGraph: {
     title: 'AgendaPRO para Nail Designers',
     description: 'Agenda online para nail designer. Lembrete automático, fila de espera, financeiro completo e Google Reviews integrado.',
@@ -93,7 +93,7 @@ const NAIL_FAQS: FAQItem[] = [
   },
   {
     q: 'Quanto custa?',
-    a: 'Plano Solo (perfeito pra nail designer individual): setup R$147 + R$47/mês. Setup é one-shot, vitalício. Primeiros 10 clientes travam o preço pra sempre — Clube Fundador.',
+    a: 'Plano Solo (1 + 1 colaborador): R$67/mês sem setup. Setup oficial R$197 só volta a ser cobrado a partir do cliente 11+ — os 10 primeiros entram isentos pra sempre (Clube Fundador). Sem fidelidade. Garantia de 7 dias.',
   },
   {
     q: 'Posso cancelar quando quiser?',
@@ -293,7 +293,7 @@ export default function NailPage() {
         }}
       >
         <IconNailPolish size={14} className="flex-shrink-0" />
-        <span><strong>Clube Fundador</strong> — 10 primeiros travam R$47/mês vitalício.</span>
+        <span><strong>Clube Fundador</strong> — 10 primeiros entram sem setup (R$197) pra sempre.</span>
       </div>
 
       {/* Nav */}
@@ -386,7 +386,7 @@ export default function NailPage() {
                 <a href="#dor" className="btn btn-ghost w-full sm:w-auto justify-center font-semibold text-base px-6 py-4 min-h-[52px]">Ver como funciona</a>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-400">Setup R$147 · R$47/mês · Garantia de 7 dias</p>
+              <p className="text-xs sm:text-sm text-slate-400">R$67/mês · Sem setup (Clube Fundador) · Garantia de 7 dias</p>
             </SectionReveal>
 
             <SectionReveal className="flex justify-center lg:justify-end mt-4 lg:mt-0">
@@ -771,7 +771,7 @@ export default function NailPage() {
                 <span className="text-sm sm:text-base font-black text-gradient">AgendaPRO tudo junto</span>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-md" style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}>-74%</span>
-                  <span className="text-base sm:text-lg font-black text-white">R$ 47/mês</span>
+                  <span className="text-base sm:text-lg font-black text-white">R$ 67/mês</span>
                 </div>
               </div>
             </div>
@@ -787,15 +787,15 @@ export default function NailPage() {
                 <div className="text-pink-300"><IconNailPolish size={28} /></div>
               </div>
               <div className="mb-5 sm:mb-6 relative z-10">
-                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-gradient">R$47</span><span className="text-slate-400 text-sm">/mês</span></div>
+                <div className="flex items-baseline gap-2"><span className="text-4xl sm:text-5xl font-black text-gradient">R$67</span><span className="text-slate-400 text-sm">/mês</span></div>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-slate-500 text-xs">Setup único R$147 (vitalício)</span>
+                  <span className="text-slate-500 text-xs">Sem setup pros 10 primeiros (Clube Fundador)</span>
                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', color: '#34D399' }}><IconBolt size={10} strokeWidth={2.5} />Clube Fundador</span>
                 </div>
                 <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5"><IconClock24 size={11} strokeWidth={2} />R$1,60/dia — menos que um esmalte</p>
               </div>
               <div className="rounded-xl px-3 py-2.5 mb-5 text-[11px] sm:text-xs relative z-10" style={{ background: 'rgba(244,114,182,0.08)', border: '1px solid rgba(244,114,182,0.25)' }}>
-                <span className="text-slate-300">1 falta a menos/mês (R$150) = </span><span className="text-white font-black">R$150 salvos</span><span className="text-slate-300">. AgendaPRO = R$47. </span><span className="font-black" style={{ color: '#34D399' }}>Sobra R$103.</span>
+                <span className="text-slate-300">1 falta a menos/mês (R$150) = </span><span className="text-white font-black">R$150 salvos</span><span className="text-slate-300">. AgendaPRO = R$67. </span><span className="font-black" style={{ color: '#34D399' }}>Sobra R$83.</span>
               </div>
               <ul className="space-y-2.5 mb-6 text-xs sm:text-sm text-slate-300 relative z-10">
                 {['Link pra bio do Instagram e Google', 'Lembrete automático anti-falta', 'Fila de espera pra cancelamentos', 'Sistema de pontos + indicação', 'Google Reviews integrado', 'Lista de clientes completa', 'Relatório financeiro completo', 'Bloqueio de horários em 1 clique'].map((item) => (
@@ -907,7 +907,7 @@ export default function NailPage() {
               <span className="relative z-10 flex items-center gap-2">Quero minha SmartAgenda agora<IconArrowRight size={20} /></span>
             </Link>
             <p className="text-slate-400 text-xs sm:text-sm mt-4 sm:mt-5 max-w-md mx-auto">
-              Setup R$147 + R$47/mês. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
+              R$67/mês, sem setup pros 10 primeiros. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
             </p>
           </SectionReveal>
         </div>

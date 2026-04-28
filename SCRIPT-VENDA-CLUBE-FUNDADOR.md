@@ -44,14 +44,14 @@ Se topar → manda link da LP do segmento (barbearia, salão, estética ou nail)
 ## Planos e preços (só mostrar depois do valor)
 
 **Plano Solo** — pra quem tem dono + 1 profissional comissionado
-- Setup one-shot: **R$147**
-- Mensalidade: **R$47/mês** (travado pros 10 primeiros)
+- Setup oficial **R$197** — **isento pros 10 primeiros (Clube Fundador)**
+- Mensalidade: **R$67/mês**, sem fidelidade
 - O setup é a gente configurar tudo pra você: serviços, horários, link da bio, primeiro cliente teste.
 
-**Plano Equipe** — pra quem tem recepção + múltiplos profissionais
-- Setup one-shot: **R$197**
-- Mensalidade: **R$67/mês** (travado pros 10 primeiros)
-- Tudo do Solo + role de recepção (funcionário marca no balcão) + agenda separada pra cada profissional + comissão automática.
+**Plano Equipe** — até 5 profissionais
+- Setup oficial **R$197** — **isento pros 10 primeiros (Clube Fundador)**
+- Mensalidade: **R$97/mês**, sem fidelidade
+- Tudo do Solo + agenda separada pra cada profissional + role de recepção + comissão automática.
 
 ---
 
@@ -64,7 +64,7 @@ Se topar → manda link da LP do segmento (barbearia, salão, estética ou nail)
 ## Objeções mais comuns
 
 ### "Tô sem grana"
-> "Entendo. O setup R$147 é one-shot e a primeira mensalidade já entra junto, então vai sair R$194 no Solo. Mas olha — se só UMA falta a menos por semana já paga o plano do mês inteiro. E tem a garantia de 7 dias, se não compensar eu devolvo."
+> "Entendo. Como tu entra no Clube Fundador, o setup R$197 é zero — só a mensalidade R$67 do Solo. Se só UMA falta a menos por semana já paga o plano do mês inteiro. E tem a garantia de 7 dias, se não compensar eu devolvo."
 
 ### "Já uso o Google Agenda / WhatsApp"
 > "Massa. Mas o Google Agenda não bloqueia horário sozinho — teu cliente não marca sem ser por você. Com o AgendaPRO o link faz isso. E o lembrete automático do AgendaPRO recupera o dinheiro que some com falta. O Google Agenda não faz isso."
@@ -84,9 +84,9 @@ Se topar → manda link da LP do segmento (barbearia, salão, estética ou nail)
 
 **NÃO repetir essas condições pros próximos. Elas são casos fechados antes da política oficial.**
 
-1. **Cliente 1 — Barbearia (dono + 1 profissional)** — Paga R$67/mês (preço Equipe legacy) mas roda no plano Solo. Cortesia porque negociei antes de travar a política nova. Não oferecer downgrade — manter como está.
-2. **Cliente 2 — Salão de beleza** — 3 meses grátis em troca de: depoimento em vídeo + autorização pra Impulso gravar bastidores + migração pra Solo R$47/mês a partir do mês 4.
-3. **Clientes 3 e 4 — Barbearias Goiânia** (via amigo barbeiro). Ambos Solo. **Antes de fechar, alinhar a comissão com o amigo que indicou.**
+1. **Cliente 1 — Barbearia (dono + 1 profissional)** — Paga R$67/mês (preço Solo legacy) — agora coincide com a política oficial. Manter como está.
+2. **Cliente 2 — Salão de beleza** — 3 meses grátis em troca de: depoimento em vídeo + autorização pra Impulso gravar bastidores + migração pra Solo R$67/mês a partir do mês 4.
+3. **Clientes 3 e 4 — Barbearias Goiânia** (via amigo barbeiro). Ambos Solo R$67/mês. **Antes de fechar, alinhar a comissão com o amigo que indicou.**
 
 ---
 

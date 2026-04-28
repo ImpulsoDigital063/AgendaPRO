@@ -4,7 +4,7 @@ import FAQ from '@/components/FAQ'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Barbearias — Agenda Online com Lembrete Automático',
-  description: 'Sistema de agendamento online para barbearias. Cliente agenda pelo link, recebe lembrete por e-mail, fila de espera preenche cancelamentos. A partir de R$47/mês. Garantia de 7 dias.',
+  description: 'Sistema de agendamento online para barbearias. Cliente agenda pelo link, recebe lembrete por e-mail, fila de espera preenche cancelamentos. A partir de R$67/mês, sem setup pros 10 primeiros. Garantia de 7 dias.',
   openGraph: {
     title: 'AgendaPRO para Barbearias',
     description: 'Seu cliente agenda sozinho pelo link na bio. Lembrete automático, fila de espera e Google Reviews integrado.',
@@ -73,7 +73,7 @@ const BARBER_FAQS: FAQItem[] = [
   },
   {
     q: 'Quanto custa?',
-    a: 'Plano Solo (admin + 1 barbeiro): setup R$147 + R$47/mês. Plano Equipe (admin + múltiplos barbeiros + recepção): setup R$197 + R$67/mês. Setup é one-shot, vitalício. Primeiros 10 clientes travam o preço pra sempre — Clube Fundador.',
+    a: 'Plano Solo (admin + 1 colaborador): R$67/mês sem setup. Plano Equipe (até 5 profissionais): R$97/mês sem setup. Setup oficial R$197 só volta a ser cobrado a partir do cliente 11+ — os 10 primeiros entram isentos pra sempre (Clube Fundador). Sem fidelidade. Garantia de 7 dias.',
   },
   {
     q: 'Posso cancelar quando quiser?',
@@ -178,7 +178,7 @@ export default function BarbeariaPage() {
         }}
       >
         <IconScissors size={14} className="flex-shrink-0" />
-        <span>Clube Fundador — <strong>10 primeiros</strong> travam R$47/mês vitalício. Garantia de 7 dias.</span>
+        <span>Clube Fundador — <strong>10 primeiros</strong> entram sem setup (R$197) pra sempre. Garantia de 7 dias.</span>
       </div>
 
       {/* Nav */}
@@ -309,7 +309,7 @@ export default function BarbeariaPage() {
               </div>
 
               <p className="text-xs sm:text-sm text-slate-400">
-                Setup R$147 · R$47/mês · Garantia de 7 dias
+                R$67/mês · Sem setup (Clube Fundador) · Garantia de 7 dias
               </p>
             </SectionReveal>
 
@@ -900,7 +900,7 @@ export default function BarbeariaPage() {
                   >
                     -74%
                   </span>
-                  <span className="text-base sm:text-lg font-black text-white">a partir de R$ 47/mês</span>
+                  <span className="text-base sm:text-lg font-black text-white">a partir de R$ 67/mês</span>
                 </div>
               </div>
             </div>
@@ -924,11 +924,11 @@ export default function BarbeariaPage() {
               {/* Preço + economia + breakdown */}
               <div className="mb-5 sm:mb-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl sm:text-5xl font-black text-white">R$47</span>
+                  <span className="text-4xl sm:text-5xl font-black text-white">R$67</span>
                   <span className="text-slate-400 text-sm">/mês</span>
                 </div>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-slate-500 text-xs">Setup único R$147 (vitalício)</span>
+                  <span className="text-slate-500 text-xs">Sem setup pros 10 primeiros (Clube Fundador)</span>
                   <span
                     className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1"
                     style={{
@@ -957,8 +957,8 @@ export default function BarbeariaPage() {
               >
                 <span className="text-slate-300">1 cliente da fila/semana = </span>
                 <span className="text-white font-black">R$160/mês</span>
-                <span className="text-slate-300">. AgendaPRO = R$47. </span>
-                <span className="font-black" style={{ color: '#34D399' }}>Sobra R$113.</span>
+                <span className="text-slate-300">. AgendaPRO = R$67. </span>
+                <span className="font-black" style={{ color: '#34D399' }}>Sobra R$93.</span>
               </div>
 
               <ul className="space-y-2.5 mb-4 text-xs sm:text-sm text-slate-300">
@@ -993,7 +993,7 @@ export default function BarbeariaPage() {
                 </span>
                 <div>
                   <p className="text-xs sm:text-sm font-black text-amber-200 leading-tight">
-                    Clube Fundador — 10 primeiros travam R$47/mês vitalício
+                    Clube Fundador — 10 primeiros entram sem setup (R$197) pra sempre
                   </p>
                   <p className="text-[11px] sm:text-xs text-amber-100/70 mt-0.5">
                     Depois dos 10, preço sobe. Quem entrou antes mantém pra sempre.
@@ -1045,11 +1045,11 @@ export default function BarbeariaPage() {
               {/* Preço + economia + breakdown */}
               <div className="mb-5 sm:mb-6 relative z-10">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl sm:text-5xl font-black text-gradient">R$67</span>
+                  <span className="text-4xl sm:text-5xl font-black text-gradient">R$97</span>
                   <span className="text-slate-400 text-sm">/mês</span>
                 </div>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-slate-500 text-xs">Setup único R$197 (vitalício)</span>
+                  <span className="text-slate-500 text-xs">Sem setup pros 10 primeiros (Clube Fundador)</span>
                   <span
                     className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1"
                     style={{
@@ -1078,8 +1078,8 @@ export default function BarbeariaPage() {
               >
                 <span className="text-slate-300">5 barbeiros x 1 fila/semana = </span>
                 <span className="text-white font-black">R$800/mês</span>
-                <span className="text-slate-300">. Plano = R$67. </span>
-                <span className="font-black" style={{ color: '#34D399' }}>Sobra R$733.</span>
+                <span className="text-slate-300">. Plano = R$97. </span>
+                <span className="font-black" style={{ color: '#34D399' }}>Sobra R$703.</span>
               </div>
 
               <ul className="space-y-2.5 mb-6 text-xs sm:text-sm text-slate-300 relative z-10">
@@ -1310,7 +1310,7 @@ export default function BarbeariaPage() {
               </span>
             </Link>
             <p className="text-slate-400 text-xs sm:text-sm mt-4 sm:mt-5 max-w-md mx-auto">
-              Setup R$147 + R$47/mês no plano Solo. Garantia de 7 dias.<br />
+              R$67/mês no plano Solo, sem setup pros 10 primeiros. Garantia de 7 dias.<br />
               <span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
             </p>
           </SectionReveal>
