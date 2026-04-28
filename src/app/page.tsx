@@ -675,8 +675,8 @@ export default function HomePage() {
         <div className="container">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-6">
-              <img src="/logo-agendapro-dark.svg" alt="AgendaPRO" className="h-6" />
-              <span className="text-xs text-slate-500">© 2026 AgendaPRO · by Impulso Digital · Palmas, TO</span>
+              <img src="/logo-agendapro-dark-signed.svg" alt="AgendaPRO by Impulso Digital" className="h-12" />
+              <span className="text-xs text-slate-500">© 2026 · Palmas, TO</span>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
               <Link href="/barbearia" className="text-slate-400 hover:text-white transition-colors">Barbearia</Link>

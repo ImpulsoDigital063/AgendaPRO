@@ -1,23 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" width="240" height="48">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 130" width="620" height="130">
+  <defs>
+    <linearGradient id="pillGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1E40AF"/>
+    </linearGradient>
+    <filter id="pillShadow" x="-10%" y="-20%" width="120%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#1E3A8A" flood-opacity="0.18"/>
+    </filter>
+  </defs>
 
-  <!-- "Agenda" — semi-bold, cinza escuro -->
-  <text
-    x="0"
-    y="36"
-    font-family="Arial, Helvetica, sans-serif"
-    font-weight="600"
-    font-size="36"
-    fill="#111827"
-  >Agenda</text>
+  <text x="8" y="92" font-family="Inter, 'Segoe UI', Arial Black, sans-serif" font-weight="900" font-size="88" letter-spacing="-3" fill="#0F172A">Agenda</text>
 
-  <!-- "PRO" — black, azul -->
-  <text
-    x="152"
-    y="36"
-    font-family="Arial Black, Arial, sans-serif"
-    font-weight="900"
-    font-size="36"
-    fill="#1877F2"
-  >PRO</text>
-
+  <g filter="url(#pillShadow)">
+    <rect x="350" y="22" width="232" height="86" rx="18" ry="18" fill="url(#pillGradient)"/>
+  </g>
+  <text x="466" y="88" font-family="Inter, 'Segoe UI', Arial Black, sans-serif" font-weight="900" font-size="64" letter-spacing="-2" text-anchor="middle" fill="#FFFFFF">PRO</text>
 </svg>

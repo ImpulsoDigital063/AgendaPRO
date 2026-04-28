@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 130" width="620" height="130" fill="currentColor" style="color: #0F172A;">
+  <defs>
+    <mask id="proMaskBlack">
+      <rect x="0" y="0" width="620" height="130" fill="white"/>
+      <text x="466" y="88" font-family="Inter, 'Segoe UI', Arial Black, sans-serif" font-weight="900" font-size="64" letter-spacing="-2" text-anchor="middle" fill="black">PRO</text>
+    </mask>
+  </defs>
+
+  <text x="8" y="92" font-family="Inter, 'Segoe UI', Arial Black, sans-serif" font-weight="900" font-size="88" letter-spacing="-3">Agenda</text>
+
+  <rect x="350" y="22" width="232" height="86" rx="18" ry="18" mask="url(#proMaskBlack)"/>
+</svg>
