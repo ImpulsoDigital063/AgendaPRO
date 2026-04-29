@@ -204,7 +204,7 @@ export default async function AdminBloqueadoPage() {
                   style={ctaPrimaryStyle}
                 />
                 <p className="text-[11px] text-slate-500 text-center leading-snug">
-                  Você paga a primeira mensalidade pelo Mercado Pago (cartão ou Pix).
+                  Mensalidade automática no cartão de crédito ou saldo do Mercado Pago.
                 </p>
               </div>
 

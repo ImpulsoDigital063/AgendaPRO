@@ -80,8 +80,8 @@ const BARBER_FAQS: FAQItem[] = [
     a: 'Sim. Sem multa, sem fidelidade, sem contrato anual. Cancela pelo painel ou pelo WhatsApp em 1 clique. Se voltar depois, seus dados continuam lá.',
   },
   {
-    q: 'Aceita Pix?',
-    a: 'Sim. Você paga o plano via Pix, cartão de crédito ou boleto. Sem complicação.',
+    q: 'Como funciona o pagamento?',
+    a: 'Mensalidade é cobrada automaticamente todo mês no cartão de crédito ou no saldo da conta Mercado Pago. Quem é Clube Fundador (10 primeiros) entra sem setup — demais pagam setup único de R$ 197 via Pix manual no WhatsApp.',
   },
 
   /* ── FUNCIONALIDADE (como funciona) ── */
