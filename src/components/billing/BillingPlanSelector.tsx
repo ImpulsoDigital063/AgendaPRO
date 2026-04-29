@@ -1,0 +1,257 @@
+'use client'
+
+import { useState } from 'react'
+
+type Modalidade = 'mensal_cartao' | 'mensal_pix' | 'semestral_pix' | 'anual_pix'
+type Plano = 'solo' | 'equipe'
+
+type ModalidadeOpcao = {
+  key: Modalidade
+  titulo: string
+  valor: string
+  subValor: string
+  descricao: string
+  bullets: string[]
+  economia: string | null
+  destaque: boolean
+}
+
+type Props = {
+  plan: Plano
+}
+
+const OPCOES_POR_PLANO: Record<Plano, ModalidadeOpcao[]> = {
+  solo: [
+    {
+      key: 'mensal_cartao',
+      titulo: 'Mensal · Cartão automático',
+      valor: 'R$ 67',
+      subValor: 'por mês',
+      descricao: 'Cobrança automática no cartão todo mês',
+      bullets: ['Sem precisar lembrar', 'Cancela quando quiser pelo painel'],
+      economia: null,
+      destaque: false,
+    },
+    {
+      key: 'mensal_pix',
+      titulo: 'Mensal · PIX',
+      valor: 'R$ 67',
+      subValor: 'por mês',
+      descricao: 'PIX a cada mês — a gente lembra 3 dias antes',
+      bullets: ['Sem precisar de cartão', 'Email de aviso antes do vencimento'],
+      economia: null,
+      destaque: false,
+    },
+    {
+      key: 'semestral_pix',
+      titulo: 'Semestral à vista · PIX',
+      valor: 'R$ 350',
+      subValor: '6 meses',
+      descricao: 'Cobre 6 meses · normalmente R$ 402',
+      bullets: ['Quase 1 mês grátis', '6 meses sem mexer'],
+      economia: 'R$ 52',
+      destaque: false,
+    },
+    {
+      key: 'anual_pix',
+      titulo: 'Anual à vista · PIX',
+      valor: 'R$ 670',
+      subValor: '12 meses',
+      descricao: 'Cobre 12 meses · normalmente R$ 804',
+      bullets: ['2 meses grátis', '12 meses sem mexer · maior economia'],
+      economia: 'R$ 134',
+      destaque: true,
+    },
+  ],
+  equipe: [
+    {
+      key: 'mensal_cartao',
+      titulo: 'Mensal · Cartão automático',
+      valor: 'R$ 97',
+      subValor: 'por mês',
+      descricao: 'Cobrança automática no cartão todo mês',
+      bullets: ['Sem precisar lembrar', 'Cancela quando quiser pelo painel'],
+      economia: null,
+      destaque: false,
+    },
+    {
+      key: 'mensal_pix',
+      titulo: 'Mensal · PIX',
+      valor: 'R$ 97',
+      subValor: 'por mês',
+      descricao: 'PIX a cada mês — a gente lembra 3 dias antes',
+      bullets: ['Sem precisar de cartão', 'Email de aviso antes do vencimento'],
+      economia: null,
+      destaque: false,
+    },
+    {
+      key: 'semestral_pix',
+      titulo: 'Semestral à vista · PIX',
+      valor: 'R$ 500',
+      subValor: '6 meses',
+      descricao: 'Cobre 6 meses · normalmente R$ 582',
+      bullets: ['Quase 1 mês grátis', '6 meses sem mexer'],
+      economia: 'R$ 82',
+      destaque: false,
+    },
+    {
+      key: 'anual_pix',
+      titulo: 'Anual à vista · PIX',
+      valor: 'R$ 970',
+      subValor: '12 meses',
+      descricao: 'Cobre 12 meses · normalmente R$ 1.164',
+      bullets: ['2 meses grátis', '12 meses sem mexer · maior economia'],
+      economia: 'R$ 194',
+      destaque: true,
+    },
+  ],
+}
+
+export default function BillingPlanSelector({ plan }: Props) {
+  const [selectedKey, setSelectedKey] = useState<Modalidade>('anual_pix')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const opcoes = OPCOES_POR_PLANO[plan]
+  const selected = opcoes.find(o => o.key === selectedKey)!
+
+  async function handleCheckout() {
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, modalidade: selectedKey }),
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.url) {
+        setError(data.error || 'Erro ao abrir checkout. Tente novamente.')
+        setLoading(false)
+        return
+      }
+
+      window.location.href = data.url
+    } catch {
+      setError('Falha de conexão. Tente de novo.')
+      setLoading(false)
+    }
+  }
+
+  const labelBotao =
+    selectedKey === 'mensal_cartao' ? `Ativar mensalidade (${selected.valor}/mês) no Mercado Pago` :
+    selectedKey === 'mensal_pix'    ? `Pagar primeira mensalidade (${selected.valor}) via PIX` :
+    selectedKey === 'semestral_pix' ? `Pagar 6 meses (${selected.valor}) via PIX` :
+                                       `Pagar 12 meses (${selected.valor}) via PIX`
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
+        Como você prefere pagar?
+      </p>
+
+      <div className="space-y-2">
+        {opcoes.map((opt) => {
+          const isSelected = opt.key === selectedKey
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setSelectedKey(opt.key)}
+              className="w-full text-left rounded-xl p-3 transition-all"
+              style={{
+                background: isSelected
+                  ? 'rgba(16,185,129,0.10)'
+                  : 'rgba(0,0,0,0.25)',
+                border: isSelected
+                  ? '1.5px solid rgba(16,185,129,0.6)'
+                  : '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div className="flex items-start gap-3">
+                {/* Radio circle */}
+                <div
+                  className="flex-shrink-0 mt-0.5 rounded-full"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    border: isSelected ? '5px solid #10B981' : '2px solid rgba(255,255,255,0.25)',
+                    background: 'transparent',
+                  }}
+                />
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-white text-sm truncate">{opt.titulo}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{opt.descricao}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-emerald-300 text-base leading-none">{opt.valor}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">
+                        {opt.subValor}
+                      </p>
+                    </div>
+                  </div>
+
+                  {opt.economia && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <span
+                        className="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider"
+                        style={{
+                          background: opt.destaque
+                            ? 'linear-gradient(90deg, rgba(16,185,129,0.2), rgba(6,182,212,0.2))'
+                            : 'rgba(16,185,129,0.15)',
+                          color: '#5EEAD4',
+                          border: '1px solid rgba(16,185,129,0.35)',
+                        }}
+                      >
+                        {opt.destaque ? '🔥 ' : ''}Economiza {opt.economia}
+                      </span>
+                    </div>
+                  )}
+
+                  {isSelected && (
+                    <ul className="mt-2 space-y-1">
+                      {opt.bullets.map((b, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-300">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+                            <path d="M20 6L9 17l-5-5" />
+                          </svg>
+                          <span>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={handleCheckout}
+        disabled={loading}
+        className="w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
+        style={{
+          background: 'linear-gradient(135deg, #10B981 0%, #06B6D4 100%)',
+          boxShadow: '0 8px 20px -6px rgba(16,185,129,0.5)',
+          color: '#fff',
+        }}
+      >
+        {loading ? 'Abrindo checkout…' : labelBotao}
+      </button>
+
+      {error && (
+        <p className="text-sm text-red-400 mt-2 text-center">{error}</p>
+      )}
+
+      <p className="text-[11px] text-slate-500 text-center leading-snug">
+        Pagamento processado pelo Mercado Pago. Você pode cancelar a qualquer momento.
+      </p>
+    </div>
+  )
+}

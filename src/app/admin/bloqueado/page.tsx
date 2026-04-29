@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import LogoutButton from '@/components/LogoutButton'
-import BillingCheckoutButton from '@/components/billing/BillingCheckoutButton'
+import BillingPlanSelector from '@/components/billing/BillingPlanSelector'
 
 type BlockReason = 'pending_payment' | 'refunded' | 'cancelled' | 'past_due'
 
@@ -195,18 +195,8 @@ export default async function AdminBloqueadoPage() {
                 </div>
               </div>
 
-              {/* CTA primário: MP mensalidade */}
-              <div className="space-y-2">
-                <BillingCheckoutButton
-                  plan={plan}
-                  label={`Ativar mensalidade (${planMonthly}/mês) no Mercado Pago`}
-                  className="w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
-                  style={ctaPrimaryStyle}
-                />
-                <p className="text-[11px] text-slate-500 text-center leading-snug">
-                  Mensalidade automática no cartão de crédito ou saldo do Mercado Pago.
-                </p>
-              </div>
+              {/* CTA primário: seletor de modalidade + checkout */}
+              <BillingPlanSelector plan={plan} />
 
               {/* Divider */}
               <div className="flex items-center gap-3">
