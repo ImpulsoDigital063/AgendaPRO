@@ -109,7 +109,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm relative">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-4">
-            <Image src="/logo-agendapro-dark.svg" alt="AgendaPRO" width={170} height={34} priority />
+            <Image src="/logo-agendapro-dark-signed.svg" alt="AgendaPRO by Impulso Digital" width={200} height={58} priority />
           </Link>
           <p className="text-blue-400 text-sm font-medium">Painel do dono</p>
         </div>

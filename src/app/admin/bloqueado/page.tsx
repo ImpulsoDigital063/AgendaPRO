@@ -103,7 +103,7 @@ export default async function AdminBloqueadoPage() {
     >
       <div className="w-full max-w-sm relative">
         <div className="text-center mb-5">
-          <Image src="/logo-agendapro-dark.svg" alt="AgendaPRO" width={170} height={34} priority />
+          <Image src="/logo-agendapro-dark-signed.svg" alt="AgendaPRO by Impulso Digital" width={200} height={58} priority />
           {reason === 'pending_payment' && (
             <div
               className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"

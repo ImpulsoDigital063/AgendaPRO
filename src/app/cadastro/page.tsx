@@ -221,7 +221,7 @@ export default function CadastroPage() {
       >
         <div className="w-full max-w-sm relative">
           <div className="text-center mb-6">
-            <Image src="/logo-agendapro-dark.svg" alt="AgendaPRO" width={170} height={34} priority />
+            <Image src="/logo-agendapro-dark-signed.svg" alt="AgendaPRO by Impulso Digital" width={200} height={58} priority />
           </div>
 
           <div className="rounded-3xl p-7 text-center" style={cardStyle}>
@@ -280,7 +280,7 @@ export default function CadastroPage() {
     >
       <div className="w-full max-w-sm relative">
         <div className="text-center mb-5">
-          <Image src="/logo-agendapro-dark.svg" alt="AgendaPRO" width={170} height={34} priority />
+          <Image src="/logo-agendapro-dark-signed.svg" alt="AgendaPRO by Impulso Digital" width={200} height={58} priority />
           <div className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
             style={{
               background: 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(6,182,212,0.2) 100%)',

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   title: 'AgendaPRO — Sua agenda virou o turno da noite do seu negócio',
   description:
     'Agendamento online com fidelidade, lista de espera automática, indicação e reputação Google. Enquanto você vive, o AgendaPRO agenda, lembra, cobra e traz cliente de volta. A partir de R$67/mês com garantia de 7 dias.',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -38,6 +39,10 @@ export const metadata: Metadata = {
     description: 'Fidelidade, lista de espera automática, indicação e reputação Google. A partir de R$67/mês. Garantia de 7 dias.',
     type: 'website',
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#3B82F6',
 };
 
 export default function RootLayout({
