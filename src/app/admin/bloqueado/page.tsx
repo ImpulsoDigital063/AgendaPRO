@@ -144,17 +144,35 @@ export default async function AdminBloqueadoPage() {
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <p className="font-bold text-white text-base">Plano {planLabel}</p>
-                    <p className="text-xs text-slate-400">
-                      {isFounder ? 'Mensalidade simples' : 'Setup único + mensalidade'}
-                    </p>
+                    <p className="text-xs text-slate-400">Setup único + mensalidade</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-emerald-300 text-2xl leading-none">{planMonthly}</p>
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">por mês</p>
-                    {!isFounder && (
-                      <p className="text-xs text-slate-300 mt-1.5">+ R$ 197 setup único</p>
-                    )}
                   </div>
+                </div>
+
+                {/* Bloco do setup com strikethrough quando Fundador */}
+                <div className="rounded-xl p-3 mb-3" style={{ background: 'rgba(16,185,129,0.08)', border: '1px dashed rgba(16,185,129,0.25)' }}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-400 uppercase tracking-wider">Setup único</span>
+                    <div className="text-right">
+                      {isFounder ? (
+                        <>
+                          <span className="text-sm text-slate-500 line-through mr-2">R$ 197</span>
+                          <span className="font-bold text-emerald-300 text-base">R$ 0</span>
+                        </>
+                      ) : (
+                        <span className="font-bold text-white text-base">R$ 197</span>
+                      )}
+                    </div>
+                  </div>
+                  {isFounder && (
+                    <div className="flex justify-between items-center mt-1.5 pt-1.5 border-t border-emerald-500/10">
+                      <span className="text-[11px] text-emerald-400">Desconto Clube Fundador</span>
+                      <span className="text-[11px] font-bold text-emerald-400">−R$ 197</span>
+                    </div>
+                  )}
                 </div>
 
                 {isFounder && (
@@ -163,7 +181,7 @@ export default async function AdminBloqueadoPage() {
                       <path d="M20 6L9 17l-5-5" />
                     </svg>
                     <p className="text-xs text-slate-300 leading-snug">
-                      Setup grátis + preço travado pra sempre (Clube Fundador)
+                      Preço travado pra sempre (Clube Fundador, 10 primeiros)
                     </p>
                   </div>
                 )}
