@@ -67,9 +67,19 @@ export async function POST(req: NextRequest) {
   })
 
   if (!mpResponse.ok) {
-    const error = await mpResponse.text()
-    console.error('[Billing] Erro ao criar assinatura no MP:', error)
-    return NextResponse.json({ error: 'Erro ao criar assinatura' }, { status: 500 })
+    const errorText = await mpResponse.text()
+    console.error('[Billing] MP rejeitou preapproval:', mpResponse.status, errorText)
+    let mpError: unknown = errorText
+    try { mpError = JSON.parse(errorText) } catch {}
+    const mpMessage =
+      (mpError as { message?: string; error?: string })?.message ||
+      (mpError as { message?: string; error?: string })?.error ||
+      errorText
+    return NextResponse.json({
+      error: `MP rejeitou (${mpResponse.status}): ${mpMessage}`,
+      mp_status: mpResponse.status,
+      mp_details: mpError,
+    }, { status: 500 })
   }
 
   const mpData = await mpResponse.json()
