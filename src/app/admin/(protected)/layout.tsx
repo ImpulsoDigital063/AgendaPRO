@@ -36,33 +36,36 @@ export default async function AdminLayout({
       .eq('business_id', business.id)
       .single()
 
-    if (subscription) {
-      const now = new Date()
+    // Defesa: negócio sem subscription = estado corrompido, manda pra bloqueado
+    if (!subscription) {
+      redirect('/admin/bloqueado')
+    }
 
-      const graceExpired =
-        subscription.grace_ends_at && new Date(subscription.grace_ends_at) < now
+    const now = new Date()
 
-      // Bloqueios que redirecionam pra /admin/bloqueado
-      const blocked =
-        subscription.status === 'pending_payment' ||
-        subscription.status === 'cancelled' ||
-        !!subscription.refunded_at ||
-        (subscription.status === 'past_due' && graceExpired)
+    const graceExpired =
+      subscription.grace_ends_at && new Date(subscription.grace_ends_at) < now
 
-      if (blocked) {
-        redirect('/admin/bloqueado')
-      }
+    // Bloqueios que redirecionam pra /admin/bloqueado
+    const blocked =
+      subscription.status === 'pending_payment' ||
+      subscription.status === 'cancelled' ||
+      !!subscription.refunded_at ||
+      (subscription.status === 'past_due' && graceExpired)
 
-      // Banner verde de garantia (apenas dentro dos 7 dias pós-pagamento)
-      if (
-        subscription.status === 'active' &&
-        !subscription.refunded_at &&
-        subscription.refund_deadline_at
-      ) {
-        const deadline = new Date(subscription.refund_deadline_at).getTime()
-        const daysLeft = Math.ceil((deadline - now.getTime()) / (1000 * 60 * 60 * 24))
-        if (daysLeft > 0) refundDaysLeft = daysLeft
-      }
+    if (blocked) {
+      redirect('/admin/bloqueado')
+    }
+
+    // Banner verde de garantia (apenas dentro dos 7 dias pós-pagamento)
+    if (
+      subscription.status === 'active' &&
+      !subscription.refunded_at &&
+      subscription.refund_deadline_at
+    ) {
+      const deadline = new Date(subscription.refund_deadline_at).getTime()
+      const daysLeft = Math.ceil((deadline - now.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysLeft > 0) refundDaysLeft = daysLeft
     }
 
     // Badges da bottom nav (aprovam-se em paralelo, ignoram erros silenciosamente)

@@ -109,7 +109,10 @@ export async function POST(req: NextRequest) {
 
   if (subError) {
     console.error('Erro ao criar subscription:', subError)
-    // Não é fatal — admin pode regenerar depois. Mas loga pra debug.
+    // Rollback completo: sem subscription, o usuário ficaria em estado corrompido
+    await supabase.from('businesses').delete().eq('id', business.id)
+    await supabase.auth.admin.deleteUser(ownerId)
+    return NextResponse.json({ error: 'Erro ao criar conta. Tente novamente.' }, { status: 500 })
   }
 
   // 5. Cria o profissional padrão

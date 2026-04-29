@@ -55,7 +55,7 @@ async function handleSubscriptionUpdate(mpSubscriptionId: string) {
   }
 
   // Mapear status do MP para status do AgendaPRO
-  let status: string
+  let status: string | null = null
   const updateData: Record<string, unknown> = {
     mp_subscription_id: mpSubscriptionId,
     mp_payer_id: sub.payer_id?.toString() || null,
@@ -63,46 +63,73 @@ async function handleSubscriptionUpdate(mpSubscriptionId: string) {
 
   switch (sub.status) {
     case 'authorized':
-    case 'active':
+    case 'active': {
       status = 'active'
+
+      // Primeira ativação: setar setup_paid_at, refund_deadline_at e período corrente
+      const { data: existing } = await admin
+        .from('subscriptions')
+        .select('setup_paid_at')
+        .eq('business_id', businessId)
+        .single()
+
+      if (!existing?.setup_paid_at) {
+        const now = new Date()
+        const refundDeadline = new Date(now)
+        refundDeadline.setDate(refundDeadline.getDate() + 7)
+        const periodEnd = new Date(now)
+        periodEnd.setMonth(periodEnd.getMonth() + 1)
+
+        updateData.setup_paid_at = now.toISOString()
+        updateData.refund_deadline_at = refundDeadline.toISOString()
+        updateData.current_period_start = now.toISOString()
+        updateData.current_period_end = periodEnd.toISOString()
+      }
+
       updateData.grace_ends_at = null
       updateData.public_blocked_at = null
       updateData.cancelled_at = null
       updateData.data_delete_at = null
       break
+    }
 
-    case 'paused':
-    case 'pending':
+    case 'paused': {
+      // 'paused' = MP pausou por falha de cobrança recorrente — NÃO confundir com 'pending'
       status = 'past_due'
-      // Grace period: 5 dias a partir de agora
-      if (!updateData.grace_ends_at) {
-        const graceEnd = new Date()
-        graceEnd.setDate(graceEnd.getDate() + 5)
-        updateData.grace_ends_at = graceEnd.toISOString()
+      const graceEnd = new Date()
+      graceEnd.setDate(graceEnd.getDate() + 5)
+      updateData.grace_ends_at = graceEnd.toISOString()
 
-        // Bloqueio público: grace + 7 dias = 12 dias total
-        const publicBlock = new Date(graceEnd)
-        publicBlock.setDate(publicBlock.getDate() + 7)
-        updateData.public_blocked_at = publicBlock.toISOString()
-      }
+      const publicBlock = new Date(graceEnd)
+      publicBlock.setDate(publicBlock.getDate() + 7)
+      updateData.public_blocked_at = publicBlock.toISOString()
+      break
+    }
+
+    case 'pending':
+      // Estado inicial: usuário ainda não autorizou no checkout MP.
+      // Mantém o status local (pending_payment) — não dá grace period antes de pagar.
+      console.log('[MP Webhook] preapproval pending — mantendo pending_payment local')
       break
 
-    case 'cancelled':
+    case 'cancelled': {
       status = 'cancelled'
       const now = new Date()
       updateData.cancelled_at = now.toISOString()
-      // Dados serão deletados em 90 dias
       const deleteAt = new Date(now)
       deleteAt.setDate(deleteAt.getDate() + 90)
       updateData.data_delete_at = deleteAt.toISOString()
       break
+    }
 
     default:
       console.log('[MP Webhook] Status não mapeado:', sub.status)
       return
   }
 
-  updateData.status = status
+  if (status) {
+    updateData.status = status
+  }
 
   const { error } = await admin
     .from('subscriptions')
