@@ -298,6 +298,39 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
     setSaved(false)
   }
 
+  /**
+   * Aplica pausa de almoço (default 12:00–13:00) em TODOS os dias
+   * ativos que ainda têm 1 período só. Dias com 2+ períodos (já têm
+   * pausa) são preservados — não sobrescreve config customizada.
+   *
+   * Pensado em uso em massa: 100 barbearias diferentes vão querer
+   * aplicar pausa de almoço com 1 clique em vez de configurar 6 dias
+   * manualmente.
+   */
+  function applyLunchToAll(lunchStart = '12:00', lunchEnd = '13:00') {
+    setSchedule((prev) => {
+      const next = { ...prev }
+      for (const d of DAYS) {
+        const cfg = next[d.id]
+        if (!cfg.active) continue
+        if (cfg.periods.length > 1) continue // ja tem pausa, nao mexe
+        const period = cfg.periods[0]
+        // Só divide se o período cobre o horário de almoço inteiro
+        if (period.start_time < lunchStart && period.end_time > lunchEnd) {
+          next[d.id] = {
+            ...cfg,
+            periods: [
+              { start_time: period.start_time, end_time: lunchStart },
+              { start_time: lunchEnd, end_time: period.end_time },
+            ],
+          }
+        }
+      }
+      return next
+    })
+    setSaved(false)
+  }
+
   function openCopyModal(dayId: number) {
     setCopyFromDay(dayId)
     const isWorkday = COMMERCIAL_DAYS.includes(dayId)
@@ -492,14 +525,22 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
         >
           <p>
             <strong style={{ color: 'var(--admin-accent)' }}>Intervalo</strong> é a régua de
-            horários que o cliente enxerga (ex: 30min mostra 09:00, 09:30, 10:00…). A{' '}
-            <strong>duração real</strong> do agendamento vem do serviço escolhido — um corte de
-            45min ocupa 1.5 intervalos.
+            horários que aparece pro cliente (ex: 30min mostra 09:00, 09:30, 10:00…).
           </p>
           <p>
-            <strong style={{ color: 'var(--admin-accent)' }}>Pausa</strong> serve pra fechar o
-            almoço (ex: 12-13). Adicione quantos blocos quiser por dia — manhã, tarde, noite. Os
-            períodos não podem se sobrepor.
+            A <strong>duração real</strong> vem do serviço escolhido. Cliente escolhe um corte de
+            1h em 9:30 → ocupa 9:30–10:30 → o slot das 10:00 fica indisponível pra outro cliente
+            (porque já tá ocupado). O sistema bloqueia sozinho.
+          </p>
+          <p>
+            <strong>Regra prática:</strong> use o intervalo igual à duração do seu serviço mais
+            comum. Barbearia com cortes de 30min → intervalo 30min. Clínica com procedimentos
+            de 1h → intervalo 60min.
+          </p>
+          <p>
+            <strong style={{ color: 'var(--admin-accent)' }}>Pausa</strong> divide o dia em
+            períodos (manhã + tarde). Use o atalho abaixo pra aplicar pausa em todos os dias de
+            uma vez, ou clica em <em>Adicionar pausa</em> dentro de cada dia.
           </p>
         </div>
       )}
@@ -529,6 +570,23 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
           }}
         >
           Seg-Sáb (9-18)
+        </button>
+        <button
+          type="button"
+          onClick={() => applyLunchToAll('12:00', '13:00')}
+          className="text-xs font-semibold px-2.5 py-1.5 rounded-full transition-all inline-flex items-center gap-1.5"
+          style={{
+            background: 'color-mix(in srgb, var(--admin-warn, #FBBF24) 14%, transparent)',
+            color: 'var(--admin-warn, #FBBF24)',
+            border: '1px solid color-mix(in srgb, var(--admin-warn, #FBBF24) 35%, transparent)',
+          }}
+          title="Adiciona pausa 12:00-13:00 em todos os dias ativos que ainda não têm pausa"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          Pausa 12-13 em todos
         </button>
         <button
           type="button"
