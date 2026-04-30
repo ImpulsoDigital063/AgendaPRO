@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import type { Business, Professional, Service, WorkingHours, Reward, Customer } from '@/lib/types'
 import ProfissionaisTab from './ProfissionaisTab'
@@ -37,6 +37,15 @@ export default function ConfiguracoesTabs({
   const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'whatsapp', 'fidelidade', 'aparencia']
   const [activeTab, setActiveTab] = useState<Tab>(tabParam && validTabs.includes(tabParam) ? tabParam : 'negocio')
   const [professionals, setProfessionals] = useState(initialProfessionals)
+
+  // Sincroniza state local com initialProfessionals quando o RSC traz
+  // dados frescos (ex: profissional subiu foto em /profissional/conta,
+  // disparou router.refresh, server re-renderizou). Sem isto, o
+  // useState mantinha versao antiga sem photo_url e a foto aparecia
+  // quebrada no card do admin ate hard refresh.
+  useEffect(() => {
+    setProfessionals(initialProfessionals)
+  }, [initialProfessionals])
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'negocio', label: 'Negócio' },

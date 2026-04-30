@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -87,6 +88,14 @@ export async function POST(req: NextRequest) {
     console.error('[update-photo] update error:', updateErr)
     return NextResponse.json({ error: 'Erro ao salvar foto' }, { status: 500 })
   }
+
+  // Invalida cache do RSC nas rotas que listam profissionais. Quando
+  // o admin (em outra rota/aba) navegar pra /admin/configuracoes
+  // depois disso, o server vai refazer o select e trazer photo_url
+  // atualizada. Sem isto, ele recebia versao antiga e a foto aparecia
+  // quebrada no card.
+  revalidatePath('/admin/configuracoes')
+  revalidatePath('/profissional/conta')
 
   return NextResponse.json({ ok: true, photoUrl })
 }
