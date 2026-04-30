@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import RegisterSW from "@/components/RegisterSW";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -73,6 +74,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Preconnect ao Supabase economiza ~150-300ms de TLS handshake na
+  // primeira query do server component. dns-prefetch pro MP e barato e
+  // ajuda checkout/regenerate-pix abrirem mais rapido.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+
   return (
     <html
       lang="pt-BR"
@@ -86,7 +92,14 @@ export default function RootLayout({
         background: '#030510',
       }}
     >
+      <head>
+        {supabaseUrl && (
+          <link rel="preconnect" href={supabaseUrl} crossOrigin="anonymous" />
+        )}
+        <link rel="dns-prefetch" href="https://api.mercadopago.com" />
+      </head>
       <body className="min-h-full flex flex-col" style={{ background: '#030510' }}>
+        <RegisterSW />
         {children}
       </body>
     </html>
