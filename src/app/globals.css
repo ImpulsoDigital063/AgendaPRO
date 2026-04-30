@@ -73,6 +73,39 @@ body {
   overflow-x: hidden;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Fix global iOS Safari: previne zoom automatico em inputs
+   ═══════════════════════════════════════════════════════════
+   iOS Safari faz zoom automatico quando o usuario foca um input
+   com font-size < 16px (pra "ajudar" a leitura). Apos o blur, o
+   zoom NAO reverte — viewport fica deslocada/cortada (bug
+   reportado pelo Eduardo no print de 30/04).
+
+   Solucao oficial Apple: garantir font-size >= 16px em qualquer
+   input/textarea/select em mobile. Aplica SO em telas pequenas
+   pra nao mexer no design desktop.
+
+   Selector usa types explicitos pra evitar afetar checkboxes e
+   radios (que nao sao impactados pelo zoom).
+═══════════════════════════════════════════════════════════ */
+@media screen and (max-width: 768px) {
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  input[type='number'],
+  input[type='tel'],
+  input[type='time'],
+  input[type='date'],
+  input[type='datetime-local'],
+  input[type='search'],
+  input[type='url'],
+  input:not([type]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Light pages (admin, cliente final) podem declarar `.light-theme` no root pra inverter */
 .light-theme {
   --bg-base: #FFFFFF;
