@@ -4,183 +4,198 @@ import { useEffect, useState } from 'react'
 
 type Platform = 'ios' | 'android' | null
 
-function IOSGuide({ onClose }: { onClose: () => void }) {
+function GuideSheet({
+  platform,
+  onClose,
+}: {
+  platform: 'ios' | 'android'
+  onClose: () => void
+}) {
+  const isIOS = platform === 'ios'
+
   return (
     <div className="fixed inset-0 z-[100] bg-black/70 flex items-end" onClick={onClose}>
-      <div className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 pb-10 animate-slideUp" onClick={(e) => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+      <div
+        className="w-full max-w-lg mx-auto rounded-t-3xl p-6 pb-10 animate-slideUp"
+        style={{
+          background: 'var(--admin-bg)',
+          borderTop: '1px solid var(--admin-border)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="w-10 h-1 rounded-full mx-auto mb-5"
+          style={{ background: 'var(--admin-border-hi)' }}
+        />
+
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: 'color-mix(in srgb, var(--brand-primary) 18%, transparent)' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
               <line x1="12" y1="18" x2="12.01" y2="18" />
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Instalar no iPhone</h2>
-            <p className="text-xs text-gray-400">Use o Safari para seguir os passos</p>
+            <h2 className="text-lg font-bold" style={{ color: 'var(--admin-text)' }}>
+              {isIOS ? 'Instalar no iPhone' : 'Instalar no Android'}
+            </h2>
+            <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+              {isIOS ? 'Abra esta página no Safari' : 'Abra esta página no Chrome'}
+            </p>
           </div>
         </div>
 
         <div className="mt-5 space-y-3">
-          {/* Passo 1 */}
-          <div className="bg-gray-50 rounded-2xl p-4">
+          {/* Passo 1 — toque compartilhar (iOS) ou 3 pontinhos (Android) */}
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background: 'var(--admin-surface)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
             <div className="flex items-center gap-2 mb-3">
-              <span className="w-7 h-7 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
-              <p className="font-semibold text-gray-900 text-sm">Toque no botão compartilhar</p>
+              <span
+                className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--brand-primary)' }}
+              >
+                1
+              </span>
+              <p className="font-semibold text-sm" style={{ color: 'var(--admin-text)' }}>
+                {isIOS
+                  ? 'Toque no botão compartilhar'
+                  : 'Toque nos 3 pontinhos no canto superior'}
+              </p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-3">
+            <div
+              className="rounded-xl p-3"
+              style={{
+                background: 'var(--admin-surface-hi)',
+                border: '1px solid var(--admin-border)',
+              }}
+            >
               <div className="flex items-center justify-between">
-                <div className="flex gap-3 text-gray-300">
-                  <span className="text-lg">&lsaquo;</span>
-                  <span className="text-lg">&rsaquo;</span>
-                </div>
-                <div className="flex-1 mx-3 bg-gray-100 rounded-lg px-3 py-1.5 text-xs text-gray-400 truncate">
+                {isIOS && (
+                  <div className="flex gap-3" style={{ color: 'var(--admin-text-faded)' }}>
+                    <span className="text-lg">&lsaquo;</span>
+                    <span className="text-lg">&rsaquo;</span>
+                  </div>
+                )}
+                <div
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs truncate ${isIOS ? 'mx-3' : 'mr-3'}`}
+                  style={{ background: 'var(--admin-surface)', color: 'var(--admin-text-faded)' }}
+                >
                   agendapro.net.br
                 </div>
                 <div className="relative">
-                  <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center animate-pulse shadow-lg shadow-blue-500/30">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                      <polyline points="16 6 12 2 8 6" />
-                      <line x1="12" y1="2" x2="12" y2="15" />
-                    </svg>
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse"
+                    style={{
+                      background: 'var(--brand-primary)',
+                      boxShadow: '0 8px 16px -4px color-mix(in srgb, var(--brand-primary) 40%, transparent)',
+                    }}
+                  >
+                    {isIOS ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                        <polyline points="16 6 12 2 8 6" />
+                        <line x1="12" y1="2" x2="12" y2="15" />
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="0">
+                        <circle cx="12" cy="5" r="2" />
+                        <circle cx="12" cy="12" r="2" />
+                        <circle cx="12" cy="19" r="2" />
+                      </svg>
+                    )}
                   </div>
                   <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                    <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">aqui</span>
-                    <span className="text-blue-500 text-sm leading-none">&#9660;</span>
+                    <span
+                      className="text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+                      style={{ background: 'var(--brand-primary)' }}
+                    >
+                      aqui
+                    </span>
+                    <span className="text-sm leading-none" style={{ color: 'var(--brand-primary)' }}>
+                      &#9660;
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Passo 2 */}
-          <div className="bg-gray-50 rounded-2xl p-4">
+          {/* Passo 2 — fundido (antes era 2 + 3): role, toque "Adicionar" e confirme */}
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background: 'var(--admin-surface)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
             <div className="flex items-center gap-2 mb-3">
-              <span className="w-7 h-7 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
-              <p className="font-semibold text-gray-900 text-sm">Role e toque em &quot;Adicionar à Tela de Inicio&quot;</p>
+              <span
+                className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--brand-primary)' }}
+              >
+                2
+              </span>
+              <p className="font-semibold text-sm" style={{ color: 'var(--admin-text)' }}>
+                Toque em &quot;Adicionar à Tela de Início&quot; e confirme
+              </p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              {['Copiar', 'Favoritos'].map((item) => (
-                <div key={item} className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-400 flex items-center gap-3">
-                  <div className="w-6 h-6 bg-gray-100 rounded-lg" />
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{
+                background: 'var(--admin-surface-hi)',
+                border: '1px solid var(--admin-border)',
+              }}
+            >
+              {[isIOS ? 'Copiar' : 'Nova aba', 'Favoritos'].map((item) => (
+                <div
+                  key={item}
+                  className="px-4 py-2.5 text-sm flex items-center gap-3"
+                  style={{
+                    color: 'var(--admin-text-faded)',
+                    borderBottom: '1px solid var(--admin-border)',
+                  }}
+                >
+                  <div className="w-5 h-5 rounded" style={{ background: 'var(--admin-surface)' }} />
                   {item}
                 </div>
               ))}
-              <div className="px-4 py-2.5 bg-blue-50 text-sm font-bold text-blue-600 flex items-center gap-3 border-l-4 border-blue-500">
-                <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <div
+                className="px-4 py-2.5 text-sm font-bold flex items-center gap-3"
+                style={{
+                  background: 'color-mix(in srgb, var(--brand-primary) 14%, transparent)',
+                  color: 'var(--brand-primary)',
+                  borderLeft: '4px solid var(--brand-primary)',
+                }}
+              >
+                <div
+                  className="w-5 h-5 rounded flex items-center justify-center"
+                  style={{ background: 'color-mix(in srgb, var(--brand-primary) 22%, transparent)' }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
                     <line x1="12" y1="8" x2="12" y2="16" />
                     <line x1="8" y1="12" x2="16" y2="12" />
                   </svg>
                 </div>
-                Adicionar à Tela de Inicio
+                Adicionar à Tela de Início
               </div>
-            </div>
-          </div>
-
-          {/* Passo 3 */}
-          <div className="bg-gray-50 rounded-2xl p-4">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
-              <p className="font-semibold text-gray-900 text-sm">Toque em <span className="text-blue-600 font-bold">&quot;Adicionar&quot;</span> no canto superior direito</p>
             </div>
           </div>
         </div>
 
-        <button onClick={onClose} className="w-full mt-5 bg-blue-500 text-white py-3.5 rounded-2xl font-semibold text-sm active:scale-[0.98] transition-transform">
-          Entendi!
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function AndroidGuide({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/70 flex items-end" onClick={onClose}>
-      <div className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 pb-10 animate-slideUp" onClick={(e) => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-              <line x1="12" y1="18" x2="12.01" y2="18" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Instalar no Android</h2>
-            <p className="text-xs text-gray-400">Use o Chrome para seguir os passos</p>
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-3">
-          {/* Passo 1 */}
-          <div className="bg-gray-50 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-7 h-7 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
-              <p className="font-semibold text-gray-900 text-sm">Toque nos <span className="font-bold">3 pontinhos</span> (canto superior)</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 bg-gray-100 rounded-lg px-3 py-1.5 text-xs text-gray-400 truncate mr-3">
-                  agendapro.net.br
-                </div>
-                <div className="relative">
-                  <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center animate-pulse shadow-lg shadow-green-500/30">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="0">
-                      <circle cx="12" cy="5" r="2" />
-                      <circle cx="12" cy="12" r="2" />
-                      <circle cx="12" cy="19" r="2" />
-                    </svg>
-                  </div>
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                    <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">aqui</span>
-                    <span className="text-green-500 text-sm leading-none">&#9660;</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Passo 2 */}
-          <div className="bg-gray-50 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-7 h-7 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
-              <p className="font-semibold text-gray-900 text-sm">Toque em &quot;Adicionar à tela inicial&quot;</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              {['Nova aba', 'Favoritos'].map((item) => (
-                <div key={item} className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-400 flex items-center gap-3">
-                  <div className="w-5 h-5 bg-gray-100 rounded" />
-                  {item}
-                </div>
-              ))}
-              <div className="px-4 py-2.5 bg-green-50 text-sm font-bold text-green-700 flex items-center gap-3 border-l-4 border-green-500">
-                <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <line x1="12" y1="8" x2="12" y2="16" />
-                    <line x1="8" y1="12" x2="16" y2="12" />
-                  </svg>
-                </div>
-                Adicionar à tela inicial
-              </div>
-            </div>
-          </div>
-
-          {/* Passo 3 */}
-          <div className="bg-gray-50 rounded-2xl p-4">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
-              <p className="font-semibold text-gray-900 text-sm">Toque em <span className="text-green-600 font-bold">&quot;Adicionar&quot;</span> para confirmar</p>
-            </div>
-          </div>
-        </div>
-
-        <button onClick={onClose} className="w-full mt-5 bg-green-500 text-white py-3.5 rounded-2xl font-semibold text-sm active:scale-[0.98] transition-transform">
+        <button
+          onClick={onClose}
+          className="w-full mt-5 text-white py-3.5 rounded-2xl font-semibold text-sm active:scale-[0.98] transition-transform"
+          style={{ background: 'var(--brand-primary)' }}
+        >
           Entendi!
         </button>
       </div>
@@ -241,22 +256,25 @@ export default function InstallBanner() {
 
   if (isStandalone || dismissed || !platform) return null
 
-  const isIOS = platform === 'ios'
-  const accentColor = isIOS ? '#3b82f6' : '#16a34a'
-  const accentBg = isIOS ? 'rgba(59,130,246,0.12)' : 'rgba(22,163,106,0.12)'
-
   return (
     <>
-      <div className="mx-4 mt-3 rounded-2xl overflow-hidden" style={{ border: `1px solid ${accentColor}30` }}>
-        {/* Main banner */}
+      <div
+        className="mx-4 mt-3 rounded-2xl overflow-hidden"
+        style={{ border: '1px solid var(--admin-border)' }}
+      >
         <div
           className="px-4 py-3.5 flex items-center gap-3"
-          style={{ background: accentBg }}
+          style={{
+            background:
+              'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 18%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-primary) 8%, var(--admin-surface)) 100%)',
+          }}
         >
-          {/* App icon */}
           <div
             className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: accentColor }}
+            style={{
+              background: 'var(--brand-primary)',
+              boxShadow: '0 4px 12px -2px color-mix(in srgb, var(--brand-primary) 40%, transparent)',
+            }}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -270,15 +288,14 @@ export default function InstallBanner() {
               Instalar AgendaPRO
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-              {isIOS
-                ? 'Acesse como app direto do seu iPhone'
-                : 'Acesse como app direto do celular'}
+              1 toque pra abrir — sem precisar lembrar o site
             </p>
           </div>
 
           <button
             onClick={handleDismiss}
-            className="text-gray-400 hover:text-gray-600 p-1 flex-shrink-0"
+            className="p-1 flex-shrink-0"
+            style={{ color: 'var(--admin-text-faded)' }}
             aria-label="Fechar"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -288,27 +305,38 @@ export default function InstallBanner() {
           </button>
         </div>
 
-        {/* Action buttons */}
         <div
           className="px-4 py-3 flex gap-2"
           style={{
             background: 'var(--admin-surface)',
-            borderTop: `1px solid ${accentColor}20`,
+            borderTop: '1px solid var(--admin-border)',
           }}
         >
           {platform === 'android' && deferredPrompt ? (
-            <button
-              onClick={handleAndroidInstall}
-              className="flex-1 text-white text-sm font-bold py-2.5 rounded-xl active:scale-[0.98] transition-transform"
-              style={{ background: accentColor }}
-            >
-              Instalar agora
-            </button>
+            <>
+              <button
+                onClick={handleAndroidInstall}
+                className="flex-1 text-white text-sm font-bold py-2.5 rounded-xl active:scale-[0.98] transition-transform"
+                style={{ background: 'var(--brand-primary)' }}
+              >
+                Instalar agora
+              </button>
+              <button
+                onClick={() => setShowGuide(true)}
+                className="text-xs font-semibold px-3 py-2.5 rounded-xl"
+                style={{
+                  color: 'var(--brand-primary)',
+                  background: 'color-mix(in srgb, var(--brand-primary) 12%, transparent)',
+                }}
+              >
+                Ajuda
+              </button>
+            </>
           ) : (
             <button
               onClick={() => setShowGuide(true)}
               className="flex-1 text-white text-sm font-bold py-2.5 rounded-xl active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-              style={{ background: accentColor }}
+              style={{ background: 'var(--brand-primary)' }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
@@ -318,20 +346,12 @@ export default function InstallBanner() {
               Ver como instalar
             </button>
           )}
-          {platform === 'android' && deferredPrompt && (
-            <button
-              onClick={() => setShowGuide(true)}
-              className="text-xs font-semibold px-3 py-2.5 rounded-xl"
-              style={{ color: accentColor, background: accentBg }}
-            >
-              Ajuda
-            </button>
-          )}
         </div>
       </div>
 
-      {showGuide && platform === 'ios' && <IOSGuide onClose={() => setShowGuide(false)} />}
-      {showGuide && platform === 'android' && <AndroidGuide onClose={() => setShowGuide(false)} />}
+      {showGuide && platform && (
+        <GuideSheet platform={platform} onClose={() => setShowGuide(false)} />
+      )}
 
       <style jsx>{`
         @keyframes slideUp {
