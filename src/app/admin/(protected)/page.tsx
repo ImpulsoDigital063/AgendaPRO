@@ -10,6 +10,7 @@ import TodayList from '@/components/admin/TodayList'
 import CountUp from '@/components/admin/CountUp'
 import Greeting from '@/components/admin/Greeting'
 import EmptyTodayCTA from '@/components/admin/EmptyTodayCTA'
+import InstallBanner from '@/components/admin/InstallBanner'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -254,6 +255,11 @@ export default async function AdminPage() {
           </div>
         </div>
       </section>
+
+      {/* Banner instalar app — auto-detecta iOS/Android, esconde se já instalado ou dispensado */}
+      <div className="relative max-w-lg mx-auto">
+        <InstallBanner />
+      </div>
 
       <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
 
