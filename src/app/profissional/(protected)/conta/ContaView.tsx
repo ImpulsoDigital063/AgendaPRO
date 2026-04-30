@@ -171,54 +171,73 @@ export default function ContaView({
 
       {/* Card identidade — avatar clicavel pra trocar foto */}
       <div className="admin-card p-5 flex items-center gap-4">
+        {/*
+          Estrutura: <button> sem overflow-hidden. Dentro dele:
+          - <span> circular com overflow-hidden (clipa a foto/iniciais)
+          - <span> badge camera FORA do clip path (canto inferior direito)
+          Isso evita o problema anterior em que o overflow-hidden do botão
+          cortava o badge câmera junto com a forma circular do avatar.
+        */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadingPhoto}
           aria-label={photoUrl ? 'Trocar foto' : 'Adicionar foto'}
-          className="rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden relative group disabled:opacity-60"
+          className="relative flex-shrink-0 disabled:opacity-60"
           style={{
             width: 64,
             height: 64,
-            background: photoUrl
-              ? 'transparent'
-              : 'linear-gradient(135deg, var(--admin-accent) 0%, #06B6D4 100%)',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: 22,
             cursor: uploadingPhoto ? 'wait' : 'pointer',
           }}
         >
-          {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
-          ) : (
-            initials || '?'
-          )}
-          {/* Overlay camera — sempre visivel no canto inferior direito pra dar affordance */}
+          {/* Círculo do avatar — overflow-hidden aqui faz a foto seguir a forma redonda */}
+          <span
+            className="absolute inset-0 rounded-full flex items-center justify-center overflow-hidden"
+            style={{
+              background: photoUrl
+                ? 'transparent'
+                : 'linear-gradient(135deg, var(--admin-accent) 0%, #06B6D4 100%)',
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: 22,
+            }}
+          >
+            {photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
+            ) : (
+              initials || '?'
+            )}
+            {uploadingPhoto && (
+              <span
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 600 }}
+              >
+                ...
+              </span>
+            )}
+          </span>
+
+          {/* Badge câmera FORA do clip — saindo um pouco do círculo no canto inferior direito */}
           {!uploadingPhoto && (
             <span
-              className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center"
+              className="absolute rounded-full flex items-center justify-center pointer-events-none"
               style={{
+                width: 24,
+                height: 24,
+                bottom: -2,
+                right: -2,
                 background: 'var(--admin-accent)',
                 color: '#fff',
-                border: '2px solid var(--admin-bg, #0F172A)',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                border: '2px solid var(--admin-surface, #FFFFFF)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
               }}
               aria-hidden
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
-            </span>
-          )}
-          {uploadingPhoto && (
-            <span
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 600 }}
-            >
-              ...
             </span>
           )}
         </button>
