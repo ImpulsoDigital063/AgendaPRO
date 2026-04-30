@@ -1,6 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
-import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
+import {
+  getCurrentUser,
+  getCurrentBusiness,
+  getAppointmentsToday,
+  getUpcomingAppointments,
+  getRecentActivity,
+  getPendingClaimsCount,
+} from '@/lib/admin-data'
 import AppointmentCard from '@/components/AppointmentCard'
 import LogoutButton from '@/components/LogoutButton'
 import ShareButton from '@/components/ShareButton'
@@ -21,74 +28,308 @@ import {
   IconClock,
 } from '@/components/ui/Icon'
 
+// Tipo simplificado do business — passado pras sections que precisam
+type Business = {
+  id: string
+  slug: string
+  name: string
+  punctuality_bonus_points?: number | null
+}
+
+/* ============================================================
+ * Sections async — cada uma faz sua query (cacheada via
+ * unstable_cache) e renderiza dentro de <Suspense>. Streaming
+ * permite que cada parte apareça quando seus dados chegam, em
+ * vez de bloquear a pagina inteira ate todas as queries voltarem.
+ * ============================================================ */
+
+async function KPIsSection({ business }: { business: Business }) {
+  const today = new Date().toISOString().split('T')[0]
+  const list = await getAppointmentsToday(business.id, today)
+  const pending = list.filter((a) => a.status === 'pending')
+  const confirmed = list.filter((a) => a.status === 'confirmed')
+  const completed = list.filter((a) => a.status === 'completed')
+  const revenue = [...confirmed, ...completed].reduce(
+    (sum, a) => sum + (a.total_price || 0),
+    0
+  )
+  const paidCount = confirmed.length + completed.length
+
+  return (
+    <section className="relative max-w-lg mx-auto px-4 mb-6 space-y-2.5">
+      {/* Faturado: hero card full-width */}
+      <div
+        className="rounded-2xl p-4 relative overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 14%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-secondary) 12%, var(--admin-surface)) 100%)',
+          border: '1px solid var(--admin-border)',
+        }}
+      >
+        <div
+          className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-60 pointer-events-none"
+          style={{ background: 'rgba(16,185,129,0.25)' }}
+        />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-wider"
+              style={{ color: 'var(--admin-text-faded)' }}
+            >
+              Faturado hoje
+            </p>
+            <p
+              className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
+              style={{ color: 'var(--admin-text)' }}
+            >
+              <CountUp value={revenue} prefix="R$ " localized />
+            </p>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
+              {paidCount} atendimento{paidCount === 1 ? '' : 's'} pago{paidCount === 1 ? '' : 's'}
+            </p>
+          </div>
+          <span
+            className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: 'rgba(16,185,129,0.15)',
+              color: 'var(--admin-success)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+            }}
+          >
+            <IconDollar size={22} />
+          </span>
+        </div>
+      </div>
+
+      {/* Pendentes + Confirmados em grid 2 col */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="admin-card p-3.5 relative overflow-hidden">
+          <div className="flex items-start justify-between">
+            <div>
+              <p
+                className="text-[11px] font-semibold uppercase tracking-wider"
+                style={{ color: 'var(--admin-text-faded)' }}
+              >
+                Pendentes
+              </p>
+              <p
+                className="text-xl font-bold mt-1.5 leading-none tabular-nums"
+                style={{ color: 'var(--admin-warn)' }}
+              >
+                <CountUp value={pending.length} duration={500} />
+              </p>
+            </div>
+            <span
+              className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${pending.length > 0 ? 'admin-pulse-warn' : ''}`}
+              style={{
+                background: 'rgba(245,158,11,0.15)',
+                color: 'var(--admin-warn)',
+              }}
+            >
+              <IconClock size={16} />
+            </span>
+          </div>
+        </div>
+
+        <div className="admin-card p-3.5 relative overflow-hidden">
+          <div className="flex items-start justify-between">
+            <div>
+              <p
+                className="text-[11px] font-semibold uppercase tracking-wider"
+                style={{ color: 'var(--admin-text-faded)' }}
+              >
+                Confirmados
+              </p>
+              <p
+                className="text-xl font-bold mt-1.5 leading-none tabular-nums"
+                style={{ color: 'var(--admin-accent)' }}
+              >
+                <CountUp value={confirmed.length} duration={500} />
+              </p>
+            </div>
+            <span
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'var(--admin-accent-bg)',
+                color: 'var(--admin-accent)',
+              }}
+            >
+              <IconCheck size={16} />
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function KPIsSkeleton() {
+  return (
+    <section className="relative max-w-lg mx-auto px-4 mb-6 space-y-2.5">
+      <div
+        className="rounded-2xl h-[110px] skel-pulse"
+        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+      />
+      <div className="grid grid-cols-2 gap-2.5">
+        <div
+          className="rounded-2xl h-[78px] skel-pulse"
+          style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+        />
+        <div
+          className="rounded-2xl h-[78px] skel-pulse"
+          style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+        />
+      </div>
+    </section>
+  )
+}
+
+async function ClaimsLinkSection({ businessId }: { businessId: string }) {
+  const count = await getPendingClaimsCount(businessId)
+  if (!count || count <= 0) return null
+
+  return (
+    <Link
+      href="/admin/configuracoes?tab=fidelidade"
+      className="block rounded-2xl p-4 transition-opacity hover:opacity-90"
+      style={{
+        background: 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06))',
+        border: '1px solid rgba(245,158,11,0.4)',
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(245,158,11,0.25)', color: '#F59E0B' }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+            {count} pedido{count > 1 ? 's' : ''} de pontos por avaliação
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Confira no Google e aprove pra liberar os pontos
+          </p>
+        </div>
+        <IconChevronRight size={18} style={{ color: '#F59E0B' }} />
+      </div>
+    </Link>
+  )
+}
+
+async function TodaySection({ business }: { business: Business }) {
+  const today = new Date().toISOString().split('T')[0]
+  const list = await getAppointmentsToday(business.id, today)
+  const activeToday = list.filter(
+    (a) => a.status !== 'cancelled' && a.status !== 'no_show'
+  )
+  const archivedToday = list.filter(
+    (a) => a.status === 'cancelled' || a.status === 'no_show'
+  )
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+          Hoje
+        </p>
+        {list.length > 0 && (
+          <span
+            className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
+            style={{
+              background: 'var(--admin-accent-bg)',
+              color: 'var(--admin-accent)',
+              border: '1px solid var(--admin-accent-border)',
+            }}
+          >
+            {list.length} agendamento{list.length > 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+
+      {list.length === 0 ? (
+        <EmptyTodayCTA slug={business.slug} />
+      ) : (
+        <TodayList
+          active={activeToday}
+          archived={archivedToday}
+          punctualityBonus={business.punctuality_bonus_points ?? 10}
+        />
+      )}
+    </section>
+  )
+}
+
+async function UpcomingSection({ business }: { business: Business }) {
+  const today = new Date().toISOString().split('T')[0]
+  const nextWeek = new Date()
+  nextWeek.setDate(nextWeek.getDate() + 7)
+  const nextWeekStr = nextWeek.toISOString().split('T')[0]
+
+  const upcoming = await getUpcomingAppointments(business.id, today, nextWeekStr)
+  if (!upcoming.length) return null
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+          Próximos dias
+        </p>
+        <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>7 dias</span>
+      </div>
+      <div className="space-y-3">
+        {upcoming.map((a, i) => (
+          <div
+            key={a.id}
+            className="admin-enter"
+            style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 60}ms` }}
+          >
+            <AppointmentCard
+              appointment={a}
+              showDate
+              punctualityBonus={business.punctuality_bonus_points ?? 10}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+async function ActivitySection({ businessId }: { businessId: string }) {
+  const recentActivity = await getRecentActivity(businessId)
+  if (!recentActivity.length) return null
+
+  return (
+    <section>
+      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+        Atividade da equipe
+      </p>
+      <ActivityFeed activities={recentActivity} />
+    </section>
+  )
+}
+
+/* ============================================================
+ * Page principal — header + business name renderizam imediato.
+ * Sections com queries ficam dentro de Suspense, streamando
+ * conforme cada query termina (skeleton enquanto carrega).
+ * ============================================================ */
+
 export default async function AdminPage() {
-  // user + business cacheados via getCurrentUser/getCurrentBusiness —
-  // ja foram resolvidos pelo layout, aqui sao free (mesmo Promise)
+  // user + business cacheados via React cache() — ja resolvidos pelo layout
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
 
   const business = await getCurrentBusiness(user.id)
   if (!business) redirect('/cadastro')
 
-  const today = new Date().toISOString().split('T')[0]
-  const nextWeek = new Date()
-  nextWeek.setDate(nextWeek.getDate() + 7)
-  const nextWeekStr = nextWeek.toISOString().split('T')[0]
-
-  // Todas as queries especificas do dashboard rodam EM PARALELO. Antes
-  // eram sequenciais (4 awaits, ~800ms-1.2s). Agora 1 round-trip do
-  // tempo da query mais lenta (~250ms).
-  const supabase = await createClient()
-  const [
-    { data: appointments },
-    { data: upcoming },
-    { data: recentActivity },
-    { count: pendingClaimsCount },
-  ] = await Promise.all([
-    supabase
-      .from('appointments')
-      .select(`*, professional:professionals(name)`)
-      .eq('business_id', business.id)
-      .eq('appointment_date', today)
-      .order('start_time', { ascending: true }),
-    supabase
-      .from('appointments')
-      .select(`*, professional:professionals(name)`)
-      .eq('business_id', business.id)
-      .gt('appointment_date', today)
-      .lte('appointment_date', nextWeekStr)
-      .in('status', ['pending', 'confirmed'])
-      .order('appointment_date', { ascending: true })
-      .order('start_time', { ascending: true })
-      .limit(10),
-    supabase
-      .from('activity_log')
-      .select('*, professional:professionals(name)')
-      .eq('business_id', business.id)
-      .order('created_at', { ascending: false })
-      .limit(8),
-    supabase
-      .from('review_claims')
-      .select('id', { count: 'exact', head: true })
-      .eq('business_id', business.id)
-      .eq('status', 'pending'),
-  ])
-
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   })
-
-  const list = appointments || []
-  const pending   = list.filter((a) => a.status === 'pending')
-  const confirmed = list.filter((a) => a.status === 'confirmed')
-  const completed = list.filter((a) => a.status === 'completed')
-  const revenue   = [...confirmed, ...completed].reduce((sum, a) => sum + (a.total_price || 0), 0)
-
-  // Cancelados + não-veio vão pro grupo colapsado no fim — não poluem a agenda do dia
-  const activeToday   = list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')
-  const archivedToday = list.filter((a) => a.status === 'cancelled' || a.status === 'no_show')
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
@@ -150,211 +391,49 @@ export default async function AdminPage() {
         </p>
       </header>
 
-      {/* KPIs — faturado dominante, pendentes/confirmados secundários */}
-      <section className="relative max-w-lg mx-auto px-4 mb-6 space-y-2.5">
-        {/* Faturado: hero card full-width */}
-        <div
-          className="rounded-2xl p-4 relative overflow-hidden"
-          style={{
-            background:
-              'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 14%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-secondary) 12%, var(--admin-surface)) 100%)',
-            border: '1px solid var(--admin-border)',
-          }}
-        >
-          <div
-            className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-60 pointer-events-none"
-            style={{ background: 'rgba(16,185,129,0.25)' }}
-          />
-          <div className="relative flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p
-                className="text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: 'var(--admin-text-faded)' }}
-              >
-                Faturado hoje
-              </p>
-              <p
-                className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
-                style={{ color: 'var(--admin-text)' }}
-              >
-                <CountUp value={revenue} prefix="R$ " localized />
-              </p>
-              <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-                {confirmed.length + completed.length} atendimento{confirmed.length + completed.length === 1 ? '' : 's'} pago{confirmed.length + completed.length === 1 ? '' : 's'}
-              </p>
-            </div>
-            <span
-              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{
-                background: 'rgba(16,185,129,0.15)',
-                color: 'var(--admin-success)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
-              }}
-            >
-              <IconDollar size={22} />
-            </span>
-          </div>
-        </div>
-
-        {/* Pendentes + Confirmados em grid 2 col */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="admin-card p-3.5 relative overflow-hidden">
-            <div className="flex items-start justify-between">
-              <div>
-                <p
-                  className="text-[11px] font-semibold uppercase tracking-wider"
-                  style={{ color: 'var(--admin-text-faded)' }}
-                >
-                  Pendentes
-                </p>
-                <p
-                  className="text-xl font-bold mt-1.5 leading-none tabular-nums"
-                  style={{ color: 'var(--admin-warn)' }}
-                >
-                  <CountUp value={pending.length} duration={500} />
-                </p>
-              </div>
-              <span
-                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${pending.length > 0 ? 'admin-pulse-warn' : ''}`}
-                style={{
-                  background: 'rgba(245,158,11,0.15)',
-                  color: 'var(--admin-warn)',
-                }}
-              >
-                <IconClock size={16} />
-              </span>
-            </div>
-          </div>
-
-          <div className="admin-card p-3.5 relative overflow-hidden">
-            <div className="flex items-start justify-between">
-              <div>
-                <p
-                  className="text-[11px] font-semibold uppercase tracking-wider"
-                  style={{ color: 'var(--admin-text-faded)' }}
-                >
-                  Confirmados
-                </p>
-                <p
-                  className="text-xl font-bold mt-1.5 leading-none tabular-nums"
-                  style={{ color: 'var(--admin-accent)' }}
-                >
-                  <CountUp value={confirmed.length} duration={500} />
-                </p>
-              </div>
-              <span
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{
-                  background: 'var(--admin-accent-bg)',
-                  color: 'var(--admin-accent)',
-                }}
-              >
-                <IconCheck size={16} />
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* KPIs — streaming, fallback skeleton enquanto query carrega */}
+      <Suspense fallback={<KPIsSkeleton />}>
+        <KPIsSection business={business} />
+      </Suspense>
 
       <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
+        {/* Pedidos de pontos — sumi sumi se count = 0, fallback null */}
+        <Suspense fallback={null}>
+          <ClaimsLinkSection businessId={business.id} />
+        </Suspense>
 
-        {/* Pedidos de pontos por avaliacao aguardando */}
-        {pendingClaimsCount && pendingClaimsCount > 0 ? (
-          <Link
-            href="/admin/configuracoes?tab=fidelidade"
-            className="block rounded-2xl p-4 transition-opacity hover:opacity-90"
-            style={{
-              background: 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06))',
-              border: '1px solid rgba(245,158,11,0.4)',
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <span
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(245,158,11,0.25)', color: '#F59E0B' }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
-                  {pendingClaimsCount} pedido{pendingClaimsCount > 1 ? 's' : ''} de pontos por avaliação
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                  Confira no Google e aprove pra liberar os pontos
-                </p>
-              </div>
-              <IconChevronRight size={18} style={{ color: '#F59E0B' }} />
-            </div>
-          </Link>
-        ) : null}
-
-        {/* Divulgação */}
+        {/* Divulgação — estatica, renderiza imediato */}
         <DivulgarCard
           slug={business.slug}
           appUrl={process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'}
         />
 
-        {/* Hoje */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-              Hoje
-            </p>
-            {list.length > 0 && (
-              <span
-                className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
-                style={{
-                  background: 'var(--admin-accent-bg)',
-                  color: 'var(--admin-accent)',
-                  border: '1px solid var(--admin-accent-border)',
-                }}
-              >
-                {list.length} agendamento{list.length > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
+        {/* Hoje — streaming */}
+        <Suspense fallback={null}>
+          <TodaySection business={business} />
+        </Suspense>
 
-          {list.length === 0 ? (
-            <EmptyTodayCTA slug={business.slug} />
-          ) : (
-            <TodayList active={activeToday} archived={archivedToday} punctualityBonus={business.punctuality_bonus_points ?? 10} />
-          )}
-        </section>
+        {/* Próximos dias — streaming, fallback null (some se vazio) */}
+        <Suspense fallback={null}>
+          <UpcomingSection business={business} />
+        </Suspense>
 
-        {/* Próximos dias */}
-        {upcoming && upcoming.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-                Próximos dias
-              </p>
-              <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>7 dias</span>
-            </div>
-            <div className="space-y-3">
-              {upcoming.map((a, i) => (
-                <div
-                  key={a.id}
-                  className="admin-enter"
-                  style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 60}ms` }}
-                >
-                  <AppointmentCard appointment={a} showDate punctualityBonus={business.punctuality_bonus_points ?? 10} />
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Atividades dos profissionais */}
-        {recentActivity && recentActivity.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-              Atividade da equipe
-            </p>
-            <ActivityFeed activities={recentActivity} />
-          </section>
-        )}
-
+        {/* Atividade da equipe — streaming, fallback null (some se vazio) */}
+        <Suspense fallback={null}>
+          <ActivitySection businessId={business.id} />
+        </Suspense>
       </div>
+
+      {/* Skel pulse pro fallback de KPIs */}
+      <style>{`
+        @keyframes skelPulse {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 0.9; }
+        }
+        .skel-pulse {
+          animation: skelPulse 1.4s ease-in-out infinite;
+        }
+      `}</style>
     </main>
   )
 }

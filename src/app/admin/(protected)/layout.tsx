@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import BottomNav from '@/components/admin/BottomNav'
@@ -8,6 +7,8 @@ import {
   getCurrentUser,
   getCurrentBusiness,
   getCurrentSubscription,
+  getPendingAppointmentsCount,
+  getPendingClaimsCount,
 } from '@/lib/admin-data'
 
 export default async function AdminLayout({
@@ -29,22 +30,12 @@ export default async function AdminLayout({
   let pendingClaims = 0
 
   if (business) {
-    // Subscription + counts da bottom nav em paralelo. Subscription so
-    // depende de business.id, counts tambem — entao roda tudo junto e
-    // valida apos. Corta ~200-300ms vs sequencial.
-    const supabase = await createClient()
-    const [subscription, apptRes, claimsRes] = await Promise.all([
+    // Subscription + counts da bottom nav em paralelo. Counts agora vem
+    // de unstable_cache (TTL 30s) — segunda abertura nao bate Supabase.
+    const [subscription, apptCount, claimsCount] = await Promise.all([
       getCurrentSubscription(business.id),
-      supabase
-        .from('appointments')
-        .select('id', { count: 'exact', head: true })
-        .eq('business_id', business.id)
-        .eq('status', 'pending'),
-      supabase
-        .from('review_claims')
-        .select('id', { count: 'exact', head: true })
-        .eq('business_id', business.id)
-        .eq('status', 'pending'),
+      getPendingAppointmentsCount(business.id),
+      getPendingClaimsCount(business.id),
     ])
 
     // Defesa: negócio sem subscription = estado corrompido, manda pra bloqueado
@@ -68,8 +59,8 @@ export default async function AdminLayout({
       redirect('/admin/bloqueado')
     }
 
-    pendingAppointments = apptRes.count ?? 0
-    pendingClaims = claimsRes.count ?? 0
+    pendingAppointments = apptCount
+    pendingClaims = claimsCount
   }
 
   const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as
