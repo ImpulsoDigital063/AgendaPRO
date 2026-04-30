@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import BottomNav from '@/components/admin/BottomNav'
 import InstallBanner from '@/components/admin/InstallBanner'
-import GarantiaBanner from '@/components/admin/GarantiaBanner'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 
 export default async function AdminLayout({
@@ -25,14 +24,13 @@ export default async function AdminLayout({
     .single()
 
   // Sem negócio associado — pode ser estado temporário pós-cadastro; deixa passar
-  let refundDaysLeft: number | null = null
   let pendingAppointments = 0
   let pendingClaims = 0
 
   if (business) {
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('status, setup_paid_at, refund_deadline_at, refunded_at, grace_ends_at')
+      .select('status, refunded_at, grace_ends_at')
       .eq('business_id', business.id)
       .single()
 
@@ -55,17 +53,6 @@ export default async function AdminLayout({
 
     if (blocked) {
       redirect('/admin/bloqueado')
-    }
-
-    // Banner verde de garantia (apenas dentro dos 7 dias pós-pagamento)
-    if (
-      subscription.status === 'active' &&
-      !subscription.refunded_at &&
-      subscription.refund_deadline_at
-    ) {
-      const deadline = new Date(subscription.refund_deadline_at).getTime()
-      const daysLeft = Math.ceil((deadline - now.getTime()) / (1000 * 60 * 60 * 24))
-      if (daysLeft > 0) refundDaysLeft = daysLeft
     }
 
     // Badges da bottom nav (aprovam-se em paralelo, ignoram erros silenciosamente)
@@ -94,7 +81,6 @@ export default async function AdminLayout({
     <AdminThemeProvider initial={initialTheme}>
       <div className="admin-shell" data-admin-theme={initialTheme}>
         <InstallBanner />
-        {refundDaysLeft !== null && <GarantiaBanner daysLeft={refundDaysLeft} />}
         <div style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
           {children}
         </div>

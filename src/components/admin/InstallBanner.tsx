@@ -202,7 +202,16 @@ export default function InstallBanner() {
 
     setIsStandalone(standalone)
     if (standalone) return
-    if (localStorage.getItem('install-banner-dismissed')) return
+
+    // Dispensa expira em 30 dias — reaparece depois pra dar nova chance de instalar
+    const dismissedAt = localStorage.getItem('install-banner-dismissed-at')
+    if (dismissedAt) {
+      const diasDispensado = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60 * 24)
+      if (diasDispensado < 30) return
+      localStorage.removeItem('install-banner-dismissed-at')
+    }
+    // Limpa flag legada eterna (de versões anteriores) pra desbloquear quem dispensou antes
+    localStorage.removeItem('install-banner-dismissed')
 
     const ua = navigator.userAgent
     const isIOS = /iPad|iPhone|iPod/.test(ua) && !('MSStream' in window)
@@ -220,7 +229,7 @@ export default function InstallBanner() {
   }, [])
 
   function handleDismiss() {
-    localStorage.setItem('install-banner-dismissed', '1')
+    localStorage.setItem('install-banner-dismissed-at', String(Date.now()))
     setDismissed(true)
   }
 
