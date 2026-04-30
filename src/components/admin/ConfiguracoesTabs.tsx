@@ -148,7 +148,14 @@ export default function ConfiguracoesTabs({
       )}
 
       {activeTab === 'aparencia' && (
-        <AparenciaTab business={business} />
+        <AparenciaTab
+          business={business}
+          services={initialServices}
+          onNavigateToNegocio={() => {
+            setActiveTab('negocio')
+            if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+        />
       )}
 
       {activeTab === 'whatsapp' && (

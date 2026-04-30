@@ -5,6 +5,7 @@ export type Business = {
   phone: string | null
   address: string | null
   logo_url: string | null
+  cover_url?: string | null
   slug: string
   owner_id: string
   created_at: string

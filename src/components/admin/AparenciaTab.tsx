@@ -1,8 +1,16 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
-import type { Business } from '@/lib/types'
-import { IconCheck, IconChevronDown, IconExternalLink, IconPalette } from '@/components/ui/Icon'
+import { createClient } from '@/lib/supabase/client'
+import { compressImage } from '@/lib/compress-image'
+import type { Business, Service } from '@/lib/types'
+import {
+  IconCheck,
+  IconChevronDown,
+  IconExternalLink,
+  IconPalette,
+  IconClose,
+} from '@/components/ui/Icon'
 import StickyActionBar from '@/components/admin/StickyActionBar'
 
 const PRESETS: { name: string; primary: string; secondary: string }[] = [
@@ -26,30 +34,69 @@ const PRESETS: { name: string; primary: string; secondary: string }[] = [
   { name: 'Grafite', primary: '#374151', secondary: '#9CA3AF' },
 ]
 
-function snapshot(p: string, s: string, m: string) {
-  return `${p}|${s}|${m}`
+/**
+ * Presets recomendados por categoria — pra cada nicho, 2-3 presets
+ * que combinam culturalmente. Não restringe escolha (todos continuam
+ * disponíveis), apenas marca com badge "★ Indicada".
+ */
+const RECOMMENDED_BY_CATEGORY: Record<string, string[]> = {
+  'Barbearia':            ['Marinho', 'Bordô', 'Petróleo', 'Grafite', 'Elegante'],
+  'Salão de beleza':      ['Rosa', 'Pêssego', 'Lavanda', 'Roxo'],
+  'Estúdio de tatuagem':  ['Grafite', 'Bordô', 'Elegante', 'Vermelho'],
+  'Clínica estética':     ['Lavanda', 'Pêssego', 'Petróleo', 'Verde'],
+  'Nail designer':        ['Rosa', 'Pêssego', 'Lavanda', 'Roxo'],
+  'Manicure':             ['Rosa', 'Pêssego', 'Lavanda'],
+  'Psicólogo / Terapeuta': ['Petróleo', 'Lavanda', 'Verde', 'Floresta'],
+  'Personal trainer':     ['Vermelho', 'Laranja', 'Marinho', 'Floresta'],
 }
 
-export default function AparenciaTab({ business }: { business: Business }) {
-  const initialPrimary = business.brand_primary || '#3B82F6'
-  const initialSecondary = business.brand_secondary || '#06B6D4'
-  const initialMode = business.brand_mode || 'dark'
+function isRecommended(presetName: string, category: string | null | undefined): boolean {
+  if (!category) return false
+  return RECOMMENDED_BY_CATEGORY[category]?.includes(presetName) ?? false
+}
+
+const DEFAULT_PRIMARY = '#3B82F6'
+const DEFAULT_SECONDARY = '#06B6D4'
+const DEFAULT_MODE: 'dark' | 'light' = 'dark'
+
+function snapshot(p: string, s: string, m: string, c: string | null | undefined) {
+  return `${p}|${s}|${m}|${c ?? ''}`
+}
+
+type Props = {
+  business: Business
+  /** Serviços do business — usado pra preview real (em vez de mock fixo) */
+  services?: Service[]
+  /** Callback pra navegar pra aba Negócio (link de editar logo) */
+  onNavigateToNegocio?: () => void
+}
+
+export default function AparenciaTab({ business, services = [], onNavigateToNegocio }: Props) {
+  const initialPrimary = business.brand_primary || DEFAULT_PRIMARY
+  const initialSecondary = business.brand_secondary || DEFAULT_SECONDARY
+  const initialMode = (business.brand_mode || DEFAULT_MODE) as 'dark' | 'light'
+  const initialCover = business.cover_url || null
 
   const [primary, setPrimary] = useState(initialPrimary)
   const [secondary, setSecondary] = useState(initialSecondary)
   const [mode, setMode] = useState<'dark' | 'light'>(initialMode)
+  const [coverUrl, setCoverUrl] = useState<string | null>(initialCover)
   const [savedSnapshot, setSavedSnapshot] = useState(
-    snapshot(initialPrimary, initialSecondary, initialMode),
+    snapshot(initialPrimary, initialSecondary, initialMode, initialCover),
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [coverError, setCoverError] = useState<string | null>(null)
+  const [confirmReset, setConfirmReset] = useState(false)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const coverFileInputRef = useRef<HTMLInputElement | null>(null)
 
   const isDirty = useMemo(
-    () => snapshot(primary, secondary, mode) !== savedSnapshot,
-    [primary, secondary, mode, savedSnapshot],
+    () => snapshot(primary, secondary, mode, coverUrl) !== savedSnapshot,
+    [primary, secondary, mode, coverUrl, savedSnapshot],
   )
 
   const isPreset = (p: (typeof PRESETS)[number]) =>
@@ -69,11 +116,12 @@ export default function AparenciaTab({ business }: { business: Business }) {
         brand_primary: primary,
         brand_secondary: secondary,
         brand_mode: mode,
+        cover_url: coverUrl,
       }),
     })
     setSaving(false)
     if (res.ok) {
-      setSavedSnapshot(snapshot(primary, secondary, mode))
+      setSavedSnapshot(snapshot(primary, secondary, mode, coverUrl))
       setSaved(true)
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
       savedTimerRef.current = setTimeout(() => setSaved(false), 2200)
@@ -81,6 +129,87 @@ export default function AparenciaTab({ business }: { business: Business }) {
       setError('Erro ao salvar. Tente novamente.')
     }
   }
+
+  /**
+   * Upload de banner — preset 'cover' do compressImage (max 1600px,
+   * 400KB WebP). Sobe pro bucket business-covers com path
+   * <business_id>/cover.<ext>. Atualiza state local; persistência no
+   * banco só após o admin clicar Salvar (junto com cores).
+   */
+  async function handleUploadCover(file: File) {
+    setCoverError(null)
+    setUploadingCover(true)
+
+    const result = await compressImage(file, 'cover')
+    if (!result.ok) {
+      setCoverError(result.reason)
+      setUploadingCover(false)
+      return
+    }
+
+    const optimized = result.file
+    const ext = (optimized.name.split('.').pop() || 'webp').toLowerCase()
+    const path = `${business.id}/cover.${ext}`
+
+    const supabase = createClient()
+    const { error: uploadError } = await supabase.storage
+      .from('business-covers')
+      .upload(path, optimized, {
+        upsert: true,
+        cacheControl: '3600',
+        contentType: optimized.type,
+      })
+
+    if (uploadError) {
+      setCoverError('Erro ao enviar capa: ' + uploadError.message)
+      setUploadingCover(false)
+      return
+    }
+
+    const { data: pub } = supabase.storage.from('business-covers').getPublicUrl(path)
+    const publicUrl = `${pub.publicUrl}?v=${Date.now()}`
+    setCoverUrl(publicUrl)
+    setUploadingCover(false)
+  }
+
+  function handleRemoveCover() {
+    setCoverUrl(null)
+    setCoverError(null)
+  }
+
+  /** Resetar pra cores padrão (azul/ciano/dark) */
+  function handleReset() {
+    setPrimary(DEFAULT_PRIMARY)
+    setSecondary(DEFAULT_SECONDARY)
+    setMode(DEFAULT_MODE)
+    setConfirmReset(false)
+  }
+
+  // Serviços reais pra preview — pega 2 ativos com preço definido
+  const previewServices = useMemo(() => {
+    const filtered = services
+      .filter((s) => s.active && (s.price ?? 0) > 0)
+      .slice(0, 2)
+    if (filtered.length > 0) return filtered
+    // Fallback se não tem serviços
+    return [
+      { id: 'mock1', name: 'Corte masculino', price: 50, duration_minutes: 30 } as Service,
+      { id: 'mock2', name: 'Barba', price: 30, duration_minutes: 20 } as Service,
+    ]
+  }, [services])
+
+  function formatPrice(price: number | null) {
+    if (!price) return ''
+    return price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  }
+  function formatDuration(min: number) {
+    if (min < 60) return `${min} min`
+    const h = Math.floor(min / 60)
+    const m = min % 60
+    return m === 0 ? `${h}h` : `${h}h ${m}min`
+  }
+
+  const businessCategory = business.description ?? null
 
   const previewBg = mode === 'dark' ? '#050713' : '#F8FAFC'
   const previewCardBg = mode === 'dark' ? 'rgba(15,25,56,0.55)' : '#FFFFFF'
@@ -133,15 +262,31 @@ export default function AparenciaTab({ business }: { business: Business }) {
               border: `1px solid ${previewBorder}`,
             }}
           >
-            {/* Cover branded */}
-            <div className="h-12 w-full" style={{ background: gradient }} />
+            {/* Cover — usa imagem se admin subiu, senão gradient da brand */}
+            <div className="h-12 w-full relative" style={{ background: gradient }}>
+              {coverUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={coverUrl}
+                  alt="Capa"
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
             {/* Header */}
             <div className="px-3 py-2.5 flex items-center gap-2">
               <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white flex-shrink-0"
-                style={{ background: gradient }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white flex-shrink-0 overflow-hidden"
+                style={{
+                  background: business.logo_url ? '#FFFFFF' : gradient,
+                }}
               >
-                {business.name.charAt(0).toUpperCase()}
+                {business.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={business.logo_url} alt={business.name} className="w-full h-full object-contain" />
+                ) : (
+                  business.name.charAt(0).toUpperCase()
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p
@@ -158,14 +303,11 @@ export default function AparenciaTab({ business }: { business: Business }) {
                 </p>
               </div>
             </div>
-            {/* Mock de serviços */}
+            {/* Serviços REAIS do business (fallback mock se vazio) */}
             <div className="px-3 pb-3 space-y-1.5">
-              {[
-                { name: 'Corte masculino', sub: '30 min · R$ 50' },
-                { name: 'Barba', sub: '20 min · R$ 30' },
-              ].map((s, i) => (
+              {previewServices.map((s) => (
                 <div
-                  key={i}
+                  key={s.id}
                   className="rounded-lg p-2"
                   style={{ background: previewCardBg, border: `1px solid ${previewBorder}` }}
                 >
@@ -173,7 +315,7 @@ export default function AparenciaTab({ business }: { business: Business }) {
                     {s.name}
                   </p>
                   <p className="text-[9px]" style={{ color: previewMuted }}>
-                    {s.sub}
+                    {formatDuration(s.duration_minutes)} · {formatPrice(s.price)}
                   </p>
                 </div>
               ))}
@@ -205,6 +347,112 @@ export default function AparenciaTab({ business }: { business: Business }) {
         </div>
       </div>
 
+      {/* Logo — link pra Negócio (sem duplicar o uploader) */}
+      <button
+        type="button"
+        onClick={() => onNavigateToNegocio?.()}
+        className="admin-card p-3 w-full flex items-center gap-3 text-left transition-colors hover:opacity-90"
+      >
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden font-bold"
+          style={{
+            background: business.logo_url ? '#FFFFFF' : gradient,
+            color: '#FFFFFF',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          {business.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={business.logo_url} alt={business.name} className="w-full h-full object-contain" />
+          ) : (
+            business.name.charAt(0).toUpperCase()
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+            Logo
+          </p>
+          <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+            {business.logo_url ? 'Configurada — toque pra trocar' : 'Sem logo — toque pra adicionar'}
+          </p>
+        </div>
+        <span
+          className="text-[11px] font-semibold flex items-center gap-1"
+          style={{ color: 'var(--admin-accent)' }}
+        >
+          Negócio
+          <IconChevronDown
+            size={12}
+            style={{ transform: 'rotate(-90deg)' }}
+          />
+        </span>
+      </button>
+
+      {/* Banner / Capa — uploader local */}
+      <div className="admin-card p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+            Capa da página
+          </p>
+          {coverUrl && (
+            <button
+              type="button"
+              onClick={handleRemoveCover}
+              className="text-[11px] font-semibold flex items-center gap-1"
+              style={{ color: 'var(--admin-danger, #EF4444)' }}
+            >
+              <IconClose size={12} /> Remover
+            </button>
+          )}
+        </div>
+        <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+          Foto da fachada, ambiente ou produto. Aparece no topo da página pública. Sem capa, mostra o gradient das suas cores.
+        </p>
+        <button
+          type="button"
+          onClick={() => coverFileInputRef.current?.click()}
+          disabled={uploadingCover}
+          className="w-full rounded-xl overflow-hidden relative h-32 transition-opacity disabled:opacity-60"
+          style={{
+            background: coverUrl ? '#000' : gradient,
+            border: '1px dashed var(--admin-border-hi)',
+          }}
+        >
+          {coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={coverUrl} alt="Capa" className="w-full h-full object-cover" />
+          ) : (
+            <div className="flex items-center justify-center h-full text-white text-xs font-semibold">
+              + Adicionar foto da capa
+            </div>
+          )}
+          {uploadingCover && (
+            <span
+              className="absolute inset-0 flex items-center justify-center text-white font-semibold"
+              style={{ background: 'rgba(0,0,0,0.55)', fontSize: 12 }}
+            >
+              Enviando...
+            </span>
+          )}
+        </button>
+        <input
+          ref={coverFileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) handleUploadCover(file)
+            e.target.value = ''
+          }}
+        />
+        {coverError && (
+          <p className="text-[11px]" style={{ color: 'var(--admin-danger, #EF4444)' }}>
+            {coverError}
+          </p>
+        )}
+      </div>
+
       {/* Presets */}
       <div className="admin-card p-4">
         <div className="flex items-center justify-between mb-1">
@@ -220,10 +468,17 @@ export default function AparenciaTab({ business }: { business: Business }) {
         </div>
         <p className="text-xs mb-3" style={{ color: 'var(--admin-text-mute)' }}>
           Toque para aplicar. O preview acima atualiza na hora.
+          {businessCategory && RECOMMENDED_BY_CATEGORY[businessCategory] && (
+            <>
+              {' '}<strong style={{ color: 'var(--admin-accent)' }}>★</strong> indicam estilos que
+              combinam com {businessCategory.toLowerCase()}.
+            </>
+          )}
         </p>
         <div className="grid grid-cols-4 gap-2">
           {PRESETS.map((p) => {
             const active = isPreset(p)
+            const recommended = isRecommended(p.name, businessCategory)
             return (
               <button
                 key={p.name}
@@ -259,6 +514,19 @@ export default function AparenciaTab({ business }: { business: Business }) {
                       <IconCheck size={14} strokeWidth={4} />
                     </span>
                   )}
+                  {recommended && !active && (
+                    <span
+                      className="absolute top-1 right-1 text-[9px] font-black px-1 rounded"
+                      style={{
+                        background: 'rgba(255,255,255,0.92)',
+                        color: '#0F172A',
+                      }}
+                      aria-label="Indicada pra este nicho"
+                      title="Indicada pra este nicho"
+                    >
+                      ★
+                    </span>
+                  )}
                 </div>
                 <p
                   className="text-[10px] font-semibold truncate"
@@ -272,6 +540,22 @@ export default function AparenciaTab({ business }: { business: Business }) {
             )
           })}
         </div>
+        {/* Botão resetar — visível só se está fora do default */}
+        {(primary !== DEFAULT_PRIMARY ||
+          secondary !== DEFAULT_SECONDARY ||
+          mode !== DEFAULT_MODE) && (
+          <button
+            type="button"
+            onClick={() => setConfirmReset(true)}
+            className="mt-3 text-[11px] font-semibold w-full py-2 rounded-lg transition-colors"
+            style={{
+              color: 'var(--admin-text-mute)',
+              border: '1px dashed var(--admin-border)',
+            }}
+          >
+            Voltar pro padrão (Azul · Escuro)
+          </button>
+        )}
       </div>
 
       {/* Modo claro/escuro */}
@@ -392,6 +676,44 @@ export default function AparenciaTab({ business }: { business: Business }) {
           </div>
         )}
       </div>
+
+      {/* Modal de confirmação do reset */}
+      {confirmReset && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setConfirmReset(false)}
+        >
+          <div
+            className="admin-card p-5 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-base font-bold mb-1" style={{ color: 'var(--admin-text)' }}>
+              Voltar pro padrão?
+            </p>
+            <p className="text-sm mb-4" style={{ color: 'var(--admin-text-mute)' }}>
+              Vai trocar pra Azul · Ciano em modo escuro. A capa não muda. Você ainda precisa
+              clicar Salvar pra aplicar.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmReset(false)}
+                className="admin-btn-secondary flex-1"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="admin-btn-primary flex-1"
+              >
+                Voltar pro padrão
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <StickyActionBar
         dirty={isDirty}
