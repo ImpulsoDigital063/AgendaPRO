@@ -65,6 +65,7 @@ export default function CadastroPage() {
   const [slugEdited, setSlugEdited] = useState(false)
   const [slugStatus, setSlugStatus] = useState<SlugStatus>({ state: 'idle' })
 
+  const [ownerName, setOwnerName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -134,6 +135,8 @@ export default function CadastroPage() {
   }
 
   function validateOwner() {
+    if (!ownerName.trim()) return 'Seu nome é obrigatório.'
+    if (ownerName.trim().length < 2) return 'Seu nome precisa ter pelo menos 2 letras.'
     if (!email.trim()) return 'Email é obrigatório.'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Email inválido.'
     if (password.length < 8) return 'Senha deve ter pelo menos 8 caracteres.'
@@ -158,7 +161,10 @@ export default function CadastroPage() {
         slug,
         email: email.trim().toLowerCase(),
         password,
-        professionalName: businessName.trim(),
+        // Nome do dono — aparece como profissional default na agenda.
+        // Cliente final escolhe esse nome ao agendar (ex: "Olímpio" em vez
+        // do nome da barbearia toda).
+        professionalName: ownerName.trim(),
       }),
     })
 
@@ -460,6 +466,24 @@ export default function CadastroPage() {
               <span className="text-slate-300">
                 <span className="font-semibold text-white">{businessName}</span> · agendapro.net.br/<span className="text-emerald-300">{slug}</span>
               </span>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-200 mb-1.5">
+                Seu nome <span className="text-emerald-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={ownerName}
+                onChange={(e) => setOwnerName(e.target.value)}
+                placeholder="Como aparece pro cliente — ex: Olímpio"
+                autoComplete="name"
+                className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none text-sm"
+                style={inputStyle}
+              />
+              <p className="text-[11px] text-slate-500 mt-1.5">
+                Vira o profissional da sua agenda. Você adiciona outros profissionais depois nas Configurações.
+              </p>
             </div>
 
             <div>

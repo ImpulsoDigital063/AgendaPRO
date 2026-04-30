@@ -115,12 +115,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Erro ao criar conta. Tente novamente.' }, { status: 500 })
   }
 
-  // 5. Cria o profissional padrão
+  // 5. Cria o profissional default — JÁ LINKADO AO DONO
+  //
+  // role='owner' + auth_user_id = ownerId fazem o ProfissionaisTab
+  // reconhecer esse profissional como o admin/dono. Resultado:
+  //   - card mostra badge verde "Tem acesso ao painel" (em vez do botão
+  //     "Dar acesso" que criava login fantasma duplicado)
+  //   - dono ja consegue receber agendamentos no proprio nome desde o
+  //     cadastro, sem precisar configurar nada
+  //
+  // Premissa pensada pra uso em massa: 100 cadastros = 100 perfis
+  // corretos sem suporte ("por que aparece o nome da minha barbearia
+  // como profissional?"), sem login duplicado.
+  const emailNorm = email.trim().toLowerCase()
   const { error: profError } = await supabase
     .from('professionals')
     .insert({
       business_id: business.id,
       name: professionalName || businessName,
+      email: emailNorm,
+      auth_user_id: ownerId,
+      role: 'owner',
       active: true,
     })
 
