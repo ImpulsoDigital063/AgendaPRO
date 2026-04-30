@@ -5,12 +5,17 @@ import { useEffect, useState } from 'react'
 type Platform = 'ios' | 'android' | null
 
 /**
- * Seta animada flutuando sobre o modal — aponta pro icone real de
- * compartilhar do Safari (canto superior direito da barra de endereco).
+ * Seta animada flutuando sobre o modal — aponta pro icone real do
+ * navegador (canto superior direito da barra de endereco):
+ *   iOS Safari:    icone de compartilhar (quadrado com seta pra cima)
+ *   Android Chrome: 3 pontinhos verticais (menu)
+ *
  * Reforca o passo 1 pra usuarios leigos: alem do mockup dentro do modal,
  * uma seta REAL na tela mostra exatamente onde tocar.
  */
-function SafariShareArrow() {
+function BrowserMenuArrow({ platform }: { platform: 'ios' | 'android' }) {
+  const label = platform === 'ios' ? 'compartilhar' : '3 pontinhos'
+
   return (
     <div
       className="fixed pointer-events-none z-[101] install-anim-arrow-float"
@@ -47,7 +52,6 @@ function SafariShareArrow() {
           }}
         />
       </svg>
-      {/* Label "compartilhar" embaixo da curva */}
       <span
         className="absolute left-2 bottom-0 text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
         style={{
@@ -57,7 +61,7 @@ function SafariShareArrow() {
             '0 6px 16px -2px color-mix(in srgb, var(--brand-primary) 50%, transparent)',
         }}
       >
-        compartilhar
+        {label}
       </span>
     </div>
   )
@@ -74,8 +78,8 @@ function GuideSheet({
 
   return (
     <>
-      {/* Seta flutuante apontando pro icone real do Safari (so iOS) */}
-      {isIOS && <SafariShareArrow />}
+      {/* Seta flutuante apontando pro icone real do navegador (iOS + Android) */}
+      <BrowserMenuArrow platform={platform} />
       <div className="fixed inset-0 z-[100] bg-black/70 flex items-end" onClick={onClose}>
       <div
         className="w-full max-w-lg mx-auto rounded-t-3xl p-6 pb-10 animate-slideUp"
