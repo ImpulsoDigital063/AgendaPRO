@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+
+// Vercel pode demorar até 30s pra processar background tasks (depois de responder)
+export const maxDuration = 30
 
 function getAdminClient() {
   return createServiceClient(
@@ -10,6 +13,10 @@ function getAdminClient() {
 
 /**
  * POST /api/webhooks/mercadopago — recebe notificações do Mercado Pago
+ *
+ * Padrão crítico: MP tem timeout de 3-5s pro webhook. Responde 200 IMEDIATAMENTE
+ * e processa em background com `after()` (Next 15+). Sem isso, fetch/Supabase
+ * podem ultrapassar o timeout e causar 502.
  *
  * Trata 2 tipos de evento:
  * 1. subscription_preapproval — assinatura recorrente (modalidade mensal_cartao)
@@ -23,13 +30,22 @@ export async function POST(req: NextRequest) {
   console.log('[MP Webhook] Recebido:', JSON.stringify(body))
 
   const { type, data } = body
+  const eventId = data?.id
 
-  if (type === 'subscription_preapproval') {
-    await handleSubscriptionUpdate(data.id)
-  } else if (type === 'payment') {
-    await handlePayment(data.id)
-  }
+  // Processa em background DEPOIS de responder 200 — evita timeout MP (3-5s)
+  after(async () => {
+    try {
+      if (type === 'subscription_preapproval') {
+        await handleSubscriptionUpdate(eventId)
+      } else if (type === 'payment') {
+        await handlePayment(eventId)
+      }
+    } catch (err) {
+      console.error('[MP Webhook] Erro no processamento background:', err)
+    }
+  })
 
+  // Responde 200 IMEDIATAMENTE pra MP — processamento real roda em after()
   return NextResponse.json({ ok: true })
 }
 
