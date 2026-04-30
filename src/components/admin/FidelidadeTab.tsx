@@ -42,9 +42,15 @@ type Props = {
   initialServices: Service[]
   /** Categoria do business pra sugestões de recompensa contextualizadas */
   businessCategory: string | null
-  pointsForReferral: number
+  /** Pontos de indicação — controlled pelo parent. Sem isso, FidelidadeTab
+   *  remontava com valor antigo do SSR ao trocar de aba (mesmo bug das
+   *  recompensas). */
+  referralPoints: number
+  onReferralPointsChange: (value: number) => void
+  /** Bônus de pontualidade — idem (controlled). */
+  punctualityPoints: number
+  onPunctualityPointsChange: (value: number) => void
   pointsForReview: number
-  pointsForPunctuality: number
   pointsMode: 'business' | 'professional'
   onNavigateToNegocio?: () => void
 }
@@ -105,9 +111,11 @@ export default function FidelidadeTab({
   initialCustomers,
   initialServices,
   businessCategory,
-  pointsForReferral,
+  referralPoints: referralPointsProp,
+  onReferralPointsChange,
+  punctualityPoints: punctualityPointsProp,
+  onPunctualityPointsChange,
   pointsForReview,
-  pointsForPunctuality,
   pointsMode: initialPointsMode,
   onNavigateToNegocio,
 }: Props) {
@@ -133,13 +141,25 @@ export default function FidelidadeTab({
     return Math.round(sum / withPoints.length)
   }, [initialServices])
   const [pointsMode, setPointsMode] = useState<'business' | 'professional'>(initialPointsMode)
-  const [referralPoints, setReferralPoints] = useState(String(pointsForReferral))
+  // Strings de input — sincronizadas com props controladas pelo parent.
+  // Quando admin digita, atualiza string local; debounce dispara save +
+  // notifica parent. Ao trocar de aba e voltar, props vêm corretas.
+  const [referralPoints, setReferralPoints] = useState(String(referralPointsProp))
   const [referralSavedAt, setReferralSavedAt] = useState<number | null>(null)
   const [referralSaving, setReferralSaving] = useState(false)
 
-  const [punctualityPoints, setPunctualityPoints] = useState(String(pointsForPunctuality))
+  const [punctualityPoints, setPunctualityPoints] = useState(String(punctualityPointsProp))
   const [punctualitySavedAt, setPunctualitySavedAt] = useState<number | null>(null)
   const [punctualitySaving, setPunctualitySaving] = useState(false)
+
+  // Sincroniza string local quando prop muda (ex: parent recebeu novo
+  // valor via re-fetch ou troca de aba)
+  useEffect(() => {
+    setReferralPoints(String(referralPointsProp))
+  }, [referralPointsProp])
+  useEffect(() => {
+    setPunctualityPoints(String(punctualityPointsProp))
+  }, [punctualityPointsProp])
 
   const [pendingClaims, setPendingClaims] = useState<ReviewClaim[]>([])
   const [claimActionId, setClaimActionId] = useState<string | null>(null)
@@ -169,8 +189,8 @@ export default function FidelidadeTab({
   const referralLatestRef = useRef(referralPoints)
   const punctualityLatestRef = useRef(punctualityPoints)
   // Refs pro ultimo valor SALVO (compara pra evitar saves desnecessarios)
-  const referralLastSavedRef = useRef(pointsForReferral)
-  const punctualityLastSavedRef = useRef(pointsForPunctuality)
+  const referralLastSavedRef = useRef(referralPointsProp)
+  const punctualityLastSavedRef = useRef(punctualityPointsProp)
 
   useEffect(() => {
     referralLatestRef.current = referralPoints
@@ -264,6 +284,9 @@ export default function FidelidadeTab({
     setReferralSaving(false)
     if (!error) {
       referralLastSavedRef.current = value
+      // Notifica parent — sem isto, ao trocar de aba e voltar, prop
+      // ainda mostraria valor antigo do SSR
+      onReferralPointsChange(value)
       setReferralSavedAt(Date.now())
       if (referralSavedTimerRef.current) clearTimeout(referralSavedTimerRef.current)
       referralSavedTimerRef.current = setTimeout(() => setReferralSavedAt(null), 2500)
@@ -295,6 +318,7 @@ export default function FidelidadeTab({
     setPunctualitySaving(false)
     if (!error) {
       punctualityLastSavedRef.current = value
+      onPunctualityPointsChange(value)
       setPunctualitySavedAt(Date.now())
       if (punctualitySavedTimerRef.current) clearTimeout(punctualitySavedTimerRef.current)
       punctualitySavedTimerRef.current = setTimeout(() => setPunctualitySavedAt(null), 2500)
@@ -1127,13 +1151,18 @@ export default function FidelidadeTab({
               },
               {
                 n: 3,
+                title: 'Bônus de pontualidade',
+                body: 'Pts extras pra cliente que chega no horário. Quando o cliente chega na hora, o profissional clica no botão +Pontualidade ao lado do botão Atendi (na agenda do dia). É uma decisão dele em cada atendimento — não automático. Bom pra combater atraso e cancelamento sem ser invasivo.',
+              },
+              {
+                n: 4,
                 title: 'Pontos por avaliação no Google',
                 body: 'Cliente avalia, pede os pontos, o pedido cai aqui em cima. Você aprova se viu a review. Uma vez por cliente.',
               },
               {
-                n: 4,
+                n: 5,
                 title: 'Trocar por recompensas',
-                body: 'Configure aqui em cima quais recompensas o cliente pode trocar (corte grátis, desconto, produto). Você define nome e custo.',
+                body: 'Configure aqui em cima quais recompensas o cliente pode trocar (corte grátis, desconto, produto). Você define nome e custo. Cliente acumula pontos como quiser e troca pelo que prefere.',
               },
             ].map((item) => (
               <div key={item.n} className="flex gap-3">

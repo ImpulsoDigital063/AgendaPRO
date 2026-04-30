@@ -42,12 +42,27 @@ export default function ConfiguracoesTabs({
   // sumia ao voltar (initialRewards do SSR continuava antigo).
   const [rewards, setRewards] = useState(initialRewards)
 
+  // Pontos por indicação/pontualidade tambem lifted — mesmo bug:
+  // FidelidadeTab inicializava useState com props do business SSR.
+  // Ao salvar, banco atualizava mas prop continuava antiga em mounts
+  // futuros. Resultado: trocar aba mostrava valor antigo ate reload.
+  const [referralPoints, setReferralPoints] = useState(business.points_for_referral ?? 0)
+  const [punctualityPoints, setPunctualityPoints] = useState(
+    business.punctuality_bonus_points ?? 10
+  )
+
   useEffect(() => {
     setProfessionals(initialProfessionals)
   }, [initialProfessionals])
   useEffect(() => {
     setRewards(initialRewards)
   }, [initialRewards])
+  useEffect(() => {
+    setReferralPoints(business.points_for_referral ?? 0)
+  }, [business.points_for_referral])
+  useEffect(() => {
+    setPunctualityPoints(business.punctuality_bonus_points ?? 10)
+  }, [business.punctuality_bonus_points])
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'negocio', label: 'Negócio' },
@@ -119,9 +134,11 @@ export default function ConfiguracoesTabs({
           initialCustomers={initialCustomers}
           initialServices={initialServices}
           businessCategory={business.description ?? null}
-          pointsForReferral={business.points_for_referral ?? 0}
+          referralPoints={referralPoints}
+          onReferralPointsChange={setReferralPoints}
+          punctualityPoints={punctualityPoints}
+          onPunctualityPointsChange={setPunctualityPoints}
           pointsForReview={business.points_for_review ?? 0}
-          pointsForPunctuality={business.punctuality_bonus_points ?? 10}
           pointsMode={business.points_mode ?? 'business'}
           onNavigateToNegocio={() => {
             setActiveTab('negocio')
