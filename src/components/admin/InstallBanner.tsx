@@ -20,14 +20,14 @@ function BrowserMenuArrow({ platform }: { platform: 'ios' | 'android' }) {
     <div
       className="fixed pointer-events-none z-[101] install-anim-arrow-float flex flex-col items-center"
       style={{
-        top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
-        right: '6px',
+        top: 'calc(env(safe-area-inset-top, 0px) + 2px)',
+        right: '4px',
       }}
     >
-      {/* Seta diagonal arrow-up-right (estilo Lucide) — clean, universal, ponta apontando pro icone */}
+      {/* Seta diagonal arrow-up-right (estilo Lucide) — encostada no topo do viewport, ponta saindo em direcao ao icone REAL do Safari/Chrome na barra de URL acima */}
       <svg
-        width="72"
-        height="72"
+        width="64"
+        height="64"
         viewBox="0 0 24 24"
         fill="none"
         stroke="var(--brand-primary)"
