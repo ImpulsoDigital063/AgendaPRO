@@ -20,6 +20,7 @@ type Props = {
   initialWorkingHours: WorkingHours[]
   initialRewards: Reward[]
   initialCustomers: Customer[]
+  subscriptionPlan: 'solo' | 'equipe'
 }
 
 export default function ConfiguracoesTabs({
@@ -29,6 +30,7 @@ export default function ConfiguracoesTabs({
   initialWorkingHours,
   initialRewards,
   initialCustomers,
+  subscriptionPlan,
 }: Props) {
   const searchParams = useSearchParams()
   const tabParam = searchParams.get('tab') as Tab | null
@@ -78,6 +80,7 @@ export default function ConfiguracoesTabs({
           businessId={business.id}
           professionals={professionals}
           onChange={setProfessionals}
+          subscriptionPlan={subscriptionPlan}
         />
       )}
 

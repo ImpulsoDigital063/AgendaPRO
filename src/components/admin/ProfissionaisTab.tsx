@@ -22,17 +22,40 @@ type Props = {
   businessId: string
   professionals: Professional[]
   onChange: (professionals: Professional[]) => void
+  /**
+   * Plano da subscription — define limite de profissionais.
+   *   solo:    2 (admin/dono + 1 colaborador)
+   *   equipe:  5 (incluindo dono)
+   * Backend tem trigger v30 que valida no INSERT (defesa em profundidade).
+   */
+  subscriptionPlan: 'solo' | 'equipe'
+}
+
+const PLAN_LIMITS: Record<'solo' | 'equipe', number> = {
+  solo: 2,
+  equipe: 5,
 }
 
 type Filter = 'active' | 'inactive' | 'all'
 
-export default function ProfissionaisTab({ businessId, professionals, onChange }: Props) {
+export default function ProfissionaisTab({
+  businessId,
+  professionals,
+  onChange,
+  subscriptionPlan,
+}: Props) {
   const [filter, setFilter] = useState<Filter>('active')
   const [search, setSearch] = useState('')
 
   const [newName, setNewName] = useState('')
   const [newType, setNewType] = useState<'commissioned' | 'employed'>('commissioned')
   const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
+
+  const maxProfs = PLAN_LIMITS[subscriptionPlan]
+  const currentCount = professionals.length
+  const remaining = Math.max(0, maxProfs - currentCount)
+  const limitReached = currentCount >= maxProfs
 
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -94,7 +117,14 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
 
   async function handleAdd() {
     if (!newName.trim()) return
+    if (limitReached) {
+      setAddError(
+        `Plano ${subscriptionPlan === 'solo' ? 'Solo' : 'Equipe'} permite no máximo ${maxProfs} profissionais. Pra adicionar mais, faça upgrade entrando em contato com a Impulso.`
+      )
+      return
+    }
     setAdding(true)
+    setAddError(null)
 
     const { data, error } = await supabase
       .from('professionals')
@@ -109,7 +139,11 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
       .select()
       .single()
 
-    if (!error && data) {
+    if (error) {
+      // Trigger v30 retorna RAISE EXCEPTION com mensagem em portugues —
+      // mostrar direto pro user.
+      setAddError(error.message || 'Erro ao adicionar profissional. Tente novamente.')
+    } else if (data) {
       onChange([...professionals, data])
       setNewName('')
       setNewType('commissioned')
@@ -337,15 +371,30 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
     <div className="space-y-3 pb-24 relative">
       {/* Toolbar */}
       <div className="space-y-2.5">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
             <span className="font-semibold" style={{ color: 'var(--admin-text)' }}>
               {total}
+            </span>
+            <span className="opacity-70"> de </span>
+            <span className="font-semibold" style={{ color: 'var(--admin-text)' }}>
+              {maxProfs}
             </span>{' '}
-            profissiona{total === 1 ? 'l' : 'is'} ·{' '}
+            profissiona{maxProfs === 1 ? 'l' : 'is'} ·{' '}
             <span style={{ color: 'var(--admin-success)' }}>{activeCount} ativo{activeCount === 1 ? '' : 's'}</span>
             {inactiveCount > 0 && <> · {inactiveCount} desativado{inactiveCount === 1 ? '' : 's'}</>}
           </p>
+          {/* Badge plano — destaca o tier que limita */}
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
+            style={{
+              background: 'color-mix(in srgb, var(--brand-primary, #3B82F6) 12%, transparent)',
+              color: 'var(--admin-accent)',
+              border: '1px solid color-mix(in srgb, var(--brand-primary, #3B82F6) 30%, transparent)',
+            }}
+          >
+            Plano {subscriptionPlan === 'solo' ? 'Solo' : 'Equipe'}
+          </span>
         </div>
 
         {total > 2 && (
@@ -484,91 +533,181 @@ export default function ProfissionaisTab({ businessId, professionals, onChange }
         ))
       )}
 
-      {/* Adicionar profissional */}
-      <div
-        ref={addFormRef}
-        className="rounded-2xl p-4 space-y-3"
-        style={{
-          background: 'var(--admin-surface)',
-          border: '1px dashed var(--admin-border-hi)',
-        }}
-      >
-        <p className="admin-label flex items-center gap-1.5">
-          <IconPlus size={14} />
-          Adicionar profissional
-        </p>
-
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          placeholder="Nome do profissional"
-          className="admin-input w-full px-3 py-2.5 text-sm"
-        />
-
-        <div>
-          <p
-            className="text-[11px] font-medium uppercase tracking-wider mb-1.5"
-            style={{ color: 'var(--admin-text-mute)' }}
-          >
-            Tipo
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { value: 'commissioned' as const, label: 'Comissionado', desc: 'Controla a própria agenda · ganha por %' },
-              { value: 'employed' as const, label: 'Contratado', desc: 'Você define a agenda · salário fixo' },
-            ].map((opt) => {
-              const isActive = newType === opt.value
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setNewType(opt.value)}
-                  className="rounded-xl p-3 text-left transition-all"
-                  style={
-                    isActive
-                      ? {
-                          background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)',
-                          border: '1px solid color-mix(in srgb, var(--admin-accent) 45%, transparent)',
-                          boxShadow:
-                            '0 4px 14px -6px color-mix(in srgb, var(--admin-accent) 35%, transparent)',
-                        }
-                      : {
-                          background: 'var(--admin-surface)',
-                          border: '1px solid var(--admin-border)',
-                        }
-                  }
-                >
-                  <p
-                    className="text-sm font-semibold"
-                    style={{ color: isActive ? 'var(--admin-accent)' : 'var(--admin-text)' }}
-                  >
-                    {opt.label}
-                  </p>
-                  <p className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
-                    {opt.desc}
-                  </p>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <button
-          onClick={handleAdd}
-          disabled={adding || !newName.trim()}
-          className="w-full px-4 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
+      {/*
+        Adicionar profissional — quando limite atingido, troca o form por
+        um card de upsell. Backend tem trigger v30 que blinda no INSERT
+        mesmo se UI for bypassada (defesa em profundidade).
+      */}
+      {limitReached ? (
+        <div
+          ref={addFormRef}
+          className="rounded-2xl p-5 space-y-3"
           style={{
             background:
-              'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
-            color: '#FFFFFF',
-            boxShadow: '0 8px 20px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
+              'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary, #3B82F6) 14%, var(--admin-surface)) 0%, var(--admin-surface) 100%)',
+            border: '1px solid color-mix(in srgb, var(--brand-primary, #3B82F6) 35%, transparent)',
           }}
         >
-          {adding ? '...' : 'Adicionar'}
-        </button>
-      </div>
+          <div className="flex items-start gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'color-mix(in srgb, var(--brand-primary, #3B82F6) 22%, transparent)',
+                color: 'var(--admin-accent)',
+              }}
+              aria-hidden
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+                Você atingiu o limite do plano {subscriptionPlan === 'solo' ? 'Solo' : 'Equipe'}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                {subscriptionPlan === 'solo'
+                  ? `Plano Solo permite até ${maxProfs} profissionais (você + 1 colaborador). Pra adicionar mais, faça upgrade pro plano Equipe (até 5 profissionais).`
+                  : `Plano Equipe permite até ${maxProfs} profissionais. Se precisa de mais, fale com a Impulso pra ver opções.`}
+              </p>
+            </div>
+          </div>
+
+          <a
+            href={`https://wa.me/5563992920080?text=${encodeURIComponent(
+              `Oi! Quero ${subscriptionPlan === 'solo' ? 'fazer upgrade pro plano Equipe' : 'discutir um plano com mais profissionais'} no AgendaPRO.`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+            style={{
+              background:
+                'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+              color: '#FFFFFF',
+              boxShadow:
+                '0 8px 20px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
+            }}
+          >
+            {subscriptionPlan === 'solo' ? 'Fazer upgrade pro Equipe' : 'Falar com a Impulso'}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </a>
+
+          <p className="text-[11px] text-center" style={{ color: 'var(--admin-text-faded)' }}>
+            Você também pode <strong>remover</strong> profissionais não usados pra liberar vaga.
+          </p>
+        </div>
+      ) : (
+        <div
+          ref={addFormRef}
+          className="rounded-2xl p-4 space-y-3"
+          style={{
+            background: 'var(--admin-surface)',
+            border: '1px dashed var(--admin-border-hi)',
+          }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="admin-label flex items-center gap-1.5">
+              <IconPlus size={14} />
+              Adicionar profissional
+            </p>
+            <span className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+              {remaining} {remaining === 1 ? 'vaga restante' : 'vagas restantes'}
+            </span>
+          </div>
+
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => {
+              setNewName(e.target.value)
+              if (addError) setAddError(null)
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            placeholder="Nome do profissional"
+            className="admin-input w-full px-3 py-2.5 text-sm"
+          />
+
+          <div>
+            <p
+              className="text-[11px] font-medium uppercase tracking-wider mb-1.5"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              Tipo
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'commissioned' as const, label: 'Comissionado', desc: 'Controla a própria agenda · ganha por %' },
+                { value: 'employed' as const, label: 'Contratado', desc: 'Você define a agenda · salário fixo' },
+              ].map((opt) => {
+                const isActive = newType === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setNewType(opt.value)}
+                    className="rounded-xl p-3 text-left transition-all"
+                    style={
+                      isActive
+                        ? {
+                            background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)',
+                            border: '1px solid color-mix(in srgb, var(--admin-accent) 45%, transparent)',
+                            boxShadow:
+                              '0 4px 14px -6px color-mix(in srgb, var(--admin-accent) 35%, transparent)',
+                          }
+                        : {
+                            background: 'var(--admin-surface)',
+                            border: '1px solid var(--admin-border)',
+                          }
+                    }
+                  >
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: isActive ? 'var(--admin-accent)' : 'var(--admin-text)' }}
+                    >
+                      {opt.label}
+                    </p>
+                    <p className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
+                      {opt.desc}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {addError && (
+            <p
+              className="text-xs px-3 py-2 rounded-lg"
+              style={{
+                background: 'color-mix(in srgb, var(--admin-danger, #EF4444) 10%, transparent)',
+                color: 'var(--admin-danger, #EF4444)',
+                border: '1px solid color-mix(in srgb, var(--admin-danger, #EF4444) 30%, transparent)',
+              }}
+            >
+              {addError}
+            </p>
+          )}
+
+          <button
+            onClick={handleAdd}
+            disabled={adding || !newName.trim()}
+            className="w-full px-4 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
+            style={{
+              background:
+                'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+              color: '#FFFFFF',
+              boxShadow: '0 8px 20px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
+            }}
+          >
+            {adding ? '...' : 'Adicionar'}
+          </button>
+        </div>
+      )}
 
       {/* Floating + button (apenas se já tem >= 2 profissionais — ajuda a alcançar o form rapido) */}
       {total >= 2 && (

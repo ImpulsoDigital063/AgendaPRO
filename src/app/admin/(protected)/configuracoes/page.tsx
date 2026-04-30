@@ -17,12 +17,23 @@ export default async function ConfiguracoesPage() {
 
   if (!business) redirect('/cadastro')
 
-  const [{ data: professionals }, { data: services }, { data: rewards }, { data: customers }] = await Promise.all([
+  const [
+    { data: professionals },
+    { data: services },
+    { data: rewards },
+    { data: customers },
+    { data: subscription },
+  ] = await Promise.all([
     supabase.from('professionals').select('*').eq('business_id', business.id).order('created_at'),
     supabase.from('services').select('*').eq('business_id', business.id).order('name'),
     supabase.from('rewards').select('*').eq('business_id', business.id).order('points_required'),
     supabase.from('customers').select('*').eq('business_id', business.id).order('total_points', { ascending: false }),
+    supabase.from('subscriptions').select('plan').eq('business_id', business.id).single(),
   ])
+
+  // Plano determina limite de profissionais (solo=2, equipe=5).
+  // Default 'solo' se subscription estiver corrompida — defesa segura.
+  const subscriptionPlan = (subscription?.plan === 'equipe' ? 'equipe' : 'solo') as 'solo' | 'equipe'
 
   const professionalIds = (professionals || []).map((p: { id: string }) => p.id)
   const { data: allWorkingHours } = professionalIds.length > 0
@@ -63,6 +74,7 @@ export default async function ConfiguracoesPage() {
             initialWorkingHours={allWorkingHours || []}
             initialRewards={rewards || []}
             initialCustomers={customers || []}
+            subscriptionPlan={subscriptionPlan}
           />
         </div>
       </div>
