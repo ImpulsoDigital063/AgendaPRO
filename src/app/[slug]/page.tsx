@@ -41,7 +41,7 @@ export default async function BusinessPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, slug, description, address, phone, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url')
+    .select('id, name, slug, description, address, phone, logo_url, cover_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url')
     .eq('slug', slug)
     .single()
 
@@ -132,9 +132,18 @@ export default async function BusinessPage({
         </div>
       )}
 
-      {/* Cover */}
+      {/* Cover — usa foto se admin subiu, senão gradient da brand */}
       <div className="relative overflow-hidden">
-        <div className="h-32 sm:h-40 w-full" style={{ background: cover }} />
+        <div className="h-32 sm:h-40 w-full" style={{ background: cover }}>
+          {b.cover_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={b.cover_url}
+              alt={`Capa ${b.name}`}
+              className="w-full h-full object-cover"
+            />
+          )}
+        </div>
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
