@@ -263,13 +263,14 @@ export default function AparenciaTab({ business, services = [], onNavigateToNego
             }}
           >
             {/* Cover — usa imagem se admin subiu, senão gradient da brand */}
-            <div className="h-12 w-full relative" style={{ background: gradient }}>
+            <div className="h-14 w-full relative" style={{ background: gradient }}>
               {coverUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={coverUrl}
                   alt="Capa"
                   className="w-full h-full object-cover"
+                  style={{ objectPosition: 'center 25%' }}
                 />
               )}
             </div>
@@ -408,11 +409,15 @@ export default function AparenciaTab({ business, services = [], onNavigateToNego
         <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
           Foto da fachada, ambiente ou produto. Aparece no topo da página pública. Sem capa, mostra o gradient das suas cores.
         </p>
+        <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+          <strong>Tamanho ideal:</strong> 1600×600px (proporção horizontal/panorâmica).
+          O foco visual fica no terço superior — coloque o que importa mais em cima.
+        </p>
         <button
           type="button"
           onClick={() => coverFileInputRef.current?.click()}
           disabled={uploadingCover}
-          className="w-full rounded-xl overflow-hidden relative h-32 transition-opacity disabled:opacity-60"
+          className="w-full rounded-xl overflow-hidden relative h-36 transition-opacity disabled:opacity-60"
           style={{
             background: coverUrl ? '#000' : gradient,
             border: '1px dashed var(--admin-border-hi)',
@@ -420,7 +425,12 @@ export default function AparenciaTab({ business, services = [], onNavigateToNego
         >
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverUrl} alt="Capa" className="w-full h-full object-cover" />
+            <img
+              src={coverUrl}
+              alt="Capa"
+              className="w-full h-full object-cover"
+              style={{ objectPosition: 'center 25%' }}
+            />
           ) : (
             <div className="flex items-center justify-center h-full text-white text-xs font-semibold">
               + Adicionar foto da capa

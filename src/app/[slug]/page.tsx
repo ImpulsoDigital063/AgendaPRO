@@ -132,15 +132,19 @@ export default async function BusinessPage({
         </div>
       )}
 
-      {/* Cover — usa foto se admin subiu, senão gradient da brand */}
+      {/* Cover — usa foto se admin subiu, senão gradient da brand.
+          object-position 'center 25%' puxa o foco pro terço superior:
+          em foto de fachada/ambiente o conteúdo importante normalmente
+          está mais em cima (placa, vitrine, logo do estabelecimento). */}
       <div className="relative overflow-hidden">
-        <div className="h-32 sm:h-40 w-full" style={{ background: cover }}>
+        <div className="h-44 sm:h-56 w-full" style={{ background: cover }}>
           {b.cover_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={b.cover_url}
               alt={`Capa ${b.name}`}
               className="w-full h-full object-cover"
+              style={{ objectPosition: 'center 25%' }}
             />
           )}
         </div>
