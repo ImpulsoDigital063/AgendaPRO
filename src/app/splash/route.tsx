@@ -60,6 +60,19 @@ export async function GET(req: NextRequest) {
         </div>
       </div>
     ),
-    { width, height }
+    {
+      width,
+      height,
+      // Cache forte de 1 ano + immutable: Vercel edge cacheia a resposta,
+      // proximas requests sao instantaneas. Sem isso, cada tap no icone do
+      // PWA fazia o iOS pedir a splash e ela demorava ~7s pra gerar
+      // (next/og e caro: SSR de imagem com fontes/svg). Splash gerada uma
+      // vez fica no edge ate o build deploy mudar a URL.
+      headers: {
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'CDN-Cache-Control': 'public, max-age=31536000, immutable',
+        'Vercel-CDN-Cache-Control': 'public, max-age=31536000, immutable',
+      },
+    }
   )
 }
