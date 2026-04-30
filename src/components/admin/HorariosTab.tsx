@@ -223,6 +223,37 @@ export default function HorariosTab({
   const openDays = DAYS.filter((d) => schedule[d.id]?.active).length
   const hoursPerWeek = diffHoursPerWeek(schedule)
 
+  /**
+   * Última edição: pega o MAX(updated_at) das rows do prof selecionado.
+   * Mostrado no badge — admin enxerga se prof comissionado mudou
+   * horário depois (override silencioso).
+   */
+  const lastEdit = useMemo(() => {
+    const profHours = workingHours.filter((h) => h.professional_id === selectedProfId)
+    if (profHours.length === 0) return null
+    let latest: WorkingHours | null = null
+    for (const h of profHours) {
+      if (!h.updated_at) continue
+      if (!latest || (h.updated_at > (latest.updated_at ?? ''))) latest = h
+    }
+    if (!latest?.updated_at) return null
+    return { at: latest.updated_at, by: latest.updated_by_name ?? null }
+  }, [workingHours, selectedProfId])
+
+  function formatRelativeTime(iso: string): string {
+    const date = new Date(iso)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMin = Math.floor(diffMs / 60000)
+    if (diffMin < 1) return 'agora mesmo'
+    if (diffMin < 60) return `há ${diffMin}min`
+    const diffH = Math.floor(diffMin / 60)
+    if (diffH < 24) return `há ${diffH}h`
+    const diffD = Math.floor(diffH / 24)
+    if (diffD < 7) return `há ${diffD}d`
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  }
+
   function doSelectProf(profId: string) {
     setSelectedProfId(profId)
     const next = buildSchedule(workingHours, profId)
@@ -495,6 +526,8 @@ export default function HorariosTab({
     const otherProfs = activeProfessionals.filter((p) => p.id !== selectedProfId)
     setCopyProgress({ current: 0, total: otherProfs.length })
 
+    const hoursPayload = buildHoursArray(schedule)
+    const updatedByName = getUpdatedByName()
     const newWorkingHours: WorkingHours[] = workingHours.filter(
       (w) => !otherProfs.some((p) => p.id === w.professional_id)
     )
@@ -502,27 +535,20 @@ export default function HorariosTab({
     for (let i = 0; i < otherProfs.length; i++) {
       const prof = otherProfs[i]
 
-      await supabase.from('working_hours').delete().eq('professional_id', prof.id)
+      // RPC atomico — DELETE+INSERT em transacao, sem race com prof editando paralelo
+      const { data: returnedRows, error } = await supabase.rpc('replace_professional_hours', {
+        p_professional_id: prof.id,
+        p_hours: hoursPayload,
+        p_updated_by_name: updatedByName,
+      })
 
-      for (const day of DAYS) {
-        const cfg = schedule[day.id]
-        if (!cfg.active) continue
-        for (const period of cfg.periods) {
-          if (period.start_time >= period.end_time) continue
-          const { data } = await supabase
-            .from('working_hours')
-            .insert({
-              professional_id: prof.id,
-              day_of_week: day.id,
-              start_time: period.start_time,
-              end_time: period.end_time,
-              slot_duration: cfg.slot_duration,
-            })
-            .select()
-            .single()
-          if (data) newWorkingHours.push(data)
-        }
+      if (error) {
+        console.error(`[copyToAll] erro em ${prof.name}:`, error)
+        // Continua com proximos — falha individual nao trava o lote
+      } else if (returnedRows) {
+        newWorkingHours.push(...(returnedRows as WorkingHours[]))
       }
+
       setCopyProgress({ current: i + 1, total: otherProfs.length })
     }
 
@@ -538,64 +564,71 @@ export default function HorariosTab({
   }
 
   /**
-   * Save: estratégia DELETE-ALL + INSERT-NEW por dia.
-   * Mais simples que reconciliar UPDATE/INSERT/DELETE quando a
-   * quantidade de períodos muda. Working_hours não tem FK pra
-   * appointments, então delete é seguro — agendamentos têm seu próprio
-   * start_time/end_time/appointment_date independentes.
+   * Constroi array de hours pra mandar pra RPC. Filtra periodos
+   * invalidos (start >= end) e pula dias inativos.
+   */
+  function buildHoursArray(s: Schedule) {
+    const out: Array<{
+      day_of_week: number
+      start_time: string
+      end_time: string
+      slot_duration: number
+    }> = []
+    for (const day of DAYS) {
+      const cfg = s[day.id]
+      if (!cfg.active) continue
+      for (const period of cfg.periods) {
+        if (period.start_time >= period.end_time) continue
+        out.push({
+          day_of_week: day.id,
+          start_time: period.start_time,
+          end_time: period.end_time,
+          slot_duration: cfg.slot_duration,
+        })
+      }
+    }
+    return out
+  }
+
+  /** Nome do autor pra audit (admin x prof comissionado) */
+  function getUpdatedByName(): string {
+    if (isAdmin) return 'Admin'
+    return activeProfessionals.find((p) => p.id === selectedProfId)?.name ?? 'Profissional'
+  }
+
+  /**
+   * Save: chama RPC replace_professional_hours que faz DELETE+INSERT
+   * em transação atômica no Postgres. Elimina race condition entre
+   * admin e profissional editando ao mesmo tempo.
    */
   async function handleSave() {
     if (!selectedProfId || saving) return
     setSaving(true)
 
-    const newWorkingHours: WorkingHours[] = workingHours.filter(
-      (w) => w.professional_id !== selectedProfId
-    )
-    const nextSchedule: Schedule = { ...schedule }
+    const hoursPayload = buildHoursArray(schedule)
 
-    // Delete TODAS as rows desse profissional primeiro
-    await supabase
-      .from('working_hours')
-      .delete()
-      .eq('professional_id', selectedProfId)
+    const { data: returnedRows, error } = await supabase.rpc('replace_professional_hours', {
+      p_professional_id: selectedProfId,
+      p_hours: hoursPayload,
+      p_updated_by_name: getUpdatedByName(),
+    })
 
-    // Insert os novos períodos (apenas dias ativos com período válido)
-    for (const day of DAYS) {
-      const config = nextSchedule[day.id]
-      if (!config.active) {
-        nextSchedule[day.id] = {
-          ...config,
-          periods: config.periods.map((p) => ({ ...p, existingId: undefined })),
-        }
-        continue
-      }
-
-      const newPeriods: Period[] = []
-      for (const period of config.periods) {
-        if (period.start_time >= period.end_time) continue // pula inválidos
-        const { data } = await supabase
-          .from('working_hours')
-          .insert({
-            professional_id: selectedProfId,
-            day_of_week: day.id,
-            start_time: period.start_time,
-            end_time: period.end_time,
-            slot_duration: config.slot_duration,
-          })
-          .select()
-          .single()
-
-        if (data) {
-          newWorkingHours.push(data)
-          newPeriods.push({
-            start_time: period.start_time,
-            end_time: period.end_time,
-            existingId: data.id,
-          })
-        }
-      }
-      nextSchedule[day.id] = { ...config, periods: newPeriods }
+    if (error) {
+      console.error('[handleSave] RPC error:', error)
+      alert('Erro ao salvar horários: ' + (error.message || 'tente novamente'))
+      setSaving(false)
+      return
     }
+
+    // RPC retorna SETOF working_hours — atualiza state local
+    const newRowsForThisProf = (returnedRows ?? []) as WorkingHours[]
+    const newWorkingHours: WorkingHours[] = [
+      ...workingHours.filter((w) => w.professional_id !== selectedProfId),
+      ...newRowsForThisProf,
+    ]
+
+    // Reconstroi schedule com os existingId atualizados
+    const nextSchedule = buildSchedule(newWorkingHours, selectedProfId)
 
     setWorkingHours(newWorkingHours)
     setSchedule(nextSchedule)
@@ -675,6 +708,21 @@ export default function HorariosTab({
             {openDays} dia{openDays === 1 ? '' : 's'} aberto{openDays === 1 ? '' : 's'} ·{' '}
             {hoursPerWeek.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}h/semana
           </p>
+          {/*
+            Badge de auditoria — mostra quem editou os horarios pela
+            ultima vez. Permite admin saber se prof comissionado
+            sobrescreveu config aplicada em massa (override silencioso).
+          */}
+          {lastEdit && (
+            <p
+              className="text-[10px] mt-1 truncate"
+              style={{ color: 'var(--admin-text-mute)' }}
+              title={`Última edição em ${new Date(lastEdit.at).toLocaleString('pt-BR')}${lastEdit.by ? ` por ${lastEdit.by}` : ''}`}
+            >
+              Editado {formatRelativeTime(lastEdit.at)}
+              {lastEdit.by && ` · por ${lastEdit.by}`}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -745,6 +793,13 @@ export default function HorariosTab({
             <strong style={{ color: 'var(--admin-accent)' }}>Pausa</strong> divide o dia em
             períodos (manhã + tarde). Use o atalho abaixo pra aplicar pausa em todos os dias de
             uma vez, ou clica em <em>Adicionar pausa</em> dentro de cada dia.
+          </p>
+          <p>
+            <strong style={{ color: 'var(--admin-accent)' }}>Quem pode editar:</strong> o admin
+            (você) configura horário de qualquer profissional. Profissional <em>comissionado</em>{' '}
+            também pode mudar o próprio horário entrando no painel dele —{' '}
+            <strong>quando ele salva, sobrescreve</strong> o que você tinha configurado. O badge{' '}
+            <em>Editado há X</em> em cima mostra quem editou por último.
           </p>
         </div>
       )}

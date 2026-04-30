@@ -121,6 +121,10 @@ export type WorkingHours = {
   start_time: string  // "09:00"
   end_time: string    // "18:00"
   slot_duration: number // minutos por atendimento
+  /** Auditoria: quem editou pela última vez (admin ou profissional) */
+  updated_by_name?: string | null
+  /** Timestamp da última criação/atualização */
+  updated_at?: string | null
 }
 
 export type Appointment = {
