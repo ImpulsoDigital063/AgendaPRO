@@ -18,42 +18,32 @@ function BrowserMenuArrow({ platform }: { platform: 'ios' | 'android' }) {
 
   return (
     <div
-      className="fixed pointer-events-none z-[101] install-anim-arrow-float"
+      className="fixed pointer-events-none z-[101] install-anim-arrow-float flex flex-col items-center"
       style={{
-        top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
-        right: '4px',
-        width: '170px',
-        height: '130px',
+        top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
+        right: '6px',
       }}
     >
-      <svg viewBox="0 0 170 120" width="170" height="120" style={{ overflow: 'visible' }}>
-        {/* Curva da seta — sai do canto inferior-esquerdo, vai pro topo-direito */}
-        <path
-          d="M 20 105 Q 50 80 95 55 T 158 15"
-          stroke="var(--brand-primary)"
-          strokeWidth="5"
-          fill="none"
-          strokeLinecap="round"
-          style={{
-            filter:
-              'drop-shadow(0 2px 8px color-mix(in srgb, var(--brand-primary) 60%, transparent))',
-          }}
-        />
-        {/* Cabeca da seta */}
-        <path
-          d="M 158 15 L 145 20 M 158 15 L 152 2"
-          stroke="var(--brand-primary)"
-          strokeWidth="5"
-          strokeLinecap="round"
-          fill="none"
-          style={{
-            filter:
-              'drop-shadow(0 2px 8px color-mix(in srgb, var(--brand-primary) 60%, transparent))',
-          }}
-        />
+      {/* Seta diagonal arrow-up-right (estilo Lucide) — clean, universal, ponta apontando pro icone */}
+      <svg
+        width="72"
+        height="72"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--brand-primary)"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          filter:
+            'drop-shadow(0 4px 12px color-mix(in srgb, var(--brand-primary) 60%, transparent))',
+        }}
+      >
+        <line x1="7" y1="17" x2="17" y2="7" />
+        <polyline points="7 7 17 7 17 17" />
       </svg>
       <span
-        className="absolute left-2 bottom-0 text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
+        className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap -mt-1"
         style={{
           background: 'var(--brand-primary)',
           color: 'white',
