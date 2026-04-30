@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import AppointmentCard from '@/components/AppointmentCard'
 import LogoutButton from '@/components/LogoutButton'
 import ShareButton from '@/components/ShareButton'
@@ -21,57 +22,57 @@ import {
 } from '@/components/ui/Icon'
 
 export default async function AdminPage() {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  // user + business cacheados via getCurrentUser/getCurrentBusiness —
+  // ja foram resolvidos pelo layout, aqui sao free (mesmo Promise)
+  const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
 
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('*')
-    .eq('owner_id', user.id)
-    .single()
-
+  const business = await getCurrentBusiness(user.id)
   if (!business) redirect('/cadastro')
 
   const today = new Date().toISOString().split('T')[0]
-
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select(`*, professional:professionals(name)`)
-    .eq('business_id', business.id)
-    .eq('appointment_date', today)
-    .order('start_time', { ascending: true })
-
   const nextWeek = new Date()
   nextWeek.setDate(nextWeek.getDate() + 7)
   const nextWeekStr = nextWeek.toISOString().split('T')[0]
 
-  const { data: upcoming } = await supabase
-    .from('appointments')
-    .select(`*, professional:professionals(name)`)
-    .eq('business_id', business.id)
-    .gt('appointment_date', today)
-    .lte('appointment_date', nextWeekStr)
-    .in('status', ['pending', 'confirmed'])
-    .order('appointment_date', { ascending: true })
-    .order('start_time', { ascending: true })
-    .limit(10)
-
-  // Atividades recentes dos profissionais
-  const { data: recentActivity } = await supabase
-    .from('activity_log')
-    .select('*, professional:professionals(name)')
-    .eq('business_id', business.id)
-    .order('created_at', { ascending: false })
-    .limit(8)
-
-  // Pedidos de pontos por avaliacao aguardando aprovacao
-  const { count: pendingClaimsCount } = await supabase
-    .from('review_claims')
-    .select('id', { count: 'exact', head: true })
-    .eq('business_id', business.id)
-    .eq('status', 'pending')
+  // Todas as queries especificas do dashboard rodam EM PARALELO. Antes
+  // eram sequenciais (4 awaits, ~800ms-1.2s). Agora 1 round-trip do
+  // tempo da query mais lenta (~250ms).
+  const supabase = await createClient()
+  const [
+    { data: appointments },
+    { data: upcoming },
+    { data: recentActivity },
+    { count: pendingClaimsCount },
+  ] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select(`*, professional:professionals(name)`)
+      .eq('business_id', business.id)
+      .eq('appointment_date', today)
+      .order('start_time', { ascending: true }),
+    supabase
+      .from('appointments')
+      .select(`*, professional:professionals(name)`)
+      .eq('business_id', business.id)
+      .gt('appointment_date', today)
+      .lte('appointment_date', nextWeekStr)
+      .in('status', ['pending', 'confirmed'])
+      .order('appointment_date', { ascending: true })
+      .order('start_time', { ascending: true })
+      .limit(10),
+    supabase
+      .from('activity_log')
+      .select('*, professional:professionals(name)')
+      .eq('business_id', business.id)
+      .order('created_at', { ascending: false })
+      .limit(8),
+    supabase
+      .from('review_claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', business.id)
+      .eq('status', 'pending'),
+  ])
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',

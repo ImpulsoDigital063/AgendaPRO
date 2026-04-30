@@ -12,20 +12,18 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     description: 'Sistema de agendamento online',
     start_url: isProfessional ? '/profissional' : '/admin',
     display: 'standalone',
-    background_color: '#f9fafb',
-    theme_color: '#111827',
+    // Background escuro casa com o admin (--admin-bg-deep) — splash do
+    // Android usa essa cor durante o load, em vez de tela branca
+    background_color: '#030510',
+    theme_color: '#3B82F6',
     orientation: 'portrait',
     icons: [
-      {
-        src: '/icon-192.png',
-        sizes: '192x192',
-        type: 'image/png',
-      },
-      {
-        src: '/icon-512.png',
-        sizes: '512x512',
-        type: 'image/png',
-      },
+      // any: usado em telas de gestao (settings, search)
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      // maskable: Android Adaptive Icons + splash bonito sem cortar bordas
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }
 }
