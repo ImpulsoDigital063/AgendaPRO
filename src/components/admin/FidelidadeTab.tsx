@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Reward, Customer } from '@/lib/types'
+import type { Reward, Customer, Service } from '@/lib/types'
 import {
   IconAlert,
   IconCheck,
@@ -32,8 +32,16 @@ type ReviewClaim = {
 
 type Props = {
   businessId: string
-  initialRewards: Reward[]
+  /** Recompensas — controlled pelo parent (ConfiguracoesTabs) pra
+   *  sobreviver ao desmonte ao trocar de aba. */
+  rewards: Reward[]
+  onRewardsChange: (rewards: Reward[]) => void
   initialCustomers: Customer[]
+  /** Serviços do business — usado pra calcular ticket médio e sugerir
+   *  pontos de recompensa, mostrar visão geral por serviço, etc. */
+  initialServices: Service[]
+  /** Categoria do business pra sugestões de recompensa contextualizadas */
+  businessCategory: string | null
   pointsForReferral: number
   pointsForReview: number
   pointsForPunctuality: number
@@ -41,13 +49,34 @@ type Props = {
   onNavigateToNegocio?: () => void
 }
 
-const REWARD_SUGGESTIONS = [
+/**
+ * Sugestões de recompensa por categoria. Pra barbearia, "Manicure
+ * grátis" como sugestão é absurdo. Mesmo padrão das sugestões de
+ * Serviços (ServicosTab).
+ */
+const REWARD_SUGGESTIONS_BY_CATEGORY: Record<string, string[]> = {
+  'Barbearia':            ['Corte grátis', 'Barba grátis', 'Corte + Barba grátis', '20% off no próximo', 'Sobrancelha grátis'],
+  'Salão de beleza':      ['Escova grátis', 'Corte grátis', '20% off', 'Hidratação grátis', 'Manicure grátis'],
+  'Estúdio de tatuagem':  ['Sessão de retoque grátis', 'Piercing grátis', '15% off na próxima', 'Tatuagem pequena grátis', 'Cuidado pós-tattoo'],
+  'Clínica estética':     ['Limpeza de pele grátis', 'Drenagem grátis', '20% off em procedimento', 'Massagem grátis', 'Brinde de skincare'],
+  'Nail designer':        ['Esmaltação grátis', 'Nail art grátis', '20% off no próximo', 'Manutenção grátis', 'Spa das mãos'],
+  'Manicure':             ['Mão grátis', 'Pé grátis', '20% off no spa', 'Esmaltação em gel grátis', 'Mão e pé grátis'],
+  'Psicólogo / Terapeuta': ['Sessão grátis', '20% off no pacote', 'Avaliação grátis', 'Sessão online grátis', 'Sessão de bonus'],
+  'Personal trainer':     ['Sessão grátis', 'Avaliação física grátis', '20% off no pacote', 'Treino online grátis', '4 sessões pelo preço de 3'],
+}
+
+const DEFAULT_REWARD_SUGGESTIONS = [
   'Corte grátis',
   '10% off',
   'Limpeza grátis',
   'Sobrancelha grátis',
   'Manicure grátis',
 ]
+
+function getRewardSuggestions(category: string | null): string[] {
+  if (!category) return DEFAULT_REWARD_SUGGESTIONS
+  return REWARD_SUGGESTIONS_BY_CATEGORY[category] ?? DEFAULT_REWARD_SUGGESTIONS
+}
 
 type RewardForm = {
   name: string
@@ -71,8 +100,11 @@ function formatRelativeDay(iso: string) {
 
 export default function FidelidadeTab({
   businessId,
-  initialRewards,
+  rewards,
+  onRewardsChange,
   initialCustomers,
+  initialServices,
+  businessCategory,
   pointsForReferral,
   pointsForReview,
   pointsForPunctuality,
@@ -81,8 +113,25 @@ export default function FidelidadeTab({
 }: Props) {
   const supabase = createClient()
 
-  const [rewards, setRewards] = useState(initialRewards)
+  // rewards e setRewards agora vem do parent (controlled) — sobrevive
+  // ao desmonte do componente quando troca de aba
+  const setRewards = onRewardsChange
   const [customers] = useState(initialCustomers)
+
+  // Sugestões dinâmicas por categoria do business
+  const rewardSuggestions = useMemo(
+    () => getRewardSuggestions(businessCategory),
+    [businessCategory]
+  )
+
+  // Ticket médio em pontos (de services com points > 0).
+  // Usado pra sugerir valor inicial nas recompensas.
+  const ticketMedioPontos = useMemo(() => {
+    const withPoints = initialServices.filter((s) => (s.points ?? 0) > 0)
+    if (withPoints.length === 0) return 0
+    const sum = withPoints.reduce((acc, s) => acc + (s.points ?? 0), 0)
+    return Math.round(sum / withPoints.length)
+  }, [initialServices])
   const [pointsMode, setPointsMode] = useState<'business' | 'professional'>(initialPointsMode)
   const [referralPoints, setReferralPoints] = useState(String(pointsForReferral))
   const [referralSavedAt, setReferralSavedAt] = useState<number | null>(null)
@@ -535,7 +584,86 @@ export default function FidelidadeTab({
             sub="ativas"
           />
         </div>
+        {/* Empty state — guia o admin quando ainda nao tem nenhum cliente
+            com ponto (caso Olimpio acabou de cadastrar). Sem isso, KPIs
+            zerados pareciam "feature quebrada". */}
+        {customers.length === 0 && (
+          <div
+            className="rounded-xl px-3 py-2.5 mt-2 text-xs leading-relaxed"
+            style={{
+              background: 'var(--admin-accent-bg)',
+              border: '1px solid var(--admin-accent-border)',
+              color: 'var(--admin-text-2)',
+            }}
+          >
+            <strong style={{ color: 'var(--admin-accent)' }}>Tudo zerado?</strong> Quando você
+            confirmar o primeiro agendamento, o cliente entra na lista e os contadores começam a
+            subir. Cadastre as recompensas agora pra estar pronto.
+          </div>
+        )}
       </section>
+
+      {/* 2.5 VISÃO GERAL — pontos por serviço (linka pra aba Servicos) */}
+      {initialServices.length > 0 && (
+        <section>
+          <SectionHeader label="Pontos por atendimento" icon={<IconStar size={14} />} />
+          <div className="admin-card p-3">
+            <p
+              className="text-[11px] mb-2 leading-relaxed"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              Configurado por serviço. Cliente ganha esses pontos ao concluir o atendimento.
+            </p>
+            <div className="space-y-1.5">
+              {initialServices
+                .filter((s) => s.active)
+                .slice(0, 6)
+                .map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg"
+                    style={{ background: 'var(--admin-input-bg)' }}
+                  >
+                    <span
+                      className="text-xs font-medium truncate"
+                      style={{ color: 'var(--admin-text)' }}
+                    >
+                      {s.name}
+                    </span>
+                    <span
+                      className="text-[11px] font-bold tabular-nums flex-shrink-0"
+                      style={{
+                        color:
+                          (s.points ?? 0) > 0
+                            ? 'var(--admin-warn, #FBBF24)'
+                            : 'var(--admin-text-faded)',
+                      }}
+                    >
+                      {(s.points ?? 0) > 0 ? `${s.points} pts` : '— sem pontos'}
+                    </span>
+                  </div>
+                ))}
+              {initialServices.filter((s) => s.active).length > 6 && (
+                <p
+                  className="text-[11px] text-center mt-1"
+                  style={{ color: 'var(--admin-text-faded)' }}
+                >
+                  + {initialServices.filter((s) => s.active).length - 6} outros serviços
+                </p>
+              )}
+            </div>
+            {initialServices.some((s) => s.active && (s.points ?? 0) === 0) && (
+              <p
+                className="text-[11px] mt-2 leading-relaxed"
+                style={{ color: 'var(--admin-warn, #FBBF24)' }}
+              >
+                Tem serviços sem pontos. Cliente que faz esses não acumula nada — vai em{' '}
+                <strong>Serviços</strong> e configure.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* 3. RECOMPENSAS */}
       <section>
@@ -549,7 +677,7 @@ export default function FidelidadeTab({
               Sugestões pra começar (clique pra prefiller):
             </p>
             <div className="flex flex-wrap justify-center gap-1.5 pt-1">
-              {REWARD_SUGGESTIONS.map((name) => (
+              {rewardSuggestions.map((name) => (
                 <button
                   key={name}
                   type="button"
@@ -619,10 +747,29 @@ export default function FidelidadeTab({
               type="number"
               value={form.points_required}
               onChange={(e) => setForm({ ...form, points_required: e.target.value })}
-              placeholder="ex: 1000"
+              placeholder={
+                ticketMedioPontos > 0
+                  ? `ex: ${ticketMedioPontos * 10} (~10 atendimentos)`
+                  : 'ex: 500'
+              }
               min="1"
               className="admin-input w-full px-3 py-2.5 text-sm"
             />
+            {ticketMedioPontos > 0 && (
+              <p
+                className="text-[11px] mt-1.5 leading-relaxed"
+                style={{ color: 'var(--admin-text-mute)' }}
+              >
+                Seu ticket médio é{' '}
+                <strong style={{ color: 'var(--admin-text-2)' }}>
+                  {ticketMedioPontos} pts/atendimento
+                </strong>
+                . Sugestão: <strong>{ticketMedioPontos * 5} pts</strong> (5 atendimentos),{' '}
+                <strong>{ticketMedioPontos * 10} pts</strong> (10) ou{' '}
+                <strong>{ticketMedioPontos * 20} pts</strong> (20) — quanto maior, mais o cliente
+                volta pra acumular.
+              </p>
+            )}
           </div>
           <button
             onClick={handleAdd}
@@ -670,6 +817,19 @@ export default function FidelidadeTab({
               pontos
             </span>
           </div>
+          {/* Hint contextualizado pelo ticket medio do negocio */}
+          {ticketMedioPontos > 0 && (
+            <p
+              className="text-[11px] leading-relaxed"
+              style={{ color: 'var(--admin-text-faded)' }}
+            >
+              <strong style={{ color: 'var(--admin-text-mute)' }}>Dica:</strong> dar entre{' '}
+              <strong>{ticketMedioPontos * 2}</strong> e{' '}
+              <strong>{ticketMedioPontos * 4}</strong> pts (2-4 atendimentos do ticket médio) faz
+              o cliente sentir que vale a pena indicar. Muito baixo não motiva, muito alto vira
+              promessa cara.
+            </p>
+          )}
         </div>
 
         {/* Bônus de pontualidade — auto-save com debounce */}
@@ -698,6 +858,17 @@ export default function FidelidadeTab({
               pontos
             </span>
           </div>
+          {ticketMedioPontos > 0 && (
+            <p
+              className="text-[11px] leading-relaxed"
+              style={{ color: 'var(--admin-text-faded)' }}
+            >
+              <strong style={{ color: 'var(--admin-text-mute)' }}>Dica:</strong> ~10-20% do ticket
+              médio ({Math.round(ticketMedioPontos * 0.1)}-{Math.round(ticketMedioPontos * 0.2)}{' '}
+              pts) é suficiente pra reconhecer sem inflar — combate cancelamento e atraso de
+              forma sutil.
+            </p>
+          )}
         </div>
 
         {/* Pontos por avaliação no Google */}
@@ -793,19 +964,39 @@ export default function FidelidadeTab({
               )
             })}
           </div>
-          {pointsMode === 'professional' && (
-            <p
-              className="text-[11px] leading-relaxed rounded-lg px-3 py-2"
-              style={{
-                background: 'var(--admin-accent-bg)',
-                color: 'var(--admin-text-2)',
-                border: '1px solid var(--admin-accent-border)',
-              }}
-            >
-              Cada cliente vê o saldo separado por atendente. Indicação vai pra quem atendeu;
-              avaliação Google vai pro último profissional.
-            </p>
-          )}
+          {/* Preview do impacto — mostra exemplo concreto com nome ficticio
+              pra admin entender o que cada modo significa antes de mudar. */}
+          <div
+            className="text-[11px] leading-relaxed rounded-lg px-3 py-2.5 space-y-1.5"
+            style={{
+              background: 'var(--admin-accent-bg)',
+              color: 'var(--admin-text-2)',
+              border: '1px solid var(--admin-accent-border)',
+            }}
+          >
+            {pointsMode === 'business' ? (
+              <>
+                <p>
+                  <strong style={{ color: 'var(--admin-accent)' }}>Exemplo:</strong> João tem 100
+                  pontos no seu negócio. Ele pode trocar com qualquer profissional disponível.
+                </p>
+                <p style={{ color: 'var(--admin-text-mute)' }}>
+                  Indicação e avaliação Google contam pro saldo único do cliente.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>
+                  <strong style={{ color: 'var(--admin-accent)' }}>Exemplo:</strong> João tem 100
+                  pts com Eduardo, mas <strong>0 pts</strong> com Pedro. Saldo separado por
+                  atendente.
+                </p>
+                <p style={{ color: 'var(--admin-text-mute)' }}>
+                  Indicação vai pra quem atendeu; avaliação Google vai pro último profissional.
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </section>
 

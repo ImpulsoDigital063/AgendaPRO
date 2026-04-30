@@ -37,15 +37,17 @@ export default function ConfiguracoesTabs({
   const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'whatsapp', 'fidelidade', 'aparencia']
   const [activeTab, setActiveTab] = useState<Tab>(tabParam && validTabs.includes(tabParam) ? tabParam : 'negocio')
   const [professionals, setProfessionals] = useState(initialProfessionals)
+  // Rewards lifted pro parent: FidelidadeTab desmonta ao trocar de
+  // aba — se mantivesse o useState dentro dele, recompensa criada
+  // sumia ao voltar (initialRewards do SSR continuava antigo).
+  const [rewards, setRewards] = useState(initialRewards)
 
-  // Sincroniza state local com initialProfessionals quando o RSC traz
-  // dados frescos (ex: profissional subiu foto em /profissional/conta,
-  // disparou router.refresh, server re-renderizou). Sem isto, o
-  // useState mantinha versao antiga sem photo_url e a foto aparecia
-  // quebrada no card do admin ate hard refresh.
   useEffect(() => {
     setProfessionals(initialProfessionals)
   }, [initialProfessionals])
+  useEffect(() => {
+    setRewards(initialRewards)
+  }, [initialRewards])
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'negocio', label: 'Negócio' },
@@ -112,8 +114,11 @@ export default function ConfiguracoesTabs({
       {activeTab === 'fidelidade' && (
         <FidelidadeTab
           businessId={business.id}
-          initialRewards={initialRewards}
+          rewards={rewards}
+          onRewardsChange={setRewards}
           initialCustomers={initialCustomers}
+          initialServices={initialServices}
+          businessCategory={business.description ?? null}
           pointsForReferral={business.points_for_referral ?? 0}
           pointsForReview={business.points_for_review ?? 0}
           pointsForPunctuality={business.punctuality_bonus_points ?? 10}
