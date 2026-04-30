@@ -9,7 +9,7 @@ export default async function ContaPage() {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, name, email, photo_url, employment_type')
+    .select('id, business_id, name, email, photo_url, employment_type')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -17,6 +17,8 @@ export default async function ContaPage() {
 
   return (
     <ContaView
+      professionalId={professional.id}
+      businessId={professional.business_id}
       name={professional.name}
       email={professional.email ?? user.email ?? ''}
       photoUrl={professional.photo_url}

@@ -1,18 +1,33 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { compressImage } from '@/lib/compress-image'
 
 type Props = {
+  professionalId: string
+  businessId: string
   name: string
   email: string
   photoUrl: string | null
   employmentType: 'commissioned' | 'employed'
 }
 
-export default function ContaView({ name, email, photoUrl, employmentType }: Props) {
+export default function ContaView({
+  professionalId,
+  businessId,
+  name,
+  email,
+  photoUrl: initialPhotoUrl,
+  employmentType,
+}: Props) {
   const router = useRouter()
+  const [photoUrl, setPhotoUrl] = useState<string | null>(initialPhotoUrl)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -28,6 +43,72 @@ export default function ContaView({ name, email, photoUrl, employmentType }: Pro
     .map((s) => s[0])
     .join('')
     .toUpperCase()
+
+  /**
+   * Upload de foto do profissional — mesmo fluxo do admin:
+   * (1) compressImage com preset 'photo' (max 800px, 250KB, WebP)
+   * (2) sobe pro bucket professional-photos com path business_id/prof_id.ext
+   * (3) atualiza professionals.photo_url
+   *
+   * Compressão é client-side (web worker) — zero custo de servidor.
+   * Em uso em massa: 100 profissionais × 1 upload = 100 ops, sem
+   * pressão no edge nem no Supabase além do storage write.
+   */
+  async function handleUploadPhoto(file: File) {
+    setPhotoError(null)
+    setUploadingPhoto(true)
+
+    const result = await compressImage(file, 'photo')
+    if (!result.ok) {
+      setPhotoError(result.reason)
+      setUploadingPhoto(false)
+      return
+    }
+
+    const optimized = result.file
+    const ext = (optimized.name.split('.').pop() || 'webp').toLowerCase()
+    const path = `${businessId}/${professionalId}.${ext}`
+
+    const supabase = createClient()
+    const { error: uploadError } = await supabase.storage
+      .from('professional-photos')
+      .upload(path, optimized, {
+        upsert: true,
+        cacheControl: '3600',
+        contentType: optimized.type,
+      })
+
+    if (uploadError) {
+      setPhotoError('Erro ao enviar foto: ' + uploadError.message)
+      setUploadingPhoto(false)
+      return
+    }
+
+    const { data: pub } = supabase.storage.from('professional-photos').getPublicUrl(path)
+    // ?v=timestamp pra invalidar cache de browser/CDN apos overwrite
+    const publicUrl = `${pub.publicUrl}?v=${Date.now()}`
+
+    // Persiste photo_url via API (service_role) — evita escalada de
+    // privilegio que daria se fizessemos update direto via RLS na tabela
+    // professionals (profissional poderia mexer em comissao, etc).
+    const persistRes = await fetch('/api/profissional/update-photo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoUrl: publicUrl }),
+    })
+
+    if (!persistRes.ok) {
+      const data = await persistRes.json().catch(() => ({}))
+      setPhotoError(data.error || 'Erro ao salvar referência da foto')
+      setUploadingPhoto(false)
+      return
+    }
+
+    setPhotoUrl(publicUrl)
+    setUploadingPhoto(false)
+    // Refresh server components do layout (ex: avatar no bottom nav se houver)
+    router.refresh()
+  }
 
   async function handleSubmitPassword(e: React.FormEvent) {
     e.preventDefault()
@@ -88,10 +169,14 @@ export default function ContaView({ name, email, photoUrl, employmentType }: Pro
         </p>
       </header>
 
-      {/* Card identidade */}
+      {/* Card identidade — avatar clicavel pra trocar foto */}
       <div className="admin-card p-5 flex items-center gap-4">
-        <div
-          className="rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingPhoto}
+          aria-label={photoUrl ? 'Trocar foto' : 'Adicionar foto'}
+          className="rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden relative group disabled:opacity-60"
           style={{
             width: 64,
             height: 64,
@@ -101,6 +186,7 @@ export default function ContaView({ name, email, photoUrl, employmentType }: Pro
             color: '#fff',
             fontWeight: 700,
             fontSize: 22,
+            cursor: uploadingPhoto ? 'wait' : 'pointer',
           }}
         >
           {photoUrl ? (
@@ -109,7 +195,44 @@ export default function ContaView({ name, email, photoUrl, employmentType }: Pro
           ) : (
             initials || '?'
           )}
-        </div>
+          {/* Overlay camera — sempre visivel no canto inferior direito pra dar affordance */}
+          {!uploadingPhoto && (
+            <span
+              className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center"
+              style={{
+                background: 'var(--admin-accent)',
+                color: '#fff',
+                border: '2px solid var(--admin-bg, #0F172A)',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+              }}
+              aria-hidden
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            </span>
+          )}
+          {uploadingPhoto && (
+            <span
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 600 }}
+            >
+              ...
+            </span>
+          )}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) handleUploadPhoto(file)
+            e.target.value = ''
+          }}
+        />
         <div className="min-w-0 flex-1">
           <p className="font-semibold leading-tight truncate" style={{ color: 'var(--admin-text)' }}>
             {name}
@@ -127,6 +250,11 @@ export default function ContaView({ name, email, photoUrl, employmentType }: Pro
           >
             {employmentType === 'commissioned' ? 'Comissionado' : 'Contratado'}
           </span>
+          {photoError && (
+            <p className="text-xs mt-2" style={{ color: 'var(--admin-danger, #EF4444)' }}>
+              {photoError}
+            </p>
+          )}
         </div>
       </div>
 

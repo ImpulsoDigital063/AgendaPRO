@@ -56,7 +56,7 @@ export default async function ProfissionalLayout({
   return (
     <AdminThemeProvider initial={initialTheme}>
       <div className="admin-shell" data-admin-theme={initialTheme}>
-        <InstallBanner />
+        <InstallBanner area="profissional" />
         <div style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
           {children}
         </div>

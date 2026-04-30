@@ -111,10 +111,12 @@ export default function MoreActionsMenu({
               top: pos.top,
               left: pos.left,
               right: pos.right,
-              background: 'var(--admin-surface)',
-              border: '1px solid var(--admin-border)',
-              boxShadow: '0 16px 36px -10px rgba(0,0,0,0.45)',
-              backdropFilter: 'blur(8px)',
+              // Popover precisa de bg SÓLIDO — admin-surface é translucido
+              // no dark e fica ilegível sobre cards + orbs animados
+              background: 'var(--admin-popover-bg)',
+              border: '1px solid var(--admin-popover-border)',
+              boxShadow:
+                '0 24px 60px -12px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04)',
             }}
           >
             {actions.map((action, i) => (

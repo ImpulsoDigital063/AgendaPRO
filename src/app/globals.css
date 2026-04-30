@@ -103,6 +103,9 @@ body {
   --admin-bg-orb-3:     rgba(139, 92, 246, 0.10);
   --admin-surface:      rgba(255, 255, 255, 0.05);
   --admin-surface-hi:   rgba(255, 255, 255, 0.08);
+  /* Popover sólido — translúcido fica ilegível sobre cards e orbs animados */
+  --admin-popover-bg:   #0F172A;
+  --admin-popover-border: rgba(255, 255, 255, 0.14);
   --admin-surface-hover: rgba(255, 255, 255, 0.09);
   --admin-border:       rgba(255, 255, 255, 0.08);
   --admin-border-hi:    rgba(255, 255, 255, 0.14);
@@ -132,6 +135,9 @@ body {
   --admin-surface:      #FFFFFF;
   --admin-surface-hi:   #FFFFFF;
   --admin-surface-hover: #F1F5F9;
+  /* Popover sólido — branco com borda escura pra contraste */
+  --admin-popover-bg:   #FFFFFF;
+  --admin-popover-border: #CBD5E1;
   --admin-border:       #E2E8F0;
   --admin-border-hi:    #CBD5E1;
   --admin-text:         #0F172A;

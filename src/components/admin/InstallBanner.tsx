@@ -260,12 +260,25 @@ function GuideSheet({
   )
 }
 
-export default function InstallBanner() {
+/**
+ * Area determina a chave de localStorage de dispensa.
+ * Cada area tem seu proprio dismiss porque sao usuarios distintos:
+ *   - admin: dona da barbearia
+ *   - profissional: funcionario contratado
+ * Em cenario real, cada um tem seu proprio device + sessao. Mas no
+ * proprio Eduardo testando ambos no mesmo iPhone, dispensar em /admin
+ * nao deve esconder em /profissional. Chaves separadas resolvem.
+ */
+type Area = 'admin' | 'profissional'
+
+export default function InstallBanner({ area = 'admin' }: { area?: Area } = {}) {
   const [platform, setPlatform] = useState<Platform>(null)
   const [showGuide, setShowGuide] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<Event & { prompt: () => void } | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [isStandalone, setIsStandalone] = useState(true) // default true to avoid flash
+
+  const dismissKey = `install-banner-dismissed-at:${area}`
 
   useEffect(() => {
     const standalone =
@@ -276,14 +289,16 @@ export default function InstallBanner() {
     if (standalone) return
 
     // Dispensa expira em 30 dias — reaparece depois pra dar nova chance de instalar
-    const dismissedAt = localStorage.getItem('install-banner-dismissed-at')
+    const dismissedAt = localStorage.getItem(dismissKey)
     if (dismissedAt) {
       const diasDispensado = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60 * 24)
       if (diasDispensado < 30) return
-      localStorage.removeItem('install-banner-dismissed-at')
+      localStorage.removeItem(dismissKey)
     }
-    // Limpa flag legada eterna (de versões anteriores) pra desbloquear quem dispensou antes
+    // Limpa flags legadas (versoes anteriores tinham 1 chave compartilhada
+    // entre admin/profissional, e versao mais antiga tinha dismiss eterno)
     localStorage.removeItem('install-banner-dismissed')
+    localStorage.removeItem('install-banner-dismissed-at')
 
     const ua = navigator.userAgent
     const isIOS = /iPad|iPhone|iPod/.test(ua) && !('MSStream' in window)
@@ -298,10 +313,10 @@ export default function InstallBanner() {
     }
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
+  }, [dismissKey])
 
   function handleDismiss() {
-    localStorage.setItem('install-banner-dismissed-at', String(Date.now()))
+    localStorage.setItem(dismissKey, String(Date.now()))
     setDismissed(true)
   }
 
