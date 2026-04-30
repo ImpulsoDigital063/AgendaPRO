@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Professional, WorkingHours } from '@/lib/types'
-import { IconCheck, IconInfo, IconClose, IconCopy, IconPlus } from '@/components/ui/Icon'
+import { IconCheck, IconInfo, IconClose, IconCopy, IconPlus, IconClock } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
 import StickyActionBar from '@/components/admin/StickyActionBar'
@@ -196,10 +196,18 @@ export default function HorariosTab({
 
   // #2: copiar horario do profissional atual pra todos os outros ativos
   const [confirmCopyToAll, setConfirmCopyToAll] = useState(false)
+  // Progresso visivel do batch (X/N) — sem isso, dono Equipe acha que travou
+  const [copyProgress, setCopyProgress] = useState<{ current: number; total: number } | null>(null)
+  // Pre-check: agendamentos futuros que ficariam fora do novo horario
+  const [orphansCount, setOrphansCount] = useState<number | null>(null)
+  const [checkingOrphans, setCheckingOrphans] = useState(false)
 
   // #3: pausa de almoco configuravel pelo admin (default 12-13)
   const [lunchStart, setLunchStart] = useState('12:00')
   const [lunchEnd, setLunchEnd] = useState('13:00')
+
+  // #4 (extra): aplicar intervalo unico em todos os dias ativos
+  const [pickIntervalOpen, setPickIntervalOpen] = useState(false)
 
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabase = createClient()
@@ -406,6 +414,72 @@ export default function HorariosTab({
   }
 
   /**
+   * Pre-check: conta agendamentos futuros (pendentes/confirmados) dos
+   * profissionais alvo que NAO caberiam no novo schedule (que vai ser
+   * copiado). Esses appointments nao sao apagados — ficam orfaos no
+   * sistema, aparecem no painel mas fora do horario gerado pra cliente
+   * final. Eduardo precisa saber antes de confirmar.
+   */
+  async function checkOrphansBeforeCopy(targetProfIds: string[]): Promise<number> {
+    if (targetProfIds.length === 0) return 0
+
+    const today = new Date().toISOString().split('T')[0]
+    const { data } = await supabase
+      .from('appointments')
+      .select('professional_id, appointment_date, start_time, end_time')
+      .in('professional_id', targetProfIds)
+      .gte('appointment_date', today)
+      .in('status', ['pending', 'confirmed'])
+
+    if (!data || data.length === 0) return 0
+
+    let orphans = 0
+    for (const a of data) {
+      const dayOfWeek = new Date(a.appointment_date + 'T00:00:00').getDay()
+      const cfg = schedule[dayOfWeek]
+      if (!cfg.active) {
+        orphans++
+        continue
+      }
+      const aStart = a.start_time.slice(0, 5)
+      const aEnd = a.end_time.slice(0, 5)
+      // Cabe se ALGUM periodo do dia engloba o appointment inteiro
+      const fits = cfg.periods.some((p) => p.start_time <= aStart && p.end_time >= aEnd)
+      if (!fits) orphans++
+    }
+    return orphans
+  }
+
+  async function openCopyToAllConfirm() {
+    setCheckingOrphans(true)
+    setOrphansCount(null)
+    setConfirmCopyToAll(true)
+    const targetIds = activeProfessionals.filter((p) => p.id !== selectedProfId).map((p) => p.id)
+    const count = await checkOrphansBeforeCopy(targetIds)
+    setOrphansCount(count)
+    setCheckingOrphans(false)
+  }
+
+  /**
+   * #4: Aplica um slot_duration unico em TODOS os dias ATIVOS do
+   * profissional selecionado. Util pra normalizar a regua quando admin
+   * decide trocar de 30 pra 45min depois de configurar tudo.
+   */
+  function applyIntervalToAllDays(slotDuration: number) {
+    setSchedule((prev) => {
+      const next = { ...prev }
+      for (const d of DAYS) {
+        if (next[d.id].active) {
+          next[d.id] = { ...next[d.id], slot_duration: slotDuration }
+        }
+      }
+      return next
+    })
+    setSaved(false)
+    setPickIntervalOpen(false)
+  }
+
+  /**
    * #2: Copia o schedule atual (do profissional selecionado) pra TODOS
    * os outros profissionais ativos. Útil pra equipe com horário igual
    * (caso comum: 3 barbeiros atendendo Seg-Sáb 9-18 com pausa 12-13).
@@ -419,15 +493,17 @@ export default function HorariosTab({
     setSaving(true)
 
     const otherProfs = activeProfessionals.filter((p) => p.id !== selectedProfId)
+    setCopyProgress({ current: 0, total: otherProfs.length })
+
     const newWorkingHours: WorkingHours[] = workingHours.filter(
       (w) => !otherProfs.some((p) => p.id === w.professional_id)
     )
 
-    for (const prof of otherProfs) {
-      // Delete tudo desse profissional
+    for (let i = 0; i < otherProfs.length; i++) {
+      const prof = otherProfs[i]
+
       await supabase.from('working_hours').delete().eq('professional_id', prof.id)
 
-      // Insert os mesmos períodos do profissional selecionado
       for (const day of DAYS) {
         const cfg = schedule[day.id]
         if (!cfg.active) continue
@@ -447,15 +523,18 @@ export default function HorariosTab({
           if (data) newWorkingHours.push(data)
         }
       }
+      setCopyProgress({ current: i + 1, total: otherProfs.length })
     }
 
     setWorkingHours(newWorkingHours)
     setSaving(false)
     setSaved(true)
     setConfirmCopyToAll(false)
+    setCopyProgress(null)
+    setOrphansCount(null)
 
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
-    savedTimerRef.current = setTimeout(() => setSaved(false), 2200)
+    savedTimerRef.current = setTimeout(() => setSaved(false), 3000)
   }
 
   /**
@@ -609,24 +688,33 @@ export default function HorariosTab({
           <IconInfo size={14} />
           Como funciona
         </button>
-        {/* Kebab — acoes secundarias. So aparece SE for o painel do
-            admin (isAdmin=true) E houver 2+ profissionais ativos. Em
-            /profissional/horarios o profissional vê SO os proprios
-            horarios, nao precisa (e nao deve) ter opcao cross-prof. */}
-        {isAdmin && activeProfessionals.length >= 2 && (
-          <div className="admin-card px-1 flex items-center flex-shrink-0">
-            <MoreActionsMenu
-              actions={[
-                {
-                  label: 'Copiar este horário pra todos os profissionais',
-                  icon: <IconCopy size={15} />,
-                  onClick: () => setConfirmCopyToAll(true),
-                },
-              ]}
-              ariaLabel="Mais ações de horário"
-            />
-          </div>
-        )}
+        {/* Kebab — acoes secundarias. Acao "intervalo unificado" e
+            sempre util (admin e profissional comissionado). Acao
+            "copiar pra todos profissionais" so aparece se isAdmin &&
+            ha 2+ profs (em /profissional/horarios o prof so configura
+            os proprios). */}
+        <div className="admin-card px-1 flex items-center flex-shrink-0">
+          <MoreActionsMenu
+            actions={[
+              {
+                label: 'Aplicar mesmo intervalo em todos os dias',
+                icon: <IconClock size={15} />,
+                onClick: () => setPickIntervalOpen(true),
+              },
+              ...(isAdmin && activeProfessionals.length >= 2
+                ? [
+                    {
+                      label: 'Copiar este horário pra todos os profissionais',
+                      icon: <IconCopy size={15} />,
+                      onClick: openCopyToAllConfirm,
+                      separatorAbove: true,
+                    } as MoreAction,
+                  ]
+                : []),
+            ]}
+            ariaLabel="Mais ações de horário"
+          />
+        </div>
       </div>
 
       {/* Texto explicativo colapsável */}
@@ -1029,26 +1117,280 @@ export default function HorariosTab({
         />
       )}
 
-      {/* #2 — Confirmacao pra copiar horario do prof atual em todos os outros */}
-      <ConfirmActionModal
-        open={confirmCopyToAll}
-        title="Copiar horário em todos os profissionais?"
-        message={(() => {
-          const others = activeProfessionals.length - 1
-          const profName =
+      {/* #2 — Confirmacao com warning de orfaos + progresso visivel */}
+      {confirmCopyToAll && (
+        <CopyToAllProfsModal
+          othersCount={activeProfessionals.length - 1}
+          currentProfName={
             activeProfessionals.find((p) => p.id === selectedProfId)?.name ?? 'profissional atual'
-          const sujeito = others === 1
-            ? `O outro profissional ativo vai receber`
-            : `Os ${others} outros profissionais ativos vão receber`
-          return `${sujeito} o mesmo horário do ${profName}. Qualquer config existente neles vai ser sobrescrita.`
-        })()}
-        confirmLabel="Sim, copiar"
-        cancelLabel="Cancelar"
-        tone="warn"
-        loading={saving}
-        onConfirm={applyScheduleToAllProfessionals}
-        onClose={() => setConfirmCopyToAll(false)}
-      />
+          }
+          checkingOrphans={checkingOrphans}
+          orphansCount={orphansCount}
+          saving={saving}
+          progress={copyProgress}
+          onConfirm={applyScheduleToAllProfessionals}
+          onClose={() => {
+            if (saving) return
+            setConfirmCopyToAll(false)
+            setOrphansCount(null)
+            setCopyProgress(null)
+          }}
+        />
+      )}
+
+      {/* #4 — Picker de intervalo unico em todos os dias ativos */}
+      {pickIntervalOpen && (
+        <IntervalPickerModal
+          activeDaysCount={openDays}
+          onPick={applyIntervalToAllDays}
+          onClose={() => setPickIntervalOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// Modal: copiar horario do prof atual pra todos os outros
+// (com pre-check de agendamentos orfaos e progresso visivel)
+// =============================================================================
+function CopyToAllProfsModal({
+  othersCount,
+  currentProfName,
+  checkingOrphans,
+  orphansCount,
+  saving,
+  progress,
+  onConfirm,
+  onClose,
+}: {
+  othersCount: number
+  currentProfName: string
+  checkingOrphans: boolean
+  orphansCount: number | null
+  saving: boolean
+  progress: { current: number; total: number } | null
+  onConfirm: () => void
+  onClose: () => void
+}) {
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !saving) onClose()
+    }
+    window.addEventListener('keydown', handler)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', handler)
+      document.body.style.overflow = ''
+    }
+  }, [saving, onClose])
+
+  const sujeito = othersCount === 1
+    ? `O outro profissional ativo vai receber`
+    : `Os ${othersCount} outros profissionais ativos vão receber`
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={() => !saving && onClose()}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden"
+        style={{
+          background: 'var(--admin-popover-bg, #FFFFFF)',
+          border: '1px solid var(--admin-popover-border, #E2E8F0)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
+        }}
+      >
+        <div className="p-5 pb-2">
+          <h3 className="text-base font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
+            Copiar horário em todos os profissionais?
+          </h3>
+          <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+            {sujeito} o mesmo horário do <strong>{currentProfName}</strong>. Qualquer config
+            existente neles vai ser sobrescrita.
+          </p>
+
+          {/* Warning de orfaos */}
+          {checkingOrphans && (
+            <p className="text-xs mt-3" style={{ color: 'var(--admin-text-mute)' }}>
+              Conferindo agendamentos existentes...
+            </p>
+          )}
+          {!checkingOrphans && orphansCount !== null && orphansCount > 0 && (
+            <div
+              className="mt-3 px-3 py-2.5 rounded-lg text-xs leading-relaxed"
+              style={{
+                background: 'color-mix(in srgb, var(--admin-warn, #FBBF24) 15%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--admin-warn, #FBBF24) 40%, transparent)',
+                color: 'var(--admin-warn, #FBBF24)',
+              }}
+            >
+              <strong>Atenção:</strong> {orphansCount} agendamento{orphansCount === 1 ? '' : 's'}{' '}
+              futuro{orphansCount === 1 ? '' : 's'} desses profissionais{' '}
+              {orphansCount === 1 ? 'não cabe' : 'não cabem'} no novo horário e vão ficar fora do
+              expediente. Os agendamentos não somem — você precisa decidir se remarca ou cancela
+              depois.
+            </div>
+          )}
+
+          {/* Progresso durante o batch */}
+          {saving && progress && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs mb-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+                <span>Copiando horários...</span>
+                <span className="tabular-nums">{progress.current}/{progress.total}</span>
+              </div>
+              <div
+                className="h-1.5 rounded-full overflow-hidden"
+                style={{ background: 'var(--admin-input-bg)' }}
+              >
+                <div
+                  className="h-full transition-all duration-300"
+                  style={{
+                    width: `${(progress.current / Math.max(1, progress.total)) * 100}%`,
+                    background:
+                      'linear-gradient(135deg, var(--brand-primary, #3B82F6), var(--brand-secondary, #06B6D4))',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div
+          className="flex flex-col-reverse sm:flex-row gap-2 p-4 sm:justify-end"
+          style={{
+            background: 'rgba(0,0,0,0.18)',
+            borderTop: '1px solid var(--admin-popover-border, #E2E8F0)',
+          }}
+        >
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40"
+            style={{
+              background: 'transparent',
+              color: 'var(--admin-text-2)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={saving || checkingOrphans}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold transition-transform hover:translate-y-[-1px] disabled:opacity-50 disabled:translate-y-0"
+            style={{
+              background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+              color: '#1F2937',
+              boxShadow: '0 8px 22px -6px rgba(217,119,6,0.5)',
+            }}
+          >
+            {saving
+              ? progress
+                ? `Copiando ${progress.current}/${progress.total}...`
+                : 'Processando...'
+              : 'Sim, copiar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// Modal: aplicar mesmo intervalo em todos os dias ativos
+// =============================================================================
+function IntervalPickerModal({
+  activeDaysCount,
+  onPick,
+  onClose,
+}: {
+  activeDaysCount: number
+  onPick: (slotDuration: number) => void
+  onClose: () => void
+}) {
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handler)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', handler)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden"
+        style={{
+          background: 'var(--admin-popover-bg, #FFFFFF)',
+          border: '1px solid var(--admin-popover-border, #E2E8F0)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
+        }}
+      >
+        <div className="p-5 pb-3">
+          <h3 className="text-base font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
+            Intervalo padrão dos dias abertos
+          </h3>
+          <p className="text-sm mt-2" style={{ color: 'var(--admin-text-2)' }}>
+            Aplica em <strong>{activeDaysCount}</strong> dia{activeDaysCount === 1 ? '' : 's'}{' '}
+            ativo{activeDaysCount === 1 ? '' : 's'} de uma vez. Use a duração do seu serviço mais
+            comum.
+          </p>
+        </div>
+        <div className="px-5 pb-5 grid grid-cols-3 gap-2">
+          {DURATIONS.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => onPick(d)}
+              className="py-2.5 rounded-xl text-sm font-bold transition-all"
+              style={{
+                background: 'var(--admin-input-bg)',
+                color: 'var(--admin-text)',
+                border: '1px solid var(--admin-border)',
+              }}
+            >
+              {formatDuration(d)}
+            </button>
+          ))}
+        </div>
+        <div
+          className="flex p-4 sm:justify-end"
+          style={{
+            background: 'rgba(0,0,0,0.18)',
+            borderTop: '1px solid var(--admin-popover-border, #E2E8F0)',
+          }}
+        >
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full sm:w-auto"
+            style={{
+              background: 'transparent',
+              color: 'var(--admin-text-2)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
