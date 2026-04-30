@@ -97,6 +97,7 @@ export default function ConfiguracoesTabs({
         <ServicosTab
           businessId={business.id}
           initialServices={initialServices}
+          category={business.description ?? null}
         />
       )}
 

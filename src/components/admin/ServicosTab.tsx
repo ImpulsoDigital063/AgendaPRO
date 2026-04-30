@@ -19,9 +19,40 @@ import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActions
 type Props = {
   businessId: string
   initialServices: Service[]
+  /**
+   * Categoria do negócio (de business.description, escolhida no
+   * cadastro). Define quais sugestões pré-prontas aparecem no empty
+   * state — barbearia mostra cortes/barba, salão mostra escova/coloração,
+   * etc. Se null/vazio/desconhecido, mostra sugestões genéricas.
+   */
+  category: string | null
 }
 
 const DURATIONS = [15, 20, 30, 40, 45, 60, 75, 90, 120]
+
+/**
+ * Sugestões de serviço por categoria. Pensado em uso em massa: 100
+ * cadastros de nichos diferentes recebem 5 sugestões CASADAS com o
+ * que cada nicho realmente oferece — barbearia nunca vai ver
+ * "Manicure" como sugestão.
+ */
+const SUGGESTIONS_BY_CATEGORY: Record<string, string[]> = {
+  'Barbearia':            ['Corte simples', 'Corte + Barba', 'Barba', 'Pezinho', 'Sobrancelha'],
+  'Salão de beleza':      ['Escova', 'Corte feminino', 'Coloração', 'Hidratação', 'Manicure'],
+  'Estúdio de tatuagem':  ['Tatuagem pequena', 'Tatuagem média', 'Sessão de retoque', 'Cover up', 'Piercing'],
+  'Clínica estética':     ['Limpeza de pele', 'Drenagem linfática', 'Peeling', 'Microagulhamento', 'Massagem relaxante'],
+  'Nail designer':        ['Esmaltação simples', 'Gel', 'Fibra de vidro', 'Alongamento', 'Manutenção'],
+  'Manicure':             ['Mão', 'Pé', 'Mão e pé', 'Esmaltação em gel', 'Spa dos pés'],
+  'Psicólogo / Terapeuta': ['Sessão individual', 'Sessão online', 'Avaliação inicial', 'Sessão de casal', 'Sessão familiar'],
+  'Personal trainer':     ['Avaliação física', 'Sessão individual', 'Pacote 4 sessões', 'Pacote 8 sessões', 'Treino online'],
+}
+
+const DEFAULT_SUGGESTIONS = ['Corte masculino', 'Manicure', 'Limpeza de pele', 'Massagem', 'Sobrancelha']
+
+function getSuggestions(category: string | null): string[] {
+  if (!category) return DEFAULT_SUGGESTIONS
+  return SUGGESTIONS_BY_CATEGORY[category] ?? DEFAULT_SUGGESTIONS
+}
 
 function formatDuration(min: number) {
   if (min < 60) return `${min}min`
@@ -53,7 +84,11 @@ const DESCRIPTION_MAX = 400
 
 type Filter = 'active' | 'inactive' | 'all'
 
-export default function ServicosTab({ businessId, initialServices }: Props) {
+export default function ServicosTab({ businessId, initialServices, category }: Props) {
+  const suggestions = useMemo(() => getSuggestions(category), [category])
+  // Placeholder do input — usa primeira sugestão da categoria pra dar
+  // exemplo casado com o nicho do cliente
+  const placeholderExample = suggestions[0] ?? 'Corte masculino'
   const [services, setServices] = useState(initialServices)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [showCustomDuration, setShowCustomDuration] = useState(false)
@@ -295,7 +330,7 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
               Comece pelos mais comuns ou cadastre o seu logo abaixo:
             </p>
             <div className="flex flex-wrap justify-center gap-1.5 pt-1">
-              {['Corte masculino', 'Manicure', 'Limpeza de pele', 'Massagem', 'Sobrancelha'].map(
+              {suggestions.map(
                 (name) => (
                   <button
                     key={name}
@@ -364,7 +399,7 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          placeholder="Nome do serviço (ex: Corte masculino)"
+          placeholder={`Nome do serviço (ex: ${placeholderExample})`}
           className="admin-input w-full px-3 py-2.5 text-sm"
         />
 
@@ -405,7 +440,7 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
               inputMode="decimal"
               value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
-              placeholder="0,00"
+              placeholder="Ex: 30,00"
               className="admin-input w-full px-3 py-2.5 text-sm"
             />
           </div>
@@ -464,9 +499,33 @@ export default function ServicosTab({ businessId, initialServices }: Props) {
           </p>
         </div>
 
+        {/*
+          Validacao de preco — bloqueia se preco estiver VAZIO. Permite
+          digitar 0 explicitamente caso o serviço seja gratuito (ex:
+          "Avaliacao inicial gratuita" pra clinica/personal). Hint
+          sugere preencher pra evitar cadastro acidental sem preco.
+        */}
+        {form.price.trim() === '' && form.name.trim() && (
+          <p
+            className="text-[11px] px-3 py-2 rounded-lg"
+            style={{
+              background: 'color-mix(in srgb, var(--admin-warn, #FBBF24) 12%, transparent)',
+              color: 'var(--admin-warn, #FBBF24)',
+              border: '1px solid color-mix(in srgb, var(--admin-warn, #FBBF24) 30%, transparent)',
+            }}
+          >
+            Defina um preço pro serviço. Se for grátis, digite <strong>0</strong>.
+          </p>
+        )}
+
         <button
           onClick={handleAdd}
-          disabled={saving || !form.name.trim() || !form.duration_minutes}
+          disabled={
+            saving ||
+            !form.name.trim() ||
+            !form.duration_minutes ||
+            form.price.trim() === ''
+          }
           className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
           style={{
             background:
