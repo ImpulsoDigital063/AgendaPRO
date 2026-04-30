@@ -105,6 +105,7 @@ export default function ConfiguracoesTabs({
         <HorariosTab
           professionals={professionals}
           initialWorkingHours={initialWorkingHours}
+          isAdmin
         />
       )}
 

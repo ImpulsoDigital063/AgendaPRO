@@ -11,6 +11,14 @@ import StickyActionBar from '@/components/admin/StickyActionBar'
 type Props = {
   professionals: Professional[]
   initialWorkingHours: WorkingHours[]
+  /**
+   * Marca explicitamente quando este componente está sendo renderizado
+   * no painel do admin (que vê todos os profissionais do business). Em
+   * /profissional/horarios omite — fica false e o kebab cross-profissional
+   * NÃO aparece, mesmo que de algum jeito o array de professionals
+   * viesse com mais de 1.
+   */
+  isAdmin?: boolean
 }
 
 const DAYS = [
@@ -161,7 +169,11 @@ function periodsOverlap(periods: Period[]): boolean {
   return false
 }
 
-export default function HorariosTab({ professionals, initialWorkingHours }: Props) {
+export default function HorariosTab({
+  professionals,
+  initialWorkingHours,
+  isAdmin = false,
+}: Props) {
   const activeProfessionals = professionals.filter((p) => p.active)
   const [selectedProfId, setSelectedProfId] = useState(activeProfessionals[0]?.id ?? '')
   const [workingHours, setWorkingHours] = useState(initialWorkingHours)
@@ -597,10 +609,11 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
           <IconInfo size={14} />
           Como funciona
         </button>
-        {/* Kebab — acoes secundarias. So aparece se ha 2+ profissionais
-            (acao de copiar so faz sentido pra equipe). Sem isso, Solo
-            nao tem botao extra poluindo o header. */}
-        {activeProfessionals.length >= 2 && (
+        {/* Kebab — acoes secundarias. So aparece SE for o painel do
+            admin (isAdmin=true) E houver 2+ profissionais ativos. Em
+            /profissional/horarios o profissional vê SO os proprios
+            horarios, nao precisa (e nao deve) ter opcao cross-prof. */}
+        {isAdmin && activeProfessionals.length >= 2 && (
           <div className="admin-card px-1 flex items-center flex-shrink-0">
             <MoreActionsMenu
               actions={[
@@ -1020,7 +1033,15 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
       <ConfirmActionModal
         open={confirmCopyToAll}
         title="Copiar horário em todos os profissionais?"
-        message={`Os ${activeProfessionals.length - 1} outros profissionais ativos vão receber o mesmo horário do ${activeProfessionals.find((p) => p.id === selectedProfId)?.name ?? 'profissional atual'}. Qualquer config existente neles vai ser sobrescrita.`}
+        message={(() => {
+          const others = activeProfessionals.length - 1
+          const profName =
+            activeProfessionals.find((p) => p.id === selectedProfId)?.name ?? 'profissional atual'
+          const sujeito = others === 1
+            ? `O outro profissional ativo vai receber`
+            : `Os ${others} outros profissionais ativos vão receber`
+          return `${sujeito} o mesmo horário do ${profName}. Qualquer config existente neles vai ser sobrescrita.`
+        })()}
         confirmLabel="Sim, copiar"
         cancelLabel="Cancelar"
         tone="warn"
