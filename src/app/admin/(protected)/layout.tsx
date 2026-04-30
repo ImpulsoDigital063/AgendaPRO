@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import BottomNav from '@/components/admin/BottomNav'
 import InstallBanner from '@/components/admin/InstallBanner'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
+import AppSplash from '@/components/admin/AppSplash'
 import {
   getCurrentUser,
   getCurrentBusiness,
@@ -70,6 +71,7 @@ export default async function AdminLayout({
   return (
     <AdminThemeProvider initial={initialTheme}>
       <div className="admin-shell" data-admin-theme={initialTheme}>
+        <AppSplash />
         <InstallBanner />
         <div style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
           {children}
