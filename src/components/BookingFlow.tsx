@@ -313,11 +313,14 @@ export default function BookingFlow({
 
     const supabase = createClient()
     const dayOfWeek = date.getDay()
-    const wh = workingHours.find(
-      (w) => w.professional_id === professional?.id && w.day_of_week === dayOfWeek
-    )
+    // V31: dia pode ter MULTIPLOS periodos (manha + tarde com pausa
+    // de almoco). Pega todos e itera abaixo. Ordenacao por start_time
+    // garante que o array de slots vem cronologico.
+    const periods = workingHours
+      .filter((w) => w.professional_id === professional?.id && w.day_of_week === dayOfWeek)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
 
-    if (!wh) {
+    if (periods.length === 0) {
       setSlots([])
       setLoadingSlots(false)
       setStep('time')
@@ -337,7 +340,11 @@ export default function BookingFlow({
     }))
     const step = getSlotStep(date)
     const serviceDuration = getServiceDuration(date)
-    const generated = generateSlots(wh.start_time, wh.end_time, step, serviceDuration, booked)
+
+    // Gera slots pra cada periodo do dia e concatena na ordem cronologica
+    const generated = periods.flatMap((p) =>
+      generateSlots(p.start_time, p.end_time, step, serviceDuration, booked)
+    )
 
     setSlots(generated)
     setLoadingSlots(false)
