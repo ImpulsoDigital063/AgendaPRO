@@ -88,7 +88,10 @@ export default function AparenciaTab({ business }: { business: Business }) {
   const previewMuted = mode === 'dark' ? '#94A3B8' : '#64748B'
   const previewBorder = mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#E2E8F0'
   const gradient = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`
-  const slugUrl = business.slug ? `/${business.slug}` : null
+  // ?preview=admin sinaliza pra /[slug]/page.tsx mostrar banner sticky
+  // "← Voltar pra Aparência" no topo. Sem isso o admin ficava sem
+  // caminho de volta no PWA standalone.
+  const slugUrl = business.slug ? `/${business.slug}?preview=admin` : null
 
   return (
     <div className="space-y-4 pb-28 relative">
@@ -187,10 +190,12 @@ export default function AparenciaTab({ business }: { business: Business }) {
             </div>
           </div>
           {slugUrl && (
+            // Navegacao na MESMA aba (sem target=_blank) — em PWA
+            // standalone, abrir nova aba caia no browser sem caminho
+            // de volta. /[slug] detecta ?preview=admin e mostra banner
+            // sticky de "← Voltar pra Aparencia"
             <a
               href={slugUrl}
-              target="_blank"
-              rel="noopener noreferrer"
               className="mt-2 w-full text-xs font-semibold flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-colors"
               style={{ color: 'var(--admin-accent)' }}
             >

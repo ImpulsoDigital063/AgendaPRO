@@ -28,11 +28,15 @@ export default async function BusinessPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ ref?: string }>
+  searchParams: Promise<{ ref?: string; preview?: string }>
 }) {
   const { slug } = await params
-  const { ref } = await searchParams
+  const { ref, preview } = await searchParams
   const agendarHref = ref ? `/${slug}/agendar?ref=${ref}` : `/${slug}/agendar`
+  // Quando admin clica "Ver minha pagina real" na aba Aparencia, abre
+  // a pagina publica com ?preview=admin pra mostrar banner sticky de
+  // voltar (sem isso o admin ficava sem caminho de retorno).
+  const isAdminPreview = preview === 'admin'
   const supabase = await createClient()
 
   const { data: business } = await supabase
@@ -93,6 +97,27 @@ export default async function BusinessPage({
         } as React.CSSProperties
       }
     >
+      {/* Banner sticky pra admin que abriu via "Ver minha página real"
+          na aba Aparencia. Sem isso, admin ficava preso na pagina
+          publica sem caminho de retorno (especialmente em PWA standalone). */}
+      {isAdminPreview && (
+        <Link
+          href="/admin/configuracoes?tab=aparencia"
+          className="sticky top-0 z-50 w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
+          style={{
+            background: 'linear-gradient(135deg, #0F172A, #1E293B)',
+            color: '#FFFFFF',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 4px 12px -4px rgba(0,0,0,0.4)',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Voltar pra Aparência
+        </Link>
+      )}
       {/* Orbs decorativos em dark */}
       {isDark && (
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
