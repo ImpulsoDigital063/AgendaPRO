@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import QRCode from 'react-qr-code'
 import {
   IconChevronDown,
   IconCopy,
@@ -31,7 +32,6 @@ export default function DivulgarCard({ slug, appUrl }: Props) {
   const bookingLink = `${origin}/${slug}`
   const waText = `Agende seu horário comigo: ${bookingLink}`
   const waUrl = `https://wa.me/?text=${encodeURIComponent(waText)}`
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=10&data=${encodeURIComponent(bookingLink)}`
 
   function handleCopy() {
     navigator.clipboard.writeText(bookingLink).then(() => {
@@ -256,13 +256,14 @@ export default function DivulgarCard({ slug, appUrl }: Props) {
               Cliente aponta a câmera e cai direto na sua página
             </p>
             <div className="rounded-xl p-3 bg-white flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrUrl}
-                alt="QR code do link de agendamento"
-                width={280}
-                height={280}
-                className="w-full h-auto"
+              <QRCode
+                value={bookingLink}
+                size={280}
+                style={{ height: 'auto', maxWidth: '100%', width: '100%' }}
+                viewBox="0 0 256 256"
+                bgColor="#FFFFFF"
+                fgColor="#000000"
+                level="M"
               />
             </div>
             <p className="text-[10px] text-center mt-3 truncate" style={{ color: 'var(--admin-text-faded)' }}>
