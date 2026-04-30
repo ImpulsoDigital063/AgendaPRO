@@ -179,6 +179,16 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
   const [copyFromDay, setCopyFromDay] = useState<number | null>(null)
   const [copyTargets, setCopyTargets] = useState<Set<number>>(new Set())
 
+  // #1: troca de profissional com alteracoes pendentes
+  const [pendingProfChange, setPendingProfChange] = useState<string | null>(null)
+
+  // #2: copiar horario do profissional atual pra todos os outros ativos
+  const [confirmCopyToAll, setConfirmCopyToAll] = useState(false)
+
+  // #3: pausa de almoco configuravel pelo admin (default 12-13)
+  const [lunchStart, setLunchStart] = useState('12:00')
+  const [lunchEnd, setLunchEnd] = useState('13:00')
+
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabase = createClient()
 
@@ -193,12 +203,35 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
   const openDays = DAYS.filter((d) => schedule[d.id]?.active).length
   const hoursPerWeek = diffHoursPerWeek(schedule)
 
-  function handleSelectProf(profId: string) {
+  function doSelectProf(profId: string) {
     setSelectedProfId(profId)
     const next = buildSchedule(workingHours, profId)
     setSchedule(next)
     setSavedSnapshot(snapshot(next))
     setSaved(false)
+  }
+
+  function handleSelectProf(profId: string) {
+    if (profId === selectedProfId) return
+    if (isDirty) {
+      // Tem mudanca pendente — aborda usuario antes de descartar
+      setPendingProfChange(profId)
+      return
+    }
+    doSelectProf(profId)
+  }
+
+  async function handleSaveAndSwitch() {
+    if (!pendingProfChange) return
+    await handleSave()
+    doSelectProf(pendingProfChange)
+    setPendingProfChange(null)
+  }
+
+  function handleDiscardAndSwitch() {
+    if (!pendingProfChange) return
+    doSelectProf(pendingProfChange)
+    setPendingProfChange(null)
   }
 
   function toggleDay(dayId: number) {
@@ -361,6 +394,59 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
   }
 
   /**
+   * #2: Copia o schedule atual (do profissional selecionado) pra TODOS
+   * os outros profissionais ativos. Útil pra equipe com horário igual
+   * (caso comum: 3 barbeiros atendendo Seg-Sáb 9-18 com pausa 12-13).
+   *
+   * Estratégia: pra cada outro profissional, DELETE all + INSERT new
+   * (mesma estratégia do handleSave). Atualiza workingHours local em
+   * batch só no final pra não dar loop de re-renders.
+   */
+  async function applyScheduleToAllProfessionals() {
+    if (saving) return
+    setSaving(true)
+
+    const otherProfs = activeProfessionals.filter((p) => p.id !== selectedProfId)
+    const newWorkingHours: WorkingHours[] = workingHours.filter(
+      (w) => !otherProfs.some((p) => p.id === w.professional_id)
+    )
+
+    for (const prof of otherProfs) {
+      // Delete tudo desse profissional
+      await supabase.from('working_hours').delete().eq('professional_id', prof.id)
+
+      // Insert os mesmos períodos do profissional selecionado
+      for (const day of DAYS) {
+        const cfg = schedule[day.id]
+        if (!cfg.active) continue
+        for (const period of cfg.periods) {
+          if (period.start_time >= period.end_time) continue
+          const { data } = await supabase
+            .from('working_hours')
+            .insert({
+              professional_id: prof.id,
+              day_of_week: day.id,
+              start_time: period.start_time,
+              end_time: period.end_time,
+              slot_duration: cfg.slot_duration,
+            })
+            .select()
+            .single()
+          if (data) newWorkingHours.push(data)
+        }
+      }
+    }
+
+    setWorkingHours(newWorkingHours)
+    setSaving(false)
+    setSaved(true)
+    setConfirmCopyToAll(false)
+
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSaved(false), 2200)
+  }
+
+  /**
    * Save: estratégia DELETE-ALL + INSERT-NEW por dia.
    * Mais simples que reconciliar UPDATE/INSERT/DELETE quando a
    * quantidade de períodos muda. Working_hours não tem FK pra
@@ -482,9 +568,9 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
         </div>
       )}
 
-      {/* KPI compacto + Ajuda */}
-      <div className="grid grid-cols-[1fr_auto] gap-2">
-        <div className="admin-card p-2.5">
+      {/* KPI compacto + Ajuda + Kebab (acoes secundarias) */}
+      <div className="flex gap-2 items-stretch">
+        <div className="admin-card p-2.5 flex-1 min-w-0">
           <p
             className="text-[10px] font-semibold uppercase tracking-wider truncate"
             style={{ color: 'var(--admin-text-faded)' }}
@@ -502,7 +588,7 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
         <button
           type="button"
           onClick={() => setShowHelp((s) => !s)}
-          className="admin-card px-3 flex items-center gap-1.5 text-xs font-semibold transition-colors"
+          className="admin-card px-3 flex items-center gap-1.5 text-xs font-semibold transition-colors flex-shrink-0"
           style={{
             color: showHelp ? 'var(--admin-accent)' : 'var(--admin-text-mute)',
           }}
@@ -511,6 +597,23 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
           <IconInfo size={14} />
           Como funciona
         </button>
+        {/* Kebab — acoes secundarias. So aparece se ha 2+ profissionais
+            (acao de copiar so faz sentido pra equipe). Sem isso, Solo
+            nao tem botao extra poluindo o header. */}
+        {activeProfessionals.length >= 2 && (
+          <div className="admin-card px-1 flex items-center flex-shrink-0">
+            <MoreActionsMenu
+              actions={[
+                {
+                  label: 'Copiar este horário pra todos os profissionais',
+                  icon: <IconCopy size={15} />,
+                  onClick: () => setConfirmCopyToAll(true),
+                },
+              ]}
+              ariaLabel="Mais ações de horário"
+            />
+          </div>
+        )}
       </div>
 
       {/* Texto explicativo colapsável */}
@@ -545,7 +648,7 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
         </div>
       )}
 
-      {/* Quick actions — atalhos de preenchimento em massa */}
+      {/* Quick actions — atalhos primarios (presets de dias/horario) */}
       <div className="flex gap-1.5 flex-wrap">
         <button
           type="button"
@@ -573,23 +676,6 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
         </button>
         <button
           type="button"
-          onClick={() => applyLunchToAll('12:00', '13:00')}
-          className="text-xs font-semibold px-2.5 py-1.5 rounded-full transition-all inline-flex items-center gap-1.5"
-          style={{
-            background: 'color-mix(in srgb, var(--admin-warn, #FBBF24) 14%, transparent)',
-            color: 'var(--admin-warn, #FBBF24)',
-            border: '1px solid color-mix(in srgb, var(--admin-warn, #FBBF24) 35%, transparent)',
-          }}
-          title="Adiciona pausa 12:00-13:00 em todos os dias ativos que ainda não têm pausa"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          Pausa 12-13 em todos
-        </button>
-        <button
-          type="button"
           onClick={closeAll}
           className="text-xs font-semibold px-2.5 py-1.5 rounded-full transition-all"
           style={{
@@ -599,6 +685,61 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
           }}
         >
           Fechar tudo
+        </button>
+      </div>
+
+      {/*
+        Atalho de pausa de almoco — inputs CONFIGURAVEIS antes de aplicar.
+        Default 12:00-13:00 cobre 80% dos casos (barbearia/salao/estetica
+        tradicionais). Quem faz pausa diferente (ex: 12:30-14:00) edita
+        e aplica num clique. Pra dias com periodo unico que cobre o
+        intervalo da pausa — pula dias com pausa custom ja configurada.
+      */}
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded-xl flex-wrap"
+        style={{
+          background: 'color-mix(in srgb, var(--admin-warn, #FBBF24) 10%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--admin-warn, #FBBF24) 28%, transparent)',
+        }}
+      >
+        <span
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold flex-shrink-0"
+          style={{ color: 'var(--admin-warn, #FBBF24)' }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          Pausa de almoço:
+        </span>
+        <input
+          type="time"
+          value={lunchStart}
+          onChange={(e) => setLunchStart(e.target.value)}
+          className="admin-input text-xs px-2 py-1 tabular-nums"
+          style={{ width: 88 }}
+          aria-label="Início da pausa"
+        />
+        <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>—</span>
+        <input
+          type="time"
+          value={lunchEnd}
+          onChange={(e) => setLunchEnd(e.target.value)}
+          className="admin-input text-xs px-2 py-1 tabular-nums"
+          style={{ width: 88 }}
+          aria-label="Fim da pausa"
+        />
+        <button
+          type="button"
+          onClick={() => applyLunchToAll(lunchStart, lunchEnd)}
+          disabled={lunchStart >= lunchEnd}
+          className="text-xs font-bold px-3 py-1.5 rounded-lg transition-all disabled:opacity-40"
+          style={{
+            background: 'var(--admin-warn, #FBBF24)',
+            color: '#0F172A',
+          }}
+        >
+          Aplicar em todos
         </button>
       </div>
 
@@ -853,6 +994,145 @@ export default function HorariosTab({ professionals, initialWorkingHours }: Prop
           setCopyTargets(new Set())
         }}
       />
+
+      {/*
+        #1 — Modal disparado quando o usuario tenta trocar de profissional
+        com mudancas nao salvas. 3 acoes (salvar+trocar / descartar+trocar
+        / cancelar) — nao cabe no ConfirmActionModal padrao (que tem 2),
+        entao renderizo inline.
+      */}
+      {pendingProfChange && (
+        <SwitchProfessionalModal
+          currentProfName={
+            activeProfessionals.find((p) => p.id === selectedProfId)?.name ?? 'profissional atual'
+          }
+          targetProfName={
+            activeProfessionals.find((p) => p.id === pendingProfChange)?.name ?? 'profissional'
+          }
+          saving={saving}
+          onSaveAndSwitch={handleSaveAndSwitch}
+          onDiscardAndSwitch={handleDiscardAndSwitch}
+          onCancel={() => setPendingProfChange(null)}
+        />
+      )}
+
+      {/* #2 — Confirmacao pra copiar horario do prof atual em todos os outros */}
+      <ConfirmActionModal
+        open={confirmCopyToAll}
+        title="Copiar horário em todos os profissionais?"
+        message={`Os ${activeProfessionals.length - 1} outros profissionais ativos vão receber o mesmo horário do ${activeProfessionals.find((p) => p.id === selectedProfId)?.name ?? 'profissional atual'}. Qualquer config existente neles vai ser sobrescrita.`}
+        confirmLabel="Sim, copiar"
+        cancelLabel="Cancelar"
+        tone="warn"
+        loading={saving}
+        onConfirm={applyScheduleToAllProfessionals}
+        onClose={() => setConfirmCopyToAll(false)}
+      />
+    </div>
+  )
+}
+
+// =============================================================================
+// Modal: trocar profissional com alteracoes nao salvas
+// =============================================================================
+function SwitchProfessionalModal({
+  currentProfName,
+  targetProfName,
+  saving,
+  onSaveAndSwitch,
+  onDiscardAndSwitch,
+  onCancel,
+}: {
+  currentProfName: string
+  targetProfName: string
+  saving: boolean
+  onSaveAndSwitch: () => void
+  onDiscardAndSwitch: () => void
+  onCancel: () => void
+}) {
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !saving) onCancel()
+    }
+    window.addEventListener('keydown', handler)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', handler)
+      document.body.style.overflow = ''
+    }
+  }, [saving, onCancel])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={() => !saving && onCancel()}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden"
+        style={{
+          background: 'var(--admin-popover-bg, #FFFFFF)',
+          border: '1px solid var(--admin-popover-border, #E2E8F0)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
+        }}
+      >
+        <div className="p-5 pb-4">
+          <h3 className="text-base font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
+            Alterações não salvas em {currentProfName}
+          </h3>
+          <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+            Você tem mudanças no horário de <strong>{currentProfName}</strong> ainda não salvas.
+            O que fazer antes de abrir <strong>{targetProfName}</strong>?
+          </p>
+        </div>
+        <div
+          className="flex flex-col gap-2 p-4"
+          style={{
+            background: 'rgba(0,0,0,0.18)',
+            borderTop: '1px solid var(--admin-popover-border, #E2E8F0)',
+          }}
+        >
+          <button
+            onClick={onSaveAndSwitch}
+            disabled={saving}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold transition-transform hover:translate-y-[-1px] disabled:opacity-50 disabled:translate-y-0"
+            style={{
+              background:
+                'linear-gradient(135deg, var(--brand-primary, #3B82F6), var(--brand-secondary, #06B6D4))',
+              color: '#FFFFFF',
+              boxShadow: '0 8px 22px -6px rgba(59,130,246,0.5)',
+            }}
+          >
+            {saving ? 'Salvando...' : `Salvar e abrir ${targetProfName}`}
+          </button>
+          <button
+            onClick={onDiscardAndSwitch}
+            disabled={saving}
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40"
+            style={{
+              background: 'transparent',
+              color: 'var(--admin-danger, #EF4444)',
+              border: '1px solid color-mix(in srgb, var(--admin-danger, #EF4444) 30%, transparent)',
+            }}
+          >
+            Descartar mudanças e abrir
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={saving}
+            className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
+            style={{
+              background: 'transparent',
+              color: 'var(--admin-text-mute)',
+            }}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
