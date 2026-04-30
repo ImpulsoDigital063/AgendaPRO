@@ -4,6 +4,65 @@ import { useEffect, useState } from 'react'
 
 type Platform = 'ios' | 'android' | null
 
+/**
+ * Seta animada flutuando sobre o modal — aponta pro icone real de
+ * compartilhar do Safari (canto superior direito da barra de endereco).
+ * Reforca o passo 1 pra usuarios leigos: alem do mockup dentro do modal,
+ * uma seta REAL na tela mostra exatamente onde tocar.
+ */
+function SafariShareArrow() {
+  return (
+    <div
+      className="fixed pointer-events-none z-[101] install-anim-arrow-float"
+      style={{
+        top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
+        right: '4px',
+        width: '170px',
+        height: '130px',
+      }}
+    >
+      <svg viewBox="0 0 170 120" width="170" height="120" style={{ overflow: 'visible' }}>
+        {/* Curva da seta — sai do canto inferior-esquerdo, vai pro topo-direito */}
+        <path
+          d="M 20 105 Q 50 80 95 55 T 158 15"
+          stroke="var(--brand-primary)"
+          strokeWidth="5"
+          fill="none"
+          strokeLinecap="round"
+          style={{
+            filter:
+              'drop-shadow(0 2px 8px color-mix(in srgb, var(--brand-primary) 60%, transparent))',
+          }}
+        />
+        {/* Cabeca da seta */}
+        <path
+          d="M 158 15 L 145 20 M 158 15 L 152 2"
+          stroke="var(--brand-primary)"
+          strokeWidth="5"
+          strokeLinecap="round"
+          fill="none"
+          style={{
+            filter:
+              'drop-shadow(0 2px 8px color-mix(in srgb, var(--brand-primary) 60%, transparent))',
+          }}
+        />
+      </svg>
+      {/* Label "compartilhar" embaixo da curva */}
+      <span
+        className="absolute left-2 bottom-0 text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap"
+        style={{
+          background: 'var(--brand-primary)',
+          color: 'white',
+          boxShadow:
+            '0 6px 16px -2px color-mix(in srgb, var(--brand-primary) 50%, transparent)',
+        }}
+      >
+        compartilhar
+      </span>
+    </div>
+  )
+}
+
 function GuideSheet({
   platform,
   onClose,
@@ -14,7 +73,10 @@ function GuideSheet({
   const isIOS = platform === 'ios'
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/70 flex items-end" onClick={onClose}>
+    <>
+      {/* Seta flutuante apontando pro icone real do Safari (so iOS) */}
+      {isIOS && <SafariShareArrow />}
+      <div className="fixed inset-0 z-[100] bg-black/70 flex items-end" onClick={onClose}>
       <div
         className="w-full max-w-lg mx-auto rounded-t-3xl p-6 pb-10 animate-slideUp"
         style={{
@@ -200,6 +262,7 @@ function GuideSheet({
         </button>
       </div>
     </div>
+    </>
   )
 }
 
@@ -353,13 +416,20 @@ export default function InstallBanner() {
         <GuideSheet platform={platform} onClose={() => setShowGuide(false)} />
       )}
 
-      <style jsx>{`
-        @keyframes slideUp {
+      <style jsx global>{`
+        @keyframes installSlideUp {
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
         }
+        @keyframes installArrowFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+        }
         .animate-slideUp {
-          animation: slideUp 0.3s ease-out;
+          animation: installSlideUp 0.3s ease-out;
+        }
+        .install-anim-arrow-float {
+          animation: installArrowFloat 1.6s ease-in-out infinite;
         }
       `}</style>
     </>
