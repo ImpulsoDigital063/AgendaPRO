@@ -155,6 +155,7 @@ export default function FidelidadeTab({
   const [savingMode, setSavingMode] = useState(false)
 
   const [showHelp, setShowHelp] = useState(false)
+  const [showHelpDica, setShowHelpDica] = useState(false)
   const [showAllRanking, setShowAllRanking] = useState(false)
 
   const addFormRef = useRef<HTMLDivElement | null>(null)
@@ -1158,28 +1159,52 @@ export default function FidelidadeTab({
                 </div>
               </div>
             ))}
-            <div
-              className="rounded-xl p-3"
+            {/* Dica pro atendimento — colapsada por default pra economizar
+                espaco. Admin abre se quiser ler script de fala. */}
+            <button
+              type="button"
+              onClick={() => setShowHelpDica((s) => !s)}
+              className="w-full rounded-xl p-3 text-left flex items-center justify-between gap-2 transition-colors"
               style={{
                 background: 'var(--admin-input-bg)',
                 border: '1px solid var(--admin-border)',
+                color: 'var(--admin-text)',
               }}
+              aria-expanded={showHelpDica}
             >
-              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--admin-text)' }}>
-                Dica pro atendimento
-              </p>
-              <p
-                className="text-[11px] leading-relaxed"
-                style={{ color: 'var(--admin-text-mute)' }}
+              <span className="text-xs font-semibold">
+                {showHelpDica ? 'Dica pro atendimento' : 'Mostrar dica pro atendimento'}
+              </span>
+              <IconChevronDown
+                size={14}
+                style={{
+                  color: 'var(--admin-text-mute)',
+                  transform: showHelpDica ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 220ms ease',
+                }}
+              />
+            </button>
+            {showHelpDica && (
+              <div
+                className="rounded-xl p-3 -mt-1"
+                style={{
+                  background: 'var(--admin-input-bg)',
+                  border: '1px solid var(--admin-border)',
+                }}
               >
-                Fale na hora:{' '}
-                <em>
-                  &ldquo;Tu pode ganhar pontos avaliando a gente no Google e indicando amigo pelo
-                  link da agenda. Troca por corte grátis depois.&rdquo;
-                </em>{' '}
-                Cliente que conhece o programa indica mais.
-              </p>
-            </div>
+                <p
+                  className="text-[11px] leading-relaxed"
+                  style={{ color: 'var(--admin-text-mute)' }}
+                >
+                  Fale na hora:{' '}
+                  <em>
+                    &ldquo;Tu pode ganhar pontos avaliando a gente no Google e indicando amigo
+                    pelo link da agenda. Troca por corte grátis depois.&rdquo;
+                  </em>{' '}
+                  Cliente que conhece o programa indica mais.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </section>
