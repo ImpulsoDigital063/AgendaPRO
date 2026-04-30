@@ -14,6 +14,8 @@ import type { FAQItem } from '@/components/FAQ'
 import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
 import { TimelineMicroUI, DorMicroUI } from '@/components/LandingMicroUI'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
+import PricingModalidades from '@/components/lp/PricingModalidades'
+import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
 import OnboardingSteps from '@/components/OnboardingSteps'
 import SocialProofToast from '@/components/SocialProofToast'
 import { AnimatedGradient, SectionReveal } from '@/components/ui'
@@ -73,15 +75,15 @@ const BARBER_FAQS: FAQItem[] = [
   },
   {
     q: 'Quanto custa?',
-    a: 'Plano Solo (admin + 1 colaborador): R$67/mês sem setup. Plano Equipe (até 5 profissionais): R$97/mês sem setup. Setup oficial R$197 só volta a ser cobrado a partir do cliente 11+ — os 10 primeiros entram isentos pra sempre (Clube Fundador). Sem fidelidade. Garantia de 7 dias.',
+    a: 'Solo R$ 67/mês (admin + 1 colaborador) ou Equipe R$ 97/mês (até 5 profissionais). Sem setup pros 10 primeiros (Clube Fundador) — depois dos 10, setup oficial volta a ser R$ 197. Sem fidelidade, garantia de 7 dias.',
   },
   {
     q: 'Posso cancelar quando quiser?',
     a: 'Sim. Sem multa, sem fidelidade, sem contrato anual. Cancela pelo painel ou pelo WhatsApp em 1 clique. Se voltar depois, seus dados continuam lá.',
   },
   {
-    q: 'Como funciona o pagamento?',
-    a: 'Mensalidade é cobrada automaticamente todo mês no cartão de crédito ou no saldo da conta Mercado Pago. Quem é Clube Fundador (10 primeiros) entra sem setup — demais pagam setup único de R$ 197 via Pix manual no WhatsApp.',
+    q: 'Como funciona o pagamento? Quais formas de pagar?',
+    a: '4 jeitos: (1) Cartão automático todo mês — você não precisa lembrar. (2) PIX mensal — a gente avisa 3 dias antes. (3) Semestral à vista no PIX — Solo R$ 350 (economiza R$ 52) ou Equipe R$ 500 (economiza R$ 82). (4) Anual à vista no PIX — Solo R$ 670 ou Equipe R$ 970 (economiza ~17%, equivale a 2 meses grátis). No cadastro você escolhe qual.',
   },
 
   /* ── FUNCIONALIDADE (como funciona) ── */
@@ -216,7 +218,7 @@ export default function BarbeariaPage() {
 
             {/* Coluna esquerda — copy */}
             <SectionReveal className="flex flex-col items-center lg:items-start text-center lg:text-left gap-5 sm:gap-6 lg:gap-7">
-              {/* Pill compacto */}
+              {/* Pill compacto — vaga limitada do Clube Fundador */}
               <div className="pill inline-flex items-center gap-2 text-[10px] sm:text-xs">
                 <span
                   className="px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black"
@@ -226,22 +228,25 @@ export default function BarbeariaPage() {
                     letterSpacing: '0.05em',
                   }}
                 >
-                  NOVO
+                  10 VAGAS
                 </span>
-                <span className="text-white/95 font-bold uppercase tracking-wider">SmartAgenda pra barbearias</span>
+                <span className="text-white/95 font-bold uppercase tracking-wider">Clube Fundador SmartAgenda</span>
               </div>
 
+              {/* H1 — headline cirúrgica: perda financeira específica */}
               <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2.2rem, 7vw, 4.5rem)' }}>
-                Para de perder<br />
-                cliente por<br className="hidden sm:block" />
-                <span className="text-gradient">WhatsApp.</span>
+                Sua agenda<br />
+                vaza{' '}
+                <span style={{ color: '#F59E0B' }}>R$ 1.200</span><br className="hidden sm:block" />
+                todo mês.
               </h1>
 
+              {/* Subhead — transformação concreta + cota fechada com ganho real */}
               <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-                <strong className="text-white">Seu cliente agenda sozinho pelo link na bio.</strong> Recebe lembrete automático, não fura. Cancelou? A fila de espera preenche a vaga em minutos. E cada corte vira avaliação no Google — sua barbearia sobe no ranking sem pagar ads.
+                O AgendaPRO tira você do WhatsApp e bota o cliente pra agendar sozinho pelo link da bio — com lembrete antes do corte e fila de espera quando alguém cancela. <strong className="text-white">O dinheiro que vazava volta pro caixa.</strong>
               </p>
 
-              {/* Stats rápidos */}
+              {/* Stats — números específicos de impacto financeiro */}
               <div className="flex flex-wrap gap-2 sm:gap-3">
                 <div
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-xl"
@@ -251,11 +256,26 @@ export default function BarbeariaPage() {
                   }}
                 >
                   <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(16,185,129,0.18)', color: '#10B981' }}>
+                    <IconCash size={14} />
+                  </span>
+                  <span className="text-left text-[12px] sm:text-[13px] leading-tight">
+                    <strong className="text-white">+R$ 1.200/mês</strong>
+                    <span className="text-slate-500 hidden sm:inline"> · fila + lembrete</span>
+                  </span>
+                </div>
+                <div
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl"
+                  style={{
+                    background: 'rgba(6,182,212,0.08)',
+                    border: '1px solid rgba(6,182,212,0.25)',
+                  }}
+                >
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(6,182,212,0.18)', color: '#06B6D4' }}>
                     <IconCheck size={14} />
                   </span>
                   <span className="text-left text-[12px] sm:text-[13px] leading-tight">
-                    <strong className="text-white">-50% faltas</strong>
-                    <span className="text-slate-500 hidden sm:inline"> · lembrete automático</span>
+                    <strong className="text-white">8 horários/mês</strong>
+                    <span className="text-slate-500 hidden sm:inline"> · salvos da falta</span>
                   </span>
                 </div>
                 <div
@@ -270,33 +290,19 @@ export default function BarbeariaPage() {
                   </span>
                   <span className="text-left text-[12px] sm:text-[13px] leading-tight">
                     <strong className="text-white">4.9 no Google</strong>
-                    <span className="text-slate-500 hidden sm:inline"> · avaliação incentivada</span>
-                  </span>
-                </div>
-                <div
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl"
-                  style={{
-                    background: 'rgba(59,130,246,0.08)',
-                    border: '1px solid rgba(59,130,246,0.25)',
-                  }}
-                >
-                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(59,130,246,0.18)', color: '#3B82F6' }}>
-                    <IconClock24 size={14} />
-                  </span>
-                  <span className="text-left text-[12px] sm:text-[13px] leading-tight">
-                    <strong className="text-white">Funciona 24h</strong>
-                    <span className="text-slate-500 hidden sm:inline"> · agenda enquanto dorme</span>
+                    <span className="text-slate-500 hidden sm:inline"> · após cada corte</span>
                   </span>
                 </div>
               </div>
 
+              {/* CTAs */}
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
                 <Link
                   href="/cadastro"
                   className="btn btn-primary-v2 btn-shimmer w-full sm:w-auto justify-center font-black text-base px-6 py-4 min-h-[52px]"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    Garantir meu lugar
+                    Garantir minha vaga
                     <IconArrowRight size={20} />
                   </span>
                 </Link>
@@ -308,8 +314,12 @@ export default function BarbeariaPage() {
                 </a>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-400">
-                R$67/mês · Sem setup (Clube Fundador) · Garantia de 7 dias
+              {/* Ancoragem de mercado — empilha valor antes do preço aparecer no scroll */}
+              <p className="text-xs sm:text-sm text-slate-400 max-w-md">
+                A partir de R$ 67/mês · Cancela quando quiser · Garantia 7 dias.{' '}
+                <span className="text-slate-500">
+                  Trinks/ZenPlace cobram R$ 200-500 com fidelidade anual — aqui é livre.
+                </span>
               </p>
             </SectionReveal>
 
@@ -791,6 +801,13 @@ export default function BarbeariaPage() {
         </div>
       </section>
 
+      {/* ═══════════ 6.5 COMPARATIVO FEATURES ═══════════ */}
+      <section className="relative py-16 sm:py-20 lg:py-24">
+        <SectionReveal>
+          <ComparativoConcorrentes accent="cyan" concorrentes={['Trinks', 'Booksy', 'BarberApp']} />
+        </SectionReveal>
+      </section>
+
       {/* ═══════════ 7. PASSOS ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">
         <div className="container px-4">
@@ -906,210 +923,9 @@ export default function BarbeariaPage() {
             </div>
           </SectionReveal>
 
-          {/* ── Cards de plano ── */}
-          <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 max-w-4xl mx-auto items-start">
-
-            {/* Solo */}
-            <div className="glass rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 lift-card">
-              <div className="flex items-start justify-between mb-5">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-black text-white mb-1">Solo</h3>
-                  <p className="text-slate-400 text-xs sm:text-sm">Admin + 1 barbeiro comissionado</p>
-                </div>
-                <div className="text-cyan-400">
-                  <IconScissors size={28} />
-                </div>
-              </div>
-
-              {/* Preço + economia + breakdown */}
-              <div className="mb-5 sm:mb-6">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl sm:text-5xl font-black text-white">R$67</span>
-                  <span className="text-slate-400 text-sm">/mês</span>
-                </div>
-                <div className="flex items-center gap-3 mt-2">
-                  <span className="text-slate-500 text-xs">Sem setup pros 10 primeiros (Clube Fundador)</span>
-                  <span
-                    className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1"
-                    style={{
-                      background: 'rgba(16,185,129,0.15)',
-                      border: '1px solid rgba(16,185,129,0.4)',
-                      color: '#34D399',
-                    }}
-                  >
-                    <IconBolt size={10} strokeWidth={2.5} />
-                    Clube Fundador
-                  </span>
-                </div>
-                <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5">
-                  <IconClock24 size={11} strokeWidth={2} />
-                  R$1,56/dia — menos que um café
-                </p>
-              </div>
-
-              {/* ROI inline */}
-              <div
-                className="rounded-xl px-3 py-2.5 mb-5 text-[11px] sm:text-xs"
-                style={{
-                  background: 'rgba(6,182,212,0.08)',
-                  border: '1px solid rgba(6,182,212,0.25)',
-                }}
-              >
-                <span className="text-slate-300">1 cliente da fila/semana = </span>
-                <span className="text-white font-black">R$160/mês</span>
-                <span className="text-slate-300">. AgendaPRO = R$67. </span>
-                <span className="font-black" style={{ color: '#34D399' }}>Sobra R$93.</span>
-              </div>
-
-              <ul className="space-y-2.5 mb-4 text-xs sm:text-sm text-slate-300">
-                {[
-                  'Link pra bio do Insta e Google Meu Negócio',
-                  'Lembrete automático anti-falta',
-                  'Fila de espera quando cliente cancela',
-                  'Sistema de pontos + indicação',
-                  'Google Reviews — sobe seu ranking',
-                  'Lista de clientes (nome, telefone, email)',
-                  'Relatório financeiro por barbeiro',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <span className="text-cyan-400 mt-0.5 flex-shrink-0">
-                      <IconCheck size={14} />
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* Bônus Clube Fundador */}
-              <div
-                className="rounded-xl p-3 mb-5 flex items-start gap-3"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(251,191,36,0.08) 100%)',
-                  border: '1px dashed rgba(245,158,11,0.5)',
-                }}
-              >
-                <span className="flex-shrink-0 text-amber-300 mt-0.5">
-                  <IconGift size={20} />
-                </span>
-                <div>
-                  <p className="text-xs sm:text-sm font-black text-amber-200 leading-tight">
-                    Clube Fundador — 10 primeiros entram sem setup (R$197) pra sempre
-                  </p>
-                  <p className="text-[11px] sm:text-xs text-amber-100/70 mt-0.5">
-                    Depois dos 10, preço sobe. Quem entrou antes mantém pra sempre.
-                  </p>
-                </div>
-              </div>
-
-              <Link
-                href="/cadastro"
-                className="btn btn-primary-v2 btn-shimmer w-full justify-center font-bold text-sm sm:text-base px-5 py-3.5 min-h-[48px]"
-              >
-                <span className="relative z-10">Entrar no Clube</span>
-              </Link>
-            </div>
-
-            {/* Equipe — DESTAQUE */}
-            <div
-              className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 relative lift-card md:scale-[1.03] md:origin-top"
-              style={{
-                background: 'linear-gradient(180deg, rgba(139,92,246,0.12) 0%, rgba(8,11,24,0.85) 50%, rgba(8,11,24,0.95) 100%)',
-                border: '1px solid rgba(139,92,246,0.45)',
-                boxShadow: '0 25px 80px rgba(139,92,246,0.3), 0 0 0 1px rgba(139,92,246,0.1), inset 0 1px 0 rgba(255,255,255,0.08)',
-              }}
-            >
-              {/* Brilho de canto */}
-              <div
-                className="absolute -top-20 -right-20 w-60 h-60 rounded-full opacity-40 pointer-events-none"
-                style={{
-                  background: 'radial-gradient(circle, rgba(139,92,246,0.5), transparent 70%)',
-                  filter: 'blur(40px)',
-                }}
-                aria-hidden
-              />
-
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 pill-glow text-[10px] sm:text-xs whitespace-nowrap">
-                <IconStar size={10} className="text-amber-300" /> MAIS POPULAR
-              </div>
-
-              <div className="flex items-start justify-between mb-5 mt-2 relative z-10">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-black text-white mb-1">Equipe</h3>
-                  <p className="text-slate-400 text-xs sm:text-sm">Admin + múltiplos barbeiros + recepção</p>
-                </div>
-                <div className="text-violet-400">
-                  <IconChair size={28} />
-                </div>
-              </div>
-
-              {/* Preço + economia + breakdown */}
-              <div className="mb-5 sm:mb-6 relative z-10">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl sm:text-5xl font-black text-gradient">R$97</span>
-                  <span className="text-slate-400 text-sm">/mês</span>
-                </div>
-                <div className="flex items-center gap-3 mt-2">
-                  <span className="text-slate-500 text-xs">Sem setup pros 10 primeiros (Clube Fundador)</span>
-                  <span
-                    className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md inline-flex items-center gap-1"
-                    style={{
-                      background: 'rgba(16,185,129,0.15)',
-                      border: '1px solid rgba(16,185,129,0.4)',
-                      color: '#34D399',
-                    }}
-                  >
-                    <IconBolt size={10} strokeWidth={2.5} />
-                    Clube Fundador
-                  </span>
-                </div>
-                <p className="text-slate-500 text-[11px] mt-2 flex items-center gap-1.5">
-                  <IconClock24 size={11} strokeWidth={2} />
-                  R$2,23/dia — por barbeiro sai ainda menos
-                </p>
-              </div>
-
-              {/* ROI inline */}
-              <div
-                className="rounded-xl px-3 py-2.5 mb-5 text-[11px] sm:text-xs relative z-10"
-                style={{
-                  background: 'rgba(139,92,246,0.1)',
-                  border: '1px solid rgba(139,92,246,0.3)',
-                }}
-              >
-                <span className="text-slate-300">5 barbeiros x 1 fila/semana = </span>
-                <span className="text-white font-black">R$800/mês</span>
-                <span className="text-slate-300">. Plano = R$97. </span>
-                <span className="font-black" style={{ color: '#34D399' }}>Sobra R$703.</span>
-              </div>
-
-              <ul className="space-y-2.5 mb-6 text-xs sm:text-sm text-slate-300 relative z-10">
-                {[
-                  'Tudo do Solo',
-                  'Múltiplos barbeiros com agenda separada',
-                  'Role de recepção (atendimento no balcão)',
-                  'Comissão automática por barbeiro',
-                  'Lista de clientes compartilhada da barbearia',
-                  'Financeiro consolidado da barbearia',
-                  'Suporte prioritário no WhatsApp',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <span className="text-cyan-400 mt-0.5 flex-shrink-0">
-                      <IconCheck size={14} />
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="relative z-10">
-                <Link
-                  href="/cadastro"
-                  className="btn btn-primary-v2 btn-shimmer w-full justify-center font-bold text-sm sm:text-base px-5 py-3.5 min-h-[48px]"
-                >
-                  <span className="relative z-10">Entrar no Clube</span>
-                </Link>
-              </div>
-            </div>
+          {/* ── 4 modalidades de pagamento (cartão + 3 PIX) ── */}
+          <SectionReveal>
+            <PricingModalidades accent="cyan" />
           </SectionReveal>
 
           {/* ── Selo de garantia ── */}
