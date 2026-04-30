@@ -86,9 +86,11 @@ export default function FidelidadeTab({
   const [pointsMode, setPointsMode] = useState<'business' | 'professional'>(initialPointsMode)
   const [referralPoints, setReferralPoints] = useState(String(pointsForReferral))
   const [referralSavedAt, setReferralSavedAt] = useState<number | null>(null)
+  const [referralSaving, setReferralSaving] = useState(false)
 
   const [punctualityPoints, setPunctualityPoints] = useState(String(pointsForPunctuality))
   const [punctualitySavedAt, setPunctualitySavedAt] = useState<number | null>(null)
+  const [punctualitySaving, setPunctualitySaving] = useState(false)
 
   const [pendingClaims, setPendingClaims] = useState<ReviewClaim[]>([])
   const [claimActionId, setClaimActionId] = useState<string | null>(null)
@@ -109,6 +111,23 @@ export default function FidelidadeTab({
   const addFormRef = useRef<HTMLDivElement | null>(null)
   const referralSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const punctualitySavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Refs pra debounce de auto-save + flush no unmount
+  const referralDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const punctualityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Refs pra rastrear o valor latest sem causar re-render
+  const referralLatestRef = useRef(referralPoints)
+  const punctualityLatestRef = useRef(punctualityPoints)
+  // Refs pro ultimo valor SALVO (compara pra evitar saves desnecessarios)
+  const referralLastSavedRef = useRef(pointsForReferral)
+  const punctualityLastSavedRef = useRef(pointsForPunctuality)
+
+  useEffect(() => {
+    referralLatestRef.current = referralPoints
+  }, [referralPoints])
+  useEffect(() => {
+    punctualityLatestRef.current = punctualityPoints
+  }, [punctualityPoints])
 
   // Carrega claims pendentes
   useEffect(() => {
@@ -182,31 +201,100 @@ export default function FidelidadeTab({
     setConfirmModeChange(null)
   }
 
-  // ---- Pontos por indicação (autosave em blur) ----
-  async function handleReferralBlur() {
-    const value = parseInt(referralPoints) || 0
-    if (value === pointsForReferral) return
-    await supabase
+  // ---- Pontos por indicação ----
+  // Save isolado — usado por onChange (debounce), onBlur (flush imediato),
+  // e cleanup do unmount (quando troca de aba sem dar blur).
+  async function saveReferralPoints(value: number) {
+    if (value === referralLastSavedRef.current) return
+    setReferralSaving(true)
+    const { error } = await supabase
       .from('businesses')
       .update({ points_for_referral: value })
       .eq('id', businessId)
-    setReferralSavedAt(Date.now())
-    if (referralSavedTimerRef.current) clearTimeout(referralSavedTimerRef.current)
-    referralSavedTimerRef.current = setTimeout(() => setReferralSavedAt(null), 2000)
+    setReferralSaving(false)
+    if (!error) {
+      referralLastSavedRef.current = value
+      setReferralSavedAt(Date.now())
+      if (referralSavedTimerRef.current) clearTimeout(referralSavedTimerRef.current)
+      referralSavedTimerRef.current = setTimeout(() => setReferralSavedAt(null), 2500)
+    }
   }
 
-  // ---- Bônus de pontualidade (autosave em blur) ----
-  async function handlePunctualityBlur() {
-    const value = parseInt(punctualityPoints) || 0
-    if (value === pointsForPunctuality) return
-    await supabase
+  function handleReferralChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const newValue = e.target.value
+    setReferralPoints(newValue)
+    if (referralDebounceRef.current) clearTimeout(referralDebounceRef.current)
+    referralDebounceRef.current = setTimeout(() => {
+      saveReferralPoints(parseInt(newValue) || 0)
+    }, 800)
+  }
+
+  function handleReferralBlur() {
+    if (referralDebounceRef.current) clearTimeout(referralDebounceRef.current)
+    saveReferralPoints(parseInt(referralPoints) || 0)
+  }
+
+  // ---- Bônus de pontualidade ----
+  async function savePunctualityPoints(value: number) {
+    if (value === punctualityLastSavedRef.current) return
+    setPunctualitySaving(true)
+    const { error } = await supabase
       .from('businesses')
       .update({ punctuality_bonus_points: value })
       .eq('id', businessId)
-    setPunctualitySavedAt(Date.now())
-    if (punctualitySavedTimerRef.current) clearTimeout(punctualitySavedTimerRef.current)
-    punctualitySavedTimerRef.current = setTimeout(() => setPunctualitySavedAt(null), 2000)
+    setPunctualitySaving(false)
+    if (!error) {
+      punctualityLastSavedRef.current = value
+      setPunctualitySavedAt(Date.now())
+      if (punctualitySavedTimerRef.current) clearTimeout(punctualitySavedTimerRef.current)
+      punctualitySavedTimerRef.current = setTimeout(() => setPunctualitySavedAt(null), 2500)
+    }
   }
+
+  function handlePunctualityChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const newValue = e.target.value
+    setPunctualityPoints(newValue)
+    if (punctualityDebounceRef.current) clearTimeout(punctualityDebounceRef.current)
+    punctualityDebounceRef.current = setTimeout(() => {
+      savePunctualityPoints(parseInt(newValue) || 0)
+    }, 800)
+  }
+
+  function handlePunctualityBlur() {
+    if (punctualityDebounceRef.current) clearTimeout(punctualityDebounceRef.current)
+    savePunctualityPoints(parseInt(punctualityPoints) || 0)
+  }
+
+  // Flush no unmount — quando usuario troca de aba sem dar blur,
+  // o componente desmonta e este cleanup forca o save de qualquer
+  // mudanca pendente. Resolve o bug "alteracoes somem ao trocar de aba".
+  useEffect(() => {
+    return () => {
+      // Cancela debounces pendentes
+      if (referralDebounceRef.current) clearTimeout(referralDebounceRef.current)
+      if (punctualityDebounceRef.current) clearTimeout(punctualityDebounceRef.current)
+
+      // Flush sincrono via fire-and-forget — promise nao pode ser awaited
+      // em cleanup, mas Supabase client envia request mesmo sem await
+      const refValue = parseInt(referralLatestRef.current) || 0
+      if (refValue !== referralLastSavedRef.current) {
+        supabase
+          .from('businesses')
+          .update({ points_for_referral: refValue })
+          .eq('id', businessId)
+          .then(() => undefined)
+      }
+      const punctValue = parseInt(punctualityLatestRef.current) || 0
+      if (punctValue !== punctualityLastSavedRef.current) {
+        supabase
+          .from('businesses')
+          .update({ punctuality_bonus_points: punctValue })
+          .eq('id', businessId)
+          .then(() => undefined)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ---- Recompensas ----
   function scrollToAddForm(prefillName?: string) {
@@ -557,20 +645,13 @@ export default function FidelidadeTab({
       <section className="space-y-3">
         <SectionHeader label="Como o cliente ganha pontos" />
 
-        {/* Pontos por indicação */}
+        {/* Pontos por indicação — auto-save com debounce */}
         <div className="admin-card p-4 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
               Pontos por indicação
             </p>
-            {referralSavedAt && (
-              <span
-                className="text-[10px] font-bold flex items-center gap-1 transition-opacity"
-                style={{ color: 'var(--admin-success, #16A34A)' }}
-              >
-                <IconCheck size={11} /> Salvo
-              </span>
-            )}
+            <SaveStatus saving={referralSaving} savedAt={referralSavedAt} />
           </div>
           <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
             Quando um amigo indicado faz o primeiro agendamento e você confirma.
@@ -579,7 +660,7 @@ export default function FidelidadeTab({
             <input
               type="number"
               value={referralPoints}
-              onChange={(e) => setReferralPoints(e.target.value)}
+              onChange={handleReferralChange}
               onBlur={handleReferralBlur}
               placeholder="ex: 200"
               min="0"
@@ -591,20 +672,13 @@ export default function FidelidadeTab({
           </div>
         </div>
 
-        {/* Bônus de pontualidade */}
+        {/* Bônus de pontualidade — auto-save com debounce */}
         <div className="admin-card p-4 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
               Bônus de pontualidade
             </p>
-            {punctualitySavedAt && (
-              <span
-                className="text-[10px] font-bold flex items-center gap-1 transition-opacity"
-                style={{ color: 'var(--admin-success, #16A34A)' }}
-              >
-                <IconCheck size={11} /> Salvo
-              </span>
-            )}
+            <SaveStatus saving={punctualitySaving} savedAt={punctualitySavedAt} />
           </div>
           <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
             Pts extras pra cliente que chega no horário. O profissional decide na hora — clica
@@ -614,7 +688,7 @@ export default function FidelidadeTab({
             <input
               type="number"
               value={punctualityPoints}
-              onChange={(e) => setPunctualityPoints(e.target.value)}
+              onChange={handlePunctualityChange}
               onBlur={handlePunctualityBlur}
               placeholder="ex: 10"
               min="0"
@@ -1209,4 +1283,40 @@ function Kpi({
       </p>
     </div>
   )
+}
+
+/**
+ * Indicador de status de auto-save: "Salvando..." durante o request,
+ * "✓ Salvo" por 2.5s depois. Quieto quando idle.
+ * Sutil — sem botão, sem barra grande, só feedback claro.
+ */
+function SaveStatus({ saving, savedAt }: { saving: boolean; savedAt: number | null }) {
+  if (saving) {
+    return (
+      <span
+        className="text-[10px] font-bold flex items-center gap-1"
+        style={{ color: 'var(--admin-text-mute)' }}
+      >
+        <span
+          className="inline-block w-2 h-2 rounded-full"
+          style={{
+            background: 'var(--admin-text-mute)',
+            animation: 'pulse 1.4s ease-in-out infinite',
+          }}
+        />
+        Salvando...
+      </span>
+    )
+  }
+  if (savedAt) {
+    return (
+      <span
+        className="text-[10px] font-bold flex items-center gap-1 transition-opacity"
+        style={{ color: 'var(--admin-success, #16A34A)' }}
+      >
+        <IconCheck size={11} /> Salvo
+      </span>
+    )
+  }
+  return null
 }
