@@ -76,9 +76,11 @@ export default function ConfirmActionModal({
         onClick={(e) => e.stopPropagation()}
         className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden"
         style={{
-          background: 'var(--admin-surface, #FFFFFF)',
-          border: '1px solid var(--admin-border, #E2E8F0)',
-          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.45)',
+          // Sólido (dark e light) — admin-surface no dark é translucido
+          // e fica ilegivel sobre cards e orbs animados de fundo
+          background: 'var(--admin-popover-bg, #FFFFFF)',
+          border: '1px solid var(--admin-popover-border, #E2E8F0)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
         }}
       >
         <div className="flex items-start justify-between p-5 pb-2">
@@ -108,8 +110,9 @@ export default function ConfirmActionModal({
         <div
           className="flex flex-col-reverse sm:flex-row gap-2 p-4 sm:justify-end"
           style={{
-            background: 'var(--admin-surface-hi, #F8FAFC)',
-            borderTop: '1px solid var(--admin-divider, #E2E8F0)',
+            // Footer levemente mais escuro pra destacar do corpo do modal
+            background: 'rgba(0,0,0,0.18)',
+            borderTop: '1px solid var(--admin-popover-border, #E2E8F0)',
           }}
         >
           <button
