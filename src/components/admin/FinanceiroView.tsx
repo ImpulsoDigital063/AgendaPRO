@@ -290,6 +290,96 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
         </h2>
         <FinanceAppointmentList items={rows} />
       </section>
+
+      {/* Mais ações: subpáginas + export */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+          Mais
+        </h2>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            href="/admin/financeiro/despesas"
+            className="admin-card p-3 flex items-center gap-2.5 transition-opacity hover:opacity-90"
+          >
+            <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}>
+              <span className="text-base font-bold">−</span>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--admin-text)' }}>
+                Despesas
+              </p>
+              <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                Aluguel, produtos, salários
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/financeiro/cancelados"
+            className="admin-card p-3 flex items-center gap-2.5 transition-opacity hover:opacity-90"
+          >
+            <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(148,163,184,0.18)', color: '#64748B' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--admin-text)' }}>
+                Cancelados
+              </p>
+              <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                Cobrar tarifa / remarcar
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/financeiro/analises"
+            className="admin-card p-3 flex items-center gap-2.5 transition-opacity hover:opacity-90"
+          >
+            <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(168,85,247,0.18)', color: '#A855F7' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--admin-text)' }}>
+                Análises
+              </p>
+              <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                Gráficos e tendências
+              </p>
+            </div>
+          </Link>
+
+          <a
+            href={`/api/admin/financeiro/export?periodo=${periodo}`}
+            className="admin-card p-3 flex items-center gap-2.5 transition-opacity hover:opacity-90"
+          >
+            <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(16,185,129,0.18)', color: '#10B981' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--admin-text)' }}>
+                Exportar CSV
+              </p>
+              <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                Pra contador / Excel
+              </p>
+            </div>
+          </a>
+        </div>
+      </section>
     </div>
   )
 }
