@@ -323,7 +323,7 @@ function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
       onClick={onClose}
     >
@@ -332,8 +332,11 @@ function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
         style={{
           // svh exclui barras dinâmicas do iOS (status bar + home indicator)
           maxHeight: 'calc(100svh - 16px)',
-          // Em mobile (bottom sheet), reserva espaço pra home indicator
-          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+          // Em mobile o card ancora no fundo (items-end) — reserva
+          // espaço pra home indicator + altura da BottomNav fixa
+          // (~80px em PWA standalone) pra botões não ficarem por
+          // baixo dela.
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px) + 5rem, 5rem)',
         }}
         onClick={(e) => e.stopPropagation()}
       >

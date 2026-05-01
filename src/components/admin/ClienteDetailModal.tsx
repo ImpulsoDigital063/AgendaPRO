@@ -139,7 +139,7 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
       onClick={onClose}
     >
@@ -151,8 +151,10 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
           // calculado incluindo a barra inferior do iOS, deixando
           // parte do conteudo invisivel.
           maxHeight: 'calc(100svh - 16px)',
-          // safe-area-inset-bottom respeita home indicator do iPhone
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          // BottomNav fixa do app (z-50) tem ~80px de altura. Soma
+          // ao safe-area-inset-bottom pra conteúdo final do modal
+          // não ficar por baixo dela.
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px) + 5rem, 5rem)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
