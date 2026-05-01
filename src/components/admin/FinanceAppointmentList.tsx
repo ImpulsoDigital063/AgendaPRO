@@ -127,13 +127,19 @@ function Row({
           ) : (
             <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>—</p>
           )}
-          <span
-            className="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
-            style={{ background: status.bg, color: status.color }}
-          >
-            <span className="w-1 h-1 rounded-full" style={{ background: status.dot }} />
-            {status.label}
-          </span>
+          {/* Pill de status: só mostra pra status que precisam de
+              atenção (cancelado, no_show, completed pago). Pra
+              "confirmed" não-pago, a linha inferior já mostra
+              "Pagamento pendente" — sem pill duplicada. Reduz ruído. */}
+          {(archived || (a.status === 'completed' && isPaid)) && (
+            <span
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+              style={{ background: status.bg, color: status.color }}
+            >
+              <span className="w-1 h-1 rounded-full" style={{ background: status.dot }} />
+              {status.label}
+            </span>
+          )}
         </div>
       </div>
 
@@ -308,6 +314,30 @@ function PaymentMethodSheet({
   )
 }
 
+const INITIAL_LIMIT = 8
+
+/**
+ * Formata cabeçalho de grupo de data: "HOJE", "ONTEM" ou
+ * "5 DE MAIO" (estilo WhatsApp). Mais escaneável que repetir a
+ * data em cada card.
+ */
+function formatDateHeader(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  const dKey = d.toISOString().split('T')[0]
+  const todayKey = today.toISOString().split('T')[0]
+  const yesterdayKey = yesterday.toISOString().split('T')[0]
+
+  if (dKey === todayKey) return 'HOJE'
+  if (dKey === yesterdayKey) return 'ONTEM'
+  // ex: "5 DE MAIO"
+  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }).toUpperCase()
+}
+
 export default function FinanceAppointmentList({
   items,
   readOnly,
@@ -316,6 +346,7 @@ export default function FinanceAppointmentList({
   readOnly?: boolean
 }) {
   const [showArchived, setShowArchived] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   // Refresh trigger pra forcar re-render apos mutacao
   const [, setTick] = useState(0)
   const onPaymentChange = () => setTick((t) => t + 1)
@@ -345,17 +376,71 @@ export default function FinanceAppointmentList({
     .filter(Boolean)
     .join(' · ')
 
+  // Aplica limite + agrupamento por data. Itens já vêm ordenados desc.
+  const visiveis = showAll ? ativos : ativos.slice(0, INITIAL_LIMIT)
+  const escondidos = ativos.length - visiveis.length
+
+  // Agrupa por data preservando ordem (Map preserva insertion order)
+  const grupos = new Map<string, FinanceRow[]>()
+  for (const a of visiveis) {
+    const key = a.appointment_date
+    if (!grupos.has(key)) grupos.set(key, [])
+    grupos.get(key)!.push(a)
+  }
+
   return (
-    <div className="space-y-2">
-      {ativos.map((a, i) => (
-        <div
-          key={a.id}
-          className="admin-enter"
-          style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 50}ms` }}
-        >
-          <Row a={a} onPaymentChange={onPaymentChange} readOnly={readOnly} />
+    <div className="space-y-4">
+      {Array.from(grupos.entries()).map(([dateKey, rows]) => (
+        <div key={dateKey} className="space-y-2">
+          <p
+            className="text-[10px] font-bold uppercase tracking-widest px-1"
+            style={{ color: 'var(--admin-text-faded)' }}
+          >
+            {formatDateHeader(dateKey)}
+          </p>
+          {rows.map((a, i) => (
+            <div
+              key={a.id}
+              className="admin-enter"
+              style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 30}ms` }}
+            >
+              <Row a={a} onPaymentChange={onPaymentChange} readOnly={readOnly} />
+            </div>
+          ))}
         </div>
       ))}
+
+      {/* Ver mais — quando há agendamentos além do limite inicial */}
+      {!showAll && escondidos > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="w-full py-2.5 rounded-xl text-xs font-semibold transition-colors"
+          style={{
+            background: 'var(--admin-accent-bg)',
+            color: 'var(--admin-accent)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          Ver mais {escondidos} agendamento{escondidos === 1 ? '' : 's'}
+        </button>
+      )}
+
+      {/* Recolher quando expandido */}
+      {showAll && ativos.length > INITIAL_LIMIT && (
+        <button
+          type="button"
+          onClick={() => setShowAll(false)}
+          className="w-full py-2.5 rounded-xl text-xs font-semibold transition-colors"
+          style={{
+            background: 'var(--admin-input-bg)',
+            color: 'var(--admin-text-mute)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          Mostrar só os {INITIAL_LIMIT} mais recentes
+        </button>
+      )}
 
       {archived.length > 0 && (
         <div className="pt-2">
