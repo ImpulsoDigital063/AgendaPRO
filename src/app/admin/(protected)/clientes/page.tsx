@@ -45,11 +45,14 @@ export default async function ClientesPage() {
 
   const clientIds = Object.keys(statsMap)
 
-  // Busca clients globais + customers do business em paralelo.
+  // Busca clients globais + customers do business + cupons ativos
+  // em paralelo.
   // - clients: dados universais (nome, telefone, email)
   // - customers: relação business↔cliente com pontos de fidelidade
-  // Match feito por phone (UNIQUE em ambas dentro do business).
-  const [clientsRes, customersRes] = await Promise.all([
+  // - activeCoupons: pra calcular "sumidos sem cupom ativo" (so esses
+  //   precisam de NOVA campanha de reativação)
+  const nowIso = new Date().toISOString()
+  const [clientsRes, customersRes, couponsRes] = await Promise.all([
     clientIds.length > 0
       ? supabase
           .from('clients')
@@ -61,10 +64,19 @@ export default async function ClientesPage() {
       .from('customers')
       .select('id, name, phone, email, total_points, created_at')
       .eq('business_id', business.id),
+    supabase
+      .from('coupons')
+      .select('customer_id')
+      .eq('business_id', business.id)
+      .is('used_at', null)
+      .gt('expires_at', nowIso),
   ])
 
   const clients = clientsRes.data || []
   const customers = customersRes.data || []
+  const activeCustomerIds = new Set(
+    (couponsRes.data || []).map((c: { customer_id: string | null }) => c.customer_id).filter(Boolean) as string[]
+  )
 
   // Index customers por telefone normalizado (pra match com clients)
   const customerByPhone = new Map<string, { id: string; total_points: number }>()
@@ -144,6 +156,7 @@ export default async function ClientesPage() {
             clients={todosClientes}
             bookingSlug={business.slug}
             businessId={business.id}
+            activeCustomerIds={Array.from(activeCustomerIds)}
           />
         </div>
       </div>

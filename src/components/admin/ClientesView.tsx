@@ -37,6 +37,10 @@ type Props = {
   clients: Cliente[]
   bookingSlug: string
   businessId: string
+  /** customer_ids com cupom ativo (não usado, não expirado) — usados
+   *  pra calcular "sumidos sem cupom ativo" e evitar spam ao admin
+   *  ("já tem cupom rodando, não precisa gerar de novo") */
+  activeCustomerIds?: string[]
 }
 
 type FilterKey = 'todos' | 'recentes' | 'top' | 'sumidos' | 'novos'
@@ -101,7 +105,7 @@ const FILTER_TABS: { key: FilterKey; label: string }[] = [
   { key: 'sumidos',  label: 'Sumidos'  },
 ]
 
-export default function ClientesView({ clients, bookingSlug, businessId: _businessId }: Props) {
+export default function ClientesView({ clients, bookingSlug, businessId: _businessId, activeCustomerIds = [] }: Props) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterKey>('todos')
@@ -117,13 +121,21 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
     const now = new Date()
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const novosNoMes = clients.filter((c) => c.created_at?.startsWith(thisMonth)).length
-    const sumidos = clients.filter((c) => c.lastDate && daysBetween(c.lastDate) >= SUMIDO_DAYS).length
+    const sumidosList = clients.filter((c) => c.lastDate && daysBetween(c.lastDate) >= SUMIDO_DAYS)
+    // Sumidos SEM cupom ativo — só esses precisam de reativação nova.
+    // Sumidos com cupom já rodando aparecem no KPI mas o card pula
+    // (admin não dispara cupom em cima de cupom).
+    const activeSet = new Set(activeCustomerIds)
+    const sumidosSemCupom = sumidosList.filter(
+      (c) => !c.customer_id || !activeSet.has(c.customer_id)
+    ).length
     return {
       total: clients.length,
       novosNoMes,
-      sumidos,
+      sumidos: sumidosList.length,
+      sumidosSemCupom,
     }
-  }, [clients])
+  }, [clients, activeCustomerIds])
 
   const filtered = useMemo(() => {
     let list = clients
@@ -188,8 +200,10 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         Adicionar cliente manualmente
       </button>
 
-      {/* Reativar sumidos — só aparece se tem cliente sumido */}
-      {stats.sumidos > 0 && (
+      {/* Reativar sumidos — só aparece pra sumidos SEM cupom ativo.
+          Sumidos com cupom rodando ainda aparecem no KPI "Sumidos" e
+          no filtro, mas não disparam novo cupom (evita spam). */}
+      {stats.sumidosSemCupom > 0 && (
         <Link
           href="/admin/clientes/reativar"
           className="flex items-center gap-3 p-3 rounded-2xl transition-all active:scale-[0.99]"
@@ -206,7 +220,7 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
-              Reativar {stats.sumidos} sumido{stats.sumidos === 1 ? '' : 's'}
+              Reativar {stats.sumidosSemCupom} sumido{stats.sumidosSemCupom === 1 ? '' : 's'}
             </p>
             <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
               Cupom de desconto via WhatsApp · 1 toque por cliente

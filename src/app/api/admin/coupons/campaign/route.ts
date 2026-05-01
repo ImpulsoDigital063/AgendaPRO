@@ -98,7 +98,8 @@ export async function POST(req: Request) {
   sumidoCutoff.setDate(sumidoCutoff.getDate() - SUMIDO_DAYS)
   const sumidoCutoffStr = sumidoCutoff.toISOString().split('T')[0]
 
-  const sumidoCustomers = customers.filter((c) => {
+  // Customers sumidos (lastDate antes do cutoff)
+  const sumidoCustomersAll = customers.filter((c) => {
     const clientId = clientByPhone.get(c.phone)
     if (!clientId) return false // customer sem agendamento na vida
     const lastDate = lastByClient.get(clientId)
@@ -106,11 +107,29 @@ export async function POST(req: Request) {
     return lastDate < sumidoCutoffStr
   })
 
+  // Filtra os que JA tem cupom ativo — não regera (evita spam ao
+  // cliente final + protege admin de queimar 2 cupons pra mesma
+  // pessoa). Defense-in-depth: UI ja oculta o card, mas API tambem
+  // valida.
+  const nowIso = new Date().toISOString()
+  const { data: activeCoupons } = await supabase
+    .from('coupons')
+    .select('customer_id')
+    .eq('business_id', business.id)
+    .is('used_at', null)
+    .gt('expires_at', nowIso)
+
+  const activeCustomerIds = new Set(
+    (activeCoupons || []).map((c: { customer_id: string | null }) => c.customer_id).filter(Boolean) as string[]
+  )
+
+  const sumidoCustomers = sumidoCustomersAll.filter((c) => !activeCustomerIds.has(c.id))
+
   if (sumidoCustomers.length === 0) {
-    return NextResponse.json({
-      error: `nenhum cliente sumido (sem agendamento há ${SUMIDO_DAYS}+ dias)`,
-      sumidoDays: SUMIDO_DAYS,
-    }, { status: 400 })
+    const reason = sumidoCustomersAll.length > 0
+      ? `todos os ${sumidoCustomersAll.length} sumido(s) já têm cupom ativo. Aguarde expirar ou usar.`
+      : `nenhum cliente sumido (sem agendamento há ${SUMIDO_DAYS}+ dias)`
+    return NextResponse.json({ error: reason, sumidoDays: SUMIDO_DAYS }, { status: 400 })
   }
 
   // 2. Gerar cupons. Code via DB function (gera unico).
