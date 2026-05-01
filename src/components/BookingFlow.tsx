@@ -1746,11 +1746,25 @@ export default function BookingFlow({
         >
           <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-2">
-                {hasPrice && (
-                  <span className="text-lg font-bold" style={{ color: C.text }}>
-                    {formatPrice(totalPrice)}
-                  </span>
+              <div className="flex items-baseline gap-2 flex-wrap">
+                {hasPrice && coupon && couponDiscount > 0 ? (
+                  <>
+                    <span
+                      className="text-xs line-through"
+                      style={{ color: C.faded }}
+                    >
+                      {formatPrice(subtotal)}
+                    </span>
+                    <span className="text-lg font-bold" style={{ color: '#10B981' }}>
+                      {formatPrice(totalPrice)}
+                    </span>
+                  </>
+                ) : (
+                  hasPrice && (
+                    <span className="text-lg font-bold" style={{ color: C.text }}>
+                      {formatPrice(totalPrice)}
+                    </span>
+                  )
                 )}
                 {totalPoints > 0 && (
                   <span
@@ -1769,6 +1783,14 @@ export default function BookingFlow({
                   <IconClock size={10} color="currentColor" />
                   {formatDuration(totalDuration)}
                 </span>
+                {coupon && couponDiscount > 0 && (
+                  <>
+                    <span>·</span>
+                    <span className="font-bold" style={{ color: '#10B981' }}>
+                      − {formatPrice(couponDiscount)}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
             <button
