@@ -467,26 +467,10 @@ function ClienteCard({
   const tier = tierFor(client)
   const phoneDigits = (client.phone || '').replace(/\D/g, '')
   const waUrl = `https://wa.me/55${phoneDigits}`
-  const clickable = !!onOpenDetail && !!client.customer_id
+  const canOpenDetail = !!onOpenDetail && !!client.customer_id
 
   return (
-    <div
-      className="admin-card p-3.5"
-      onClick={clickable ? onOpenDetail : undefined}
-      style={clickable ? { cursor: 'pointer' } : undefined}
-      role={clickable ? 'button' : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      onKeyDown={
-        clickable
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onOpenDetail?.()
-              }
-            }
-          : undefined
-      }
-    >
+    <div className="admin-card p-3.5">
       {/* Topo: avatar + nome + tier + valor */}
       <div className="flex items-start gap-3">
         <span
@@ -531,7 +515,6 @@ function ClienteCard({
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1.5 text-xs mt-0.5 hover:opacity-80 transition-opacity"
             style={{ color: 'var(--admin-success)' }}
           >
@@ -570,11 +553,25 @@ function ClienteCard({
           Último: <span style={{ color: 'var(--admin-text-2)' }}>{formatDate(client.lastDate)}</span>
         </p>
         <div className="flex items-center gap-1.5">
+          {canOpenDetail && (
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-90"
+              style={{
+                background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))',
+                color: '#fff',
+                boxShadow: '0 2px 6px rgba(59,130,246,0.25)',
+              }}
+              title="Ver detalhes do cliente"
+            >
+              <IconChevronRight size={12} /> Detalhes
+            </button>
+          )}
           <a
             href={bookingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-90"
             style={{
               background: 'var(--admin-accent-bg)',
@@ -589,7 +586,6 @@ function ClienteCard({
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-90"
             style={{
               background: 'rgba(37,211,102,0.12)',

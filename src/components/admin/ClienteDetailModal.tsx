@@ -145,7 +145,15 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
     >
       <div
         className="admin-card w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col"
-        style={{ maxHeight: 'calc(100vh - 16px)' }}
+        style={{
+          // svh = "small viewport height" (exclui barras dinamicas
+          // do iOS/Android). Sem isso, em PWA standalone o card era
+          // calculado incluindo a barra inferior do iOS, deixando
+          // parte do conteudo invisivel.
+          maxHeight: 'calc(100svh - 16px)',
+          // safe-area-inset-bottom respeita home indicator do iPhone
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header sticky */}
