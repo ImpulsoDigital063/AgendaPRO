@@ -71,7 +71,7 @@ export default function ConfiguracoesTabs({
     { id: 'horarios', label: 'Horários' },
     { id: 'fidelidade', label: 'Fidelidade' },
     { id: 'aparencia', label: 'Aparência' },
-    { id: 'whatsapp', label: 'WhatsApp' },
+    { id: 'whatsapp', label: 'QR Code' },
   ]
 
   return (
