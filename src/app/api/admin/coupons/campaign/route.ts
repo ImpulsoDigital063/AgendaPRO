@@ -122,9 +122,11 @@ export async function POST(req: Request) {
   // Codigo: gera client-side com retry pra colisao (raro, alphabet 32^6).
   const codes = new Set<string>()
   function genCode() {
+    // Prefixo "PRO" reforça branding AgendaPRO no link enviado por
+    // WhatsApp (cliente vê "?cupom=PROXX99" e absorve a marca).
     const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-    let c = 'OI'
-    for (let i = 0; i < 6; i++) c += alphabet[Math.floor(Math.random() * alphabet.length)]
+    let c = 'PRO'
+    for (let i = 0; i < 5; i++) c += alphabet[Math.floor(Math.random() * alphabet.length)]
     return c
   }
 

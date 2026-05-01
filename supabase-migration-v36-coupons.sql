@@ -78,19 +78,19 @@ USING (TRUE);
 -- =================================================================
 -- Funcao geradora de codigo curto e legivel
 -- =================================================================
--- Formato: SUMIDO + 4 caracteres alfanumericos. Ex: SUMIDOA7K9
--- Evita 0/O/1/I (confusao visual). 32^4 = 1M combinacoes — mais que
--- suficiente pra qualquer business num horizonte de anos.
+-- Formato: PRO + 5 caracteres alfanumericos. Ex: PROA7K9X
+-- Prefixo "PRO" reforca branding AgendaPRO. Evita 0/O/1/I
+-- (confusao visual). 32^5 = ~33M combinacoes.
 -- =================================================================
 
-CREATE OR REPLACE FUNCTION public.generate_coupon_code(prefix TEXT DEFAULT 'OI')
+CREATE OR REPLACE FUNCTION public.generate_coupon_code(prefix TEXT DEFAULT 'PRO')
 RETURNS TEXT LANGUAGE plpgsql AS $$
 DECLARE
   alphabet TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   result TEXT := prefix;
   i INT;
 BEGIN
-  FOR i IN 1..6 LOOP
+  FOR i IN 1..5 LOOP
     result := result || substr(alphabet, 1 + floor(random() * length(alphabet))::int, 1);
   END LOOP;
   RETURN result;
