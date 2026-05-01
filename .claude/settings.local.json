@@ -32,7 +32,12 @@
       "WebFetch(domain:blog.trinks.com)",
       "WebFetch(domain:blog.gendo.com.br)",
       "Read(//c/Users/DELL/segundo-cerebro//**)",
-      "Read(//c/Users/DELL/segundo-cerebro/**)"
+      "Read(//c/Users/DELL/segundo-cerebro/**)",
+      "Bash(git *)",
+      "Bash(curl *)",
+      "Bash(npx next *)",
+      "Bash(ffmpeg -version)",
+      "PowerShell(Get-Command *)"
     ]
   }
 }

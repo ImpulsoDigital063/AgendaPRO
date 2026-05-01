@@ -3,7 +3,11 @@ import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import AnalisesView from '@/components/admin/AnalisesView'
 
-export default async function AnalisesPage() {
+export default async function AnalisesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ prof?: string; service?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
@@ -15,38 +19,77 @@ export default async function AnalisesPage() {
     .single()
   if (!business) redirect('/cadastro')
 
-  const today = new Date()
-  // Mes atual
-  const startCurrent = new Date(today.getFullYear(), today.getMonth(), 1)
-    .toISOString().split('T')[0]
-  const endCurrent = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-    .toISOString().split('T')[0]
-  // Mes anterior
-  const startPrev = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-    .toISOString().split('T')[0]
-  const endPrev = new Date(today.getFullYear(), today.getMonth(), 0)
-    .toISOString().split('T')[0]
+  const { prof: profFilter, service: serviceFilter } = await searchParams
 
-  // Pega 2 meses em paralelo (atual + anterior pra comparativo)
-  const [currentRes, prevRes] = await Promise.all([
-    supabase
-      .from('appointments')
-      .select(`
-        appointment_date, total_price, paid_at, status, service_name,
-        professional:professionals(id, name)
-      `)
-      .eq('business_id', business.id)
-      .gte('appointment_date', startCurrent)
-      .lte('appointment_date', endCurrent)
-      .not('paid_at', 'is', null),
-    supabase
-      .from('appointments')
-      .select('total_price, paid_at')
-      .eq('business_id', business.id)
-      .gte('appointment_date', startPrev)
-      .lte('appointment_date', endPrev)
-      .not('paid_at', 'is', null),
+  const today = new Date()
+  const startCurrent = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
+  const endCurrent = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0]
+  const startPrev = new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().split('T')[0]
+  const endPrev = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().split('T')[0]
+
+  // 1. Mes atual: TODOS agendamentos (pra calcular cancelamento e
+  // taxa de conversao). Pagos vao agregar receita.
+  let currentQuery = supabase
+    .from('appointments')
+    .select(`
+      id, appointment_date, start_time, total_price, paid_at,
+      payment_method, status, service_name, client_id,
+      professional:professionals(id, name)
+    `)
+    .eq('business_id', business.id)
+    .gte('appointment_date', startCurrent)
+    .lte('appointment_date', endCurrent)
+
+  // Filtros opcionais
+  if (profFilter) currentQuery = currentQuery.eq('professional_id', profFilter)
+  if (serviceFilter) currentQuery = currentQuery.eq('service_name', serviceFilter)
+
+  // 2. Mes anterior: total pago (pra comparativo)
+  let prevQuery = supabase
+    .from('appointments')
+    .select('total_price, payment_method')
+    .eq('business_id', business.id)
+    .gte('appointment_date', startPrev)
+    .lte('appointment_date', endPrev)
+    .not('paid_at', 'is', null)
+  if (profFilter) prevQuery = prevQuery.eq('professional_id', profFilter)
+  if (serviceFilter) prevQuery = prevQuery.eq('service_name', serviceFilter)
+
+  // 3. Client IDs com agendamento ANTES do mes atual (pra distinguir
+  // cliente novo vs recorrente). Trafega pouco — so client_ids.
+  const previousClientsQuery = supabase
+    .from('appointments')
+    .select('client_id')
+    .eq('business_id', business.id)
+    .lt('appointment_date', startCurrent)
+    .not('client_id', 'is', null)
+
+  // 4. Listas de profissionais e servicos do business pros filtros
+  const profsQuery = supabase
+    .from('professionals')
+    .select('id, name')
+    .eq('business_id', business.id)
+    .eq('active', true)
+    .order('name')
+
+  const servicesQuery = supabase
+    .from('services')
+    .select('name')
+    .eq('business_id', business.id)
+    .eq('active', true)
+    .order('name')
+
+  const [currentRes, prevRes, prevClientsRes, profsRes, servicesRes] = await Promise.all([
+    currentQuery,
+    prevQuery,
+    previousClientsQuery,
+    profsQuery,
+    servicesQuery,
   ])
+
+  const previousClientIds = new Set(
+    (prevClientsRes.data || []).map((r: { client_id: string | null }) => r.client_id).filter(Boolean) as string[]
+  )
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
@@ -64,9 +107,14 @@ export default async function AnalisesPage() {
         <div className="max-w-lg mx-auto px-4 py-6">
           <AnalisesView
             currentMonth={(currentRes.data || []) as never[]}
-            prevMonthTotal={(prevRes.data || []).reduce((s, a) => s + Number(a.total_price || 0), 0)}
+            prevMonth={(prevRes.data || []) as never[]}
+            previousClientIds={Array.from(previousClientIds)}
+            professionals={profsRes.data || []}
+            services={(servicesRes.data || []).map((s: { name: string }) => s.name)}
             startCurrent={startCurrent}
             endCurrent={endCurrent}
+            profFilter={profFilter || ''}
+            serviceFilter={serviceFilter || ''}
           />
         </div>
       </div>

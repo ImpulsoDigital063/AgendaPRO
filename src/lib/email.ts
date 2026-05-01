@@ -343,3 +343,141 @@ export async function sendClientNotification({
     html: emailTemplate({ title: '', body }),
   })
 }
+
+// ── Billing emails (PIX recorrente — mensal_pix / semestral_pix / anual_pix) ──
+
+/**
+ * Email D-3 antes do vencimento — manda PIX novo gerado pelo cron.
+ */
+export async function sendBillingReminderD3({
+  ownerEmail,
+  ownerName,
+  businessName,
+  pixUrl,
+  valor,
+  diasParaVencer,
+  modalidade,
+}: {
+  ownerEmail: string
+  ownerName: string
+  businessName: string
+  pixUrl: string
+  valor: string
+  diasParaVencer: number
+  modalidade: 'mensal_pix' | 'semestral_pix' | 'anual_pix'
+}) {
+  const periodo =
+    modalidade === 'mensal_pix' ? 'mensal' :
+    modalidade === 'semestral_pix' ? 'semestral' : 'anual'
+
+  const body = `
+    Oi, <strong>${esc(ownerName)}</strong>!<br><br>
+    A mensalidade ${periodo} do AgendaPRO da <strong>${esc(businessName)}</strong> vence em <strong>${diasParaVencer} ${diasParaVencer === 1 ? 'dia' : 'dias'}</strong>.<br><br>
+    💰 <strong>Valor:</strong> ${esc(valor)}<br>
+    💳 <strong>Forma:</strong> PIX<br><br>
+    Pode pagar agora pelo link abaixo — leva uns 30 segundos. Painel continua liberado até o vencimento.
+  `
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: ownerEmail,
+    subject: `⏰ AgendaPRO vence em ${diasParaVencer} ${diasParaVencer === 1 ? 'dia' : 'dias'} — ${esc(businessName)}`,
+    html: emailTemplate({
+      title: 'Mensalidade vencendo',
+      body,
+      actionUrl: pixUrl,
+      actionLabel: `Pagar ${esc(valor)} via PIX agora`,
+    }),
+  })
+}
+
+/**
+ * Email D+0 a D+5 — vencida, ainda em grace period.
+ */
+export async function sendBillingOverdue({
+  ownerEmail,
+  ownerName,
+  businessName,
+  pixUrl,
+  valor,
+  diasAtrasado,
+  diasAteBlock,
+}: {
+  ownerEmail: string
+  ownerName: string
+  businessName: string
+  pixUrl: string
+  valor: string
+  diasAtrasado: number
+  diasAteBlock: number
+}) {
+  const titulo = diasAtrasado === 0
+    ? 'Mensalidade vence hoje'
+    : `Mensalidade atrasada há ${diasAtrasado} ${diasAtrasado === 1 ? 'dia' : 'dias'}`
+
+  const body = diasAtrasado === 0
+    ? `
+      Oi, <strong>${esc(ownerName)}</strong>!<br><br>
+      A mensalidade do AgendaPRO da <strong>${esc(businessName)}</strong> vence <strong>hoje</strong>.<br><br>
+      💰 <strong>Valor:</strong> ${esc(valor)}<br><br>
+      O painel continua liberado normalmente — só precisa pagar pra evitar bloqueio.
+    `
+    : `
+      Oi, <strong>${esc(ownerName)}</strong>!<br><br>
+      A mensalidade do AgendaPRO da <strong>${esc(businessName)}</strong> está atrasada há <strong>${diasAtrasado} ${diasAtrasado === 1 ? 'dia' : 'dias'}</strong>.<br><br>
+      💰 <strong>Valor:</strong> ${esc(valor)}<br>
+      ⚠️ <strong>Bloqueio do painel em ${diasAteBlock} ${diasAteBlock === 1 ? 'dia' : 'dias'}</strong>.<br><br>
+      Pode regularizar agora pelo link abaixo — PIX confirma na hora.
+    `
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: ownerEmail,
+    subject: diasAtrasado === 0
+      ? `⏰ AgendaPRO vence hoje — ${esc(businessName)}`
+      : `⚠️ AgendaPRO atrasado há ${diasAtrasado} ${diasAtrasado === 1 ? 'dia' : 'dias'} — ${esc(businessName)}`,
+    html: emailTemplate({
+      title: titulo,
+      body,
+      actionUrl: pixUrl,
+      actionLabel: `Pagar ${esc(valor)} via PIX`,
+    }),
+  })
+}
+
+/**
+ * Email D+6+ — bloqueada, painel travado.
+ */
+export async function sendBillingBlocked({
+  ownerEmail,
+  ownerName,
+  businessName,
+  pixUrl,
+  valor,
+}: {
+  ownerEmail: string
+  ownerName: string
+  businessName: string
+  pixUrl: string
+  valor: string
+}) {
+  const body = `
+    Oi, <strong>${esc(ownerName)}</strong>.<br><br>
+    O painel do AgendaPRO da <strong>${esc(businessName)}</strong> foi <strong>bloqueado</strong> por falta de pagamento.<br><br>
+    💰 <strong>Valor:</strong> ${esc(valor)}<br>
+    🔓 <strong>Painel libera automaticamente</strong> assim que o PIX for confirmado.<br><br>
+    Seus dados continuam intactos — só pagar pra reativar tudo na hora.
+  `
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: ownerEmail,
+    subject: `🔒 AgendaPRO bloqueado — ${esc(businessName)}`,
+    html: emailTemplate({
+      title: 'Painel bloqueado',
+      body,
+      actionUrl: pixUrl,
+      actionLabel: `Pagar ${esc(valor)} via PIX e reativar`,
+    }),
+  })
+}
