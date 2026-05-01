@@ -120,7 +120,7 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
         </div>
       </div>
 
-      {/* Realizado + A receber + Ticket médio */}
+      {/* Realizado + Em aberto + Ticket médio */}
       <div className="grid grid-cols-3 gap-2">
         <KpiTile
           label="Realizado"
@@ -130,7 +130,7 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
           tone="success"
         />
         <KpiTile
-          label="A receber"
+          label="Em aberto"
           value={formatPrice(totalPendente)}
           sub={`${naoPagos.length} pendente${naoPagos.length === 1 ? '' : 's'}`}
           icon={<IconClock size={14} />}

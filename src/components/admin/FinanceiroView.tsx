@@ -41,8 +41,9 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
   // Nova semantica:
   // - Realizado = paid_at != null (dinheiro ja recebido, qualquer
   //   metodo)
-  // - A receber = total_price > 0 + (confirmed ou completed) +
-  //   paid_at == null (atendimento confirmado, ainda nao pago)
+  // - Em aberto = total_price > 0 + (confirmed ou completed) +
+  //   paid_at == null (atendimento confirmado, ainda nao pago).
+  //   Educacional: projeção + lembrete, NÃO cobrança formal.
   // - Faturado = soma dos dois (todo dinheiro do periodo)
   const pagos = appointments.filter((a) => a.paid_at && a.total_price)
   const naoPagos = appointments.filter(
@@ -193,12 +194,13 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
       {/* Pendente + Faturado total + Ticket médio */}
       <div className="grid grid-cols-3 gap-2">
         <KpiTile
-          label="A receber"
+          label="Em aberto"
           value={formatPrice(totalPendente)}
           sub={
-            // urgentes = não-pagos com appointment_date nos próximos
-            // 7 dias. NÃO é "vencimento de fatura" — é "atendimento
-            // que rola essa semana sem pagamento ainda". Copy clara.
+            // "Em aberto" = atendimentos confirmados/feitos sem paid_at.
+            // NÃO é cobrança formal nem dívida — é projeção + lembrete
+            // pro dono confirmar o pagamento conforme entra. Sistema
+            // é educacional, não emissor de cobrança.
             urgentes > 0
               ? `${urgentes} essa semana`
               : `${naoPagos.length} pendente${naoPagos.length === 1 ? '' : 's'}`
