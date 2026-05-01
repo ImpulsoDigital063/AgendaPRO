@@ -1,11 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone, daysBetween } from '@/lib/client-display'
 import {
   IconWhatsapp,
   IconCalendar,
   IconChevronRight,
+  IconClose,
+  IconSparkles,
 } from '@/components/ui/Icon'
 
 type Cliente = {
@@ -17,11 +20,14 @@ type Cliente = {
   count: number
   lastDate: string
   totalSpent: number
+  customer_id?: string | null
+  total_points?: number
 }
 
 type Props = {
   clients: Cliente[]
   bookingSlug: string
+  businessId: string
 }
 
 type FilterKey = 'todos' | 'recentes' | 'top' | 'sumidos' | 'novos'
@@ -82,9 +88,15 @@ const FILTER_TABS: { key: FilterKey; label: string }[] = [
   { key: 'sumidos',  label: 'Sumidos'  },
 ]
 
-export default function ClientesView({ clients, bookingSlug }: Props) {
+export default function ClientesView({ clients, bookingSlug, businessId: _businessId }: Props) {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterKey>('todos')
+  const [showAddModal, setShowAddModal] = useState(false)
+  // Suprime warning ate que businessId seja efetivamente usado em
+  // outras features (cupons, detalhes etc). Por enquanto a API
+  // /api/admin/customers infere o business pelo owner_id da sessao.
+  void _businessId
 
   // KPIs
   const stats = useMemo(() => {
@@ -144,6 +156,24 @@ export default function ClientesView({ clients, bookingSlug }: Props) {
         <KpiCell label="Sumidos"  value={stats.sumidos}    tone="warn"    />
       </div>
 
+      {/* Botão + Novo cliente */}
+      <button
+        type="button"
+        onClick={() => setShowAddModal(true)}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
+        style={{
+          background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))',
+          color: '#fff',
+          boxShadow: '0 4px 14px rgba(59,130,246,0.25)',
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Adicionar cliente manualmente
+      </button>
+
       {/* Busca */}
       <div className="relative">
         <span
@@ -196,7 +226,7 @@ export default function ClientesView({ clients, bookingSlug }: Props) {
 
       {/* Lista */}
       {clients.length === 0 ? (
-        <EmptyClients />
+        <EmptyClients onAdd={() => setShowAddModal(true)} />
       ) : filtered.length === 0 ? (
         <EmptyFiltered search={search} onClear={() => { setSearch(''); setFilter('todos') }} />
       ) : (
@@ -212,6 +242,159 @@ export default function ClientesView({ clients, bookingSlug }: Props) {
           ))}
         </div>
       )}
+
+      {showAddModal && (
+        <AddClientModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            setShowAddModal(false)
+            // refresh do server component pra trazer o novo cliente
+            router.refresh()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function maskPhoneInput(v: string) {
+    const digits = v.replace(/\D/g, '').slice(0, 11)
+    if (digits.length <= 2) return digits
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  }
+
+  async function submit() {
+    setError(null)
+    if (!name.trim()) {
+      setError('Nome obrigatório')
+      return
+    }
+    const phoneDigits = phone.replace(/\D/g, '')
+    if (phoneDigits.length < 10) {
+      setError('Telefone inválido (mínimo 10 dígitos com DDD)')
+      return
+    }
+    setSubmitting(true)
+    const res = await fetch('/api/admin/customers', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: name.trim(), phone, email: email.trim() }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error || 'Erro ao criar cliente')
+      setSubmitting(false)
+      return
+    }
+    setSubmitting(false)
+    onSuccess()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        className="admin-card w-full sm:max-w-md p-5 rounded-t-3xl sm:rounded-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
+            Novo cliente
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+            style={{ color: 'var(--admin-text-mute)' }}
+            aria-label="Fechar"
+          >
+            <IconClose size={16} />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>
+              Nome *
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="João da Silva"
+              autoFocus
+              className="admin-input w-full px-3 py-2.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>
+              Telefone *
+            </label>
+            <input
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(maskPhoneInput(e.target.value))}
+              placeholder="(11) 98765-4321"
+              className="admin-input w-full px-3 py-2.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>
+              Email <span style={{ color: 'var(--admin-text-mute)' }}>(opcional)</span>
+            </label>
+            <input
+              type="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="joao@email.com"
+              className="admin-input w-full px-3 py-2.5 text-sm"
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-xs mt-3" style={{ color: 'var(--admin-danger, #EF4444)' }}>
+            {error}
+          </p>
+        )}
+
+        <div className="flex gap-2 mt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="admin-btn-secondary flex-1"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={submitting}
+            className="admin-btn-primary flex-1"
+          >
+            {submitting ? 'Salvando...' : 'Adicionar'}
+          </button>
+        </div>
+
+        <p className="text-[11px] mt-3 text-center" style={{ color: 'var(--admin-text-faded)' }}>
+          Cliente entra com 0 pontos. Pode acumular ao usar serviços ou via "+ pontos" no detalhe.
+        </p>
+      </div>
     </div>
   )
 }
@@ -271,6 +454,19 @@ function ClienteCard({ client, bookingUrl }: { client: Cliente; bookingUrl: stri
                 style={{ background: tier.bg, color: tier.color }}
               >
                 {tier.label}
+              </span>
+            )}
+            {(client.total_points ?? 0) > 0 && (
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                style={{
+                  background: 'rgba(139,92,246,0.15)',
+                  color: '#7C3AED',
+                }}
+                title="Pontos de fidelidade"
+              >
+                <IconSparkles size={10} />
+                {client.total_points} pts
               </span>
             )}
           </div>
@@ -349,15 +545,26 @@ function ClienteCard({ client, bookingUrl }: { client: Cliente; bookingUrl: stri
   )
 }
 
-function EmptyClients() {
+function EmptyClients({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="admin-card p-8 text-center">
       <p className="text-sm font-medium" style={{ color: 'var(--admin-text-2)' }}>
         Nenhum cliente cadastrado ainda
       </p>
-      <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-        Os clientes aparecem aqui quando fazem o primeiro agendamento
+      <p className="text-xs mt-1 mb-4" style={{ color: 'var(--admin-text-faded)' }}>
+        Os clientes entram aqui automaticamente ao agendarem online, ou você pode cadastrar manualmente.
       </p>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="text-xs font-semibold inline-flex items-center gap-1 px-4 py-2 rounded-lg"
+        style={{
+          background: 'var(--admin-accent)',
+          color: '#fff',
+        }}
+      >
+        + Adicionar primeiro cliente
+      </button>
     </div>
   )
 }

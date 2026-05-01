@@ -45,18 +45,69 @@ export default async function ClientesPage() {
 
   const clientIds = Object.keys(statsMap)
 
-  const { data: clients } = clientIds.length > 0
-    ? await supabase
-        .from('clients')
-        .select('id, name, phone, email, created_at')
-        .in('id', clientIds)
-        .order('name')
-    : { data: [] }
+  // Busca clients globais + customers do business em paralelo.
+  // - clients: dados universais (nome, telefone, email)
+  // - customers: relação business↔cliente com pontos de fidelidade
+  // Match feito por phone (UNIQUE em ambas dentro do business).
+  const [clientsRes, customersRes] = await Promise.all([
+    clientIds.length > 0
+      ? supabase
+          .from('clients')
+          .select('id, name, phone, email, created_at')
+          .in('id', clientIds)
+          .order('name')
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string; phone: string; email: string | null; created_at: string }> }),
+    supabase
+      .from('customers')
+      .select('id, name, phone, email, total_points, created_at')
+      .eq('business_id', business.id),
+  ])
 
-  const clientsWithStats = (clients || []).map((c) => ({
-    ...c,
-    ...(statsMap[c.id] || { count: 0, lastDate: '', totalSpent: 0 }),
-  }))
+  const clients = clientsRes.data || []
+  const customers = customersRes.data || []
+
+  // Index customers por telefone normalizado (pra match com clients)
+  const customerByPhone = new Map<string, { id: string; total_points: number }>()
+  for (const cust of customers) {
+    const key = (cust.phone || '').replace(/\D/g, '')
+    if (key) customerByPhone.set(key, { id: cust.id, total_points: cust.total_points ?? 0 })
+  }
+
+  // Mapa de clients que JA tem appointment (vindos de statsMap)
+  const clientsWithStats = clients.map((c) => {
+    const phoneKey = (c.phone || '').replace(/\D/g, '')
+    const cust = customerByPhone.get(phoneKey)
+    return {
+      ...c,
+      ...(statsMap[c.id] || { count: 0, lastDate: '', totalSpent: 0 }),
+      customer_id: cust?.id ?? null,
+      total_points: cust?.total_points ?? 0,
+    }
+  })
+
+  // Customers cadastrados manualmente (sem agendamento ainda) — só
+  // aparecem se NAO existem como client com appointment. Match pelo
+  // phone normalizado.
+  const phonesJaListados = new Set(clientsWithStats.map((c) => (c.phone || '').replace(/\D/g, '')))
+  const customersOrfaos = customers
+    .filter((cust) => {
+      const phoneKey = (cust.phone || '').replace(/\D/g, '')
+      return phoneKey && !phonesJaListados.has(phoneKey)
+    })
+    .map((cust) => ({
+      id: cust.id, // usa customer_id como id pra UI
+      name: cust.name,
+      phone: cust.phone,
+      email: cust.email,
+      created_at: cust.created_at,
+      count: 0,
+      lastDate: '',
+      totalSpent: 0,
+      customer_id: cust.id,
+      total_points: cust.total_points ?? 0,
+    }))
+
+  const todosClientes = [...clientsWithStats, ...customersOrfaos]
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
@@ -86,10 +137,14 @@ export default async function ClientesPage() {
       <div className="relative">
         <SubPageHeader
           title="Clientes"
-          subtitle={`${clientsWithStats.length} cadastrado${clientsWithStats.length !== 1 ? 's' : ''}`}
+          subtitle={`${todosClientes.length} cadastrado${todosClientes.length !== 1 ? 's' : ''}`}
         />
         <div className="max-w-lg mx-auto px-4 py-6">
-          <ClientesView clients={clientsWithStats} bookingSlug={business.slug} />
+          <ClientesView
+            clients={todosClientes}
+            bookingSlug={business.slug}
+            businessId={business.id}
+          />
         </div>
       </div>
     </main>
