@@ -279,9 +279,26 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
       {/* Comissão por profissional (só se relevante) */}
       {showCommission && (
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-            Comissão por profissional
-          </h2>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+              Comissão por profissional
+            </h2>
+            {(() => {
+              const totalComissao = profList.reduce(
+                (sum, p) => sum + p.total * (p.commission_percentage / 100),
+                0
+              )
+              if (totalComissao <= 0) return null
+              return (
+                <span className="text-[11px] tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>
+                  {profList.length} prof.{profList.length === 1 ? '' : 's'} ·{' '}
+                  <strong style={{ color: 'var(--admin-success, #10B981)' }}>
+                    {formatPrice(totalComissao)}
+                  </strong>
+                </span>
+              )
+            })()}
+          </div>
           <div className="space-y-2">
             {profList.map((prof) => {
               const commission = prof.total * (prof.commission_percentage / 100)
@@ -316,9 +333,9 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
                     className="grid grid-cols-3 gap-2 pt-2.5"
                     style={{ borderTop: '1px solid var(--admin-divider)' }}
                   >
-                    <ProfStat label="Gerou" value={formatPrice(prof.total)} />
-                    <ProfStat label="Atendeu" value={`${prof.count}`} />
-                    <ProfStat label="A pagar" value={formatPrice(commission)} highlight />
+                    <ProfStat label="Faturou" value={formatPrice(prof.total)} />
+                    <ProfStat label="Atendimentos" value={`${prof.count}`} />
+                    <ProfStat label="Comissão" value={formatPrice(commission)} highlight />
                   </div>
                 </div>
               )
