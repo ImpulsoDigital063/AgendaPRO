@@ -52,18 +52,33 @@ export default async function FinanceiroPage({
     endDate = end.toISOString().split('T')[0]
   }
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select(`
-      id, client_name, client_phone, appointment_date, start_time,
-      status, service_name, total_price, paid_at, payment_method,
-      professional:professionals(id, name, commission_percentage, employment_type)
-    `)
-    .eq('business_id', business.id)
-    .gte('appointment_date', startDate)
-    .lte('appointment_date', endDate)
-    .order('appointment_date', { ascending: false })
-    .order('start_time', { ascending: false })
+  // Appointments + expenses em paralelo (mesmo periodo)
+  const [apptsRes, expensesRes] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select(`
+        id, client_name, client_phone, appointment_date, start_time,
+        status, service_name, total_price, paid_at, payment_method,
+        professional:professionals(id, name, commission_percentage, employment_type)
+      `)
+      .eq('business_id', business.id)
+      .gte('appointment_date', startDate)
+      .lte('appointment_date', endDate)
+      .order('appointment_date', { ascending: false })
+      .order('start_time', { ascending: false }),
+    supabase
+      .from('expenses')
+      .select('amount')
+      .eq('business_id', business.id)
+      .gte('occurred_at', startDate)
+      .lte('occurred_at', endDate),
+  ])
+
+  const appointments = apptsRes.data
+  const totalExpenses = (expensesRes.data || []).reduce(
+    (sum, e) => sum + Number(e.amount || 0),
+    0
+  )
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
@@ -93,7 +108,11 @@ export default async function FinanceiroPage({
       <div className="relative">
         <SubPageHeader title="Financeiro" subtitle={business.name} />
         <div className="max-w-lg mx-auto px-4 py-6">
-          <FinanceiroView appointments={(appointments || []) as unknown as AppointmentRow[]} periodo={periodo} />
+          <FinanceiroView
+            appointments={(appointments || []) as unknown as AppointmentRow[]}
+            periodo={periodo}
+            totalExpenses={totalExpenses}
+          />
         </div>
       </div>
     </main>

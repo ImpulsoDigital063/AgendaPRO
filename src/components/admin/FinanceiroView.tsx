@@ -1,8 +1,9 @@
 'use client'
 
+import Link from 'next/link'
 import FinancePeriodTabs from './FinancePeriodTabs'
 import FinanceAppointmentList, { type FinanceRow } from './FinanceAppointmentList'
-import { IconDollar, IconClock, IconCheck } from '@/components/ui/Icon'
+import { IconDollar, IconClock, IconCheck, IconChevronRight } from '@/components/ui/Icon'
 import { initialsFor, avatarGradient } from '@/lib/client-display'
 
 export type AppointmentRow = {
@@ -22,6 +23,7 @@ export type AppointmentRow = {
 type Props = {
   appointments: AppointmentRow[]
   periodo: string
+  totalExpenses?: number
 }
 
 function formatPrice(value: number) {
@@ -34,7 +36,7 @@ const PERIODO_LABEL: Record<string, string> = {
   mes: 'Este mês',
 }
 
-export default function FinanceiroView({ appointments, periodo }: Props) {
+export default function FinanceiroView({ appointments, periodo, totalExpenses = 0 }: Props) {
   // Nova semantica:
   // - Realizado = paid_at != null (dinheiro ja recebido, qualquer
   //   metodo)
@@ -177,6 +179,43 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
           tone="accent"
         />
       </div>
+
+      {/* Card LUCRO REAL (receita - despesas) */}
+      <Link
+        href="/admin/financeiro/despesas"
+        className="block rounded-2xl p-4 transition-transform active:scale-[0.99]"
+        style={{
+          background:
+            totalRealizado - totalExpenses >= 0
+              ? 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))'
+              : 'linear-gradient(135deg, rgba(239,68,68,0.14), rgba(239,68,68,0.04))',
+          border: '1px solid var(--admin-border)',
+        }}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              Lucro real do período
+            </p>
+            <p
+              className="text-2xl font-extrabold mt-1 leading-none tabular-nums"
+              style={{ color: totalRealizado - totalExpenses >= 0 ? '#10B981' : '#EF4444' }}
+            >
+              {formatPrice(totalRealizado - totalExpenses)}
+            </p>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
+              {formatPrice(totalRealizado)} <span style={{ color: 'var(--admin-text-faded)' }}>recebido</span>
+              {' · '}
+              <span style={{ color: '#EF4444' }}>− {formatPrice(totalExpenses)}</span>{' '}
+              <span style={{ color: 'var(--admin-text-faded)' }}>despesas</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-semibold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>
+            Despesas
+            <IconChevronRight size={14} />
+          </div>
+        </div>
+      </Link>
 
       {/* Breakdown por método de pagamento (só aparece se já recebeu algo) */}
       {totalRealizado > 0 && (

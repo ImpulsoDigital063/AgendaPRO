@@ -159,6 +159,28 @@ export type TimeSlot = {
   available: boolean
 }
 
+export type ExpenseCategory =
+  | 'rent'
+  | 'products'
+  | 'salary'
+  | 'utilities'
+  | 'marketing'
+  | 'taxes'
+  | 'other'
+
+export type Expense = {
+  id: string
+  business_id: string
+  name: string
+  amount: number
+  category: ExpenseCategory
+  occurred_at: string
+  recurring: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type ActivityLog = {
   id: string
   business_id: string
