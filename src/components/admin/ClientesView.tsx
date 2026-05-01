@@ -328,7 +328,13 @@ function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
       onClick={onClose}
     >
       <div
-        className="admin-card w-full sm:max-w-md p-5 rounded-t-3xl sm:rounded-3xl"
+        className="admin-card w-full sm:max-w-md p-5 rounded-t-3xl sm:rounded-3xl overflow-y-auto"
+        style={{
+          // svh exclui barras dinâmicas do iOS (status bar + home indicator)
+          maxHeight: 'calc(100svh - 16px)',
+          // Em mobile (bottom sheet), reserva espaço pra home indicator
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
