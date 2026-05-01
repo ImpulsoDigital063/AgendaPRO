@@ -866,10 +866,14 @@ function buildBalcao4em1HTML({ business, linkPretty, qrColor, svgData }: BuildHT
 }
 
 /**
- * Display acrílico (A6 + 3mm bleed) — pra mandar pra gráfica fazer
- * base de vidro/acrílico de balcão. Bleed garante que a gráfica
- * pode cortar sem aparecer borda branca. Layout otimizado pra
- * tamanho menor (sem categoria, pitch resumido).
+ * Display acrílico — cartaz A6 (105×148mm) com 3mm de bleed,
+ * centralizado em folha A4 com crop marks pra gráfica cortar.
+ *
+ * Por que A4 e não @page custom 111×154mm? iOS Safari não abre
+ * print preview com size customizado não-padrão (testado e
+ * confirmado). A4 é universal — qualquer print preview abre. A
+ * gráfica recebe PDF A4 padrão e usa as crop marks pra cortar
+ * o cartaz no tamanho final A6 com bleed embutido.
  */
 function buildDisplayAcrilicoHTML({ business, linkPretty, qrColor, svgData }: BuildHTMLArgs) {
   const logoTag = business.logo_url
@@ -881,16 +885,26 @@ function buildDisplayAcrilicoHTML({ business, linkPretty, qrColor, svgData }: Bu
     <title>Display acrílico - ${escapeHtml(business.name)}</title>
     <meta charset="utf-8" />
     <style>
-      /* A6 (105×148mm) + 3mm de bleed cada lado = 111×154mm */
-      @page { size: 111mm 154mm; margin: 0; }
+      @page { size: A4; margin: 0; }
       * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       html, body { margin: 0; padding: 0; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         color: #0F172A;
-        background: linear-gradient(135deg, ${qrColor} 0%, ${qrColor}CC 100%);
+        background: #fff;
       }
+      .sheet {
+        width: 210mm;
+        height: 297mm;
+        position: relative;
+        background: #fff;
+      }
+      /* Container do cartaz centralizado (111×154mm = A6 + 3mm bleed) */
       .bleed {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         width: 111mm;
         height: 154mm;
         padding: 3mm;
@@ -981,21 +995,59 @@ function buildDisplayAcrilicoHTML({ business, linkPretty, qrColor, svgData }: Bu
         color: ${qrColor};
         margin: 0;
       }
+      /* Crop marks (4 cantos) — guia pra gráfica cortar no trim line
+         (105×148mm), ignorando os 3mm de bleed externo. Linhas finas
+         pretas saindo pros lados e pra cima/baixo do trim. */
+      .crop { position: absolute; background: #000; }
+      .crop.h { width: 5mm; height: 0.3mm; }
+      .crop.v { width: 0.3mm; height: 5mm; }
+      /* Posicionadas relativas a .bleed: trim começa em 3mm dentro */
+      .crop.tl-h { top: 3mm; left: -5mm; }
+      .crop.tl-v { top: -5mm; left: 3mm; }
+      .crop.tr-h { top: 3mm; right: -5mm; }
+      .crop.tr-v { top: -5mm; right: 3mm; }
+      .crop.bl-h { bottom: 3mm; left: -5mm; }
+      .crop.bl-v { bottom: -5mm; left: 3mm; }
+      .crop.br-h { bottom: 3mm; right: -5mm; }
+      .crop.br-v { bottom: -5mm; right: 3mm; }
+      /* Info técnica no rodapé da A4 (orientação pra gráfica) */
+      .technical {
+        position: absolute;
+        bottom: 10mm;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 8px;
+        color: #64748B;
+      }
     </style>
   </head>
   <body>
-    <div class="bleed">
-      <div class="trim">
-        <div class="inner">
-          <p class="name">${escapeHtml(business.name)}</p>
-          <div class="qr">${svgData}${logoTag}</div>
-          <p class="pitch">Agende online quando quiser.</p>
-          <p class="pitch-sub">Sem precisar ligar.</p>
-          <div class="link">${escapeHtml(linkPretty)}</div>
-          <div class="divider"></div>
-          <p class="powered">Powered by</p>
-          <p class="brand">AgendaPRO</p>
+    <div class="sheet">
+      <div class="bleed">
+        <span class="crop h tl-h"></span>
+        <span class="crop v tl-v"></span>
+        <span class="crop h tr-h"></span>
+        <span class="crop v tr-v"></span>
+        <span class="crop h bl-h"></span>
+        <span class="crop v bl-v"></span>
+        <span class="crop h br-h"></span>
+        <span class="crop v br-v"></span>
+        <div class="trim">
+          <div class="inner">
+            <p class="name">${escapeHtml(business.name)}</p>
+            <div class="qr">${svgData}${logoTag}</div>
+            <p class="pitch">Agende online quando quiser.</p>
+            <p class="pitch-sub">Sem precisar ligar.</p>
+            <div class="link">${escapeHtml(linkPretty)}</div>
+            <div class="divider"></div>
+            <p class="powered">Powered by</p>
+            <p class="brand">AgendaPRO</p>
+          </div>
         </div>
+      </div>
+      <div class="technical">
+        Tamanho final: A6 (105×148mm) · Bleed: 3mm · Cortar nas marcas pretas
       </div>
     </div>
   </body>
