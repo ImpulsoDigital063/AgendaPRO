@@ -555,14 +555,17 @@ export default function BookingFlow({
       )
     }
 
-    // Marca cupom como usado (vinculado a esse agendamento). Se falhar
-    // não bloqueia o flow — agendamento já confirmado.
+    // Marca cupom como usado (via API server-side com service-role —
+    // RLS bloqueia UPDATE público de cupons). Não bloqueia o flow se
+    // falhar; agendamento já confirmado.
     if (coupon) {
-      await supabase
-        .from('coupons')
-        .update({ used_at: new Date().toISOString(), used_appointment_id: appointment.id })
-        .eq('id', coupon.id)
-        .is('used_at', null) // só marca se ainda não foi usado (idempotente)
+      fetch('/api/coupons/use', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code: coupon.code, appointment_id: appointment.id }),
+      }).catch((err) => {
+        console.warn('Falha ao marcar cupom como usado:', err)
+      })
     }
 
     // 4. Calcular pontos que o cliente VAI ganhar após o atendimento.
