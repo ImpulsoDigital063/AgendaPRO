@@ -181,6 +181,22 @@ export type Expense = {
   updated_at: string
 }
 
+export type Coupon = {
+  id: string
+  business_id: string
+  customer_id: string | null
+  code: string
+  discount_type: 'fixed' | 'percent'
+  discount_value: number
+  expires_at: string
+  used_at: string | null
+  used_appointment_id: string | null
+  campaign_id: string | null
+  whatsapp_message: string | null
+  sent_at: string | null
+  created_at: string
+}
+
 export type ActivityLog = {
   id: string
   business_id: string

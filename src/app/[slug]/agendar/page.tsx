@@ -16,10 +16,10 @@ export default async function AgendarPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ ref?: string; date?: string; time?: string; prof?: string; w?: string }>
+  searchParams: Promise<{ ref?: string; date?: string; time?: string; prof?: string; w?: string; cupom?: string }>
 }) {
   const { slug } = await params
-  const { ref: referralCode, date: prefillDate, time: prefillTime, prof: prefillProf, w: waitlistId } = await searchParams
+  const { ref: referralCode, date: prefillDate, time: prefillTime, prof: prefillProf, w: waitlistId, cupom: couponCode } = await searchParams
   const supabase = await createClient()
 
   const { data: business } = await supabase
@@ -106,6 +106,26 @@ export default async function AgendarPage({
     }
   }
 
+  // Valida cupom server-side se vier ?cupom=X
+  let appliedCoupon: { id: string; code: string; discount_type: 'fixed' | 'percent'; discount_value: number; expires_at: string } | null = null
+  if (couponCode) {
+    const { data: coupon } = await supabase
+      .from('coupons')
+      .select('id, code, discount_type, discount_value, expires_at, used_at')
+      .eq('code', couponCode.toUpperCase())
+      .eq('business_id', business.id)
+      .maybeSingle()
+    if (coupon && !coupon.used_at && new Date(coupon.expires_at) > new Date()) {
+      appliedCoupon = {
+        id: coupon.id,
+        code: coupon.code,
+        discount_type: coupon.discount_type as 'fixed' | 'percent',
+        discount_value: Number(coupon.discount_value),
+        expires_at: coupon.expires_at,
+      }
+    }
+  }
+
   const b = business as Business
   const primary = b.brand_primary || '#3B82F6'
   const secondary = b.brand_secondary || '#06B6D4'
@@ -182,6 +202,7 @@ export default async function AgendarPage({
           services={services || []}
           referralCode={referralCode}
           prefill={prefill}
+          coupon={appliedCoupon}
         />
 
         {/* Footer */}

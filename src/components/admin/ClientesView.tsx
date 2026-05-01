@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone, daysBetween } from '@/lib/client-display'
+import Link from 'next/link'
 import {
   IconWhatsapp,
   IconCalendar,
@@ -182,6 +183,34 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         </svg>
         Adicionar cliente manualmente
       </button>
+
+      {/* Reativar sumidos — só aparece se tem cliente sumido */}
+      {stats.sumidos > 0 && (
+        <Link
+          href="/admin/clientes/reativar"
+          className="flex items-center gap-3 p-3 rounded-2xl transition-all active:scale-[0.99]"
+          style={{
+            background: 'linear-gradient(135deg, rgba(245,158,11,0.14), rgba(245,158,11,0.04))',
+            border: '1px solid rgba(245,158,11,0.3)',
+          }}
+        >
+          <span
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(245,158,11,0.18)', color: '#D97706' }}
+          >
+            <IconWhatsapp size={18} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+              Reativar {stats.sumidos} sumido{stats.sumidos === 1 ? '' : 's'}
+            </p>
+            <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+              Cupom de desconto via WhatsApp · 1 toque por cliente
+            </p>
+          </div>
+          <IconChevronRight size={16} />
+        </Link>
+      )}
 
       {/* Busca */}
       <div className="relative">

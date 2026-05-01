@@ -105,6 +105,14 @@ function GoogleGLogo({ size = 18 }: { size?: number }) {
 
 type Step = 'service' | 'professional' | 'date' | 'time' | 'form' | 'done'
 
+type AppliedCoupon = {
+  id: string
+  code: string
+  discount_type: 'fixed' | 'percent'
+  discount_value: number
+  expires_at: string
+} | null
+
 export default function BookingFlow({
   business,
   professionals,
@@ -112,6 +120,7 @@ export default function BookingFlow({
   services,
   referralCode,
   prefill,
+  coupon,
 }: {
   business: Business
   professionals: Professional[]
@@ -119,6 +128,7 @@ export default function BookingFlow({
   services: Service[]
   referralCode?: string
   prefill?: Prefill
+  coupon?: AppliedCoupon
 }) {
   const hasServices = services.length > 0
   const hasMultipleProfessionals = professionals.length > 1
@@ -223,9 +233,17 @@ export default function BookingFlow({
 
   // Totais calculados dos serviços selecionados
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0)
-  const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
+  const subtotal = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
   const totalPoints = selectedServices.reduce((sum, s) => sum + (s.points ?? 0), 0)
   const hasPrice = selectedServices.some((s) => s.price !== null)
+
+  // Cupom aplicado: calcula desconto sobre subtotal
+  const couponDiscount = coupon
+    ? coupon.discount_type === 'fixed'
+      ? Math.min(coupon.discount_value, subtotal)
+      : Math.min((subtotal * coupon.discount_value) / 100, subtotal)
+    : 0
+  const totalPrice = Math.max(0, subtotal - couponDiscount)
 
   // Granularidade do dia (step entre horários mostrados). Ex: 15min.
   function getSlotStep(date: Date): number {
@@ -535,6 +553,16 @@ export default function BookingFlow({
           duration_minutes: s.duration_minutes,
         }))
       )
+    }
+
+    // Marca cupom como usado (vinculado a esse agendamento). Se falhar
+    // não bloqueia o flow — agendamento já confirmado.
+    if (coupon) {
+      await supabase
+        .from('coupons')
+        .update({ used_at: new Date().toISOString(), used_appointment_id: appointment.id })
+        .eq('id', coupon.id)
+        .is('used_at', null) // só marca se ainda não foi usado (idempotente)
     }
 
     // 4. Calcular pontos que o cliente VAI ganhar após o atendimento.
@@ -1105,6 +1133,34 @@ export default function BookingFlow({
         </div>
       )}
 
+      {/* Banner de cupom aplicado */}
+      {coupon && (
+        <div
+          className="rounded-2xl px-4 py-3 text-sm flex items-center gap-3"
+          style={{
+            background: 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))',
+            border: '1px solid rgba(16,185,129,0.4)',
+          }}
+        >
+          <span
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+            style={{ background: 'rgba(16,185,129,0.2)' }}
+          >
+            🎁
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold" style={{ color: '#10B981' }}>
+              Cupom {coupon.code} aplicado
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: C.mute }}>
+              {coupon.discount_type === 'percent'
+                ? `${coupon.discount_value}% off na sua próxima visita`
+                : `R$ ${coupon.discount_value.toFixed(2).replace('.', ',')} de desconto na sua próxima visita`}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Banner de fila — quando vem do email com prefill */}
       {prefill && (
         <div
@@ -1570,6 +1626,18 @@ export default function BookingFlow({
                     </div>
                   ))}
                   {hasPrice && selectedServices.length > 1 && (
+                    <div className="flex justify-between pt-1 mt-1" style={{ borderTop: `1px solid ${C.border}` }}>
+                      <span className="font-semibold" style={{ color: C.text }}>Subtotal</span>
+                      <span className="font-medium" style={{ color: C.text }}>{formatPrice(subtotal)}</span>
+                    </div>
+                  )}
+                  {coupon && couponDiscount > 0 && (
+                    <div className="flex justify-between" style={{ color: '#10B981' }}>
+                      <span className="font-medium">Cupom {coupon.code}</span>
+                      <span className="font-medium">− {formatPrice(couponDiscount)}</span>
+                    </div>
+                  )}
+                  {hasPrice && (selectedServices.length > 1 || coupon) && (
                     <div className="flex justify-between pt-1 mt-1" style={{ borderTop: `1px solid ${C.border}` }}>
                       <span className="font-semibold" style={{ color: C.text }}>Total</span>
                       <span className="font-bold" style={{ color: C.text }}>{formatPrice(totalPrice)}</span>
