@@ -728,7 +728,13 @@ export default function BookingFlow({
                       )}
                     </div>
                   ))}
-                  {hasPrice && selectedServices.length > 1 && (
+                  {coupon && couponDiscount > 0 && (
+                    <div className="flex items-center justify-between text-sm" style={{ color: '#A7F3D0' }}>
+                      <span>Cupom {coupon.code}</span>
+                      <span className="tabular-nums">− {formatPrice(couponDiscount)}</span>
+                    </div>
+                  )}
+                  {hasPrice && (selectedServices.length > 1 || (coupon && couponDiscount > 0)) && (
                     <div
                       className="flex items-center justify-between pt-2 mt-1 text-sm font-bold"
                       style={{ borderTop: '1px solid rgba(255,255,255,0.22)' }}
