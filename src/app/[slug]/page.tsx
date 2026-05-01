@@ -28,11 +28,17 @@ export default async function BusinessPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ ref?: string; preview?: string }>
+  searchParams: Promise<{ ref?: string; preview?: string; cupom?: string }>
 }) {
   const { slug } = await params
-  const { ref, preview } = await searchParams
-  const agendarHref = ref ? `/${slug}/agendar?ref=${ref}` : `/${slug}/agendar`
+  const { ref, preview, cupom } = await searchParams
+  // Propaga ref e cupom pro link de agendar — sem isso o cliente
+  // perde o cupom ao clicar "Agendar horário" daqui.
+  const agendarParams = new URLSearchParams()
+  if (ref) agendarParams.set('ref', ref)
+  if (cupom) agendarParams.set('cupom', cupom)
+  const agendarQuery = agendarParams.toString()
+  const agendarHref = agendarQuery ? `/${slug}/agendar?${agendarQuery}` : `/${slug}/agendar`
   // Quando admin clica "Ver minha pagina real" na aba Aparencia, abre
   // a pagina publica com ?preview=admin pra mostrar banner sticky de
   // voltar (sem isso o admin ficava sem caminho de retorno).
@@ -46,6 +52,24 @@ export default async function BusinessPage({
     .single()
 
   if (!business) notFound()
+
+  // Valida cupom (se vier ?cupom=X) — server-side, sem expor lógica
+  let appliedCoupon: { code: string; discount_type: 'fixed' | 'percent'; discount_value: number } | null = null
+  if (cupom) {
+    const { data: coupon } = await supabase
+      .from('coupons')
+      .select('code, discount_type, discount_value, expires_at, used_at')
+      .eq('code', cupom.toUpperCase())
+      .eq('business_id', business.id)
+      .maybeSingle()
+    if (coupon && !coupon.used_at && new Date(coupon.expires_at) > new Date()) {
+      appliedCoupon = {
+        code: coupon.code,
+        discount_type: coupon.discount_type as 'fixed' | 'percent',
+        discount_value: Number(coupon.discount_value),
+      }
+    }
+  }
 
   const [{ data: services }, { data: professionals }, { data: cheapestReward }] = await Promise.all([
     supabase
@@ -328,6 +352,34 @@ export default async function BusinessPage({
           )}
         </div>
 
+        {/* Banner de cupom — quando vier ?cupom=X e for válido */}
+        {appliedCoupon && (
+          <div
+            className="rounded-2xl p-4 mb-3 flex items-center gap-3"
+            style={{
+              background: 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))',
+              border: '1px solid rgba(16,185,129,0.4)',
+            }}
+          >
+            <span
+              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl"
+              style={{ background: 'rgba(16,185,129,0.2)' }}
+            >
+              🎁
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold leading-tight" style={{ color: '#10B981' }}>
+                Cupom {appliedCoupon.code} aplicado
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: muted }}>
+                {appliedCoupon.discount_type === 'percent'
+                  ? `${appliedCoupon.discount_value}% de desconto na sua próxima visita`
+                  : `R$ ${appliedCoupon.discount_value.toFixed(2).replace('.', ',')} de desconto na sua próxima visita`}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* CTA Agendar */}
         <Link
           href={agendarHref}
@@ -338,7 +390,7 @@ export default async function BusinessPage({
             boxShadow: `0 14px 40px -14px ${hexToRgba(primary, 0.7)}`,
           }}
         >
-          Agendar horário
+          {appliedCoupon ? 'Agendar e usar cupom' : 'Agendar horário'}
           <span className="transition-transform group-hover:translate-x-1">
             <IconArrowRight size={20} />
           </span>
