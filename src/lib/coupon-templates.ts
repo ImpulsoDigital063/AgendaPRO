@@ -94,6 +94,31 @@ function detectCategory(description: string | null | undefined): CategoryKey {
 }
 
 /**
+ * Nome de exemplo coerente com o nicho. Barbearia tem clientela
+ * majoritariamente masculina, salão/estética/nail majoritariamente
+ * feminina. Tatuagem/personal/psicólogo é misto.
+ *
+ * Usado no preview da campanha pra dono ver mensagem com nome
+ * que faria sentido pra cliente típico dele (não "Maria" em
+ * barbearia).
+ */
+const SAMPLE_NAMES: Record<CategoryKey, string> = {
+  barbearia: 'Lucas',
+  salao:     'Camila',
+  estetica:  'Júlia',
+  nail:      'Bianca',
+  manicure:  'Letícia',
+  tatuagem:  'Lucas',
+  psicologo: 'Marina',
+  personal:  'Rafael',
+  generic:   'Cliente',
+}
+
+export function sampleNameFor(description: string | null | undefined): string {
+  return SAMPLE_NAMES[detectCategory(description)]
+}
+
+/**
  * Sugere mensagens pra uma categoria (3 variações pra dono escolher
  * ou editar). Sempre retorna pelo menos 1 (generic).
  */

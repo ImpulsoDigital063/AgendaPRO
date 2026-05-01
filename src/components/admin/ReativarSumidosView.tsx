@@ -7,6 +7,7 @@ import {
   fillTemplate,
   formatValidity,
   formatDiscount,
+  sampleNameFor,
 } from '@/lib/coupon-templates'
 import { initialsFor, avatarGradient } from '@/lib/client-display'
 import { IconWhatsapp, IconCheck } from '@/components/ui/Icon'
@@ -77,6 +78,12 @@ export default function ReativarSumidosView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateIdx])
 
+  // Nome do preview coerente com o nicho do business — barbearia
+  // mostra "Lucas", salão "Camila" etc. Sem isso, dono via "Maria"
+  // mesmo em barbearia (clientela masculina), gerando ruído
+  // cognitivo no preview.
+  const sampleName = useMemo(() => sampleNameFor(businessDescription), [businessDescription])
+
   const previewMessage = useMemo(() => {
     const sample = customMessage || templates[templateIdx] || ''
     const expiresAt = new Date()
@@ -84,13 +91,13 @@ export default function ReativarSumidosView({
     const discountStr = formatDiscount(discountType, Number(discountValue) || 0)
     const validityStr = formatValidity(expiresAt)
     return fillTemplate(sample, {
-      nome: 'Maria',
+      nome: sampleName,
       negocio: businessName,
       desconto: discountStr,
       validade: validityStr,
       link: `${typeof window !== 'undefined' ? window.location.origin : ''}/${businessSlug}?cupom=OIABC123`,
     })
-  }, [customMessage, templates, templateIdx, validityDays, discountType, discountValue, businessName, businessSlug])
+  }, [customMessage, templates, templateIdx, validityDays, discountType, discountValue, businessName, businessSlug, sampleName])
 
   // Stats dos cupons existentes
   const couponStats = useMemo(() => {
@@ -396,7 +403,7 @@ export default function ReativarSumidosView({
         {/* Preview */}
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
-            Preview (cliente Maria)
+            Preview (cliente {sampleName})
           </p>
           <div
             className="rounded-xl p-3 text-sm whitespace-pre-wrap leading-relaxed"
