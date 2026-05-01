@@ -145,37 +145,47 @@ export default function AnalisesView({ currentMonth, prevMonthTotal, startCurren
         <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
           Receita por dia
         </h2>
-        <div className="flex items-end gap-0.5 h-32">
+        {/* Container com altura fixa pras barras + linha de labels separada */}
+        <div className="flex items-end gap-0.5" style={{ height: 120 }}>
           {dailyData.map((d) => {
-            const heightPct = (d.value / maxDailyValue) * 100
+            const heightPx = d.value > 0 ? Math.max((d.value / maxDailyValue) * 120, 4) : 2
             const isToday = d.date === new Date().toISOString().split('T')[0]
             const hasValue = d.value > 0
             return (
               <div
                 key={d.date}
-                className="flex-1 flex flex-col items-center gap-1 group"
+                className="flex-1 flex items-end justify-center"
                 title={`${d.day}: ${formatPrice(d.value)}`}
               >
                 <div
                   className="w-full rounded-t transition-all"
                   style={{
-                    height: hasValue ? `${Math.max(heightPct, 4)}%` : '2px',
+                    height: `${heightPx}px`,
                     background: hasValue
                       ? 'linear-gradient(180deg, var(--brand-primary), var(--brand-secondary))'
                       : 'var(--admin-divider)',
                     opacity: isToday ? 1 : hasValue ? 0.85 : 0.4,
                   }}
                 />
-                <span
-                  className="text-[8px] tabular-nums"
-                  style={{
-                    color: isToday ? 'var(--admin-accent)' : 'var(--admin-text-faded)',
-                    fontWeight: isToday ? 700 : 400,
-                  }}
-                >
-                  {d.day}
-                </span>
               </div>
+            )
+          })}
+        </div>
+        {/* Labels dos dias em linha separada */}
+        <div className="flex gap-0.5 mt-1.5">
+          {dailyData.map((d) => {
+            const isToday = d.date === new Date().toISOString().split('T')[0]
+            return (
+              <span
+                key={d.date}
+                className="flex-1 text-center text-[8px] tabular-nums"
+                style={{
+                  color: isToday ? 'var(--admin-accent)' : 'var(--admin-text-faded)',
+                  fontWeight: isToday ? 700 : 400,
+                }}
+              >
+                {d.day}
+              </span>
             )
           })}
         </div>
