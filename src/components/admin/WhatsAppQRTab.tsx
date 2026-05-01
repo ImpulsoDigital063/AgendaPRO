@@ -18,17 +18,17 @@ const SUGESTOES = [
   { label: 'Caixa', icon: IconBox() },
 ]
 
-type PrintMode = 'branded' | 'simple' | null
-
 export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) {
   const qrRef = useRef<HTMLDivElement>(null)
   const [origin, setOrigin] = useState('')
   const [copied, setCopied] = useState(false)
   const [shared, setShared] = useState(false)
   const [downloading, setDownloading] = useState(false)
-  // Print inline (sem window.open) — evita usuario ficar preso fora do
-  // PWA standalone depois de cancelar a tela de impressao do iOS.
-  const [printMode, setPrintMode] = useState<PrintMode>(null)
+  // Iframe pra impressao isolada — evita window.open (que tirava o
+  // user do PWA) e tambem evita print stylesheet @media print do app
+  // (que o iOS Safari ignorava, imprimindo a pagina inteira em dark).
+  // O iframe tem documento proprio com o HTML do cartaz so, isolado.
+  const printIframeRef = useRef<HTMLIFrameElement | null>(null)
 
   useEffect(() => {
     setOrigin(window.location.origin)
@@ -45,33 +45,78 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
   const hasLogo = !!business.logo_url
   const category = business.description ?? ''
 
-  // Quando muda printMode pra um valor != null, o cartaz é montado no
-  // DOM e disparamos window.print() apos o paint. afterprint (ou
-  // fallback timeout) reseta o estado pra esconder o cartaz da tela.
+  /**
+   * Imprime o cartaz (branded ou simples) via iframe isolado.
+   * O HTML do cartaz é injetado no srcdoc do iframe — documento
+   * proprio, isolado do dark mode do app. Quando user cancela ou
+   * imprime, o iframe é removido e o user continua no PWA.
+   */
+  function printCartaz(mode: 'branded' | 'simple') {
+    const svg = qrRef.current?.querySelector('svg')
+    if (!svg) return
+    const svgData = new XMLSerializer().serializeToString(svg)
+    const html = mode === 'branded'
+      ? buildBrandedHTML({ business, linkPretty, qrColor, svgData, category })
+      : buildSimpleHTML({ business, linkPretty, qrColor, svgData })
+
+    // Limpa iframe anterior se ainda existir
+    if (printIframeRef.current) {
+      printIframeRef.current.remove()
+      printIframeRef.current = null
+    }
+
+    const iframe = document.createElement('iframe')
+    iframe.setAttribute('aria-hidden', 'true')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.style.opacity = '0'
+    iframe.style.pointerEvents = 'none'
+    document.body.appendChild(iframe)
+    printIframeRef.current = iframe
+
+    iframe.onload = () => {
+      const win = iframe.contentWindow
+      if (!win) return
+      // Pequeno delay pra garantir paint da img da logo no iframe
+      setTimeout(() => {
+        win.focus()
+        win.print()
+      }, 200)
+    }
+
+    iframe.srcdoc = html
+
+    // Cleanup: remove iframe quando print fecha (afterprint dispara
+    // tanto em imprimir quanto cancelar). Fallback de 60s caso evento
+    // nao dispare (alguns browsers iOS).
+    const cleanup = () => {
+      if (printIframeRef.current === iframe) {
+        iframe.remove()
+        printIframeRef.current = null
+      }
+    }
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.addEventListener('afterprint', cleanup, { once: true })
+      } catch {
+        /* cross-origin paranoia */
+      }
+    }, 300)
+    setTimeout(cleanup, 60000)
+  }
+
   useEffect(() => {
-    if (!printMode) return
-
-    let resetTimer: ReturnType<typeof setTimeout> | null = null
-    const reset = () => {
-      if (resetTimer) clearTimeout(resetTimer)
-      setPrintMode(null)
-    }
-
-    // Aguarda 1 frame pro DOM atualizar antes de chamar print
-    const printTimer = setTimeout(() => {
-      window.addEventListener('afterprint', reset, { once: true })
-      window.print()
-      // Fallback: alguns navegadores nao disparam afterprint quando
-      // user cancela. Reset apos 60s pra garantir que nao trava.
-      resetTimer = setTimeout(reset, 60000)
-    }, 60)
-
     return () => {
-      clearTimeout(printTimer)
-      if (resetTimer) clearTimeout(resetTimer)
-      window.removeEventListener('afterprint', reset)
+      if (printIframeRef.current) {
+        printIframeRef.current.remove()
+        printIframeRef.current = null
+      }
     }
-  }, [printMode])
+  }, [])
 
   /**
    * Gera PNG e tenta compartilhar via Web Share API (iOS/Android).
@@ -180,32 +225,6 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
 
   return (
     <>
-      {/* Print stylesheet — quando printMode tiver valor, esconde tudo
-          exceto o cartaz e mostra ele em A5. Sem isso o usuario ficaria
-          preso numa janela nova. */}
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: A5;
-            margin: 0;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          .qr-print-area,
-          .qr-print-area * {
-            visibility: visible !important;
-          }
-          .qr-print-area {
-            position: absolute !important;
-            left: 0;
-            top: 0;
-            width: 148mm;
-            height: 210mm;
-          }
-        }
-      `}</style>
-
       <div className="space-y-4 pb-8">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -292,7 +311,7 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
         {/* Imprimir — 2 templates: branded (destaque) e simples */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
-            onClick={() => setPrintMode('branded')}
+            onClick={() => printCartaz('branded')}
             className="relative flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
             style={{ background: 'var(--admin-accent)', color: '#fff' }}
           >
@@ -307,7 +326,7 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
           </button>
 
           <button
-            onClick={() => setPrintMode('simple')}
+            onClick={() => printCartaz('simple')}
             className="flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
             style={{
               background: 'var(--admin-accent-bg)',
@@ -398,31 +417,6 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
         </div>
       </div>
 
-      {/* CARTAZ DE IMPRESSAO — montado inline quando printMode setado.
-          Esconde da tela com display:none e usa @media print pra
-          aparecer apenas no print preview. Assim o usuario continua
-          no PWA depois de cancelar/imprimir. */}
-      {printMode === 'branded' && (
-        <div className="qr-print-area" style={{ position: 'fixed', left: -9999, top: 0, pointerEvents: 'none' }}>
-          <PrintCartazBranded
-            business={business}
-            bookingLink={bookingLink}
-            linkPretty={linkPretty}
-            qrColor={qrColor}
-            category={category}
-          />
-        </div>
-      )}
-      {printMode === 'simple' && (
-        <div className="qr-print-area" style={{ position: 'fixed', left: -9999, top: 0, pointerEvents: 'none' }}>
-          <PrintCartazSimple
-            business={business}
-            bookingLink={bookingLink}
-            linkPretty={linkPretty}
-            qrColor={qrColor}
-          />
-        </div>
-      )}
     </>
   )
 }
@@ -489,223 +483,241 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 // =============================================================================
-// CARTAZES PARA IMPRESSAO
+// CARTAZES PARA IMPRESSAO — HTML strings injetadas no iframe srcdoc.
+// Usar string em vez de React component pra ter controle total sobre
+// o documento isolado (sem hidratacao, sem styled-jsx).
 // =============================================================================
 
-type PrintProps = {
+type BuildHTMLArgs = {
   business: Business
-  bookingLink: string
   linkPretty: string
   qrColor: string
+  svgData: string
   category?: string
 }
 
-function PrintCartazBranded({ business, bookingLink, linkPretty, qrColor, category }: PrintProps) {
-  return (
-    <div
-      style={{
-        width: '148mm',
-        height: '210mm',
-        padding: '8mm',
-        background: `linear-gradient(135deg, ${qrColor} 0%, ${qrColor}CC 100%)`,
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#0F172A',
-        boxSizing: 'border-box',
-        WebkitPrintColorAdjust: 'exact',
-        printColorAdjust: 'exact',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          background: '#ffffff',
-          borderRadius: 12,
-          padding: '14mm 12mm',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          textAlign: 'center',
-          border: '1px solid rgba(0,0,0,0.04)',
-          boxSizing: 'border-box',
-        }}
-      >
-        <h1 style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.15, margin: '0 0 4px', letterSpacing: '-0.01em' }}>
-          {business.name}
-        </h1>
-        {category && (
-          <p
-            style={{
-              fontSize: 12,
-              textTransform: 'uppercase',
-              letterSpacing: '0.18em',
-              color: qrColor,
-              fontWeight: 700,
-              margin: '0 0 18px',
-            }}
-          >
-            {category}
-          </p>
-        )}
-
-        <div
-          style={{
-            position: 'relative',
-            display: 'inline-block',
-            padding: 12,
-            border: `3px solid ${qrColor}`,
-            borderRadius: 18,
-            background: '#fff',
-            marginBottom: 16,
-          }}
-        >
-          <QRCode
-            value={bookingLink}
-            size={220}
-            bgColor="#ffffff"
-            fgColor={qrColor}
-            level="H"
-          />
-          {business.logo_url && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 48,
-                height: 48,
-                background: '#fff',
-                borderRadius: 10,
-                padding: 3,
-                boxShadow: '0 0 0 5px #fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={business.logo_url}
-                alt={business.name}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
-            </div>
-          )}
-        </div>
-
-        <p style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.35, color: '#0F172A', margin: '6px 0 4px', maxWidth: 260 }}>
-          Agende online quando quiser.
-        </p>
-        <p style={{ fontSize: 13, color: '#475569', margin: '0 0 14px' }}>
-          Sem precisar ligar. Sem horário comercial.
-        </p>
-
-        <div
-          style={{
-            fontSize: 11,
-            color: '#64748B',
-            wordBreak: 'break-all',
-            margin: '0 0 auto',
-            padding: '6px 12px',
-            background: '#F1F5F9',
-            borderRadius: 999,
-          }}
-        >
-          {linkPretty}
-        </div>
-
-        <div style={{ textAlign: 'center', paddingTop: 4 }}>
-          <div style={{ width: 60, height: 2, background: qrColor, borderRadius: 2, margin: '14px auto 10px', opacity: 0.4 }} />
-          <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em', color: '#94A3B8', margin: '0 0 2px', fontWeight: 600 }}>
-            Powered by
-          </p>
-          <p style={{ fontSize: 14, fontWeight: 800, color: qrColor, letterSpacing: '-0.01em', margin: 0 }}>
-            AgendaPRO
-          </p>
-          <p style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
-            Sistema de agendamento automático
-          </p>
-        </div>
-      </div>
-    </div>
-  )
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
-function PrintCartazSimple({ business, bookingLink, linkPretty, qrColor }: PrintProps) {
-  return (
-    <div
-      style={{
-        width: '148mm',
-        height: '210mm',
-        padding: '20mm',
-        background: '#ffffff',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#0F172A',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
-      }}
-    >
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 6px' }}>{business.name}</h1>
-      <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 26px' }}>Agende online em segundos</p>
-
-      <div
-        style={{
-          position: 'relative',
-          display: 'inline-block',
-          padding: 16,
-          border: '2px solid #E5E7EB',
-          borderRadius: 16,
-          background: '#fff',
-          marginBottom: 20,
-        }}
-      >
-        <QRCode
-          value={bookingLink}
-          size={300}
-          bgColor="#ffffff"
-          fgColor={qrColor}
-          level="H"
-        />
-        {business.logo_url && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 64,
-              height: 64,
-              background: '#fff',
-              borderRadius: 12,
-              padding: 4,
-              boxShadow: '0 0 0 6px #fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={business.logo_url}
-              alt={business.name}
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            />
-          </div>
-        )}
+function buildBrandedHTML({ business, linkPretty, qrColor, svgData, category }: BuildHTMLArgs) {
+  const logoTag = business.logo_url
+    ? `<img class="logo" src="${escapeHtml(business.logo_url)}" alt="${escapeHtml(business.name)}" crossorigin="anonymous" />`
+    : ''
+  return `<!doctype html>
+<html>
+  <head>
+    <title>Cartaz QR - ${escapeHtml(business.name)}</title>
+    <meta charset="utf-8" />
+    <style>
+      @page { size: A5; margin: 0; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #0F172A;
+        background: #fff;
+      }
+      .frame {
+        width: 148mm;
+        min-height: 210mm;
+        padding: 8mm;
+        background: linear-gradient(135deg, ${qrColor} 0%, ${qrColor}CC 100%);
+        display: flex;
+        align-items: stretch;
+      }
+      .inner {
+        flex: 1;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 14mm 12mm;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        border: 1px solid rgba(0,0,0,0.04);
+      }
+      .name {
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1.15;
+        margin: 0 0 4px;
+        color: #0F172A;
+        letter-spacing: -0.01em;
+      }
+      .category {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: ${qrColor};
+        font-weight: 700;
+        margin: 0 0 18px;
+      }
+      .qr {
+        position: relative;
+        display: inline-block;
+        padding: 12px;
+        border: 3px solid ${qrColor};
+        border-radius: 18px;
+        background: #fff;
+        margin-bottom: 16px;
+      }
+      .qr svg { width: 220px; height: 220px; display: block; }
+      .logo {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 48px; height: 48px;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 10px;
+        padding: 3px;
+        box-shadow: 0 0 0 5px #fff;
+      }
+      .pitch {
+        font-size: 17px;
+        font-weight: 700;
+        line-height: 1.35;
+        color: #0F172A;
+        margin: 6px 0 4px;
+        max-width: 260px;
+      }
+      .pitch-sub {
+        font-size: 13px;
+        color: #475569;
+        margin: 0 0 14px;
+      }
+      .link {
+        font-size: 11px;
+        color: #64748B;
+        word-break: break-all;
+        margin: 0 0 auto;
+        padding: 6px 12px;
+        background: #F1F5F9;
+        border-radius: 999px;
+      }
+      .divider {
+        width: 60px;
+        height: 2px;
+        background: ${qrColor};
+        border-radius: 2px;
+        margin: 14px auto 10px;
+        opacity: 0.4;
+      }
+      .footer { text-align: center; padding-top: 4px; }
+      .powered {
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: #94A3B8;
+        margin: 0 0 2px;
+        font-weight: 600;
+      }
+      .brand {
+        font-size: 14px;
+        font-weight: 800;
+        color: ${qrColor};
+        letter-spacing: -0.01em;
+        margin: 0;
+      }
+      .brand-tag {
+        font-size: 10px;
+        color: #64748B;
+        margin-top: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="inner">
+        <h1 class="name">${escapeHtml(business.name)}</h1>
+        ${category ? `<p class="category">${escapeHtml(category)}</p>` : ''}
+        <div class="qr">${svgData}${logoTag}</div>
+        <p class="pitch">Agende online quando quiser.</p>
+        <p class="pitch-sub">Sem precisar ligar. Sem horário comercial.</p>
+        <div class="link">${escapeHtml(linkPretty)}</div>
+        <div class="footer">
+          <div class="divider"></div>
+          <p class="powered">Powered by</p>
+          <p class="brand">AgendaPRO</p>
+          <p class="brand-tag">Sistema de agendamento automático</p>
+        </div>
       </div>
-
-      <p style={{ fontSize: 13, color: '#374151', wordBreak: 'break-all', margin: '0 0 18px' }}>
-        {linkPretty}
-      </p>
-      <p style={{ fontSize: 18, fontWeight: 700, color: qrColor, margin: 0 }}>
-        Aponte a câmera, escaneie e agende
-      </p>
     </div>
-  )
+  </body>
+</html>`
+}
+
+function buildSimpleHTML({ business, linkPretty, qrColor, svgData }: BuildHTMLArgs) {
+  const logoTag = business.logo_url
+    ? `<img class="logo" src="${escapeHtml(business.logo_url)}" alt="${escapeHtml(business.name)}" crossorigin="anonymous" />`
+    : ''
+  return `<!doctype html>
+<html>
+  <head>
+    <title>QR Code - ${escapeHtml(business.name)}</title>
+    <meta charset="utf-8" />
+    <style>
+      @page { size: A5; margin: 0; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #0F172A;
+        background: #fff;
+      }
+      .page {
+        width: 148mm;
+        min-height: 210mm;
+        padding: 20mm;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        background: #fff;
+      }
+      h1 { font-size: 28px; font-weight: 800; margin: 0 0 6px; }
+      h2 { font-size: 14px; color: #64748B; font-weight: 500; margin: 0 0 26px; }
+      .qr {
+        position: relative;
+        display: inline-block;
+        padding: 16px;
+        border: 2px solid #E5E7EB;
+        border-radius: 16px;
+        background: #fff;
+        margin-bottom: 20px;
+      }
+      .qr svg { width: 300px; height: 300px; display: block; }
+      .logo {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 64px; height: 64px;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 12px;
+        padding: 4px;
+        box-shadow: 0 0 0 6px #fff;
+      }
+      .link { font-size: 13px; color: #374151; word-break: break-all; margin: 0 0 18px; }
+      .cta { font-size: 18px; font-weight: 700; color: ${qrColor}; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>${escapeHtml(business.name)}</h1>
+      <h2>Agende online em segundos</h2>
+      <div class="qr">${svgData}${logoTag}</div>
+      <p class="link">${escapeHtml(linkPretty)}</p>
+      <p class="cta">Aponte a câmera, escaneie e agende</p>
+    </div>
+  </body>
+</html>`
 }
 
 function Step({ n, label, color }: { n: number; label: string; color: string }) {
