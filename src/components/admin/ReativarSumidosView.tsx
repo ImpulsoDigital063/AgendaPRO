@@ -296,7 +296,7 @@ export default function ReativarSumidosView({
             Nova campanha &quot;Oi sumido&quot;
           </p>
           <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-            Vamos gerar 1 cupom único por cliente sumido (60+ dias sem agendar). Você dispara via WhatsApp clicando em cada um.
+            Vamos gerar 1 cupom único por cliente sumido (40+ dias sem agendar). Você dispara via WhatsApp clicando em cada um.
           </p>
         </div>
 
