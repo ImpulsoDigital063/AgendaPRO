@@ -174,7 +174,13 @@ export default async function BusinessPage({
             <div
               className="w-28 h-28 rounded-3xl flex items-center justify-center text-4xl font-bold flex-shrink-0 overflow-hidden"
               style={{
-                background: b.logo_url ? (isDark ? '#050713' : '#FFFFFF') : cover,
+                // Quando há logo, sempre fundo BRANCO (independente do
+                // modo) — logos típicas têm fundo branco/transparente
+                // ou cores escuras, então fundo branco preserva a
+                // legibilidade em todos os casos. Em dark, o "ilha
+                // branca" arredondada destaca visualmente em vez de
+                // sumir.
+                background: b.logo_url ? '#FFFFFF' : cover,
                 color: 'white',
                 border: `4px solid ${isDark ? '#050713' : '#FFFFFF'}`,
                 boxShadow: `0 16px 44px -14px ${hexToRgba(primary, 0.65)}`,
