@@ -31,46 +31,46 @@ export type CategoryKey =
 
 const TEMPLATES: Record<CategoryKey, string[]> = {
   barbearia: [
-    'E aí {nome}, sumiu hein! 👀 Tô segurando um cupom de {desconto} pra próxima passada na {negocio}. Vale {validade}: {link}',
-    '{nome}, faz tempo demais que você não aparece. Bora desenrolar essa? Cupom de {desconto} válido por {validade}: {link}',
-    'Fala {nome}! Cabelo crescendo aí? 😅 {desconto} off pra você voltar na {negocio}. Vale {validade}: {link}',
+    'Fala {nome}! Faz tempo que você não aparece aqui na {negocio}. Separei {desconto} de desconto na próxima visita. Vale {validade}: {link}',
+    '{nome}, sentimos sua falta na {negocio}. Pra te trazer de volta, tem {desconto} de desconto te esperando — vale {validade}: {link}',
+    'Oi {nome}, tudo bem? Notei que faz um tempo desde sua última visita. Separei {desconto} de desconto pra você voltar na {negocio}. Vale {validade}: {link}',
   ],
   salao: [
-    'Oi {nome}, sumida! Tô com saudade aqui na {negocio} 💜 Separei {desconto} de desconto pra te receber de novo. Vale {validade}: {link}',
-    '{nome}, faz um tempinho. Que tal voltar com {desconto} off? Vale {validade} aqui na {negocio}: {link}',
-    'Oi linda! Notei que você sumiu. Tenho um agrado de {desconto} esperando — vale {validade}: {link}',
+    'Oi {nome}! Faz tempo que você não aparece aqui no {negocio}. Separei {desconto} de desconto na próxima sessão. Vale {validade}: {link}',
+    '{nome}, sentimos saudade aqui no {negocio}. Pra te receber de volta com carinho, tem {desconto} de desconto esperando — vale {validade}: {link}',
+    'Oi {nome}, tudo bem? Notei que faz um tempinho desde nossa última sessão. Separei {desconto} de desconto na próxima visita ao {negocio}. Vale {validade}: {link}',
   ],
   estetica: [
-    'Oi {nome}! Faz tempo que não te vejo aqui na {negocio}. Sua pele tá pedindo. {desconto} off na próxima sessão, vale {validade}: {link}',
-    '{nome}, separei um cupom especial pra você voltar: {desconto} de desconto, válido por {validade}. {link}',
-    'Oi querida! Tô lembrando que faz tempo que você não aparece. Que tal {desconto} off na próxima? Vale {validade}: {link}',
+    'Oi {nome}! Faz tempo que você não aparece na {negocio}. Separei {desconto} de desconto na próxima sessão. Vale {validade}: {link}',
+    '{nome}, sua pele agradece o cuidado contínuo. Tem {desconto} de desconto na próxima visita à {negocio}, vale {validade}: {link}',
+    'Oi {nome}, tudo bem? Notei que faz um tempo desde sua última sessão. Pra retomar, separei {desconto} de desconto na próxima — vale {validade}: {link}',
   ],
   nail: [
-    '{nome}, sumiu! 💅 Saudade do nail. Cupom de {desconto} pra você voltar — vale {validade}: {link}',
-    'Oi {nome}! Faz tempo demais. Separei {desconto} off na próxima nail aqui na {negocio}. Vale {validade}: {link}',
-    'Ei, faz tempo hein! Vamos atualizar essa nail? {desconto} off, válido por {validade}: {link}',
+    'Oi {nome}! Faz tempo que você não aparece aqui na {negocio}. Tem {desconto} de desconto na próxima nail. Vale {validade}: {link}',
+    '{nome}, sentimos saudade na {negocio}. Pra te receber de volta, separei {desconto} de desconto — vale {validade}: {link}',
+    'Oi {nome}! Notei que faz um tempo desde a última manutenção. Tem {desconto} de desconto te esperando na {negocio}, vale {validade}: {link}',
   ],
   tatuagem: [
-    'Fala {nome}! Pensando naquela tattoo? 🖋 Tô com {desconto} off pra você fechar. Vale {validade}: {link}',
-    '{nome}, faz tempo. Cupom de {desconto} pra fechar a próxima sessão na {negocio}. Vale {validade}: {link}',
-    'E aí, ficou só na ideia? Cupom de {desconto} off pra concretizar. Vale {validade}: {link}',
+    'Fala {nome}! Pensando em fechar mais uma? Separei {desconto} de desconto na próxima sessão na {negocio}. Vale {validade}: {link}',
+    '{nome}, faz tempo desde a última. Pra te trazer de volta, tem {desconto} de desconto na próxima sessão na {negocio} — vale {validade}: {link}',
+    'Oi {nome}, tudo bem? Tem {desconto} de desconto te esperando na {negocio} pra próxima sessão. Vale {validade}: {link}',
   ],
   psicologo: [
-    'Oi {nome}, tudo bem? Faz um tempo desde nossa última sessão. Quando estiver pronto pra retomar, separei {desconto} de desconto na próxima — vale {validade}: {link}',
-    '{nome}, cuidar de si é um processo contínuo. Sem pressão — quando quiser voltar, tem {desconto} off válido por {validade}: {link}',
+    'Oi {nome}, tudo bem? Quando se sentir pronto pra retomar, separei {desconto} de desconto na próxima sessão. Vale {validade}: {link}',
+    '{nome}, cuidar de si é um processo. Sem pressão — quando quiser voltar, tem {desconto} de desconto na próxima sessão, válido por {validade}: {link}',
   ],
   personal: [
-    'E aí {nome}, parou? 💪 Hora de voltar! Cupom de {desconto} off na próxima sessão. Vale {validade}: {link}',
-    '{nome}, faz tempo desde o último treino. Bora retomar com {desconto} off — vale {validade}: {link}',
-    'Fala campeão/campeã! Os músculos pedem você de volta 😄 {desconto} off na próxima. Vale {validade}: {link}',
+    'Fala {nome}! Hora de voltar pros treinos. Separei {desconto} de desconto na próxima sessão. Vale {validade}: {link}',
+    '{nome}, faz tempo desde o último treino. Pra retomar com gás, tem {desconto} de desconto na próxima sessão — vale {validade}: {link}',
+    'Oi {nome}, tudo bem? Bora voltar à rotina? Tem {desconto} de desconto na próxima sessão te esperando. Vale {validade}: {link}',
   ],
   manicure: [
-    '{nome}, sumiu! 💅 Suas mãos pedindo manutenção. {desconto} off pra você voltar — vale {validade}: {link}',
-    'Oi {nome}! Faz um tempinho hein. Cupom de {desconto} esperando você na {negocio}. Vale {validade}: {link}',
+    'Oi {nome}! Faz tempo que você não aparece aqui na {negocio}. Tem {desconto} de desconto na próxima manutenção. Vale {validade}: {link}',
+    '{nome}, sentimos sua falta na {negocio}. Separei {desconto} de desconto pra você voltar — vale {validade}: {link}',
   ],
   generic: [
-    'Oi {nome}! Faz tempo que não te vejo aqui na {negocio}. Tenho um cupom de {desconto} de desconto pra você voltar. Vale {validade}: {link}',
-    '{nome}, faz tempo desde nosso último encontro. Separei {desconto} off na próxima — vale {validade}: {link}',
+    'Oi {nome}! Faz tempo que você não aparece na {negocio}. Tenho {desconto} de desconto pra você voltar. Vale {validade}: {link}',
+    '{nome}, sentimos sua falta. Separei {desconto} de desconto na próxima visita à {negocio} — vale {validade}: {link}',
   ],
 }
 
@@ -139,6 +139,8 @@ export function formatValidity(expiresAt: Date): string {
 }
 
 export function formatDiscount(type: 'fixed' | 'percent', value: number): string {
-  if (type === 'percent') return `${value.toFixed(0)}% off`
+  // Sem sufixo "off" — templates já dizem "de desconto" explicitamente.
+  // Retorna apenas o valor formatado: "15%" ou "R$ 10,00".
+  if (type === 'percent') return `${value.toFixed(0)}%`
   return `R$ ${value.toFixed(2).replace('.', ',')}`
 }

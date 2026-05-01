@@ -293,7 +293,7 @@ export default function ReativarSumidosView({
       <div className="admin-card p-4 space-y-4">
         <div>
           <p className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
-            Nova campanha &quot;Oi sumido&quot;
+            Cupom de retorno
           </p>
           <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-mute)' }}>
             Vamos gerar 1 cupom único por cliente sumido (40+ dias sem agendar). Você dispara via WhatsApp clicando em cada um.
