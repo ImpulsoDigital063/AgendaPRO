@@ -42,7 +42,11 @@ type Props = {
 type FilterKey = 'todos' | 'recentes' | 'top' | 'sumidos' | 'novos'
 
 const VIP_THRESHOLD = 200
-const SUMIDO_DAYS = 60
+// 40 dias é o ponto onde a maioria dos nichos (barbearia/nail/salão/
+// estética) tem ciclo natural quebrado. Antes era 60 — tarde demais
+// pra barbearia (cliente típico volta 15-30 dias). Em iteração
+// futura: tornar configurável por business ou ajustar por nicho.
+const SUMIDO_DAYS = 40
 const NOVO_DAYS = 30
 
 function formatPrice(value: number) {

@@ -3,7 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { randomUUID } from 'crypto'
 
-const SUMIDO_DAYS = 60
+// 40 dias — alinhado com ClientesView. Barbearia/nail tem ciclo
+// curto (15-30d), 60 era tarde demais.
+const SUMIDO_DAYS = 40
 
 /**
  * POST /api/admin/coupons/campaign
@@ -107,6 +109,7 @@ export async function POST(req: Request) {
   if (sumidoCustomers.length === 0) {
     return NextResponse.json({
       error: `nenhum cliente sumido (sem agendamento há ${SUMIDO_DAYS}+ dias)`,
+      sumidoDays: SUMIDO_DAYS,
     }, { status: 400 })
   }
 
