@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone, daysBetween } from '@/lib/client-display'
 import {
@@ -10,6 +11,13 @@ import {
   IconClose,
   IconSparkles,
 } from '@/components/ui/Icon'
+
+// Lazy: o modal de detalhe so eh baixado quando user clica num cliente.
+// Em uso massa (centenas de clientes na lista), nao queremos pesar o
+// initial bundle com codigo que so eh usado em interacao especifica.
+const ClienteDetailModal = dynamic(() => import('./ClienteDetailModal'), {
+  ssr: false,
+})
 
 type Cliente = {
   id: string
@@ -93,6 +101,7 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<FilterKey>('todos')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [detailCustomerId, setDetailCustomerId] = useState<string | null>(null)
   // Suprime warning ate que businessId seja efetivamente usado em
   // outras features (cupons, detalhes etc). Por enquanto a API
   // /api/admin/customers infere o business pelo owner_id da sessao.
@@ -237,7 +246,13 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
               className="admin-enter"
               style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 50}ms` }}
             >
-              <ClienteCard client={c} bookingUrl={bookingUrl} />
+              <ClienteCard
+                client={c}
+                bookingUrl={bookingUrl}
+                onOpenDetail={() => {
+                  if (c.customer_id) setDetailCustomerId(c.customer_id)
+                }}
+              />
             </div>
           ))}
         </div>
@@ -251,6 +266,13 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
             // refresh do server component pra trazer o novo cliente
             router.refresh()
           }}
+        />
+      )}
+
+      {detailCustomerId && (
+        <ClienteDetailModal
+          customerId={detailCustomerId}
+          onClose={() => setDetailCustomerId(null)}
         />
       )}
     </div>
@@ -433,13 +455,38 @@ function KpiCell({ label, value, tone }: { label: string; value: number; tone: '
   )
 }
 
-function ClienteCard({ client, bookingUrl }: { client: Cliente; bookingUrl: string }) {
+function ClienteCard({
+  client,
+  bookingUrl,
+  onOpenDetail,
+}: {
+  client: Cliente
+  bookingUrl: string
+  onOpenDetail?: () => void
+}) {
   const tier = tierFor(client)
   const phoneDigits = (client.phone || '').replace(/\D/g, '')
   const waUrl = `https://wa.me/55${phoneDigits}`
+  const clickable = !!onOpenDetail && !!client.customer_id
 
   return (
-    <div className="admin-card p-3.5">
+    <div
+      className="admin-card p-3.5"
+      onClick={clickable ? onOpenDetail : undefined}
+      style={clickable ? { cursor: 'pointer' } : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onOpenDetail?.()
+              }
+            }
+          : undefined
+      }
+    >
       {/* Topo: avatar + nome + tier + valor */}
       <div className="flex items-start gap-3">
         <span
@@ -484,6 +531,7 @@ function ClienteCard({ client, bookingUrl }: { client: Cliente; bookingUrl: stri
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1.5 text-xs mt-0.5 hover:opacity-80 transition-opacity"
             style={{ color: 'var(--admin-success)' }}
           >
@@ -526,6 +574,7 @@ function ClienteCard({ client, bookingUrl }: { client: Cliente; bookingUrl: stri
             href={bookingUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-90"
             style={{
               background: 'var(--admin-accent-bg)',
@@ -540,6 +589,7 @@ function ClienteCard({ client, bookingUrl }: { client: Cliente; bookingUrl: stri
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-90"
             style={{
               background: 'rgba(37,211,102,0.12)',
