@@ -709,14 +709,24 @@ export default function AparenciaTab({ business, services = [], onNavigateToNego
               <button
                 type="button"
                 onClick={() => setConfirmReset(false)}
-                className="admin-btn-secondary flex-1"
+                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors"
+                style={{
+                  background: 'var(--admin-accent-bg)',
+                  color: 'var(--admin-text)',
+                  border: '1px solid var(--admin-border)',
+                }}
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleReset}
-                className="admin-btn-primary flex-1"
+                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))',
+                  color: '#fff',
+                  boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
+                }}
               >
                 Voltar pro padrão
               </button>
