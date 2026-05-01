@@ -51,13 +51,18 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
    * proprio, isolado do dark mode do app. Quando user cancela ou
    * imprime, o iframe é removido e o user continua no PWA.
    */
-  function printCartaz(mode: 'branded' | 'simple') {
+  function printCartaz(mode: 'parede' | 'balcao' | 'acrilico' | 'simple') {
     const svg = qrRef.current?.querySelector('svg')
     if (!svg) return
     const svgData = new XMLSerializer().serializeToString(svg)
-    const html = mode === 'branded'
-      ? buildBrandedHTML({ business, linkPretty, qrColor, svgData, category })
-      : buildSimpleHTML({ business, linkPretty, qrColor, svgData })
+    const args = { business, linkPretty, qrColor, svgData, category }
+    let html: string
+    switch (mode) {
+      case 'parede':   html = buildBrandedHTML(args); break
+      case 'balcao':   html = buildBalcao4em1HTML(args); break
+      case 'acrilico': html = buildDisplayAcrilicoHTML(args); break
+      case 'simple':   html = buildSimpleHTML(args); break
+    }
 
     // Limpa iframe anterior se ainda existir
     if (printIframeRef.current) {
@@ -308,11 +313,15 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
           {shared ? 'Compartilhado!' : hasShare ? 'Compartilhar link' : 'Compartilhar (copia link)'}
         </button>
 
-        {/* Imprimir — 2 templates: branded (destaque) e simples */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* 3 templates de impressão pra casos de uso reais */}
+        <div className="admin-card p-4 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--admin-text-mute)' }}>
+            Imprimir
+          </p>
+
           <button
-            onClick={() => printCartaz('branded')}
-            className="relative flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
+            onClick={() => printCartaz('balcao')}
+            className="relative w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.98]"
             style={{ background: 'var(--admin-accent)', color: '#fff' }}
           >
             <span
@@ -321,25 +330,70 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
             >
               ★ Recomendado
             </span>
-            <IconPrint />
-            Imprimir cartaz
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.18)' }}>
+              <IconCards />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight">Cartões balcão (4 por folha)</p>
+              <p className="text-[11px] opacity-85 leading-tight mt-0.5">
+                4 cartões A6 numa folha A4. Imprime em casa, corta e distribui no caixa, balcão, espelho.
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => printCartaz('parede')}
+            className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
+            style={{
+              background: 'var(--admin-accent-bg)',
+              color: 'var(--admin-text)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${qrColor}1F`, color: qrColor }}>
+              <IconPoster />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight">Cartaz parede (A5)</p>
+              <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                Cartaz médio pra colar na vitrine, espelho, parede principal. Caseira ou gráfica.
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => printCartaz('acrilico')}
+            className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
+            style={{
+              background: 'var(--admin-accent-bg)',
+              color: 'var(--admin-text)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${qrColor}1F`, color: qrColor }}>
+              <IconAcrylic />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight">Display acrílico — gráfica (A6)</p>
+              <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                Com bleed 3mm. Salva PDF e manda pra gráfica fazer o display de vidro/acrílico de balcão.
+              </p>
+            </div>
           </button>
 
           <button
             onClick={() => printCartaz('simple')}
-            className="flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
+            className="w-full text-[11px] font-semibold py-2 rounded-lg transition-colors"
             style={{
-              background: 'var(--admin-accent-bg)',
-              color: 'var(--admin-text-2)',
-              border: '1px solid var(--admin-border)',
+              color: 'var(--admin-text-mute)',
+              border: '1px dashed var(--admin-border)',
             }}
           >
-            <IconPrint />
-            Imprimir simples
+            Imprimir simples (sem moldura/branding)
           </button>
         </div>
         <p className="text-[11px] text-center -mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-          Cartaz tem moldura, pitch pro cliente e selo AgendaPRO. Simples é só nome + QR.
+          Pra mandar pra gráfica: clique → toque em "Salvar como PDF" no print preview e envia o arquivo.
         </p>
 
         {/* Ações secundárias */}
@@ -653,6 +707,289 @@ function buildBrandedHTML({ business, linkPretty, qrColor, svgData, category }: 
 </html>`
 }
 
+/**
+ * 4 cartões A6 numa folha A4 — pra impressora caseira (qualquer
+ * navegador imprime A4). User imprime, corta nas guias tracejadas
+ * e tem 4 cartões pra distribuir: caixa, balcão, espelho, vitrine.
+ */
+function buildBalcao4em1HTML({ business, linkPretty, qrColor, svgData }: BuildHTMLArgs) {
+  const logoTag = business.logo_url
+    ? `<img class="logo" src="${escapeHtml(business.logo_url)}" alt="${escapeHtml(business.name)}" crossorigin="anonymous" />`
+    : ''
+  // Card miniatura repetido 4x — A6 = 105×148mm
+  const card = `
+    <div class="card">
+      <div class="cut top"></div>
+      <div class="cut bottom"></div>
+      <div class="cut left"></div>
+      <div class="cut right"></div>
+      <div class="card-inner">
+        <p class="mini-name">${escapeHtml(business.name)}</p>
+        <div class="mini-qr">${svgData}${logoTag}</div>
+        <p class="mini-pitch">Aponte a câmera e agende</p>
+        <p class="mini-link">${escapeHtml(linkPretty)}</p>
+        <div class="mini-footer">
+          <span class="mini-powered">Powered by</span>
+          <span class="mini-brand">AgendaPRO</span>
+        </div>
+      </div>
+    </div>
+  `
+  return `<!doctype html>
+<html>
+  <head>
+    <title>Cartões balcão - ${escapeHtml(business.name)}</title>
+    <meta charset="utf-8" />
+    <style>
+      @page { size: A4; margin: 0; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #0F172A;
+        background: #fff;
+      }
+      .sheet {
+        width: 210mm;
+        height: 297mm;
+        display: grid;
+        grid-template-columns: 105mm 105mm;
+        grid-template-rows: 148.5mm 148.5mm;
+      }
+      .card {
+        position: relative;
+        width: 105mm;
+        height: 148.5mm;
+        padding: 4mm;
+        border: 1px dashed #CBD5E1;
+        background: linear-gradient(135deg, ${qrColor} 0%, ${qrColor}CC 100%);
+      }
+      .card-inner {
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        border-radius: 6px;
+        padding: 8mm 6mm;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      .cut { position: absolute; background: #94A3B8; }
+      .cut.top, .cut.bottom { left: 0; right: 0; height: 0; border-top: 1px dashed #94A3B8; background: none; }
+      .cut.top { top: -0.5mm; } .cut.bottom { bottom: -0.5mm; }
+      .cut.left, .cut.right { top: 0; bottom: 0; width: 0; border-left: 1px dashed #94A3B8; background: none; }
+      .cut.left { left: -0.5mm; } .cut.right { right: -0.5mm; }
+      .mini-name {
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.15;
+        margin: 0 0 6px;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .mini-qr {
+        position: relative;
+        display: inline-block;
+        padding: 6px;
+        border: 2px solid ${qrColor};
+        border-radius: 10px;
+        background: #fff;
+        margin-bottom: 8px;
+      }
+      .mini-qr svg { width: 130px; height: 130px; display: block; }
+      .logo {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 28px; height: 28px;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 6px;
+        padding: 2px;
+        box-shadow: 0 0 0 3px #fff;
+      }
+      .mini-pitch {
+        font-size: 11px;
+        font-weight: 700;
+        color: ${qrColor};
+        margin: 0 0 4px;
+      }
+      .mini-link {
+        font-size: 7px;
+        color: #64748B;
+        word-break: break-all;
+        margin: 0 0 auto;
+      }
+      .mini-footer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1px;
+        margin-top: 6px;
+        padding-top: 4px;
+        border-top: 1px solid #E2E8F0;
+        width: 100%;
+      }
+      .mini-powered {
+        font-size: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: #94A3B8;
+        font-weight: 600;
+      }
+      .mini-brand {
+        font-size: 9px;
+        font-weight: 800;
+        color: ${qrColor};
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sheet">${card}${card}${card}${card}</div>
+  </body>
+</html>`
+}
+
+/**
+ * Display acrílico (A6 + 3mm bleed) — pra mandar pra gráfica fazer
+ * base de vidro/acrílico de balcão. Bleed garante que a gráfica
+ * pode cortar sem aparecer borda branca. Layout otimizado pra
+ * tamanho menor (sem categoria, pitch resumido).
+ */
+function buildDisplayAcrilicoHTML({ business, linkPretty, qrColor, svgData }: BuildHTMLArgs) {
+  const logoTag = business.logo_url
+    ? `<img class="logo" src="${escapeHtml(business.logo_url)}" alt="${escapeHtml(business.name)}" crossorigin="anonymous" />`
+    : ''
+  return `<!doctype html>
+<html>
+  <head>
+    <title>Display acrílico - ${escapeHtml(business.name)}</title>
+    <meta charset="utf-8" />
+    <style>
+      /* A6 (105×148mm) + 3mm de bleed cada lado = 111×154mm */
+      @page { size: 111mm 154mm; margin: 0; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #0F172A;
+        background: linear-gradient(135deg, ${qrColor} 0%, ${qrColor}CC 100%);
+      }
+      .bleed {
+        width: 111mm;
+        height: 154mm;
+        padding: 3mm;
+        background: linear-gradient(135deg, ${qrColor} 0%, ${qrColor}CC 100%);
+      }
+      .trim {
+        width: 105mm;
+        height: 148mm;
+        background: linear-gradient(135deg, ${qrColor} 0%, ${qrColor}CC 100%);
+        padding: 5mm;
+        position: relative;
+      }
+      .inner {
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        border-radius: 8px;
+        padding: 6mm 5mm;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      .name {
+        font-size: 16px;
+        font-weight: 800;
+        line-height: 1.1;
+        margin: 0 0 8px;
+        max-width: 100%;
+      }
+      .qr {
+        position: relative;
+        display: inline-block;
+        padding: 8px;
+        border: 2px solid ${qrColor};
+        border-radius: 12px;
+        background: #fff;
+        margin-bottom: 10px;
+      }
+      .qr svg { width: 160px; height: 160px; display: block; }
+      .logo {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 36px; height: 36px;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 8px;
+        padding: 3px;
+        box-shadow: 0 0 0 4px #fff;
+      }
+      .pitch {
+        font-size: 13px;
+        font-weight: 700;
+        color: #0F172A;
+        margin: 0 0 4px;
+      }
+      .pitch-sub {
+        font-size: 10px;
+        color: #475569;
+        margin: 0 0 8px;
+      }
+      .link {
+        font-size: 8px;
+        color: #64748B;
+        word-break: break-all;
+        margin: 0 0 auto;
+      }
+      .divider {
+        width: 30px;
+        height: 1.5px;
+        background: ${qrColor};
+        border-radius: 2px;
+        margin: 8px auto 4px;
+        opacity: 0.4;
+      }
+      .powered {
+        font-size: 7px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: #94A3B8;
+        margin: 0;
+        font-weight: 600;
+      }
+      .brand {
+        font-size: 11px;
+        font-weight: 800;
+        color: ${qrColor};
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bleed">
+      <div class="trim">
+        <div class="inner">
+          <p class="name">${escapeHtml(business.name)}</p>
+          <div class="qr">${svgData}${logoTag}</div>
+          <p class="pitch">Agende online quando quiser.</p>
+          <p class="pitch-sub">Sem precisar ligar.</p>
+          <div class="link">${escapeHtml(linkPretty)}</div>
+          <div class="divider"></div>
+          <p class="powered">Powered by</p>
+          <p class="brand">AgendaPRO</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`
+}
+
 function buildSimpleHTML({ business, linkPretty, qrColor, svgData }: BuildHTMLArgs) {
   const logoTag = business.logo_url
     ? `<img class="logo" src="${escapeHtml(business.logo_url)}" alt="${escapeHtml(business.name)}" crossorigin="anonymous" />`
@@ -770,6 +1107,37 @@ function IconPrint() {
       <polyline points="6 9 6 2 18 2 18 9"/>
       <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
       <rect x="6" y="14" width="12" height="8"/>
+    </svg>
+  )
+}
+
+function IconCards() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="8" height="8" rx="1" />
+      <rect x="13" y="3" width="8" height="8" rx="1" />
+      <rect x="3" y="13" width="8" height="8" rx="1" />
+      <rect x="13" y="13" width="8" height="8" rx="1" />
+    </svg>
+  )
+}
+
+function IconPoster() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <line x1="9" y1="8" x2="15" y2="8" />
+      <rect x="9" y="11" width="6" height="6" />
+    </svg>
+  )
+}
+
+function IconAcrylic() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7l8-4 8 4-8 4-8-4z" />
+      <path d="M4 7v10l8 4 8-4V7" />
+      <line x1="12" y1="11" x2="12" y2="21" opacity="0.4" />
     </svg>
   )
 }
