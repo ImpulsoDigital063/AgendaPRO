@@ -14,6 +14,8 @@ export type AppointmentRow = {
   status: string
   service_name: string | null
   total_price: number | null
+  paid_at: string | null
+  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | null
   professional: { id: string; name: string; commission_percentage: number; employment_type?: string | null } | null
 }
 
@@ -33,18 +35,37 @@ const PERIODO_LABEL: Record<string, string> = {
 }
 
 export default function FinanceiroView({ appointments, periodo }: Props) {
-  const ativos = appointments.filter(
-    (a) => a.total_price !== null && a.total_price > 0 && (a.status === 'confirmed' || a.status === 'completed')
+  // Nova semantica:
+  // - Realizado = paid_at != null (dinheiro ja recebido, qualquer
+  //   metodo)
+  // - A receber = total_price > 0 + (confirmed ou completed) +
+  //   paid_at == null (atendimento confirmado, ainda nao pago)
+  // - Faturado = soma dos dois (todo dinheiro do periodo)
+  const pagos = appointments.filter((a) => a.paid_at && a.total_price)
+  const naoPagos = appointments.filter(
+    (a) =>
+      a.paid_at == null &&
+      a.total_price !== null &&
+      a.total_price > 0 &&
+      (a.status === 'confirmed' || a.status === 'completed')
   )
-  const realizados = appointments.filter((a) => a.status === 'completed' && a.total_price)
-  const pendentes = appointments.filter((a) => a.status === 'confirmed' && a.total_price)
+  const ativos = [...pagos, ...naoPagos]
 
+  const totalRealizado = pagos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const totalPendente = naoPagos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const totalFaturado = ativos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  const totalRealizado = realizados.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  const totalPendente = pendentes.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const ticketMedio = ativos.length > 0 ? totalFaturado / ativos.length : 0
 
-  // Agrupamento por profissional (só aparece se tem >1 prof OU comissão > 0)
+  // Breakdown por método de pagamento (so dos pagos)
+  type MethodKey = 'pix' | 'cash' | 'card' | 'courtesy'
+  const byMethod: Record<MethodKey, number> = { pix: 0, cash: 0, card: 0, courtesy: 0 }
+  for (const a of pagos) {
+    if (a.payment_method) byMethod[a.payment_method] += a.total_price ?? 0
+  }
+
+  // Agrupamento por profissional — comissao baseada em PAGOS
+  // (so paga comissao do que ja entrou no caixa). Se pagamento ainda
+  // nao entrou, nao gera obrigacao de pagar comissao.
   type ProfEntry = {
     id: string
     name: string
@@ -53,10 +74,9 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
     count: number
   }
   const profMap: Record<string, ProfEntry> = {}
-  for (const a of realizados) {
+  for (const a of pagos) {
     const prof = a.professional
     if (!prof) continue
-    // Contratados (salário fixo) não entram no rateio de comissão
     if ((prof.employment_type ?? 'commissioned') === 'employed') continue
     if (!profMap[prof.id]) {
       profMap[prof.id] = {
@@ -81,6 +101,8 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
     status: a.status,
     service_name: a.service_name,
     total_price: a.total_price,
+    paid_at: a.paid_at,
+    payment_method: a.payment_method,
     professional_name: a.professional?.name ?? null,
   }))
 
@@ -116,7 +138,7 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
               {formatPrice(totalRealizado)}
             </p>
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-              {realizados.length} atendimento{realizados.length === 1 ? '' : 's'} pago{realizados.length === 1 ? '' : 's'}
+              {pagos.length} atendimento{pagos.length === 1 ? '' : 's'} pago{pagos.length === 1 ? '' : 's'}
             </p>
           </div>
           <span
@@ -137,7 +159,7 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
         <KpiTile
           label="A receber"
           value={formatPrice(totalPendente)}
-          sub={`${pendentes.length} confirmados`}
+          sub={`${naoPagos.length} pendente${naoPagos.length === 1 ? '' : 's'}`}
           icon={<IconClock size={14} />}
           tone="warn"
         />
@@ -155,6 +177,21 @@ export default function FinanceiroView({ appointments, periodo }: Props) {
           tone="accent"
         />
       </div>
+
+      {/* Breakdown por método de pagamento (só aparece se já recebeu algo) */}
+      {totalRealizado > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+            Recebido por método
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            <MethodTile label="PIX"      value={byMethod.pix}      letter="P" color="#10B981" />
+            <MethodTile label="Dinheiro" value={byMethod.cash}     letter="$" color="#16A34A" />
+            <MethodTile label="Cartão"   value={byMethod.card}     letter="C" color="#3B82F6" />
+            <MethodTile label="Cortesia" value={byMethod.courtesy} letter="•" color="#A855F7" />
+          </div>
+        </section>
+      )}
 
       {/* Comissão por profissional (só se relevante) */}
       {showCommission && (
@@ -250,6 +287,44 @@ function KpiTile({
       <p className="text-[10px] mt-1 truncate" style={{ color: 'var(--admin-text-faded)' }}>
         {sub}
       </p>
+    </div>
+  )
+}
+
+function MethodTile({
+  label,
+  value,
+  letter,
+  color,
+}: {
+  label: string
+  value: number
+  letter: string
+  color: string
+}) {
+  const has = value > 0
+  return (
+    <div
+      className="admin-card p-3 flex items-center gap-3"
+      style={{ opacity: has ? 1 : 0.55 }}
+    >
+      <span
+        className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
+        style={{
+          background: `${color}1F`,
+          color: color,
+        }}
+      >
+        {letter}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-wider truncate" style={{ color: 'var(--admin-text-faded)' }}>
+          {label}
+        </p>
+        <p className="text-sm font-bold tabular-nums leading-tight truncate" style={{ color: 'var(--admin-text)' }}>
+          {value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+        </p>
+      </div>
     </div>
   )
 }
