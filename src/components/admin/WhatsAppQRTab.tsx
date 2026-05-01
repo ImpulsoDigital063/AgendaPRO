@@ -179,7 +179,6 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
             }
             .link { margin-top: 14px; font-size: 13px; color: #374151; word-break: break-all; }
             .cta { margin-top: 22px; font-size: 16px; font-weight: 700; color: ${qrColor}; }
-            .footer { margin-top: 18px; font-size: 11px; color: #9ca3af; }
             @media print { body { padding: 0; } }
           </style>
         </head>
@@ -189,7 +188,177 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
           <div class="qr">${svgData}${logoTag}</div>
           <div class="link">${escapeHtml(linkPretty)}</div>
           <div class="cta">Aponte a câmera, escaneie e agende</div>
-          <div class="footer">Powered by AgendaPRO</div>
+          <script>window.onload = () => { window.focus(); window.print(); }<\/script>
+        </body>
+      </html>
+    `)
+    w.document.close()
+  }
+
+  /**
+   * Versão BRANDED do cartaz A5 — moldura colorida na brand_primary,
+   * frase de venda voltada pro cliente final (agenda 24h sem ligar)
+   * + footer co-branded "Powered by AgendaPRO". Marketing escalavel
+   * de graca: cada cartaz na parede vira anuncio do AgendaPRO.
+   */
+  function handlePrintBranded() {
+    const svg = qrRef.current?.querySelector('svg')
+    if (!svg) return
+    const svgData = new XMLSerializer().serializeToString(svg)
+    const w = window.open('', '_blank', 'width=600,height=800')
+    if (!w) return
+    const logoTag = hasLogo && business.logo_url
+      ? `<img class="logo" src="${escapeAttr(business.logo_url)}" alt="${escapeHtml(business.name)}" />`
+      : ''
+    const category = business.description ? escapeHtml(business.description) : ''
+    w.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>Cartaz QR - ${escapeHtml(business.name)}</title>
+          <meta charset="utf-8" />
+          <style>
+            @page { size: A5; margin: 0; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              margin: 0;
+              color: #0F172A;
+              background: #fff;
+            }
+            .frame {
+              width: 148mm;
+              height: 210mm;
+              padding: 8mm;
+              background: linear-gradient(135deg, ${qrColor} 0%, ${qrColor}CC 100%);
+              display: flex;
+              align-items: stretch;
+            }
+            .inner {
+              flex: 1;
+              background: #ffffff;
+              border-radius: 12px;
+              padding: 14mm 12mm;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              text-align: center;
+              border: 1px solid rgba(0,0,0,0.04);
+            }
+            .name {
+              font-size: 26px;
+              font-weight: 800;
+              line-height: 1.15;
+              margin: 0 0 4px;
+              color: #0F172A;
+              letter-spacing: -0.01em;
+            }
+            .category {
+              font-size: 12px;
+              text-transform: uppercase;
+              letter-spacing: 0.18em;
+              color: ${qrColor};
+              font-weight: 700;
+              margin: 0 0 18px;
+            }
+            .qr {
+              position: relative;
+              display: inline-block;
+              padding: 12px;
+              border: 3px solid ${qrColor};
+              border-radius: 18px;
+              background: #fff;
+              margin-bottom: 16px;
+            }
+            .qr svg { width: 220px; height: 220px; display: block; }
+            .logo {
+              position: absolute;
+              top: 50%; left: 50%;
+              transform: translate(-50%, -50%);
+              width: 48px; height: 48px;
+              object-fit: contain;
+              background: #fff;
+              border-radius: 10px;
+              padding: 3px;
+              border: 2px solid #fff;
+              box-shadow: 0 0 0 3px #fff;
+            }
+            .pitch {
+              font-size: 17px;
+              font-weight: 700;
+              line-height: 1.35;
+              color: #0F172A;
+              margin: 6px 0 4px;
+              max-width: 260px;
+            }
+            .pitch-sub {
+              font-size: 13px;
+              color: #475569;
+              margin: 0 0 14px;
+            }
+            .link {
+              font-size: 11px;
+              color: #64748B;
+              word-break: break-all;
+              margin: 0 0 auto;
+              padding: 6px 12px;
+              background: #F1F5F9;
+              border-radius: 999px;
+            }
+            .divider {
+              width: 60px;
+              height: 2px;
+              background: ${qrColor};
+              border-radius: 2px;
+              margin: 14px auto 10px;
+              opacity: 0.4;
+            }
+            .footer {
+              text-align: center;
+              padding-top: 4px;
+            }
+            .powered {
+              font-size: 9px;
+              text-transform: uppercase;
+              letter-spacing: 0.2em;
+              color: #94A3B8;
+              margin: 0 0 2px;
+              font-weight: 600;
+            }
+            .brand {
+              font-size: 14px;
+              font-weight: 800;
+              color: ${qrColor};
+              letter-spacing: -0.01em;
+            }
+            .brand-tag {
+              font-size: 10px;
+              color: #64748B;
+              margin-top: 2px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="frame">
+            <div class="inner">
+              <h1 class="name">${escapeHtml(business.name)}</h1>
+              ${category ? `<p class="category">${category}</p>` : ''}
+
+              <div class="qr">${svgData}${logoTag}</div>
+
+              <p class="pitch">Agende online quando quiser.</p>
+              <p class="pitch-sub">Sem precisar ligar. Sem horário comercial.</p>
+
+              <div class="link">${escapeHtml(linkPretty)}</div>
+
+              <div class="footer">
+                <div class="divider"></div>
+                <p class="powered">Powered by</p>
+                <p class="brand">AgendaPRO</p>
+                <p class="brand-tag">Sistema de agendamento automático</p>
+              </div>
+            </div>
+          </div>
           <script>window.onload = () => { window.focus(); window.print(); }<\/script>
         </body>
       </html>
@@ -298,26 +467,49 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
         </div>
       </div>
 
-      {/* Ação primária — Compartilhar / Imprimir */}
+      {/* Ação primária — Compartilhar */}
+      <button
+        onClick={handleShare}
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
+        style={{ background: qrColor, color: '#fff' }}
+      >
+        <IconShare />
+        {shared ? 'Compartilhado!' : hasShare ? 'Compartilhar link' : 'Compartilhar (copia link)'}
+      </button>
+
+      {/* Imprimir — 2 templates: branded (destaque) e simples */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
-          onClick={handleShare}
-          className="flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
-          style={{ background: qrColor, color: '#fff' }}
+          onClick={handlePrintBranded}
+          className="relative flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
+          style={{ background: 'var(--admin-accent)', color: '#fff' }}
         >
-          <IconShare />
-          {shared ? 'Compartilhado!' : hasShare ? 'Compartilhar' : 'Compartilhar (copia link)'}
+          <span
+            className="absolute -top-2 right-3 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider"
+            style={{ background: '#FACC15', color: '#0F172A' }}
+          >
+            ★ Recomendado
+          </span>
+          <IconPrint />
+          Imprimir cartaz
         </button>
 
         <button
           onClick={handlePrint}
           className="flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
-          style={{ background: 'var(--admin-accent)', color: '#fff' }}
+          style={{
+            background: 'var(--admin-accent-bg)',
+            color: 'var(--admin-text-2)',
+            border: '1px solid var(--admin-border)',
+          }}
         >
           <IconPrint />
-          Imprimir A5
+          Imprimir simples
         </button>
       </div>
+      <p className="text-[11px] text-center -mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+        Cartaz tem moldura, pitch pro cliente e selo AgendaPRO. Simples é só nome + QR.
+      </p>
 
       {/* Ações secundárias */}
       <div className="grid grid-cols-2 gap-2">
