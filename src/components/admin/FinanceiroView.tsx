@@ -196,8 +196,11 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
           label="A receber"
           value={formatPrice(totalPendente)}
           sub={
+            // urgentes = não-pagos com appointment_date nos próximos
+            // 7 dias. NÃO é "vencimento de fatura" — é "atendimento
+            // que rola essa semana sem pagamento ainda". Copy clara.
             urgentes > 0
-              ? `${urgentes} vence${urgentes === 1 ? '' : 'm'} em 7 dias`
+              ? `${urgentes} essa semana`
               : `${naoPagos.length} pendente${naoPagos.length === 1 ? '' : 's'}`
           }
           subTone={urgentes > 0 ? 'warn' : 'neutral'}
@@ -220,42 +223,49 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
         />
       </div>
 
-      {/* Card LUCRO REAL (receita - despesas) */}
-      <Link
-        href="/admin/financeiro/despesas"
-        className="block rounded-2xl p-4 transition-transform active:scale-[0.99]"
-        style={{
-          background:
-            totalRealizado - totalExpenses >= 0
-              ? 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))'
-              : 'linear-gradient(135deg, rgba(239,68,68,0.14), rgba(239,68,68,0.04))',
-          border: '1px solid var(--admin-border)',
-        }}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-              Lucro real do período
-            </p>
-            <p
-              className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
-              style={{ color: totalRealizado - totalExpenses >= 0 ? '#10B981' : '#EF4444' }}
-            >
-              {formatPrice(totalRealizado - totalExpenses)}
-            </p>
-            <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-              {formatPrice(totalRealizado)} <span style={{ color: 'var(--admin-text-faded)' }}>recebido</span>
-              {' · '}
-              <span style={{ color: '#EF4444' }}>− {formatPrice(totalExpenses)}</span>{' '}
-              <span style={{ color: 'var(--admin-text-faded)' }}>despesas</span>
-            </p>
+      {/* Card LUCRO REAL — só na aba MÊS.
+          Despesas geralmente são mensais (aluguel, salário, energia).
+          Em "Hoje" ou "7 dias", lucro = receita-do-dia menos despesa-
+          mensal-acumulada-até-hoje, dando número enganoso (-R$ 1k+
+          quando receita do dia é R$ 0). Faz sentido só na escala
+          completa do ciclo financeiro. */}
+      {periodo === 'mes' && (
+        <Link
+          href="/admin/financeiro/despesas"
+          className="block rounded-2xl p-4 transition-transform active:scale-[0.99]"
+          style={{
+            background:
+              totalRealizado - totalExpenses >= 0
+                ? 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))'
+                : 'linear-gradient(135deg, rgba(239,68,68,0.14), rgba(239,68,68,0.04))',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                Lucro real do mês
+              </p>
+              <p
+                className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
+                style={{ color: totalRealizado - totalExpenses >= 0 ? '#10B981' : '#EF4444' }}
+              >
+                {formatPrice(totalRealizado - totalExpenses)}
+              </p>
+              <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
+                {formatPrice(totalRealizado)} <span style={{ color: 'var(--admin-text-faded)' }}>recebido</span>
+                {' · '}
+                <span style={{ color: '#EF4444' }}>− {formatPrice(totalExpenses)}</span>{' '}
+                <span style={{ color: 'var(--admin-text-faded)' }}>despesas</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-semibold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>
+              Despesas
+              <IconChevronRight size={14} />
+            </div>
           </div>
-          <div className="flex items-center gap-1 text-xs font-semibold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>
-            Despesas
-            <IconChevronRight size={14} />
-          </div>
-        </div>
-      </Link>
+        </Link>
+      )}
 
       {/* Breakdown por método de pagamento — só os que tem valor.
           Antes mostrava 4 cards mesmo com 3 zerados, ocupando metade
