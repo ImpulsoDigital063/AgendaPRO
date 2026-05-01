@@ -296,22 +296,47 @@ export default function ReativarSumidosView({
         </div>
       )}
 
-      {/* Form de campanha */}
-      <div className="admin-card p-4 space-y-4">
-        <div>
-          <p className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
-            Cupom de retorno
-          </p>
-          <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-            Vamos gerar 1 cupom único por cliente sumido (40+ dias sem agendar). Você dispara via WhatsApp clicando em cada um.
-          </p>
-        </div>
+      {/* Como funciona — explicação visual do fluxo, antes do form */}
+      <div
+        className="rounded-2xl p-4"
+        style={{
+          background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(168,85,247,0.06))',
+          border: '1px solid var(--admin-border)',
+        }}
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-accent)' }}>
+          Como funciona
+        </p>
+        <ol className="space-y-2 text-xs leading-relaxed">
+          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
+            <span className="font-bold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>1.</span>
+            <span>Você define o desconto e escolhe a mensagem aqui</span>
+          </li>
+          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
+            <span className="font-bold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>2.</span>
+            <span>Sistema cria <strong>1 cupom único por cliente sumido</strong> (substitui automaticamente nome, valor e link)</span>
+          </li>
+          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
+            <span className="font-bold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>3.</span>
+            <span>Aparece a lista de clientes com botão <strong>WhatsApp</strong> em cada — você clica pra abrir conversa pronta</span>
+          </li>
+          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
+            <span className="font-bold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>4.</span>
+            <span>Cliente clica no link, agenda, e o desconto é aplicado automático</span>
+          </li>
+        </ol>
+      </div>
 
-        {/* Tipo de desconto */}
+      {/* Form de campanha */}
+      <div className="admin-card p-4 space-y-5">
+        {/* Etapa 1: Desconto */}
         <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wider mb-2 block" style={{ color: 'var(--admin-text-faded)' }}>
-            Desconto
-          </label>
+          <p className="text-sm font-bold mb-1" style={{ color: 'var(--admin-text)' }}>
+            1. Quanto de desconto vai dar?
+          </p>
+          <p className="text-[11px] mb-2.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Escolha valor fixo (R$) ou porcentagem, e quantos dias o cupom vale.
+          </p>
           <div className="grid grid-cols-2 gap-2 mb-2">
             <button
               type="button"
@@ -363,11 +388,14 @@ export default function ReativarSumidosView({
           </div>
         </div>
 
-        {/* Templates */}
+        {/* Etapa 2: Mensagem */}
         <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wider mb-2 block" style={{ color: 'var(--admin-text-faded)' }}>
-            Mensagem ({templates.length} sugestões — escolha 1 ou edite)
-          </label>
+          <p className="text-sm font-bold mb-1" style={{ color: 'var(--admin-text)' }}>
+            2. Como vai chamar o cliente de volta?
+          </p>
+          <p className="text-[11px] mb-2.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Escolha 1 dos {templates.length} modelos prontos ou edite à vontade. <strong style={{ color: 'var(--admin-accent)' }}>{'{nome}'}, {'{negocio}'}, {'{desconto}'}, {'{validade}'} e {'{link}'}</strong> são preenchidos automaticamente — cada cliente recebe a mensagem com os dados dele.
+          </p>
           <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
             {templates.map((_, i) => (
               <button
@@ -395,15 +423,15 @@ export default function ReativarSumidosView({
             className="admin-input w-full px-3 py-2 text-sm resize-none"
             placeholder="Sua mensagem aqui..."
           />
-          <p className="text-[10px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-            Use {'{nome}'}, {'{negocio}'}, {'{desconto}'}, {'{validade}'}, {'{link}'} — substituídos automaticamente.
-          </p>
         </div>
 
-        {/* Preview */}
+        {/* Etapa 3: Preview */}
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
-            Preview (cliente {sampleName})
+          <p className="text-sm font-bold mb-1" style={{ color: 'var(--admin-text)' }}>
+            3. Veja como vai chegar pro cliente
+          </p>
+          <p className="text-[11px] mb-2.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Exemplo com o nome <strong>{sampleName}</strong>. Cada cliente sumido recebe a mensagem com o nome dele e um cupom único.
           </p>
           <div
             className="rounded-xl p-3 text-sm whitespace-pre-wrap leading-relaxed"
@@ -434,7 +462,7 @@ export default function ReativarSumidosView({
             boxShadow: '0 4px 14px rgba(59,130,246,0.3)',
           }}
         >
-          {submitting ? 'Gerando cupons...' : 'Gerar campanha'}
+          {submitting ? 'Gerando cupons...' : 'Gerar cupons e ver lista de envio →'}
         </button>
       </div>
     </div>
