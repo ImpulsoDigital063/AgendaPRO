@@ -1,9 +1,10 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import FinancePeriodTabs from './FinancePeriodTabs'
 import FinanceAppointmentList, { type FinanceRow } from './FinanceAppointmentList'
-import { IconDollar, IconClock, IconCheck, IconChevronRight } from '@/components/ui/Icon'
+import { IconDollar, IconClock, IconCheck, IconChevronRight, IconSparkles } from '@/components/ui/Icon'
 import { initialsFor, avatarGradient } from '@/lib/client-display'
 
 export type AppointmentRow = {
@@ -95,6 +96,34 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
   const profList = Object.values(profMap)
   const showCommission = profList.length > 1 || profList.some((p) => p.commission_percentage > 0)
 
+  // Urgência: quantos não-pagos vencem nos próximos 7 dias
+  // (appointment_date entre hoje e hoje+7). Dá ao dono prioridade
+  // visual pra cobrar antes que escape.
+  const urgentes = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const in7days = new Date(today)
+    in7days.setDate(today.getDate() + 7)
+    return naoPagos.filter((a) => {
+      const d = new Date(a.appointment_date + 'T00:00:00')
+      return d >= today && d <= in7days
+    }).length
+  }, [naoPagos])
+
+  // Sparkline: timeline de receita por dia no período. SVG inline,
+  // sem libs externas. Pra periodos curtos (hoje), não mostra.
+  const sparklinePoints = useMemo(() => {
+    if (periodo === 'hoje' || pagos.length === 0) return null
+    const map = new Map<string, number>()
+    for (const a of pagos) {
+      map.set(a.appointment_date, (map.get(a.appointment_date) || 0) + (a.total_price ?? 0))
+    }
+    // Ordena cronologicamente
+    const sorted = Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
+    if (sorted.length < 2) return null
+    return sorted.map(([, v]) => v)
+  }, [pagos, periodo])
+
   const rows: FinanceRow[] = appointments.map((a) => ({
     id: a.id,
     client_name: a.client_name,
@@ -109,7 +138,9 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
   }))
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-24">
+      {/* pb-24 reserva espaço pro FAB + bottom nav. Sem isso, conteúdo
+          final (Comissão por profissional / lista) ficava cortado. */}
       <FinancePeriodTabs periodo={periodo} />
 
       {/* Hero KPI: Realizado (dinheiro real no caixa) */}
@@ -126,10 +157,10 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
           style={{ background: 'rgba(16,185,129,0.35)' }}
         />
         <div className="relative flex items-center justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p
               className="text-[11px] font-semibold uppercase tracking-wider"
-              style={{ color: 'var(--admin-text-faded)' }}
+              style={{ color: 'var(--admin-text-mute)' }}
             >
               Realizado · {PERIODO_LABEL[periodo]}
             </p>
@@ -142,6 +173,9 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
               {pagos.length} atendimento{pagos.length === 1 ? '' : 's'} pago{pagos.length === 1 ? '' : 's'}
             </p>
+            {sparklinePoints && sparklinePoints.length >= 2 && (
+              <Sparkline values={sparklinePoints} color="#10B981" className="mt-2" />
+            )}
           </div>
           <span
             className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
@@ -161,7 +195,12 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
         <KpiTile
           label="A receber"
           value={formatPrice(totalPendente)}
-          sub={`${naoPagos.length} pendente${naoPagos.length === 1 ? '' : 's'}`}
+          sub={
+            urgentes > 0
+              ? `${urgentes} vence${urgentes === 1 ? '' : 'm'} em 7 dias`
+              : `${naoPagos.length} pendente${naoPagos.length === 1 ? '' : 's'}`
+          }
+          subTone={urgentes > 0 ? 'warn' : 'neutral'}
           icon={<IconClock size={14} />}
           tone="warn"
         />
@@ -176,6 +215,7 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
           label="Ticket médio"
           value={formatPrice(ticketMedio)}
           sub="por atendimento"
+          icon={<IconSparkles size={14} />}
           tone="accent"
         />
       </div>
@@ -194,11 +234,11 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
       >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
               Lucro real do período
             </p>
             <p
-              className="text-2xl font-extrabold mt-1 leading-none tabular-nums"
+              className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
               style={{ color: totalRealizado - totalExpenses >= 0 ? '#10B981' : '#EF4444' }}
             >
               {formatPrice(totalRealizado - totalExpenses)}
@@ -217,19 +257,11 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
         </div>
       </Link>
 
-      {/* Breakdown por método de pagamento (só aparece se já recebeu algo) */}
+      {/* Breakdown por método de pagamento — só os que tem valor.
+          Antes mostrava 4 cards mesmo com 3 zerados, ocupando metade
+          da tela com info inútil. Se admin quer ver o resto, expande. */}
       {totalRealizado > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-            Recebido por método
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            <MethodTile label="PIX"      value={byMethod.pix}      letter="P" color="#10B981" />
-            <MethodTile label="Dinheiro" value={byMethod.cash}     letter="$" color="#16A34A" />
-            <MethodTile label="Cartão"   value={byMethod.card}     letter="C" color="#3B82F6" />
-            <MethodTile label="Cortesia" value={byMethod.courtesy} letter="•" color="#A855F7" />
-          </div>
-        </section>
+        <MethodBreakdown byMethod={byMethod} />
       )}
 
       {/* Comissão por profissional (só se relevante) */}
@@ -358,6 +390,27 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
           </Link>
         </div>
       </section>
+
+      {/* FAB — ação rápida principal: adicionar despesa.
+          Posicionado acima da BottomNav (~80px) com safe-area-inset.
+          Z-50 fica abaixo de modais (z-100) mas acima do conteúdo. */}
+      <Link
+        href="/admin/financeiro/despesas"
+        aria-label="Adicionar despesa"
+        className="fixed z-40 right-4 flex items-center gap-2 px-4 h-12 rounded-full font-semibold text-sm transition-all active:scale-95"
+        style={{
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)',
+          background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))',
+          color: '#fff',
+          boxShadow: '0 10px 28px -8px rgba(59,130,246,0.5), 0 4px 12px -4px rgba(0,0,0,0.2)',
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Despesa
+      </Link>
     </div>
   )
 }
@@ -368,12 +421,14 @@ function KpiTile({
   sub,
   icon,
   tone,
+  subTone = 'neutral',
 }: {
   label: string
   value: string
   sub: string
   icon?: React.ReactNode
   tone: 'warn' | 'neutral' | 'accent'
+  subTone?: 'neutral' | 'warn'
 }) {
   const colorMap = {
     warn: 'var(--admin-warn)',
@@ -391,10 +446,119 @@ function KpiTile({
       <p className="text-sm font-bold leading-tight tabular-nums truncate" style={{ color: colorMap[tone] }}>
         {value}
       </p>
-      <p className="text-[10px] mt-1 truncate" style={{ color: 'var(--admin-text-faded)' }}>
+      <p
+        className="text-[10px] mt-1 truncate"
+        style={{
+          color: subTone === 'warn' ? 'var(--admin-warn)' : 'var(--admin-text-faded)',
+          fontWeight: subTone === 'warn' ? 700 : 400,
+        }}
+      >
         {sub}
       </p>
     </div>
+  )
+}
+
+/**
+ * Sparkline minimalista — SVG inline, sem libs externas. Pega array
+ * de valores e desenha linha + área preenchida sutil. Pra contexto
+ * visual rápido nos KPIs principais (tendência, não exato).
+ */
+function Sparkline({
+  values,
+  color,
+  className = '',
+  height = 28,
+}: {
+  values: number[]
+  color: string
+  className?: string
+  height?: number
+}) {
+  if (values.length < 2) return null
+  const max = Math.max(...values, 1)
+  const w = 100 // viewBox width fixo, escala via preserveAspectRatio
+  const points = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * w
+      const y = height - (v / max) * (height - 4) - 2
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+  // Path de área (line + fechamento até bottom)
+  const areaPath =
+    `M0,${height} L` +
+    points.replace(/ /g, ' L') +
+    ` L${w},${height} Z`
+  return (
+    <svg
+      className={className}
+      viewBox={`0 0 ${w} ${height}`}
+      preserveAspectRatio="none"
+      style={{ width: '100%', height, display: 'block' }}
+      aria-hidden
+    >
+      <path d={areaPath} fill={color} opacity="0.15" />
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  )
+}
+
+/**
+ * Breakdown de métodos de pagamento, mostrando só os com valor > 0.
+ * Antes mostrava 4 cards mesmo com 3 zerados — desperdício de tela.
+ * Se admin quiser ver os zerados, "Ver outros métodos" expande.
+ */
+function MethodBreakdown({
+  byMethod,
+}: {
+  byMethod: Record<'pix' | 'cash' | 'card' | 'courtesy', number>
+}) {
+  const all = [
+    { key: 'pix' as const,      label: 'PIX',      letter: 'P', color: '#10B981' },
+    { key: 'cash' as const,     label: 'Dinheiro', letter: '$', color: '#16A34A' },
+    { key: 'card' as const,     label: 'Cartão',   letter: 'C', color: '#3B82F6' },
+    { key: 'courtesy' as const, label: 'Cortesia', letter: '•', color: '#A855F7' },
+  ]
+  const ativos = all.filter((m) => byMethod[m.key] > 0)
+  const zerados = all.filter((m) => byMethod[m.key] === 0)
+
+  if (ativos.length === 0) return null
+
+  return (
+    <section>
+      <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+        Recebido por método
+      </h2>
+      <div className="grid grid-cols-2 gap-2">
+        {ativos.map((m) => (
+          <MethodTile key={m.key} label={m.label} value={byMethod[m.key]} letter={m.letter} color={m.color} />
+        ))}
+      </div>
+      {zerados.length > 0 && (
+        <details className="mt-2">
+          <summary
+            className="cursor-pointer text-[11px] font-semibold py-1.5 px-2 rounded-lg"
+            style={{ color: 'var(--admin-text-faded)' }}
+          >
+            Ver {zerados.length} método{zerados.length === 1 ? '' : 's'} sem recebimento
+          </summary>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {zerados.map((m) => (
+              <MethodTile key={m.key} label={m.label} value={0} letter={m.letter} color={m.color} />
+            ))}
+          </div>
+        </details>
+      )}
+    </section>
   )
 }
 
