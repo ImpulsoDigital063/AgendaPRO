@@ -27,16 +27,29 @@ export default async function FinanceiroPage({
   const today = new Date()
   const todayStr = today.toISOString().split('T')[0]
 
+  // Range de cada periodo cobre PASSADO + FUTURO dentro do escopo:
+  // - Hoje: so o dia de hoje
+  // - 7 dias: ultimos 3 + proximos 3 (janela de uma semana centrada)
+  // - Mes: do primeiro ao ultimo dia do mes corrente
+  // Sem isso, agendamentos confirmados futuros sumiam de "A receber".
   let startDate: string
+  let endDate: string
   if (periodo === 'hoje') {
     startDate = todayStr
+    endDate = todayStr
   } else if (periodo === 'semana') {
-    const d = new Date(today)
-    d.setDate(d.getDate() - 6)
-    startDate = d.toISOString().split('T')[0]
+    const start = new Date(today)
+    start.setDate(start.getDate() - 3)
+    const end = new Date(today)
+    end.setDate(end.getDate() + 3)
+    startDate = start.toISOString().split('T')[0]
+    endDate = end.toISOString().split('T')[0]
   } else {
-    const d = new Date(today.getFullYear(), today.getMonth(), 1)
-    startDate = d.toISOString().split('T')[0]
+    // mes corrente: dia 1 ate ultimo dia do mes
+    const start = new Date(today.getFullYear(), today.getMonth(), 1)
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    startDate = start.toISOString().split('T')[0]
+    endDate = end.toISOString().split('T')[0]
   }
 
   const { data: appointments } = await supabase
@@ -48,7 +61,7 @@ export default async function FinanceiroPage({
     `)
     .eq('business_id', business.id)
     .gte('appointment_date', startDate)
-    .lte('appointment_date', todayStr)
+    .lte('appointment_date', endDate)
     .order('appointment_date', { ascending: false })
     .order('start_time', { ascending: false })
 
