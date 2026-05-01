@@ -28,16 +28,26 @@ export default async function ProfissionalFinanceiroPage({
   const today = new Date()
   const todayStr = today.toISOString().split('T')[0]
 
+  // Mesmo range do admin financeiro: cobre passado + futuro do
+  // periodo. Sem isso agendamentos confirmados pra dias proximos
+  // sumiam de "A receber" do profissional.
   let startDate: string
+  let endDate: string
   if (periodo === 'hoje') {
     startDate = todayStr
+    endDate = todayStr
   } else if (periodo === 'semana') {
-    const d = new Date(today)
-    d.setDate(d.getDate() - 6)
-    startDate = d.toISOString().split('T')[0]
+    const start = new Date(today)
+    start.setDate(start.getDate() - 3)
+    const end = new Date(today)
+    end.setDate(end.getDate() + 3)
+    startDate = start.toISOString().split('T')[0]
+    endDate = end.toISOString().split('T')[0]
   } else {
-    const d = new Date(today.getFullYear(), today.getMonth(), 1)
-    startDate = d.toISOString().split('T')[0]
+    const start = new Date(today.getFullYear(), today.getMonth(), 1)
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    startDate = start.toISOString().split('T')[0]
+    endDate = end.toISOString().split('T')[0]
   }
 
   const { data: appointments } = await supabase
@@ -45,7 +55,7 @@ export default async function ProfissionalFinanceiroPage({
     .select('id, client_name, client_phone, appointment_date, start_time, status, service_name, total_price')
     .eq('professional_id', professional.id)
     .gte('appointment_date', startDate)
-    .lte('appointment_date', todayStr)
+    .lte('appointment_date', endDate)
     .order('appointment_date', { ascending: false })
     .order('start_time', { ascending: false })
 
