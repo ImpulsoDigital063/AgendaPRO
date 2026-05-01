@@ -62,6 +62,7 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
       case 'balcao':   html = buildBalcao4em1HTML(args); break
       case 'acrilico': html = buildDisplayAcrilicoHTML(args); break
       case 'simple':   html = buildSimpleHTML(args); break
+      default: return // defensivo (TS exhaustive ja cobre)
     }
 
     // Limpa iframe anterior se ainda existir
@@ -84,10 +85,15 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
     printIframeRef.current = iframe
 
     iframe.onload = () => {
+      // Race-condition guard: se user clicou outro botao de imprimir
+      // antes deste iframe carregar, ignora — o novo iframe ja assumiu
+      // o ref e este aqui ja foi removido do DOM.
+      if (printIframeRef.current !== iframe) return
       const win = iframe.contentWindow
       if (!win) return
       // Pequeno delay pra garantir paint da img da logo no iframe
       setTimeout(() => {
+        if (printIframeRef.current !== iframe) return
         win.focus()
         win.print()
       }, 200)
@@ -152,12 +158,18 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
             text: `Agende em ${business.name}: ${bookingLink}`,
           })
           return
-        } catch {
-          // user cancelou — fallback pro download
+        } catch (err) {
+          // AbortError = user cancelou. Outros = erro real (ex: permissao
+          // negada, file size). Em ambos, evitamos baixar PNG sem ser
+          // pedido — user que quer download usa o fallback abaixo so se
+          // share NAO disponivel.
+          if (err instanceof Error && err.name === 'AbortError') return
+          // Erro real cai no fallback abaixo
         }
       }
 
-      // Fallback download
+      // Fallback download — so quando share API NAO disponivel ou erro
+      // tecnico (nao cancelamento)
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.download = file.name
@@ -1097,16 +1109,6 @@ function IconShare() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
       <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-    </svg>
-  )
-}
-
-function IconPrint() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="6 9 6 2 18 2 18 9"/>
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-      <rect x="6" y="14" width="12" height="8"/>
     </svg>
   )
 }
