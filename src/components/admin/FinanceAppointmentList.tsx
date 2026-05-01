@@ -46,11 +46,24 @@ function formatDate(dateStr: string) {
   })
 }
 
-function Row({ a, onPaymentChange }: { a: FinanceRow; onPaymentChange: (id: string) => void }) {
+function Row({
+  a,
+  onPaymentChange,
+  readOnly,
+}: {
+  a: FinanceRow
+  onPaymentChange: (id: string) => void
+  readOnly?: boolean
+}) {
   const status = statusOf(a.status)
   const archived = isArchived(a.status)
   const isPaid = !!a.paid_at
-  const canPay = !archived && a.total_price !== null && a.total_price > 0
+  // Em readOnly (visao do profissional), so mostra status sem
+  // permitir mutacao. Quem confirma pagamento eh o dono.
+  const canPay = !readOnly && !archived && a.total_price !== null && a.total_price > 0
+  const showStatus = readOnly
+    ? a.total_price !== null && a.total_price > 0 && !archived
+    : false
   const router = useRouter()
   const [showMethodMenu, setShowMethodMenu] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -124,8 +137,8 @@ function Row({ a, onPaymentChange }: { a: FinanceRow; onPaymentChange: (id: stri
         </div>
       </div>
 
-      {/* Linha inferior — status de pagamento + ação */}
-      {canPay && (
+      {/* Linha inferior — status de pagamento + ação (admin) ou só status (profissional) */}
+      {canPay ? (
         <div
           className="flex items-center justify-between gap-2 mt-2.5 pt-2.5"
           style={{ borderTop: '1px solid var(--admin-divider)' }}
@@ -173,7 +186,29 @@ function Row({ a, onPaymentChange }: { a: FinanceRow; onPaymentChange: (id: stri
             </>
           )}
         </div>
-      )}
+      ) : showStatus ? (
+        <div
+          className="flex items-center mt-2.5 pt-2.5"
+          style={{ borderTop: '1px solid var(--admin-divider)' }}
+        >
+          {isPaid ? (
+            <span
+              className="text-[11px] font-semibold inline-flex items-center gap-1.5"
+              style={{ color: a.payment_method ? METHOD_COLOR[a.payment_method] : 'var(--admin-success)' }}
+            >
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{ background: a.payment_method ? METHOD_COLOR[a.payment_method] : 'var(--admin-success)' }}
+              />
+              Pago via {a.payment_method ? METHOD_LABEL[a.payment_method] : 'método'}
+            </span>
+          ) : (
+            <span className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+              Aguardando confirmação do dono
+            </span>
+          )}
+        </div>
+      ) : null}
 
       {showMethodMenu && (
         <PaymentMethodSheet
@@ -273,7 +308,13 @@ function PaymentMethodSheet({
   )
 }
 
-export default function FinanceAppointmentList({ items }: { items: FinanceRow[] }) {
+export default function FinanceAppointmentList({
+  items,
+  readOnly,
+}: {
+  items: FinanceRow[]
+  readOnly?: boolean
+}) {
   const [showArchived, setShowArchived] = useState(false)
   // Refresh trigger pra forcar re-render apos mutacao
   const [, setTick] = useState(0)
@@ -312,7 +353,7 @@ export default function FinanceAppointmentList({ items }: { items: FinanceRow[] 
           className="admin-enter"
           style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 50}ms` }}
         >
-          <Row a={a} onPaymentChange={onPaymentChange} />
+          <Row a={a} onPaymentChange={onPaymentChange} readOnly={readOnly} />
         </div>
       ))}
 

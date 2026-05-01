@@ -52,7 +52,7 @@ export default async function ProfissionalFinanceiroPage({
 
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('id, client_name, client_phone, appointment_date, start_time, status, service_name, total_price')
+    .select('id, client_name, client_phone, appointment_date, start_time, status, service_name, total_price, paid_at, payment_method')
     .eq('professional_id', professional.id)
     .gte('appointment_date', startDate)
     .lte('appointment_date', endDate)

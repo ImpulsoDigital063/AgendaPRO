@@ -13,6 +13,8 @@ type AppointmentRow = {
   status: string
   service_name: string | null
   total_price: number | null
+  paid_at: string | null
+  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | null
 }
 
 type Props = {
@@ -32,16 +34,25 @@ const PERIODO_LABEL: Record<string, string> = {
 }
 
 export default function ProfFinanceiroView({ appointments, periodo, commissionPercentage }: Props) {
-  const ativos = appointments.filter(
-    (a) => a.total_price !== null && a.total_price > 0 && (a.status === 'confirmed' || a.status === 'completed')
+  // Mesma semantica do admin: comissao SO sobre pagos. Profissional
+  // so recebe comissao do que ja entrou no caixa do dono.
+  const pagos = appointments.filter((a) => a.paid_at && a.total_price)
+  const naoPagos = appointments.filter(
+    (a) =>
+      a.paid_at == null &&
+      a.total_price !== null &&
+      a.total_price > 0 &&
+      (a.status === 'confirmed' || a.status === 'completed')
   )
-  const realizados = appointments.filter((a) => a.status === 'completed' && a.total_price)
-  const pendentes = appointments.filter((a) => a.status === 'confirmed' && a.total_price)
+  const ativos = [...pagos, ...naoPagos]
 
   const totalGerado = ativos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  const totalRealizado = realizados.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  const totalPendente = pendentes.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const totalRealizado = pagos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const totalPendente = naoPagos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  // Comissao baseada em PAGOS (mesma semantica do admin)
   const minhaComissao = totalRealizado * (commissionPercentage / 100)
+  // Comissao "futura" — o que vai entrar quando o dono confirmar pagamento
+  const comissaoPendente = totalPendente * (commissionPercentage / 100)
   const ticketMedio = ativos.length > 0 ? totalGerado / ativos.length : 0
 
   const rows: FinanceRow[] = appointments.map((a) => ({
@@ -52,6 +63,8 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
     status: a.status,
     service_name: a.service_name,
     total_price: a.total_price,
+    paid_at: a.paid_at,
+    payment_method: a.payment_method,
   }))
 
   return (
@@ -86,7 +99,12 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
               {formatPrice(minhaComissao)}
             </p>
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-              {commissionPercentage}% sobre {realizados.length} atendimento{realizados.length === 1 ? '' : 's'} realizado{realizados.length === 1 ? '' : 's'}
+              {commissionPercentage}% sobre {pagos.length} atendimento{pagos.length === 1 ? '' : 's'} pago{pagos.length === 1 ? '' : 's'}
+              {comissaoPendente > 0 && (
+                <span style={{ color: 'var(--admin-warn)' }}>
+                  {' · '}+ {formatPrice(comissaoPendente)} pendente
+                </span>
+              )}
             </p>
           </div>
           <span
@@ -107,14 +125,14 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
         <KpiTile
           label="Realizado"
           value={formatPrice(totalRealizado)}
-          sub={`${realizados.length} feito${realizados.length === 1 ? '' : 's'}`}
+          sub={`${pagos.length} pago${pagos.length === 1 ? '' : 's'}`}
           icon={<IconCheck size={14} />}
           tone="success"
         />
         <KpiTile
           label="A receber"
           value={formatPrice(totalPendente)}
-          sub={`${pendentes.length} confirmado${pendentes.length === 1 ? '' : 's'}`}
+          sub={`${naoPagos.length} pendente${naoPagos.length === 1 ? '' : 's'}`}
           icon={<IconClock size={14} />}
           tone="warn"
         />
@@ -127,12 +145,12 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
         />
       </div>
 
-      {/* Lista de agendamentos */}
+      {/* Lista de agendamentos — readOnly (só dono confirma pagamento) */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
           Agendamentos · {PERIODO_LABEL[periodo]}
         </h2>
-        <FinanceAppointmentList items={rows} />
+        <FinanceAppointmentList items={rows} readOnly />
       </section>
     </div>
   )
