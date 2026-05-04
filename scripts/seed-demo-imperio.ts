@@ -473,11 +473,39 @@ function buildCustomerProfile(): CustomerSeed[] {
 }
 
 async function createCustomers(businessId: string, customers: CustomerSeed[]) {
-  console.log(`👤 Criando ${customers.length} customers...`)
-  const ids: { id: string; name: string; phone: string; email: string | null; isSumido: boolean; visits: number }[] = []
+  console.log(`👤 Criando ${customers.length} customers + clients globais...`)
+  const ids: { id: string; clientId: string | null; name: string; phone: string; email: string | null; isSumido: boolean; visits: number }[] = []
   for (let i = 0; i < customers.length; i++) {
     const c = customers[i]
     const createdAt = new Date(today().getTime() - c.firstSeenDaysAgo * 86400000)
+
+    // 1. Cria row em `clients` (tabela GLOBAL — compartilhada entre
+    //    todos os businesses, identifica cliente por phone). Sem isso,
+    //    appointments ficam órfãos (client_id NULL) e a página /admin/
+    //    clientes filtra `WHERE client_id IS NOT NULL` — bug descoberto
+    //    via CIC: filtro "Sumidos" mostrava 0.
+    let clientId: string | null = null
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('phone', c.phone)
+      .maybeSingle()
+    if (existingClient) {
+      clientId = existingClient.id
+    } else {
+      const { data: newClient, error: clientErr } = await supabase
+        .from('clients')
+        .insert({ name: c.name, phone: c.phone, email: c.email })
+        .select('id')
+        .single()
+      if (clientErr) {
+        console.warn(`  ⚠ erro client ${c.name}: ${clientErr.message}`)
+      } else {
+        clientId = newClient.id
+      }
+    }
+
+    // 2. Cria customer (relação business↔cliente, com pontos)
     const { data, error } = await supabase
       .from('customers')
       .insert({
@@ -490,11 +518,12 @@ async function createCustomers(businessId: string, customers: CustomerSeed[]) {
       .select('id, name')
       .single()
     if (error) {
-      console.warn(`  ⚠ erro em ${c.name}: ${error.message}`)
+      console.warn(`  ⚠ erro customer ${c.name}: ${error.message}`)
       continue
     }
     ids.push({
       id: data.id,
+      clientId,
       name: data.name,
       phone: c.phone,
       email: c.email,
@@ -502,7 +531,7 @@ async function createCustomers(businessId: string, customers: CustomerSeed[]) {
       visits: c.visits,
     })
   }
-  console.log(`  ✓ ${ids.length} customers (incluindo ${customers.filter((c) => c.isSumido).length} sumidos)`)
+  console.log(`  ✓ ${ids.length} customers + clients (${customers.filter((c) => c.isSumido).length} sumidos)`)
   return ids
 }
 
@@ -523,7 +552,7 @@ async function createAppointments(
   businessId: string,
   profIds: { id: string; name: string }[],
   serviceIds: { id: string; name: string; price: number; duration: number; points: number; weight: number }[],
-  customers: { id: string; name: string; phone: string; email: string | null; isSumido: boolean; visits: number }[]
+  customers: { id: string; clientId: string | null; name: string; phone: string; email: string | null; isSumido: boolean; visits: number }[]
 ) {
   console.log('📅 Criando appointments distribuídos em 30 dias...')
 
@@ -685,6 +714,7 @@ async function createAppointments(
       insertData: {
         business_id: businessId,
         professional_id: prof.id,
+        client_id: customer.clientId,  // CRÍTICO: ClientesView filtra WHERE client_id IS NOT NULL
         client_name: customer.name,
         client_phone: customer.phone,
         client_email: customer.email,
@@ -736,6 +766,7 @@ async function createAppointments(
         insertData: {
           business_id: businessId,
           professional_id: prof.id,
+          client_id: customer.clientId,  // CRÍTICO pro filtro Sumidos
           client_name: customer.name,
           client_phone: customer.phone,
           client_email: customer.email,
@@ -866,7 +897,7 @@ async function boostCarlosToday(
   businessId: string,
   carlosId: string,
   serviceIds: { id: string; name: string; price: number; duration: number; points: number; weight: number }[],
-  customers: { id: string; name: string; phone: string; email: string | null; isSumido: boolean }[]
+  customers: { id: string; clientId: string | null; name: string; phone: string; email: string | null; isSumido: boolean }[]
 ) {
   console.log('💪 Boost: garantindo 5 atendimentos HOJE pro Carlos...')
   const todayDate = today()
@@ -914,6 +945,7 @@ async function boostCarlosToday(
       insertData: {
         business_id: businessId,
         professional_id: carlosId,
+        client_id: customer.clientId,
         client_name: customer.name,
         client_phone: customer.phone,
         client_email: customer.email,
