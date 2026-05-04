@@ -99,6 +99,12 @@ const DEMO = {
     punctuality_bonus_points: 10,
     slot_interval_minutes: 30,
     instagram_url: 'https://instagram.com/imperio.barbershop',
+    // Place ID real da Barbearia Toledo Palmas — usado pra link de
+    // Google Reviews funcionar de fato no demo. Cliente clica no botão
+    // "Avaliar no Google" e vai pra perfil real (mostra reviews reais).
+    google_place_id: 'ChIJvba-CAY1O5MRkFHisHOBo3k',
+    google_rating: 4.9,
+    google_reviews_count: 287,
   },
   ownerName: 'Carlos Almeida',
 }
@@ -840,14 +846,267 @@ async function createAppointments(
     .reduce((s, p) => s + p.servicePrice, 0)
   const cancelado = cancelledIds.length + noShowIds.length
   const futuro = plans.filter((p) => p.finalStatus === 'confirmed').length
+  const paidCount = plans.filter((p) => p.finalStatus === 'completed' && p.paid_at).length
   console.log('  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.log(`  📊 Realizado:   R$ ${realizado.toFixed(2)} (${completedIds.length - aReceber > 0 ? plans.filter((p) => p.finalStatus === 'completed' && p.paid_at).length : 0} pagos)`)
+  console.log(`  📊 Realizado:   R$ ${realizado.toFixed(2)} (${paidCount} pagos)`)
   console.log(`     A receber:   R$ ${aReceber.toFixed(2)}`)
   console.log(`     Faturado:    R$ ${(realizado + aReceber).toFixed(2)}`)
   console.log(`     Sumidos:     ${sumidosCriados} appointments antigos (60-120d)`)
   console.log(`     Cancelados:  ${cancelado}`)
   console.log(`     Futuros:     ${futuro}`)
   console.log('  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+}
+
+/**
+ * Garante 4-6 atendimentos HOJE pro Carlos (admin-prof).
+ * Sem isso, aba "Eu" do Carlos pode ficar vazia se a distribuição
+ * aleatória não escolhe ele pra hoje.
+ */
+async function boostCarlosToday(
+  businessId: string,
+  carlosId: string,
+  serviceIds: { id: string; name: string; price: number; duration: number; points: number; weight: number }[],
+  customers: { id: string; name: string; phone: string; email: string | null; isSumido: boolean }[]
+) {
+  console.log('💪 Boost: garantindo 5 atendimentos HOJE pro Carlos...')
+  const todayDate = today()
+  const dateStrToday = dateStr(todayDate)
+  const ativos = customers.filter((c) => !c.isSumido)
+  // Escolhe 5 horários distribuídos no dia
+  const slots = [
+    { startMin: 9 * 60, paid: true, isPast: true },        // 09:00 — concluído + pago
+    { startMin: 10 * 60 + 30, paid: true, isPast: true },  // 10:30 — concluído + pago
+    { startMin: 11 * 60 + 30, paid: false, isPast: true }, // 11:30 — concluído, a receber
+    { startMin: 14 * 60 + 30, paid: false, isPast: false },// 14:30 — confirmado (futuro do dia)
+    { startMin: 16 * 60, paid: false, isPast: false },     // 16:00 — confirmado
+  ]
+
+  const plans: Array<{
+    insertData: Record<string, unknown>
+    serviceId: string
+    serviceName: string
+    servicePrice: number
+    serviceDuration: number
+    finalStatus: 'confirmed' | 'completed'
+  }> = []
+
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i]
+    const customer = ativos[i % ativos.length]
+    const service = pickWeighted(serviceIds, rand())
+    const startMin = s.startMin
+    const endMin = startMin + service.duration
+    if (endMin > 18 * 60) continue
+    const startTime = `${pad(Math.floor(startMin / 60))}:${pad(startMin % 60)}`
+    const endTime = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}`
+
+    let paid_at: string | null = null
+    let payment_method: string | null = null
+    if (s.paid) {
+      const m = rand()
+      payment_method = m < 0.5 ? 'pix' : m < 0.8 ? 'cash' : 'card'
+      const paidDt = new Date(todayDate)
+      paidDt.setHours(Math.floor(endMin / 60), endMin % 60, 0, 0)
+      paid_at = paidDt.toISOString()
+    }
+
+    plans.push({
+      insertData: {
+        business_id: businessId,
+        professional_id: carlosId,
+        client_name: customer.name,
+        client_phone: customer.phone,
+        client_email: customer.email,
+        service_name: service.name,
+        service_id: service.id,
+        total_price: service.price,
+        appointment_date: dateStrToday,
+        start_time: startTime,
+        end_time: endTime,
+        status: 'confirmed',
+        paid_at,
+        payment_method,
+      },
+      serviceId: service.id,
+      serviceName: service.name,
+      servicePrice: service.price,
+      serviceDuration: service.duration,
+      finalStatus: s.isPast ? 'completed' : 'confirmed',
+    })
+  }
+
+  const { data: inserted, error } = await supabase.from('appointments').insert(plans.map((p) => p.insertData)).select('id')
+  if (error || !inserted) {
+    console.warn(`  ⚠ erro boost Carlos: ${error?.message}`)
+    return
+  }
+
+  // appointment_services pra cada
+  const apptSvcs = inserted.map((row, idx) => ({
+    appointment_id: row.id,
+    service_id: plans[idx].serviceId,
+    service_name: plans[idx].serviceName,
+    price: plans[idx].servicePrice,
+    duration_minutes: plans[idx].serviceDuration,
+  }))
+  await supabase.from('appointment_services').insert(apptSvcs)
+
+  // UPDATE → completed os que devem
+  const completedIds = inserted.filter((row, idx) => plans[idx].finalStatus === 'completed').map((r) => r.id)
+  if (completedIds.length > 0) {
+    await supabase.from('appointments').update({ status: 'completed' }).in('id', completedIds)
+  }
+  console.log(`  ✓ ${plans.length} atendimentos hoje pro Carlos (3 concluídos · 2 confirmados)`)
+}
+
+/**
+ * Cria pontos extras de PUNCTUALITY e REFERRAL via inserts diretos
+ * (não dispara via API — é seed). Trigger V15 só credita 'service'
+ * automaticamente. Pra demo mostrar fidelidade completa.
+ */
+async function createBonusPoints(
+  businessId: string,
+  customers: { id: string; name: string; phone: string; isSumido: boolean }[]
+) {
+  console.log('⭐ Criando pontos bonus (punctuality + referral)...')
+  // Busca appointments completed pra atrelar punctuality em ~50 deles
+  const { data: completedAppts } = await supabase
+    .from('appointments')
+    .select('id, client_phone, professional_id')
+    .eq('business_id', businessId)
+    .eq('status', 'completed')
+    .limit(50)
+
+  const phoneToCustomer = new Map(customers.map((c) => [c.phone.replace(/\D/g, ''), c.id]))
+
+  let punctualityCreated = 0
+  for (const a of completedAppts || []) {
+    const cphone = (a.client_phone || '').replace(/\D/g, '')
+    const customerId = phoneToCustomer.get(cphone)
+    if (!customerId) continue
+    const { error } = await supabase.from('points_transactions').insert({
+      customer_id: customerId,
+      business_id: businessId,
+      points: 10,
+      reason: 'punctuality',
+      appointment_id: a.id,
+      professional_id: a.professional_id,
+    })
+    if (!error) {
+      // SELECT atual + UPDATE (incremento atômico do saldo)
+      const { data: c } = await supabase.from('customers').select('total_points').eq('id', customerId).single()
+      if (c) {
+        await supabase.from('customers').update({ total_points: (c.total_points ?? 0) + 10 }).eq('id', customerId)
+      }
+      punctualityCreated++
+    }
+  }
+  console.log(`  ✓ ${punctualityCreated} pontos punctuality (10pts cada)`)
+
+  // 10 pontos referral (clientes que indicaram outros)
+  const ativos = customers.filter((c) => !c.isSumido).slice(0, 10)
+  let referralCreated = 0
+  for (let i = 0; i < ativos.length; i++) {
+    const customer = ativos[i]
+    const { error } = await supabase.from('points_transactions').insert({
+      customer_id: customer.id,
+      business_id: businessId,
+      points: 30,
+      reason: 'referral',
+    })
+    if (!error) {
+      const { data: c } = await supabase.from('customers').select('total_points').eq('id', customer.id).single()
+      if (c) {
+        await supabase.from('customers').update({ total_points: (c.total_points ?? 0) + 30 }).eq('id', customer.id)
+      }
+      referralCreated++
+    }
+  }
+  console.log(`  ✓ ${referralCreated} pontos referral (30pts cada)`)
+
+  // Pontos por review aprovado (5 review_claims aprovados → 50pts cada)
+  const { data: approvedClaims } = await supabase
+    .from('review_claims')
+    .select('id, customer_id, points_awarded')
+    .eq('business_id', businessId)
+    .eq('status', 'approved')
+
+  let reviewCreated = 0
+  for (const claim of approvedClaims || []) {
+    if (!claim.customer_id) continue
+    const pts = claim.points_awarded ?? 50
+    const { error } = await supabase.from('points_transactions').insert({
+      customer_id: claim.customer_id,
+      business_id: businessId,
+      points: pts,
+      reason: 'review',
+    })
+    if (!error) {
+      const { data: c } = await supabase.from('customers').select('total_points').eq('id', claim.customer_id).single()
+      if (c) {
+        await supabase.from('customers').update({ total_points: (c.total_points ?? 0) + pts }).eq('id', claim.customer_id)
+      }
+      reviewCreated++
+    }
+  }
+  console.log(`  ✓ ${reviewCreated} pontos review (50pts cada)`)
+}
+
+/**
+ * Activity log — histórico de ações da equipe nos últimos 30 dias.
+ * "Carlos confirmou agendamento de Lucas", "Rafael concluiu agendamento
+ * de João", etc. Aparece no painel admin > "Atividade da equipe".
+ */
+async function createActivityLog(
+  businessId: string,
+  profIds: { id: string; name: string }[]
+) {
+  console.log('📝 Criando activity log (histórico equipe)...')
+  const todayMs = today().getTime()
+  const actions = ['confirm', 'complete', 'cancel'] as const
+  const verbs: Record<typeof actions[number], string> = {
+    confirm: 'confirmou',
+    complete: 'concluiu',
+    cancel: 'cancelou',
+  }
+
+  // Busca alguns appointments recentes pra referenciar
+  const { data: recentAppts } = await supabase
+    .from('appointments')
+    .select('id, client_name, appointment_date, start_time')
+    .eq('business_id', businessId)
+    .order('appointment_date', { ascending: false })
+    .limit(80)
+
+  if (!recentAppts || recentAppts.length === 0) {
+    console.log('  ⚠ sem appointments pra referenciar — pulando')
+    return
+  }
+
+  const logs: Array<Record<string, unknown>> = []
+  for (let i = 0; i < 40; i++) {
+    const appt = recentAppts[Math.floor(rand() * recentAppts.length)]
+    const prof = profIds[Math.floor(rand() * profIds.length)]
+    const action = actions[Math.floor(rand() * actions.length)]
+    const daysAgo = randInt(rand(), 0, 25)
+    const at = new Date(todayMs - daysAgo * 86400000 - randInt(rand(), 0, 8) * 3600000)
+    logs.push({
+      business_id: businessId,
+      professional_id: prof.id,
+      action,
+      target_type: 'appointment',
+      target_id: appt.id,
+      description: `${prof.name} ${verbs[action]} agendamento de ${appt.client_name} (${appt.appointment_date} às ${(appt.start_time as string).slice(0, 5)})`,
+      created_at: at.toISOString(),
+    })
+  }
+
+  for (let i = 0; i < logs.length; i += 50) {
+    const batch = logs.slice(i, i + 50)
+    const { error } = await supabase.from('activity_log').insert(batch)
+    if (error) console.warn(`  ⚠ erro activity_log: ${error.message}`)
+  }
+  console.log(`  ✓ ${logs.length} entradas de activity log (últimos 25 dias)`)
 }
 
 async function createExpenses(businessId: string) {
@@ -1076,9 +1335,14 @@ async function main() {
   const customerProfiles = buildCustomerProfile()
   const customers = await createCustomers(businessId, customerProfiles)
   await createAppointments(businessId, profIds, serviceIds, customers)
+  // Carlos é o owner (1º profissional)
+  const carlosId = profIds[0].id
+  await boostCarlosToday(businessId, carlosId, serviceIds, customers)
   await createExpenses(businessId)
   await createCoupons(businessId, customers)
   await createReviewClaims(businessId, customers)
+  await createBonusPoints(businessId, customers)
+  await createActivityLog(businessId, profIds)
   await validateSeed(businessId)
 
   console.log('')
