@@ -34,7 +34,13 @@ const DAYS = [
 const DURATIONS = [15, 20, 30, 40, 45, 60, 75, 90, 120]
 const COMMERCIAL_DAYS = [1, 2, 3, 4, 5]
 const COMMERCIAL_PLUS_SAT_DAYS = [1, 2, 3, 4, 5, 6]
-const COMMERCIAL_START = '09:00'
+// Default 04/05/2026: abrir 08:00 / fechar 18:00 com pausa 12-13.
+// Antes: 09:00-18:00 corrido (forçava admin adicionar pausa manualmente).
+// Agora: já entrega 2 períodos prontos cobrindo 90% dos casos
+// (barbearia/salão/estética/nail). Admin edita se quiser diferente.
+const COMMERCIAL_START = '08:00'
+const COMMERCIAL_LUNCH_START = '12:00'
+const COMMERCIAL_LUNCH_END = '13:00'
 const COMMERCIAL_END = '18:00'
 const COMMERCIAL_SLOT = 30
 
@@ -95,8 +101,11 @@ function buildSchedule(hours: WorkingHours[], professionalId: string): Schedule 
     if (dayHours.length === 0) {
       schedule[id] = {
         active: false,
-        periods: [{ start_time: '09:00', end_time: '18:00' }],
-        slot_duration: 40,
+        periods: [
+          { start_time: COMMERCIAL_START, end_time: COMMERCIAL_LUNCH_START },
+          { start_time: COMMERCIAL_LUNCH_END, end_time: COMMERCIAL_END },
+        ],
+        slot_duration: COMMERCIAL_SLOT,
       }
     } else {
       schedule[id] = {
@@ -132,7 +141,10 @@ function snapshot(s: Schedule): string {
  */
 function suggestNewPeriodFromExisting(periods: Period[]): Period[] {
   if (periods.length === 0) {
-    return [{ start_time: '09:00', end_time: '12:00' }, { start_time: '13:00', end_time: '18:00' }]
+    return [
+      { start_time: COMMERCIAL_START, end_time: COMMERCIAL_LUNCH_START },
+      { start_time: COMMERCIAL_LUNCH_END, end_time: COMMERCIAL_END },
+    ]
   }
   const last = periods[periods.length - 1]
   const startM = toMin(last.start_time)
@@ -351,9 +363,16 @@ export default function HorariosTab({
       const next = { ...prev }
       for (const d of DAYS) {
         if (activeDays.includes(d.id)) {
+          // 2 períodos por padrão (manhã + tarde) com pausa de almoço
+          // pré-aplicada. Admin edita os horários da pausa em 1 toque
+          // se a pausa for diferente. Antes era 1 período corrido e
+          // forçava admin adicionar pausa depois — fricção desnecessária.
           next[d.id] = {
             active: true,
-            periods: [{ start_time: COMMERCIAL_START, end_time: COMMERCIAL_END }],
+            periods: [
+              { start_time: COMMERCIAL_START, end_time: COMMERCIAL_LUNCH_START },
+              { start_time: COMMERCIAL_LUNCH_END, end_time: COMMERCIAL_END },
+            ],
             slot_duration: COMMERCIAL_SLOT,
           }
         } else {
@@ -816,7 +835,7 @@ export default function HorariosTab({
             border: '1px solid var(--admin-border)',
           }}
         >
-          Comercial (Seg-Sex 9-18)
+          Comercial (Seg-Sex 8-18)
         </button>
         <button
           type="button"
@@ -828,7 +847,7 @@ export default function HorariosTab({
             border: '1px solid var(--admin-border)',
           }}
         >
-          Seg-Sáb (9-18)
+          Seg-Sáb (8-18)
         </button>
         <button
           type="button"
