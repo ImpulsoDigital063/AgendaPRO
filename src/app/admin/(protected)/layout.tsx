@@ -10,6 +10,7 @@ import {
   getCurrentSubscription,
   getPendingAppointmentsCount,
   getPendingClaimsCount,
+  getOwnerProfessional,
 } from '@/lib/admin-data'
 
 export default async function AdminLayout({
@@ -29,14 +30,18 @@ export default async function AdminLayout({
   // Sem negócio associado — pode ser estado temporário pós-cadastro; deixa passar
   let pendingAppointments = 0
   let pendingClaims = 0
+  let showOwnerTab = false
 
   if (business) {
-    // Subscription + counts da bottom nav em paralelo. Counts agora vem
-    // de unstable_cache (TTL 30s) — segunda abertura nao bate Supabase.
-    const [subscription, apptCount, claimsCount] = await Promise.all([
+    // Subscription + counts + owner-prof em paralelo. Counts via
+    // unstable_cache (TTL 30s) — segunda abertura nao bate Supabase.
+    // owner-prof via React cache() (request-scoped) — usado aqui pra
+    // condicionar bottom nav e em /admin/eu pra montar a tela.
+    const [subscription, apptCount, claimsCount, ownerProf] = await Promise.all([
       getCurrentSubscription(business.id),
       getPendingAppointmentsCount(business.id),
       getPendingClaimsCount(business.id),
+      getOwnerProfessional(user.id, business.id),
     ])
 
     // Defesa: negócio sem subscription = estado corrompido, manda pra bloqueado
@@ -62,6 +67,7 @@ export default async function AdminLayout({
 
     pendingAppointments = apptCount
     pendingClaims = claimsCount
+    showOwnerTab = !!ownerProf
   }
 
   const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as
@@ -79,6 +85,7 @@ export default async function AdminLayout({
         <BottomNav
           pendingAppointments={pendingAppointments}
           pendingClaims={pendingClaims}
+          showOwnerTab={showOwnerTab}
         />
       </div>
     </AdminThemeProvider>

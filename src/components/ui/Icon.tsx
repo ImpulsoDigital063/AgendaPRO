@@ -66,6 +66,26 @@ export function IconUsersSolid(p: IconProps) {
   )
 }
 
+/** Single user — usado pra aba "Eu" (admin que também atende) */
+export function IconUser(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4.4 3.6-7.5 8-7.5s8 3.1 8 7.5" />
+    </svg>
+  )
+}
+
+export function IconUserSolid(p: IconProps) {
+  const { size = 20, ...rest } = p
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" {...rest}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20.5C4 16.4 7.6 13 12 13s8 3.4 8 7.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
+    </svg>
+  )
+}
+
 export function IconDollar(p: IconProps) {
   return (
     <svg {...base(p)}>
