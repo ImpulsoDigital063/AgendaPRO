@@ -4,6 +4,7 @@ import Image from 'next/image'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import ProfAppointmentCard from '@/components/profissional/ProfAppointmentCard'
+import ProfTodayList from '@/components/profissional/ProfTodayList'
 import WelcomeCard from '@/components/profissional/WelcomeCard'
 import Link from 'next/link'
 import {
@@ -266,9 +267,11 @@ export default async function ProfissionalPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {list.map((a) => <ProfAppointmentCard key={a.id} appointment={a} punctualityBonus={punctualityBonus} />)}
-            </div>
+            <ProfTodayList
+              active={list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')}
+              archived={list.filter((a) => a.status === 'cancelled' || a.status === 'no_show')}
+              punctualityBonus={punctualityBonus}
+            />
           )}
         </section>
 

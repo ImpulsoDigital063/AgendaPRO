@@ -7,7 +7,6 @@ import {
   getUpcomingAppointments,
   getRecentActivity,
   getPendingClaimsCount,
-  getOwnerProfessional,
 } from '@/lib/admin-data'
 import AppointmentCard from '@/components/AppointmentCard'
 import LogoutButton from '@/components/LogoutButton'
@@ -200,114 +199,6 @@ function KPIsSkeleton() {
           className="rounded-2xl h-[78px] skel-pulse"
           style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
         />
-      </div>
-    </section>
-  )
-}
-
-async function OwnerSection({
-  businessId,
-  ownerId,
-}: {
-  businessId: string
-  ownerId: string
-}) {
-  // Renderiza só se o dono também atende (tem registro em professionals
-  // linkado ao auth_user_id dele). Se for gestor puro, retorna null.
-  // Decisão UX: zero fricção — mesma tela do admin, sem alternar
-  // contexto/login. Uma seção a mais, não uma rota a mais.
-  const owner = await getOwnerProfessional(ownerId, businessId)
-  if (!owner) return null
-
-  const today = new Date().toISOString().split('T')[0]
-  const list = await getAppointmentsToday(businessId, today)
-  // Filtra os atendimentos DELE no dia. Reuso da query cacheada — não
-  // bate Supabase de novo.
-  const meus = list.filter((a) => a.professional_id === owner.id)
-  if (meus.length === 0) return null
-
-  const meusRecebidos = meus.filter((a) => a.paid_at != null)
-  const meusAReceber = meus.filter(
-    (a) =>
-      a.paid_at == null &&
-      (a.total_price ?? 0) > 0 &&
-      (a.status === 'confirmed' || a.status === 'completed')
-  )
-  const meuRecebidoTotal = meusRecebidos.reduce((sum, a) => sum + (a.total_price || 0), 0)
-  const meuAReceberTotal = meusAReceber.reduce((sum, a) => sum + (a.total_price || 0), 0)
-  const meusAtendidos = meus.filter((a) => a.status === 'completed').length
-
-  // Primeiro nome — vira "Bom trabalho, Eduardo"
-  const firstName = owner.name?.split(' ')[0] ?? 'Você'
-
-  return (
-    <section>
-      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-        Você como profissional
-      </p>
-      <div
-        className="rounded-2xl p-4 relative overflow-hidden"
-        style={{
-          background:
-            'linear-gradient(135deg, color-mix(in srgb, var(--admin-success) 14%, var(--admin-surface)) 0%, color-mix(in srgb, var(--admin-accent) 10%, var(--admin-surface)) 100%)',
-          border: '1px solid var(--admin-border)',
-        }}
-      >
-        <div
-          className="absolute -top-8 -right-8 w-32 h-32 rounded-full blur-2xl opacity-50 pointer-events-none"
-          style={{ background: 'rgba(16,185,129,0.25)' }}
-        />
-        <div className="relative">
-          <div className="flex items-center justify-between mb-3 gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-                {firstName} hoje
-              </p>
-              <p className="text-2xl font-extrabold mt-1 leading-none tabular-nums" style={{ color: 'var(--admin-text)' }}>
-                {meuRecebidoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </p>
-              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-                {meus.length} atendimento{meus.length === 1 ? '' : 's'} · {meusAtendidos} concluído{meusAtendidos === 1 ? '' : 's'}
-              </p>
-            </div>
-            <span
-              className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{
-                background: 'rgba(16,185,129,0.18)',
-                color: 'var(--admin-success)',
-              }}
-            >
-              <IconDollar size={20} />
-            </span>
-          </div>
-
-          {meuAReceberTotal > 0 && (
-            <Link
-              href="/admin/financeiro"
-              className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-opacity hover:opacity-90"
-              style={{
-                background: 'var(--admin-surface)',
-                border: '1px solid var(--admin-border)',
-              }}
-            >
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-                  A receber
-                </p>
-                <p className="text-base font-bold leading-tight tabular-nums" style={{ color: 'var(--admin-accent)' }}>
-                  {meuAReceberTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </p>
-              </div>
-              <span
-                className="text-xs font-semibold inline-flex items-center gap-1 flex-shrink-0"
-                style={{ color: 'var(--admin-accent)' }}
-              >
-                Ver no Financeiro
-                <IconChevronRight size={14} />
-              </span>
-            </Link>
-          )}
-        </div>
       </div>
     </section>
   )
@@ -529,12 +420,6 @@ export default async function AdminPage() {
         {/* Pedidos de pontos — sumi sumi se count = 0, fallback null */}
         <Suspense fallback={null}>
           <ClaimsLinkSection businessId={business.id} />
-        </Suspense>
-
-        {/* Você como profissional — só renderiza se admin atende.
-            Mesma tela, sem login duplo, sem rota nova. */}
-        <Suspense fallback={null}>
-          <OwnerSection businessId={business.id} ownerId={user.id} />
         </Suspense>
 
         {/* Divulgação — estatica, renderiza imediato */}

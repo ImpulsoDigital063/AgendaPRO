@@ -1,29 +1,28 @@
 'use client'
 
 import { useState } from 'react'
-import AppointmentCard from '@/components/AppointmentCard'
+import ProfAppointmentCard from '@/components/profissional/ProfAppointmentCard'
 import { IconChevronRight } from '@/components/ui/Icon'
 
-type Appointment = React.ComponentProps<typeof AppointmentCard>['appointment']
+type Appointment = React.ComponentProps<typeof ProfAppointmentCard>['appointment']
 
 type Props = {
   active: Appointment[]
   archived: Appointment[]
   punctualityBonus?: number
+  showDate?: boolean
 }
 
-/** Quantos atendimentos mostrar antes do "Ver mais". Pensado pra escala:
- *  barbearia/salão pode ter 30-60 atendimentos num dia movimentado. Sem
- *  paginação a tela renderiza tudo + 30 cards = lento em mobile. */
+/** Quantos atendimentos mostrar antes do "Ver mais". Pensado pra
+ *  profissional movimentado (até 30/dia em barbearia popular). */
 const VISIBLE_LIMIT = 10
 
-export default function TodayList({ active, archived, punctualityBonus }: Props) {
+export default function ProfTodayList({ active, archived, punctualityBonus, showDate }: Props) {
   const [showArchived, setShowArchived] = useState(false)
   const [showAllActive, setShowAllActive] = useState(false)
 
   const cancelledCount = archived.filter((a) => a.status === 'cancelled').length
   const noShowCount = archived.filter((a) => a.status === 'no_show').length
-
   const archivedLabel = [
     cancelledCount > 0 && `${cancelledCount} cancelado${cancelledCount > 1 ? 's' : ''}`,
     noShowCount > 0 && `${noShowCount} não veio`,
@@ -31,21 +30,18 @@ export default function TodayList({ active, archived, punctualityBonus }: Props)
     .filter(Boolean)
     .join(' · ')
 
-  // O "próximo" é o primeiro confirmado/pendente na lista — recebe dot pulsante no chip
-  const nextUpId = active.find((a) => a.status === 'confirmed' || a.status === 'pending')?.id
   const visibleActive = showAllActive ? active : active.slice(0, VISIBLE_LIMIT)
   const hiddenCount = active.length - visibleActive.length
 
   return (
     <div className="space-y-3">
-      {visibleActive.map((a, i) => (
-        <div
+      {visibleActive.map((a) => (
+        <ProfAppointmentCard
           key={a.id}
-          className="admin-enter"
-          style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 60}ms` }}
-        >
-          <AppointmentCard appointment={a} nextUp={a.id === nextUpId} punctualityBonus={punctualityBonus} />
-        </div>
+          appointment={a}
+          punctualityBonus={punctualityBonus}
+          showDate={showDate}
+        />
       ))}
 
       {hiddenCount > 0 && (
@@ -95,7 +91,7 @@ export default function TodayList({ active, archived, punctualityBonus }: Props)
           {showArchived && (
             <div className="space-y-3 mt-3">
               {archived.map((a) => (
-                <AppointmentCard key={a.id} appointment={a} punctualityBonus={punctualityBonus} />
+                <ProfAppointmentCard key={a.id} appointment={a} punctualityBonus={punctualityBonus} />
               ))}
             </div>
           )}

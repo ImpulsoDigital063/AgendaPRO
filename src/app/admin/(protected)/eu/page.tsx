@@ -9,6 +9,7 @@ import {
   getUpcomingAppointments,
 } from '@/lib/admin-data'
 import AppointmentCard from '@/components/AppointmentCard'
+import TodayList from '@/components/admin/TodayList'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import CountUp from '@/components/admin/CountUp'
@@ -125,7 +126,7 @@ async function PersonalKPIs({
         />
         <KPICard
           label="A receber"
-          value={aReceberTotal > 0 ? `R$${Math.round(aReceberTotal)}` : '0'}
+          value={`R$${Math.round(aReceberTotal)}`}
           color="var(--admin-accent)"
           glow="var(--admin-accent-bg)"
           Icon={IconCheck}
@@ -233,34 +234,11 @@ async function PersonalTodaySection({
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {ativos.map((a) => (
-            <AppointmentCard
-              key={a.id}
-              appointment={a}
-              punctualityBonus={business.punctuality_bonus_points ?? 10}
-            />
-          ))}
-          {arquivados.length > 0 && (
-            <details className="group">
-              <summary
-                className="cursor-pointer text-xs font-semibold uppercase tracking-wider py-2 transition-colors"
-                style={{ color: 'var(--admin-text-faded)' }}
-              >
-                {arquivados.length} cancelado{arquivados.length === 1 ? '' : 's'} / não compareceu
-              </summary>
-              <div className="space-y-3 mt-2">
-                {arquivados.map((a) => (
-                  <AppointmentCard
-                    key={a.id}
-                    appointment={a}
-                    punctualityBonus={business.punctuality_bonus_points ?? 10}
-                  />
-                ))}
-              </div>
-            </details>
-          )}
-        </div>
+        <TodayList
+          active={ativos}
+          archived={arquivados}
+          punctualityBonus={business.punctuality_bonus_points ?? 10}
+        />
       )}
     </section>
   )
