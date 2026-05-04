@@ -244,29 +244,49 @@ function addDays(d: Date, days: number): Date {
 
 async function cleanup() {
   console.log('🧹 Limpando dados antigos...')
-  // Pega o business existente (se houver) pra apagar em cascata
-  const { data: existing } = await supabase
+  // 1. Cleanup ordenado pra evitar FK constraint:
+  //    appointment_services tem FK pra services SEM cascade. Cascade do
+  //    business → services falha enquanto houver appointment_services
+  //    apontando. Solução: apagar appointment_services antes.
+  const { data: existingBizz } = await supabase
     .from('businesses')
-    .select('id, owner_id')
+    .select('id')
     .eq('slug', DEMO.slug)
-    .maybeSingle()
-
-  if (existing) {
-    // Cascade delete via FK on delete cascade — apaga prof, hours, services, appointments
-    await supabase.from('businesses').delete().eq('id', existing.id)
-    if (existing.owner_id) {
-      await supabase.auth.admin.deleteUser(existing.owner_id).catch(() => {})
+  for (const biz of existingBizz || []) {
+    const { data: appts } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('business_id', biz.id)
+    const apptIds = (appts || []).map((a) => a.id)
+    for (let i = 0; i < apptIds.length; i += 50) {
+      await supabase
+        .from('appointment_services')
+        .delete()
+        .in('appointment_id', apptIds.slice(i, i + 50))
     }
-    console.log('  ✓ business antigo + auth user apagados')
-  } else {
-    // Pode ter user órfão de tentativa anterior
-    const { data: { users } } = await supabase.auth.admin.listUsers()
-    const orphan = users.find((u) => u.email === DEMO.email)
-    if (orphan) {
-      await supabase.auth.admin.deleteUser(orphan.id).catch(() => {})
-      console.log('  ✓ auth user órfão apagado')
-    }
+    await supabase.from('businesses').delete().eq('id', biz.id)
+    console.log(`  ✓ business antigo apagado + ${apptIds.length} appointment_services`)
   }
+
+  // 2. Renomeia email de auth users existentes — libera o DEMO.email
+  //    pra novo cadastro. deleteUser do Supabase faz soft-delete e mantém
+  //    o email reservado, então update pra email único é workaround.
+  let renamed = 0
+  let page = 1
+  while (page < 20) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
+    if (error || !data?.users || data.users.length === 0) break
+    for (const u of data.users) {
+      if (u.email === DEMO.email) {
+        const trash = `trash_${Date.now()}_${u.id.slice(0, 6)}@trash.demo`
+        await supabase.auth.admin.updateUserById(u.id, { email: trash }).catch(() => {})
+        renamed++
+      }
+    }
+    if (data.users.length < 1000) break
+    page++
+  }
+  if (renamed > 0) console.log(`  ✓ ${renamed} auth user(s) com email antigo renomeados pra liberar slot`)
 }
 
 async function createOwner(): Promise<string> {
@@ -426,8 +446,10 @@ function buildCustomerProfile(): CustomerSeed[] {
       visits = randInt(rand(), 3, 5)
       firstSeenDaysAgo = randInt(rand(), 1, 25)
     } else {
-      // Sumidos — não aparecem no último mês
-      visits = 0
+      // Sumidos — só appointments antigos (60-120d ago); precisam de
+      // appointments pra aparecer no filtro "Sumidos" (que detecta via
+      // último appointment > 60d ago, não customer.created_at)
+      visits = randInt(rand(), 1, 3)
       isSumido = true
       firstSeenDaysAgo = randInt(rand(), 90, 200)
     }
@@ -560,15 +582,52 @@ async function createAppointments(
     payment_method: string | null
   }> = []
 
+  // Plan armazena dados de cada appointment ANTES do insert.
+  // Estratégia chave (V2): inserir TODOS como 'confirmed' inicial,
+  // depois UPDATE em batch pra status final. Trigger V15 dispara em
+  // UPDATE OF status — só assim points_transactions é criada e
+  // customers.total_points é atualizado.
+  type Plan = {
+    insertData: Record<string, unknown>
+    serviceId: string
+    serviceName: string
+    servicePrice: number
+    serviceDuration: number
+    finalStatus: 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+    paid_at: string | null
+    payment_method: string | null
+  }
+  const plans: Plan[] = []
+
+  function tryFindSlot(profId: string, dateStrVal: string, duration: number): { startMin: number; endMin: number } | null {
+    for (let try_ = 0; try_ < 30; try_++) {
+      const isAfternoon = rand() < 0.6
+      let startMin: number
+      if (isAfternoon) {
+        startMin = (13 * 60) + Math.floor(rand() * 10) * 30
+      } else {
+        startMin = (8 * 60) + Math.floor(rand() * 8) * 30
+      }
+      const endMin = startMin + duration
+      if (startMin < 12 * 60 && endMin > 12 * 60) continue
+      if (endMin > 18 * 60) continue
+      if (slotFree(profId, dateStrVal, startMin, endMin)) {
+        reserveSlot(profId, dateStrVal, startMin, endMin)
+        return { startMin, endMin }
+      }
+    }
+    return null
+  }
+
+  // Loop principal — clientes ATIVOS (não-sumidos)
   let attempts = 0
   for (const visit of visitPool) {
-    if (attempts > visitPool.length * 5) break // safety
+    if (attempts > visitPool.length * 5) break
     attempts++
 
     const customer = customers[visit.customerIdx]
-    if (!customer || customer.isSumido) continue // sumidos não geram visita no mês
+    if (!customer || customer.isSumido) continue // sumidos vão em loop separado
 
-    // Escolhe dia ponderado
     const totalW = dayWeights.reduce((s, d) => s + d.weight, 0)
     let pick = rand() * totalW
     let chosenDay = dayWeights[0].day
@@ -580,152 +639,243 @@ async function createAppointments(
       }
     }
     const dateStrVal = dateStr(chosenDay)
-
-    // Escolhe profissional aleatório
     const prof = profIds[Math.floor(rand() * profIds.length)]
-
-    // Escolhe serviço (pesos)
     const service = pickWeighted(serviceIds, rand())
+    const slot = tryFindSlot(prof.id, dateStrVal, service.duration)
+    if (!slot) continue
 
-    // Escolhe horário: tenta achar um slot livre 8-12 ou 13-18 (até 30 tentativas)
-    let startMin = 0
-    let endMin = 0
-    let chosen = false
-    for (let try_ = 0; try_ < 30; try_++) {
-      // Manhã (8-12) ou tarde (13-18) — peso pra tarde maior (60%)
-      const isAfternoon = rand() < 0.6
-      if (isAfternoon) {
-        startMin = (13 * 60) + Math.floor(rand() * 10) * 30 // 13:00, 13:30 ... 17:30
-      } else {
-        startMin = (8 * 60) + Math.floor(rand() * 8) * 30 // 8:00, 8:30 ... 11:30
-      }
-      endMin = startMin + service.duration
-      // Não pode atravessar pausa de almoço (12-13)
-      if (startMin < 12 * 60 && endMin > 12 * 60) continue
-      // Não pode passar do fechamento (18:00)
-      if (endMin > 18 * 60) continue
-      if (slotFree(prof.id, dateStrVal, startMin, endMin)) {
-        reserveSlot(prof.id, dateStrVal, startMin, endMin)
-        chosen = true
-        break
-      }
-    }
-    if (!chosen) continue
-
-    const startTime = `${pad(Math.floor(startMin / 60))}:${pad(startMin % 60)}`
-    const endTime = `${pad(Math.floor((startMin + service.duration) / 60))}:${pad((startMin + service.duration) % 60)}`
-
-    // Decide status:
-    // Se data > hoje → confirmed (futuro)
-    // Senão: 75% completed pago, 13% completed sem pagar, 8% cancelled, 4% no_show
+    const startTime = `${pad(Math.floor(slot.startMin / 60))}:${pad(slot.startMin % 60)}`
+    const endTime = `${pad(Math.floor(slot.endMin / 60))}:${pad(slot.endMin % 60)}`
     const isFuture = chosenDay.getTime() > todayMs
-    let status: 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+
+    let finalStatus: Plan['finalStatus']
     let paid_at: string | null = null
     let payment_method: string | null = null
 
     if (isFuture) {
-      status = 'confirmed'
+      finalStatus = 'confirmed'
     } else {
       const r = rand()
       if (r < 0.75) {
-        status = 'completed'
-        // Decide método (PIX 50%, Dinheiro 30%, Cartão 15%, Pontos 5%)
+        finalStatus = 'completed'
         const m = rand()
         if (m < 0.50) payment_method = 'pix'
         else if (m < 0.80) payment_method = 'cash'
         else if (m < 0.95) payment_method = 'card'
         else payment_method = 'points'
-        // paid_at = mesmo dia + horário próximo do fim do atendimento
         const paidDt = new Date(chosenDay)
-        paidDt.setHours(Math.floor((startMin + service.duration) / 60), (startMin + service.duration) % 60, 0, 0)
+        paidDt.setHours(Math.floor(slot.endMin / 60), slot.endMin % 60, 0, 0)
         paid_at = paidDt.toISOString()
       } else if (r < 0.88) {
-        status = 'completed' // a receber
+        finalStatus = 'completed'
       } else if (r < 0.96) {
-        status = 'cancelled'
+        finalStatus = 'cancelled'
       } else {
-        status = 'no_show'
+        finalStatus = 'no_show'
       }
     }
 
-    appointmentsToInsert.push({
-      business_id: businessId,
-      professional_id: prof.id,
-      client_name: customer.name,
-      client_phone: customer.phone,
-      client_email: customer.email,
-      service_name: service.name,
-      service_id: service.id,
-      total_price: service.price,
-      appointment_date: dateStrVal,
-      start_time: startTime,
-      end_time: endTime,
-      status,
-      paid_at,
-      payment_method,
-    })
-    appointmentLog.push({
-      customerName: customer.name,
+    plans.push({
+      insertData: {
+        business_id: businessId,
+        professional_id: prof.id,
+        client_name: customer.name,
+        client_phone: customer.phone,
+        client_email: customer.email,
+        service_name: service.name,
+        service_id: service.id,
+        total_price: service.price,
+        appointment_date: dateStrVal,
+        start_time: startTime,
+        end_time: endTime,
+        status: 'confirmed',  // sempre confirmed inicial — UPDATE depois pra disparar trigger
+        paid_at,
+        payment_method,
+      },
+      serviceId: service.id,
       serviceName: service.name,
-      profName: prof.name,
-      price: service.price,
-      date: dateStrVal,
-      time: startTime,
-      status,
+      servicePrice: service.price,
+      serviceDuration: service.duration,
+      finalStatus,
       paid_at,
       payment_method,
     })
   }
 
-  // Insere em batches de 50
-  console.log(`  · inserindo ${appointmentsToInsert.length} appointments em lotes...`)
-  let inserted = 0
-  for (let i = 0; i < appointmentsToInsert.length; i += 50) {
-    const batch = appointmentsToInsert.slice(i, i + 50)
+  // Loop separado — SUMIDOS com appointments antigos (60-120d ago).
+  // Pra aparecerem no filtro "Sumidos" do ClientesView, precisam de
+  // appointments completed cuja última data > 60d ago.
+  let sumidosCriados = 0
+  for (const customer of customers) {
+    if (!customer.isSumido) continue
+    for (let v = 0; v < customer.visits; v++) {
+      const daysAgo = randInt(rand(), 60, 120)
+      const oldDay = new Date(todayMs - daysAgo * 86400000)
+      // Pula domingo (fechado)
+      if (oldDay.getDay() === 0) continue
+      const dateStrVal = dateStr(oldDay)
+      const prof = profIds[Math.floor(rand() * profIds.length)]
+      const service = pickWeighted(serviceIds, rand())
+      const slot = tryFindSlot(prof.id, dateStrVal, service.duration)
+      if (!slot) continue
+
+      const startTime = `${pad(Math.floor(slot.startMin / 60))}:${pad(slot.startMin % 60)}`
+      const endTime = `${pad(Math.floor(slot.endMin / 60))}:${pad(slot.endMin % 60)}`
+      const m = rand()
+      const payment_method = m < 0.5 ? 'pix' : m < 0.8 ? 'cash' : 'card'
+      const paidDt = new Date(oldDay)
+      paidDt.setHours(Math.floor(slot.endMin / 60), slot.endMin % 60, 0, 0)
+
+      plans.push({
+        insertData: {
+          business_id: businessId,
+          professional_id: prof.id,
+          client_name: customer.name,
+          client_phone: customer.phone,
+          client_email: customer.email,
+          service_name: service.name,
+          service_id: service.id,
+          total_price: service.price,
+          appointment_date: dateStrVal,
+          start_time: startTime,
+          end_time: endTime,
+          status: 'confirmed',
+          paid_at: paidDt.toISOString(),
+          payment_method,
+        },
+        serviceId: service.id,
+        serviceName: service.name,
+        servicePrice: service.price,
+        serviceDuration: service.duration,
+        finalStatus: 'completed',
+        paid_at: paidDt.toISOString(),
+        payment_method,
+      })
+      sumidosCriados++
+    }
+  }
+
+  // INSERT em batches — todos com status='confirmed' (não dispara trigger ainda)
+  console.log(`  · inserindo ${plans.length} appointments (incluindo ${sumidosCriados} sumidos)...`)
+  const insertedIds: string[] = []
+  for (let i = 0; i < plans.length; i += 50) {
+    const batch = plans.slice(i, i + 50).map((p) => p.insertData)
     const { error, data } = await supabase
       .from('appointments')
       .insert(batch)
       .select('id')
     if (error) {
       console.warn(`  ⚠ erro batch ${i}: ${error.message}`)
+      // Pra alinhar índices, push placeholder vazio
+      for (let j = 0; j < batch.length; j++) insertedIds.push('')
       continue
     }
-    inserted += data?.length ?? 0
+    for (const row of data || []) insertedIds.push(row.id as string)
   }
-  console.log(`  ✓ ${inserted} appointments criados`)
 
-  // Stats
-  const completed = appointmentLog.filter((a) => a.status === 'completed')
-  const paid = completed.filter((a) => a.paid_at)
-  const realizado = paid.reduce((s, a) => s + a.price, 0)
-  const aReceber = completed.filter((a) => !a.paid_at).reduce((s, a) => s + a.price, 0)
-  const cancelado = appointmentLog.filter((a) => a.status === 'cancelled' || a.status === 'no_show').length
-  const futuro = appointmentLog.filter((a) => a.status === 'confirmed').length
+  // INSERT appointment_services — necessário pra trigger V15 calcular pontos
+  // (V15 lê SUM(s.points) FROM appointment_services aps JOIN services s)
+  const apptServicesBatch: Array<Record<string, unknown>> = []
+  for (let i = 0; i < plans.length; i++) {
+    const id = insertedIds[i]
+    if (!id) continue
+    const p = plans[i]
+    apptServicesBatch.push({
+      appointment_id: id,
+      service_id: p.serviceId,
+      service_name: p.serviceName,
+      price: p.servicePrice,
+      duration_minutes: p.serviceDuration,
+    })
+  }
+  for (let i = 0; i < apptServicesBatch.length; i += 50) {
+    const batch = apptServicesBatch.slice(i, i + 50)
+    const { error } = await supabase.from('appointment_services').insert(batch)
+    if (error) console.warn(`  ⚠ erro appt_services batch ${i}: ${error.message}`)
+  }
+  console.log(`  · ${apptServicesBatch.length} appointment_services criados (pra trigger V15)`)
+
+  // Categoriza IDs por finalStatus pra UPDATE em batch
+  const completedIds: string[] = []
+  const cancelledIds: string[] = []
+  const noShowIds: string[] = []
+  for (let i = 0; i < plans.length; i++) {
+    const id = insertedIds[i]
+    if (!id) continue
+    const p = plans[i]
+    if (p.finalStatus === 'completed') completedIds.push(id)
+    else if (p.finalStatus === 'cancelled') cancelledIds.push(id)
+    else if (p.finalStatus === 'no_show') noShowIds.push(id)
+    // confirmed: já está, skip
+  }
+
+  // UPDATE → 'completed' em batches (dispara trigger V15 → cria points_transactions
+  // + UPDATE customers.total_points). Esse é O passo crítico pro sistema de
+  // fidelidade aparecer em ação no demo.
+  console.log(`  · UPDATE → completed em ${completedIds.length} (dispara trigger pontos)...`)
+  for (let i = 0; i < completedIds.length; i += 50) {
+    const batch = completedIds.slice(i, i + 50)
+    const { error } = await supabase.from('appointments').update({ status: 'completed' }).in('id', batch)
+    if (error) console.warn(`  ⚠ erro UPDATE completed ${i}: ${error.message}`)
+  }
+
+  // UPDATE → 'cancelled' / 'no_show' (sem trigger relevante)
+  if (cancelledIds.length > 0) {
+    for (let i = 0; i < cancelledIds.length; i += 50) {
+      await supabase.from('appointments').update({ status: 'cancelled' }).in('id', cancelledIds.slice(i, i + 50))
+    }
+  }
+  if (noShowIds.length > 0) {
+    for (let i = 0; i < noShowIds.length; i += 50) {
+      await supabase.from('appointments').update({ status: 'no_show' }).in('id', noShowIds.slice(i, i + 50))
+    }
+  }
+
+  // Stats finais
+  const realizado = plans
+    .filter((p) => p.finalStatus === 'completed' && p.paid_at)
+    .reduce((s, p) => s + p.servicePrice, 0)
+  const aReceber = plans
+    .filter((p) => p.finalStatus === 'completed' && !p.paid_at)
+    .reduce((s, p) => s + p.servicePrice, 0)
+  const cancelado = cancelledIds.length + noShowIds.length
+  const futuro = plans.filter((p) => p.finalStatus === 'confirmed').length
   console.log('  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.log(`  📊 Realizado:   R$ ${realizado.toFixed(2)} (${paid.length} atendimentos)`)
-  console.log(`     A receber:   R$ ${aReceber.toFixed(2)} (${completed.length - paid.length} atendimentos)`)
+  console.log(`  📊 Realizado:   R$ ${realizado.toFixed(2)} (${completedIds.length - aReceber > 0 ? plans.filter((p) => p.finalStatus === 'completed' && p.paid_at).length : 0} pagos)`)
+  console.log(`     A receber:   R$ ${aReceber.toFixed(2)}`)
   console.log(`     Faturado:    R$ ${(realizado + aReceber).toFixed(2)}`)
+  console.log(`     Sumidos:     ${sumidosCriados} appointments antigos (60-120d)`)
   console.log(`     Cancelados:  ${cancelado}`)
   console.log(`     Futuros:     ${futuro}`)
   console.log('  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 }
 
 async function createExpenses(businessId: string) {
-  console.log('💸 Criando despesas do mês...')
+  console.log('💸 Criando despesas (mês passado completo + mês corrente parcial)...')
   const todayDate = today()
   const monthStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1)
+  const lastMonthStart = new Date(todayDate.getFullYear(), todayDate.getMonth() - 1, 1)
 
+  // Mês passado: despesas completas (mês fechado, lucro real bonito)
+  // Mês corrente: só fixas que já caíram (Aluguel + Internet) — proporcional aos dias
   const expenses = [
-    { name: 'Aluguel', category: 'rent', amount: 2500, recurring: true, occurred_at: dateStr(monthStart), notes: 'Pago via PIX dia 5' },
-    { name: 'Energia + Água', category: 'utilities', amount: 320, recurring: true, occurred_at: dateStr(addDays(monthStart, 5)), notes: null },
-    { name: 'Internet/Wi-Fi', category: 'utilities', amount: 99, recurring: true, occurred_at: dateStr(addDays(monthStart, 8)), notes: null },
-    { name: 'Pomadas + Cera (estoque)', category: 'products', amount: 580, recurring: false, occurred_at: dateStr(addDays(monthStart, 3)), notes: 'Reposição mensal' },
-    { name: 'Tintas pra pigmentação', category: 'products', amount: 280, recurring: false, occurred_at: dateStr(addDays(monthStart, 10)), notes: null },
-    { name: 'Toalhas + capas (estoque)', category: 'products', amount: 150, recurring: false, occurred_at: dateStr(addDays(monthStart, 12)), notes: null },
-    { name: 'Tráfego pago Instagram', category: 'marketing', amount: 200, recurring: true, occurred_at: dateStr(addDays(monthStart, 1)), notes: 'Meta Ads — campanha mensal' },
-    { name: 'Contador (mensalidade)', category: 'taxes', amount: 250, recurring: true, occurred_at: dateStr(addDays(monthStart, 6)), notes: null },
-    { name: 'Material de limpeza', category: 'other', amount: 85, recurring: false, occurred_at: dateStr(addDays(monthStart, 14)), notes: null },
-    { name: 'Conserto da máquina de corte 2', category: 'other', amount: 120, recurring: false, occurred_at: dateStr(addDays(monthStart, 18)), notes: 'Quebrou polia' },
+    // ========== MÊS PASSADO (completo) ==========
+    { name: 'Aluguel', category: 'rent', amount: 2500, recurring: true, occurred_at: dateStr(addDays(lastMonthStart, 4)), notes: 'Pago via PIX dia 5' },
+    { name: 'Energia + Água', category: 'utilities', amount: 320, recurring: true, occurred_at: dateStr(addDays(lastMonthStart, 8)), notes: null },
+    { name: 'Internet/Wi-Fi', category: 'utilities', amount: 99, recurring: true, occurred_at: dateStr(addDays(lastMonthStart, 9)), notes: null },
+    { name: 'Pomadas + Cera (estoque)', category: 'products', amount: 580, recurring: false, occurred_at: dateStr(addDays(lastMonthStart, 6)), notes: 'Reposição mensal' },
+    { name: 'Tintas pra pigmentação', category: 'products', amount: 280, recurring: false, occurred_at: dateStr(addDays(lastMonthStart, 14)), notes: null },
+    { name: 'Toalhas + capas (estoque)', category: 'products', amount: 150, recurring: false, occurred_at: dateStr(addDays(lastMonthStart, 17)), notes: null },
+    { name: 'Tráfego pago Instagram', category: 'marketing', amount: 200, recurring: true, occurred_at: dateStr(addDays(lastMonthStart, 2)), notes: 'Meta Ads — campanha mensal' },
+    { name: 'Contador (mensalidade)', category: 'taxes', amount: 250, recurring: true, occurred_at: dateStr(addDays(lastMonthStart, 7)), notes: null },
+    { name: 'Material de limpeza', category: 'other', amount: 85, recurring: false, occurred_at: dateStr(addDays(lastMonthStart, 19)), notes: null },
+    { name: 'Conserto máquina', category: 'other', amount: 120, recurring: false, occurred_at: dateStr(addDays(lastMonthStart, 22)), notes: 'Quebrou polia' },
+
+    // ========== MÊS CORRENTE (parcial — só fixas já pagas) ==========
+    // Eduardo está dia 04 do mês — só caíram aluguel + tráfego ainda
+    { name: 'Aluguel', category: 'rent', amount: 2500, recurring: true, occurred_at: dateStr(monthStart), notes: 'Pago via PIX dia 1' },
+    { name: 'Tráfego pago Instagram', category: 'marketing', amount: 200, recurring: true, occurred_at: dateStr(addDays(monthStart, 1)), notes: 'Campanha mensal' },
+    { name: 'Internet/Wi-Fi', category: 'utilities', amount: 99, recurring: true, occurred_at: dateStr(addDays(monthStart, 2)), notes: null },
   ]
 
   let inserted = 0
@@ -742,6 +892,169 @@ async function createExpenses(businessId: string) {
   }
   const total = expenses.reduce((s, e) => s + e.amount, 0)
   console.log(`  ✓ ${inserted} despesas — total R$ ${total.toFixed(2)}`)
+}
+
+async function createCoupons(
+  businessId: string,
+  customers: { id: string; name: string; phone: string; isSumido: boolean }[]
+) {
+  console.log('🎟 Criando cupons (campanha de reativação)...')
+  const todayMs = today().getTime()
+  const sumidos = customers.filter((c) => c.isSumido)
+  const ativos = customers.filter((c) => !c.isSumido)
+
+  const coupons: Array<Record<string, unknown>> = []
+  const campaignId = `camp_${Date.now()}`
+
+  // 5 cupons ATIVOS — gerados pra sumidos, ainda não usados, expira em 14d
+  for (let i = 0; i < Math.min(5, sumidos.length); i++) {
+    const c = sumidos[i]
+    const code = `VOLTE${String.fromCharCode(65 + i)}${randInt(rand(), 100, 999)}`
+    const sentAt = new Date(todayMs - randInt(rand(), 1, 5) * 86400000)
+    const expiresAt = new Date(todayMs + 14 * 86400000)
+    coupons.push({
+      business_id: businessId,
+      customer_id: c.id,
+      code,
+      discount_type: 'fixed',
+      discount_value: 10,
+      expires_at: expiresAt.toISOString(),
+      campaign_id: campaignId,
+      whatsapp_message: `Oi ${c.name.split(' ')[0]}! Notei que faz um tempinho que a gente não se vê. Pra te receber de volta, separei um cupom de R$10 OFF. Válido por 14 dias. Use o código ${code} ao agendar.`,
+      sent_at: sentAt.toISOString(),
+    })
+  }
+
+  // 3 USADOS — sumidos que voltaram (used_at preenchido)
+  for (let i = 0; i < Math.min(3, sumidos.length - 5); i++) {
+    const c = sumidos[5 + i]
+    if (!c) break
+    const code = `RECUP${String.fromCharCode(65 + i)}${randInt(rand(), 100, 999)}`
+    const sentAt = new Date(todayMs - randInt(rand(), 20, 35) * 86400000)
+    const usedAt = new Date(todayMs - randInt(rand(), 5, 18) * 86400000)
+    const expiresAt = new Date(usedAt.getTime() + 5 * 86400000)
+    coupons.push({
+      business_id: businessId,
+      customer_id: c.id,
+      code,
+      discount_type: 'fixed',
+      discount_value: 10,
+      expires_at: expiresAt.toISOString(),
+      used_at: usedAt.toISOString(),
+      campaign_id: campaignId,
+      whatsapp_message: `Oi ${c.name.split(' ')[0]}! ...`,
+      sent_at: sentAt.toISOString(),
+    })
+  }
+
+  // 2 EXPIRADOS — campanha antiga, cliente não usou
+  for (let i = 0; i < 2; i++) {
+    const c = ativos[i]
+    if (!c) break
+    const code = `OLD${String.fromCharCode(65 + i)}${randInt(rand(), 100, 999)}`
+    const sentAt = new Date(todayMs - 60 * 86400000)
+    const expiresAt = new Date(todayMs - 35 * 86400000)
+    coupons.push({
+      business_id: businessId,
+      customer_id: c.id,
+      code,
+      discount_type: 'percent',
+      discount_value: 15,
+      expires_at: expiresAt.toISOString(),
+      campaign_id: 'camp_old',
+      whatsapp_message: `Promoção antiga ...`,
+      sent_at: sentAt.toISOString(),
+    })
+  }
+
+  for (const c of coupons) {
+    const { error } = await supabase.from('coupons').insert(c)
+    if (error) console.warn(`  ⚠ erro cupom ${c.code}: ${error.message}`)
+  }
+  console.log(`  ✓ ${coupons.length} cupons (5 ativos · 3 usados · 2 expirados)`)
+}
+
+async function createReviewClaims(
+  businessId: string,
+  customers: { id: string; name: string; phone: string; isSumido: boolean }[]
+) {
+  console.log('⭐ Criando review claims (pedidos de pontos por review Google)...')
+  const todayMs = today().getTime()
+  const ativos = customers.filter((c) => !c.isSumido).slice(0, 5)
+
+  const claims: Array<Record<string, unknown>> = []
+  // 3 PENDENTES (badge laranja na home admin)
+  for (let i = 0; i < 3; i++) {
+    const c = ativos[i]
+    if (!c) break
+    claims.push({
+      business_id: businessId,
+      customer_id: c.id,
+      customer_phone: c.phone,
+      customer_name: c.name,
+      status: 'pending',
+      requested_at: new Date(todayMs - randInt(rand(), 1, 5) * 86400000).toISOString(),
+    })
+  }
+  // 2 APROVADOS (já receberam pontos — histórico)
+  for (let i = 3; i < 5; i++) {
+    const c = ativos[i]
+    if (!c) break
+    const requested = new Date(todayMs - randInt(rand(), 7, 14) * 86400000)
+    const resolved = new Date(requested.getTime() + 86400000)
+    claims.push({
+      business_id: businessId,
+      customer_id: c.id,
+      customer_phone: c.phone,
+      customer_name: c.name,
+      status: 'approved',
+      points_awarded: 50,
+      requested_at: requested.toISOString(),
+      resolved_at: resolved.toISOString(),
+    })
+  }
+
+  for (const claim of claims) {
+    const { error } = await supabase.from('review_claims').insert(claim)
+    if (error) console.warn(`  ⚠ erro review_claim: ${error.message}`)
+  }
+  console.log(`  ✓ ${claims.length} review claims (3 pendentes · 2 aprovados)`)
+}
+
+async function validateSeed(businessId: string) {
+  console.log('🔍 Validação SQL pós-seed...')
+  const { data: ptStats } = await supabase
+    .from('points_transactions')
+    .select('points')
+    .eq('business_id', businessId)
+  const totalPts = (ptStats || []).reduce((s, t) => s + (t.points || 0), 0)
+
+  const { data: custStats } = await supabase
+    .from('customers')
+    .select('total_points')
+    .eq('business_id', businessId)
+  const sumCustPts = (custStats || []).reduce((s, c) => s + (c.total_points || 0), 0)
+
+  const { count: couponsCount } = await supabase
+    .from('coupons')
+    .select('id', { count: 'exact', head: true })
+    .eq('business_id', businessId)
+
+  const { count: claimsCount } = await supabase
+    .from('review_claims')
+    .select('id', { count: 'exact', head: true })
+    .eq('business_id', businessId)
+
+  console.log(`  · points_transactions: ${ptStats?.length || 0} rows, total ${totalPts} pts`)
+  console.log(`  · customers.total_points (soma): ${sumCustPts} pts`)
+  console.log(`  · coupons: ${couponsCount || 0}`)
+  console.log(`  · review_claims: ${claimsCount || 0}`)
+
+  if (totalPts === 0) {
+    console.warn('  ⚠ ATENÇÃO: nenhum ponto criado. Trigger V15 pode não ter disparado.')
+  } else {
+    console.log(`  ✅ Pontos OK — sistema fidelidade ativo`)
+  }
 }
 
 // ============================================================
@@ -764,6 +1077,9 @@ async function main() {
   const customers = await createCustomers(businessId, customerProfiles)
   await createAppointments(businessId, profIds, serviceIds, customers)
   await createExpenses(businessId)
+  await createCoupons(businessId, customers)
+  await createReviewClaims(businessId, customers)
+  await validateSeed(businessId)
 
   console.log('')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
