@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 /**
  * POST /api/coupons/use
@@ -17,7 +18,10 @@ import { createClient } from '@/lib/supabase/server'
  *  3. Cupom e appointment são do MESMO business (anti-cross-business)
  *  4. Idempotente — tentar marcar 2x retorna OK silencioso
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'coupon-use', limit: 30, windowSeconds: 60 })
+  if (rl) return rl
+
   const body = await req.json().catch(() => ({}))
   const code = typeof body.code === 'string' ? body.code.toUpperCase() : ''
   const appointmentId = typeof body.appointment_id === 'string' ? body.appointment_id : ''

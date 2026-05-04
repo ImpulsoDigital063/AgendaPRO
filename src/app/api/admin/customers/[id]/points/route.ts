@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 /**
  * POST /api/admin/customers/[id]/points
@@ -12,9 +13,12 @@ import { createClient } from '@/lib/supabase/server'
  * Performance: 1 update direto, sem trigger nem transacao explicita.
  */
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rl = checkRateLimit(req, { key: 'admin-customer-points', limit: 30, windowSeconds: 60 })
+  if (rl) return rl
+
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

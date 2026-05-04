@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { gerarPixPreference } from '@/lib/billing'
 import type { ModalidadeKey, PlanoTipo } from '@/config/pricing'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 function getAdminClient() {
   return createServiceClient(
@@ -20,7 +21,11 @@ function getAdminClient() {
  * Atualiza pix_link_atual na subscription.
  * Só funciona pra modalidades PIX (mensal_pix, semestral_pix, anual_pix).
  */
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
+  // Rate limit baixo — gera link MP (custo de API); abuse cara
+  const rl = checkRateLimit(req, { key: 'regenerate-pix', limit: 10, windowSeconds: 3600 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {

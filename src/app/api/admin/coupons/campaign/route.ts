@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { randomUUID } from 'crypto'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 // 40 dias — alinhado com ClientesView. Barbearia/nail tem ciclo
 // curto (15-30d), 60 era tarde demais.
@@ -24,7 +25,11 @@ const SUMIDO_DAYS = 40
  * Performance: 1 query pra pegar customers com ultimo agendamento,
  * 1 INSERT em batch pros cupons. Sem N+1.
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // Rate limit baixo — campanha gera 50+ cupons num shot, custo de DB
+  const rl = checkRateLimit(req, { key: 'admin-coupons-campaign', limit: 5, windowSeconds: 3600 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })

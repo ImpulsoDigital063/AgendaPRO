@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 /**
  * POST /api/admin/customers
@@ -14,7 +15,10 @@ import { revalidatePath } from 'next/cache'
  *
  * Retorna o customer criado.
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'admin-customers-create', limit: 30, windowSeconds: 60 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })

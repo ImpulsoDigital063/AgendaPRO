@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 const RESERVED = new Set([
   'admin', 'api', 'cadastro', 'login', 'profissional', 'agendar',
@@ -16,6 +17,9 @@ function getAdminClient() {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'check-slug', limit: 60, windowSeconds: 60 })
+  if (rl) return rl
+
   const slug = req.nextUrl.searchParams.get('slug')?.trim().toLowerCase() || ''
 
   if (!slug) {

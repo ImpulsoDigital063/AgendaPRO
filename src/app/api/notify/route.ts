@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendBarberNotification, sendClientBookingConfirmation } from '@/lib/email'
 import { generateCancelToken } from '@/lib/token'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 function getAdminClient() {
   return createServiceClient(
@@ -14,6 +15,9 @@ function getAdminClient() {
 // Usa service role pra buscar o appointment e disparar emails (barbeiro + cliente).
 // Idempotencia: so envia pra agendamentos criados ha menos de 10 min (anti-spam).
 export async function POST(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'notify', limit: 30, windowSeconds: 60 })
+  if (rl) return rl
+
   const { appointmentId } = await req.json()
 
   if (!appointmentId) {

@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendClientNotification } from '@/lib/email'
 import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
 import { canCompleteAppointment } from '@/lib/appointment-status'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 function getAdminClient() {
   return createServiceClient(
@@ -13,6 +14,9 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'prof-action', limit: 60, windowSeconds: 60 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })

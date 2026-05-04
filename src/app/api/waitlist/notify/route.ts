@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 // Dispara notificacao da fila quando o dono cancela um agendamento pelo admin.
 // Auth obrigatoria (barbeiro autenticado, dono do business).
 export async function POST(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'waitlist-notify', limit: 30, windowSeconds: 60 })
+  if (rl) return rl
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()

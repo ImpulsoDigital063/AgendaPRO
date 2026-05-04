@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 function getAdminClient() {
   return createServiceClient(
@@ -10,6 +11,10 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit estrito — operação sensível (reseta senha de profissional)
+  const rl = checkRateLimit(req, { key: 'regenerate-password', limit: 10, windowSeconds: 3600 })
+  if (rl) return rl
+
   // 1. Quem chama tem que ser dono de um negócio
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

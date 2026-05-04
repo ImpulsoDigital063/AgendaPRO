@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 function getAdminClient() {
   return createServiceClient(
@@ -10,6 +11,11 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit baixo — convite cria user/email; spam precisa ser
+  // bloqueado mesmo logado.
+  const rl = checkRateLimit(req, { key: 'invite-professional', limit: 20, windowSeconds: 3600 })
+  if (rl) return rl
+
   // 1. Verifica se quem está chamando é dono de um negócio
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

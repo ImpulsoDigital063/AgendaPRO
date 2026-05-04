@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 /**
  * POST /api/profissional/update-photo
@@ -33,6 +34,9 @@ function getServiceClient() {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'update-photo', limit: 20, windowSeconds: 3600 })
+  if (rl) return rl
+
   // 1. Auth via cookies do Next
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

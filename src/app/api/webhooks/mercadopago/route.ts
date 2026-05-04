@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { createHmac, timingSafeEqual } from 'crypto'
 
 // Vercel pode demorar até 30s pra processar background tasks (depois de responder)
 export const maxDuration = 30
@@ -9,6 +10,74 @@ function getAdminClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
+}
+
+/**
+ * Valida assinatura HMAC do webhook Mercado Pago.
+ *
+ * MP envia headers x-signature e x-request-id. O manifest a ser
+ * verificado segue formato:
+ *   id:<dataId>;request-id:<requestId>;ts:<timestamp>;
+ *
+ * E calcula HMAC-SHA256 com a secret configurada no painel MP em
+ * "Notificações > Webhooks > Configurações de assinatura".
+ *
+ * Setup requerido:
+ *   1. Painel MP → Notificações > Webhooks → Editar → Configurações
+ *      de assinatura → copiar a secret
+ *   2. Vercel → Settings > Environment Variables → adicionar
+ *      MP_WEBHOOK_SECRET com a secret
+ *
+ * Modo defensivo: se MP_WEBHOOK_SECRET não está configurada, retorna
+ * `true` mas LOGGA WARNING. Permite ambiente dev sem secret. Em prod,
+ * ENV deve estar setada — se faltar, atacante pode forjar webhooks.
+ *
+ * Ref oficial: https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
+ */
+function verifyMpSignature(req: NextRequest, dataId: string | undefined): boolean {
+  const secret = process.env.MP_WEBHOOK_SECRET
+  if (!secret) {
+    console.warn('[MP Webhook] MP_WEBHOOK_SECRET não configurada — pulando verificação. CONFIGURAR EM PRODUÇÃO.')
+    return true
+  }
+
+  const xSignature = req.headers.get('x-signature')
+  const xRequestId = req.headers.get('x-request-id')
+  if (!xSignature || !xRequestId || !dataId) {
+    console.error('[MP Webhook] headers de assinatura faltando — rejeitando')
+    return false
+  }
+
+  // x-signature formato: "ts=NUMBER,v1=HEX"
+  const parts = xSignature.split(',').reduce<Record<string, string>>((acc, p) => {
+    const [k, v] = p.split('=').map((s) => s.trim())
+    if (k && v) acc[k] = v
+    return acc
+  }, {})
+
+  const ts = parts.ts
+  const v1 = parts.v1
+  if (!ts || !v1) {
+    console.error('[MP Webhook] x-signature malformado:', xSignature)
+    return false
+  }
+
+  // Manifest a ser assinado
+  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`
+  const expected = createHmac('sha256', secret).update(manifest).digest('hex')
+
+  // Comparação constant-time pra evitar timing attack
+  const expectedBuf = Buffer.from(expected, 'hex')
+  const receivedBuf = Buffer.from(v1, 'hex')
+  if (expectedBuf.length !== receivedBuf.length) {
+    console.error('[MP Webhook] tamanho de assinatura divergente — rejeitando')
+    return false
+  }
+  const ok = timingSafeEqual(expectedBuf, receivedBuf)
+  if (!ok) {
+    console.error('[MP Webhook] assinatura HMAC inválida — rejeitando')
+  }
+  return ok
 }
 
 /**
@@ -27,10 +96,17 @@ function getAdminClient() {
 export async function POST(req: NextRequest) {
   const body = await req.json()
 
-  console.log('[MP Webhook] Recebido:', JSON.stringify(body))
-
   const { type, data } = body
   const eventId = data?.id
+
+  // Validação HMAC ANTES de logar payload completo. Atacante consegue
+  // poluir nossos logs forjando body, mas sem assinatura não conseguimos
+  // confiar nele pra atualizar subscription.
+  if (!verifyMpSignature(req, eventId)) {
+    return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
+  }
+
+  console.log('[MP Webhook] Recebido (verificado):', JSON.stringify(body))
 
   // Processa em background DEPOIS de responder 200 — evita timeout MP (3-5s)
   after(async () => {

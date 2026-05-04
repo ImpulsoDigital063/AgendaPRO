@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 const VALID_CATEGORIES = new Set([
   'rent', 'products', 'salary', 'utilities', 'marketing', 'taxes', 'other',
@@ -10,7 +11,10 @@ const VALID_CATEGORIES = new Set([
  * GET /api/admin/expenses?from=YYYY-MM-DD&to=YYYY-MM-DD
  * Lista despesas no periodo (default: mes corrente)
  */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'admin-expenses-get', limit: 60, windowSeconds: 60 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
@@ -56,7 +60,10 @@ export async function GET(req: Request) {
  * POST /api/admin/expenses
  * Body: { name, amount, category, occurred_at, recurring?, notes? }
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'admin-expenses-create', limit: 30, windowSeconds: 60 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })

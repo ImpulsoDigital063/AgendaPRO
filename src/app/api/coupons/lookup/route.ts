@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 /**
  * GET /api/coupons/lookup?code=X&business_id=Y
@@ -11,7 +12,10 @@ import { createClient } from '@/lib/supabase/server'
  *
  * Retorna { valid, reason, discount_type, discount_value, expires_at }
  */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'coupon-lookup', limit: 60, windowSeconds: 60 })
+  if (rl) return rl
+
   const url = new URL(req.url)
   const code = (url.searchParams.get('code') || '').toUpperCase()
   const business_id = url.searchParams.get('business_id') || ''

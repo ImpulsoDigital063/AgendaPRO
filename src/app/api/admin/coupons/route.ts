@@ -1,11 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 /**
  * GET /api/admin/coupons?status=active|used|expired|all
  * Lista cupons do business + customer info + campanha
  */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'admin-coupons-get', limit: 60, windowSeconds: 60 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
