@@ -44,6 +44,42 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 // CONFIGURAÇÃO DO NEGÓCIO
 // ============================================================
 
+// Logo SVG inline — emblema "I.B." em escudo dourado sobre preto.
+// Tipografia serifada premium, navalha discreta na base. Funciona em
+// data URI (img src direto, sem next/Image).
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E8C77E"/>
+      <stop offset="55%" stop-color="#C9A961"/>
+      <stop offset="100%" stop-color="#9C7E3E"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1F1F1F"/>
+      <stop offset="100%" stop-color="#0A0A0A"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="96" fill="url(#bg)" stroke="url(#gold)" stroke-width="3"/>
+  <circle cx="100" cy="100" r="84" fill="none" stroke="url(#gold)" stroke-width="0.8" opacity="0.6"/>
+  <text x="100" y="78" font-family="Georgia, 'Times New Roman', serif" font-size="20" font-weight="700" fill="url(#gold)" text-anchor="middle" letter-spacing="3">IMPÉRIO</text>
+  <line x1="40" y1="92" x2="80" y2="92" stroke="url(#gold)" stroke-width="1"/>
+  <line x1="120" y1="92" x2="160" y2="92" stroke="url(#gold)" stroke-width="1"/>
+  <text x="100" y="112" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="900" fill="url(#gold)" text-anchor="middle" letter-spacing="-1">I.B.</text>
+  <text x="100" y="135" font-family="Georgia, 'Times New Roman', serif" font-size="11" font-style="italic" fill="url(#gold)" text-anchor="middle" letter-spacing="6" opacity="0.95">BARBERSHOP</text>
+  <g transform="translate(100, 158)">
+    <line x1="-22" y1="0" x2="-6" y2="0" stroke="url(#gold)" stroke-width="1.2"/>
+    <path d="M -6 0 L 0 -3 L 6 0 L 0 3 Z" fill="url(#gold)"/>
+    <line x1="6" y1="0" x2="22" y2="0" stroke="url(#gold)" stroke-width="1.2"/>
+  </g>
+  <text x="100" y="178" font-family="Arial, sans-serif" font-size="8" fill="url(#gold)" text-anchor="middle" letter-spacing="2" opacity="0.7">EST. 2024</text>
+</svg>`
+
+const LOGO_DATA_URL = `data:image/svg+xml;base64,${Buffer.from(LOGO_SVG).toString('base64')}`
+
+// Capa: foto real de barbearia premium do Unsplash (free CC0).
+// URL direta do CDN Unsplash com params de otimização (1600x900 crop).
+const COVER_URL = 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=1600&h=900&fit=crop&q=80'
+
 const DEMO = {
   email: 'demo-imperio@agendapro.net.br',
   password: 'AgendaPRO@2026',
@@ -53,13 +89,16 @@ const DEMO = {
     description: 'barbearia',
     phone: '63999991010',
     address: 'Rua das Palmeiras, 234 — Centro, Palmas-TO',
-    brand_primary: '#1A1A1A',  // preto
-    brand_secondary: '#D4A953', // dourado
+    logo_url: LOGO_DATA_URL,
+    cover_url: COVER_URL,
+    brand_primary: '#0A0A0A',   // preto absoluto
+    brand_secondary: '#C9A961', // dourado premium
     brand_mode: 'dark',
     points_for_review: 50,
     points_for_referral: 30,
     punctuality_bonus_points: 10,
     slot_interval_minutes: 30,
+    instagram_url: 'https://instagram.com/imperio.barbershop',
   },
   ownerName: 'Carlos Almeida',
 }
