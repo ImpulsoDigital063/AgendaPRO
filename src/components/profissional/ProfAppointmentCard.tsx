@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconWhatsapp, IconCheck, IconClose, IconClock } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
+import PaymentMethodModal, { type PaymentMethodChoice } from '@/components/admin/PaymentMethodModal'
 import { statusOf, canCompleteAppointment } from '@/lib/appointment-status'
 
 type Props = {
@@ -30,6 +31,7 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
+  const [paymentModal, setPaymentModal] = useState<null | 'simple' | 'punctuality'>(null)
   const router = useRouter()
 
   const config = statusOf(status)
@@ -53,22 +55,36 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
     router.refresh()
   }
 
-  async function completeWithPunctuality() {
+  /**
+   * Conclui atendimento com método de pagamento opcional.
+   * - method != null → API faz update atômico com paid_at + payment_method
+   * - method == null → só status=completed (admin confirma pagamento depois)
+   * - withPunctuality → dispara API de bônus após o complete
+   */
+  async function completeWithPayment(
+    method: PaymentMethodChoice,
+    withPunctuality: boolean
+  ) {
     setLoading(true)
-    // 1. Marca como completed via API existente (dispara trigger SQL de pts de serviço)
     const res = await fetch('/api/profissional/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appointmentId: appointment.id, action: 'completed' }),
+      body: JSON.stringify({
+        appointmentId: appointment.id,
+        action: 'completed',
+        paymentMethod: method,
+      }),
     })
     if (res.ok) {
       setStatus('completed')
-      // 2. Concede bônus de pontualidade
-      fetch('/api/appointment/award-punctuality', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentId: appointment.id }),
-      }).catch(() => {})
+      setPaymentModal(null)
+      if (withPunctuality) {
+        fetch('/api/appointment/award-punctuality', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appointmentId: appointment.id }),
+        }).catch(() => {})
+      }
     }
     setLoading(false)
     router.refresh()
@@ -211,7 +227,7 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
           <div className="pl-[64px] space-y-2">
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => updateStatus('completed')}
+                onClick={() => setPaymentModal('simple')}
                 disabled={loading || !canComplete}
                 className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                 style={{
@@ -221,7 +237,7 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
                 }}
                 title={
                   canComplete
-                    ? 'Atendimento concluído — credita os pontos do serviço'
+                    ? 'Atendimento concluído — escolhe o método de pagamento'
                     : 'Disponível 15min antes do horário do agendamento'
                 }
               >
@@ -229,7 +245,7 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
               </button>
               {punctualityBonus > 0 && (
                 <button
-                  onClick={completeWithPunctuality}
+                  onClick={() => setPaymentModal('punctuality')}
                   disabled={loading || !canComplete}
                   className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                   style={{
@@ -305,6 +321,18 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
           setConfirm(null)
         }}
         onClose={() => setConfirm(null)}
+      />
+      <PaymentMethodModal
+        open={paymentModal !== null}
+        clientName={appointment.client_name}
+        totalPrice={appointment.total_price}
+        withPunctualityBonus={paymentModal === 'punctuality'}
+        punctualityPoints={punctualityBonus}
+        loading={loading}
+        onChoose={(method) =>
+          completeWithPayment(method, paymentModal === 'punctuality')
+        }
+        onClose={() => !loading && setPaymentModal(null)}
       />
     </div>
   )

@@ -28,10 +28,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Profissional não encontrado.' }, { status: 403 })
   }
 
-  const { appointmentId, action } = await req.json()
+  const { appointmentId, action, paymentMethod } = await req.json()
 
   if (!appointmentId || !['confirmed', 'cancelled', 'completed', 'no_show'].includes(action)) {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
+  }
+
+  // paymentMethod só faz sentido quando concluindo o atendimento.
+  // Quando vem, marca paid_at + payment_method no MESMO update (atômico).
+  // Quando não vem, status muda mas pagamento fica pendente — admin
+  // confirma depois no Financeiro.
+  const VALID_METHODS = new Set(['pix', 'cash', 'card', 'courtesy'])
+  if (paymentMethod != null && !VALID_METHODS.has(paymentMethod)) {
+    return NextResponse.json(
+      { error: 'método de pagamento inválido' },
+      { status: 400 }
+    )
+  }
+  if (paymentMethod != null && action !== 'completed') {
+    return NextResponse.json(
+      { error: 'paymentMethod só pode acompanhar action=completed' },
+      { status: 400 }
+    )
   }
 
   const adminClient = getAdminClient()
@@ -61,10 +79,20 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Atualiza status
+  // Update atômico: status + (opcionalmente) paid_at/payment_method.
+  // 1 round-trip em vez de 2 — evita estado intermediário inconsistente
+  // (status=completed sem paid_at quando deveria ter).
+  const updates: { status: string; paid_at?: string; payment_method?: string } = {
+    status: action,
+  }
+  if (paymentMethod != null) {
+    updates.paid_at = new Date().toISOString()
+    updates.payment_method = paymentMethod
+  }
+
   const { error: updateError } = await adminClient
     .from('appointments')
-    .update({ status: action })
+    .update(updates)
     .eq('id', appointmentId)
 
   if (updateError) {

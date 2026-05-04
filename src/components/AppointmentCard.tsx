@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { IconWhatsapp, IconCheck, IconClose } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
+import PaymentMethodModal, { type PaymentMethodChoice } from '@/components/admin/PaymentMethodModal'
 import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
 import { statusOf, canCompleteAppointment } from '@/lib/appointment-status'
 
@@ -34,6 +35,9 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
+  // Modal de pagamento — abre ao clicar "Atendi" (default false)
+  // ou "Atendi +punctuality" (default true). Mesmo modal, copy diferente.
+  const [paymentModal, setPaymentModal] = useState<null | 'simple' | 'punctuality'>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
@@ -79,18 +83,35 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
     router.refresh()
   }
 
-  async function completeWithPunctuality() {
+  /**
+   * Conclui atendimento com método de pagamento opcional.
+   * - method != null: update atômico — status=completed + paid_at + payment_method
+   * - method == null: só marca completed (admin confirma pagamento depois no Financeiro)
+   * - withPunctuality: dispara também o bônus via API após o update
+   */
+  async function completeWithPayment(
+    method: PaymentMethodChoice,
+    withPunctuality: boolean
+  ) {
     setLoading(true)
     const supabase = createClient()
-    // 1. Marca o appointment como completed (dispara trigger SQL que credita pts de serviço)
-    await supabase.from('appointments').update({ status: 'completed' }).eq('id', appointment.id)
+    const updates: { status: string; paid_at?: string; payment_method?: string } = {
+      status: 'completed',
+    }
+    if (method != null) {
+      updates.paid_at = new Date().toISOString()
+      updates.payment_method = method
+    }
+    await supabase.from('appointments').update(updates).eq('id', appointment.id)
     setStatus('completed')
-    // 2. Concede o bônus de pontualidade via API (que cria a transaction com reason='punctuality')
-    fetch('/api/appointment/award-punctuality', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appointmentId: appointment.id }),
-    }).catch(() => {})
+    setPaymentModal(null)
+    if (withPunctuality) {
+      fetch('/api/appointment/award-punctuality', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId: appointment.id }),
+      }).catch(() => {})
+    }
     fetch('/api/notify-client', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -262,7 +283,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         {status === 'confirmed' && (
           <div className="pl-[64px] flex items-stretch gap-2 flex-wrap">
             <button
-              onClick={() => updateStatus('completed')}
+              onClick={() => setPaymentModal('simple')}
               disabled={loading || !canComplete}
               className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
               style={{
@@ -272,7 +293,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
               }}
               title={
                 canComplete
-                  ? 'Atendimento concluído — credita os pontos do serviço'
+                  ? 'Atendimento concluído — escolhe o método de pagamento'
                   : 'Disponível 15min antes do horário do agendamento'
               }
             >
@@ -280,7 +301,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
             </button>
             {punctualityBonus > 0 && (
               <button
-                onClick={completeWithPunctuality}
+                onClick={() => setPaymentModal('punctuality')}
                 disabled={loading || !canComplete}
                 className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                 style={{
@@ -382,6 +403,18 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
           setConfirm(null)
         }}
         onClose={() => setConfirm(null)}
+      />
+      <PaymentMethodModal
+        open={paymentModal !== null}
+        clientName={appointment.client_name}
+        totalPrice={appointment.total_price}
+        withPunctualityBonus={paymentModal === 'punctuality'}
+        punctualityPoints={punctualityBonus}
+        loading={loading}
+        onChoose={(method) =>
+          completeWithPayment(method, paymentModal === 'punctuality')
+        }
+        onClose={() => !loading && setPaymentModal(null)}
       />
     </div>
   )
