@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 // 'courtesy' aceito como legacy (V34). UI nova usa 'points' pra resgate
 // de fidelidade. Constraint do banco já aceita os 5 (V37).
@@ -15,9 +16,12 @@ const VALID_METHODS = new Set(['pix', 'cash', 'card', 'courtesy', 'points'])
  * pode (validacao via owner_id).
  */
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rl = checkRateLimit(req, { key: 'admin-appt-payment', limit: 60, windowSeconds: 60 })
+  if (rl) return rl
+
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

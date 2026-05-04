@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { calcularPreco, type ModalidadeKey, type PlanoTipo } from '@/config/pricing'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 function getAdminClient() {
   return createServiceClient(
@@ -27,6 +28,10 @@ const MODALIDADES_VALIDAS: ModalidadeKey[] = [
  *   - mensal_pix / semestral_pix / anual_pix: { url, expires_at } — init_point do PIX único
  */
 export async function POST(req: NextRequest) {
+  // Rate baixo — gera link MP (custo de API), abuse cara
+  const rl = checkRateLimit(req, { key: 'billing-checkout', limit: 10, windowSeconds: 3600 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {

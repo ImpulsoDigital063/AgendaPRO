@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 function getAdminClient() {
   return createServiceClient(
@@ -10,6 +11,9 @@ function getAdminClient() {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'admin-review-claim', limit: 30, windowSeconds: 60 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {

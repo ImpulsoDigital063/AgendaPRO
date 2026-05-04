@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 /**
  * POST /api/admin/coupons/[id]/sent
@@ -7,9 +8,12 @@ import { createClient } from '@/lib/supabase/server'
  * UI rastrear quem ja foi contatado e nao bombardear o cliente.
  */
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rl = checkRateLimit(req, { key: 'admin-coupon-sent', limit: 60, windowSeconds: 60 })
+  if (rl) return rl
+
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

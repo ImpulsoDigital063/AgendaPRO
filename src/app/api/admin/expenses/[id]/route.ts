@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 const VALID_CATEGORIES = new Set([
   'rent', 'products', 'salary', 'utilities', 'marketing', 'taxes', 'other',
@@ -31,9 +32,12 @@ async function verifyOwner(req: Request, id: string) {
  * Edita campos da despesa
  */
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rl = checkRateLimit(req, { key: 'admin-expense-edit', limit: 30, windowSeconds: 60 })
+  if (rl) return rl
+
   const { id } = await params
   const verified = await verifyOwner(req, id)
   if ('error' in verified) {
@@ -73,9 +77,12 @@ export async function PATCH(
  * DELETE /api/admin/expenses/[id]
  */
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rl = checkRateLimit(req, { key: 'admin-expense-delete', limit: 20, windowSeconds: 60 })
+  if (rl) return rl
+
   const { id } = await params
   const verified = await verifyOwner(req, id)
   if ('error' in verified) {

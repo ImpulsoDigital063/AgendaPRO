@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 /**
  * GET /api/admin/customers/[id]
@@ -13,9 +14,12 @@ import { createClient } from '@/lib/supabase/server'
  *   - 1 lookup adicional em clients pra match por phone (UNIQUE)
  */
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rl = checkRateLimit(req, { key: 'admin-customer-detail', limit: 60, windowSeconds: 60 })
+  if (rl) return rl
+
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -108,9 +112,12 @@ export async function GET(
  * (chave de match com clients universal).
  */
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rl = checkRateLimit(req, { key: 'admin-customer-edit', limit: 30, windowSeconds: 60 })
+  if (rl) return rl
+
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

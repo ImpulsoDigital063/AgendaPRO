@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 function getAdminClient() {
   return createServiceClient(
@@ -11,6 +12,10 @@ function getAdminClient() {
 
 // POST /api/billing/cancel — cliente cancela assinatura pelo painel
 export async function POST(req: NextRequest) {
+  // Rate baixo — cancelamento é evento raro, abuse não faz sentido
+  const rl = checkRateLimit(req, { key: 'billing-cancel', limit: 5, windowSeconds: 3600 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {

@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit-api'
 
 // GET /api/billing/status — retorna status da assinatura do usuário logado
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'billing-status', limit: 60, windowSeconds: 60 })
+  if (rl) return rl
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
