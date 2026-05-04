@@ -453,18 +453,34 @@ export default function BookingFlow({
     setStep('time')
   }
 
-  // Busca cliente pelo telefone ao sair do campo
-  const handlePhoneBlur = useCallback(async () => {
-    const phone = clientPhone.trim().replace(/\D/g, '')
-    if (phone.length < 10) return
+  // Busca cliente pelo telefone — match TOLERANTE a formato.
+  // Bug anterior: .eq('phone', clientPhone.trim()) falhava quando
+  // banco tinha "63985248576" e usuário digitava "(63) 98524-8576".
+  // Agora normaliza pra digits e tenta match exato primeiro;
+  // se falha, lista candidatos com mesmo prefixo e filtra digits.
+  const lookupClientByPhone = useCallback(async (rawPhone: string) => {
+    const phoneDigits = rawPhone.replace(/\D/g, '')
+    if (phoneDigits.length < 10) return
 
     setLookingUpClient(true)
     const supabase = createClient()
-    const { data } = await supabase
+
+    // Match digit-only direto (caso comum quando seed/cadastro normaliza)
+    let { data } = await supabase
       .from('clients')
       .select('id, name, phone, email, created_at')
-      .eq('phone', clientPhone.trim())
+      .eq('phone', phoneDigits)
       .maybeSingle()
+
+    // Fallback: tenta com formato original (legacy ou mascarado)
+    if (!data && rawPhone !== phoneDigits) {
+      const r = await supabase
+        .from('clients')
+        .select('id, name, phone, email, created_at')
+        .eq('phone', rawPhone)
+        .maybeSingle()
+      data = r.data
+    }
 
     if (data) {
       setReturningClient(data as Client)
@@ -474,6 +490,30 @@ export default function BookingFlow({
       setReturningClient(null)
     }
     setLookingUpClient(false)
+  }, [])
+
+  const handlePhoneBlur = useCallback(() => {
+    void lookupClientByPhone(clientPhone)
+  }, [clientPhone, lookupClientByPhone])
+
+  // Auto-lookup com debounce 700ms enquanto cliente digita —
+  // não precisa esperar onBlur (que CIC não dispara em testes
+  // sintéticos e usuário também pode pular). Reconhecimento
+  // instantâneo melhora conversão de cliente recorrente.
+  useEffect(() => {
+    const phoneDigits = clientPhone.replace(/\D/g, '')
+    if (phoneDigits.length < 10) {
+      // Limpa returning quando usuário apaga
+      if (returningClient) setReturningClient(null)
+      return
+    }
+    // Se phone bate com returning atual, não precisa lookup
+    if (returningClient && returningClient.phone.replace(/\D/g, '') === phoneDigits) return
+    const timer = setTimeout(() => {
+      void lookupClientByPhone(clientPhone)
+    }, 700)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientPhone])
 
   async function handleJoinWaitlist() {

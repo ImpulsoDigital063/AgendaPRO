@@ -27,6 +27,11 @@ type Cliente = {
   email: string | null
   created_at: string
   count: number
+  /** Data do primeiro agendamento (YYYY-MM-DD). Vazio se cliente
+   *  nunca agendou (cadastro órfão). Usado pra "Novos/mês" — é a
+   *  métrica que admin entende: cliente que VEIO esse mês pela
+   *  primeira vez (não cliente cadastrado esse mês). */
+  firstDate: string
   lastDate: string
   totalSpent: number
   customer_id?: string | null
@@ -68,7 +73,9 @@ function formatDate(dateStr: string) {
 
 function tierFor(c: Cliente): { key: 'vip' | 'novo' | 'sumido' | null; label: string; bg: string; color: string } | null {
   const sinceLast = c.lastDate ? daysBetween(c.lastDate) : null
-  const sinceCreated = daysBetween(c.created_at)
+  // Usa firstDate (1ª visita) quando existe — refleete comportamento.
+  // Fallback pra created_at em órfãos.
+  const sinceCreated = daysBetween(c.firstDate || c.created_at)
 
   if (c.totalSpent >= VIP_THRESHOLD) {
     return {
@@ -125,7 +132,13 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
   const stats = useMemo(() => {
     const now = new Date()
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    const novosNoMes = clients.filter((c) => c.created_at?.startsWith(thisMonth)).length
+    // Conta cliente que TEVE primeira visita esse mês. Fallback pra
+    // created_at quando órfão (sem agendamento) — pelo menos cadastro
+    // recente conta.
+    const novosNoMes = clients.filter((c) => {
+      const ref = c.firstDate || c.created_at
+      return ref?.startsWith(thisMonth)
+    }).length
     const sumidosList = clients.filter((c) => c.lastDate && daysBetween(c.lastDate) >= SUMIDO_DAYS)
     // Sumidos SEM cupom ativo — só esses precisam de reativação nova.
     // Sumidos com cupom já rodando aparecem no KPI mas o card pula
@@ -163,8 +176,12 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         list = [...list].sort((a, b) => b.totalSpent - a.totalSpent)
         break
       case 'novos':
-        list = [...list].filter((c) => daysBetween(c.created_at) <= NOVO_DAYS)
-        list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+        list = [...list].filter((c) => daysBetween(c.firstDate || c.created_at) <= NOVO_DAYS)
+        list.sort((a, b) => {
+          const aRef = a.firstDate || a.created_at || ''
+          const bRef = b.firstDate || b.created_at || ''
+          return bRef.localeCompare(aRef)
+        })
         break
       case 'sumidos':
         list = [...list].filter((c) => c.lastDate && daysBetween(c.lastDate) >= SUMIDO_DAYS)

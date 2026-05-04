@@ -25,18 +25,23 @@ export default async function ClientesPage() {
     .not('client_id', 'is', null)
     .order('appointment_date', { ascending: false })
 
-  // Monta estatísticas por cliente
-  type Stats = { count: number; lastDate: string; totalSpent: number }
+  // Monta estatísticas por cliente — inclui firstDate (primeira visita)
+  // pra que "Novos/mês" reflita comportamento real, não created_at do
+  // cadastro: cliente que veio em jan e voltou em mai não é "novo de mai".
+  type Stats = { count: number; firstDate: string; lastDate: string; totalSpent: number }
   const statsMap: Record<string, Stats> = {}
 
   for (const a of apptData || []) {
     if (!a.client_id) continue
     if (!statsMap[a.client_id]) {
-      statsMap[a.client_id] = { count: 0, lastDate: '', totalSpent: 0 }
+      statsMap[a.client_id] = { count: 0, firstDate: '', lastDate: '', totalSpent: 0 }
     }
     statsMap[a.client_id].count++
     if (!statsMap[a.client_id].lastDate || a.appointment_date > statsMap[a.client_id].lastDate) {
       statsMap[a.client_id].lastDate = a.appointment_date
+    }
+    if (!statsMap[a.client_id].firstDate || a.appointment_date < statsMap[a.client_id].firstDate) {
+      statsMap[a.client_id].firstDate = a.appointment_date
     }
     if (a.total_price) {
       statsMap[a.client_id].totalSpent += a.total_price
@@ -91,7 +96,7 @@ export default async function ClientesPage() {
     const cust = customerByPhone.get(phoneKey)
     return {
       ...c,
-      ...(statsMap[c.id] || { count: 0, lastDate: '', totalSpent: 0 }),
+      ...(statsMap[c.id] || { count: 0, firstDate: '', lastDate: '', totalSpent: 0 }),
       customer_id: cust?.id ?? null,
       total_points: cust?.total_points ?? 0,
     }
@@ -113,6 +118,7 @@ export default async function ClientesPage() {
       email: cust.email,
       created_at: cust.created_at,
       count: 0,
+      firstDate: '',
       lastDate: '',
       totalSpent: 0,
       customer_id: cust.id,

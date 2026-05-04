@@ -372,7 +372,31 @@ export default function FidelidadeTab({
 
   // ---- Recompensas ----
   function scrollToAddForm(prefillName?: string) {
-    if (prefillName) setForm({ ...emptyRewardForm, name: prefillName })
+    if (prefillName) {
+      // Sugere pontos junto do nome — admin vê valor já pronto e
+      // ajusta se quiser. Sem isso, sugestão preenche metade do
+      // form e quem é leigo trava em "quanto vale isso?".
+      // Fórmula: nome com "grátis" pede ~10× ticket médio (resgate
+      // mais raro), com "off" pede ~5× (mais frequente). Sem ticket
+      // médio (config nova), cai em fallback fixo.
+      const nameLower = prefillName.toLowerCase()
+      const isFree = nameLower.includes('grátis') || nameLower.includes('gratis')
+      const isPercent = nameLower.includes('%') || nameLower.includes('off')
+      let suggested: number
+      if (ticketMedioPontos > 0) {
+        suggested = isFree
+          ? ticketMedioPontos * 10
+          : isPercent
+          ? ticketMedioPontos * 5
+          : ticketMedioPontos * 8
+      } else {
+        suggested = isFree ? 100 : isPercent ? 50 : 80
+      }
+      // Arredonda pra cima em múltiplo de 10 — número redondo
+      // soa intencional, "97 pts" parece bug.
+      const rounded = Math.ceil(suggested / 10) * 10
+      setForm({ ...emptyRewardForm, name: prefillName, points_required: String(rounded) })
+    }
     addFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
