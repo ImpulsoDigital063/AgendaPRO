@@ -84,14 +84,24 @@ export async function POST(req: NextRequest) {
   const notes = typeof body.notes === 'string' ? body.notes.trim() || null : null
 
   if (!name) return NextResponse.json({ error: 'Nome obrigatório' }, { status: 400 })
+  if (name.length > 200) {
+    return NextResponse.json({ error: 'Nome muito longo (max 200)' }, { status: 400 })
+  }
   if (!Number.isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: 'Valor inválido' }, { status: 400 })
+  }
+  // Sanity: barbearia/salão não tem despesa de R$1mi (limite anti-abuso/erro)
+  if (amount > 1_000_000) {
+    return NextResponse.json({ error: 'Valor acima do limite (R$1.000.000)' }, { status: 400 })
   }
   if (!VALID_CATEGORIES.has(category)) {
     return NextResponse.json({ error: 'Categoria inválida' }, { status: 400 })
   }
   if (!occurred_at || !/^\d{4}-\d{2}-\d{2}$/.test(occurred_at)) {
     return NextResponse.json({ error: 'Data inválida (YYYY-MM-DD)' }, { status: 400 })
+  }
+  if (notes && notes.length > 1000) {
+    return NextResponse.json({ error: 'Observação muito longa (max 1000)' }, { status: 400 })
   }
 
   const { data: expense, error } = await supabase

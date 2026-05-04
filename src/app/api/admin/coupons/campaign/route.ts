@@ -53,11 +53,18 @@ export async function POST(req: NextRequest) {
   if (discount_type === 'percent' && discount_value > 100) {
     return NextResponse.json({ error: 'percentual máximo 100%' }, { status: 400 })
   }
+  // Sanity pra fixed — desconto > R$1000 num cupom é provável erro/abuso
+  if (discount_type === 'fixed' && discount_value > 1000) {
+    return NextResponse.json({ error: 'desconto fixo máximo R$ 1.000' }, { status: 400 })
+  }
   if (!Number.isFinite(validity_days) || validity_days < 1 || validity_days > 365) {
     return NextResponse.json({ error: 'validade deve ser entre 1 e 365 dias' }, { status: 400 })
   }
   if (!message_template.trim()) {
     return NextResponse.json({ error: 'mensagem obrigatória' }, { status: 400 })
+  }
+  if (message_template.length > 2000) {
+    return NextResponse.json({ error: 'mensagem muito longa (max 2000 chars)' }, { status: 400 })
   }
 
   // 1. Customers do business com ultimo agendamento >= SUMIDO_DAYS

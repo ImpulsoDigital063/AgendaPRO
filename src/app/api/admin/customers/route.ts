@@ -37,8 +37,17 @@ export async function POST(req: NextRequest) {
   const email = typeof body.email === 'string' ? body.email.trim() : ''
 
   if (!name) return NextResponse.json({ error: 'Nome obrigatório' }, { status: 400 })
+  if (name.length > 100) {
+    return NextResponse.json({ error: 'Nome muito longo (max 100)' }, { status: 400 })
+  }
   if (!phone || phone.replace(/\D/g, '').length < 10) {
     return NextResponse.json({ error: 'Telefone inválido' }, { status: 400 })
+  }
+  if (phone.replace(/\D/g, '').length > 13) {
+    return NextResponse.json({ error: 'Telefone inválido (longo demais)' }, { status: 400 })
+  }
+  if (email && (email.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+    return NextResponse.json({ error: 'Email inválido' }, { status: 400 })
   }
 
   const phoneClean = phone.replace(/\D/g, '')
