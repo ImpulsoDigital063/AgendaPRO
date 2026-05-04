@@ -7,6 +7,7 @@ import {
   getUpcomingAppointments,
   getRecentActivity,
   getPendingClaimsCount,
+  getOwnerProfessional,
 } from '@/lib/admin-data'
 import AppointmentCard from '@/components/AppointmentCard'
 import LogoutButton from '@/components/LogoutButton'
@@ -46,18 +47,24 @@ type Business = {
 async function KPIsSection({ business }: { business: Business }) {
   const today = new Date().toISOString().split('T')[0]
   const list = await getAppointmentsToday(business.id, today)
+  // Atendimento != pagamento. Cada estado tem fonte de verdade própria:
+  //   status            → fluxo do atendimento (pending/confirmed/completed)
+  //   paid_at != null   → dinheiro entrou no caixa (independente do status)
+  // Admin precisa enxergar os dois lados separados pra agir certo.
   const pending = list.filter((a) => a.status === 'pending')
-  const confirmed = list.filter((a) => a.status === 'confirmed')
-  const completed = list.filter((a) => a.status === 'completed')
-  const revenue = [...confirmed, ...completed].reduce(
-    (sum, a) => sum + (a.total_price || 0),
-    0
+  const aReceber = list.filter(
+    (a) =>
+      a.paid_at == null &&
+      (a.total_price ?? 0) > 0 &&
+      (a.status === 'confirmed' || a.status === 'completed')
   )
-  const paidCount = confirmed.length + completed.length
+  const recebidos = list.filter((a) => a.paid_at != null)
+  const recebidoTotal = recebidos.reduce((sum, a) => sum + (a.total_price || 0), 0)
+  const aReceberTotal = aReceber.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   return (
     <section className="relative max-w-lg mx-auto px-4 mb-6 space-y-2.5">
-      {/* Faturado: hero card full-width */}
+      {/* Recebido HOJE: hero card full-width — só dinheiro que JÁ entrou */}
       <div
         className="rounded-2xl p-4 relative overflow-hidden"
         style={{
@@ -76,16 +83,16 @@ async function KPIsSection({ business }: { business: Business }) {
               className="text-[11px] font-semibold uppercase tracking-wider"
               style={{ color: 'var(--admin-text-faded)' }}
             >
-              Faturado hoje
+              Recebido hoje
             </p>
             <p
               className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
               style={{ color: 'var(--admin-text)' }}
             >
-              <CountUp value={revenue} prefix="R$ " localized />
+              <CountUp value={recebidoTotal} prefix="R$ " localized />
             </p>
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-              {paidCount} atendimento{paidCount === 1 ? '' : 's'} pago{paidCount === 1 ? '' : 's'}
+              {recebidos.length} atendimento{recebidos.length === 1 ? '' : 's'} pago{recebidos.length === 1 ? '' : 's'}
             </p>
           </div>
           <span
@@ -101,7 +108,9 @@ async function KPIsSection({ business }: { business: Business }) {
         </div>
       </div>
 
-      {/* Pendentes + Confirmados em grid 2 col */}
+      {/* Grid 2 col — duas ações distintas que admin precisa fazer hoje:
+            Pendentes  → confirmar agendamento (cliente espera resposta)
+            A receber  → confirmar pagamento (caixa fora do livro) */}
       <div className="grid grid-cols-2 gap-2.5">
         <div className="admin-card p-3.5 relative overflow-hidden">
           <div className="flex items-start justify-between">
@@ -131,21 +140,33 @@ async function KPIsSection({ business }: { business: Business }) {
           </div>
         </div>
 
-        <div className="admin-card p-3.5 relative overflow-hidden">
+        <Link
+          href="/admin/financeiro"
+          className="admin-card p-3.5 relative overflow-hidden block transition-opacity hover:opacity-90"
+        >
           <div className="flex items-start justify-between">
-            <div>
+            <div className="min-w-0">
               <p
                 className="text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: 'var(--admin-text-faded)' }}
               >
-                Confirmados
+                A receber
               </p>
               <p
                 className="text-xl font-bold mt-1.5 leading-none tabular-nums"
                 style={{ color: 'var(--admin-accent)' }}
               >
-                <CountUp value={confirmed.length} duration={500} />
+                {aReceberTotal > 0 ? (
+                  <CountUp value={aReceberTotal} prefix="R$ " localized duration={500} />
+                ) : (
+                  <CountUp value={0} duration={500} />
+                )}
               </p>
+              {aReceber.length > 0 && (
+                <p className="text-[10px] mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+                  {aReceber.length} atendimento{aReceber.length === 1 ? '' : 's'}
+                </p>
+              )}
             </div>
             <span
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -157,7 +178,7 @@ async function KPIsSection({ business }: { business: Business }) {
               <IconCheck size={16} />
             </span>
           </div>
-        </div>
+        </Link>
       </div>
     </section>
   )
@@ -179,6 +200,114 @@ function KPIsSkeleton() {
           className="rounded-2xl h-[78px] skel-pulse"
           style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
         />
+      </div>
+    </section>
+  )
+}
+
+async function OwnerSection({
+  businessId,
+  ownerId,
+}: {
+  businessId: string
+  ownerId: string
+}) {
+  // Renderiza só se o dono também atende (tem registro em professionals
+  // linkado ao auth_user_id dele). Se for gestor puro, retorna null.
+  // Decisão UX: zero fricção — mesma tela do admin, sem alternar
+  // contexto/login. Uma seção a mais, não uma rota a mais.
+  const owner = await getOwnerProfessional(ownerId, businessId)
+  if (!owner) return null
+
+  const today = new Date().toISOString().split('T')[0]
+  const list = await getAppointmentsToday(businessId, today)
+  // Filtra os atendimentos DELE no dia. Reuso da query cacheada — não
+  // bate Supabase de novo.
+  const meus = list.filter((a) => a.professional_id === owner.id)
+  if (meus.length === 0) return null
+
+  const meusRecebidos = meus.filter((a) => a.paid_at != null)
+  const meusAReceber = meus.filter(
+    (a) =>
+      a.paid_at == null &&
+      (a.total_price ?? 0) > 0 &&
+      (a.status === 'confirmed' || a.status === 'completed')
+  )
+  const meuRecebidoTotal = meusRecebidos.reduce((sum, a) => sum + (a.total_price || 0), 0)
+  const meuAReceberTotal = meusAReceber.reduce((sum, a) => sum + (a.total_price || 0), 0)
+  const meusAtendidos = meus.filter((a) => a.status === 'completed').length
+
+  // Primeiro nome — vira "Bom trabalho, Eduardo"
+  const firstName = owner.name?.split(' ')[0] ?? 'Você'
+
+  return (
+    <section>
+      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+        Você como profissional
+      </p>
+      <div
+        className="rounded-2xl p-4 relative overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(135deg, color-mix(in srgb, var(--admin-success) 14%, var(--admin-surface)) 0%, color-mix(in srgb, var(--admin-accent) 10%, var(--admin-surface)) 100%)',
+          border: '1px solid var(--admin-border)',
+        }}
+      >
+        <div
+          className="absolute -top-8 -right-8 w-32 h-32 rounded-full blur-2xl opacity-50 pointer-events-none"
+          style={{ background: 'rgba(16,185,129,0.25)' }}
+        />
+        <div className="relative">
+          <div className="flex items-center justify-between mb-3 gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                {firstName} hoje
+              </p>
+              <p className="text-2xl font-extrabold mt-1 leading-none tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                {meuRecebidoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+                {meus.length} atendimento{meus.length === 1 ? '' : 's'} · {meusAtendidos} concluído{meusAtendidos === 1 ? '' : 's'}
+              </p>
+            </div>
+            <span
+              className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'rgba(16,185,129,0.18)',
+                color: 'var(--admin-success)',
+              }}
+            >
+              <IconDollar size={20} />
+            </span>
+          </div>
+
+          {meuAReceberTotal > 0 && (
+            <Link
+              href="/admin/financeiro"
+              className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-opacity hover:opacity-90"
+              style={{
+                background: 'var(--admin-surface)',
+                border: '1px solid var(--admin-border)',
+              }}
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                  A receber
+                </p>
+                <p className="text-base font-bold leading-tight tabular-nums" style={{ color: 'var(--admin-accent)' }}>
+                  {meuAReceberTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+              <span
+                className="text-xs font-semibold inline-flex items-center gap-1 flex-shrink-0"
+                style={{ color: 'var(--admin-accent)' }}
+              >
+                Ver no Financeiro
+                <IconChevronRight size={14} />
+              </span>
+            </Link>
+          )}
+        </div>
       </div>
     </section>
   )
@@ -400,6 +529,12 @@ export default async function AdminPage() {
         {/* Pedidos de pontos — sumi sumi se count = 0, fallback null */}
         <Suspense fallback={null}>
           <ClaimsLinkSection businessId={business.id} />
+        </Suspense>
+
+        {/* Você como profissional — só renderiza se admin atende.
+            Mesma tela, sem login duplo, sem rota nova. */}
+        <Suspense fallback={null}>
+          <OwnerSection businessId={business.id} ownerId={user.id} />
         </Suspense>
 
         {/* Divulgação — estatica, renderiza imediato */}

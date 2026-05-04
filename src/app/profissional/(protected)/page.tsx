@@ -12,7 +12,6 @@ import {
   IconDollar,
   IconCheck,
   IconClock,
-  IconClose,
   IconInbox,
   IconSettings,
   IconWallet,
@@ -69,19 +68,26 @@ export default async function ProfissionalPage() {
   })
 
   const list = appointments || []
+  // Estados separados — não confundir status do atendimento com status do
+  // pagamento. Profissional vê o ciclo do atendimento DELE; pagamento é
+  // marcado pelo admin no Financeiro (paid_at).
   const pending   = list.filter((a) => a.status === 'pending')
-  const confirmed = list.filter((a) => a.status === 'confirmed' || a.status === 'completed')
-  const cancelled = list.filter((a) => a.status === 'cancelled' || a.status === 'no_show')
-  const revenue   = confirmed.reduce((sum, a) => sum + (a.total_price || 0), 0)
+  const confirmed = list.filter((a) => a.status === 'confirmed')
+  const completed = list.filter((a) => a.status === 'completed')
+  // Recebido = appointments do profissional cujo pagamento já entrou
+  // (admin marcou no Financeiro). Source of truth: paid_at != null.
+  const recebido  = list
+    .filter((a) => a.paid_at != null)
+    .reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   const isEmployed = (professional.employment_type ?? 'commissioned') === 'employed'
 
   const stats = ([
     !isEmployed && {
-      value: revenue > 0
-        ? 'R$' + revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })
+      value: recebido > 0
+        ? 'R$' + recebido.toLocaleString('pt-BR', { minimumFractionDigits: 0 })
         : 'R$0',
-      label: 'Faturado',
+      label: 'Recebido',
       icon: IconDollar,
       color: 'var(--admin-success)',
       glow: 'rgba(16,185,129,0.18)',
@@ -101,11 +107,11 @@ export default async function ProfissionalPage() {
       glow: 'rgba(59,130,246,0.18)',
     },
     {
-      value: cancelled.length,
-      label: 'Cancelados',
-      icon: IconClose,
-      color: 'var(--admin-text-faded)',
-      glow: 'rgba(148,163,184,0.15)',
+      value: completed.length,
+      label: 'Atendidos',
+      icon: IconCheck,
+      color: 'var(--admin-success)',
+      glow: 'rgba(16,185,129,0.18)',
     },
   ].filter(Boolean)) as Array<{
     value: string | number

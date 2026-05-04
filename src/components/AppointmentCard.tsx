@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { IconWhatsapp, IconCheck, IconClose } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
+import { statusOf, canCompleteAppointment } from '@/lib/appointment-status'
 
 type Props = {
   appointment: {
@@ -19,51 +20,14 @@ type Props = {
     status: string
     service_name?: string | null
     total_price?: number | null
+    paid_at?: string | null
+    payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | null
     professional?: { name: string } | null
     punctuality_awarded?: boolean
   }
   showDate?: boolean
   nextUp?: boolean
   punctualityBonus?: number
-}
-
-
-const STATUS_CONFIG: Record<string, { label: string; border: string; dot: string; chipBg: string; chipColor: string }> = {
-  pending: {
-    label: 'Pendente',
-    border: 'var(--admin-warn)',
-    dot: 'var(--admin-warn)',
-    chipBg: 'rgba(245,158,11,0.12)',
-    chipColor: 'var(--admin-warn)',
-  },
-  confirmed: {
-    label: 'Confirmado',
-    border: 'var(--admin-accent)',
-    dot: 'var(--admin-accent)',
-    chipBg: 'var(--admin-accent-bg)',
-    chipColor: 'var(--admin-accent)',
-  },
-  completed: {
-    label: 'Concluído',
-    border: 'var(--admin-success)',
-    dot: 'var(--admin-success)',
-    chipBg: 'rgba(34,197,94,0.12)',
-    chipColor: 'var(--admin-success)',
-  },
-  no_show: {
-    label: 'Não veio',
-    border: 'var(--admin-text-faded)',
-    dot: 'var(--admin-text-faded)',
-    chipBg: 'rgba(148,163,184,0.12)',
-    chipColor: 'var(--admin-text-faded)',
-  },
-  cancelled: {
-    label: 'Cancelado',
-    border: 'var(--admin-text-faded)',
-    dot: 'var(--admin-text-faded)',
-    chipBg: 'rgba(148,163,184,0.12)',
-    chipColor: 'var(--admin-text-faded)',
-  },
 }
 
 export default function AppointmentCard({ appointment, showDate, nextUp, punctualityBonus = 10 }: Props) {
@@ -74,7 +38,15 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
   const menuRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
 
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
+  const config = statusOf(status)
+  const isPaid = !!appointment.paid_at
+  // Bloqueia "Atendi" antes da janela de 15min pré-agendamento.
+  // Evita admin marcar concluído por engano em data futura (visto em
+  // teste 04/05 com agendamento 05/05). Recalcula a cada render — barato.
+  const canComplete = canCompleteAppointment(
+    appointment.appointment_date,
+    appointment.start_time
+  )
 
   useEffect(() => {
     if (!menuOpen) return
@@ -138,7 +110,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
     <div
       className="rounded-2xl admin-card relative"
       style={{
-        borderLeft: `3px solid ${config.border}`,
+        borderLeft: `3px solid ${config.color}`,
         overflow: menuOpen ? 'visible' : 'hidden',
         zIndex: menuOpen ? 40 : undefined,
       }}
@@ -184,20 +156,35 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
               </div>
             </div>
           </div>
-          <span
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 inline-flex items-center gap-1.5"
-            style={{
-              background: config.chipBg,
-              color: config.chipColor,
-              border: `1px solid ${config.dot}30`,
-            }}
-          >
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
             <span
-              className={`w-1.5 h-1.5 rounded-full ${nextUp && status === 'confirmed' ? 'admin-dot-pulse' : ''}`}
-              style={{ background: config.dot }}
-            />
-            {config.label}
-          </span>
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5"
+              style={{
+                background: config.bg,
+                color: config.color,
+                border: `1px solid ${config.dot}30`,
+              }}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${nextUp && status === 'confirmed' ? 'admin-dot-pulse' : ''}`}
+                style={{ background: config.dot }}
+              />
+              {config.label}
+            </span>
+            {isPaid && (
+              <span
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                style={{
+                  background: 'rgba(16,185,129,0.12)',
+                  color: 'var(--admin-success)',
+                  border: '1px solid rgba(16,185,129,0.25)',
+                }}
+                title={`Pago via ${appointment.payment_method ?? 'dinheiro'}`}
+              >
+                <span aria-hidden>$</span> Pago
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Serviço + preço */}
@@ -276,28 +263,36 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
           <div className="pl-[64px] flex items-stretch gap-2 flex-wrap">
             <button
               onClick={() => updateStatus('completed')}
-              disabled={loading}
-              className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+              disabled={loading || !canComplete}
+              className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
               style={{
                 background: 'linear-gradient(135deg, #10B981, #059669)',
                 color: '#fff',
                 boxShadow: '0 8px 20px rgba(16,185,129,0.3)',
               }}
-              title="Atendimento concluído — credita os pontos do serviço"
+              title={
+                canComplete
+                  ? 'Atendimento concluído — credita os pontos do serviço'
+                  : 'Disponível 15min antes do horário do agendamento'
+              }
             >
               <IconCheck size={14} /> Atendi
             </button>
             {punctualityBonus > 0 && (
               <button
                 onClick={completeWithPunctuality}
-                disabled={loading}
-                className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+                disabled={loading || !canComplete}
+                className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                 style={{
                   background: 'linear-gradient(135deg, #F59E0B, #D97706)',
                   color: '#fff',
                   boxShadow: '0 8px 20px rgba(245,158,11,0.3)',
                 }}
-                title={`Atendi + bônus de pontualidade (+${punctualityBonus} pts pro cliente)`}
+                title={
+                  canComplete
+                    ? `Atendi + bônus de pontualidade (+${punctualityBonus} pts pro cliente)`
+                    : 'Disponível 15min antes do horário do agendamento'
+                }
               >
                 <IconCheck size={14} /> Atendi +{punctualityBonus}
               </button>

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendClientNotification } from '@/lib/email'
 import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
+import { canCompleteAppointment } from '@/lib/appointment-status'
 
 function getAdminClient() {
   return createServiceClient(
@@ -45,6 +46,19 @@ export async function POST(req: NextRequest) {
 
   if (!appointment) {
     return NextResponse.json({ error: 'Agendamento não encontrado.' }, { status: 404 })
+  }
+
+  // Bloqueia "completed" antes da janela de 15min pré-agendamento.
+  // Defesa em profundidade: o botão já fica disabled no card, mas
+  // request adulterada (ou bot) podia marcar. Server diz a verdade.
+  if (
+    action === 'completed' &&
+    !canCompleteAppointment(appointment.appointment_date, appointment.start_time)
+  ) {
+    return NextResponse.json(
+      { error: 'Só é possível concluir a partir de 15min antes do horário agendado.' },
+      { status: 400 }
+    )
   }
 
   // Atualiza status

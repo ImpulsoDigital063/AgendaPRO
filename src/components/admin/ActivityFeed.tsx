@@ -20,14 +20,32 @@ const ACTION_CONFIG: Record<string, { label: string; color: string; icon: string
 }
 
 function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime()
+  const date = new Date(dateStr)
+  const diff = Date.now() - date.getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return 'agora'
   if (mins < 60) return `${mins}min`
   const hours = Math.floor(mins / 60)
   if (hours < 24) return `${hours}h`
   const days = Math.floor(hours / 24)
-  return `${days}d`
+  if (days === 1) return 'ontem'
+  // Pra ações > 1 dia, mostra dia/mês curto. "2d" sozinho confundia
+  // quando misturado com descrição que cita data do agendamento (vimos
+  // 04/05 com painel "completed em 02/05" mostrando "2d" e parecia bug).
+  if (days < 7) {
+    return date.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })
+  }
+  return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })
+}
+
+function fullTimestamp(dateStr: string) {
+  return new Date(dateStr).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export default function ActivityFeed({ activities }: Props) {
@@ -62,7 +80,11 @@ export default function ActivityFeed({ activities }: Props) {
               <p className="text-sm leading-snug" style={{ color: 'var(--admin-text)' }}>
                 {a.description || `${a.professional?.name || 'Profissional'} ${config.label.toLowerCase()}`}
               </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
+              <p
+                className="text-xs mt-0.5"
+                style={{ color: 'var(--admin-text-faded)' }}
+                title={fullTimestamp(a.created_at)}
+              >
                 {timeAgo(a.created_at)}
               </p>
             </div>

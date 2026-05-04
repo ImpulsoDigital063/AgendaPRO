@@ -44,6 +44,31 @@ export const getCurrentSubscription = cache(async (businessId: string) => {
 })
 
 /**
+ * Profissional vinculado ao admin (owner).
+ *
+ * Quando o dono também atende clientes (caso comum em barbearia
+ * pequena), tem um registro em `professionals` com role='owner' e
+ * auth_user_id = id do dono. /api/cadastro cria automaticamente
+ * desde 30/04/2026 (V28 backfilou o histórico).
+ *
+ * Retorna null se o admin não atende (raro, mas possível em gestão pura).
+ *
+ * Uso: tela /admin renderiza seção "Você como profissional" só quando
+ * essa query devolve algo. Sem rota nova, sem login duplo — mesma tela.
+ */
+export const getOwnerProfessional = cache(async (ownerId: string, businessId: string) => {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('professionals')
+    .select('id, name, commission_percentage, employment_type')
+    .eq('auth_user_id', ownerId)
+    .eq('business_id', businessId)
+    .eq('active', true)
+    .maybeSingle()
+  return data
+})
+
+/**
  * ============================================================
  * Cross-request cache (unstable_cache + service-role client)
  * ============================================================

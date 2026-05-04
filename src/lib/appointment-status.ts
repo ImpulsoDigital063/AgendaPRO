@@ -1,6 +1,12 @@
 /**
  * Tabela única de cores/labels de status de agendamento.
- * Usada em FinanceiroView, ProfFinanceiroView, AppointmentCard etc.
+ * Source of truth pra TODA UI que renderiza status: cards de agenda
+ * (admin + profissional), Financeiro, ProfFinanceiro, listas, badges.
+ *
+ * Por que centralizado: 04/05/2026 descobrimos divergência entre cards
+ * — admin mapeava 5 status, profissional só 3 e caía em fallback
+ * "Pendente" pra completed/no_show. Painel mentia. Resolvido com
+ * statusOf() em todos os call sites.
  *
  * Decisão: cancelled e no_show ficam no mesmo cinza apagado — ambos são
  * "não rendeu nada", não merecem destaque visual.
@@ -10,12 +16,15 @@ export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancell
 
 export type StatusVisual = {
   label: string
+  /** Background do chip de status. */
   bg: string
+  /** Cor do texto/ícone do chip e do borderLeft do card. */
   color: string
+  /** Cor do dot (ponto pulsante) — geralmente igual a `color`. */
   dot: string
   /** Se true, considera "vai entrar / entrou no caixa" pra somatórios. */
   countsAsActive: boolean
-  /** Se true, dinheiro já caiu — usado pra "realizado". */
+  /** Se true, atendimento foi prestado (não significa pago — pago = paid_at). */
   countsAsRealized: boolean
 }
 
@@ -37,10 +46,10 @@ export const STATUS_VISUAL: Record<string, StatusVisual> = {
     countsAsRealized: false,
   },
   completed: {
-    label: 'Realizado',
+    label: 'Concluído',
     bg: 'rgba(34,197,94,0.14)',
-    color: '#16A34A',
-    dot: '#16A34A',
+    color: 'var(--admin-success)',
+    dot: 'var(--admin-success)',
     countsAsActive: true,
     countsAsRealized: true,
   },
@@ -68,4 +77,30 @@ export function statusOf(s: string): StatusVisual {
 
 export function isArchived(status: string): boolean {
   return status === 'cancelled' || status === 'no_show'
+}
+
+/**
+ * Pode marcar como `completed`?
+ *
+ * Regra: só permitir conclusão a partir de 15min ANTES do horário
+ * agendado. Cobre o caso real "cliente chegou cedo, atendi rápido"
+ * sem permitir teste/erro em datas futuras.
+ *
+ * Exemplo: agendamento 11:30 → libera marcar completed às 11:15.
+ *
+ * @param appointmentDate string ISO 'YYYY-MM-DD'
+ * @param startTime string 'HH:MM' ou 'HH:MM:SS'
+ * @param now opcional, pra teste — default: Date.now()
+ */
+export function canCompleteAppointment(
+  appointmentDate: string,
+  startTime: string,
+  now: Date = new Date()
+): boolean {
+  const hhmm = startTime.slice(0, 5)
+  const slotIso = `${appointmentDate}T${hhmm}:00`
+  const slotMs = new Date(slotIso).getTime()
+  if (Number.isNaN(slotMs)) return false
+  const FIFTEEN_MIN_MS = 15 * 60 * 1000
+  return now.getTime() >= slotMs - FIFTEEN_MIN_MS
 }
