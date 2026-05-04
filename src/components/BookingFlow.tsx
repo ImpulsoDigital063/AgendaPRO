@@ -40,12 +40,18 @@ function fromMinutes(n: number) {
   return `${h}:${m}`
 }
 
+/** Antecedência mínima pra agendar — cliente precisa de tempo pra chegar. */
+const BOOKING_BUFFER_MIN = 30
+
 /**
  * Gera os slots de um dia.
  * - `step`: granularidade configurada no dia (ex: 15min) — "régua" dos horários mostrados.
  * - `serviceDuration`: tempo total do agendamento (soma dos serviços escolhidos).
  * - `booked`: agendamentos já existentes no dia, com seu inicio e duração real,
  *   pra checar sobreposição (não só igualdade).
+ * - `minStartMin`: opcional — corte mínimo em minutos do dia. Slots que começam
+ *   antes desse valor não entram na lista. Usado pra filtrar horários já passados
+ *   (ou dentro do buffer de antecedência) quando o dia selecionado é hoje.
  * Um slot é `available` se cabe inteiro dentro do expediente E não sobrepõe nenhum outro.
  */
 function generateSlots(
@@ -54,6 +60,7 @@ function generateSlots(
   step: number,
   serviceDuration: number,
   booked: { start: number; end: number }[],
+  minStartMin?: number,
 ): TimeSlot[] {
   const slots: TimeSlot[] = []
   const startMin = toMinutes(start)
@@ -61,6 +68,7 @@ function generateSlots(
   const dur = Math.max(1, serviceDuration)
 
   for (let current = startMin; current + dur <= endMin; current += step) {
+    if (minStartMin != null && current < minStartMin) continue
     const slotStart = current
     const slotEnd = current + dur
     const conflicts = booked.some((b) => slotStart < b.end && slotEnd > b.start)
@@ -68,6 +76,15 @@ function generateSlots(
   }
 
   return slots
+}
+
+/** Mesmo dia (ano/mês/dia coincidem)? — comparação local, sem timezone bug. */
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
 }
 
 function formatDate(date: Date): string {
@@ -258,16 +275,30 @@ export default function BookingFlow({
     return totalDuration > 0 ? totalDuration : getSlotStep(date)
   }
 
-  // Gera os próximos 14 dias disponíveis
+  // Gera as datas disponíveis dos próximos 14 dias INCLUINDO hoje.
+  // Pra hoje: só entra na lista se o expediente ainda tem janela válida
+  // após o buffer de antecedência (BOOKING_BUFFER_MIN). Se tudo já passou,
+  // hoje é pulado e a lista começa em amanhã.
+  // Bug histórico (até 04/05/2026): loop começava em i+1 e cliente nunca
+  // via o dia atual — perdia agendamentos do dia.
   const today = new Date()
+  const nowMin = today.getHours() * 60 + today.getMinutes()
+  const earliestBookingMin = nowMin + BOOKING_BUFFER_MIN
   const availableDates: Date[] = []
   for (let i = 0; i < 14; i++) {
-    const d = addDays(today, i + 1)
+    const d = addDays(today, i)
     const dayOfWeek = d.getDay()
-    const hasHours = workingHours.some(
+    const hoursOfDay = workingHours.filter(
       (wh) => wh.professional_id === professional?.id && wh.day_of_week === dayOfWeek
     )
-    if (hasHours) availableDates.push(d)
+    if (hoursOfDay.length === 0) continue
+    if (i === 0) {
+      // Hoje: pré-check rápido — se nenhum período termina depois do
+      // buffer, expediente acabou. Pula pra evitar tela vazia ao clicar.
+      const lastEndMin = Math.max(...hoursOfDay.map((wh) => toMinutes(wh.end_time)))
+      if (lastEndMin <= earliestBookingMin) continue
+    }
+    availableDates.push(d)
   }
 
   // Toggle de serviço (seleciona/deseleciona)
@@ -359,9 +390,17 @@ export default function BookingFlow({
     const step = getSlotStep(date)
     const serviceDuration = getServiceDuration(date)
 
+    // Se o dia selecionado é hoje, filtra slots que já passaram + buffer
+    // de antecedência. Cliente não consegue agendar pras próximas
+    // BOOKING_BUFFER_MIN minutos (precisa de tempo pra chegar).
+    const now = new Date()
+    const minStartMin = isSameLocalDay(date, now)
+      ? now.getHours() * 60 + now.getMinutes() + BOOKING_BUFFER_MIN
+      : undefined
+
     // Gera slots pra cada periodo do dia e concatena na ordem cronologica
     const generated = periods.flatMap((p) =>
-      generateSlots(p.start_time, p.end_time, step, serviceDuration, booked)
+      generateSlots(p.start_time, p.end_time, step, serviceDuration, booked, minStartMin)
     )
 
     setSlots(generated)
@@ -416,6 +455,21 @@ export default function BookingFlow({
     if (!selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim()) return
     setSubmitting(true)
     setError(null)
+
+    // Defesa anti-stale-tab: usuário com a aba aberta há horas pode
+    // clicar num slot que entrementes virou passado. Revalida antes
+    // de gravar.
+    const now = new Date()
+    if (isSameLocalDay(selectedDate, now)) {
+      const [h0, m0] = selectedTime.split(':').map(Number)
+      const slotMin = h0 * 60 + m0
+      const limitMin = now.getHours() * 60 + now.getMinutes() + BOOKING_BUFFER_MIN
+      if (slotMin < limitMin) {
+        setError('Esse horário acabou de passar. Escolha outro.')
+        setSubmitting(false)
+        return
+      }
+    }
 
     const duration = getServiceDuration(selectedDate)
     const [h, m] = selectedTime.split(':').map(Number)
