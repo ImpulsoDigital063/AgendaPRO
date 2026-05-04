@@ -19,13 +19,16 @@ export type FinanceRow = {
   professional_name?: string | null
 }
 
-type Method = 'pix' | 'cash' | 'card' | 'courtesy'
+// 'courtesy' é legacy (V34) — mantido pra exibição de registros antigos.
+// Novos atendimentos usam 'points' em vez de courtesy.
+type Method = 'pix' | 'cash' | 'card' | 'courtesy' | 'points'
 
 const METHOD_LABEL: Record<Method, string> = {
   pix: 'PIX',
   cash: 'Dinheiro',
   card: 'Cartão',
   courtesy: 'Cortesia',
+  points: 'Pontos',
 }
 
 const METHOD_COLOR: Record<Method, string> = {
@@ -33,6 +36,7 @@ const METHOD_COLOR: Record<Method, string> = {
   cash: '#16A34A',
   card: '#3B82F6',
   courtesy: '#A855F7',
+  points: '#F59E0B',
 }
 
 function formatPrice(value: number) {

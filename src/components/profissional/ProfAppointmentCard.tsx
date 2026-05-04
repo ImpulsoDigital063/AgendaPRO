@@ -31,7 +31,8 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
-  const [paymentModal, setPaymentModal] = useState<null | 'simple' | 'punctuality'>(null)
+  const [paymentModal, setPaymentModal] = useState(false)
+  const [withPunctuality, setWithPunctuality] = useState(false)
   const router = useRouter()
 
   const config = statusOf(status)
@@ -77,7 +78,7 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
     })
     if (res.ok) {
       setStatus('completed')
-      setPaymentModal(null)
+      setPaymentModal(false)
       if (withPunctuality) {
         fetch('/api/appointment/award-punctuality', {
           method: 'POST',
@@ -225,11 +226,53 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
 
         {status === 'confirmed' && (
           <div className="pl-[64px] space-y-2">
+            {/* Toggle de pontualidade — chip clicável.
+                Ambos os botões respeitam o estado quando concluem. */}
+            {punctualityBonus > 0 && (
+              <button
+                type="button"
+                onClick={() => setWithPunctuality((v) => !v)}
+                disabled={loading || !canComplete}
+                aria-pressed={withPunctuality}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full transition-all disabled:opacity-40"
+                style={{
+                  background: withPunctuality ? 'rgba(245,158,11,0.15)' : 'var(--admin-surface-hi)',
+                  color: withPunctuality ? '#D97706' : 'var(--admin-text-mute)',
+                  border: `1px solid ${withPunctuality ? 'rgba(245,158,11,0.4)' : 'var(--admin-border)'}`,
+                }}
+                title={
+                  withPunctuality
+                    ? `Cliente vai receber +${punctualityBonus} pts pela pontualidade`
+                    : 'Marcar que o cliente foi pontual (dá bônus de pontos)'
+                }
+              >
+                <span aria-hidden>{withPunctuality ? '★' : '☆'}</span>
+                Pontualidade {withPunctuality ? `· +${punctualityBonus}pts` : ''}
+              </button>
+            )}
+
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => setPaymentModal('simple')}
+                onClick={() => completeWithPayment(null, withPunctuality)}
                 disabled={loading || !canComplete}
                 className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+                style={{
+                  background: 'var(--admin-surface-hi)',
+                  color: 'var(--admin-text)',
+                  border: '1px solid var(--admin-border)',
+                }}
+                title={
+                  canComplete
+                    ? 'Conclui sem registrar pagamento. Admin confirma depois no Financeiro.'
+                    : 'Disponível 15min antes do horário do agendamento'
+                }
+              >
+                <IconCheck size={14} /> Atendi{withPunctuality ? ` +${punctualityBonus}` : ''}
+              </button>
+              <button
+                onClick={() => setPaymentModal(true)}
+                disabled={loading || !canComplete}
+                className="flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                 style={{
                   background: 'linear-gradient(135deg, #10B981, #059669)',
                   color: '#fff',
@@ -237,31 +280,12 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
                 }}
                 title={
                   canComplete
-                    ? 'Atendimento concluído — escolhe o método de pagamento'
+                    ? 'Conclui o atendimento e marca o pagamento agora.'
                     : 'Disponível 15min antes do horário do agendamento'
                 }
               >
-                <IconCheck size={14} /> Atendi
+                <IconCheck size={14} /> Atendi e recebi
               </button>
-              {punctualityBonus > 0 && (
-                <button
-                  onClick={() => setPaymentModal('punctuality')}
-                  disabled={loading || !canComplete}
-                  className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
-                  style={{
-                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-                    color: '#fff',
-                    boxShadow: '0 8px 20px rgba(245,158,11,0.3)',
-                  }}
-                  title={
-                    canComplete
-                      ? `Atendi + bônus de pontualidade (+${punctualityBonus} pts pro cliente)`
-                      : 'Disponível 15min antes do horário do agendamento'
-                  }
-                >
-                  <IconCheck size={14} /> Atendi +{punctualityBonus}
-                </button>
-              )}
             </div>
             <div className="flex gap-2">
               <button
@@ -323,16 +347,14 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
         onClose={() => setConfirm(null)}
       />
       <PaymentMethodModal
-        open={paymentModal !== null}
+        open={paymentModal}
         clientName={appointment.client_name}
         totalPrice={appointment.total_price}
-        withPunctualityBonus={paymentModal === 'punctuality'}
+        withPunctualityBonus={withPunctuality}
         punctualityPoints={punctualityBonus}
         loading={loading}
-        onChoose={(method) =>
-          completeWithPayment(method, paymentModal === 'punctuality')
-        }
-        onClose={() => !loading && setPaymentModal(null)}
+        onChoose={(method) => completeWithPayment(method, withPunctuality)}
+        onClose={() => !loading && setPaymentModal(false)}
       />
     </div>
   )

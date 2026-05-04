@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { IconClose, IconCheck } from '@/components/ui/Icon'
 
-export type PaymentMethodChoice = 'pix' | 'cash' | 'card' | 'courtesy' | null
+export type PaymentMethodChoice = 'pix' | 'cash' | 'card' | 'points' | null
 
 type Props = {
   open: boolean
@@ -26,12 +26,14 @@ type MethodOption = {
   glow: string
 }
 
-// Cores fixas (já usadas em FinanceAppointmentList) pra branding consistente.
+// Cores fixas alinhadas com FinanceAppointmentList. 'courtesy' saiu da
+// UI (virou ação separada — não é método de pagamento). 'points' entrou
+// pra resgate de fidelidade (cliente trocou pontos pelo serviço).
 const METHODS: MethodOption[] = [
-  { id: 'pix',      label: 'Pix',      symbol: 'PIX', color: '#10B981', glow: 'rgba(16,185,129,0.18)' },
-  { id: 'cash',     label: 'Dinheiro', symbol: '$',   color: '#16A34A', glow: 'rgba(22,163,74,0.18)' },
-  { id: 'card',     label: 'Cartão',   symbol: '▭',   color: '#3B82F6', glow: 'rgba(59,130,246,0.18)' },
-  { id: 'courtesy', label: 'Cortesia', symbol: '★',   color: '#A855F7', glow: 'rgba(168,85,247,0.18)' },
+  { id: 'pix',    label: 'Pix',      symbol: 'PIX', color: '#10B981', glow: 'rgba(16,185,129,0.18)' },
+  { id: 'cash',   label: 'Dinheiro', symbol: '$',   color: '#16A34A', glow: 'rgba(22,163,74,0.18)' },
+  { id: 'card',   label: 'Cartão',   symbol: '▭',   color: '#3B82F6', glow: 'rgba(59,130,246,0.18)' },
+  { id: 'points', label: 'Pontos',   symbol: '★',   color: '#F59E0B', glow: 'rgba(245,158,11,0.18)' },
 ]
 
 function formatPrice(value: number | null | undefined) {

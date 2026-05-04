@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
   // Quando vem, marca paid_at + payment_method no MESMO update (atômico).
   // Quando não vem, status muda mas pagamento fica pendente — admin
   // confirma depois no Financeiro.
-  const VALID_METHODS = new Set(['pix', 'cash', 'card', 'courtesy'])
+  // 'courtesy' aceito como legacy (V34). UI nova produz 'points' no lugar.
+  const VALID_METHODS = new Set(['pix', 'cash', 'card', 'courtesy', 'points'])
   if (paymentMethod != null && !VALID_METHODS.has(paymentMethod)) {
     return NextResponse.json(
       { error: 'método de pagamento inválido' },

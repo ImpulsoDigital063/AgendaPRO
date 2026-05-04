@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-const VALID_METHODS = new Set(['pix', 'cash', 'card', 'courtesy'])
+// 'courtesy' aceito como legacy (V34). UI nova usa 'points' pra resgate
+// de fidelidade. Constraint do banco já aceita os 5 (V37).
+const VALID_METHODS = new Set(['pix', 'cash', 'card', 'courtesy', 'points'])
 
 /**
  * POST /api/admin/appointments/[id]/payment
