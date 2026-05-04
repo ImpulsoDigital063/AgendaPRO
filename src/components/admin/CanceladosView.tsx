@@ -63,6 +63,8 @@ function formatDate(dateStr: string) {
 export default function CanceladosView({ appointments, periodo, businessName }: Props) {
   const router = useRouter()
   const [showMethodSheet, setShowMethodSheet] = useState<string | null>(null)
+  // Paginação: cancelados acumulam ao longo do mês. Mostra 10 primeiros.
+  const [showAllCancelled, setShowAllCancelled] = useState(false)
 
   const stats = useMemo(() => {
     const cancelled = appointments.filter((a) => a.status === 'cancelled')
@@ -152,7 +154,7 @@ export default function CanceladosView({ appointments, periodo, businessName }: 
             Lista · {PERIODO_LABEL[periodo]}
           </h2>
           <div className="space-y-2">
-            {appointments.map((a) => {
+            {(showAllCancelled ? appointments : appointments.slice(0, 10)).map((a) => {
               const waUrl = buildWaUrl(a)
               const isPaid = !!a.paid_at
               return (
@@ -252,6 +254,20 @@ export default function CanceladosView({ appointments, periodo, businessName }: 
                 </div>
               )
             })}
+            {!showAllCancelled && appointments.length > 10 && (
+              <button
+                type="button"
+                onClick={() => setShowAllCancelled(true)}
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 transition-opacity hover:opacity-90 text-sm font-semibold mt-1"
+                style={{
+                  background: 'var(--admin-surface)',
+                  color: 'var(--admin-accent)',
+                  border: '1px solid var(--admin-divider)',
+                }}
+              >
+                Ver mais {appointments.length - 10}
+              </button>
+            )}
           </div>
         </section>
       )}

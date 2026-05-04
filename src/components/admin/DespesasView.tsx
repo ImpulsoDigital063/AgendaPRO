@@ -62,6 +62,8 @@ export default function DespesasView({ expenses, periodo }: Props) {
   const router = useRouter()
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  // Paginação: dono pode acumular dezenas de despesas no mês.
+  const [showAllExpenses, setShowAllExpenses] = useState(false)
 
   const total = useMemo(
     () => expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0),
@@ -189,7 +191,7 @@ export default function DespesasView({ expenses, periodo }: Props) {
           </div>
         ) : (
           <div className="space-y-2">
-            {expenses.map((e) => (
+            {(showAllExpenses ? expenses : expenses.slice(0, 10)).map((e) => (
               <button
                 key={e.id}
                 type="button"
@@ -220,6 +222,20 @@ export default function DespesasView({ expenses, periodo }: Props) {
                 </p>
               </button>
             ))}
+            {!showAllExpenses && expenses.length > 10 && (
+              <button
+                type="button"
+                onClick={() => setShowAllExpenses(true)}
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 transition-opacity hover:opacity-90 text-sm font-semibold mt-1"
+                style={{
+                  background: 'var(--admin-surface)',
+                  color: 'var(--admin-accent)',
+                  border: '1px solid var(--admin-divider)',
+                }}
+              >
+                Ver mais {expenses.length - 10}
+              </button>
+            )}
           </div>
         )}
       </section>

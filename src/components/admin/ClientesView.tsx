@@ -111,6 +111,11 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
   const [filter, setFilter] = useState<FilterKey>('todos')
   const [showAddModal, setShowAddModal] = useState(false)
   const [detailCustomerId, setDetailCustomerId] = useState<string | null>(null)
+  // Paginação: barbearia com >50 clientes ativos renderiza muito card
+  // de uma vez (DOM pesado em mobile). Mostra os 20 primeiros + "Ver
+  // mais N". Reset quando muda search ou filter (lista filtrada já
+  // ficou pequena, queremos mostrar tudo do filtro corrente).
+  const [showAllClients, setShowAllClients] = useState(false)
   // Suprime warning ate que businessId seja efetivamente usado em
   // outras features (cupons, detalhes etc). Por enquanto a API
   // /api/admin/customers infere o business pelo owner_id da sessao.
@@ -244,7 +249,7 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setShowAllClients(false) }}
           placeholder="Buscar por nome, telefone ou email..."
           className="admin-input w-full pl-9 pr-4 py-3 text-sm"
         />
@@ -258,7 +263,7 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
             <button
               key={t.key}
               type="button"
-              onClick={() => setFilter(t.key)}
+              onClick={() => { setFilter(t.key); setShowAllClients(false) }}
               className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
               style={
                 active
@@ -287,7 +292,7 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         <EmptyFiltered search={search} onClear={() => { setSearch(''); setFilter('todos') }} />
       ) : (
         <div className="space-y-2.5">
-          {filtered.map((c, i) => (
+          {(showAllClients ? filtered : filtered.slice(0, 20)).map((c, i) => (
             <div
               key={c.id}
               className="admin-enter"
@@ -302,6 +307,21 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
               />
             </div>
           ))}
+          {!showAllClients && filtered.length > 20 && (
+            <button
+              type="button"
+              onClick={() => setShowAllClients(true)}
+              className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 transition-opacity hover:opacity-90 text-sm font-semibold mt-1"
+              style={{
+                background: 'var(--admin-surface)',
+                color: 'var(--admin-accent)',
+                border: '1px solid var(--admin-divider)',
+              }}
+            >
+              Ver mais {filtered.length - 20} {filtered.length - 20 === 1 ? 'cliente' : 'clientes'}
+              <IconChevronRight size={14} />
+            </button>
+          )}
         </div>
       )}
 

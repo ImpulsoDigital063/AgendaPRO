@@ -67,6 +67,8 @@ export default function ReativarSumidosView({
   const [error, setError] = useState<string | null>(null)
   const [campaignResult, setCampaignResult] = useState<CouponWithCustomer[] | null>(null)
   const [sentMap, setSentMap] = useState<Record<string, boolean>>({})
+  // Paginação da lista de cupons gerados — campanha pode ter 50+ sumidos.
+  const [showAllCoupons, setShowAllCoupons] = useState(false)
 
   const templates = useMemo(() => suggestTemplates(businessDescription), [businessDescription])
 
@@ -204,7 +206,7 @@ export default function ReativarSumidosView({
         </div>
 
         <div className="space-y-2">
-          {campaignResult.map((item) => {
+          {(showAllCoupons ? campaignResult : campaignResult.slice(0, 10)).map((item) => {
             if (!item.customer) return null
             const sent = !!sentMap[item.coupon.id]
             const phoneClean = item.customer.phone.replace(/\D/g, '')
@@ -247,6 +249,20 @@ export default function ReativarSumidosView({
               </div>
             )
           })}
+          {!showAllCoupons && campaignResult.length > 10 && (
+            <button
+              type="button"
+              onClick={() => setShowAllCoupons(true)}
+              className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 transition-opacity hover:opacity-90 text-sm font-semibold mt-1"
+              style={{
+                background: 'var(--admin-surface)',
+                color: 'var(--admin-accent)',
+                border: '1px solid var(--admin-divider)',
+              }}
+            >
+              Ver mais {campaignResult.length - 10} {campaignResult.length - 10 === 1 ? 'cliente' : 'clientes'}
+            </button>
+          )}
         </div>
 
         <button
