@@ -200,6 +200,10 @@ export default function BookingFlow({
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
+  // Razão do "vazio" — usada pra diagnóstico inteligente em vez de
+  // mensagem genérica. 'duration' = serviço maior que qualquer período;
+  // 'full' = caberia mas tudo ocupado/passou do buffer; null = tem slots.
+  const [slotsEmptyReason, setSlotsEmptyReason] = useState<'duration' | 'full' | null>(null)
 
   // Dados do cliente — pre-preenchidos se vier da fila
   const [clientName, setClientName] = useState(prefill?.name || '')
@@ -371,6 +375,7 @@ export default function BookingFlow({
 
     if (periods.length === 0) {
       setSlots([])
+      setSlotsEmptyReason('full')
       setLoadingSlots(false)
       setStep('time')
       return
@@ -402,6 +407,18 @@ export default function BookingFlow({
     const generated = periods.flatMap((p) =>
       generateSlots(p.start_time, p.end_time, step, serviceDuration, booked, minStartMin)
     )
+
+    // Diagnóstico do "vazio": se a duração total dos serviços é maior
+    // que o maior período do dia, é IMPOSSÍVEL caber. UI mostra mensagem
+    // específica ("tira serviços ou outro dia"). Senão, é caso "lotado".
+    if (generated.length === 0) {
+      const maxPeriodLength = Math.max(
+        ...periods.map((p) => toMinutes(p.end_time) - toMinutes(p.start_time))
+      )
+      setSlotsEmptyReason(serviceDuration > maxPeriodLength ? 'duration' : 'full')
+    } else {
+      setSlotsEmptyReason(null)
+    }
 
     setSlots(generated)
     setLoadingSlots(false)
@@ -1456,7 +1473,40 @@ export default function BookingFlow({
           {loadingSlots ? (
             <p className="text-sm" style={{ color: C.faded }}>Carregando horários...</p>
           ) : slots.length === 0 ? (
-            <p className="text-sm" style={{ color: C.faded }}>Sem horários disponíveis neste dia.</p>
+            slotsEmptyReason === 'duration' ? (
+              <div
+                className="rounded-2xl p-4"
+                style={{
+                  background: isDark ? 'rgba(245,158,11,0.10)' : 'rgb(255,251,235)',
+                  border: `1px solid ${isDark ? 'rgba(245,158,11,0.25)' : 'rgb(254,215,170)'}`,
+                }}
+              >
+                <p className="text-sm font-semibold mb-1.5" style={{ color: '#D97706' }}>
+                  Sem horário pra {formatDuration(totalDuration)} de serviço neste dia.
+                </p>
+                <p className="text-xs leading-relaxed" style={{ color: C.mute }}>
+                  A soma dos serviços que você escolheu é maior do que cabe nos períodos disponíveis.
+                </p>
+                <p className="text-xs leading-relaxed mt-2" style={{ color: C.mute }}>
+                  Tente <strong style={{ color: C.text }}>tirar 1 ou 2 serviços</strong> acima, ou <strong style={{ color: C.text }}>escolha outro dia</strong> com mais janela livre.
+                </p>
+              </div>
+            ) : (
+              <div
+                className="rounded-2xl p-4"
+                style={{
+                  background: isDark ? 'rgba(148,163,184,0.10)' : 'rgb(248,250,252)',
+                  border: `1px solid ${isDark ? 'rgba(148,163,184,0.25)' : 'rgb(226,232,240)'}`,
+                }}
+              >
+                <p className="text-sm font-semibold mb-1.5" style={{ color: C.text }}>
+                  Sem horários livres neste dia.
+                </p>
+                <p className="text-xs leading-relaxed" style={{ color: C.mute }}>
+                  Os horários disponíveis já foram reservados. Tente <strong style={{ color: C.text }}>outro dia</strong> acima.
+                </p>
+              </div>
+            )
           ) : (
             <>
             {waitlistDone && waitlistSlot && (
