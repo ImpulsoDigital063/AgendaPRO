@@ -213,6 +213,14 @@ html.admin-theme-switching *::after {
   color: var(--admin-text);
   min-height: 100svh;
 }
+
+/* Páginas com <main minHeight: 100svh> dentro do admin-shell ignoram o
+   padding-bottom externo do layout — bottom nav fixa cobre o último
+   conteúdo. Garante 120px de espaço dentro do main pra cobrir nav
+   (~80px) + safe-area + folga visual. */
+.admin-shell main {
+  padding-bottom: calc(120px + env(safe-area-inset-bottom));
+}
 .admin-shell::before {
   content: '';
   position: fixed;

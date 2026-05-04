@@ -323,9 +323,23 @@ export default function BookingFlow({
     // Se prefill já tem o profissional certo, pula a etapa "professional"
     if (prefill && professional?.id === prefill.professionalId) {
       setStep('date')
-      return
+    } else {
+      setStep(hasMultipleProfessionals ? 'professional' : 'date')
     }
-    setStep(hasMultipleProfessionals ? 'professional' : 'date')
+    // Scroll suave pra próxima seção — UX feedback claro de "avancei".
+    // Sem isso, header muda mas serviços continuam visíveis e cliente
+    // acha que não saiu da tela.
+    if (typeof window !== 'undefined') {
+      requestAnimationFrame(() => {
+        const targetId = hasMultipleProfessionals ? 'profissionais-list' : 'datas-list'
+        const el = document.getElementById(targetId)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+      })
+    }
   }
 
   function handleSelectProfessional(prof: Professional) {
@@ -1347,7 +1361,7 @@ export default function BookingFlow({
 
       {/* ETAPA 1 — ESCOLHER PROFISSIONAL (só se tiver mais de um) */}
       {hasMultipleProfessionals && (step === 'professional' || step === 'date' || step === 'time' || step === 'form') && (
-        <section>
+        <section id="profissionais-list">
           {step !== 'professional' && (
             <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
               Profissional

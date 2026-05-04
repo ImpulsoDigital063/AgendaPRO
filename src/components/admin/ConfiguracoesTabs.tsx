@@ -10,8 +10,14 @@ import WhatsAppQRTab from './WhatsAppQRTab'
 import NegocioTab from './NegocioTab'
 import FidelidadeTab from './FidelidadeTab'
 import AparenciaTab from './AparenciaTab'
+import PlanoCard from './PlanoCard'
 
-type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'whatsapp' | 'fidelidade' | 'aparencia'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'plano'
+
+// Alias retrocompat: URLs antigas com ?tab=whatsapp continuam funcionando.
+const TAB_ALIASES: Record<string, Tab> = {
+  whatsapp: 'qr-code',
+}
 
 type Props = {
   business: Business
@@ -33,9 +39,13 @@ export default function ConfiguracoesTabs({
   subscriptionPlan,
 }: Props) {
   const searchParams = useSearchParams()
-  const tabParam = searchParams.get('tab') as Tab | null
-  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'whatsapp', 'fidelidade', 'aparencia']
-  const [activeTab, setActiveTab] = useState<Tab>(tabParam && validTabs.includes(tabParam) ? tabParam : 'negocio')
+  const rawTab = searchParams.get('tab')
+  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'plano']
+  // Resolve alias antes de validar (ex: ?tab=whatsapp → 'qr-code')
+  const resolvedTab = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null
+  const [activeTab, setActiveTab] = useState<Tab>(
+    resolvedTab && validTabs.includes(resolvedTab as Tab) ? (resolvedTab as Tab) : 'negocio'
+  )
   const [professionals, setProfessionals] = useState(initialProfessionals)
   // Rewards lifted pro parent: FidelidadeTab desmonta ao trocar de
   // aba — se mantivesse o useState dentro dele, recompensa criada
@@ -71,14 +81,16 @@ export default function ConfiguracoesTabs({
     { id: 'horarios', label: 'Horários' },
     { id: 'fidelidade', label: 'Fidelidade' },
     { id: 'aparencia', label: 'Aparência' },
-    { id: 'whatsapp', label: 'QR Code' },
+    { id: 'qr-code', label: 'QR Code' },
+    { id: 'plano', label: 'Plano' },
   ]
 
   return (
     <div>
-      {/* Tab bar */}
+      {/* Tab bar — flex-wrap em mobile (8 tabs não cabem em 1 linha em
+          viewport <430px). Em desktop fica linha única naturalmente. */}
       <div
-        className="flex rounded-2xl p-1.5 mb-6 overflow-x-auto gap-1"
+        className="flex flex-wrap rounded-2xl p-1.5 mb-6 gap-1"
         style={{
           background: 'var(--admin-surface)',
           border: '1px solid var(--admin-border)',
@@ -158,7 +170,7 @@ export default function ConfiguracoesTabs({
         />
       )}
 
-      {activeTab === 'whatsapp' && (
+      {activeTab === 'qr-code' && (
         <WhatsAppQRTab
           business={business}
           onNavigateToNegocio={() => {
@@ -167,6 +179,8 @@ export default function ConfiguracoesTabs({
           }}
         />
       )}
+
+      {activeTab === 'plano' && <PlanoCard />}
     </div>
   )
 }
