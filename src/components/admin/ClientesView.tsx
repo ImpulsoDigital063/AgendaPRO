@@ -292,7 +292,9 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         <EmptyFiltered search={search} onClear={() => { setSearch(''); setFilter('todos') }} />
       ) : (
         <div className="space-y-2.5">
-          {(showAllClients ? filtered : filtered.slice(0, 20)).map((c, i) => (
+          {(showAllClients ? filtered : filtered.slice(0, 20)).map((c, i) => {
+            const hasActiveCoupon = !!(c.customer_id && activeCustomerIds.includes(c.customer_id))
+            return (
             <div
               key={c.id}
               className="admin-enter"
@@ -301,12 +303,13 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
               <ClienteCard
                 client={c}
                 bookingUrl={bookingUrl}
+                hasActiveCoupon={hasActiveCoupon}
                 onOpenDetail={() => {
                   if (c.customer_id) setDetailCustomerId(c.customer_id)
                 }}
               />
             </div>
-          ))}
+          )})}
           {!showAllClients && filtered.length > 20 && (
             <button
               type="button"
@@ -534,10 +537,12 @@ function KpiCell({ label, value, tone }: { label: string; value: number; tone: '
 function ClienteCard({
   client,
   bookingUrl,
+  hasActiveCoupon = false,
   onOpenDetail,
 }: {
   client: Cliente
   bookingUrl: string
+  hasActiveCoupon?: boolean
   onOpenDetail?: () => void
 }) {
   const tier = tierFor(client)
@@ -584,6 +589,20 @@ function ClienteCard({
               >
                 <IconSparkles size={10} />
                 {client.total_points} pts
+              </span>
+            )}
+            {hasActiveCoupon && (
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                style={{
+                  background: 'rgba(245,158,11,0.15)',
+                  color: '#D97706',
+                  border: '1px solid rgba(245,158,11,0.3)',
+                }}
+                title="Cliente já recebeu cupom ativo de reativação"
+              >
+                <span aria-hidden>🎁</span>
+                Cupom ativo
               </span>
             )}
           </div>

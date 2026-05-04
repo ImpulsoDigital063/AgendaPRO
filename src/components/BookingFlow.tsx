@@ -326,20 +326,10 @@ export default function BookingFlow({
     } else {
       setStep(hasMultipleProfessionals ? 'professional' : 'date')
     }
-    // Scroll suave pra próxima seção — UX feedback claro de "avancei".
-    // Sem isso, header muda mas serviços continuam visíveis e cliente
-    // acha que não saiu da tela.
-    if (typeof window !== 'undefined') {
-      requestAnimationFrame(() => {
-        const targetId = hasMultipleProfessionals ? 'profissionais-list' : 'datas-list'
-        const el = document.getElementById(targetId)
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        } else {
-          window.scrollTo({ top: 0, behavior: 'smooth' })
-        }
-      })
-    }
+    // Scroll é disparado via useEffect[step] abaixo — requestAnimationFrame
+    // inline aqui era chamado ANTES do React re-renderizar a próxima
+    // seção (id ainda não existe no DOM). useEffect roda APÓS o
+    // re-render = scroll funciona consistente.
   }
 
   function handleSelectProfessional(prof: Professional) {
@@ -349,6 +339,30 @@ export default function BookingFlow({
     setSlots([])
     setStep('date')
   }
+
+  // Auto-scroll quando o step avança — feedback visual de "avancei".
+  // useEffect roda APÓS o re-render, então o id-target da seção
+  // próxima já existe no DOM. (Tentativa anterior com requestAnimationFrame
+  // inline em handleProceedFromServices falhava: scroll era chamado antes
+  // do React renderizar a nova seção.)
+  const prevStepRef = useRef<Step>(step)
+  useEffect(() => {
+    const prev = prevStepRef.current
+    prevStepRef.current = step
+    if (prev === step) return  // ignora init
+    // Só scrolla em transições "pra frente" (service→professional, etc)
+    let targetId: string | null = null
+    if (prev === 'service' && step === 'professional') targetId = 'profissionais-list'
+    else if ((prev === 'service' || prev === 'professional') && step === 'date') targetId = 'datas-list'
+    else if (prev === 'date' && step === 'time') targetId = 'horarios-disponiveis'
+    else if (prev === 'time' && step === 'form') targetId = 'form-cliente'
+    if (!targetId) return
+    // setTimeout > requestAnimationFrame — garante que React commitou DOM
+    setTimeout(() => {
+      const el = document.getElementById(targetId!)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+  }, [step])
 
   // Auto-seleção da data quando vem da fila (após user escolher serviço).
   useEffect(() => {
@@ -1432,14 +1446,26 @@ export default function BookingFlow({
 
       {/* ETAPA 2 — ESCOLHER DATA */}
       {(step === 'date' || step === 'time' || step === 'form') && (
-        <section>
+        <section id="datas-list">
           {step !== 'date' && (
             <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
               Dia
             </h2>
           )}
           {availableDates.length === 0 ? (
-            <p className="text-sm" style={{ color: C.faded }}>Nenhuma data disponível nos próximos 14 dias.</p>
+            <div className="rounded-2xl p-4" style={{
+              background: isDark ? 'rgba(245,158,11,0.10)' : 'rgb(255,251,235)',
+              border: `1px solid ${isDark ? 'rgba(245,158,11,0.25)' : 'rgb(254,215,170)'}`,
+            }}>
+              <p className="text-sm font-semibold mb-1.5" style={{ color: '#D97706' }}>
+                Sem horário disponível agora.
+              </p>
+              <p className="text-xs leading-relaxed" style={{ color: C.mute }}>
+                Já passou do expediente de hoje, ou nenhum profissional tem horários
+                cadastrados pra os próximos 14 dias. Tente entrar em contato direto
+                pelo WhatsApp do estabelecimento.
+              </p>
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-2">
               {availableDates.map((date) => {

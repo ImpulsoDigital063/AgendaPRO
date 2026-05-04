@@ -198,7 +198,7 @@ export default function ReativarSumidosView({
             Campanha criada
           </p>
           <p className="text-xl font-extrabold mt-1 leading-tight" style={{ color: 'var(--admin-text)' }}>
-            {campaignResult.length} cupom{campaignResult.length === 1 ? '' : 's'} pronto{campaignResult.length === 1 ? '' : 's'}
+            {campaignResult.length} {campaignResult.length === 1 ? 'cupom pronto' : 'cupons prontos'}
           </p>
           <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
             Toque em &quot;WhatsApp&quot; em cada cliente pra abrir conversa pré-formatada. Você confirma o envio.
