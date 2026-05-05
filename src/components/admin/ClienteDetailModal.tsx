@@ -25,6 +25,23 @@ type Appointment = {
   professional: string | null
 }
 
+type PointsTransaction = {
+  id: string
+  points: number
+  reason: 'service' | 'referral' | 'review' | 'manual' | 'punctuality' | 'redemption'
+  created_at: string
+  appointment_id: string | null
+}
+
+const REASON_LABEL: Record<PointsTransaction['reason'], string> = {
+  service: 'Atendimento',
+  referral: 'Indicação',
+  review: 'Avaliação Google',
+  manual: 'Ajuste manual',
+  punctuality: 'Pontualidade',
+  redemption: 'Resgate',
+}
+
 type Props = {
   customerId: string
   onClose: () => void
@@ -57,6 +74,7 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const [loading, setLoading] = useState(true)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [history, setHistory] = useState<Appointment[]>([])
+  const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pointsDelta, setPointsDelta] = useState(10)
   const [adjustingPoints, setAdjustingPoints] = useState(false)
@@ -80,6 +98,7 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
         if (cancelled) return
         setCustomer(data.customer)
         setHistory(data.history || [])
+        setPointsHistory(data.pointsHistory || [])
         setEditName(data.customer.name)
         setEditEmail(data.customer.email || '')
       } catch (e) {
@@ -384,6 +403,60 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                           <p className="text-sm font-bold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
                             {formatPrice(apt.price)}
                           </p>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              {/* Histórico de pontos — extrato auditavel (CIC #3) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                    Histórico de pontos
+                  </p>
+                  <span className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                    {pointsHistory.length === 50 ? '50 últimos' : `${pointsHistory.length} transaç${pointsHistory.length === 1 ? 'ão' : 'ões'}`}
+                  </span>
+                </div>
+
+                {pointsHistory.length === 0 ? (
+                  <p className="text-xs text-center py-6 rounded-xl" style={{ color: 'var(--admin-text-faded)', background: 'var(--admin-input-bg)' }}>
+                    Cliente ainda não acumulou pontos
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {pointsHistory.map((tx) => {
+                      const isPositive = tx.points > 0
+                      return (
+                        <li
+                          key={tx.id}
+                          className="px-3 py-2 rounded-xl flex items-center gap-3"
+                          style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}
+                        >
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0"
+                            style={{
+                              background: isPositive ? 'rgba(16,185,129,0.18)' : 'rgba(239,68,68,0.18)',
+                              color: isPositive ? '#10B981' : '#EF4444',
+                            }}
+                          >
+                            {REASON_LABEL[tx.reason] ?? tx.reason}
+                          </span>
+                          <span className="text-[11px] flex-1" style={{ color: 'var(--admin-text-faded)' }}>
+                            {new Date(tx.created_at).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                          <span
+                            className="text-sm font-bold tabular-nums flex-shrink-0"
+                            style={{ color: isPositive ? '#10B981' : '#EF4444' }}
+                          >
+                            {isPositive ? '+' : ''}{tx.points} pts
+                          </span>
                         </li>
                       )
                     })}

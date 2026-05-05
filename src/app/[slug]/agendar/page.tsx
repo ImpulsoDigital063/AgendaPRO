@@ -30,7 +30,7 @@ export default async function AgendarPage({
 
   if (!business) notFound()
 
-  const { data: professionals } = await supabase
+  const { data: allProfessionals } = await supabase
     .from('professionals')
     .select('id, name, photo_url, active, business_id, created_at')
     .eq('business_id', business.id)
@@ -41,7 +41,7 @@ export default async function AgendarPage({
     supabase
       .from('working_hours')
       .select('id, professional_id, day_of_week, start_time, end_time, slot_duration')
-      .in('professional_id', (professionals || []).map((p) => p.id)),
+      .in('professional_id', (allProfessionals || []).map((p) => p.id)),
     supabase
       .from('services')
       .select('id, name, description, price, duration_minutes, points, active, business_id')
@@ -49,6 +49,17 @@ export default async function AgendarPage({
       .eq('active', true)
       .order('name'),
   ])
+
+  // Filtra profissionais SEM working_hours configurado — eles nao
+  // teriam slot disponivel mesmo se cliente os escolhesse, gerando
+  // tela vazia. CIC rodada 4 reportou (item 8.3): prof "Teste QA"
+  // sem horarios aparecia no fluxo publico, cliente clicava e via
+  // mensagem generica "Sem horario disponivel". Filtro upstream =
+  // melhor UX (cliente nao chega nessa parede).
+  const profsWithHours = new Set(
+    (workingHours || []).map((wh) => wh.professional_id)
+  )
+  const professionals = (allProfessionals || []).filter((p) => profsWithHours.has(p.id))
 
   // Prefill vindo do email da fila de espera (?w=<waitlist_id>).
   // Busca dados do registro + checa se o cliente já tem outro agendamento no mesmo dia.

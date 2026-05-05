@@ -109,6 +109,57 @@ function formatDuration(min: number) {
   return m === 0 ? `${h}h` : `${h}h ${m}min`
 }
 
+/**
+ * Card compacto que substitui uma section ja preenchida.
+ * Mostra label + resumo curto + botao "editar" que volta o step.
+ *
+ * Padrao Reserva/Booksy: depois que cliente escolhe servico, a section
+ * inteira colapsa em chip compacto. Sem isso, no step 5 cliente ve
+ * servicos+prof+datas+horario+form todos empilhados — scroll infinito.
+ *
+ * Cores ficam consistentes com C (paleta dark/light unificada).
+ */
+function CollapsedStepCard({
+  label,
+  summary,
+  onEdit,
+  C,
+}: {
+  label: string
+  summary: string
+  onEdit: () => void
+  C: { surface: string; border: string; text: string; mute: string }
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onEdit}
+      className="w-full px-4 py-3 rounded-2xl border text-left transition-all hover:opacity-90 flex items-center gap-3"
+      style={{
+        background: C.surface,
+        borderColor: C.border,
+        color: C.text,
+      }}
+    >
+      <span
+        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981' }}
+      >
+        <IconCheck size={14} strokeWidth={3} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: C.mute }}>
+          {label}
+        </p>
+        <p className="text-sm font-semibold truncate">{summary}</p>
+      </div>
+      <span className="text-xs font-semibold flex-shrink-0" style={{ color: C.mute }}>
+        editar
+      </span>
+    </button>
+  )
+}
+
 function GoogleGLogo({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
@@ -1382,8 +1433,22 @@ export default function BookingFlow({
         </div>
       )}
 
+      {/* CHIP — Servicos colapsados quando step ja avancou */}
+      {hasServices && step !== 'service' && selectedServices.length > 0 && (
+        <CollapsedStepCard
+          label="Serviços"
+          summary={
+            selectedServices.length === 1
+              ? `${selectedServices[0].name}${selectedServices[0].price ? ` · ${formatPrice(selectedServices[0].price)}` : ''}`
+              : `${selectedServices.length} serviços · ${formatDuration(totalDuration)}${hasPrice ? ` · ${formatPrice(totalPrice)}` : ''}`
+          }
+          onEdit={() => setStep('service')}
+          C={C}
+        />
+      )}
+
       {/* ETAPA 0 — ESCOLHER SERVIÇOS (múltipla seleção) */}
-      {hasServices && (
+      {hasServices && step === 'service' && (
         <section>
           <p className="text-xs mb-3" style={{ color: C.mute }}>
             Selecione um ou mais serviços abaixo
@@ -1467,8 +1532,18 @@ export default function BookingFlow({
         </section>
       )}
 
+      {/* CHIP — Profissional colapsado quando step ja avancou */}
+      {hasMultipleProfessionals && (step === 'date' || step === 'time' || step === 'form') && selectedProfessional && (
+        <CollapsedStepCard
+          label="Profissional"
+          summary={selectedProfessional.name}
+          onEdit={() => setStep('professional')}
+          C={C}
+        />
+      )}
+
       {/* ETAPA 1 — ESCOLHER PROFISSIONAL (só se tiver mais de um) */}
-      {hasMultipleProfessionals && (step === 'professional' || step === 'date' || step === 'time' || step === 'form') && (
+      {hasMultipleProfessionals && step === 'professional' && (
         <section id="profissionais-list">
           {step !== 'professional' && (
             <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
@@ -1539,7 +1614,21 @@ export default function BookingFlow({
       )}
 
       {/* ETAPA 2 — ESCOLHER DATA */}
-      {(step === 'date' || step === 'time' || step === 'form') && (
+      {/* CHIP — Data colapsada quando step ja avancou */}
+      {(step === 'time' || step === 'form') && selectedDate && (
+        <CollapsedStepCard
+          label="Data"
+          summary={selectedDate.toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+          })}
+          onEdit={() => setStep('date')}
+          C={C}
+        />
+      )}
+
+      {step === 'date' && (
         <section id="datas-list">
           {step !== 'date' && (
             <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
@@ -1612,7 +1701,17 @@ export default function BookingFlow({
       )}
 
       {/* ETAPA 2 — ESCOLHER HORÁRIO */}
-      {(step === 'time' || step === 'form') && selectedDate && (
+      {/* CHIP — Horario colapsado quando step ja avancou pra form */}
+      {step === 'form' && selectedTime && (
+        <CollapsedStepCard
+          label="Horário"
+          summary={selectedTime}
+          onEdit={() => setStep('time')}
+          C={C}
+        />
+      )}
+
+      {step === 'time' && selectedDate && (
         <section id="horarios-disponiveis">
           <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.mute }}>
             Horários disponíveis —{' '}

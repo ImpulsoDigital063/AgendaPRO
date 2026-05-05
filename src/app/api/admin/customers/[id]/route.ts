@@ -91,6 +91,25 @@ export async function GET(
     professional: a.professional_id ? profMap.get(a.professional_id) ?? null : null,
   }))
 
+  // Historico de pontos — extrato auditavel de cada delta + reason.
+  // CIC rodada 4 reportou bug #3: cliente tinha saldo +40pts inexplicaveis.
+  // Sem extrato, dono nao consegue auditar. Agora cada transacao
+  // (servico/referral/review/manual) aparece listada.
+  const { data: pointsTx } = await supabase
+    .from('points_transactions')
+    .select('id, points, reason, created_at, appointment_id')
+    .eq('customer_id', customer.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const pointsHistory = (pointsTx || []).map((t) => ({
+    id: t.id,
+    points: t.points,
+    reason: t.reason as 'service' | 'referral' | 'review' | 'manual' | 'punctuality' | 'redemption',
+    created_at: t.created_at,
+    appointment_id: t.appointment_id,
+  }))
+
   return NextResponse.json({
     customer: {
       id: customer.id,
@@ -102,6 +121,7 @@ export async function GET(
       created_at: customer.created_at,
     },
     history,
+    pointsHistory,
   })
 }
 
