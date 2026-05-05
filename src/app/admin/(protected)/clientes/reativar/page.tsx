@@ -84,6 +84,33 @@ export default async function ReativarSumidosPage() {
     ).length
   }
 
+  // Cupons "orfaos": ativos atribuidos a customer que NAO esta mais sumido
+  // (cliente pegou cupom, depois reativou-se sozinho). CIC NB-3:
+  // contador "8 ativos" misturava esses, dono nao entendia diferenca.
+  const sumidoCustomerIds = new Set<string>()
+  if (sumidoClientIds.length > 0) {
+    const { data: sumidoClients } = await supabase
+      .from('clients')
+      .select('id, phone')
+      .in('id', sumidoClientIds)
+    const sumidoPhones = (sumidoClients || []).map((c) => c.phone)
+    const { data: sumidoCustomers } = sumidoPhones.length > 0
+      ? await supabase
+          .from('customers')
+          .select('id')
+          .eq('business_id', business.id)
+          .in('phone', sumidoPhones)
+      : { data: [] }
+    for (const c of sumidoCustomers || []) sumidoCustomerIds.add(c.id)
+  }
+  const nowIsoForOrphan = new Date().toISOString()
+  let orphanCoupons = 0
+  for (const c of existingCoupons || []) {
+    const isActive = !c.used_at && c.expires_at > nowIsoForOrphan
+    const ownerStillSumido = c.customer_id && sumidoCustomerIds.has(c.customer_id)
+    if (isActive && !ownerStillSumido) orphanCoupons++
+  }
+
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -109,6 +136,7 @@ export default async function ReativarSumidosPage() {
             existingCoupons={existingCoupons || []}
             sumidosTotal={sumidosTotal}
             sumidosWithoutCoupon={sumidosWithoutCoupon}
+            orphanCoupons={orphanCoupons}
           />
         </div>
       </div>

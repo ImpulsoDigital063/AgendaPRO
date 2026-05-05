@@ -26,6 +26,7 @@ type Props = {
   }[]
   sumidosTotal: number
   sumidosWithoutCoupon: number
+  orphanCoupons: number
 }
 
 type Coupon = {
@@ -59,6 +60,7 @@ export default function ReativarSumidosView({
   existingCoupons,
   sumidosTotal,
   sumidosWithoutCoupon,
+  orphanCoupons,
 }: Props) {
   const router = useRouter()
   const [step, setStep] = useState<'config' | 'send'>('config')
@@ -326,7 +328,11 @@ export default function ReativarSumidosView({
               <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--admin-accent)' }}>
                 {couponStats.active}
               </p>
-              <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>Ativos</p>
+              <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                Ativos{orphanCoupons > 0 && (
+                  <span title="Cliente reativou-se mas cupom segue válido"> · {orphanCoupons} órfão{orphanCoupons === 1 ? '' : 's'}</span>
+                )}
+              </p>
             </div>
             <div>
               <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--admin-success, #10B981)' }}>
