@@ -11,17 +11,19 @@
 -- 2 appointments com o MESMO professional_id e ranges de tempo
 -- sobrepostos. Bloqueio acontece no banco — race condition impossivel.
 --
--- Usa btree_gist + tstzrange. Mesma data + start/end_time formam o
--- range. Operador && (overlap) garante exclusao mutual.
+-- IMPORTANTE: se ja existem overlaps no banco (vindos de seed antigo
+-- ou bookings pre-fix), a constraint nao pode ser criada ate limpar.
+-- Esta migration tem 3 etapas: (1) habilita extension, (2) cancela
+-- overlaps existentes mantendo o mais antigo, (3) cria a constraint.
 
--- Habilita extension necessaria pra usar `=` operator com gist
+-- ============================================================
+-- 1. Extension necessaria pra `=` operator com gist
+-- ============================================================
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
--- Coluna gerada com o range completo do appointment.
--- - Se appointment_date = '2026-05-04', start_time = '14:00', end_time = '14:30'
---   → range = ['2026-05-04 14:00', '2026-05-04 14:30')
--- - Inclusivo no inicio, exclusivo no fim — slots adjacentes (14:00-14:30
---   e 14:30-15:00) NAO overlapam.
+-- ============================================================
+-- 2. Coluna gerada com o range completo do appointment
+-- ============================================================
 ALTER TABLE appointments
   ADD COLUMN IF NOT EXISTS appointment_range tstzrange
   GENERATED ALWAYS AS (
@@ -32,9 +34,41 @@ ALTER TABLE appointments
     )
   ) STORED;
 
--- Constraint: 2 appointments com mesmo prof + ranges sobrepostos =
--- erro 23P01 (exclusion_violation). So aplica a status ativos —
--- cancelados/no_show podem coexistir com novos no mesmo slot.
+-- ============================================================
+-- 3. LIMPEZA — cancela overlaps existentes pra constraint poder
+--    ser criada. Mantem o appointment de ID MENOR (criado antes).
+--    Marca duplicatas como 'cancelled' (auditavel — nao apaga).
+-- ============================================================
+UPDATE appointments AS a
+SET status = 'cancelled'
+WHERE status IN ('pending', 'confirmed', 'completed')
+  AND EXISTS (
+    SELECT 1
+    FROM appointments AS b
+    WHERE b.id <> a.id
+      AND b.id < a.id  -- "b" e mais antigo, "a" e duplicata
+      AND b.status IN ('pending', 'confirmed', 'completed')
+      AND b.professional_id = a.professional_id
+      AND b.appointment_date = a.appointment_date
+      AND tstzrange(
+            (b.appointment_date::timestamp + b.start_time::time) AT TIME ZONE 'America/Sao_Paulo',
+            (b.appointment_date::timestamp + b.end_time::time)   AT TIME ZONE 'America/Sao_Paulo',
+            '[)'
+          ) && tstzrange(
+            (a.appointment_date::timestamp + a.start_time::time) AT TIME ZONE 'America/Sao_Paulo',
+            (a.appointment_date::timestamp + a.end_time::time)   AT TIME ZONE 'America/Sao_Paulo',
+            '[)'
+          )
+  );
+
+-- Diagnostico: quantos foram cancelados pela limpeza acima.
+-- Roda essa query separada apos aplicar pra ver o impacto:
+--   SELECT COUNT(*) FROM appointments WHERE status='cancelled'
+--    AND updated_at::date = CURRENT_DATE;
+
+-- ============================================================
+-- 4. Constraint atomico — bloqueia overlap futuro no banco
+-- ============================================================
 ALTER TABLE appointments
   DROP CONSTRAINT IF EXISTS no_overlap_appointments;
 
@@ -46,8 +80,9 @@ ALTER TABLE appointments
   )
   WHERE (status IN ('pending', 'confirmed', 'completed'));
 
--- Index pra performance em queries por professional_id + range
--- (lookup de slots disponiveis usa esse padrao).
+-- ============================================================
+-- 5. Index pra performance em queries por prof + range
+-- ============================================================
 CREATE INDEX IF NOT EXISTS idx_appointments_prof_range
   ON appointments USING gist (professional_id, appointment_range)
   WHERE status IN ('pending', 'confirmed', 'completed');
