@@ -25,7 +25,7 @@ export default function TrocarSenhaForm() {
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('As senhas nao coincidem.')
+      setError('As senhas não coincidem.')
       return
     }
 
@@ -96,7 +96,7 @@ export default function TrocarSenhaForm() {
               <div className="text-center mb-2">
                 <h2 className="text-lg font-bold text-white">Crie sua nova senha</h2>
                 <p className="text-sm text-slate-400 mt-1">
-                  Sua senha atual e temporaria. Troque agora para manter sua conta segura.
+                  Sua senha atual é temporária. Troque agora pra manter sua conta segura.
                 </p>
               </div>
 

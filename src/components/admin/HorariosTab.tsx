@@ -197,6 +197,7 @@ export default function HorariosTab({
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [showHelp, setShowHelp] = useState(false)
 
   const [confirmDayOff, setConfirmDayOff] = useState<number | null>(null)
@@ -623,6 +624,7 @@ export default function HorariosTab({
   async function handleSave() {
     if (!selectedProfId || saving) return
     setSaving(true)
+    setSaveError(null)
 
     const hoursPayload = buildHoursArray(schedule)
 
@@ -634,7 +636,7 @@ export default function HorariosTab({
 
     if (error) {
       console.error('[handleSave] RPC error:', error)
-      alert('Erro ao salvar horários: ' + (error.message || 'tente novamente'))
+      setSaveError(error.message || 'Erro ao salvar horários — tente novamente.')
       setSaving(false)
       return
     }
@@ -1129,6 +1131,20 @@ export default function HorariosTab({
           )
         })}
       </div>
+
+      {saveError && (
+        <div
+          role="alert"
+          className="rounded-xl px-3 py-2.5 text-sm"
+          style={{
+            background: 'color-mix(in srgb, var(--admin-danger, #EF4444) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--admin-danger, #EF4444) 35%, transparent)',
+            color: 'var(--admin-danger, #FCA5A5)',
+          }}
+        >
+          {saveError}
+        </div>
+      )}
 
       <StickyActionBar
         dirty={isDirty}

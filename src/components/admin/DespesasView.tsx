@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import FinancePeriodTabs from './FinancePeriodTabs'
+import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import { IconClose } from '@/components/ui/Icon'
 import type { Expense, ExpenseCategory } from '@/lib/types'
 
@@ -284,6 +285,7 @@ function ExpenseFormModal({
   const [notes, setNotes] = useState(expense?.notes || '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   async function submit() {
     setError(null)
@@ -323,11 +325,16 @@ function ExpenseFormModal({
 
   async function remove() {
     if (!isEdit) return
-    if (!confirm('Remover esta despesa?')) return
     setSubmitting(true)
     const res = await fetch(`/api/admin/expenses/${expense.id}`, { method: 'DELETE' })
     setSubmitting(false)
-    if (res.ok) onSuccess()
+    if (res.ok) {
+      setConfirmRemove(false)
+      onSuccess()
+    } else {
+      setError('Erro ao remover despesa')
+      setConfirmRemove(false)
+    }
   }
 
   return (
@@ -489,7 +496,7 @@ function ExpenseFormModal({
           {isEdit && (
             <button
               type="button"
-              onClick={remove}
+              onClick={() => setConfirmRemove(true)}
               disabled={submitting}
               className="px-4 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
               style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.28)' }}
@@ -521,6 +528,18 @@ function ExpenseFormModal({
           </button>
         </div>
       </div>
+
+      <ConfirmActionModal
+        open={confirmRemove}
+        title="Remover esta despesa?"
+        message="A despesa some do financeiro e não pode ser desfeita. Recibo/comprovante físico você guarda em outro lugar."
+        confirmLabel="Sim, remover"
+        cancelLabel="Voltar"
+        tone="danger"
+        loading={submitting}
+        onConfirm={remove}
+        onClose={() => setConfirmRemove(false)}
+      />
     </div>
   )
 }

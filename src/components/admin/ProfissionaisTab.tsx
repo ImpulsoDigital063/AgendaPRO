@@ -59,6 +59,7 @@ export default function ProfissionaisTab({
 
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [nameValue, setNameValue] = useState('')
@@ -229,10 +230,11 @@ export default function ProfissionaisTab({
 
   async function handleUploadPhoto(prof: Professional, file: File) {
     setUploadingId(prof.id)
+    setUploadError(null)
 
     const result = await compressImage(file, 'photo')
     if (!result.ok) {
-      alert(result.reason)
+      setUploadError(`${prof.name}: ${result.reason}`)
       setUploadingId(null)
       return
     }
@@ -241,12 +243,12 @@ export default function ProfissionaisTab({
     const ext = (optimized.name.split('.').pop() || 'webp').toLowerCase()
     const path = `${businessId}/${prof.id}.${ext}`
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadErr } = await supabase.storage
       .from('professional-photos')
       .upload(path, optimized, { upsert: true, cacheControl: '3600', contentType: optimized.type })
 
-    if (uploadError) {
-      alert('Erro ao enviar foto: ' + uploadError.message)
+    if (uploadErr) {
+      setUploadError(`Erro ao enviar foto de ${prof.name}: ${uploadErr.message}`)
       setUploadingId(null)
       return
     }
@@ -369,6 +371,28 @@ export default function ProfissionaisTab({
 
   return (
     <div className="space-y-3 pb-24 relative">
+      {uploadError && (
+        <div
+          role="alert"
+          className="rounded-xl px-3 py-2.5 text-sm flex items-start gap-2"
+          style={{
+            background: 'color-mix(in srgb, var(--admin-danger, #EF4444) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--admin-danger, #EF4444) 35%, transparent)',
+            color: 'var(--admin-danger, #FCA5A5)',
+          }}
+        >
+          <span className="flex-1">{uploadError}</span>
+          <button
+            type="button"
+            onClick={() => setUploadError(null)}
+            aria-label="Fechar"
+            className="opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <IconClose size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between gap-2 flex-wrap">

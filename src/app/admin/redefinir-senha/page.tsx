@@ -46,8 +46,18 @@ export default function RedefinirSenhaPage() {
     e.preventDefault()
     setError(null)
 
-    if (password.length < 6) {
-      setError('Use pelo menos 6 caracteres.')
+    // Mesmo padrão do cadastro — sem isso, criar conta exige forte mas resetar
+    // permitia voltar pra senha fraca depois.
+    if (password.length < 8) {
+      setError('Senha deve ter pelo menos 8 caracteres.')
+      return
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('Senha deve conter pelo menos uma letra maiúscula.')
+      return
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('Senha deve conter pelo menos um número.')
       return
     }
     if (password !== confirm) {
@@ -171,7 +181,7 @@ export default function RedefinirSenhaPage() {
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8, maiúscula e número"
                   required
                   className="w-full rounded-xl pl-4 pr-11 py-3 text-white placeholder-slate-500 focus:outline-none text-sm"
                   style={{
