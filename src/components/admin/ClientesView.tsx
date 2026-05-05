@@ -56,7 +56,6 @@ const VIP_THRESHOLD = 200
 // pra barbearia (cliente típico volta 15-30 dias). Em iteração
 // futura: tornar configurável por business ou ajustar por nicho.
 const SUMIDO_DAYS = 40
-const NOVO_DAYS = 30
 
 function formatPrice(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -73,9 +72,14 @@ function formatDate(dateStr: string) {
 
 function tierFor(c: Cliente): { key: 'vip' | 'novo' | 'sumido' | null; label: string; bg: string; color: string } | null {
   const sinceLast = c.lastDate ? daysBetween(c.lastDate) : null
-  // Usa firstDate (1ª visita) quando existe — refleete comportamento.
-  // Fallback pra created_at em órfãos.
-  const sinceCreated = daysBetween(c.firstDate || c.created_at)
+  // Tag "Novo" alinhada com KPI Novos/mes: cliente cuja PRIMEIRA visita
+  // (ou cadastro, fallback) foi NESTE MES corrente. Antes usava
+  // <=30 dias, divergia do KPI e CIC reportou (rodada 4) que filtro
+  // "Novos" mostrava 20 cards mas KPI dizia 1.
+  const ref = c.firstDate || c.created_at || ''
+  const now = new Date()
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const isNovoEsteMes = ref.startsWith(thisMonth)
 
   if (c.totalSpent >= VIP_THRESHOLD) {
     return {
@@ -93,7 +97,7 @@ function tierFor(c: Cliente): { key: 'vip' | 'novo' | 'sumido' | null; label: st
       color: 'var(--admin-text-faded)',
     }
   }
-  if (sinceCreated <= NOVO_DAYS) {
+  if (isNovoEsteMes) {
     return {
       key: 'novo',
       label: 'Novo',
@@ -190,14 +194,19 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
       case 'top':
         list = [...list].sort((a, b) => b.totalSpent - a.totalSpent)
         break
-      case 'novos':
-        list = [...list].filter((c) => daysBetween(c.firstDate || c.created_at) <= NOVO_DAYS)
+      case 'novos': {
+        // Mesma definicao do KPI Novos/mes — alinhamento garante que
+        // tag visual + filtro + KPI mostram o mesmo conjunto.
+        const now = new Date()
+        const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        list = [...list].filter((c) => (c.firstDate || c.created_at || '').startsWith(thisMonth))
         list.sort((a, b) => {
           const aRef = a.firstDate || a.created_at || ''
           const bRef = b.firstDate || b.created_at || ''
           return bRef.localeCompare(aRef)
         })
         break
+      }
       case 'sumidos':
         list = [...list].filter((c) => c.lastDate && daysBetween(c.lastDate) >= SUMIDO_DAYS)
         list.sort((a, b) => (a.lastDate || '').localeCompare(b.lastDate || ''))

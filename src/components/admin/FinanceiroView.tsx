@@ -38,14 +38,21 @@ const PERIODO_LABEL: Record<string, string> = {
 }
 
 export default function FinanceiroView({ appointments, periodo, totalExpenses = 0 }: Props) {
-  // Nova semantica:
-  // - Realizado = paid_at != null (dinheiro ja recebido, qualquer
-  //   metodo)
-  // - Em aberto = total_price > 0 + (confirmed ou completed) +
-  //   paid_at == null (atendimento confirmado, ainda nao pago).
-  //   Educacional: projeção + lembrete, NÃO cobrança formal.
-  // - Faturado = soma dos dois (todo dinheiro do periodo)
-  const pagos = appointments.filter((a) => a.paid_at && a.total_price)
+  // Semantica financeira:
+  // - Realizado = dinheiro QUE ENTROU em caixa (PIX/Dinheiro/Cartao).
+  //   Cortesia NAO conta — eh brinde, nao receita. Bug histórico
+  //   (CIC rodada 4): cortesia somava em Realizado E pagava comissao
+  //   ao profissional sobre R$0. Dono perdia dois lados.
+  // - Em aberto = total_price > 0 + status (confirmed/completed) +
+  //   paid_at == null (atendimento marcado, ainda nao pago).
+  // - Cortesias = brinde dado, conta separada (nao soma em receita).
+  // - Faturado = Realizado + Em aberto (cortesia exclusa).
+  const pagosReceita = appointments.filter(
+    (a) => a.paid_at && a.total_price && a.payment_method !== 'courtesy'
+  )
+  const cortesias = appointments.filter(
+    (a) => a.paid_at && a.total_price && a.payment_method === 'courtesy'
+  )
   const naoPagos = appointments.filter(
     (a) =>
       a.paid_at == null &&
@@ -53,23 +60,25 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
       a.total_price > 0 &&
       (a.status === 'confirmed' || a.status === 'completed')
   )
-  const ativos = [...pagos, ...naoPagos]
+  const ativos = [...pagosReceita, ...naoPagos]
 
-  const totalRealizado = pagos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const totalRealizado = pagosReceita.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  const totalCortesia = cortesias.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const totalPendente = naoPagos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const totalFaturado = ativos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const ticketMedio = ativos.length > 0 ? totalFaturado / ativos.length : 0
 
-  // Breakdown por método de pagamento (so dos pagos)
+  // Breakdown por método (recorta cortesia em metric separada acima).
+  // pagosReceita ja exclui courtesy — byMethod soma so PIX/cash/card.
   type MethodKey = 'pix' | 'cash' | 'card' | 'courtesy'
   const byMethod: Record<MethodKey, number> = { pix: 0, cash: 0, card: 0, courtesy: 0 }
-  for (const a of pagos) {
+  for (const a of pagosReceita) {
     if (a.payment_method) byMethod[a.payment_method] += a.total_price ?? 0
   }
+  byMethod.courtesy = totalCortesia // pra exibicao informativa
 
-  // Agrupamento por profissional — comissao baseada em PAGOS
-  // (so paga comissao do que ja entrou no caixa). Se pagamento ainda
-  // nao entrou, nao gera obrigacao de pagar comissao.
+  // Agrupamento por profissional — comissao baseada em PAGOS DE RECEITA
+  // (cortesia exclusa — profissional nao recebe comissao sobre brinde).
   type ProfEntry = {
     id: string
     name: string
@@ -78,7 +87,7 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
     count: number
   }
   const profMap: Record<string, ProfEntry> = {}
-  for (const a of pagos) {
+  for (const a of pagosReceita) {
     const prof = a.professional
     if (!prof) continue
     if ((prof.employment_type ?? 'commissioned') === 'employed') continue
@@ -114,16 +123,16 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
   // Sparkline: timeline de receita por dia no período. SVG inline,
   // sem libs externas. Pra periodos curtos (hoje), não mostra.
   const sparklinePoints = useMemo(() => {
-    if (periodo === 'hoje' || pagos.length === 0) return null
+    if (periodo === 'hoje' || pagosReceita.length === 0) return null
     const map = new Map<string, number>()
-    for (const a of pagos) {
+    for (const a of pagosReceita) {
       map.set(a.appointment_date, (map.get(a.appointment_date) || 0) + (a.total_price ?? 0))
     }
     // Ordena cronologicamente
     const sorted = Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
     if (sorted.length < 2) return null
     return sorted.map(([, v]) => v)
-  }, [pagos, periodo])
+  }, [pagosReceita, periodo])
 
   const rows: FinanceRow[] = appointments.map((a) => ({
     id: a.id,
@@ -172,7 +181,7 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
               {formatPrice(totalRealizado)}
             </p>
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-              {pagos.length} atendimento{pagos.length === 1 ? '' : 's'} pago{pagos.length === 1 ? '' : 's'}
+              {pagosReceita.length} atendimento{pagosReceita.length === 1 ? '' : 's'} pago{pagosReceita.length === 1 ? '' : 's'}
             </p>
             {sparklinePoints && sparklinePoints.length >= 2 && (
               <Sparkline values={sparklinePoints} color="#10B981" className="mt-2" />
@@ -201,7 +210,10 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
             // NÃO é cobrança formal nem dívida — é projeção + lembrete
             // pro dono confirmar o pagamento conforme entra. Sistema
             // é educacional, não emissor de cobrança.
-            urgentes > 0
+            // Sublabel "essa semana" so faz sentido em periodo "Mes"
+            // (CIC rodada 4: hardcoded "essa semana" mesmo no filtro
+            // "Hoje" confundia o dono).
+            urgentes > 0 && periodo === 'mes'
               ? `${urgentes} essa semana`
               : `${naoPagos.length} pendente${naoPagos.length === 1 ? '' : 's'}`
           }

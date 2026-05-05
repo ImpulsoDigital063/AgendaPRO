@@ -34,9 +34,12 @@ const PERIODO_LABEL: Record<string, string> = {
 }
 
 export default function ProfFinanceiroView({ appointments, periodo, commissionPercentage }: Props) {
-  // Mesma semantica do admin: comissao SO sobre pagos. Profissional
-  // so recebe comissao do que ja entrou no caixa do dono.
-  const pagos = appointments.filter((a) => a.paid_at && a.total_price)
+  // Comissao SO sobre receita de fato (PIX/Dinheiro/Cartao).
+  // Cortesia (brinde) NAO conta — bug historico (CIC rodada 4): profissional
+  // ganhava comissao sobre cortesia (R$0 de receita gera R$X de obrigacao).
+  const pagos = appointments.filter(
+    (a) => a.paid_at && a.total_price && a.payment_method !== 'courtesy'
+  )
   const naoPagos = appointments.filter(
     (a) =>
       a.paid_at == null &&

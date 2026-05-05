@@ -451,12 +451,16 @@ export default function BookingFlow({
       return
     }
 
+    // Inclui completed alem de pending/confirmed: agendamento futuro
+    // marcado completed por engano ainda ocupa slot. Se nao incluir,
+    // CIC reportou (rodada 4) que slots ocupados apareciam livres pro
+    // cliente publico — overbooking real possivel.
     const { data: existing } = await supabase
       .from('appointments')
       .select('start_time, end_time')
       .eq('professional_id', professional.id)
       .eq('appointment_date', formatDate(date))
-      .in('status', ['pending', 'confirmed'])
+      .in('status', ['pending', 'confirmed', 'completed'])
 
     const booked = (existing || []).map((a) => ({
       start: toMinutes(a.start_time.slice(0, 5)),
