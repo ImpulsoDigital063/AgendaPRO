@@ -116,7 +116,7 @@ export const PRICING_TEXT = {
   /** Comparativo de mercado em 1 linha */
   ancoragemMercado:
     `${PRICING.concorrentes.nomes.slice(0, 3).join(', ')} cobram ` +
-    `${PRICING.concorrentes.faixaMercado}. SmartAgenda é sem fidelidade — cancela quando quiser`,
+    `${PRICING.concorrentes.faixaMercado}. AgendaPRO é sem fidelidade — cancela quando quiser`,
 } as const
 
 /** Type helpers — pra TS sugerir os planos disponíveis */
