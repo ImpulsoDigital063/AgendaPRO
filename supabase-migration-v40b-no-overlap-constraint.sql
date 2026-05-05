@@ -9,6 +9,19 @@
 -- Extension pra `=` operator com gist
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
+-- Idempotente: garante coluna existe (caso v40a ainda nao tenha rodado
+-- ou erro 42703 anterior tenha revertido). Tem que vir antes da
+-- constraint que depende dela.
+ALTER TABLE appointments
+  ADD COLUMN IF NOT EXISTS appointment_range tstzrange
+  GENERATED ALWAYS AS (
+    tstzrange(
+      (appointment_date::timestamp + start_time::time) AT TIME ZONE 'America/Sao_Paulo',
+      (appointment_date::timestamp + end_time::time)   AT TIME ZONE 'America/Sao_Paulo',
+      '[)'
+    )
+  ) STORED;
+
 -- Constraint atomico — bloqueia overlap futuro no banco.
 -- Race condition em booking publico (BookingFlow.tsx) impossivel
 -- a partir daqui: SELECT-then-INSERT cliente-side e' substituido
