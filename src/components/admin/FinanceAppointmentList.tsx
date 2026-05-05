@@ -318,7 +318,10 @@ function PaymentMethodSheet({
   )
 }
 
-const INITIAL_LIMIT = 8
+// Aumentado de 8 -> 15 (CIC rodada 4 reportou: lista mostrava so 8 de 68
+// agendamentos do mes, dono nao percebeu botao "Ver mais"). 15 cobre uma
+// semana cheia em mid-volume e mantem performance em mobile.
+const INITIAL_LIMIT = 15
 
 /**
  * Formata cabeçalho de grupo de data: "HOJE", "ONTEM" ou
@@ -414,19 +417,20 @@ export default function FinanceAppointmentList({
         </div>
       ))}
 
-      {/* Ver mais — quando há agendamentos além do limite inicial */}
+      {/* Ver mais — botao destacado pra dono perceber que tem mais.
+          CIC reportou que perdia em meio ao scroll em volumes altos. */}
       {!showAll && escondidos > 0 && (
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="w-full py-2.5 rounded-xl text-xs font-semibold transition-colors"
+          className="w-full py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2"
           style={{
-            background: 'var(--admin-accent-bg)',
-            color: 'var(--admin-accent)',
-            border: '1px solid var(--admin-border)',
+            background: 'var(--admin-accent)',
+            color: '#FFFFFF',
+            boxShadow: '0 4px 12px -4px var(--admin-accent)',
           }}
         >
-          Ver mais {escondidos} agendamento{escondidos === 1 ? '' : 's'}
+          ↓ Ver mais {escondidos} agendamento{escondidos === 1 ? '' : 's'}
         </button>
       )}
 

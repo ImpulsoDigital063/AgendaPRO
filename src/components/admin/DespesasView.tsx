@@ -398,6 +398,23 @@ function ExpenseFormModal({
                 onChange={(e) => setOccurredAt(e.target.value)}
                 className="admin-input w-full px-3 py-2.5 text-sm"
               />
+              {/* Aviso quando data e' futura — CIC reportou que cadastrar
+                  despesa com data futura sumia da lista do mes corrente
+                  sem feedback. Cliente leigo achava que o sistema nao
+                  salvou. */}
+              {(() => {
+                const todayStr = new Date().toISOString().split('T')[0]
+                if (occurredAt > todayStr) {
+                  const future = new Date(occurredAt + 'T00:00:00')
+                  return (
+                    <p className="text-[11px] mt-1.5" style={{ color: '#F59E0B' }}>
+                      📅 Despesa agendada para {future.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}.
+                      Vai aparecer na lista do mês correspondente.
+                    </p>
+                  )
+                }
+                return null
+              })()}
             </div>
           </div>
 
