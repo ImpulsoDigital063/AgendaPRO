@@ -11,6 +11,7 @@ import {
   IconSparkles,
   IconArrowRight,
   IconInstagram,
+  IconPhone,
 } from '@/components/ui/Icon'
 
 export const dynamic = 'force-dynamic'
@@ -67,6 +68,26 @@ export default async function BusinessPage({
         code: coupon.code,
         discount_type: coupon.discount_type as 'fixed' | 'percent',
         discount_value: Number(coupon.discount_value),
+      }
+    }
+  }
+
+  // Valida ref (se vier ?ref=X) e busca nome do indicador.
+  // CIC rodada 6 reportou: ref era silencioso, indicado nao sabia que
+  // tinha sido indicado. Banner simetrico ao cupom da feedback ao
+  // indicado E confirma pro indicador que o link "vale".
+  let referrer: { name: string; pointsForReferral: number } | null = null
+  if (ref) {
+    const { data: refCustomer } = await supabase
+      .from('customers')
+      .select('name, business_id')
+      .eq('referral_code', ref)
+      .eq('business_id', business.id)
+      .maybeSingle()
+    if (refCustomer) {
+      referrer = {
+        name: refCustomer.name,
+        pointsForReferral: business.points_for_referral ?? 0,
       }
     }
   }
@@ -245,8 +266,14 @@ export default async function BusinessPage({
 
           <div className="flex flex-wrap gap-2 mt-4">
             {b.address && (
-              <span
-                className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+              // Endereco agora abre Google Maps em nova aba (CIC rodada 6:
+              // cliente em mobile clicava esperando ir pro Maps, era pill
+              // estatica). encodeURIComponent garante chars especiais.
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-transform hover:scale-105"
                 style={{
                   background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
                   color: muted,
@@ -254,14 +281,18 @@ export default async function BusinessPage({
               >
                 <IconMapPin size={12} />
                 {b.address}
-              </span>
+              </a>
             )}
             {b.phone && (
+              // Pill clara: WhatsApp e' a acao primaria pra barbearia
+              // (CIC rodada 6 reportou que cliente esperava tel: e abria
+              // WA — agora o icone WA explicita o destino).
               <a
                 href={`https://wa.me/55${b.phone.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-transform hover:scale-105"
+                title="Falar no WhatsApp"
+                className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-transform hover:scale-105 font-semibold"
                 style={{
                   background: hexToRgba(primary, 0.15),
                   color: primary,
@@ -269,6 +300,22 @@ export default async function BusinessPage({
                 }}
               >
                 <IconWhatsapp size={12} />
+                WhatsApp
+              </a>
+            )}
+            {b.phone && (
+              // Telefone com tel: pra quem prefere ligar (idoso, urgencia).
+              // Coexiste com WhatsApp acima — cliente escolhe canal.
+              <a
+                href={`tel:+55${b.phone.replace(/\D/g, '')}`}
+                title="Ligar"
+                className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-transform hover:scale-105"
+                style={{
+                  background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
+                  color: muted,
+                }}
+              >
+                <IconPhone size={12} />
                 {b.phone}
               </a>
             )}
@@ -351,6 +398,36 @@ export default async function BusinessPage({
             </div>
           )}
         </div>
+
+        {/* Banner de indicacao — quando vier ?ref=X valido. Simetrico
+            ao cupom: laranja (em vez de verde) pra distinguir visualmente.
+            CIC rodada 6 #3: feedback que faltava pro indicado/indicador. */}
+        {referrer && (
+          <div
+            className="rounded-2xl p-4 mb-3 flex items-center gap-3"
+            style={{
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06))',
+              border: '1px solid rgba(245,158,11,0.40)',
+            }}
+          >
+            <span
+              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl"
+              style={{ background: 'rgba(245,158,11,0.20)' }}
+            >
+              👋
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold leading-tight" style={{ color: '#F59E0B' }}>
+                Indicação de {referrer.name}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: muted }}>
+                {referrer.pointsForReferral > 0
+                  ? `Agende seu primeiro horário e ${referrer.name} ganha +${referrer.pointsForReferral} pts. Você também acumula pontos a partir do primeiro corte.`
+                  : `Agende seu horário — você acumula pontos pelos serviços daqui em diante.`}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Banner de cupom — quando vier ?cupom=X e for válido */}
         {appliedCoupon && (

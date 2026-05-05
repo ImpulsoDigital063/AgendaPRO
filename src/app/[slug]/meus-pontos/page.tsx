@@ -25,14 +25,16 @@ export default async function MeusPontosPage({
 
   if (!business) notFound()
 
-  const { data: cheapestReward } = await supabase
+  // Lista TODAS as recompensas ativas — antes era so cheapestReward
+  // (mais barata), mas CIC rodada 6 reportou que cliente publico via
+  // saldo "60 pts" sem saber pra que serve. Agora ve lista completa
+  // com gap motivacional ("faltam X pts pra Corte gratis").
+  const { data: rewards } = await supabase
     .from('rewards')
-    .select('id, name, points_required')
+    .select('id, name, points_required, description')
     .eq('business_id', business.id)
     .eq('active', true)
     .order('points_required', { ascending: true })
-    .limit(1)
-    .maybeSingle()
 
   const b = business as Business
   const primary = b.brand_primary || '#3B82F6'
@@ -91,11 +93,12 @@ export default async function MeusPontosPage({
           slug={b.slug}
           businessName={b.name}
           isDark={isDark}
-          cheapestReward={
-            cheapestReward
-              ? { name: cheapestReward.name, pointsRequired: cheapestReward.points_required }
-              : null
-          }
+          rewards={(rewards ?? []).map((r) => ({
+            id: r.id,
+            name: r.name,
+            pointsRequired: r.points_required,
+            description: r.description ?? null,
+          }))}
         />
 
         <div className="text-center space-y-2 py-8 px-4">

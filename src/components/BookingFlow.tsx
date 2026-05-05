@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { maskPhoneInput } from '@/lib/client-display'
 import {
   IconClock,
   IconSparkles,
@@ -2024,9 +2025,13 @@ export default function BookingFlow({
               </label>
               <input
                 type="tel"
+                inputMode="numeric"
                 value={clientPhone}
                 onChange={(e) => {
-                  setClientPhone(e.target.value)
+                  // Mascara progressiva: digitar 639 -> "(63) 9"
+                  // Consistencia com /meus-pontos (CIC rodada 6 reportou
+                  // bug ALTA UX: mascara so funcionava em /meus-pontos).
+                  setClientPhone(maskPhoneInput(e.target.value))
                   setReturningClient(null)
                 }}
                 onBlur={handlePhoneBlur}

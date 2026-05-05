@@ -24,14 +24,9 @@ type Transaction = {
   professional_id: string | null
 }
 
-function formatPhoneMask(raw: string) {
-  const d = raw.replace(/\D/g, '').slice(0, 11)
-  if (d.length === 0) return ''
-  if (d.length <= 2) return `(${d}`
-  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`
-  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
-}
+// Reusa helper compartilhado — antes tinha copia local que divergia
+// de /agendar (bug UX rodada 6).
+import { maskPhoneInput as formatPhoneMask } from '@/lib/client-display'
 
 type UpcomingAppointment = {
   id: string
@@ -72,19 +67,30 @@ const REASON_LABEL: Record<Transaction['reason'], string> = {
   redeem: 'Resgatou recompensa',
 }
 
+type RewardItem = {
+  id: string
+  name: string
+  pointsRequired: number
+  description: string | null
+}
+
 export default function MeusPontosClient({
   businessId,
   slug,
   businessName,
   isDark,
-  cheapestReward,
+  rewards,
 }: {
   businessId: string
   slug: string
   businessName: string
   isDark: boolean
-  cheapestReward: { name: string; pointsRequired: number } | null
+  rewards: RewardItem[]
 }) {
+  // Compat com codigo antigo que usava cheapestReward — primeiro da lista
+  const cheapestReward = rewards.length > 0
+    ? { name: rewards[0].name, pointsRequired: rewards[0].pointsRequired }
+    : null
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<LookupResult | null>(null)
@@ -273,6 +279,88 @@ export default function MeusPontosClient({
               cheapestReward={cheapestReward}
               slug={slug}
             />
+          )}
+
+          {/* Suas recompensas — gameplay do programa de fidelidade.
+              CIC rodada 6 reportou: cliente via "60 pts" sem saber pra
+              que serve. Agora ve TODAS as recompensas com gap motivacional
+              ("faltam X pts"). Ja resgataveis ficam em destaque. */}
+          {rewards.length > 0 && (
+            <div
+              className="rounded-2xl p-4 space-y-3"
+              style={{ background: cardBg, border: cardBorder }}
+            >
+              <p className="text-xs uppercase tracking-wider" style={{ color: textMute }}>
+                Suas recompensas
+              </p>
+              <div className="space-y-2">
+                {rewards.map((r) => {
+                  const balance = result.customer?.total_points ?? 0
+                  const reached = balance >= r.pointsRequired
+                  const remaining = Math.max(0, r.pointsRequired - balance)
+                  const progress = Math.min(100, Math.round((balance / r.pointsRequired) * 100))
+                  return (
+                    <div
+                      key={r.id}
+                      className="rounded-xl px-3.5 py-3 space-y-2"
+                      style={{
+                        background: reached
+                          ? 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))'
+                          : isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC',
+                        border: reached
+                          ? '1px solid rgba(16,185,129,0.40)'
+                          : isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base flex-shrink-0">{reached ? '🎁' : '🔒'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold truncate" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                            {r.name}
+                          </p>
+                          {r.description && (
+                            <p className="text-[10px] truncate" style={{ color: textMute }}>
+                              {r.description}
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className="text-xs font-bold tabular-nums flex-shrink-0"
+                          style={{ color: reached ? '#10B981' : textMute }}
+                        >
+                          {r.pointsRequired} pts
+                        </span>
+                      </div>
+                      {/* Barra de progresso */}
+                      <div
+                        className="h-1.5 rounded-full overflow-hidden"
+                        style={{ background: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}
+                      >
+                        <div
+                          className="h-full transition-all"
+                          style={{
+                            width: `${progress}%`,
+                            background: reached
+                              ? '#10B981'
+                              : 'linear-gradient(90deg, var(--brand-primary), var(--brand-secondary))',
+                          }}
+                        />
+                      </div>
+                      <p className="text-[11px]" style={{ color: textMute }}>
+                        {reached ? (
+                          <strong style={{ color: '#10B981' }}>✓ Pode trocar agora! Pergunta no atendimento.</strong>
+                        ) : (
+                          <>Faltam <strong>{remaining} pts</strong> · {progress}%</>
+                        )}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-[10px] leading-relaxed text-center" style={{ color: textMute }}>
+                Pra trocar uma recompensa, é só pedir no atendimento.
+              </p>
+            </div>
           )}
 
           {/* Próximos agendamentos — cancelamento direto */}
