@@ -24,6 +24,8 @@ type Props = {
     expires_at: string
     customer_id: string | null
   }[]
+  sumidosTotal: number
+  sumidosWithoutCoupon: number
 }
 
 type Coupon = {
@@ -55,6 +57,8 @@ export default function ReativarSumidosView({
   businessName,
   businessDescription,
   existingCoupons,
+  sumidosTotal,
+  sumidosWithoutCoupon,
 }: Props) {
   const router = useRouter()
   const [step, setStep] = useState<'config' | 'send'>('config')
@@ -283,6 +287,34 @@ export default function ReativarSumidosView({
 
   return (
     <div className="space-y-5">
+      {/* Card prioritario — sumidos QUE PRECISAM de campanha agora.
+          CIC NB-3 reportou: contador "ativos/usados" nao dizia o que
+          dono precisa pra agir. Aqui mostra "X sumidos sem cupom" =
+          alvo direto da proxima campanha. */}
+      {sumidosWithoutCoupon > 0 && (
+        <div
+          className="rounded-2xl p-4"
+          style={{
+            background: 'linear-gradient(135deg, rgba(239,68,68,0.10), rgba(239,68,68,0.04))',
+            border: '1px solid rgba(239,68,68,0.30)',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl flex-shrink-0">⚠️</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-bold" style={{ color: '#EF4444' }}>
+                {sumidosWithoutCoupon} sumido{sumidosWithoutCoupon === 1 ? '' : 's'} sem cupom
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                {sumidosTotal === sumidosWithoutCoupon
+                  ? 'Esses precisam de campanha pra voltar.'
+                  : `${sumidosTotal - sumidosWithoutCoupon} já têm cupom rodando · ${sumidosWithoutCoupon} ainda precisam`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats existentes (se houver) */}
       {couponStats.total > 0 && (
         <div className="admin-card p-3">

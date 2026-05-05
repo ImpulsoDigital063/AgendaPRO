@@ -75,6 +75,12 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [history, setHistory] = useState<Appointment[]>([])
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([])
+  const [activeCoupon, setActiveCoupon] = useState<{
+    code: string
+    discount_type: 'percent' | 'amount'
+    discount_value: number
+    expires_at: string
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pointsDelta, setPointsDelta] = useState(10)
   const [adjustingPoints, setAdjustingPoints] = useState(false)
@@ -99,6 +105,7 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
         setCustomer(data.customer)
         setHistory(data.history || [])
         setPointsHistory(data.pointsHistory || [])
+        setActiveCoupon(data.activeCoupon ?? null)
         setEditName(data.customer.name)
         setEditEmail(data.customer.email || '')
       } catch (e) {
@@ -240,6 +247,33 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                   </button>
                 )}
               </div>
+
+              {/* Badge cupom ativo (CIC NB-5: faltava no modal) */}
+              {activeCoupon && (
+                <div
+                  className="px-4 py-3 rounded-2xl flex items-center gap-3"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))',
+                    border: '1px solid rgba(16,185,129,0.35)',
+                  }}
+                >
+                  <span className="text-2xl flex-shrink-0">🎁</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold" style={{ color: '#10B981' }}>
+                      Cupom {activeCoupon.code} ativo
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                      {activeCoupon.discount_type === 'percent'
+                        ? `${activeCoupon.discount_value}% off`
+                        : `R$ ${activeCoupon.discount_value.toFixed(2).replace('.', ',')} de desconto`}
+                      {' · '}
+                      vence em{' '}
+                      {Math.max(0, Math.ceil((new Date(activeCoupon.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))}{' '}
+                      dias
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Card de pontos */}
               <div

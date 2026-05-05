@@ -110,6 +110,20 @@ export async function GET(
     appointment_id: t.appointment_id,
   }))
 
+  // Cupom ativo do cliente (CIC NB-5: badge so aparecia no card externo,
+  // dentro do modal sumia). Pega o primeiro nao-usado e nao-expirado.
+  const nowIso = new Date().toISOString()
+  const { data: activeCoupon } = await supabase
+    .from('coupons')
+    .select('code, discount_type, discount_value, expires_at')
+    .eq('customer_id', customer.id)
+    .eq('business_id', customer.business_id)
+    .is('used_at', null)
+    .gt('expires_at', nowIso)
+    .order('expires_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
   return NextResponse.json({
     customer: {
       id: customer.id,
@@ -122,6 +136,7 @@ export async function GET(
     },
     history,
     pointsHistory,
+    activeCoupon: activeCoupon ?? null,
   })
 }
 
