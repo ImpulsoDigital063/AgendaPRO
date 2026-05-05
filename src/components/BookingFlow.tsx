@@ -715,7 +715,15 @@ export default function BookingFlow({
       .single()
 
     if (apptErr || !appointment) {
-      const msg = apptErr?.message?.includes('horário')
+      // 23P01 = exclusion_violation (constraint no_overlap_appointments
+      // do migration v40). Postgres bloqueou overbooking atomicamente.
+      // Mensagem fala "horario" pra cliente entender e re-escolher.
+      const code = (apptErr as { code?: string } | null)?.code
+      const isOverlap =
+        code === '23P01' ||
+        apptErr?.message?.includes('horário') ||
+        apptErr?.message?.includes('no_overlap')
+      const msg = isOverlap
         ? 'Esse horário acabou de ser reservado. Escolha outro.'
         : 'Erro ao agendar. Tente novamente.'
       setError(msg)

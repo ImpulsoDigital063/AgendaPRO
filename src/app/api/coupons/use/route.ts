@@ -75,18 +75,31 @@ export async function POST(req: NextRequest) {
     { auth: { persistSession: false } }
   )
 
-  const { error: updateErr } = await admin
+  // .select(count: 'exact') retorna nº de linhas afetadas.
+  // Se outro cliente conseguiu marcar entre o SELECT acima e este
+  // UPDATE (race), o WHERE used_at IS NULL bate 0 linhas — antes isso
+  // retornava ok=true silencioso (bug: 2 appointments achavam que tinham
+  // o cupom). Agora distingue: 1 linha = sucesso, 0 = corrida perdida.
+  const { error: updateErr, count } = await admin
     .from('coupons')
-    .update({
-      used_at: new Date().toISOString(),
-      used_appointment_id: appointmentId,
-    })
+    .update(
+      {
+        used_at: new Date().toISOString(),
+        used_appointment_id: appointmentId,
+      },
+      { count: 'exact' }
+    )
     .eq('id', coupon.id)
     .is('used_at', null)
 
   if (updateErr) {
     console.error('coupons mark used error:', updateErr)
     return NextResponse.json({ error: 'update_failed' }, { status: 500 })
+  }
+
+  if (count === 0) {
+    // Cupom foi marcado por outro request entre nosso SELECT e UPDATE.
+    return NextResponse.json({ error: 'coupon_already_used' }, { status: 409 })
   }
 
   return NextResponse.json({ ok: true })
