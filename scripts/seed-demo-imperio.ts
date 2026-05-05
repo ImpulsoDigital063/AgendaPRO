@@ -1252,6 +1252,43 @@ async function createExpenses(businessId: string) {
   console.log(`  ✓ ${inserted} despesas — total R$ ${total.toFixed(2)}`)
 }
 
+async function createRewards(businessId: string) {
+  console.log('🎁 Criando recompensas (programa de fidelidade)...')
+  // CIC rodada 7 reportou: features de gameplay (modal cliente +
+  // /meus-pontos) ficaram invisiveis pq seed nao criava rewards.
+  // 5 recompensas calibradas pra ticket medio R$50 + pontos R$1=1pt:
+  // - Sobrancelha gratis (15 pts/ticket × 10 = 150 pts)
+  // - Barba gratis (25 × 10 = 250 pts)
+  // - 10% off (preco/2 × 5 = ~250 pts mas usa marketing 220)
+  // - Corte gratis (30 × 10 = 300 pts)
+  // - Corte + Barba gratis (50 × 10 = 500 pts) — high-tier
+  // Volume: cliente VIP (1500 pts) ja resgata todas; recente (60 pts)
+  // ainda nao chega na primeira mas ve o gap.
+  const rewards = [
+    { name: 'Sobrancelha grátis', description: 'Designer de sobrancelha cortesia', points_required: 150 },
+    { name: 'Barba grátis', description: 'Barba tradicional na próxima visita', points_required: 250 },
+    { name: '10% de desconto', description: 'No próximo serviço', points_required: 220 },
+    { name: 'Corte grátis', description: 'Corte simples na próxima visita', points_required: 300 },
+    { name: 'Corte + Barba grátis', description: 'Combo completo cortesia', points_required: 500 },
+  ]
+  let inserted = 0
+  for (const r of rewards) {
+    const { error } = await supabase.from('rewards').insert({
+      business_id: businessId,
+      name: r.name,
+      description: r.description,
+      points_required: r.points_required,
+      active: true,
+    })
+    if (error) {
+      console.warn(`  ⚠ erro ${r.name}: ${error.message}`)
+      continue
+    }
+    inserted++
+  }
+  console.log(`  ✓ ${inserted} recompensas (faixa 150-500 pts)`)
+}
+
 async function createCoupons(
   businessId: string,
   customers: { id: string; name: string; phone: string; isSumido: boolean }[]
@@ -1438,6 +1475,7 @@ async function main() {
   const carlosId = profIds[0].id
   await boostCarlosToday(businessId, carlosId, serviceIds, customers)
   await createExpenses(businessId)
+  await createRewards(businessId)
   await createCoupons(businessId, customers)
   await createReviewClaims(businessId, customers)
   await createBonusPoints(businessId, customers)
