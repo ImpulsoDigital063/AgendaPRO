@@ -237,7 +237,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
               Planos
             </p>
             <h2 className="display-md text-white mb-3">Simples. Sem surpresa.</h2>
-            <p className="text-slate-400">Primeiros 10 clientes travam o preço vitalício. Garantia de 7 dias.</p>
+            <p className="text-slate-400">Sem setup. Sem fidelidade. Garantia de 7 dias.</p>
           </SectionReveal>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -248,7 +248,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                 <p className="text-5xl font-extrabold text-white mb-1">
                   R$67<span className="text-base font-normal text-slate-400">/mês</span>
                 </p>
-                <p className="text-xs text-slate-500 mb-1">Sem setup pros 10 primeiros (Clube Fundador)</p>
+                <p className="text-xs text-slate-500 mb-1">Sem setup, sempre · sem fidelidade</p>
                 <p className="text-xs font-semibold mb-6" style={{ color: theme.iconColor }}>
                   Garantia de 7 dias
                 </p>
@@ -259,11 +259,11 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Notificação por email</li>
                   <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><polyline points="20 6 9 17 4 12"/></svg>Painel mobile-first</li>
                   <li className="font-semibold" style={{ color: theme.iconColor }}>
-                    ✦ Clube Fundador: setup R$197 isento pra sempre (10 primeiros)
+                    ✦ Sem setup · sem fidelidade · cancela quando quiser
                   </li>
                 </ul>
                 <Link href="/cadastro" className="btn-ghost text-center">
-                  Entrar no Clube
+                  Começar agora
                 </Link>
               </div>
             </SectionReveal>
@@ -284,7 +284,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                 <p className="text-5xl font-extrabold text-white mb-1">
                   R$97<span className="text-base font-normal text-slate-400">/mês</span>
                 </p>
-                <p className="text-xs text-slate-500 mb-1">Sem setup pros 10 primeiros (Clube Fundador)</p>
+                <p className="text-xs text-slate-500 mb-1">Sem setup, sempre · sem fidelidade</p>
                 <p className="text-xs font-semibold mb-6" style={{ color: theme.iconColor }}>
                   Garantia de 7 dias
                 </p>
@@ -301,7 +301,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
                   className="text-center font-semibold py-3 px-6 rounded-xl transition-transform hover:scale-[1.02]"
                   style={{ background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.iconColor} 100%)`, color: 'white' }}
                 >
-                  Entrar no Clube
+                  Começar agora
                 </Link>
               </div>
             </SectionReveal>

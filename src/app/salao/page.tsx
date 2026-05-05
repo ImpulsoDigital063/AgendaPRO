@@ -4,7 +4,7 @@ import FAQ from '@/components/FAQ'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Salões de Beleza — Agenda Online com Lembrete Automático',
-  description: 'Sistema de agendamento online para salões. Cada profissional com agenda própria, lembrete por e-mail, fila de espera e comissão automática. A partir de R$67/mês, sem setup pros 10 primeiros. Garantia de 7 dias.',
+  description: 'Sistema de agendamento online para salões. Cada profissional com agenda própria, lembrete por e-mail, fila de espera e comissão automática. A partir de R$67/mês, sem setup. Garantia de 7 dias.',
   openGraph: {
     title: 'AgendaPRO para Salões de Beleza',
     description: 'Agenda online para salão. Lembrete automático, fila de espera, comissão por profissional e Google Reviews integrado.',
@@ -93,7 +93,7 @@ const SALAO_FAQS: FAQItem[] = [
   },
   {
     q: 'Quanto custa?',
-    a: 'Solo R$ 67/mês (admin + 1 colaborador) ou Equipe R$ 97/mês (até 5 profissionais). Sem setup pros 10 primeiros (Clube Fundador) — depois dos 10, setup oficial volta a ser R$ 197. Sem fidelidade, garantia de 7 dias.',
+    a: 'Solo R$ 67/mês (admin + 1 colaborador) ou Equipe R$ 97/mês (até 5 profissionais). Sem setup, sempre · preço fixo. Sem fidelidade, garantia de 7 dias.',
   },
   {
     q: 'Como funciona o pagamento? Quais formas de pagar?',
@@ -294,7 +294,7 @@ export default function SalaoPage() {
         }}
       >
         <IconHairDryer size={14} className="flex-shrink-0" />
-        <span><strong>Clube Fundador</strong> — 10 primeiros entram sem setup (R$197) pra sempre.</span>
+        <span>Solo R$67/mês ou Equipe R$97/mês — <strong>sem setup, sem fidelidade</strong>. Garantia de 7 dias.</span>
       </div>
 
       {/* Nav */}
@@ -315,8 +315,8 @@ export default function SalaoPage() {
             className="btn btn-primary-v2 btn-shimmer text-[11px] sm:text-[13px] font-bold px-2.5 sm:px-3.5 py-1.5 sm:py-2 min-h-[32px] sm:min-h-[36px] whitespace-nowrap inline-flex items-center"
           >
             <span className="relative z-10 flex items-center gap-1">
-              <span className="hidden sm:inline">Entrar no Clube</span>
-              <span className="sm:hidden">Clube</span>
+              <span className="hidden sm:inline">Começar agora</span>
+              <span className="sm:hidden">Começar</span>
               <IconArrowRight size={12} />
             </span>
           </Link>
@@ -331,15 +331,15 @@ export default function SalaoPage() {
           <div className="grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-16 items-center">
 
             <SectionReveal className="flex flex-col items-center lg:items-start text-center lg:text-left gap-5 sm:gap-6 lg:gap-7">
-              {/* Pill — vaga limitada Clube Fundador */}
+              {/* Pill — preço fixo, sem fidelidade */}
               <div className="pill inline-flex items-center gap-2 text-[10px] sm:text-xs">
                 <span
                   className="px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black"
                   style={{ background: 'linear-gradient(135deg, #EC4899, #F472B6)', color: '#fff', letterSpacing: '0.05em' }}
                 >
-                  10 VAGAS
+                  R$ 67
                 </span>
-                <span className="text-white/95 font-bold uppercase tracking-wider">Clube Fundador SmartAgenda</span>
+                <span className="text-white/95 font-bold uppercase tracking-wider">Sem setup · Sem fidelidade</span>
               </div>
 
               {/* H1 — perda específica do salão */}
@@ -451,7 +451,7 @@ export default function SalaoPage() {
         </div>
       </section>
 
-      <CTAInline titulo="A SmartAgenda resolve tudo isso" sub="Setup em 5 minutos. Garantia de 7 dias. Clube Fundador aberto pros 10 primeiros." />
+      <CTAInline titulo="A SmartAgenda resolve tudo isso" sub="Setup em 5 minutos. Garantia de 7 dias. Sem fidelidade — cancela quando quiser." />
 
       {/* ═══════════ 3. MOTORES ═══════════ */}
       <section id="mecanismos" className="relative py-16 sm:py-20 lg:py-28">
@@ -906,7 +906,7 @@ export default function SalaoPage() {
               <span className="relative z-10 flex items-center gap-2">Quero minha SmartAgenda agora<IconArrowRight size={20} /></span>
             </Link>
             <p className="text-slate-400 text-xs sm:text-sm mt-4 sm:mt-5 max-w-md mx-auto">
-              R$67/mês no plano Solo, sem setup pros 10 primeiros. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
+              R$67/mês no plano Solo, sem setup. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
             </p>
           </SectionReveal>
         </div>

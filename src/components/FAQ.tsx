@@ -33,7 +33,7 @@ const DEFAULT_FAQS: FAQItem[] = [
   },
   {
     q: 'Quanto custa?',
-    a: 'Plano Solo (admin + 1 colaborador): R$67/mês sem setup. Plano Equipe (até 5 profissionais): R$97/mês sem setup. Setup oficial R$197 só volta a ser cobrado a partir do cliente 11+ — os 10 primeiros entram isentos pra sempre (Clube Fundador). Sem fidelidade. Garantia de 7 dias.',
+    a: 'Plano Solo (admin + 1 colaborador): R$67/mês. Plano Equipe (até 5 profissionais): R$97/mês. Sem setup pra ninguém, preço fixo, sem fidelidade. Garantia de 7 dias — se não fizer sentido pro seu negócio, devolvo sem burocracia. Concorrentes cobram R$200-500/mês com fidelidade anual.',
   },
   {
     q: 'Posso cancelar quando quiser?',

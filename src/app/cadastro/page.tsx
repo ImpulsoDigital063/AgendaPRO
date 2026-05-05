@@ -271,7 +271,7 @@ export default function CadastroPage() {
           </div>
 
           <p className="text-center text-slate-600 text-xs mt-6">
-            AgendaPRO · Clube Fundador
+            AgendaPRO · Impulso Digital
           </p>
         </div>
       </main>
@@ -297,7 +297,7 @@ export default function CadastroPage() {
             <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z" />
             </svg>
-            Clube Fundador
+            Sem setup · Sem fidelidade
           </div>
           <p className="text-sm text-slate-400 mt-3">
             {step === 'business'

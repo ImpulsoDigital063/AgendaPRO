@@ -1,16 +1,14 @@
 /**
  * AgendaPRO — Fonte única do pricing oficial
  *
- * Decisão travada em 27/04/2026 (sessão Eduardo + GPT — IMPULSO_CORE_SYSTEM_V2):
- * - Sem setup pra ninguém nesse início (sem Z-API ainda, integração mínima)
- * - Subiu mensalidade pra refletir valor real (Solo 47→67, Equipe 67→97)
- * - Setup R$197 oficial volta a ser cobrado a partir do cliente 11+
- * - Clube Fundador (10 primeiros): setup R$197 ISENTO pra sempre
+ * Decisão atualizada em 06/05/2026 (Eduardo):
+ * - Preço único pra todos os clientes, sempre — Solo R$67/mês · Equipe R$97/mês
+ * - SEM setup pra ninguém (descontinuado o setup R$197 do "Clube Fundador 10")
+ * - SEM lógica de "fundador 10 primeiros" — preço fixo simplifica venda 1-a-1
+ * - Sem fidelidade — cancela quando quiser
  *
  * NUNCA falar R$47 ou R$147 em copy nova — versão antiga arquivada.
- *
- * Frase de fechamento pesada validada por GPT:
- * "depois que fechar os 10, o setup de R$197 volta normal"
+ * NUNCA falar "Clube Fundador" / "setup R$197" — descontinuado em 06/05/2026.
  */
 
 export const PRICING = {
@@ -32,26 +30,6 @@ export const PRICING = {
     mensalidadeCentavos: 9700,
     mensalidadeFormatada: 'R$ 97',
     mensalidadeCompleta: 'R$ 97/mês',
-  },
-
-  /**
-   * Setup oficial R$197 — voltará a ser cobrado a partir do cliente 11+,
-   * depois que o Clube Fundador fechar.
-   * Nesse início (até cliente 10), Clube Fundador entra com setup ISENTO.
-   */
-  setup: {
-    valorReais: 197,
-    valorCentavos: 19700,
-    valorFormatado: 'R$ 197',
-    isencaoFundador: true,
-  },
-
-  /** Clube Fundador — primeiros 10 clientes */
-  clubeFundador: {
-    vagas: 10,
-    setupIsento: true,
-    contrapartida: 'depoimento em vídeo + 1 indicação qualificada',
-    fraseFechamento: 'depois que fechar os 10, o setup de R$197 volta normal',
   },
 
   /** Garantia (substitui o trial antigo) */
@@ -134,12 +112,6 @@ export const PRICING_TEXT = {
 
   /** "A partir de R$67/mês" */
   aPartirDe: `A partir de ${PRICING.solo.mensalidadeCompleta}`,
-
-  /** Frase do Clube Fundador pra usar em CTA */
-  cluFundadorFrase: `Os 10 primeiros entram sem o setup de ${PRICING.setup.valorFormatado} pra sempre`,
-
-  /** Frase de pressão pra fechamento */
-  fraseFechamento: PRICING.clubeFundador.fraseFechamento,
 
   /** Comparativo de mercado em 1 linha */
   ancoragemMercado:

@@ -302,37 +302,6 @@ export default function PricingModalidades({
         })}
       </div>
 
-      {/* ── Bloco bônus Clube Fundador (uma vez, embaixo dos 4 cards) ── */}
-      <div
-        className="rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 max-w-3xl mx-auto"
-        style={{
-          background: 'linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(251,191,36,0.06) 100%)',
-          border: '1px dashed rgba(245,158,11,0.45)',
-        }}
-      >
-        <div
-          className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
-          style={{ background: 'rgba(245,158,11,0.22)', color: '#FBBF24' }}
-          aria-hidden
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 12 20 22 4 22 4 12" />
-            <rect x="2" y="7" width="20" height="5" />
-            <line x1="12" y1="22" x2="12" y2="7" />
-            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-          </svg>
-        </div>
-        <div className="flex-1 text-center sm:text-left">
-          <p className="text-sm sm:text-base font-black text-amber-100 leading-tight">
-            Clube Fundador — os 10 primeiros entram sem o setup de R${PRICING.setup.valorReais} pra sempre
-          </p>
-          <p className="text-[12px] sm:text-[13px] text-amber-100/70 mt-0.5">
-            Depois dos 10, o setup volta a ser cobrado. Quem entrou antes mantém isenção pra sempre.
-          </p>
-        </div>
-      </div>
-
       {/* ── Ancoragem mercado ── */}
       <p className="text-center text-[11px] sm:text-xs text-slate-500 max-w-2xl mx-auto leading-relaxed">
         Trinks, ZenPlace e Booksy cobram <strong className="text-slate-300">R$ 200-500/mês</strong> com fidelidade anual.

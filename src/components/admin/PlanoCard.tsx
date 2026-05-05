@@ -17,7 +17,6 @@ type Subscription = {
   grace_ends_at: string | null
   public_blocked_at: string | null
   cancelled_at: string | null
-  founders_club: boolean
   admin_blocked: boolean
   public_blocked: boolean
   within_refund_window: boolean
@@ -135,7 +134,7 @@ export default function PlanoCard() {
             Plano {planName}
           </p>
           <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-            {monthly}/mês {sub.founders_club && '· Clube Fundador'}
+            {monthly}/mês
           </p>
         </div>
         <span

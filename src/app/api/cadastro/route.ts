@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const chosenPlan: 'solo' | 'equipe' = plan === 'equipe' ? 'equipe' : 'solo'
   const priceCents = PRICING[chosenPlan].mensalidadeCentavos
-  // Setup R$197 isento pros 10 primeiros (Clube Fundador) — UI marca founders_club=true
+  // Sem setup pra ninguém · descontinuado em 06/05/2026 (preço fixo Solo R$67 / Equipe R$97)
   const setupCents = 0
 
   // Validação de input
@@ -104,7 +104,6 @@ export async function POST(req: NextRequest) {
       status: 'pending_payment',
       price_cents: priceCents,
       setup_cents: setupCents,
-      founders_club: true,
     })
 
   if (subError) {
