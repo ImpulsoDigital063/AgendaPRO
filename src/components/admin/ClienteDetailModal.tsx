@@ -81,6 +81,9 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
     discount_value: number
     expires_at: string
   } | null>(null)
+  const [rewards, setRewards] = useState<Array<{ id: string; name: string; points_required: number }>>([])
+  const [redeeming, setRedeeming] = useState(false)
+  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pointsDelta, setPointsDelta] = useState(10)
   const [adjustingPoints, setAdjustingPoints] = useState(false)
@@ -106,6 +109,7 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
         setHistory(data.history || [])
         setPointsHistory(data.pointsHistory || [])
         setActiveCoupon(data.activeCoupon ?? null)
+        setRewards(data.rewards ?? [])
         setEditName(data.customer.name)
         setEditEmail(data.customer.email || '')
       } catch (e) {
@@ -142,6 +146,44 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
       router.refresh() // sincroniza lista por tras
     }
     setAdjustingPoints(false)
+  }
+
+  async function redeemReward(rewardId: string, rewardName: string, cost: number) {
+    if (!customer) return
+    setRedeeming(true)
+    setPointsError(null)
+    setRedeemSuccess(null)
+    const previous = customer.total_points
+    // Update otimista
+    setCustomer({ ...customer, total_points: previous - cost })
+    const res = await fetch(`/api/admin/customers/${customerId}/redeem`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ reward_id: rewardId }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setPointsError(data.error || 'Erro ao resgatar')
+      setCustomer({ ...customer, total_points: previous })
+    } else {
+      const data = await res.json()
+      setCustomer({ ...customer, total_points: data.total_points })
+      setRedeemSuccess(`${rewardName} resgatado!`)
+      // Adiciona transacao no extrato local sem precisar refetch
+      setPointsHistory((prev) => [
+        {
+          id: `tmp-${Date.now()}`,
+          points: -cost,
+          reason: 'redemption',
+          created_at: new Date().toISOString(),
+          appointment_id: null,
+        },
+        ...prev,
+      ])
+      router.refresh()
+      setTimeout(() => setRedeemSuccess(null), 3500)
+    }
+    setRedeeming(false)
   }
 
   async function saveEdit() {
@@ -325,6 +367,46 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                   <p className="text-[11px] mt-2" style={{ color: '#EF4444' }}>
                     {pointsError}
                   </p>
+                )}
+                {redeemSuccess && (
+                  <p className="text-[11px] mt-2" style={{ color: '#10B981' }}>
+                    🎁 {redeemSuccess}
+                  </p>
+                )}
+
+                {/* Resgate de recompensa — fluxo dedicado pra dono nao
+                    precisar abater pontos manualmente. Cada resgate
+                    aparece no Historico de pontos como reason='redemption'. */}
+                {rewards.length > 0 && (
+                  <div className="mt-3 pt-3 border-t" style={{ borderColor: 'rgba(139,92,246,0.18)' }}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#7C3AED' }}>
+                      Resgatar recompensa
+                    </p>
+                    <div className="space-y-1.5">
+                      {rewards.map((r) => {
+                        const canRedeem = customer.total_points >= r.points_required
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => redeemReward(r.id, r.name, r.points_required)}
+                            disabled={!canRedeem || redeeming}
+                            className="w-full px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-opacity disabled:opacity-40"
+                            style={{
+                              background: canRedeem ? 'rgba(139,92,246,0.15)' : 'var(--admin-input-bg)',
+                              color: canRedeem ? '#7C3AED' : 'var(--admin-text-faded)',
+                              border: `1px solid ${canRedeem ? 'rgba(139,92,246,0.30)' : 'var(--admin-border)'}`,
+                            }}
+                          >
+                            <span className="truncate">{r.name}</span>
+                            <span className="flex-shrink-0 ml-2">
+                              {r.points_required} pts {!canRedeem && `· faltam ${r.points_required - customer.total_points}`}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
 

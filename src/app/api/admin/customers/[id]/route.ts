@@ -124,6 +124,15 @@ export async function GET(
     .limit(1)
     .maybeSingle()
 
+  // Recompensas ativas do business (pra dropdown "Resgatar" no modal).
+  // Cliente pode resgatar qualquer uma cujo saldo cubra.
+  const { data: rewards } = await supabase
+    .from('rewards')
+    .select('id, name, points_required')
+    .eq('business_id', customer.business_id)
+    .eq('active', true)
+    .order('points_required', { ascending: true })
+
   return NextResponse.json({
     customer: {
       id: customer.id,
@@ -137,6 +146,7 @@ export async function GET(
     history,
     pointsHistory,
     activeCoupon: activeCoupon ?? null,
+    rewards: rewards ?? [],
   })
 }
 

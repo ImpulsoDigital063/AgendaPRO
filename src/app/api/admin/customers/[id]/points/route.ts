@@ -69,5 +69,15 @@ export async function POST(
     return NextResponse.json({ error: 'update_failed' }, { status: 500 })
   }
 
+  // Loga em points_transactions com reason='manual' pra extrato auditavel
+  // do cliente. CIC rodada 4 reportou bug #3: ajustes manuais sumiam
+  // do historico, dono nao conseguia auditar saldo.
+  await supabase.from('points_transactions').insert({
+    customer_id: id,
+    business_id: customer.business_id,
+    points: delta,
+    reason: 'manual',
+  })
+
   return NextResponse.json({ ok: true, total_points: next })
 }
