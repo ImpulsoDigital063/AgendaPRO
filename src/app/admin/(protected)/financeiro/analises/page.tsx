@@ -21,11 +21,23 @@ export default async function AnalisesPage({
 
   const { prof: profFilter, service: serviceFilter } = await searchParams
 
+  // Janela rolling 30d (consistencia com /admin/financeiro filtro "Mes").
+  // CIC rodada 5 reportou bug critico: /analises usava mes calendario
+  // (R$3k em maio so) enquanto /financeiro usava rolling 30d (R$26k).
+  // Inconsistencia destruia credibilidade da demo.
+  // - "current": ultimos 30 dias passados (mesma janela do KPI principal)
+  // - "prev": 30 dias antes desses (pra comparativo)
   const today = new Date()
-  const startCurrent = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
-  const endCurrent = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0]
-  const startPrev = new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().split('T')[0]
-  const endPrev = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().split('T')[0]
+  const startCurrentDate = new Date(today)
+  startCurrentDate.setDate(startCurrentDate.getDate() - 30)
+  const startCurrent = startCurrentDate.toISOString().split('T')[0]
+  const endCurrent = today.toISOString().split('T')[0]
+  const startPrevDate = new Date(today)
+  startPrevDate.setDate(startPrevDate.getDate() - 60)
+  const startPrev = startPrevDate.toISOString().split('T')[0]
+  const endPrevDate = new Date(today)
+  endPrevDate.setDate(endPrevDate.getDate() - 31)
+  const endPrev = endPrevDate.toISOString().split('T')[0]
 
   // 1. Mes atual: TODOS agendamentos (pra calcular cancelamento e
   // taxa de conversao). Pagos vao agregar receita.

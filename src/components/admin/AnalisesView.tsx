@@ -137,14 +137,13 @@ export default function AnalisesView({
     return -1
   })()
 
-  // ===== 3. Forecast do mês =====
-  const today = new Date()
-  const isCurrentMonth = today.toISOString().split('T')[0].startsWith(startCurrent.slice(0, 7))
-  const daysElapsed = isCurrentMonth ? today.getDate() : 31
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
-  const forecast = isCurrentMonth && daysElapsed > 0
-    ? Math.round((currentTotal / daysElapsed) * daysInMonth)
-    : null
+  // ===== 3. Projecao proximos 30 dias (rolling) =====
+  // Janela e' rolling 30d, entao currentTotal ja' representa "ultimos
+  // 30 dias". Forecast e' simplesmente projecao linear: se manter
+  // ritmo, proximos 30 dias = currentTotal. Mostrar media diaria
+  // ajuda dono a comparar com dia tipico.
+  const dailyAverage = currentTotal > 0 ? Math.round(currentTotal / 30) : 0
+  const forecast = currentTotal > 0 ? currentTotal : null
 
   // ===== 5. Taxa de conversão =====
   const taxaCancelamento = totalAgendamentos > 0
@@ -210,8 +209,8 @@ export default function AnalisesView({
   const insights = useMemo(() => {
     const list: { text: string; color: string; tone: 'success' | 'warn' | 'info' | 'danger' }[] = []
     if (variation != null) {
-      if (variation >= 20) list.push({ text: `Você cresceu ${variation.toFixed(0)}% vs mês passado.`, color: '#10B981', tone: 'success' })
-      else if (variation <= -10) list.push({ text: `Faturamento caiu ${Math.abs(variation).toFixed(0)}% vs mês passado.`, color: '#EF4444', tone: 'danger' })
+      if (variation >= 20) list.push({ text: `Você cresceu ${variation.toFixed(0)}% vs 30 dias anteriores.`, color: '#10B981', tone: 'success' })
+      else if (variation <= -10) list.push({ text: `Faturamento caiu ${Math.abs(variation).toFixed(0)}% vs 30 dias anteriores.`, color: '#EF4444', tone: 'danger' })
     }
     if (totalWeek > 0 && weekdayData[bestWeekday] > 0) {
       const pct = (weekdayData[bestWeekday] / totalWeek) * 100
@@ -236,7 +235,7 @@ export default function AnalisesView({
       const pixVar = ((currentByMethod.pix - prevByMethod.pix) / prevByMethod.pix) * 100
       if (Math.abs(pixVar) >= 30) {
         list.push({
-          text: `PIX ${pixVar >= 0 ? 'cresceu' : 'caiu'} ${Math.abs(pixVar).toFixed(0)}% vs mês passado.`,
+          text: `PIX ${pixVar >= 0 ? 'cresceu' : 'caiu'} ${Math.abs(pixVar).toFixed(0)}% vs 30 dias anteriores.`,
           color: pixVar >= 0 ? '#10B981' : '#EF4444',
           tone: pixVar >= 0 ? 'success' : 'warn',
         })
@@ -312,13 +311,13 @@ export default function AnalisesView({
         }}
       >
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-          Faturamento · Este mês
+          Faturamento · Últimos 30 dias
         </p>
         <p className="text-3xl font-extrabold mt-1 leading-none tabular-nums" style={{ color: 'var(--admin-text)' }}>
           {formatPrice(currentTotal)}
         </p>
         <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-          Mês anterior: {formatPrice(prevTotal)}
+          30 dias anteriores: {formatPrice(prevTotal)}
           {variation != null && (
             <span className="ml-2 font-bold" style={{ color: variation >= 0 ? '#10B981' : '#EF4444' }}>
               {variation >= 0 ? '↑' : '↓'} {Math.abs(variation).toFixed(0)}%
@@ -364,13 +363,13 @@ export default function AnalisesView({
           }}
         >
           <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-            Projeção fim do mês
+            Projeção próximos 30 dias
           </p>
           <p className="text-2xl font-extrabold mt-1 leading-none tabular-nums" style={{ color: '#A855F7' }}>
             {formatPrice(forecast)}
           </p>
           <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-            Baseado no ritmo dos {daysElapsed} dia{daysElapsed === 1 ? '' : 's'} deste mês ({daysInMonth - daysElapsed} restante{daysInMonth - daysElapsed === 1 ? '' : 's'}).
+            Mantendo o ritmo atual ({formatPrice(dailyAverage)}/dia em média).
           </p>
         </div>
       )}
@@ -635,7 +634,7 @@ export default function AnalisesView({
       {(currentTotal > 0 || prevTotal > 0) && (
         <section className="admin-card p-4">
           <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-            Métodos · atual vs mês anterior
+            Métodos · 30 dias atuais vs 30 anteriores
           </h2>
           <div className="space-y-2">
             {(['pix', 'cash', 'card', 'courtesy'] as const).map((m) => {

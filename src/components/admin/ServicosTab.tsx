@@ -248,9 +248,9 @@ export default function ServicosTab({ businessId, initialServices, category }: P
         <div className="grid grid-cols-3 gap-2">
           <Kpi label="Total" value={String(total)} sub={`${activeCount} ativo${activeCount === 1 ? '' : 's'}`} />
           <Kpi
-            label="Ticket médio"
+            label="Preço médio"
             value={ticketMedio > 0 ? formatPrice(ticketMedio) : '—'}
-            sub={withPrice.length > 0 ? `${withPrice.length} com preço` : 'sem precificação'}
+            sub={withPrice.length > 0 ? `${withPrice.length} no menu` : 'sem precificação'}
           />
           <Kpi label="Duração média" value={formatDuration(duracaoMedia)} sub="por serviço" />
         </div>

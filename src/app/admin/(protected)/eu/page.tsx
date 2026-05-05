@@ -126,7 +126,7 @@ async function PersonalKPIs({
         />
         <KPICard
           label="A receber"
-          value={`R$${Math.round(aReceberTotal)}`}
+          value={`R$ ${Math.round(aReceberTotal)}`}
           color="var(--admin-accent)"
           glow="var(--admin-accent-bg)"
           Icon={IconCheck}

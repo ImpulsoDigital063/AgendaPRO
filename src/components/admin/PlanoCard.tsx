@@ -47,15 +47,28 @@ export default function PlanoCard() {
 
   async function loadStatus() {
     setLoading(true)
-    try {
-      const res = await fetch('/api/billing/status')
-      if (res.ok) {
-        const data = await res.json()
-        setSub(data.subscription)
+    // Retry com backoff: race de hidratacao ou cookie ainda nao propagado
+    // (CIC rodada 5 reportou bug #3 — aba Plano vazia "Plano nao
+    // encontrado" 1a visita, OK na 2a). 3 tentativas com 0/400/1200ms.
+    const delays = [0, 400, 1200]
+    let result: Subscription | null = null
+    for (const delay of delays) {
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay))
+      try {
+        const res = await fetch('/api/billing/status', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.subscription) {
+            result = data.subscription
+            break
+          }
+        }
+      } catch {
+        // Continua tentando
       }
-    } finally {
-      setLoading(false)
     }
+    setSub(result)
+    setLoading(false)
   }
 
   useEffect(() => {
@@ -92,10 +105,18 @@ export default function PlanoCard() {
     return (
       <div className="admin-card p-4 space-y-2">
         <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
-          Plano não encontrado
+          Não foi possível carregar o plano
         </p>
         <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
-          Se você acabou de cadastrar, atualize a página em alguns segundos.
+          Tentamos algumas vezes mas algo deu errado.{' '}
+          <button
+            type="button"
+            onClick={loadStatus}
+            className="underline font-semibold"
+            style={{ color: 'var(--admin-accent)' }}
+          >
+            Tentar de novo
+          </button>
         </p>
       </div>
     )
