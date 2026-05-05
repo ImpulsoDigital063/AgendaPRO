@@ -6,7 +6,7 @@ import {
   getAppointmentsToday,
   getUpcomingAppointments,
   getRecentActivity,
-  getPendingClaimsCount,
+  getFocoDoDia,
 } from '@/lib/admin-data'
 import AppointmentCard from '@/components/AppointmentCard'
 import LogoutButton from '@/components/LogoutButton'
@@ -18,11 +18,11 @@ import TodayList from '@/components/admin/TodayList'
 import CountUp from '@/components/admin/CountUp'
 import Greeting from '@/components/admin/Greeting'
 import EmptyTodayCTA from '@/components/admin/EmptyTodayCTA'
+import FocoDoDia from '@/components/admin/FocoDoDia'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
   IconCalendar,
-  IconChevronRight,
   IconDollar,
   IconCheck,
   IconClock,
@@ -204,38 +204,9 @@ function KPIsSkeleton() {
   )
 }
 
-async function ClaimsLinkSection({ businessId }: { businessId: string }) {
-  const count = await getPendingClaimsCount(businessId)
-  if (!count || count <= 0) return null
-
-  return (
-    <Link
-      href="/admin/configuracoes?tab=fidelidade"
-      className="block rounded-2xl p-4 transition-opacity hover:opacity-90"
-      style={{
-        background: 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06))',
-        border: '1px solid rgba(245,158,11,0.4)',
-      }}
-    >
-      <div className="flex items-center gap-3">
-        <span
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(245,158,11,0.25)', color: '#F59E0B' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
-            {count} pedido{count > 1 ? 's' : ''} de pontos por avaliação
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-            Confira no Google e aprove pra liberar os pontos
-          </p>
-        </div>
-        <IconChevronRight size={18} style={{ color: '#F59E0B' }} />
-      </div>
-    </Link>
-  )
+async function FocoDoDiaSection({ businessId }: { businessId: string }) {
+  const data = await getFocoDoDia(businessId)
+  return <FocoDoDia data={data} />
 }
 
 async function TodaySection({ business }: { business: Business }) {
@@ -417,9 +388,11 @@ export default async function AdminPage() {
       </Suspense>
 
       <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
-        {/* Pedidos de pontos — sumi sumi se count = 0, fallback null */}
+        {/* Foco do dia — secao proativa: claims + pagamentos pendentes
+            + sumidos sem cupom + cupons expirando + lucro motivacional.
+            Some inteiro se nada pra mostrar (sem poluir home). */}
         <Suspense fallback={null}>
-          <ClaimsLinkSection businessId={business.id} />
+          <FocoDoDiaSection businessId={business.id} />
         </Suspense>
 
         {/* Divulgação — estatica, renderiza imediato */}
