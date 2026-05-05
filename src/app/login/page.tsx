@@ -72,7 +72,7 @@ export default async function LoginRouter() {
           <p className="text-center text-xs pt-2" style={{ color: 'rgba(148,163,184,0.7)' }}>
             Não tem conta?{' '}
             <Link href="/cadastro" className="text-blue-400 font-semibold">
-              Criar negócio grátis
+              Criar conta
             </Link>
           </p>
         </div>
