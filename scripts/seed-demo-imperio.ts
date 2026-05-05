@@ -136,12 +136,14 @@ const PROFESSIONALS = [
 // Catálogo realista de barbearia premium acessível.
 // Pesos calibrados pra ticket médio ~R$44 (atinge R$13k mês com volume real).
 const SERVICES = [
-  { name: 'Corte Simples',     price: 30, duration: 30, points: 30, weight: 22 },
-  { name: 'Corte + Barba',     price: 50, duration: 60, points: 60, weight: 32 },
-  { name: 'Barba Tradicional', price: 25, duration: 30, points: 25, weight: 13 },
-  { name: 'Corte Degradê',     price: 45, duration: 45, points: 45, weight: 18 },
-  { name: 'Sobrancelha',       price: 15, duration: 20, points: 15, weight: 3 },
-  { name: 'Pigmentação Capilar', price: 80, duration: 60, points: 80, weight: 12 },
+  // Pesos calibrados pra ticket medio R$55+ (subir realizado mes na demo).
+  // Pigmentacao + Corte+Barba viram serviços principais (rentaveis).
+  { name: 'Corte Simples',     price: 30, duration: 30, points: 30, weight: 12 },
+  { name: 'Corte + Barba',     price: 50, duration: 60, points: 60, weight: 38 },
+  { name: 'Barba Tradicional', price: 25, duration: 30, points: 25, weight: 8 },
+  { name: 'Corte Degradê',     price: 45, duration: 45, points: 45, weight: 15 },
+  { name: 'Sobrancelha',       price: 15, duration: 20, points: 15, weight: 2 },
+  { name: 'Pigmentação Capilar', price: 80, duration: 60, points: 80, weight: 25 },
 ]
 
 // Pool de nomes brasileiros realistas pra distribuir entre 50 clientes.
@@ -435,21 +437,27 @@ function buildCustomerProfile(): CustomerSeed[] {
     let isSumido = false
     let firstSeenDaysAgo: number
 
+    // Calibragem demo (v3): volume alto + concentrado no mes corrente.
+    // Target: Lucro mensal R$9k+ em qualquer dia que demo for vista.
+    // Eduardo viu R$1.5k no filtro "Mes" no dia 5/5 — pouco proporcional
+    // (so 5 dias de movimento). Aumentando visits e ajustando range
+    // de distribuicao pra que dia-a-dia atual sempre tenha volume
+    // suficiente pro KPI parecer profissional.
     if (i < 6) {
-      // VIPs — 18-22 visitas/mês (cara que vem 4-5x/semana, fanático), 6+ meses
-      visits = randInt(rand(), 18, 22)
+      // VIPs — fanaticos, 6x/semana
+      visits = randInt(rand(), 32, 38)
       firstSeenDaysAgo = randInt(rand(), 180, 365)
     } else if (i < 18) {
-      // Recorrentes — 10-14 visitas, conhecem há 2-6 meses
-      visits = randInt(rand(), 10, 14)
+      // Recorrentes — 4-5x/semana
+      visits = randInt(rand(), 20, 25)
       firstSeenDaysAgo = randInt(rand(), 60, 180)
     } else if (i < 30) {
-      // Casuais — 5-7 visitas, conhecem há 1-3 meses
-      visits = randInt(rand(), 5, 7)
+      // Casuais — 2x/semana
+      visits = randInt(rand(), 10, 14)
       firstSeenDaysAgo = randInt(rand(), 30, 90)
     } else if (i < 38) {
-      // Novos — 3-5 visitas no último mês, primeira vez
-      visits = randInt(rand(), 3, 5)
+      // Novos — 5-8 visitas no ultimo mes, primeira vez
+      visits = randInt(rand(), 6, 9)
       firstSeenDaysAgo = randInt(rand(), 1, 25)
     } else {
       // Sumidos — só appointments antigos (60-120d ago); precisam de
@@ -569,20 +577,24 @@ async function createAppointments(
 
   console.log(`  · pool de visitas: ${visitPool.length} agendamentos a criar`)
 
-  // Distribui pelos últimos 30 dias + 5 dias futuros (agenda já com
-  // confirmados pra cliente ver "próximos dias"). Demanda por dia da
-  // semana respeitada (sábado pico, segunda fraca).
+  // Distribuicao uniforme em 30 dias rolling (mesmo range do filtro
+  // "Mes" do FinanceiroView — assim filtro captura tudo). Demanda
+  // por dia da semana respeitada (sabado pico, segunda fraca).
   const appointmentsToInsert: Array<Record<string, unknown>> = []
-  const todayMs = today().getTime()
+  const todayDate = today()
+  const todayMs = todayDate.getTime()
   const startMs = todayMs - 30 * 86400000
+  const endMs = todayMs + 7 * 86400000
   const dayWeights: { day: Date; weight: number }[] = []
-  for (let dOffset = 0; dOffset <= 35; dOffset++) {
-    const d = new Date(startMs + dOffset * 86400000)
+  for (let ms = startMs; ms <= endMs; ms += 86400000) {
+    const d = new Date(ms)
     const dow = d.getDay()
     if (DEMAND_BY_DOW[dow] > 0) {
-      // Dias futuros tem peso menor (~30%) pra não saturar agenda
       const isFuture = d.getTime() > todayMs
-      const weight = DEMAND_BY_DOW[dow] * (isFuture ? 0.3 : 1)
+      // Futuros peso 30% pra nao saturar agenda futura (cliente publico
+      // precisa ver slots livres em /agendar).
+      const futurePenalty = isFuture ? 0.3 : 1
+      const weight = DEMAND_BY_DOW[dow] * futurePenalty
       dayWeights.push({ day: d, weight })
     }
   }
@@ -635,7 +647,9 @@ async function createAppointments(
   const plans: Plan[] = []
 
   function tryFindSlot(profId: string, dateStrVal: string, duration: number): { startMin: number; endMin: number } | null {
-    for (let try_ = 0; try_ < 30; try_++) {
+    // Aumentado pra 60 tentativas — versao anterior com 30 rejeitava
+    // ~83% das visitas (so 68 saiam de 384), demo ficava magra.
+    for (let try_ = 0; try_ < 60; try_++) {
       const isAfternoon = rand() < 0.6
       let startMin: number
       if (isAfternoon) {
@@ -657,7 +671,9 @@ async function createAppointments(
   // Loop principal — clientes ATIVOS (não-sumidos)
   let attempts = 0
   for (const visit of visitPool) {
-    if (attempts > visitPool.length * 5) break
+    // Mais tentativas (5 -> 10) — visitas que perdem slot agora tem
+    // mais chance de re-tentar em outro dia/prof antes de desistir.
+    if (attempts > visitPool.length * 10) break
     attempts++
 
     const customer = customers[visit.customerIdx]
@@ -691,19 +707,23 @@ async function createAppointments(
       finalStatus = 'confirmed'
     } else {
       const r = rand()
-      if (r < 0.75) {
+      // Calibragem demo: 85% pagos (vs 75% antes) — barbearia de bairro
+      // bem operada cobra na hora. Subir taxa de pagamento engorda o
+      // KPI Realizado (lucro real) que dono ve primeiro.
+      if (r < 0.85) {
         finalStatus = 'completed'
         const m = rand()
-        if (m < 0.50) payment_method = 'pix'
-        else if (m < 0.80) payment_method = 'cash'
-        else if (m < 0.95) payment_method = 'card'
-        else payment_method = 'points'
+        if (m < 0.55) payment_method = 'pix'
+        else if (m < 0.85) payment_method = 'cash'
+        else if (m < 0.97) payment_method = 'card'
+        else payment_method = 'courtesy'
         const paidDt = new Date(chosenDay)
         paidDt.setHours(Math.floor(slot.endMin / 60), slot.endMin % 60, 0, 0)
         paid_at = paidDt.toISOString()
-      } else if (r < 0.88) {
+      } else if (r < 0.93) {
+        // Atendeu mas nao pagou (cliente foi embora, vai voltar pra pagar)
         finalStatus = 'completed'
-      } else if (r < 0.96) {
+      } else if (r < 0.98) {
         finalStatus = 'cancelled'
       } else {
         finalStatus = 'no_show'
@@ -903,6 +923,17 @@ async function boostCarlosToday(
   const todayDate = today()
   const dateStrToday = dateStr(todayDate)
   const ativos = customers.filter((c) => !c.isSumido)
+
+  // Limpa appointments do Carlos hoje pra evitar conflito com EXCLUSION
+  // CONSTRAINT v40 (no_overlap_appointments). Sem essa limpeza, boost
+  // colide com appointments que o seed principal ja colocou no Carlos
+  // hoje em horarios random.
+  await supabase
+    .from('appointments')
+    .delete()
+    .eq('business_id', businessId)
+    .eq('professional_id', carlosId)
+    .eq('appointment_date', dateStrToday)
   // Escolhe 5 horários distribuídos no dia
   const slots = [
     { startMin: 9 * 60, paid: true, isPast: true },        // 09:00 — concluído + pago
@@ -1162,11 +1193,10 @@ async function createExpenses(businessId: string) {
     { name: 'Material de limpeza', category: 'other', amount: 85, recurring: false, occurred_at: dateStr(addDays(lastMonthStart, 19)), notes: null },
     { name: 'Conserto máquina', category: 'other', amount: 120, recurring: false, occurred_at: dateStr(addDays(lastMonthStart, 22)), notes: 'Quebrou polia' },
 
-    // ========== MÊS CORRENTE (parcial — só fixas já pagas) ==========
-    // Eduardo está dia 04 do mês — só caíram aluguel + tráfego ainda
+    // ========== MÊS CORRENTE (so 1 fixa caida — demo lucro alto) ==========
+    // Soh aluguel ainda — outras despesas caem mais tarde no mes (10/15/20).
+    // Demo: dono ve "lucro real do mes" alto pq despesas estao no inicio.
     { name: 'Aluguel', category: 'rent', amount: 2500, recurring: true, occurred_at: dateStr(monthStart), notes: 'Pago via PIX dia 1' },
-    { name: 'Tráfego pago Instagram', category: 'marketing', amount: 200, recurring: true, occurred_at: dateStr(addDays(monthStart, 1)), notes: 'Campanha mensal' },
-    { name: 'Internet/Wi-Fi', category: 'utilities', amount: 99, recurring: true, occurred_at: dateStr(addDays(monthStart, 2)), notes: null },
   ]
 
   let inserted = 0

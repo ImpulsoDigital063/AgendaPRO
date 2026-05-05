@@ -44,8 +44,11 @@ export default async function ProfissionalFinanceiroPage({
     startDate = start.toISOString().split('T')[0]
     endDate = end.toISOString().split('T')[0]
   } else {
-    const start = new Date(today.getFullYear(), today.getMonth(), 1)
-    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    // "Mes" agora = rolling 30 dias passados + 7 futuros (consistencia com /admin/financeiro).
+    const start = new Date(today)
+    start.setDate(start.getDate() - 30)
+    const end = new Date(today)
+    end.setDate(end.getDate() + 7)
     startDate = start.toISOString().split('T')[0]
     endDate = end.toISOString().split('T')[0]
   }

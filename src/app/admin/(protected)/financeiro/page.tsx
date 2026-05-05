@@ -45,9 +45,15 @@ export default async function FinanceiroPage({
     startDate = start.toISOString().split('T')[0]
     endDate = end.toISOString().split('T')[0]
   } else {
-    // mes corrente: dia 1 ate ultimo dia do mes
-    const start = new Date(today.getFullYear(), today.getMonth(), 1)
-    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    // "Mes" agora = ultimos 30 dias rolling (passado) + 7 dias futuros.
+    // Antes era dia 1 ao 31 do mes calendario, mas isso causava KPI de
+    // lucro pifio nos primeiros dias de mes novo (ex: dia 5 do mes mostra
+    // so 5 dias de movimento). Rolling 30d e' a metrica que dono real
+    // pensa: "quanto fiz nos ultimos 30 dias".
+    const start = new Date(today)
+    start.setDate(start.getDate() - 30)
+    const end = new Date(today)
+    end.setDate(end.getDate() + 7)
     startDate = start.toISOString().split('T')[0]
     endDate = end.toISOString().split('T')[0]
   }
