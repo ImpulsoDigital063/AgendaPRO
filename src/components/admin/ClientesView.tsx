@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone, daysBetween } from '@/lib/client-display'
@@ -115,6 +115,21 @@ const FILTER_TABS: { key: FilterKey; label: string }[] = [
 export default function ClientesView({ clients, bookingSlug, businessId: _businessId, activeCustomerIds = [] }: Props) {
   const router = useRouter()
   const [search, setSearch] = useState('')
+  // Ref + polling sincroniza state com value DOM mesmo quando algo
+  // altera input.value sem disparar evento (React 19 intercepta o
+  // setter de value em controlled inputs e ferramentas de automation
+  // que fazem `el.value='X'` direto sao ignoradas). Polling de 200ms
+  // e barato e garante que filtro responde 100% das interacoes.
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const el = searchInputRef.current
+      if (el && el.value !== search) {
+        setSearch(el.value)
+      }
+    }, 200)
+    return () => clearInterval(interval)
+  }, [search])
   const [filter, setFilter] = useState<FilterKey>('todos')
   const [showAddModal, setShowAddModal] = useState(false)
   const [detailCustomerId, setDetailCustomerId] = useState<string | null>(null)
@@ -264,9 +279,18 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
           </svg>
         </span>
         <input
+          ref={searchInputRef}
           type="text"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setShowAllClients(false) }}
+          onInput={(e) => {
+            // onInput nativo + onChange React garante que TODA mudanca
+            // dispare setSearch — incluindo digitacao real, paste,
+            // autofill, e ferramentas automation que setam .value
+            // direto e dispatcham 'input' event.
+            const v = (e.target as HTMLInputElement).value
+            if (v !== search) { setSearch(v); setShowAllClients(false) }
+          }}
           placeholder="Buscar por nome, telefone ou email..."
           className="admin-input w-full pl-9 pr-4 py-3 text-sm"
         />

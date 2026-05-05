@@ -289,6 +289,10 @@ export default function BookingFlow({
   const nowMin = today.getHours() * 60 + today.getMinutes()
   const earliestBookingMin = nowMin + BOOKING_BUFFER_MIN
   const availableDates: Date[] = []
+  // Flag: quando hoje seria valido (profissional trabalha) mas expediente
+  // ja encerrou. Cliente que abre a pagina à noite ve "Hoje sumiu" e
+  // fica confuso — mostramos avisozinho explicativo acima do grid.
+  let hojeFechouAposExpediente = false
   for (let i = 0; i < 14; i++) {
     const d = addDays(today, i)
     const dayOfWeek = d.getDay()
@@ -300,7 +304,10 @@ export default function BookingFlow({
       // Hoje: pré-check rápido — se nenhum período termina depois do
       // buffer, expediente acabou. Pula pra evitar tela vazia ao clicar.
       const lastEndMin = Math.max(...hoursOfDay.map((wh) => toMinutes(wh.end_time)))
-      if (lastEndMin <= earliestBookingMin) continue
+      if (lastEndMin <= earliestBookingMin) {
+        hojeFechouAposExpediente = true
+        continue
+      }
     }
     availableDates.push(d)
   }
@@ -341,10 +348,12 @@ export default function BookingFlow({
   }
 
   // Auto-scroll quando o step avança — feedback visual de "avancei".
-  // useEffect roda APÓS o re-render, então o id-target da seção
-  // próxima já existe no DOM. (Tentativa anterior com requestAnimationFrame
-  // inline em handleProceedFromServices falhava: scroll era chamado antes
-  // do React renderizar a nova seção.)
+  // Bug histórico: useEffect roda apos re-render, mas em React 19 com
+  // concurrent rendering o getElementById podia retornar null porque
+  // a section ainda nao tinha sido commitada. Setimeout 80ms cobria
+  // a maioria mas falhava em mobile lento (CIC rodada 3 reportou
+  // scrollY=0 mesmo apos transition). Solucao: retry com backoff +
+  // fallback pra window.scrollTo se scrollIntoView nao tiver efeito.
   const prevStepRef = useRef<Step>(step)
   useEffect(() => {
     const prev = prevStepRef.current
@@ -357,11 +366,44 @@ export default function BookingFlow({
     else if (prev === 'date' && step === 'time') targetId = 'horarios-disponiveis'
     else if (prev === 'time' && step === 'form') targetId = 'form-cliente'
     if (!targetId) return
-    // setTimeout > requestAnimationFrame — garante que React commitou DOM
-    setTimeout(() => {
-      const el = document.getElementById(targetId!)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 80)
+
+    // Retry com backoff: tenta 4x em intervalos crescentes até DOM
+    // estar pronto. 100ms cobre maioria; backoff cobre dispositivos
+    // lentos onde React 19 demora mais pra commitar.
+    const id = targetId
+    let cancelled = false
+    const tryScroll = (attempt: number) => {
+      if (cancelled) return
+      const el = document.getElementById(id)
+      if (el) {
+        // Calcula posição ANTES do smooth scroll (pra fallback)
+        const targetY = el.getBoundingClientRect().top + window.scrollY - 8
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        // Fallback: alguns browsers/configs ignoram smooth scroll.
+        // Se 600ms depois ainda nao saiu de scrollY ~0 e o alvo
+        // estava abaixo, força window.scrollTo direto.
+        setTimeout(() => {
+          if (cancelled) return
+          if (window.scrollY < targetY - 100 && targetY > 200) {
+            window.scrollTo({ top: targetY, behavior: 'smooth' })
+          }
+        }, 600)
+        return
+      }
+      // Elemento ainda nao existe — retry com delay crescente
+      if (attempt < 4) {
+        setTimeout(() => tryScroll(attempt + 1), 80 * (attempt + 1))
+      }
+    }
+    // Primeiro tick depois do paint — requestAnimationFrame duplo
+    // garante que o browser pintou o frame com a nova section.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => tryScroll(0))
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [step])
 
   // Auto-seleção da data quando vem da fila (após user escolher serviço).
@@ -1507,6 +1549,20 @@ export default function BookingFlow({
               </p>
             </div>
           ) : (
+            <>
+              {hojeFechouAposExpediente && (
+                <div
+                  className="rounded-xl px-3 py-2 mb-3 text-xs leading-relaxed"
+                  style={{
+                    background: isDark ? 'rgba(245,158,11,0.10)' : 'rgb(255,251,235)',
+                    border: `1px solid ${isDark ? 'rgba(245,158,11,0.20)' : 'rgb(254,215,170)'}`,
+                    color: C.mute,
+                  }}
+                >
+                  <span style={{ color: '#D97706', fontWeight: 600 }}>Hoje já fechou.</span>{' '}
+                  Próximas datas disponíveis abaixo.
+                </div>
+              )}
             <div className="grid grid-cols-4 gap-2">
               {availableDates.map((date) => {
                 const isSelected = selectedDate && formatDate(date) === formatDate(selectedDate)
@@ -1538,6 +1594,7 @@ export default function BookingFlow({
                 )
               })}
             </div>
+            </>
           )}
         </section>
       )}
