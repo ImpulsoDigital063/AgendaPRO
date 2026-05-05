@@ -280,7 +280,7 @@ export default async function ProfissionalPage() {
           <section>
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-                Proximos dias
+                Próximos dias
               </p>
               <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>7 dias</span>
             </div>
