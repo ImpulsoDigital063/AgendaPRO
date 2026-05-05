@@ -347,6 +347,43 @@ async function createProfessionals(businessId: string, ownerAuthId: string) {
   console.log('👥 Criando 3 profissionais...')
   const profIds: { id: string; name: string }[] = []
   for (const p of PROFESSIONALS) {
+    let authUserId: string | null = p.isOwner ? ownerAuthId : null
+
+    // Comissionados ganham conta auth pra logarem em /profissional/login.
+    // Senha padrao demo: AgendaPRO@2026 (mesma do owner pra simplicidade).
+    // Em prod, dono usa "Dar acesso" no painel que envia convite por email.
+    if (!p.isOwner && p.email) {
+      // Se ja existe (re-seed), pega o id existente
+      let existingId: string | undefined
+      let page = 1
+      while (page < 10) {
+        const { data } = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
+        if (!data?.users?.length) break
+        const found = data.users.find((u) => u.email === p.email)
+        if (found) { existingId = found.id; break }
+        if (data.users.length < 1000) break
+        page++
+      }
+
+      if (existingId) {
+        // Reseta senha pra senha demo (re-seed garante login funcional)
+        await supabase.auth.admin.updateUserById(existingId, { password: 'AgendaPRO@2026' })
+        authUserId = existingId
+      } else {
+        const { data: created, error: authErr } = await supabase.auth.admin.createUser({
+          email: p.email,
+          password: 'AgendaPRO@2026',
+          email_confirm: true,
+          user_metadata: { name: p.name, role: 'professional' },
+        })
+        if (authErr || !created.user) {
+          console.warn(`  ⚠ erro auth ${p.name}: ${authErr?.message}`)
+        } else {
+          authUserId = created.user.id
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('professionals')
       .insert({
@@ -354,8 +391,8 @@ async function createProfessionals(businessId: string, ownerAuthId: string) {
         name: p.name,
         email: p.email,
         active: true,
-        auth_user_id: p.isOwner ? ownerAuthId : null,
-        role: p.isOwner ? 'owner' : null,
+        auth_user_id: authUserId,
+        role: p.isOwner ? 'owner' : 'professional',
         employment_type: p.employment_type,
         commission_percentage: p.commission_percentage,
       })
@@ -363,7 +400,7 @@ async function createProfessionals(businessId: string, ownerAuthId: string) {
       .single()
     if (error || !data) throw error
     profIds.push(data)
-    console.log(`  ✓ ${p.name} (${p.isOwner ? 'owner' : 'comissionado 50%'})`)
+    console.log(`  ✓ ${p.name} (${p.isOwner ? 'owner' : 'comissionado 50%'}${authUserId && !p.isOwner ? ' · login OK' : ''})`)
   }
   return profIds
 }
@@ -1413,13 +1450,23 @@ async function main() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   console.log('')
   console.log('🔑 CREDENCIAIS:')
-  console.log(`   Email: ${DEMO.email}`)
-  console.log(`   Senha: ${DEMO.password}`)
+  console.log('   ┌── DONO (admin completo) ──────────────────┐')
+  console.log(`   │ Email: ${DEMO.email}`)
+  console.log(`   │ Senha: ${DEMO.password}`)
+  console.log('   ├── PROFISSIONAIS COMISSIONADOS ────────────┤')
+  for (const p of PROFESSIONALS) {
+    if (!p.isOwner && p.email) {
+      console.log(`   │ ${p.name.padEnd(18)} → ${p.email}`)
+    }
+  }
+  console.log(`   │ Senha (todos):       AgendaPRO@2026`)
+  console.log('   └───────────────────────────────────────────┘')
   console.log('')
   console.log('🌐 LINKS:')
-  console.log(`   Admin:    https://agendapro.net.br/admin/login`)
-  console.log(`   Público:  https://agendapro.net.br/${DEMO.slug}`)
-  console.log(`   Agendar:  https://agendapro.net.br/${DEMO.slug}/agendar`)
+  console.log(`   Admin:        https://agendapro.net.br/admin/login`)
+  console.log(`   Profissional: https://agendapro.net.br/profissional/login`)
+  console.log(`   Público:      https://agendapro.net.br/${DEMO.slug}`)
+  console.log(`   Agendar:      https://agendapro.net.br/${DEMO.slug}/agendar`)
   console.log('')
 }
 
