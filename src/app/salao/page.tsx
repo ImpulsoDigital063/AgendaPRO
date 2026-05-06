@@ -346,8 +346,7 @@ export default function SalaoPage() {
               {/* H1 — perda específica do salão */}
               <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2.2rem, 7vw, 4.5rem)' }}>
                 Seu salão deixa<br />
-                <span style={{ color: '#F59E0B' }}>R$ 1.800</span> na mesa<br className="hidden sm:block" />
-                todo mês.
+                <span style={{ color: '#F59E0B' }}>R$ 1.800</span> na mesa{' '}<br className="hidden sm:block" />todo mês.
               </h1>
 
               {/* Subhead — solução em fluxo, sem listão */}
