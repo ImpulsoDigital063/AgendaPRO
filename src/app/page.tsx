@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import FAQ from '@/components/FAQ'
 import AgendaDesktopMockup from '@/components/AgendaDesktopMockup'
 import IPhoneMockup from '@/components/IPhoneMockup'
@@ -48,11 +49,26 @@ const TIMELINE: { kind: '07' | '10' | '14' | '20'; hora: string; titulo: string;
 
 const MOTORES = ['fidelidade', 'fila', 'indicacao', 'reviews'] as const
 
-const VALUE_ITEMS = [
-  { item: 'Agenda online (Trinks, iSalon)',       price: 'R$ 89/mês' },
-  { item: 'Programa de fidelidade com pontos',    price: 'R$ 49/mês' },
-  { item: 'Sistema de indicação entre clientes',  price: 'R$ 79/mês' },
-  { item: 'Gestão de avaliações Google Reviews',  price: 'R$ 39/mês' },
+/**
+ * Value Stack (padrão Hormozi $100M Offers): empilha tudo que o cliente
+ * teria que pagar se fosse comprar separado, mostra o total inflado, e
+ * ancora o R$67/mês como pechincha.
+ *
+ * 4 ferramentas-núcleo (substituíveis) + 4 bônus que parecem caros
+ * (não substituíveis — só aqui).
+ */
+const VALUE_CORE = [
+  { item: 'Agenda online (Trinks, iSalon, Booksy)',       price: 'R$ 89/mês' },
+  { item: 'Programa de fidelidade com pontos',            price: 'R$ 49/mês' },
+  { item: 'Sistema de indicação rastreada por cliente',   price: 'R$ 79/mês' },
+  { item: 'Gestão de avaliações Google Reviews',          price: 'R$ 39/mês' },
+]
+
+const VALUE_BONUS = [
+  { item: 'Lista de espera automática (preenche cancelamento)', price: 'R$ 39/mês' },
+  { item: 'Página personalizada do seu negócio (link próprio)', price: 'R$ 99/mês' },
+  { item: 'Setup guiado em 5 minutos com o fundador',           price: 'R$ 197 setup' },
+  { item: 'Suporte direto via WhatsApp (não é robô)',           price: 'R$ 199/mês' },
 ]
 
 const STEPS: { n: '01' | '02' | '03'; title: string; desc: string }[] = [
@@ -126,8 +142,8 @@ export default function HomePage() {
             <div className="absolute left-4 top-[66%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 20px rgba(16,185,129,0.4)' }}>
               Fila de espera
             </div>
-            <div style={{ transform: 'scale(0.68)', transformOrigin: 'top center' }}>
-              <IPhoneMockup />
+            <div style={{ transform: 'scale(0.7)', transformOrigin: 'top center' }}>
+              <IPhoneMockup variant="barbearia" />
             </div>
           </div>
 
@@ -221,6 +237,100 @@ export default function HomePage() {
               </div>
             ))}
           </SectionReveal>
+        </div>
+      </section>
+
+      {/* ═══════════ 2.5 GENTE REAL — fotos dos 4 nichos atendidos ═══════════ */}
+      <section className="section relative" id="quem-usa">
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(6,182,212,0.10) 0%, transparent 60%)'
+        }} />
+
+        <div className="container relative">
+          <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
+            <div className="pill mb-6">
+              <span style={{ color: '#06B6D4' }}>●</span>
+              <span>Pra quem o AgendaPRO foi pensado</span>
+            </div>
+            <h2 className="display-lg text-white mb-4">
+              Gente <span className="text-gradient">de verdade</span>,<br />
+              fazendo o que faz de melhor.
+            </h2>
+            <p className="text-lg text-slate-400">
+              Não é genérico. Cada nicho tem o atalho que importa pra ele — sem encher de feature que você nunca vai usar.
+            </p>
+          </SectionReveal>
+
+          <SectionReveal stagger className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto">
+            {([
+              { slug: 'barbearia', src: '/images/lp/barbearia.jpg', alt: 'Barbeiro fazendo corte', label: 'Barbearia',     accent: '#F59E0B' },
+              { slug: 'salao',     src: '/images/lp/salao.jpg',     alt: 'Cabeleireira penteando cliente', label: 'Salão',        accent: '#A855F7' },
+              { slug: 'estetica',  src: '/images/lp/estetica.jpg',  alt: 'Esteticista aplicando máscara facial', label: 'Estética',     accent: '#06B6D4' },
+              { slug: 'nail',      src: '/images/lp/nail.jpg',      alt: 'Manicure trabalhando em unhas',  label: 'Nail Designer', accent: '#EC4899' },
+            ] as const).map((nicho) => (
+              <Link
+                key={nicho.slug}
+                href={`/${nicho.slug}`}
+                className="group relative block rounded-2xl overflow-hidden aspect-[3/4]"
+                style={{
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
+                }}
+              >
+                <Image
+                  src={nicho.src}
+                  alt={nicho.alt}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                {/* Overlay escuro do bottom */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: `linear-gradient(180deg, transparent 40%, rgba(5,7,19,0.5) 70%, rgba(5,7,19,0.95) 100%)`,
+                  }}
+                />
+                {/* Tint do accent */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: `linear-gradient(135deg, ${nicho.accent}30 0%, transparent 50%)`,
+                  }}
+                />
+                {/* Label */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full animate-pulse"
+                      style={{ background: nicho.accent, boxShadow: `0 0 10px ${nicho.accent}` }}
+                    />
+                    <span
+                      className="text-[9px] md:text-[10px] font-black tracking-[0.18em] uppercase"
+                      style={{ color: nicho.accent }}
+                    >
+                      Atende
+                    </span>
+                  </div>
+                  <h3 className="text-white text-base md:text-xl font-black leading-tight">
+                    {nicho.label}
+                  </h3>
+                  <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] md:text-xs font-semibold text-white/80 group-hover:text-white transition-colors">
+                    Ver demo
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden>
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </SectionReveal>
+
+          <p className="text-center text-xs text-slate-500 mt-8 max-w-xl mx-auto leading-relaxed">
+            Imagens ilustrativas — fotografia de profissionais de serviço em ambiente real de atendimento.
+          </p>
         </div>
       </section>
 
@@ -404,7 +514,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ 8. VALOR EMPILHADO ═══════════ */}
+      {/* ═══════════ 8. VALOR EMPILHADO — Hormozi Value Stack ═══════════ */}
       <section id="valor" className="section relative">
         <div className="absolute inset-0 pointer-events-none" style={{
           background: 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(245,158,11,0.1) 0%, transparent 60%)'
@@ -414,41 +524,78 @@ export default function HomePage() {
           <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
             <div className="pill mb-6">
               <span style={{ color: '#F59E0B' }}>●</span>
-              <span>Quanto custaria isso separado?</span>
+              <span>O que você leva por R$67</span>
             </div>
             <h2 className="display-lg text-white mb-4">
-              Veja o que você está <span className="text-gradient">levando</span>.
+              Some o que cada coisa<br />
+              <span className="text-gradient">custaria separado</span>.
             </h2>
             <p className="text-lg text-slate-400">
-              Tudo junto, por menos de R$1,60 por dia.
+              Pra ter tudo isso junto hoje, você teria que assinar 4 ferramentas e ainda contratar consultoria.
             </p>
           </SectionReveal>
 
           <SectionReveal className="max-w-xl mx-auto">
             <div className="glass rounded-3xl overflow-hidden">
-              {VALUE_ITEMS.map((r, i) => (
-                <div key={i} className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--glass-border)' }}>
-                  <p className="text-slate-300 text-sm md:text-base">{r.item}</p>
-                  <p className="font-mono text-slate-500 line-through text-sm md:text-base">{r.price}</p>
+              {/* Núcleo — ferramentas substituíveis */}
+              <div className="px-6 pt-5 pb-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                  As 4 ferramentas
+                </p>
+              </div>
+              {VALUE_CORE.map((r, i) => (
+                <div key={i} className="flex items-center justify-between px-6 py-3.5 border-b" style={{ borderColor: 'var(--glass-border)' }}>
+                  <p className="text-slate-300 text-sm md:text-base flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400 flex-shrink-0" aria-hidden>
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span>{r.item}</span>
+                  </p>
+                  <p className="font-mono text-slate-500 line-through text-sm md:text-base flex-shrink-0">{r.price}</p>
                 </div>
               ))}
-              <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
-                <p className="text-slate-300 font-semibold">Total separado</p>
-                <p className="font-mono text-slate-400 font-bold line-through">R$ 256/mês</p>
+
+              {/* Bônus — não substituíveis */}
+              <div className="px-6 pt-5 pb-3" style={{ background: 'rgba(245,158,11,0.06)' }}>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: '#F59E0B' }}>
+                  Bônus que ninguém entrega junto
+                </p>
               </div>
+              {VALUE_BONUS.map((r, i) => (
+                <div key={i} className="flex items-center justify-between px-6 py-3.5 border-b" style={{ borderColor: 'var(--glass-border)', background: 'rgba(245,158,11,0.04)' }}>
+                  <p className="text-slate-200 text-sm md:text-base flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400 flex-shrink-0" aria-hidden>
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    <span>{r.item}</span>
+                  </p>
+                  <p className="font-mono text-amber-400/70 line-through text-sm md:text-base flex-shrink-0">{r.price}</p>
+                </div>
+              ))}
+
+              {/* Total separado */}
+              <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.04)' }}>
+                <div>
+                  <p className="text-slate-300 font-semibold text-sm md:text-base">Valor total se comprasse separado</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">8 contas, 8 logins, 8 boletos</p>
+                </div>
+                <p className="font-mono text-slate-400 font-bold line-through text-base md:text-lg flex-shrink-0">R$ 591/mês</p>
+              </div>
+
+              {/* Preço final ancorado */}
               <div
-                className="flex items-center justify-between px-6 py-6"
+                className="flex items-center justify-between px-6 py-7"
                 style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)' }}
               >
                 <div>
-                  <p className="text-white font-bold text-base md:text-lg">AgendaPRO — tudo junto</p>
-                  <p className="text-white/70 text-xs mt-0.5">Sem setup · Garantia 7 dias</p>
+                  <p className="text-white font-black text-base md:text-lg">AgendaPRO — tudo junto</p>
+                  <p className="text-white/80 text-[11px] mt-0.5">1 conta, 1 login, sem setup</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-white text-2xl md:text-3xl font-black leading-none">
+                  <p className="text-white text-3xl md:text-4xl font-black leading-none">
                     R$67<span className="text-sm font-normal text-white/70">/mês</span>
                   </p>
-                  <p className="text-white/70 text-[11px] mt-1">menos de R$1,60/dia</p>
+                  <p className="text-white/80 text-[11px] mt-1 font-semibold">economia de R$ 524/mês</p>
                 </div>
               </div>
             </div>
@@ -468,6 +615,105 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ═══════════ 8.5 RISK REVERSAL — Garantias que aniquilam o risco ═══════════ */}
+      <section id="garantias" className="section relative">
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse 50% 40% at 50% 0%, rgba(16,185,129,0.14) 0%, transparent 60%)'
+        }} />
+
+        <div className="container relative">
+          <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
+            <div className="pill mb-6">
+              <span style={{ color: '#10B981' }}>●</span>
+              <span>Risco zero pra você</span>
+            </div>
+            <h2 className="display-lg text-white mb-4">
+              Quem assume o <span className="text-gradient">risco</span><br />
+              somos nós.
+            </h2>
+            <p className="text-lg text-slate-400">
+              Concorrente cobra R$ 197 de setup e te prende em fidelidade anual. Aqui é o oposto.
+            </p>
+          </SectionReveal>
+
+          <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {[
+              {
+                title: 'Garantia de 7 dias',
+                desc: 'Você usa, testa com cliente real, mexe na agenda. Se em 7 dias não fizer sentido, devolvo 100%. Sem perguntar nada.',
+                accent: '#10B981',
+                iconPath: (
+                  <>
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9 12l2 2 4-4" />
+                  </>
+                ),
+              },
+              {
+                title: 'Sem fidelidade. Sempre.',
+                desc: 'Cancela direto pelo painel ou WhatsApp. Sem multa, sem pegadinha, sem ligar 5 vezes pra te convencer a ficar.',
+                accent: '#06B6D4',
+                iconPath: (
+                  <>
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M4.93 4.93l14.14 14.14" />
+                  </>
+                ),
+              },
+              {
+                title: 'Preço travado',
+                desc: 'Solo R$ 67. Equipe R$ 97. O preço de quando você entrou é o seu pra sempre. Sem reajuste-surpresa pelo IGPM.',
+                accent: '#8B5CF6',
+                iconPath: (
+                  <>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                  </>
+                ),
+              },
+            ].map((g) => (
+              <div
+                key={g.title}
+                className="glass rounded-3xl p-7 relative overflow-hidden flex flex-col"
+                style={{
+                  border: `1px solid ${g.accent}30`,
+                }}
+              >
+                <div
+                  className="absolute -top-12 -right-12 w-40 h-40 rounded-full pointer-events-none opacity-25"
+                  style={{ background: `radial-gradient(circle, ${g.accent} 0%, transparent 70%)`, filter: 'blur(20px)' }}
+                  aria-hidden
+                />
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
+                  style={{
+                    background: `${g.accent}18`,
+                    border: `1px solid ${g.accent}40`,
+                    color: g.accent,
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    {g.iconPath}
+                  </svg>
+                </div>
+                <h3 className="text-xl font-black text-white mb-2 leading-tight">
+                  {g.title}
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  {g.desc}
+                </p>
+              </div>
+            ))}
+          </SectionReveal>
+
+          <SectionReveal className="max-w-2xl mx-auto mt-10 text-center">
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Eduardo, fundador da Impulso Digital, atende cada caso de reembolso pessoalmente — sem callcenter, sem formulário de 12 perguntas.
+            </p>
+          </SectionReveal>
+        </div>
+      </section>
+
       {/* ═══════════ 9. PRICING ═══════════ */}
       <section id="precos" className="section relative">
         <div className="container">
@@ -480,7 +726,7 @@ export default function HomePage() {
               Escolha o <span className="text-gradient">seu</span>.
             </h2>
             <p className="text-lg text-slate-400">
-              Primeiros 10 clientes travam o preço vitalício. Garantia de 7 dias.
+              Preço fixo, sem setup, sem fidelidade. Garantia de 7 dias.
             </p>
           </SectionReveal>
 
