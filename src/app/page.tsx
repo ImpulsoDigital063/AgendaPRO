@@ -6,6 +6,7 @@ import IPhoneMockup from '@/components/IPhoneMockup'
 import { MechanismCard } from '@/components/MechanismCard'
 import { TimelineMicroUI, DorMicroUI, PassoMicroUI } from '@/components/LandingMicroUI'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
+import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
 import {
   AnimatedGradient,
   SectionReveal,
@@ -503,6 +504,16 @@ export default function HomePage() {
             <ComparisonMiniUIs />
           </SectionReveal>
         </div>
+      </section>
+
+      {/* ═══════════ 6.5 COMPARATIVO COM NOMES — Trinks/ZenPlace/Booksy/Avec/Belezzia ═══════════ */}
+      <section className="section relative">
+        <SectionReveal>
+          <ComparativoConcorrentes
+            accent="cyan"
+            concorrentes={['Trinks', 'ZenPlace', 'Booksy', 'Avec', 'Belezzia']}
+          />
+        </SectionReveal>
       </section>
 
       {/* ═══════════ 7. COMO COMEÇAR (3 passos) ═══════════ */}
