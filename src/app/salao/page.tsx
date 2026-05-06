@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 }
 import type { FAQItem } from '@/components/FAQ'
 import Image from 'next/image'
-import IPhoneMockup from '@/components/IPhoneMockup'
+import IPhoneRealMockup from '@/components/IPhoneRealMockup'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
@@ -404,8 +404,8 @@ export default function SalaoPage() {
             </SectionReveal>
 
             <SectionReveal className="flex justify-center lg:justify-end mt-4 lg:mt-0">
-              <div className="relative">
-                <IPhoneMockup variant="salao" />
+              <div className="relative w-full max-w-[480px]">
+                <IPhoneRealMockup variant="salao" />
               </div>
             </SectionReveal>
 

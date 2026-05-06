@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import FAQ from '@/components/FAQ'
 import AgendaDesktopMockup from '@/components/AgendaDesktopMockup'
-import IPhoneMockup from '@/components/IPhoneMockup'
+import IPhoneRealMockup from '@/components/IPhoneRealMockup'
 import { MechanismCard } from '@/components/MechanismCard'
 import { TimelineMicroUI, DorMicroUI, PassoMicroUI } from '@/components/LandingMicroUI'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
@@ -138,41 +138,42 @@ export default function HomePage() {
             Cliente agenda sozinho pelo link da bio. Lembrete antes de cada horário. Fila de espera quando alguém cancela. <strong className="text-white">Você só atende.</strong>
           </p>
 
-          {/* Mockup do iPhone + labels */}
-          <div className="relative mb-5 w-full flex justify-center" style={{ minHeight: 380 }}>
-            {/* Labels flutuantes — posicionadas fora do mockup */}
-            <div
-              className="absolute left-2 top-[18%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white whitespace-nowrap"
-              style={{
-                background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
-                boxShadow: '0 8px 24px rgba(139,92,246,0.45)',
-                animation: 'floatSlow 4s ease-in-out infinite',
-              }}
-            >
-              Lembrete automático
-            </div>
-            <div
-              className="absolute right-2 top-[42%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white whitespace-nowrap"
-              style={{
-                background: 'linear-gradient(135deg, #06B6D4, #0891B2)',
-                boxShadow: '0 8px 24px rgba(6,182,212,0.45)',
-                animation: 'floatSlow 5s ease-in-out infinite reverse',
-              }}
-            >
-              Fidelidade com pontos
-            </div>
-            <div
-              className="absolute left-4 top-[66%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white whitespace-nowrap"
-              style={{
-                background: 'linear-gradient(135deg, #10B981, #059669)',
-                boxShadow: '0 8px 24px rgba(16,185,129,0.45)',
-                animation: 'floatSlow 4.5s ease-in-out infinite',
-              }}
-            >
-              Fila de espera
-            </div>
-            <div style={{ transform: 'scale(0.7)', transformOrigin: 'top center' }}>
-              <IPhoneMockup variant="barbearia" />
+          {/* Mockup do iPhone (foto real) + labels flutuantes */}
+          <div className="relative mb-5 w-full flex justify-center">
+            <div className="relative w-full max-w-[420px]">
+              <IPhoneRealMockup variant="barbearia" maxWidth={420} />
+
+              {/* Labels flutuantes — sobrepostas ao mockup */}
+              <div
+                className="absolute left-0 top-[10%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white whitespace-nowrap"
+                style={{
+                  background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
+                  boxShadow: '0 8px 24px rgba(139,92,246,0.45)',
+                  animation: 'floatSlow 4s ease-in-out infinite',
+                }}
+              >
+                Lembrete automático
+              </div>
+              <div
+                className="absolute right-0 top-[42%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white whitespace-nowrap"
+                style={{
+                  background: 'linear-gradient(135deg, #06B6D4, #0891B2)',
+                  boxShadow: '0 8px 24px rgba(6,182,212,0.45)',
+                  animation: 'floatSlow 5s ease-in-out infinite reverse',
+                }}
+              >
+                Fidelidade com pontos
+              </div>
+              <div
+                className="absolute left-4 bottom-[4%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white whitespace-nowrap"
+                style={{
+                  background: 'linear-gradient(135deg, #10B981, #059669)',
+                  boxShadow: '0 8px 24px rgba(16,185,129,0.45)',
+                  animation: 'floatSlow 4.5s ease-in-out infinite',
+                }}
+              >
+                Fila de espera
+              </div>
             </div>
           </div>
 
