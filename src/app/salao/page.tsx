@@ -665,6 +665,32 @@ export default function SalaoPage() {
         </div>
       </section>
 
+      {/* ═══════════ 3.5 COMPARAÇÃO (reposicionada — antes era seção 6) ═══════════ */}
+      <section className="relative py-16 sm:py-20 lg:py-28">
+        <div className="container max-w-6xl px-4">
+          <SectionReveal className="text-center mb-10 sm:mb-12 max-w-3xl mx-auto">
+            <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
+              <IconChair size={14} className="text-pink-400" />
+              <span>AgendaPRO x Outros apps</span>
+            </div>
+            <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
+              Outros apps <span className="text-slate-500">só agendam</span>.<br /><span className="text-gradient">AgendaPRO trabalha.</span>
+            </h2>
+            <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
+              Mesma tela por fora. Mundos diferentes por dentro. Olha o que acontece quando a cliente cancela.
+            </p>
+          </SectionReveal>
+          <SectionReveal><ComparisonMiniUIs /></SectionReveal>
+        </div>
+      </section>
+
+      {/* ═══════════ 3.6 COMPARATIVO FEATURES (reposicionado — antes era 6.5) ═══════════ */}
+      <section className="relative py-16 sm:py-20 lg:py-24">
+        <SectionReveal>
+          <ComparativoConcorrentes accent="pink" concorrentes={['Trinks', 'Avec', 'ZenPlace']} />
+        </SectionReveal>
+      </section>
+
       {/* ═══════════ 4. CONTROLE FINANCEIRO ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(236,72,153,0.12) 0%, transparent 60%)' }} />
@@ -800,32 +826,6 @@ export default function SalaoPage() {
       </section>
 
       <CTAInline titulo="Esse dia pode ser amanhã" sub="Cadastre hoje e veja a diferença ainda essa semana." />
-
-      {/* ═══════════ 6. COMPARAÇÃO ═══════════ */}
-      <section className="relative py-16 sm:py-20 lg:py-28">
-        <div className="container max-w-6xl px-4">
-          <SectionReveal className="text-center mb-10 sm:mb-12 max-w-3xl mx-auto">
-            <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
-              <IconChair size={14} className="text-pink-400" />
-              <span>AgendaPRO x Outros apps</span>
-            </div>
-            <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
-              Outros apps <span className="text-slate-500">só agendam</span>.<br /><span className="text-gradient">AgendaPRO trabalha.</span>
-            </h2>
-            <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-              Mesma tela por fora. Mundos diferentes por dentro. Olha o que acontece quando a cliente cancela.
-            </p>
-          </SectionReveal>
-          <SectionReveal><ComparisonMiniUIs /></SectionReveal>
-        </div>
-      </section>
-
-      {/* ═══════════ 6.5 COMPARATIVO FEATURES ═══════════ */}
-      <section className="relative py-16 sm:py-20 lg:py-24">
-        <SectionReveal>
-          <ComparativoConcorrentes accent="pink" concorrentes={['Trinks', 'Avec', 'ZenPlace']} />
-        </SectionReveal>
-      </section>
 
       {/* ═══════════ 7. PASSOS ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">
