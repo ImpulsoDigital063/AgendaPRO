@@ -682,7 +682,7 @@ export default function SalaoPage() {
               Mesma tela por fora. Mundos diferentes por dentro. Olha o que acontece quando a cliente cancela.
             </p>
           </SectionReveal>
-          <SectionReveal><ComparisonMiniUIs /></SectionReveal>
+          <SectionReveal><ComparisonMiniUIs variant="salao" /></SectionReveal>
         </div>
       </section>
 
@@ -785,7 +785,7 @@ export default function SalaoPage() {
               Em 5 minutos no ar. <span className="text-gradient">Sua VIP recebe o link essa tarde.</span>
             </h2>
           </SectionReveal>
-          <SectionReveal><OnboardingSteps /></SectionReveal>
+          <SectionReveal><OnboardingSteps variant="salao" /></SectionReveal>
         </div>
       </section>
 
@@ -1005,7 +1005,7 @@ export default function SalaoPage() {
         </div>
       </footer>
 
-      <SocialProofToast />
+      <SocialProofToast variant="salao" />
     </main>
   )
 }

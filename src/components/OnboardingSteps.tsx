@@ -2,6 +2,10 @@
    Timeline connector gradient + bolinhas numeradas + cards com mini-UI
    + labels de tempo + card 03 destacado (automático) + check final.
    Todo SVG, zero emoji.
+
+   Variant prop adapta nome do negócio, @insta, app link, serviços e
+   notificações ao nicho — não quebra imersão (quem cai em /salao não
+   vê 'Barber Tiago' aparecer).
 */
 
 import type { ReactNode } from 'react'
@@ -21,12 +25,141 @@ import {
   IconSparkle,
 } from './BarberIcons'
 
+export type OnboardingVariant = 'barbearia' | 'salao' | 'estetica' | 'nail'
+
+type Service = { s: string; p: string }
+type OnboardingPreset = {
+  /** "Setup da barbearia" | "Setup do salão" etc. — header form */
+  negocioLabel: string
+  /** Nome do negócio fictício na demo (Barber Tiago, Studio Ana...) */
+  businessName: string
+  /** 3 serviços com preço — chips no setup */
+  servicos: [Service, Service, Service]
+  /** Cidade visível na mini-UI insta (ex: 'Centro · SP') */
+  cidade: string
+  /** Bio fictícia (descrição da página Insta) */
+  bio: string
+  /** @insta_user — sem o @ */
+  instaUser: string
+  /** Slug pro link agendapro.app/{slug} */
+  slug: string
+  /** Stat 1 da bio — primeira métrica (ex: "2,4k seguidores") */
+  bioStat1: string
+  /** Stat 2 da bio (ex: "312 posts") */
+  bioStat2: string
+  /** Step 1 título — "Cadastra a barbearia" / "Cadastra o salão" etc. */
+  step1Title: string
+  /** Step 1 descrição */
+  step1Desc: string
+  /** Step 3 descrição — fim com "Você só corta" / "Você só atende" */
+  step3Desc: string
+  /** Final label — "Sua barbearia online" / "Seu salão online" */
+  finalLabel: string
+  /** Notif 1: novo agendamento (ex: "João P. · qui 09h · Corte") */
+  notif1: string
+  /** Notif 2: lembrete enviado (ex: "Pedro · 18:00 ontem") */
+  notif2: string
+  /** Notif 3: fila acionada (ex: "Marcos assumiu 10h · +R$ 35") */
+  notif3: string
+}
+
+const PRESETS: Record<OnboardingVariant, OnboardingPreset> = {
+  barbearia: {
+    negocioLabel: 'Setup da barbearia',
+    businessName: 'Barber Tiago',
+    servicos: [
+      { s: 'Corte', p: 'R$40' },
+      { s: 'Barba', p: 'R$30' },
+      { s: 'Combo', p: 'R$60' },
+    ],
+    cidade: 'Centro · SP',
+    bio: 'Corte · barba · combo. Trabalhamos com hora marcada.',
+    instaUser: 'barbertiago',
+    slug: 'barber-tiago',
+    bioStat1: '2,4k seguidores',
+    bioStat2: '312 posts',
+    step1Title: 'Cadastra a barbearia',
+    step1Desc: 'Nome, serviços, horários e barbeiros em um form só. Sem técnico, sem papel.',
+    step3Desc: 'Confirma, lembra, preenche cancelamento, ativa indicação e sobe seu ranking. Você só corta.',
+    finalLabel: 'Sua barbearia online',
+    notif1: 'João P. · qui 09h · Corte',
+    notif2: 'Pedro · 18:00 ontem',
+    notif3: 'Marcos assumiu 10h · +R$ 35',
+  },
+  salao: {
+    negocioLabel: 'Setup do salão',
+    businessName: 'Studio Ana',
+    servicos: [
+      { s: 'Escova', p: 'R$70' },
+      { s: 'Coloração', p: 'R$220' },
+      { s: 'Hidratação', p: 'R$80' },
+    ],
+    cidade: 'Pinheiros · SP',
+    bio: 'Coloração · escova · hidratação. Atendimento com hora marcada.',
+    instaUser: 'studioana_salao',
+    slug: 'studio-ana',
+    bioStat1: '8,7k seguidoras',
+    bioStat2: '1,2k posts',
+    step1Title: 'Cadastra o salão',
+    step1Desc: 'Nome, serviços, horários e profissionais em um form só. Sem técnico, sem papel.',
+    step3Desc: 'Confirma, lembra, preenche cancelamento, ativa indicação e sobe seu ranking. Você só atende.',
+    finalLabel: 'Seu salão online',
+    notif1: 'Maria H. · qui 14h · Coloração',
+    notif2: 'Camila S. · 18:00 ontem',
+    notif3: 'Renata assumiu 16h · +R$ 220',
+  },
+  estetica: {
+    negocioLabel: 'Setup da clínica',
+    businessName: 'Pele Viva',
+    servicos: [
+      { s: 'Limpeza', p: 'R$150' },
+      { s: 'Drenagem', p: 'R$200' },
+      { s: 'Peeling', p: 'R$350' },
+    ],
+    cidade: 'Savassi · BH',
+    bio: 'Limpeza · drenagem · peeling. Pacotes com sessões agendadas.',
+    instaUser: 'peleviva.estetica',
+    slug: 'pele-viva',
+    bioStat1: '14k seguidoras',
+    bioStat2: '1,8k posts',
+    step1Title: 'Cadastra a clínica',
+    step1Desc: 'Nome, procedimentos, horários e profissionais em um form só. Sem técnico, sem papel.',
+    step3Desc: 'Confirma, lembra, preenche cancelamento, ativa indicação e sobe seu ranking. Você só atende.',
+    finalLabel: 'Sua clínica online',
+    notif1: 'Camila S. · qua 14h · Drenagem',
+    notif2: 'Bianca M. · 18:00 ontem',
+    notif3: 'Aline assumiu 15h · +R$ 350',
+  },
+  nail: {
+    negocioLabel: 'Setup do estúdio',
+    businessName: 'Nail Designer Lari',
+    servicos: [
+      { s: 'Gel', p: 'R$80' },
+      { s: 'Fibra', p: 'R$180' },
+      { s: 'Manutenção', p: 'R$70' },
+    ],
+    cidade: 'Batel · PR',
+    bio: 'Gel · fibra · manutenção. Atendimento com hora marcada.',
+    instaUser: 'nailari.designer',
+    slug: 'designer-lari',
+    bioStat1: '6,8k seguidoras',
+    bioStat2: '890 posts',
+    step1Title: 'Cadastra o estúdio',
+    step1Desc: 'Nome, serviços, horários e técnicas em um form só. Sem técnico, sem papel.',
+    step3Desc: 'Confirma, lembra, preenche cancelamento, ativa indicação e sobe seu ranking. Você só atende.',
+    finalLabel: 'Seu estúdio online',
+    notif1: 'Larissa F. · qui 09h · Gel',
+    notif2: 'Bruna A. · 18:00 ontem',
+    notif3: 'Mariana assumiu 15h · +R$ 180',
+  },
+}
+
 /* ═══════════════════════════════════════════════
    MINI-UIs POR PASSO
 ═══════════════════════════════════════════════ */
 
 /* Passo 01 — form de setup */
-function SetupFormMiniUI() {
+function SetupFormMiniUI({ p }: { p: OnboardingPreset }) {
   return (
     <div
       className="rounded-xl p-3 space-y-2"
@@ -39,7 +172,7 @@ function SetupFormMiniUI() {
       <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: 'rgba(59,130,246,0.15)' }}>
         <div className="flex items-center gap-1.5">
           <IconScissors size={11} className="text-cyan-400" strokeWidth={2.2} />
-          <span className="text-[10px] font-bold text-white">Setup da barbearia</span>
+          <span className="text-[10px] font-bold text-white">{p.negocioLabel}</span>
         </div>
         <span className="text-[9px] text-slate-500">passo 1</span>
       </div>
@@ -51,7 +184,7 @@ function SetupFormMiniUI() {
           className="flex items-center justify-between px-2 py-1.5 rounded-md text-[10px]"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(59,130,246,0.3)' }}
         >
-          <span className="text-white font-semibold">Barber Tiago</span>
+          <span className="text-white font-semibold">{p.businessName}</span>
           <IconCheck size={10} strokeWidth={3} className="text-emerald-400" />
         </div>
       </div>
@@ -60,11 +193,7 @@ function SetupFormMiniUI() {
       <div>
         <div className="text-[9px] text-slate-500 mb-1">Serviços</div>
         <div className="flex flex-wrap gap-1">
-          {[
-            { s: 'Corte', p: 'R$40' },
-            { s: 'Barba', p: 'R$30' },
-            { s: 'Combo', p: 'R$60' },
-          ].map((x) => (
+          {p.servicos.map((x) => (
             <span
               key={x.s}
               className="text-[9px] px-1.5 py-0.5 rounded-md flex items-center gap-1"
@@ -97,14 +226,14 @@ function SetupFormMiniUI() {
           boxShadow: '0 0 12px rgba(59,130,246,0.4)',
         }}
       >
-        Salvar barbearia
+        Salvar {p.negocioLabel.replace(/^Setup d[oa] /, '').toLowerCase()}
       </div>
     </div>
   )
 }
 
 /* Passo 02 — Instagram bio com link */
-function InstaBioMiniUI() {
+function InstaBioMiniUI({ p }: { p: OnboardingPreset }) {
   return (
     <div
       className="rounded-xl overflow-hidden"
@@ -121,7 +250,7 @@ function InstaBioMiniUI() {
           background: 'linear-gradient(90deg, rgba(236,72,153,0.08), rgba(139,92,246,0.08))',
         }}
       >
-        <span className="text-[10px] font-bold text-white">@barbertiago</span>
+        <span className="text-[10px] font-bold text-white">@{p.instaUser}</span>
         <span className="text-[9px] text-slate-500">Instagram</span>
       </div>
 
@@ -142,24 +271,24 @@ function InstaBioMiniUI() {
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-bold text-white">Barber Tiago</div>
+          <div className="text-[10px] font-bold text-white">{p.businessName}</div>
           <div className="text-[9px] text-slate-400 flex items-center gap-1">
             <IconPin size={9} strokeWidth={2} />
-            <span>Centro · SP</span>
+            <span>{p.cidade}</span>
           </div>
         </div>
       </div>
 
       {/* Stats linha */}
       <div className="flex items-center gap-3 px-3 py-1.5 text-[9px] text-slate-400">
-        <span><strong className="text-white">2,4k</strong> seguidores</span>
-        <span><strong className="text-white">312</strong> posts</span>
+        <span><strong className="text-white">{p.bioStat1.split(' ')[0]}</strong> {p.bioStat1.split(' ').slice(1).join(' ')}</span>
+        <span><strong className="text-white">{p.bioStat2.split(' ')[0]}</strong> {p.bioStat2.split(' ').slice(1).join(' ')}</span>
       </div>
 
       {/* Bio com link destacado */}
       <div className="px-3 pb-3">
         <p className="text-[10px] text-slate-300 mb-1.5 leading-snug">
-          Corte · barba · combo. Trabalhamos com hora marcada.
+          {p.bio}
         </p>
         <div
           className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
@@ -171,7 +300,7 @@ function InstaBioMiniUI() {
         >
           <IconLink size={11} strokeWidth={2.2} className="text-cyan-400 flex-shrink-0" />
           <span className="text-[10px] font-semibold text-white truncate flex-1">
-            agendapro.app/barber-tiago
+            agendapro.app/{p.slug}
           </span>
           <IconArrowRight size={10} strokeWidth={2.5} className="text-cyan-400 flex-shrink-0" />
         </div>
@@ -185,7 +314,7 @@ function InstaBioMiniUI() {
 }
 
 /* Passo 03 — SmartAgenda assume (notificações em cascata) */
-function AutomationMiniUI() {
+function AutomationMiniUI({ p }: { p: OnboardingPreset }) {
   return (
     <div
       className="rounded-xl p-3 space-y-2"
@@ -225,7 +354,7 @@ function AutomationMiniUI() {
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[10px] font-bold text-white leading-tight truncate">Novo agendamento</div>
-          <div className="text-[9px] text-slate-400 leading-tight truncate">João P. · qui 09h · Corte</div>
+          <div className="text-[9px] text-slate-400 leading-tight truncate">{p.notif1}</div>
         </div>
       </div>
 
@@ -242,7 +371,7 @@ function AutomationMiniUI() {
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[10px] font-bold text-white leading-tight truncate">Lembrete enviado</div>
-          <div className="text-[9px] text-slate-400 leading-tight truncate">Pedro · 18:00 ontem · <span className="text-emerald-400">confirmado</span></div>
+          <div className="text-[9px] text-slate-400 leading-tight truncate">{p.notif2} · <span className="text-emerald-400">confirmado</span></div>
         </div>
       </div>
 
@@ -259,7 +388,7 @@ function AutomationMiniUI() {
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[10px] font-bold text-white leading-tight truncate">Fila acionada</div>
-          <div className="text-[9px] text-slate-400 leading-tight truncate">Marcos assumiu 10h · +R$ 35</div>
+          <div className="text-[9px] text-slate-400 leading-tight truncate">{p.notif3}</div>
         </div>
       </div>
 
@@ -271,7 +400,7 @@ function AutomationMiniUI() {
         <span className="text-slate-400">Você: zero cliques</span>
         <span className="font-bold inline-flex items-center gap-1" style={{ color: '#06B6D4' }}>
           <IconCash size={10} strokeWidth={2.2} />
-          +R$ 35
+          {p.notif3.match(/\+R\$\s*[\d.]+/)?.[0] ?? '+R$ 35'}
         </span>
       </div>
     </div>
@@ -293,36 +422,38 @@ type StepData = {
   highlight?: boolean
 }
 
-const STEPS_V2: StepData[] = [
-  {
-    n: '01',
-    time: '2 minutos',
-    title: 'Cadastra a barbearia',
-    desc: 'Nome, serviços, horários e barbeiros em um form só. Sem técnico, sem papel.',
-    Icon: IconScissors,
-    MiniUI: SetupFormMiniUI,
-    accent: '#3B82F6',
-  },
-  {
-    n: '02',
-    time: '30 segundos',
-    title: 'Cola o link na bio',
-    desc: 'Insta, Google Meu Negócio, status do WhatsApp. Cliente toca e agenda.',
-    Icon: IconLink,
-    MiniUI: InstaBioMiniUI,
-    accent: '#EC4899',
-  },
-  {
-    n: '03',
-    time: 'acontece sozinho',
-    title: 'A SmartAgenda assume',
-    desc: 'Confirma, lembra, preenche cancelamento, ativa indicação e sobe seu ranking. Você só corta.',
-    Icon: IconBrain,
-    MiniUI: AutomationMiniUI,
-    accent: '#8B5CF6',
-    highlight: true,
-  },
-]
+function buildSteps(p: OnboardingPreset): StepData[] {
+  return [
+    {
+      n: '01',
+      time: '2 minutos',
+      title: p.step1Title,
+      desc: p.step1Desc,
+      Icon: IconScissors,
+      MiniUI: () => <SetupFormMiniUI p={p} />,
+      accent: '#3B82F6',
+    },
+    {
+      n: '02',
+      time: '30 segundos',
+      title: 'Cola o link na bio',
+      desc: 'Insta, Google Meu Negócio, status do WhatsApp. Cliente toca e agenda.',
+      Icon: IconLink,
+      MiniUI: () => <InstaBioMiniUI p={p} />,
+      accent: '#EC4899',
+    },
+    {
+      n: '03',
+      time: 'acontece sozinho',
+      title: 'A SmartAgenda assume',
+      desc: p.step3Desc,
+      Icon: IconBrain,
+      MiniUI: () => <AutomationMiniUI p={p} />,
+      accent: '#8B5CF6',
+      highlight: true,
+    },
+  ]
+}
 
 function StepCard({ step }: { step: StepData }) {
   const { n, time, title, desc, Icon, MiniUI, accent, highlight } = step
@@ -418,7 +549,14 @@ function StepCard({ step }: { step: StepData }) {
    EXPORT
 ═══════════════════════════════════════════════ */
 
-export default function OnboardingSteps() {
+type Props = {
+  variant?: OnboardingVariant
+}
+
+export default function OnboardingSteps({ variant = 'barbearia' }: Props) {
+  const preset = PRESETS[variant]
+  const steps = buildSteps(preset)
+
   return (
     <div className="relative max-w-5xl mx-auto">
       {/* Connector horizontal — desktop only (atravessa as 3 bolinhas no topo) */}
@@ -440,10 +578,10 @@ export default function OnboardingSteps() {
 
       {/* Grid dos 3 cards */}
       <div className="grid md:grid-cols-3 gap-8 md:gap-6 relative">
-        {STEPS_V2.map((s, i) => (
+        {steps.map((s, i) => (
           <div key={s.n} className="relative">
             {/* Linha vertical mobile entre cards (exceto no último) */}
-            {i < STEPS_V2.length - 1 && (
+            {i < steps.length - 1 && (
               <div
                 className="md:hidden absolute left-1/2 -bottom-8 -translate-x-1/2 pointer-events-none"
                 style={{
@@ -489,7 +627,7 @@ export default function OnboardingSteps() {
         </div>
 
         <div className="text-center">
-          <div className="text-white font-black text-base sm:text-lg">Pronto. Sua barbearia online.</div>
+          <div className="text-white font-black text-base sm:text-lg">Pronto. {preset.finalLabel}.</div>
           <div className="text-slate-400 text-xs sm:text-sm mt-1 inline-flex items-center gap-1.5">
             <IconStar size={11} className="text-amber-400" />
             Em menos de 5 minutos, sem técnico. Garantia de 7 dias.

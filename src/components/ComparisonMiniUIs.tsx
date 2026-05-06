@@ -1,16 +1,96 @@
-/* Comparação SmartAgenda x Outros apps
+/* Comparação AgendaPRO x Outros apps
    Duas mini-UIs lado a lado:
    - Esquerda: "Outros apps" (só agenda — agenda morta, nada acontece)
-   - Direita: "SmartAgenda" (dashboard vivo com automações rolando)
+   - Direita: "AgendaPRO" (dashboard vivo com automações rolando)
    Cada card tem: header + mini-UI realista + lista de features com marks.
+
+   Variant prop adapta clientes/serviços/notificações ao nicho da LP
+   (não quebra imersão — quem cai em /salao não vê João P · Corte).
 */
 
 import { IconCheck, IconBolt, IconTrophy, IconLink, IconStar, IconClock24 } from './BarberIcons'
 
+export type ComparisonVariant = 'barbearia' | 'salao' | 'estetica' | 'nail'
+
+type Slot = { h: string; c: string; s: string; status: 'ok' | 'empty' | 'cancel' }
+type Notif = { kind: 'fila' | 'pontos' | 'indicacao'; t: string; s: string; time: string }
+
+type VariantData = {
+  /** Concorrentes citados (genéricos do nicho) */
+  concorrentes: string
+  /** 5 slots da agenda "outros apps" — passiva, com vazios e cancelado */
+  slotsOutros: Slot[]
+  /** 3 notificações que aparecem AO VIVO no AgendaPRO */
+  notifs: Notif[]
+}
+
+const VARIANTS: Record<ComparisonVariant, VariantData> = {
+  barbearia: {
+    concorrentes: 'Trinks · iSalon · Simples · caderno',
+    slotsOutros: [
+      { h: '09:00', c: 'João P.',  s: 'Corte',         status: 'ok' },
+      { h: '10:00', c: '—',        s: '(vazio)',       status: 'empty' },
+      { h: '11:00', c: 'Pedro C.', s: 'Barba',         status: 'ok' },
+      { h: '12:00', c: '—',        s: '(vazio)',       status: 'empty' },
+      { h: '13:00', c: 'Ana S.',   s: 'Corte + barba', status: 'cancel' },
+    ],
+    notifs: [
+      { kind: 'fila',      t: 'Fila acionada',        s: '10:00 Marcos S. — +R$35',     time: 'há 3min' },
+      { kind: 'pontos',    t: 'Ana ganhou +50pts',    s: 'avaliação 5★ no Google',      time: 'há 8min' },
+      { kind: 'indicacao', t: 'Indicação confirmada', s: 'Lucas trouxe Tiago',          time: 'há 14min' },
+    ],
+  },
+  salao: {
+    concorrentes: 'Trinks · Avec · ZenPlace · caderno',
+    slotsOutros: [
+      { h: '09:00', c: 'Maria H.',     s: 'Escova',         status: 'ok' },
+      { h: '10:30', c: '—',            s: '(vazio)',        status: 'empty' },
+      { h: '12:00', c: 'Camila S.',    s: 'Hidratação',     status: 'ok' },
+      { h: '14:00', c: '—',            s: '(vazio)',        status: 'empty' },
+      { h: '16:00', c: 'Patrícia L.',  s: 'Coloração',      status: 'cancel' },
+    ],
+    notifs: [
+      { kind: 'fila',      t: 'Fila acionada',         s: '16:00 Renata C. — +R$220',  time: 'há 4min' },
+      { kind: 'pontos',    t: 'Maria H. ganhou +50pts', s: 'avaliação 5★ no Google',   time: 'há 9min' },
+      { kind: 'indicacao', t: 'Indicação confirmada',  s: 'Camila trouxe Bruna',       time: 'há 18min' },
+    ],
+  },
+  estetica: {
+    concorrentes: 'Trinks · ZenPlace · Belezzia · caderno',
+    slotsOutros: [
+      { h: '09:00', c: 'Camila S.',    s: 'Limpeza de pele',  status: 'ok' },
+      { h: '10:30', c: '—',            s: '(vazio)',          status: 'empty' },
+      { h: '12:00', c: 'Bianca M.',    s: 'Drenagem',         status: 'ok' },
+      { h: '14:00', c: '—',            s: '(vazio)',          status: 'empty' },
+      { h: '15:30', c: 'Letícia R.',   s: 'Microagulhamento', status: 'cancel' },
+    ],
+    notifs: [
+      { kind: 'fila',      t: 'Fila acionada',         s: '15:30 Aline F. — +R$350',    time: 'há 5min' },
+      { kind: 'pontos',    t: 'Bianca M. ganhou +80pts', s: 'avaliação 5★ no Google',   time: 'há 11min' },
+      { kind: 'indicacao', t: 'Indicação confirmada',  s: 'Camila indicou Patrícia',    time: 'há 22min' },
+    ],
+  },
+  nail: {
+    concorrentes: 'Trinks · Booksy · Belezzia · caderno',
+    slotsOutros: [
+      { h: '09:00', c: 'Larissa F.',   s: 'Esmaltação gel',  status: 'ok' },
+      { h: '10:30', c: '—',            s: '(vazio)',         status: 'empty' },
+      { h: '12:00', c: 'Bruna A.',     s: 'Manutenção',      status: 'ok' },
+      { h: '14:00', c: '—',            s: '(vazio)',         status: 'empty' },
+      { h: '15:30', c: 'Fernanda M.',  s: 'Fibra de vidro',  status: 'cancel' },
+    ],
+    notifs: [
+      { kind: 'fila',      t: 'Fila acionada',          s: '15:30 Mariana S. — +R$180', time: 'há 3min' },
+      { kind: 'pontos',    t: 'Bruna A. ganhou +40pts', s: 'avaliação 5★ no Google',    time: 'há 10min' },
+      { kind: 'indicacao', t: 'Indicação confirmada',   s: 'Larissa trouxe Aline',      time: 'há 16min' },
+    ],
+  },
+}
+
 /* ─────────────────────────────
    CARD ESQUERDA — Outros apps
 ───────────────────────────── */
-function OutrosAppsCard() {
+function OutrosAppsCard({ data }: { data: VariantData }) {
   const limitacoes = [
     'Cliente precisa ligar ou chamar no WhatsApp',
     'Cancelou? Buraco na agenda o dia inteiro',
@@ -33,7 +113,7 @@ function OutrosAppsCard() {
         <div>
           <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500 font-semibold mb-1">Outros apps</div>
           <div className="text-white font-bold text-lg leading-tight">Agenda online comum</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Trinks · iSalon · Simples · caderno</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">{data.concorrentes}</div>
         </div>
         <span
           className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md"
@@ -71,13 +151,7 @@ function OutrosAppsCard() {
 
         {/* Lista de horários — estática */}
         <div className="p-3 space-y-1.5">
-          {[
-            { h: '09:00', c: 'João P.',  s: 'Corte',        status: 'ok' },
-            { h: '10:00', c: '—',        s: '(vazio)',      status: 'empty' },
-            { h: '11:00', c: 'Pedro C.', s: 'Barba',        status: 'ok' },
-            { h: '12:00', c: '—',        s: '(vazio)',      status: 'empty' },
-            { h: '13:00', c: 'Ana S.',   s: 'Corte + barba',status: 'cancel' },
-          ].map((r) => (
+          {data.slotsOutros.map((r) => (
             <div
               key={r.h}
               className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px]"
@@ -134,7 +208,13 @@ function OutrosAppsCard() {
 /* ─────────────────────────────
    CARD DIREITA — SmartAgenda
 ───────────────────────────── */
-function SmartAgendaCard() {
+function SmartAgendaCard({ data }: { data: VariantData }) {
+  /* Mapeia kind → ícone+cor+gradient (sem perder o visual original) */
+  const NOTIF_STYLE: Record<Notif['kind'], { ico: React.ReactNode; color: string }> = {
+    fila:      { ico: <IconBolt size={11} strokeWidth={2.5} />,    color: '#8B5CF6' },
+    pontos:    { ico: <IconTrophy size={11} strokeWidth={2.5} />,  color: '#F59E0B' },
+    indicacao: { ico: <IconLink size={11} strokeWidth={2.5} />,    color: '#06B6D4' },
+  }
   const automacoes = [
     { ico: <IconClock24 size={12} strokeWidth={2.2} />, t: 'Cliente agenda sozinho 24h' },
     { ico: <IconBolt size={12} strokeWidth={2.2} />,    t: 'Fila preenche cancelamento em minutos' },
@@ -247,50 +327,31 @@ function SmartAgendaCard() {
 
         {/* Notificações empilhadas */}
         <div className="px-3 pb-3 space-y-1.5">
-          {[
-            {
-              ico: <IconBolt size={11} strokeWidth={2.5} />,
-              color: '#8B5CF6',
-              t: 'Fila acionada',
-              s: '10:00 Marcos S. — +R$35',
-              time: 'há 3min',
-            },
-            {
-              ico: <IconTrophy size={11} strokeWidth={2.5} />,
-              color: '#F59E0B',
-              t: 'Ana ganhou +50pts',
-              s: 'avaliação 5★ no Google',
-              time: 'há 8min',
-            },
-            {
-              ico: <IconLink size={11} strokeWidth={2.5} />,
-              color: '#06B6D4',
-              t: 'Indicação confirmada',
-              s: 'Lucas trouxe Tiago',
-              time: 'há 14min',
-            },
-          ].map((n) => (
-            <div
-              key={n.t}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
-              style={{
-                background: `${n.color}0F`,
-                border: `1px solid ${n.color}38`,
-              }}
-            >
-              <span
-                className="w-5 h-5 rounded-md inline-flex items-center justify-center text-white flex-shrink-0"
-                style={{ background: n.color, boxShadow: `0 0 10px ${n.color}80` }}
+          {data.notifs.map((n) => {
+            const style = NOTIF_STYLE[n.kind]
+            return (
+              <div
+                key={n.t}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
+                style={{
+                  background: `${style.color}0F`,
+                  border: `1px solid ${style.color}38`,
+                }}
               >
-                {n.ico}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-bold text-white leading-tight truncate">{n.t}</div>
-                <div className="text-[10px] text-slate-400 leading-tight truncate">{n.s}</div>
+                <span
+                  className="w-5 h-5 rounded-md inline-flex items-center justify-center text-white flex-shrink-0"
+                  style={{ background: style.color, boxShadow: `0 0 10px ${style.color}80` }}
+                >
+                  {style.ico}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] font-bold text-white leading-tight truncate">{n.t}</div>
+                  <div className="text-[10px] text-slate-400 leading-tight truncate">{n.s}</div>
+                </div>
+                <span className="text-[9px] text-slate-500 flex-shrink-0">{n.time}</span>
               </div>
-              <span className="text-[9px] text-slate-500 flex-shrink-0">{n.time}</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Rodapé ativo */}
@@ -333,13 +394,18 @@ function SmartAgendaCard() {
 /* ─────────────────────────────
    COMPONENTE EXPORTADO
 ───────────────────────────── */
-export default function ComparisonMiniUIs() {
+type Props = {
+  variant?: ComparisonVariant
+}
+
+export default function ComparisonMiniUIs({ variant = 'barbearia' }: Props) {
+  const data = VARIANTS[variant]
   return (
     <div className="relative">
       {/* Grid 2 colunas desktop, empilha no mobile */}
       <div className="grid md:grid-cols-2 gap-6 md:gap-8 relative">
-        <OutrosAppsCard />
-        <SmartAgendaCard />
+        <OutrosAppsCard data={data} />
+        <SmartAgendaCard data={data} />
 
         {/* Divisor VS central — só desktop */}
         <div

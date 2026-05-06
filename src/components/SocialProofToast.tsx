@@ -2,23 +2,71 @@
 
 import { useState, useEffect, useCallback } from 'react'
 
-/* Pool de nomes/cidades — rotação aleatória */
-const PROOFS = [
-  { nome: 'Barber Tiago',      cidade: 'SP',  plano: 'Solo' },
-  { nome: 'Barb. do Léo',      cidade: 'RJ',  plano: 'Equipe' },
-  { nome: 'Studio Diego',      cidade: 'BH',  plano: 'Solo' },
-  { nome: 'Barber Lucas',      cidade: 'GO',  plano: 'Equipe' },
-  { nome: 'Barb. Reis',        cidade: 'PR',  plano: 'Solo' },
-  { nome: 'House Barber',      cidade: 'CE',  plano: 'Equipe' },
-  { nome: 'Barb. do Rafa',     cidade: 'BA',  plano: 'Solo' },
-  { nome: 'Brothers Barber',   cidade: 'PE',  plano: 'Equipe' },
-  { nome: 'Barber Matheus',    cidade: 'SP',  plano: 'Solo' },
-  { nome: 'Studio Arthur',     cidade: 'DF',  plano: 'Solo' },
-]
+type Variant = 'barbearia' | 'salao' | 'estetica' | 'nail'
+
+type Proof = { nome: string; cidade: string; plano: 'Solo' | 'Equipe' }
+
+/* Pools de prova social — nomes específicos por nicho pra não quebrar
+   imersão (cabeleireira não vê 'Barber Tiago assinou' aparecer). */
+const POOLS: Record<Variant, Proof[]> = {
+  barbearia: [
+    { nome: 'Barber Tiago',      cidade: 'SP',  plano: 'Solo' },
+    { nome: 'Barb. do Léo',      cidade: 'RJ',  plano: 'Equipe' },
+    { nome: 'Studio Diego',      cidade: 'BH',  plano: 'Solo' },
+    { nome: 'Barber Lucas',      cidade: 'GO',  plano: 'Equipe' },
+    { nome: 'Barb. Reis',        cidade: 'PR',  plano: 'Solo' },
+    { nome: 'House Barber',      cidade: 'CE',  plano: 'Equipe' },
+    { nome: 'Barb. do Rafa',     cidade: 'BA',  plano: 'Solo' },
+    { nome: 'Brothers Barber',   cidade: 'PE',  plano: 'Equipe' },
+    { nome: 'Barber Matheus',    cidade: 'SP',  plano: 'Solo' },
+    { nome: 'Studio Arthur',     cidade: 'DF',  plano: 'Solo' },
+  ],
+  salao: [
+    { nome: 'Studio Ana',        cidade: 'SP',  plano: 'Equipe' },
+    { nome: 'Salão Carla M.',    cidade: 'RJ',  plano: 'Solo' },
+    { nome: 'Espaço Beauty',     cidade: 'BH',  plano: 'Equipe' },
+    { nome: 'Salão da Bia',      cidade: 'GO',  plano: 'Solo' },
+    { nome: 'Look Studio',       cidade: 'PR',  plano: 'Equipe' },
+    { nome: 'Salão Patrícia',    cidade: 'CE',  plano: 'Solo' },
+    { nome: 'Beauty House',      cidade: 'BA',  plano: 'Equipe' },
+    { nome: 'Espaço Mariana',    cidade: 'PE',  plano: 'Solo' },
+    { nome: 'Studio Renata',     cidade: 'SP',  plano: 'Equipe' },
+    { nome: 'Salão Camila',      cidade: 'DF',  plano: 'Solo' },
+  ],
+  estetica: [
+    { nome: 'Pele Viva',         cidade: 'BH',  plano: 'Equipe' },
+    { nome: 'Clínica Dra. Camila', cidade: 'SP', plano: 'Solo' },
+    { nome: 'Espaço Bia Estética', cidade: 'RJ', plano: 'Equipe' },
+    { nome: 'Studio Letícia',    cidade: 'GO',  plano: 'Solo' },
+    { nome: 'Clínica Patrícia R.', cidade: 'PR', plano: 'Equipe' },
+    { nome: 'Bella Estética',    cidade: 'CE',  plano: 'Solo' },
+    { nome: 'Clínica Fernanda',  cidade: 'BA',  plano: 'Equipe' },
+    { nome: 'Estética Mariana',  cidade: 'PE',  plano: 'Solo' },
+    { nome: 'Pele & Beleza',     cidade: 'SP',  plano: 'Equipe' },
+    { nome: 'Clínica Aline',     cidade: 'DF',  plano: 'Solo' },
+  ],
+  nail: [
+    { nome: 'Nail Designer Lari',   cidade: 'PR',  plano: 'Solo' },
+    { nome: 'Nails by Fernanda',    cidade: 'SP',  plano: 'Solo' },
+    { nome: 'Studio Bruna Nails',   cidade: 'RJ',  plano: 'Equipe' },
+    { nome: 'Nail Camila',          cidade: 'BH',  plano: 'Solo' },
+    { nome: 'Espaço Patrícia Nails', cidade: 'GO', plano: 'Solo' },
+    { nome: 'Nail Studio Bia',      cidade: 'CE',  plano: 'Solo' },
+    { nome: 'Nails Larissa F.',     cidade: 'BA',  plano: 'Solo' },
+    { nome: 'Nail by Aline',        cidade: 'PE',  plano: 'Solo' },
+    { nome: 'Studio Nail Renata',   cidade: 'SP',  plano: 'Equipe' },
+    { nome: 'Nails Mariana',        cidade: 'DF',  plano: 'Solo' },
+  ],
+}
 
 const TEMPOS = ['3 min', '7 min', '12 min', '18 min', '24 min']
 
-export default function SocialProofToast() {
+type Props = {
+  variant?: Variant
+}
+
+export default function SocialProofToast({ variant = 'barbearia' }: Props) {
+  const proofs = POOLS[variant]
   const [visible, setVisible] = useState(false)
   const [current, setCurrent] = useState<number | null>(null)
   const [tempoIdx, setTempoIdx] = useState(0)
@@ -27,8 +75,8 @@ export default function SocialProofToast() {
   const showToast = useCallback(() => {
     let idx: number
     do {
-      idx = Math.floor(Math.random() * PROOFS.length)
-    } while (idx === current && PROOFS.length > 1)
+      idx = Math.floor(Math.random() * proofs.length)
+    } while (idx === current && proofs.length > 1)
 
     setCurrent(idx)
     setTempoIdx(Math.floor(Math.random() * TEMPOS.length))
@@ -37,7 +85,7 @@ export default function SocialProofToast() {
     /* Fica 4s visível */
     setTimeout(() => setVisible(false), 4000)
     setShown((s) => s + 1)
-  }, [current])
+  }, [current, proofs.length])
 
   useEffect(() => {
     const first = setTimeout(() => showToast(), 75_000)
@@ -54,7 +102,7 @@ export default function SocialProofToast() {
 
   if (current === null) return null
 
-  const proof = PROOFS[current]
+  const proof = proofs[current]
 
   return (
     <div

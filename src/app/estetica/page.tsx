@@ -695,7 +695,7 @@ export default function EsteticaPage() {
               No ticket de R$200+, uma falta dói diferente. Veja o que acontece quando a cliente cancela.
             </p>
           </SectionReveal>
-          <SectionReveal><ComparisonMiniUIs /></SectionReveal>
+          <SectionReveal><ComparisonMiniUIs variant="estetica" /></SectionReveal>
         </div>
       </section>
 
@@ -798,7 +798,7 @@ export default function EsteticaPage() {
               Setup em 5 minutos. <span className="text-gradient">Pacote vendido amanhã.</span>
             </h2>
           </SectionReveal>
-          <SectionReveal><OnboardingSteps /></SectionReveal>
+          <SectionReveal><OnboardingSteps variant="estetica" /></SectionReveal>
         </div>
       </section>
 
@@ -1018,7 +1018,7 @@ export default function EsteticaPage() {
         </div>
       </footer>
 
-      <SocialProofToast />
+      <SocialProofToast variant="estetica" />
     </main>
   )
 }

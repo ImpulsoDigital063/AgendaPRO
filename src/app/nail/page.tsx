@@ -688,7 +688,7 @@ export default function NailPage() {
               A diferença aparece quando a cliente cancela. Veja o que acontece nos dois cenários.
             </p>
           </SectionReveal>
-          <SectionReveal><ComparisonMiniUIs /></SectionReveal>
+          <SectionReveal><ComparisonMiniUIs variant="nail" /></SectionReveal>
         </div>
       </section>
 
@@ -791,7 +791,7 @@ export default function NailPage() {
               Cadastra. Cola na bio. <span className="text-gradient">Cliente preenche essa noite.</span>
             </h2>
           </SectionReveal>
-          <SectionReveal><OnboardingSteps /></SectionReveal>
+          <SectionReveal><OnboardingSteps variant="nail" /></SectionReveal>
         </div>
       </section>
 
@@ -1011,7 +1011,7 @@ export default function NailPage() {
         </div>
       </footer>
 
-      <SocialProofToast />
+      <SocialProofToast variant="nail" />
     </main>
   )
 }
