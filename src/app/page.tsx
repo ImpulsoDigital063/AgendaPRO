@@ -7,6 +7,7 @@ import { MechanismCard } from '@/components/MechanismCard'
 import { TimelineMicroUI, DorMicroUI, PassoMicroUI } from '@/components/LandingMicroUI'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
+import FinanceDashboard from '@/components/lp/FinanceDashboard'
 import {
   AnimatedGradient,
   SectionReveal,
@@ -476,8 +477,77 @@ export default function HomePage() {
           </SectionReveal>
 
           <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {MOTORES.map((kind) => (
-              <MechanismCard key={kind} kind={kind} />
+            {MOTORES.map((kind, i) => (
+              <div
+                key={kind}
+                className={i === MOTORES.length - 1 ? 'md:col-span-2' : ''}
+              >
+                <MechanismCard kind={kind} />
+              </div>
+            ))}
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* ═══════════ 5.5 FINANCEIRO INTELIGENTE — controle real, não só faturamento ═══════════ */}
+      <section id="financeiro" className="section relative">
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(16,185,129,0.10) 0%, transparent 60%)'
+        }} />
+
+        <div className="container relative">
+          <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
+            <div className="pill mb-6">
+              <span style={{ color: '#10B981' }}>●</span>
+              <span>Controle financeiro de verdade</span>
+            </div>
+            <h2 className="display-lg text-white mb-4">
+              Faturamento é fácil.<br />
+              <span className="text-gradient">Lucro líquido</span> separa o profissional do amador.
+            </h2>
+            <p className="text-lg text-slate-400">
+              Concorrente mostra só faturamento. Aqui você vê despesas categorizadas, lucro líquido real e projeção do mês — nível Conta Azul, sem pagar Conta Azul.
+            </p>
+          </SectionReveal>
+
+          <SectionReveal className="max-w-4xl mx-auto">
+            <FinanceDashboard variant="barbearia" />
+          </SectionReveal>
+
+          <SectionReveal className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mt-8">
+            {[
+              {
+                title: 'Despesas categorizadas',
+                desc: 'Aluguel, produtos, salários, energia, marketing, impostos. Cada R$ que sai já entra em uma categoria — você sabe pra onde foi.',
+                accent: '#EF4444',
+              },
+              {
+                title: 'Lucro líquido em tempo real',
+                desc: 'Receita − despesa, calculado a cada lançamento. Não é o que entrou — é o que sobrou de verdade.',
+                accent: '#10B981',
+              },
+              {
+                title: 'Projeção 30 dias',
+                desc: 'Sistema usa o ritmo atual e calcula: ao fim do mês você vai fechar em R$ X. Sem surpresa.',
+                accent: '#06B6D4',
+              },
+            ].map((c) => (
+              <div
+                key={c.title}
+                className="glass rounded-2xl p-5"
+                style={{ border: `1px solid ${c.accent}25` }}
+              >
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
+                  style={{ background: `${c.accent}18`, color: c.accent, border: `1px solid ${c.accent}40` }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <h3 className="text-white font-bold text-base mb-1.5 leading-tight">{c.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{c.desc}</p>
+              </div>
             ))}
           </SectionReveal>
         </div>

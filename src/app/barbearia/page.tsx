@@ -17,6 +17,7 @@ import { TimelineMicroUI, DorMicroUI } from '@/components/LandingMicroUI'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
+import FinanceDashboard from '@/components/lp/FinanceDashboard'
 import OnboardingSteps from '@/components/OnboardingSteps'
 import SocialProofToast from '@/components/SocialProofToast'
 import { AnimatedGradient, SectionReveal } from '@/components/ui'
@@ -737,112 +738,24 @@ export default function BarbeariaPage() {
           </SectionReveal>
 
           <SectionReveal>
-            <div className="grid lg:grid-cols-[1fr_1fr] gap-6 lg:gap-8 items-center max-w-5xl mx-auto">
+            <div className="grid lg:grid-cols-[1.15fr_1fr] gap-6 lg:gap-8 items-center max-w-5xl mx-auto">
 
-              {/* Mini-UI Dashboard financeiro — estilo realista */}
-              <div
-                className="rounded-2xl sm:rounded-3xl overflow-hidden lift-card"
-                style={{
-                  background: '#fff',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1)',
-                }}
-              >
-                {/* Header dashboard */}
-                <div className="px-4 py-3 flex items-center justify-between" style={{ background: '#F8F9FA', borderBottom: '1px solid #F1F3F4' }}>
-                  <div className="flex items-center gap-2">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#188038" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="1" x2="12" y2="23" />
-                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                    </svg>
-                    <span className="text-[13px] font-semibold text-[#202124]">Financeiro</span>
-                  </div>
-                  <span className="text-[10px] text-[#9AA0A6]">Abril 2026</span>
-                </div>
-
-                {/* KPIs */}
-                <div className="grid grid-cols-3 divide-x divide-[#F1F3F4]" style={{ borderBottom: '1px solid #F1F3F4' }}>
-                  <div className="px-3 py-3 text-center">
-                    <div className="text-[9px] text-[#9AA0A6] uppercase tracking-wider font-medium">Faturamento</div>
-                    <div className="text-[16px] font-black text-[#202124] mt-0.5">R$ 4.280</div>
-                    <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#188038" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="19" x2="12" y2="5" />
-                        <polyline points="5 12 12 5 19 12" />
-                      </svg>
-                      <span className="text-[9px] font-bold text-[#188038]">+18%</span>
-                    </div>
-                  </div>
-                  <div className="px-3 py-3 text-center">
-                    <div className="text-[9px] text-[#9AA0A6] uppercase tracking-wider font-medium">Atendimentos</div>
-                    <div className="text-[16px] font-black text-[#202124] mt-0.5">127</div>
-                    <div className="text-[9px] text-[#9AA0A6] mt-0.5">este mês</div>
-                  </div>
-                  <div className="px-3 py-3 text-center">
-                    <div className="text-[9px] text-[#9AA0A6] uppercase tracking-wider font-medium">Ticket médio</div>
-                    <div className="text-[16px] font-black text-[#202124] mt-0.5">R$ 33</div>
-                    <div className="text-[9px] text-[#9AA0A6] mt-0.5">por cliente</div>
-                  </div>
-                </div>
-
-                {/* Tabela de comissões */}
-                <div className="px-3 py-2">
-                  <div className="text-[10px] font-semibold text-[#5F6368] uppercase tracking-wider mb-1.5 px-1">Comissões</div>
-                  {/* Header */}
-                  <div className="flex items-center gap-2 px-1 py-1 text-[9px] font-medium text-[#9AA0A6]">
-                    <span className="flex-1">Profissional</span>
-                    <span className="w-16 text-right">Produção</span>
-                    <span className="w-8 text-center">%</span>
-                    <span className="w-16 text-right">A pagar</span>
-                  </div>
-                  {[
-                    { nome: 'Diego Lima',   init: 'D', color: '#1A73E8', prod: 'R$ 1.680', pct: '40%', pagar: 'R$ 672' },
-                    { nome: 'Tiago Reis',   init: 'T', color: '#EA4335', prod: 'R$ 1.420', pct: '35%', pagar: 'R$ 497' },
-                    { nome: 'Rafael Costa', init: 'R', color: '#34A853', prod: 'R$ 1.180', pct: '40%', pagar: 'R$ 472' },
-                  ].map((p, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 px-1 py-2 rounded-lg"
-                      style={{ background: i % 2 === 0 ? '#F9FAFB' : '#fff' }}
-                    >
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: p.color }}
-                      >
-                        <span className="text-[9px] font-bold text-white">{p.init}</span>
-                      </div>
-                      <span className="flex-1 text-[11px] font-medium text-[#202124] truncate">{p.nome}</span>
-                      <span className="w-16 text-right text-[11px] text-[#202124]">{p.prod}</span>
-                      <span className="w-8 text-center text-[10px] text-[#9AA0A6]">{p.pct}</span>
-                      <span className="w-16 text-right text-[11px] font-bold text-[#188038]">{p.pagar}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Footer — total */}
-                <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: '#E6F4EA', borderTop: '1px solid #C8E6C9' }}>
-                  <span className="text-[11px] font-medium text-[#188038] flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#188038" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    Caixa conferido
-                  </span>
-                  <span className="text-[11px] font-black text-[#188038]">Lucro: R$ 2.639</span>
-                </div>
-              </div>
+              {/* Dashboard financeiro com despesas + gráfico + projeção */}
+              <FinanceDashboard variant="barbearia" />
 
               {/* Copy */}
               <div className="space-y-4 sm:space-y-5">
                 <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-white leading-tight">
-                  Sabe quanto cada barbeiro produziu?{' '}
-                  <span className="text-gradient">Agora sabe.</span>
+                  Faturamento é fácil.{' '}
+                  <span className="text-gradient">Lucro líquido</span> separa o profissional do amador.
                 </h3>
 
                 <ul className="space-y-3 text-sm sm:text-base text-slate-300">
                   {[
-                    { icon: <IconCash size={14} />, txt: 'Faturamento do dia, da semana e do mês — atualizado em tempo real no painel.' },
-                    { icon: <IconContacts size={14} strokeWidth={2} />, txt: 'Cada profissional com produção e comissão calculadas automaticamente.' },
-                    { icon: <IconBrain size={14} strokeWidth={2} />, txt: 'Ticket médio, atendimentos e crescimento — sem planilha, sem conta de cabeça.' },
-                    { icon: <IconCheck size={14} strokeWidth={2} />, txt: 'Fim do mês: abre o painel, vê quanto deve pra cada barbeiro. Pronto.' },
+                    { icon: <IconCash size={14} />, txt: 'Despesas categorizadas (aluguel, produtos, energia, salários) somadas automático — você sabe pra onde cada R$ vai.' },
+                    { icon: <IconBrain size={14} strokeWidth={2} />, txt: 'Lucro líquido = receita − despesa, em tempo real. Não é só faturamento — é o que sobra de verdade.' },
+                    { icon: <IconContacts size={14} strokeWidth={2} />, txt: 'Comissão por barbeiro calculada sozinha. Fim do mês: abre, vê, paga. Sem conta de cabeça.' },
+                    { icon: <IconCheck size={14} strokeWidth={2} />, txt: 'Projeção 30 dias: ao ritmo atual, você sabe quanto vai fechar antes do mês acabar.' },
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <span
@@ -861,7 +774,7 @@ export default function BarbeariaPage() {
                 </ul>
 
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  Na seção de dor você viu o caos: <strong className="text-slate-300">comissão sem conferir, caixa que não fecha.</strong> Aqui é o oposto — tudo calculado, tudo verde, tudo no seu celular.
+                  <strong className="text-slate-300">Concorrente mostra só faturamento.</strong> Aqui você vê despesas categorizadas, lucro líquido real e projeção do mês — nível Conta Azul, sem pagar Conta Azul.
                 </p>
               </div>
 

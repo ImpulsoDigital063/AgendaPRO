@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 import type { FAQItem } from '@/components/FAQ'
 import Image from 'next/image'
 import IPhoneMockup from '@/components/IPhoneMockup'
+import FinanceDashboard from '@/components/lp/FinanceDashboard'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
@@ -716,73 +717,20 @@ export default function NailPage() {
           </SectionReveal>
 
           <SectionReveal>
-            <div className="grid lg:grid-cols-[1fr_1fr] gap-6 lg:gap-8 items-center max-w-5xl mx-auto">
+            <div className="grid lg:grid-cols-[1.15fr_1fr] gap-6 lg:gap-8 items-center max-w-5xl mx-auto">
 
-              {/* Dashboard financeiro */}
-              <div className="rounded-2xl sm:rounded-3xl overflow-hidden lift-card" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1)' }}>
-                <div className="px-4 py-3 flex items-center justify-between" style={{ background: '#F8F9FA', borderBottom: '1px solid #F1F3F4' }}>
-                  <div className="flex items-center gap-2">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#188038" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-                    <span className="text-[13px] font-semibold text-[#202124]">Financeiro</span>
-                  </div>
-                  <span className="text-[10px] text-[#9AA0A6]">Abril 2026</span>
-                </div>
-                <div className="grid grid-cols-3 divide-x divide-[#F1F3F4]" style={{ borderBottom: '1px solid #F1F3F4' }}>
-                  <div className="px-3 py-3 text-center">
-                    <div className="text-[9px] text-[#9AA0A6] uppercase tracking-wider font-medium">Faturamento</div>
-                    <div className="text-[16px] font-black text-[#202124] mt-0.5">R$ 4.320</div>
-                    <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#188038" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-                      <span className="text-[9px] font-bold text-[#188038]">+15%</span>
-                    </div>
-                  </div>
-                  <div className="px-3 py-3 text-center">
-                    <div className="text-[9px] text-[#9AA0A6] uppercase tracking-wider font-medium">Atendimentos</div>
-                    <div className="text-[16px] font-black text-[#202124] mt-0.5">28</div>
-                    <div className="text-[9px] text-[#9AA0A6] mt-0.5">este mês</div>
-                  </div>
-                  <div className="px-3 py-3 text-center">
-                    <div className="text-[9px] text-[#9AA0A6] uppercase tracking-wider font-medium">Ticket médio</div>
-                    <div className="text-[16px] font-black text-[#202124] mt-0.5">R$ 154</div>
-                    <div className="text-[9px] text-[#9AA0A6] mt-0.5">por atendimento</div>
-                  </div>
-                </div>
-                <div className="px-3 py-2">
-                  <div className="text-[10px] font-semibold text-[#5F6368] uppercase tracking-wider mb-1.5 px-1">Serviços mais pedidos</div>
-                  {[
-                    { serv: 'Esmaltação em gel', qtd: '12', receita: 'R$ 1.800', pct: '42%' },
-                    { serv: 'Fibra de vidro', qtd: '8', receita: 'R$ 1.440', pct: '33%' },
-                    { serv: 'Manutenção', qtd: '5', receita: 'R$ 500', pct: '12%' },
-                    { serv: 'Nail art', qtd: '3', receita: 'R$ 580', pct: '13%' },
-                  ].map((s, i) => (
-                    <div key={i} className="flex items-center gap-2 px-1 py-1.5 rounded-lg" style={{ background: i % 2 === 0 ? '#F9FAFB' : '#fff' }}>
-                      <span className="flex-1 text-[11px] font-medium text-[#202124]">{s.serv}</span>
-                      <span className="text-[10px] text-[#9AA0A6]">{s.qtd}x</span>
-                      <span className="w-16 text-right text-[11px] font-bold text-[#202124]">{s.receita}</span>
-                      <span className="w-8 text-right text-[9px] text-[#9AA0A6]">{s.pct}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: '#E6F4EA', borderTop: '1px solid #C8E6C9' }}>
-                  <span className="text-[11px] font-medium text-[#188038] flex items-center gap-1.5">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#188038" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Tudo registrado
-                  </span>
-                  <span className="text-[11px] font-black text-[#188038]">Faturamento: R$ 4.320</span>
-                </div>
-              </div>
+              <FinanceDashboard variant="nail" />
 
-              {/* Copy */}
               <div className="space-y-4 sm:space-y-5">
                 <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-white leading-tight">
-                  Cada unha registrada.{' '}<span className="text-gradient">Cada real contado.</span>
+                  Faturamento é fácil.{' '}<span className="text-gradient">Lucro líquido</span> mostra o quanto sobrou pra você.
                 </h3>
                 <ul className="space-y-3 text-sm sm:text-base text-slate-300">
                   {[
-                    { icon: <IconCash size={14} />, txt: 'Faturamento do dia, semana e mês. Sem anotar nada.' },
-                    { icon: <IconPalette size={14} strokeWidth={2} />, txt: 'Qual serviço dá mais resultado. Sabe onde focar.' },
-                    { icon: <IconBrain size={14} strokeWidth={2} />, txt: 'Ticket médio e atendimentos. Evolução real, não achismo.' },
-                    { icon: <IconCheck size={14} strokeWidth={2} />, txt: 'Fim do mês: abre o celular e vê exatamente quanto faturou.' },
+                    { icon: <IconCash size={14} />, txt: 'Despesas categorizadas (aluguel, produtos, material) somadas automático — você sabe pra onde cada R$ vai.' },
+                    { icon: <IconBrain size={14} strokeWidth={2} />, txt: 'Lucro líquido = receita − despesa, em tempo real. Não é só faturamento — é o que sobra de verdade.' },
+                    { icon: <IconPalette size={14} strokeWidth={2} />, txt: 'Qual serviço dá mais resultado por hora trabalhada. Sabe onde focar.' },
+                    { icon: <IconCheck size={14} strokeWidth={2} />, txt: 'Projeção 30 dias: ao ritmo atual, você sabe quanto vai fechar antes do mês acabar.' },
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <span className="w-7 h-7 rounded-lg inline-flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.3)', color: '#F9A8D4' }}>{item.icon}</span>
@@ -791,7 +739,7 @@ export default function NailPage() {
                   ))}
                 </ul>
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  Na seção de dor você viu: <strong className="text-slate-300">bloquinho, nota do celular, zero controle.</strong> Aqui é o painel que transforma cada atendimento em dado concreto.
+                  <strong className="text-slate-300">Concorrente mostra só faturamento.</strong> Aqui você vê despesas categorizadas, lucro líquido e projeção do mês — controle financeiro de verdade.
                 </p>
               </div>
             </div>

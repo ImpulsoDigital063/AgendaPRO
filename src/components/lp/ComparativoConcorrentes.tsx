@@ -133,6 +133,26 @@ function IconX() {
   )
 }
 
+function IconExpenses() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+      <line x1="3" y1="20" x2="21" y2="20" />
+    </svg>
+  )
+}
+
+function IconProjection() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+      <polyline points="16 7 22 7 22 13" />
+    </svg>
+  )
+}
+
 function IconRevive() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -187,6 +207,20 @@ const FEATURES: FeatureRow[] = [
     icon: <IconShield />,
     label: 'Anti-overbooking blindado',
     detail: 'Trigger no banco — impossível 2 clientes no mesmo horário',
+    usValue: 'yes',
+    themValue: 'no',
+  },
+  {
+    icon: <IconExpenses />,
+    label: 'Despesas categorizadas + lucro líquido',
+    detail: 'Aluguel, produtos, salários, energia — você sabe o lucro real, não só faturamento',
+    usValue: 'yes',
+    themValue: 'só faturamento',
+  },
+  {
+    icon: <IconProjection />,
+    label: 'Projeção de faturamento 30d',
+    detail: 'Sistema calcula: ao ritmo atual, fim de mês fecha em R$ X',
     usValue: 'yes',
     themValue: 'no',
   },
