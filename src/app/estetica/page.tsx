@@ -346,33 +346,37 @@ export default function EsteticaPage() {
           <div className="grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-16 items-center">
 
             <SectionReveal className="flex flex-col items-center lg:items-start text-center lg:text-left gap-5 sm:gap-6 lg:gap-7">
-              {/* Pill — preço fixo, sem fidelidade */}
-              <div className="pill inline-flex items-center gap-2 text-[10px] sm:text-xs">
+              {/* Pill — preço fixo, sem fidelidade. Paleta champagne sutil (não verde brilhante) */}
+              <div className="pill inline-flex items-center gap-2 text-[10px] sm:text-xs" style={{ background: 'rgba(212,175,140,0.08)', border: '1px solid rgba(212,175,140,0.25)' }}>
                 <span
                   className="px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black"
-                  style={{ background: 'linear-gradient(135deg, #10B981, #34D399)', color: '#fff', letterSpacing: '0.05em' }}
+                  style={{ background: 'linear-gradient(135deg, #D4AF8C, #C9A876)', color: '#1F1410', letterSpacing: '0.05em' }}
                 >
                   R$ 67
                 </span>
-                <span className="text-white/95 font-bold uppercase tracking-wider">Sem setup · Sem fidelidade</span>
+                <span className="text-white/95 font-bold uppercase tracking-[0.15em]" style={{ color: '#E8D5BD' }}>Sem setup · Sem fidelidade</span>
               </div>
 
-              {/* H1 — cena cinematográfica que evoca a dor real do nicho */}
-              <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2.2rem, 7vw, 4.5rem)' }}>
-                Microagulhamento de R$ 350.<br />
-                Cliente sumiu{' '}
-                <span style={{ color: '#F59E0B' }}>sem avisar.</span>
+              {/* H1 — identidade premium: 'cuida da pele' (sofisticada, não bate-pronto) */}
+              <h1 className="text-white font-black leading-[1.02] tracking-tight font-serif" style={{ fontSize: 'clamp(2.4rem, 7.5vw, 4.8rem)', letterSpacing: '-0.01em' }}>
+                Você cuida da pele.<br />
+                <span style={{
+                  background: 'linear-gradient(135deg, #D4AF8C 0%, #E8B4B8 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}>A gente cuida da agenda.</span>
               </h1>
 
-              {/* Subhead — escala mensal + solução em fluxo */}
+              {/* Subhead — sofisticada, sem 'vaza R$' */}
               <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-                Acontece em média 5 vezes por mês — quase R$ 1.750 indo embora. O AgendaPRO confirma a cliente na véspera, oferece a vaga pra fila se ela cancelar, e calcula comissão de cada profissional sozinho. <strong className="text-white">Sala preparada vira agenda cheia.</strong>
+                Cliente que paga R$ 350 num procedimento espera 5★ em tudo — inclusive como ela agenda. O AgendaPRO entrega: confirmação na véspera, pacote pré-pago controlado, fila pronta pra preencher cancelamento. <strong className="text-white">Atendimento à altura do que você cobra.</strong>
               </p>
 
-              {/* Stats — financeiro / faltas / reputação */}
+              {/* Stats — paleta sofisticada champagne/rose/dourado em vez de verde/ciano neon */}
               <div className="flex flex-wrap gap-2 sm:gap-3">
-                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(16,185,129,0.18)', color: '#10B981' }}>
+                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(212,175,140,0.08)', border: '1px solid rgba(212,175,140,0.25)' }}>
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(212,175,140,0.18)', color: '#D4AF8C' }}>
                     <IconCash size={14} />
                   </span>
                   <span className="text-left text-[12px] sm:text-[13px] leading-tight">
@@ -380,8 +384,8 @@ export default function EsteticaPage() {
                     <span className="text-slate-500 hidden sm:inline"> · fila + lembrete</span>
                   </span>
                 </div>
-                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)' }}>
-                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(6,182,212,0.18)', color: '#06B6D4' }}>
+                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(232,180,184,0.08)', border: '1px solid rgba(232,180,184,0.25)' }}>
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(232,180,184,0.20)', color: '#E8B4B8' }}>
                     <IconCheck size={14} />
                   </span>
                   <span className="text-left text-[12px] sm:text-[13px] leading-tight">
