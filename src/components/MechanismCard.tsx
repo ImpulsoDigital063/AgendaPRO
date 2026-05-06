@@ -1,9 +1,9 @@
-/* Cards visuais dos 4 motores de retenção
+/* Cards visuais dos 5 motores de retenção
    Cada um mostra um fragmento real da UI do produto. */
 
 import type { ReactNode } from 'react'
 
-type Kind = 'fidelidade' | 'fila' | 'indicacao' | 'reviews'
+type Kind = 'fidelidade' | 'fila' | 'indicacao' | 'reviews' | 'reativacao'
 
 const COPY: Record<Kind, { title: string; result: string; desc: string; accent: string }> = {
   fidelidade: {
@@ -30,6 +30,12 @@ const COPY: Record<Kind, { title: string; result: string; desc: string; accent: 
     desc:   'Sua nota aparece na página de agendamento. Cliente ganha pontos por avaliar — incentivo concreto, todo dia.',
     accent: '#10B981',
   },
+  reativacao: {
+    title:  'Reativação automática de sumidos',
+    result: 'Cliente que sumiu volta — você nem precisa lembrar',
+    desc:   'O sistema detecta quem ficou 60+ dias sem aparecer e dispara cupom de desconto. Cliente reativado vale R$ 600-1.500 em LTV — concorrente não tem isso.',
+    accent: '#06B6D4',
+  },
 }
 
 export function MechanismCard({ kind }: { kind: Kind }) {
@@ -50,6 +56,7 @@ export function MechanismCard({ kind }: { kind: Kind }) {
         {kind === 'fila'       && <FilaUI accent={c.accent} />}
         {kind === 'indicacao'  && <IndicacaoUI accent={c.accent} />}
         {kind === 'reviews'    && <ReviewsUI accent={c.accent} />}
+        {kind === 'reativacao' && <ReativacaoUI accent={c.accent} />}
       </div>
 
       {/* Texto */}
@@ -296,6 +303,60 @@ function ReviewsUI({ accent }: { accent: string }) {
           <span>+50 pts</span>
           <span className="text-slate-500">creditados automaticamente</span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────
+   REATIVAÇÃO — cliente sumido detectado + cupom disparado
+─────────────────────────────────────────────────────────── */
+function ReativacaoUI({ accent }: { accent: string }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm"
+            style={{ background: 'rgba(148,163,184,0.25)', border: '1px dashed rgba(148,163,184,0.45)' }}
+          >
+            M
+          </div>
+          <div>
+            <div className="text-white font-bold text-sm leading-tight">Maria Helena</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">cliente recorrente</div>
+          </div>
+        </div>
+        <div
+          className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-1"
+          style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.3)' }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+          Sumida há 47 dias
+        </div>
+      </div>
+
+      <div
+        className="rounded-xl p-3 mb-2"
+        style={{ background: `${accent}10`, border: `1px solid ${accent}30` }}
+      >
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+            <span className="text-[10px] font-bold text-white">Cupom enviado via WhatsApp</span>
+          </div>
+          <span className="text-[9px] text-slate-500">agora</span>
+        </div>
+        <p className="text-[11px] text-slate-300 leading-snug">
+          &ldquo;Maria, sentimos sua falta! <strong style={{ color: accent }}>20% off</strong> no seu próximo serviço — válido por 7 dias.&rdquo;
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between text-[10px]">
+        <span className="text-slate-500">LTV potencial recuperado</span>
+        <span className="font-mono font-bold" style={{ color: accent }}>R$ 1.240</span>
       </div>
     </div>
   )

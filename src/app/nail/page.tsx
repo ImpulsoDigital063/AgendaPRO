@@ -78,6 +78,7 @@ const MOTORES = [
   { Icon: IconTrophy,  tag: 'Ranking',         titulo: 'Google mostra seu trabalho primeiro',  desc: 'Depois do atendimento, a cliente ganha pontos pra avaliar no Google. Sua nota sobe e quem pesquisa "nail designer perto de mim" te acha.',  color: '#F59E0B', stat: '+0.6',  statLabel: 'nota/mês' },
   { Icon: IconLink,    tag: 'Indicação',       titulo: 'Cliente traz a amiga pelo link',       desc: 'Cada cliente recebe link de indicação. A amiga agenda, as duas ganham pontos. Você rastreia de onde vem cada cliente nova.',                 color: '#8B5CF6', stat: 'x2.3',  statLabel: 'clientes' },
   { Icon: IconBolt,    tag: 'Fila de espera',   titulo: 'Cancelou? Vaga preenchida',            desc: 'Gel de R$150 cancelado? O sistema avisa quem tá na fila. A primeira que aceitar fica com o horário. Sem você abrir o Instagram.',          color: '#06B6D4', stat: '3 min', statLabel: 'pra preencher' },
+  { Icon: IconGift,    tag: 'Reativação',        titulo: 'Cliente fiel volta a aparecer',        desc: 'Cliente que ficou 60+ dias sem manutenção é detectada automaticamente — cupom de desconto disparado pelo WhatsApp. Cadeira sempre cheia.', color: '#EC4899', stat: '+30%', statLabel: 'recorrência' },
 ]
 
 const TIMELINE = [
@@ -562,7 +563,7 @@ export default function NailPage() {
           <SectionReveal className="text-center mb-10 sm:mb-14 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconHand size={14} className="text-pink-300" />
-              <span>Os 4 motores da SmartAgenda</span>
+              <span>Os 5 motores da SmartAgenda</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Sistema que <span className="text-gradient">agenda</span> enquanto você atende.
@@ -573,7 +574,7 @@ export default function NailPage() {
             {MOTORES.map((m, i) => (
               <div
                 key={m.titulo}
-                className="rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col gap-3 lift-card relative overflow-hidden"
+                className={`rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col gap-3 lift-card relative overflow-hidden${i === MOTORES.length - 1 ? ' md:col-span-2' : ''}`}
                 style={{ background: `linear-gradient(135deg, ${m.color}12 0%, rgba(8,11,24,0.8) 100%)`, border: `1px solid ${m.color}35`, boxShadow: `0 8px 30px ${m.color}10` }}
               >
                 <div className="flex items-center justify-between">

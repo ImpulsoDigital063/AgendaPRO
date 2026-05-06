@@ -133,6 +133,16 @@ function IconX() {
   )
 }
 
+function IconRevive() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a9 9 0 1 0 9-9" />
+      <polyline points="3 4 3 12 11 12" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+    </svg>
+  )
+}
+
 /* ─── Definição das features comparadas ─── */
 
 interface FeatureRow {
@@ -156,6 +166,13 @@ const FEATURES: FeatureRow[] = [
     icon: <IconGift />,
     label: 'Programa de fidelidade + indicação',
     detail: 'Pontos por visita, link de indicação rastreado',
+    usValue: 'yes',
+    themValue: 'no',
+  },
+  {
+    icon: <IconRevive />,
+    label: 'Reativação automática de sumidos',
+    detail: 'Detecta cliente 60+ dias sem aparecer e dispara cupom no WhatsApp',
     usValue: 'yes',
     themValue: 'no',
   },

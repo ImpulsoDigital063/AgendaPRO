@@ -57,6 +57,7 @@ const MOTORES = [
   { Icon: IconTrophy,  tag: 'Ranking',        titulo: 'Sobe no Google sem pagar',        desc: 'Cliente sai do corte, ganha pontos pra avaliar no Google. Sua nota sobe, o Maps te coloca em cima da concorrência.',              color: '#F59E0B', stat: '+0.6',  statLabel: 'nota/mês' },
   { Icon: IconLink,    tag: 'Multiplicação',  titulo: 'Transforma cliente em vendedor',  desc: 'Link de indicação único por cliente. Quando o amigo agenda, ambos ganham pontos. Cliente vira promotor.',                       color: '#8B5CF6', stat: 'x2.3',  statLabel: 'clientes' },
   { Icon: IconBolt,    tag: 'Recuperação',    titulo: 'Preenche cancelamento sozinha',   desc: 'Cancelou 10:00? O sistema chama os 3 primeiros da fila. Quem aceitar primeiro fica com a vaga.',                                 color: '#A78BFA', stat: '3 min', statLabel: 'pra preencher' },
+  { Icon: IconGift,    tag: 'Reativação',     titulo: 'Cliente sumido volta sozinho',    desc: 'Detecta quem ficou 60+ dias sem aparecer e dispara cupom de desconto via WhatsApp. Cliente reativado vale R$ 600-1.500 em LTV — concorrente não tem isso.', color: '#10B981', stat: 'R$1.2k', statLabel: 'LTV recuperado' },
 ]
 
 const TIMELINE = [
@@ -494,7 +495,7 @@ export default function BarbeariaPage() {
           <SectionReveal className="text-center mb-10 sm:mb-14 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconClipper size={14} className="text-blue-400" />
-              <span>Os 4 motores da SmartAgenda</span>
+              <span>Os 5 motores da SmartAgenda</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Sistema que <span className="text-gradient">trabalha</span> enquanto você corta.
@@ -505,7 +506,7 @@ export default function BarbeariaPage() {
             {MOTORES.map((m, i) => (
               <div
                 key={m.titulo}
-                className="rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col gap-3 lift-card relative overflow-hidden"
+                className={`rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col gap-3 lift-card relative overflow-hidden${i === MOTORES.length - 1 ? ' md:col-span-2' : ''}`}
                 style={{
                   background: `linear-gradient(135deg, ${m.color}12 0%, rgba(8,11,24,0.8) 100%)`,
                   border: `1px solid ${m.color}35`,

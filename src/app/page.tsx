@@ -48,7 +48,7 @@ const TIMELINE: { kind: '07' | '10' | '14' | '20'; hora: string; titulo: string;
   { kind: '20', hora: '20:00', titulo: 'Fim do expediente',             detalhe: 'Dashboard mostra: agenda cheia amanhã, 3 novos clientes, 2 avaliações 5★ no Google. Você fecha o app e vive.' },
 ]
 
-const MOTORES = ['fidelidade', 'fila', 'indicacao', 'reviews'] as const
+const MOTORES = ['fidelidade', 'fila', 'indicacao', 'reviews', 'reativacao'] as const
 
 /**
  * Value Stack (padrão Hormozi $100M Offers): empilha tudo que o cliente
@@ -66,10 +66,11 @@ const VALUE_CORE = [
 ]
 
 const VALUE_BONUS = [
-  { item: 'Lista de espera automática (preenche cancelamento)', price: 'R$ 39/mês' },
-  { item: 'Página personalizada do seu negócio (link próprio)', price: 'R$ 99/mês' },
-  { item: 'Setup guiado em 5 minutos com o fundador',           price: 'R$ 197 setup' },
-  { item: 'Suporte direto via WhatsApp (não é robô)',           price: 'R$ 199/mês' },
+  { item: 'Lista de espera automática (preenche cancelamento)',  price: 'R$ 39/mês' },
+  { item: 'Reativação de sumidos (detecta + dispara cupom)',     price: 'R$ 89/mês' },
+  { item: 'Página personalizada do seu negócio (link próprio)',  price: 'R$ 99/mês' },
+  { item: 'Setup guiado em 5 minutos com o fundador',            price: 'R$ 197 setup' },
+  { item: 'Suporte direto via WhatsApp (não é robô)',            price: 'R$ 199/mês' },
 ]
 
 const STEPS: { n: '01' | '02' | '03'; title: string; desc: string }[] = [
@@ -466,7 +467,7 @@ export default function HomePage() {
               <span>O que o concorrente não tem</span>
             </div>
             <h2 className="display-lg text-white mb-4">
-              4 motores de <span className="text-gradient">retenção</span><br />
+              5 motores de <span className="text-gradient">retenção</span><br />
               rodando 24/7.
             </h2>
             <p className="text-lg text-slate-400">
@@ -620,9 +621,9 @@ export default function HomePage() {
               <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.04)' }}>
                 <div>
                   <p className="text-slate-300 font-semibold text-sm md:text-base">Valor total se comprasse separado</p>
-                  <p className="text-slate-500 text-[11px] mt-0.5">8 contas, 8 logins, 8 boletos</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">9 contas, 9 logins, 9 boletos</p>
                 </div>
-                <p className="font-mono text-slate-400 font-bold line-through text-base md:text-lg flex-shrink-0">R$ 591/mês</p>
+                <p className="font-mono text-slate-400 font-bold line-through text-base md:text-lg flex-shrink-0">R$ 680/mês</p>
               </div>
 
               {/* Preço final ancorado */}
@@ -638,7 +639,7 @@ export default function HomePage() {
                   <p className="text-white text-3xl md:text-4xl font-black leading-none">
                     R$67<span className="text-sm font-normal text-white/70">/mês</span>
                   </p>
-                  <p className="text-white/80 text-[11px] mt-1 font-semibold">economia de R$ 524/mês</p>
+                  <p className="text-white/80 text-[11px] mt-1 font-semibold">economia de R$ 613/mês</p>
                 </div>
               </div>
             </div>

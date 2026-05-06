@@ -76,6 +76,7 @@ const MOTORES = [
   { Icon: IconTrophy,  tag: 'Ranking',        titulo: 'Google cheio de 5 estrelas',        desc: 'Depois do atendimento, cliente ganha pontos pra avaliar no Google. Sua nota sobe e o Maps mostra seu salão primeiro.',  color: '#F59E0B', stat: '+0.6',  statLabel: 'nota/mês' },
   { Icon: IconLink,    tag: 'Indicação',      titulo: 'Cliente traz a amiga',              desc: 'Cada cliente recebe link de indicação. Quando a amiga agenda, as duas ganham pontos. Boca a boca rastreado.',          color: '#8B5CF6', stat: 'x2.3',  statLabel: 'clientes' },
   { Icon: IconBolt,    tag: 'Fila de espera',  titulo: 'Cancelou? Vaga preenchida',         desc: 'Cliente cancelou a escova de sexta? O sistema avisa as próximas da fila. Quem aceitar primeiro fica com o horário.',  color: '#A78BFA', stat: '3 min', statLabel: 'pra preencher' },
+  { Icon: IconGift,    tag: 'Reativação',      titulo: 'Cliente sumida volta sozinha',      desc: 'Sua VIP ficou 60+ dias sem aparecer? O sistema detecta e dispara cupom no WhatsApp. Cliente reativada vale R$ 600-2.000 em LTV — ninguém mais entrega.', color: '#10B981', stat: 'R$1.4k', statLabel: 'LTV recuperado' },
 ]
 
 const TIMELINE = [
@@ -556,7 +557,7 @@ export default function SalaoPage() {
           <SectionReveal className="text-center mb-10 sm:mb-14 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconMirror size={14} className="text-pink-400" />
-              <span>Os 4 motores da SmartAgenda</span>
+              <span>Os 5 motores da SmartAgenda</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Sistema que <span className="text-gradient">trabalha</span> enquanto você atende.
@@ -567,7 +568,7 @@ export default function SalaoPage() {
             {MOTORES.map((m, i) => (
               <div
                 key={m.titulo}
-                className="rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col gap-3 lift-card relative overflow-hidden"
+                className={`rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col gap-3 lift-card relative overflow-hidden${i === MOTORES.length - 1 ? ' md:col-span-2' : ''}`}
                 style={{ background: `linear-gradient(135deg, ${m.color}12 0%, rgba(8,11,24,0.8) 100%)`, border: `1px solid ${m.color}35`, boxShadow: `0 8px 30px ${m.color}10` }}
               >
                 <div className="flex items-center justify-between">
