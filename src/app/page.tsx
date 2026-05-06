@@ -487,11 +487,11 @@ export default function HomePage() {
           <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
             <div className="pill mb-6">
               <span style={{ color: '#06B6D4' }}>●</span>
-              <span>SmartAgenda x Outros apps</span>
+              <span>AgendaPRO x Outros apps</span>
             </div>
             <h2 className="display-lg text-white mb-4">
               Outros apps <span className="text-slate-500">só agendam</span>.<br />
-              <span className="text-gradient">SmartAgenda trabalha.</span>
+              <span className="text-gradient">AgendaPRO trabalha.</span>
             </h2>
             <p className="text-slate-400 text-base md:text-lg leading-relaxed">
               Mesma tela por fora. Mundos diferentes por dentro.

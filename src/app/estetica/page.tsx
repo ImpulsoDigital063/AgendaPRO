@@ -820,10 +820,10 @@ export default function EsteticaPage() {
           <SectionReveal className="text-center mb-10 sm:mb-12 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconFace size={14} className="text-emerald-400" />
-              <span>SmartAgenda x Outros apps</span>
+              <span>AgendaPRO x Outros apps</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
-              Outros apps <span className="text-slate-500">só agendam</span>.<br /><span className="text-gradient">SmartAgenda protege seu faturamento.</span>
+              Outros apps <span className="text-slate-500">só agendam</span>.<br /><span className="text-gradient">AgendaPRO protege seu faturamento.</span>
             </h2>
             <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
               No ticket de R$200+, uma falta dói diferente. Veja o que acontece quando a cliente cancela.

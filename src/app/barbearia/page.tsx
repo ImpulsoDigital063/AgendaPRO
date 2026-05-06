@@ -885,11 +885,11 @@ export default function BarbeariaPage() {
           <SectionReveal className="text-center mb-10 sm:mb-12 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconChair size={14} className="text-pink-400" />
-              <span>SmartAgenda x Outros apps</span>
+              <span>AgendaPRO x Outros apps</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Outros apps <span className="text-slate-500">só agendam</span>.<br />
-              <span className="text-gradient">SmartAgenda trabalha.</span>
+              <span className="text-gradient">AgendaPRO trabalha.</span>
             </h2>
             <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
               Mesma tela por fora. Mundos diferentes por dentro.
