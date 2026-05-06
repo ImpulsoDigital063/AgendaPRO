@@ -120,26 +120,55 @@ export default function HomePage() {
         <AnimatedGradient />
 
         {/* ——— MOBILE HERO ——— */}
-        <div className="lg:hidden relative z-10 px-5 pt-4 pb-6 text-center flex flex-col items-center">
-          <h1 className="text-[1.55rem] leading-[1.15] font-black text-white tracking-tight mb-2">
-            Sua agenda no<br />
-            <span style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>piloto automático.</span>
+        <div className="lg:hidden relative z-10 px-5 pt-5 pb-8 text-center flex flex-col items-center">
+          {/* Pill mostra a oferta antes de tudo */}
+          <div className="pill inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider mb-4">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-300" aria-hidden>
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>R$ 67/mês · sem setup, sem fidelidade</span>
+          </div>
+
+          <h1 className="text-[1.7rem] leading-[1.1] font-black text-white tracking-tight mb-3">
+            WhatsApp parado.<br />
+            <span style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Agenda lotada.</span>
           </h1>
 
-          <p className="text-[13px] text-slate-300 leading-relaxed mb-4 max-w-[280px]">
-            Agendamento 24h, lembretes, fidelidade e fila de espera. Tudo num link só.
+          <p className="text-[13.5px] text-slate-300 leading-relaxed mb-5 max-w-[300px]">
+            Cliente agenda sozinho pelo link da bio. Lembrete antes de cada horário. Fila de espera quando alguém cancela. <strong className="text-white">Você só atende.</strong>
           </p>
 
           {/* Mockup do iPhone + labels */}
-          <div className="relative mb-4 w-full flex justify-center">
+          <div className="relative mb-5 w-full flex justify-center" style={{ minHeight: 380 }}>
             {/* Labels flutuantes — posicionadas fora do mockup */}
-            <div className="absolute left-2 top-[18%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 4px 20px rgba(139,92,246,0.4)' }}>
-              Lembretes automáticos
+            <div
+              className="absolute left-2 top-[18%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white whitespace-nowrap"
+              style={{
+                background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
+                boxShadow: '0 8px 24px rgba(139,92,246,0.45)',
+                animation: 'floatSlow 4s ease-in-out infinite',
+              }}
+            >
+              Lembrete automático
             </div>
-            <div className="absolute right-2 top-[42%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #06B6D4, #0891B2)', boxShadow: '0 4px 20px rgba(6,182,212,0.4)' }}>
+            <div
+              className="absolute right-2 top-[42%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white whitespace-nowrap"
+              style={{
+                background: 'linear-gradient(135deg, #06B6D4, #0891B2)',
+                boxShadow: '0 8px 24px rgba(6,182,212,0.45)',
+                animation: 'floatSlow 5s ease-in-out infinite reverse',
+              }}
+            >
               Fidelidade com pontos
             </div>
-            <div className="absolute left-4 top-[66%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white" style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 20px rgba(16,185,129,0.4)' }}>
+            <div
+              className="absolute left-4 top-[66%] z-20 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white whitespace-nowrap"
+              style={{
+                background: 'linear-gradient(135deg, #10B981, #059669)',
+                boxShadow: '0 8px 24px rgba(16,185,129,0.45)',
+                animation: 'floatSlow 4.5s ease-in-out infinite',
+              }}
+            >
               Fila de espera
             </div>
             <div style={{ transform: 'scale(0.7)', transformOrigin: 'top center' }}>
@@ -147,7 +176,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <Link href="/cadastro" className="btn btn-primary-v2 text-sm px-8 py-3 w-full max-w-xs justify-center">
+          <Link href="/cadastro" className="btn btn-primary-v2 text-sm px-8 py-3.5 w-full max-w-xs justify-center font-bold">
             Começar agora
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7" />
