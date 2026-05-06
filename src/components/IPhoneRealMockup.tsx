@@ -68,7 +68,7 @@ const SCREENS: Record<Variant, ScreenContent> = {
     business: 'Nail Designer Lari',
     city: 'Curitiba, PR',
     initial: 'L',
-    brandColor: '#F59E0B',
+    brandColor: '#EC4899',
     services: [
       { name: 'Esmaltação em gel', time: '60 min', price: 'R$ 80' },
       { name: 'Fibra de vidro', time: '120 min', price: 'R$ 180' },
