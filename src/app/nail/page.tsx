@@ -350,10 +350,15 @@ export default function NailPage() {
                 <span className="text-white/95 font-bold uppercase tracking-wider">Sem setup · Sem fidelidade</span>
               </div>
 
-              {/* H1 — DM lotada + perda mensal */}
+              {/* H1 — DM lotada + perda mensal. R$ 900 em rosa-magenta (não laranja) */}
               <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2.2rem, 7vw, 4.5rem)' }}>
                 Sua DM lotou e<br />
-                <span style={{ color: '#F59E0B' }}>R$ 900</span> sumiram<br className="hidden sm:block" />
+                <span style={{
+                  background: 'linear-gradient(135deg, #EC4899 0%, #F472B6 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}>R$ 900 sumiram</span><br className="hidden sm:block" />
                 do seu mês.
               </h1>
 
@@ -362,10 +367,10 @@ export default function NailPage() {
                 Cliente vê o link na bio do Insta e agenda sozinha. Recebe lembrete antes da sessão e não falta. Cancelou o gel de R$ 150? A fila preenche em 3 minutos. <strong className="text-white">Você fica nas mãos. O dinheiro fica no caixa.</strong>
               </p>
 
-              {/* Stats — financeiro / DMs / reputação */}
+              {/* Stats — paleta unificada rosa-magenta (saturações diferentes) + dourado SÓ no ícone Google */}
               <div className="flex flex-wrap gap-2 sm:gap-3">
-                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(16,185,129,0.18)', color: '#10B981' }}>
+                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(236,72,153,0.10)', border: '1px solid rgba(236,72,153,0.30)' }}>
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(236,72,153,0.20)', color: '#EC4899' }}>
                     <IconCash size={14} />
                   </span>
                   <span className="text-left text-[12px] sm:text-[13px] leading-tight">
