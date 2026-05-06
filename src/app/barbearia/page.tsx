@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 }
 import type { FAQItem } from '@/components/FAQ'
 import Image from 'next/image'
-import IPhoneRealMockup from '@/components/IPhoneRealMockup'
+import IPhoneMockup from '@/components/IPhoneMockup'
 import { TimelineMicroUI, DorMicroUI } from '@/components/LandingMicroUI'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
@@ -324,10 +324,10 @@ export default function BarbeariaPage() {
               </p>
             </SectionReveal>
 
-            {/* Coluna direita — iPhone realista variant barbearia */}
+            {/* Coluna direita — iPhone mockup variant barbearia */}
             <SectionReveal className="flex justify-center lg:justify-end mt-4 lg:mt-0">
-              <div className="relative w-full max-w-[480px]">
-                <IPhoneRealMockup variant="barbearia" />
+              <div className="relative">
+                <IPhoneMockup variant="barbearia" />
               </div>
             </SectionReveal>
 

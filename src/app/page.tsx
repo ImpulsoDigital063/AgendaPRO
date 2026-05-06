@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import FAQ from '@/components/FAQ'
 import AgendaDesktopMockup from '@/components/AgendaDesktopMockup'
-import IPhoneRealMockup from '@/components/IPhoneRealMockup'
+import IPhoneMockup from '@/components/IPhoneMockup'
 import { MechanismCard } from '@/components/MechanismCard'
 import { TimelineMicroUI, DorMicroUI, PassoMicroUI } from '@/components/LandingMicroUI'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
@@ -138,10 +138,12 @@ export default function HomePage() {
             Cliente agenda sozinho pelo link da bio. Lembrete antes de cada horário. Fila de espera quando alguém cancela. <strong className="text-white">Você só atende.</strong>
           </p>
 
-          {/* Mockup do iPhone (foto real) + labels flutuantes */}
-          <div className="relative mb-5 w-full flex justify-center">
-            <div className="relative w-full max-w-[420px]">
-              <IPhoneRealMockup variant="barbearia" maxWidth={420} />
+          {/* Mockup do iPhone + labels flutuantes */}
+          <div className="relative mb-5 w-full flex justify-center" style={{ minHeight: 380 }}>
+            <div className="relative">
+              <div style={{ transform: 'scale(0.7)', transformOrigin: 'top center' }}>
+                <IPhoneMockup variant="barbearia" />
+              </div>
 
               {/* Labels flutuantes — sobrepostas ao mockup */}
               <div
