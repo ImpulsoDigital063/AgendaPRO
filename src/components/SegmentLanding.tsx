@@ -75,7 +75,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
               Entrar
             </Link>
             <Link href="/cadastro" className="btn-primary-v2 text-sm">
-              Entrar no Clube
+              Começar agora
             </Link>
           </div>
         </div>

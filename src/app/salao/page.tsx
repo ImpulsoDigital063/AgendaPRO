@@ -11,7 +11,8 @@ export const metadata: Metadata = {
   },
 }
 import type { FAQItem } from '@/components/FAQ'
-import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
+import Image from 'next/image'
+import IPhoneMockup from '@/components/IPhoneMockup'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
@@ -165,7 +166,7 @@ function CTAInline({ titulo, sub }: { titulo: string; sub: string }) {
           className="btn btn-primary-v2 btn-shimmer w-full sm:w-auto justify-center text-sm font-bold px-5 py-3 sm:py-3.5 min-h-[48px]"
         >
           <span className="relative z-10 flex items-center gap-2">
-            Entrar no Clube
+            Começar agora
             <IconArrowRight size={18} />
           </span>
         </Link>
@@ -403,12 +404,109 @@ export default function SalaoPage() {
             </SectionReveal>
 
             <SectionReveal className="flex justify-center lg:justify-end mt-4 lg:mt-0">
-              <div className="relative w-full max-w-[320px] sm:max-w-[380px] lg:max-w-[420px]">
-                <AgendaDashboardMockup />
+              <div className="relative">
+                <IPhoneMockup variant="salao" />
               </div>
             </SectionReveal>
 
           </div>
+        </div>
+      </section>
+
+      {/* ═══════════ 1.5 GENTE REAL — cabeleireira atendendo cliente ═══════════ */}
+      <section className="relative overflow-hidden">
+        <div className="container px-4 py-10 sm:py-14">
+          <SectionReveal>
+            <div
+              className="relative rounded-3xl overflow-hidden"
+              style={{
+                border: '1px solid rgba(168,85,247,0.18)',
+                boxShadow: '0 30px 80px -30px rgba(168,85,247,0.35)',
+              }}
+            >
+              <div className="grid md:grid-cols-2 items-stretch min-h-[320px] md:min-h-[420px]">
+                <div className="relative h-64 md:h-auto">
+                  <Image
+                    src="/images/lp/salao.jpg"
+                    alt="Cabeleireira penteando cliente em salão de beleza"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                    priority
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, rgba(168,85,247,0.18) 0%, transparent 60%)',
+                    }}
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 pointer-events-none md:hidden"
+                    style={{
+                      background:
+                        'linear-gradient(180deg, transparent 50%, rgba(5,7,19,0.85) 100%)',
+                    }}
+                  />
+                </div>
+
+                <div
+                  className="relative p-6 sm:p-8 md:p-10 flex flex-col justify-center"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #1e0820 0%, #100416 60%, #050208 100%)',
+                  }}
+                >
+                  <div
+                    className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-[10px] font-black tracking-[0.18em] uppercase mb-4 self-start"
+                    style={{
+                      background: 'rgba(168,85,247,0.12)',
+                      border: '1px solid rgba(168,85,247,0.3)',
+                      color: '#A855F7',
+                    }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#A855F7' }} />
+                    Feito pra salão
+                  </div>
+
+                  <h2 className="text-white font-black mb-3 leading-tight" style={{ fontSize: 'clamp(1.4rem, 4vw, 2.2rem)' }}>
+                    Sua cliente VIP<br />
+                    <span style={{ color: '#A855F7' }}>fiel e indicando</span>.
+                  </h2>
+
+                  <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-5">
+                    Salão prospera com cliente que volta e indica. O AgendaPRO premia quem indica, dá pontos a cada serviço e mostra quem está há tempo demais sem aparecer — pra você reconquistar antes de perder.
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-2">
+                    {[
+                      { kpi: '+5', label: 'Indicações por VIP' },
+                      { kpi: '14m', label: 'Cliente recorrente' },
+                      { kpi: 'R$ 2.8k', label: 'LTV médio' },
+                    ].map((s) => (
+                      <div
+                        key={s.label}
+                        className="rounded-xl p-2 sm:p-2.5 text-center"
+                        style={{
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                        }}
+                      >
+                        <div className="font-mono font-black text-base sm:text-lg leading-none" style={{ color: '#A855F7' }}>
+                          {s.kpi}
+                        </div>
+                        <div className="text-[9px] sm:text-[10px] text-slate-500 mt-1.5 leading-tight font-semibold uppercase tracking-wider">
+                          {s.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </SectionReveal>
         </div>
       </section>
 

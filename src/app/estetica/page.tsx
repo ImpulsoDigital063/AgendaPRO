@@ -11,7 +11,8 @@ export const metadata: Metadata = {
   },
 }
 import type { FAQItem } from '@/components/FAQ'
-import AgendaDashboardMockup from '@/components/AgendaDashboardMockup'
+import Image from 'next/image'
+import IPhoneMockup from '@/components/IPhoneMockup'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
@@ -167,7 +168,7 @@ function CTAInline({ titulo, sub }: { titulo: string; sub: string }) {
           className="btn btn-primary-v2 btn-shimmer w-full sm:w-auto justify-center text-sm font-bold px-5 py-3 sm:py-3.5 min-h-[48px]"
         >
           <span className="relative z-10 flex items-center gap-2">
-            Entrar no Clube
+            Começar agora
             <IconArrowRight size={18} />
           </span>
         </Link>
@@ -415,12 +416,109 @@ export default function EsteticaPage() {
             </SectionReveal>
 
             <SectionReveal className="flex justify-center lg:justify-end mt-4 lg:mt-0">
-              <div className="relative w-full max-w-[320px] sm:max-w-[380px] lg:max-w-[420px]">
-                <AgendaDashboardMockup />
+              <div className="relative">
+                <IPhoneMockup variant="estetica" />
               </div>
             </SectionReveal>
 
           </div>
+        </div>
+      </section>
+
+      {/* ═══════════ 1.5 GENTE REAL — esteticista atendendo ═══════════ */}
+      <section className="relative overflow-hidden">
+        <div className="container px-4 py-10 sm:py-14">
+          <SectionReveal>
+            <div
+              className="relative rounded-3xl overflow-hidden"
+              style={{
+                border: '1px solid rgba(6,182,212,0.18)',
+                boxShadow: '0 30px 80px -30px rgba(6,182,212,0.35)',
+              }}
+            >
+              <div className="grid md:grid-cols-2 items-stretch min-h-[320px] md:min-h-[420px]">
+                <div className="relative h-64 md:h-auto">
+                  <Image
+                    src="/images/lp/estetica.jpg"
+                    alt="Esteticista aplicando máscara facial em cliente em ambiente clínico"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                    priority
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, rgba(6,182,212,0.18) 0%, transparent 60%)',
+                    }}
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 pointer-events-none md:hidden"
+                    style={{
+                      background:
+                        'linear-gradient(180deg, transparent 50%, rgba(5,7,19,0.85) 100%)',
+                    }}
+                  />
+                </div>
+
+                <div
+                  className="relative p-6 sm:p-8 md:p-10 flex flex-col justify-center"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #051a1c 0%, #03101a 60%, #050b14 100%)',
+                  }}
+                >
+                  <div
+                    className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-[10px] font-black tracking-[0.18em] uppercase mb-4 self-start"
+                    style={{
+                      background: 'rgba(6,182,212,0.12)',
+                      border: '1px solid rgba(6,182,212,0.3)',
+                      color: '#06B6D4',
+                    }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#06B6D4' }} />
+                    Feito pra estética
+                  </div>
+
+                  <h2 className="text-white font-black mb-3 leading-tight" style={{ fontSize: 'clamp(1.4rem, 4vw, 2.2rem)' }}>
+                    Sua sala não pode<br />
+                    <span style={{ color: '#06B6D4' }}>parar 30 min</span> à toa.
+                  </h2>
+
+                  <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-5">
+                    Estética é pacote, é sessão, é continuidade. O AgendaPRO controla o pacote pré-pago da cliente, lembra das próximas sessões e avisa quando alguém cancela — pra outra cliente entrar no lugar.
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-2">
+                    {[
+                      { kpi: '8/10', label: 'Sessões pacote feitas' },
+                      { kpi: '−R$0', label: 'Furos vazios' },
+                      { kpi: '+30%', label: 'Clientes recorrentes' },
+                    ].map((s) => (
+                      <div
+                        key={s.label}
+                        className="rounded-xl p-2 sm:p-2.5 text-center"
+                        style={{
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                        }}
+                      >
+                        <div className="font-mono font-black text-base sm:text-lg leading-none" style={{ color: '#06B6D4' }}>
+                          {s.kpi}
+                        </div>
+                        <div className="text-[9px] sm:text-[10px] text-slate-500 mt-1.5 leading-tight font-semibold uppercase tracking-wider">
+                          {s.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </SectionReveal>
         </div>
       </section>
 
