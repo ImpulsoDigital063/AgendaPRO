@@ -345,19 +345,28 @@ export default function SalaoPage() {
                 <span className="text-white/95 font-bold uppercase tracking-wider">Sem setup · Sem fidelidade</span>
               </div>
 
-              {/* H1 — perda específica do salão */}
-              <h1 className="text-white font-black leading-[1.05] tracking-tight" style={{ fontSize: 'clamp(2.2rem, 7vw, 4.5rem)' }}>
-                Seu salão deixa<br />
-                <span style={{ color: '#F59E0B' }}>R$ 1.800</span> na mesa{' '}<br className="hidden sm:block" />todo mês.
+              {/* H1 — ataque de identidade (vc é cabeleireira, não atendente) */}
+              <h1 className="text-white font-black leading-[1.02] tracking-tight" style={{ fontSize: 'clamp(2.2rem, 7vw, 4.5rem)' }}>
+                Você é cabeleireira.<br />
+                <span className="text-gradient">Não atendente.</span>
               </h1>
 
-              {/* Subhead — solução em fluxo, sem listão */}
+              {/* Subhead — dor específica + cálculo concreto */}
               <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-                O AgendaPRO bota sua equipe em agendas separadas, lembra a cliente antes do serviço e calcula comissão sozinho. Cancelou a escova de R$ 120? <strong className="text-white">A fila preenche em 3 minutos — e o dinheiro volta pro caixa.</strong>
+                Você passa <strong className="text-white">3h por dia no WhatsApp</strong> confirmando, remarcando e cobrando. Cobra R$ 80/h pra cortar — e dá esse tempo de graça pra responder mensagem. <strong className="text-white">O AgendaPRO devolve.</strong>
               </p>
 
-              {/* Stats — financeiro / equipe / reputação */}
+              {/* Stats — hierarquia: tempo (principal) → dinheiro → reputação */}
               <div className="flex flex-wrap gap-2 sm:gap-3">
+                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(236,72,153,0.10)', border: '1px solid rgba(236,72,153,0.30)' }}>
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(236,72,153,0.20)', color: '#EC4899' }}>
+                    <IconContacts size={14} />
+                  </span>
+                  <span className="text-left text-[12px] sm:text-[13px] leading-tight">
+                    <strong className="text-white">3h/dia recuperadas</strong>
+                    <span className="text-slate-500 hidden sm:inline"> · zero WhatsApp</span>
+                  </span>
+                </div>
                 <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
                   <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(16,185,129,0.18)', color: '#10B981' }}>
                     <IconCash size={14} />
@@ -365,15 +374,6 @@ export default function SalaoPage() {
                   <span className="text-left text-[12px] sm:text-[13px] leading-tight">
                     <strong className="text-white">+R$ 1.800/mês</strong>
                     <span className="text-slate-500 hidden sm:inline"> · fila + lembrete</span>
-                  </span>
-                </div>
-                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(236,72,153,0.08)', border: '1px solid rgba(236,72,153,0.25)' }}>
-                  <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0" style={{ background: 'rgba(236,72,153,0.18)', color: '#EC4899' }}>
-                    <IconContacts size={14} />
-                  </span>
-                  <span className="text-left text-[12px] sm:text-[13px] leading-tight">
-                    <strong className="text-white">5 agendas separadas</strong>
-                    <span className="text-slate-500 hidden sm:inline"> · zero conflito</span>
                   </span>
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(251,188,4,0.08)', border: '1px solid rgba(251,188,4,0.25)' }}>
