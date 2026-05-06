@@ -839,7 +839,7 @@ export default function NailPage() {
               <span>3 passos · 5 minutos · zero técnico</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
-              Hoje você <span className="text-gradient">começa</span>. Hoje mesmo.
+              Cadastra. Cola na bio. <span className="text-gradient">Cliente preenche essa noite.</span>
             </h2>
           </SectionReveal>
           <SectionReveal><OnboardingSteps /></SectionReveal>

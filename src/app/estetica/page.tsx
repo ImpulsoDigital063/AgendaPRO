@@ -849,7 +849,7 @@ export default function EsteticaPage() {
               <span>3 passos · 5 minutos · zero técnico</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
-              Hoje você <span className="text-gradient">começa</span>. Hoje mesmo.
+              Setup em 5 minutos. <span className="text-gradient">Pacote vendido amanhã.</span>
             </h2>
           </SectionReveal>
           <SectionReveal><OnboardingSteps /></SectionReveal>
