@@ -111,30 +111,74 @@ export default function BillingPlanSelector({ plan }: Props) {
   const [selectedKey, setSelectedKey] = useState<Modalidade>('anual_pix')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fallbackUrl, setFallbackUrl] = useState<string | null>(null)
 
   const opcoes = OPCOES_POR_PLANO[plan]
   const selected = opcoes.find(o => o.key === selectedKey)!
 
+  // Reset state ao trocar de modalidade
+  function handleSelectModalidade(key: Modalidade) {
+    setSelectedKey(key)
+    setError(null)
+    setFallbackUrl(null)
+  }
+
   async function handleCheckout() {
     setError(null)
+    setFallbackUrl(null)
     setLoading(true)
+
+    // Timeout de 30s pra evitar loading infinito
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan, modalidade: selectedKey }),
+        signal: controller.signal,
       })
-      const data = await res.json()
+      clearTimeout(timeoutId)
 
-      if (!res.ok || !data.url) {
-        setError(data.error || 'Erro ao abrir checkout. Tente novamente.')
+      // Tratamento explícito de rate limit
+      if (res.status === 429) {
+        setError('Muitas tentativas em pouco tempo. Espera 5 minutos e tenta de novo.')
         setLoading(false)
         return
       }
 
-      window.location.href = data.url
-    } catch {
-      setError('Falha de conexão. Tente de novo.')
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok || !data.url) {
+        setError(
+          data.error ||
+            'Não conseguimos abrir o checkout. Tente outra modalidade ou fala com a gente no WhatsApp.'
+        )
+        setLoading(false)
+        return
+      }
+
+      // Tenta redirect. Se Safari bloquear, mostra link clicável de fallback
+      try {
+        window.location.href = data.url
+        // Backup: se em 2s o redirect não rolou (Safari iOS bloqueou),
+        // mostra link clicável manual
+        setTimeout(() => {
+          setFallbackUrl(data.url)
+          setLoading(false)
+        }, 2000)
+      } catch {
+        setFallbackUrl(data.url)
+        setLoading(false)
+      }
+    } catch (err) {
+      clearTimeout(timeoutId)
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('A operação demorou demais. Verifica sua conexão e tenta de novo.')
+      } else {
+        setError('Falha de conexão. Tenta de novo em alguns segundos.')
+      }
       setLoading(false)
     }
   }
@@ -158,7 +202,7 @@ export default function BillingPlanSelector({ plan }: Props) {
             <button
               key={opt.key}
               type="button"
-              onClick={() => setSelectedKey(opt.key)}
+              onClick={() => handleSelectModalidade(opt.key)}
               className="w-full text-left rounded-xl p-3 transition-all"
               style={{
                 background: isSelected
@@ -247,6 +291,32 @@ export default function BillingPlanSelector({ plan }: Props) {
 
       {error && (
         <p className="text-sm text-red-400 mt-2 text-center">{error}</p>
+      )}
+
+      {fallbackUrl && (
+        <div
+          className="mt-2 p-3 rounded-lg text-center"
+          style={{
+            background: 'rgba(16,185,129,0.10)',
+            border: '1px solid rgba(16,185,129,0.35)',
+          }}
+        >
+          <p className="text-xs text-emerald-200 mb-2">
+            O navegador bloqueou o redirect automático. Toca no link abaixo:
+          </p>
+          <a
+            href={fallbackUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block px-4 py-2 rounded-lg font-bold text-sm"
+            style={{
+              background: 'linear-gradient(135deg, #10B981 0%, #06B6D4 100%)',
+              color: '#fff',
+            }}
+          >
+            Abrir checkout do Mercado Pago →
+          </a>
+        </div>
       )}
 
       <p className="text-[11px] text-slate-500 text-center leading-snug">
