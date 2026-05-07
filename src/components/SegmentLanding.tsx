@@ -70,11 +70,11 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
           <Link href="/" className="flex items-center">
             <Image src="/logo-agendapro-dark.svg" alt="AgendaPRO" width={150} height={30} priority />
           </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/admin/login" className="text-sm text-slate-300 hover:text-white transition-colors hidden sm:inline">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/admin/login" className="inline-flex text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition-colors px-2.5 py-2 sm:px-3">
               Entrar
             </Link>
-            <Link href="/cadastro" className="btn-primary-v2 text-sm">
+            <Link href="/cadastro" className="btn-primary-v2 text-xs sm:text-sm">
               Começar agora
             </Link>
           </div>

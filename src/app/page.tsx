@@ -107,11 +107,11 @@ export default function HomePage() {
           <Link href="/" className="flex items-center">
             <img src="/logo-agendapro-dark.svg" alt="AgendaPRO" className="h-7" />
           </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/admin/login" className="hidden sm:inline-flex text-sm font-medium text-slate-300 hover:text-white transition-colors px-3 py-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/admin/login" className="inline-flex text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition-colors px-2.5 py-2 sm:px-3">
               Entrar
             </Link>
-            <Link href="/cadastro" className="btn btn-primary-v2 text-sm px-5 py-2.5">
+            <Link href="/cadastro" className="btn btn-primary-v2 text-xs sm:text-sm px-3.5 py-2 sm:px-5 sm:py-2.5">
               Começar agora
             </Link>
           </div>
