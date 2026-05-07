@@ -106,11 +106,25 @@ Ou pelo painel: **Deployments → Redeploy → use existing build cache: NO**.
 
 ### Fluxo do primeiro pagamento Asaas
 
-Asaas exige **CPF/CNPJ do cliente** pra criar customer. Hoje o front não pede isso (porque MP não exigia).
+Asaas exige **CPF/CNPJ do cliente** pra criar customer. **Já implementei** form inline:
+- Cliente clica em "Pagar" pela 1ª vez
+- API retorna `needs_customer_data: true`
+- Front mostra automaticamente 2 inputs: **Nome completo** + **CPF/CNPJ**
+- Cliente preenche e clica "Continuar pro pagamento"
+- Front re-submete o checkout com `customer` no body
+- API cria customer + subscription/payment + retorna URL do invoice
+- Redirect normal
 
-**Próxima task** (não urgente, mas necessária antes do 1º cliente real Asaas pagar): adicionar campo CPF/CNPJ no formulário de cadastro/checkout. Posso atacar de manhã.
+Sem fricção extra na 2ª vez (customer fica salvo em `subscriptions.asaas_customer_id`).
 
-Por enquanto, pra teste com Erlane, a tela do checkout vai retornar erro `needs_customer_data: true` na 1ª tentativa. Ela vai precisar enviar o CPF dela manualmente — posso adicionar um modal de input rápido se você acordar e quiser que eu codifique.
+### Roteamento por provider (coexistência perfeita)
+
+`PlanoCard` agora lê `subscription.provider` do `/api/billing/status`. Isso significa:
+- Cliente antigo MP → cancela via `/api/billing/cancel` (rota MP)
+- Cliente novo Asaas → cancela via `/api/billing/cancel-asaas`
+- Funciona simultaneamente, sem conflito
+
+A feature flag `NEXT_PUBLIC_BILLING_PROVIDER=asaas` só decide pra **NOVAS** assinaturas. Antigas seguem o que está salvo na `subscription.provider`.
 
 ### Sandbox vs Production
 
@@ -133,7 +147,7 @@ Tudo volta a usar MP em segundos.
 
 ---
 
-## 📊 Tasks completadas pelo Verbo
+## 📊 Tasks completadas pelo Verbo (autonomamente)
 
 - [x] #162 — Pesquisar API Asaas (docs lidas)
 - [x] #163 — Migration v40 criada (aguarda apply)
@@ -141,16 +155,20 @@ Tudo volta a usar MP em segundos.
 - [x] #165 — `/api/billing/cancel-asaas` com refund 7d
 - [x] #166 — `/api/webhooks/asaas` com auth + handlers
 - [x] #167 — Feature flag de roteamento
+- [x] #168 — Modal CPF/CNPJ no checkout + roteamento por subscription.provider
+
+**Total:** 7 tasks, ~5h de código autônomo. Build verde. Tudo commitado em master (commits `599915a`, `8a2782f`, `572ae54`).
 
 ---
 
 ## 💡 Próximas melhorias (backlog pós-ativação)
 
-1. **Modal de CPF/CNPJ** no checkout pra primeira vez Asaas (necessário antes de venda real)
-2. **Roteamento por `subscription.provider`** no PlanoCard (pra coexistência MP↔Asaas perfeita)
-3. **Notificação WhatsApp** via Z-API quando Asaas confirmar venda (alerta pro Eduardo)
-4. **Cron de sincronização** Asaas (pra detectar pagamentos que webhook perdeu)
-5. **Migrar webhook MP** pra simulador de teste (manter código mas marcar deprecated)
+- ~~Modal de CPF/CNPJ no checkout~~ ✅ FEITO
+- ~~Roteamento por subscription.provider~~ ✅ FEITO
+- **Notificação WhatsApp** via Z-API quando Asaas confirmar venda (alerta pro Eduardo)
+- **Cron de sincronização** Asaas (pra detectar pagamentos que webhook perdeu)
+- **Migrar webhook MP** pra simulador de teste (manter código mas marcar deprecated)
+- **Validação de CPF/CNPJ** no front (algoritmo do dígito verificador)
 
 ---
 
