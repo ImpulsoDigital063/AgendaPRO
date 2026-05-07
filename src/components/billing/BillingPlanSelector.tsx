@@ -207,7 +207,7 @@ export default function BillingPlanSelector({ plan }: Props) {
   }
 
   const labelBotao =
-    selectedKey === 'mensal_cartao' ? `Ativar mensalidade (${selected.valor}/mês) no Mercado Pago` :
+    selectedKey === 'mensal_cartao' ? `Ativar mensalidade (${selected.valor}/mês)` :
     selectedKey === 'mensal_pix'    ? `Pagar primeira mensalidade (${selected.valor}) via PIX` :
     selectedKey === 'semestral_pix' ? `Pagar 6 meses (${selected.valor}) via PIX` :
                                        `Pagar 12 meses (${selected.valor}) via PIX`
@@ -394,14 +394,32 @@ export default function BillingPlanSelector({ plan }: Props) {
               color: '#fff',
             }}
           >
-            Abrir checkout do Mercado Pago →
+            Abrir checkout seguro →
           </a>
         </div>
       )}
 
-      <p className="text-[11px] text-slate-500 text-center leading-snug">
-        Pagamento processado pelo Asaas. Você pode cancelar a qualquer momento.
-      </p>
+      <div className="space-y-2 pt-1">
+        <div
+          className="rounded-lg px-3 py-2.5 flex items-start gap-2"
+          style={{
+            background: 'rgba(16,185,129,0.08)',
+            border: '1px solid rgba(16,185,129,0.25)',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+            <path d="M9 12l2 2 4-4" />
+            <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+          </svg>
+          <p className="text-[11px] text-emerald-100 leading-snug">
+            <strong>Garantia de 7 dias.</strong> Cancelou em até 7 dias? A gente devolve a grana
+            sem burocracia — direto no seu PIX (24h) ou no cartão (5 a 10 dias úteis).
+          </p>
+        </div>
+        <p className="text-[11px] text-slate-500 text-center leading-snug">
+          Pagamento processado pelo Asaas. Sem fidelidade, cancela quando quiser.
+        </p>
+      </div>
     </div>
   )
 }

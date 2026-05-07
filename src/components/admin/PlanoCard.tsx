@@ -276,7 +276,9 @@ export default function PlanoCard() {
         open={confirmCancel}
         title="Cancelar seu plano?"
         message={
-          sub.current_period_end
+          sub.within_refund_window
+            ? `Como você está dentro dos 7 dias da garantia, a gente devolve o valor pago automaticamente — PIX volta em 24h, cartão em 5 a 10 dias úteis. Sem multa, sem fidelidade.`
+            : sub.current_period_end
             ? `Você continua com acesso até ${formatDate(sub.current_period_end)} (próxima cobrança). Depois disso, o plano para. Sem multa, sem fidelidade.`
             : 'Seu plano vai ser cancelado. Sem multa, sem fidelidade. Pra reativar depois, fala com o suporte.'
         }
