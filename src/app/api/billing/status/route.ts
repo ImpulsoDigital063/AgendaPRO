@@ -29,7 +29,8 @@ export async function GET(req: NextRequest) {
       plan, status, price_cents, setup_cents,
       setup_paid_at, refund_deadline_at, refunded_at,
       current_period_start, current_period_end,
-      grace_ends_at, public_blocked_at, cancelled_at
+      grace_ends_at, public_blocked_at, cancelled_at,
+      provider
     `)
     .eq('business_id', business.id)
     .single()

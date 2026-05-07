@@ -21,6 +21,7 @@ type Subscription = {
   public_blocked: boolean
   within_refund_window: boolean
   refund_days_left: number | null
+  provider?: 'mercado_pago' | 'asaas'
 }
 
 const STATUS_LABEL: Record<Subscription['status'], { label: string; color: string }> = {
@@ -86,11 +87,9 @@ export default function PlanoCard() {
     setError('')
     setRefundInfo(null)
     try {
-      // Feature flag: roteia pro Asaas se BILLING_PROVIDER=asaas
-      const provider =
-        process.env.NEXT_PUBLIC_BILLING_PROVIDER === 'asaas'
-          ? 'asaas'
-          : 'mercado_pago'
+      // Roteamento por provider: respeita o que está salvo na subscription
+      // (assinaturas antigas MP cancelam via MP; novas Asaas cancelam via Asaas)
+      const provider = sub?.provider ?? 'mercado_pago'
       const cancelUrl =
         provider === 'asaas' ? '/api/billing/cancel-asaas' : '/api/billing/cancel'
       const res = await fetch(cancelUrl, { method: 'POST' })

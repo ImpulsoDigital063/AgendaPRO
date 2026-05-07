@@ -107,11 +107,18 @@ const OPCOES_POR_PLANO: Record<Plano, ModalidadeOpcao[]> = {
   ],
 }
 
+type CustomerData = { name: string; cpfCnpj: string }
+
 export default function BillingPlanSelector({ plan }: Props) {
   const [selectedKey, setSelectedKey] = useState<Modalidade>('anual_pix')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null)
+  const [needsCustomerData, setNeedsCustomerData] = useState(false)
+  const [customerData, setCustomerData] = useState<CustomerData>({
+    name: '',
+    cpfCnpj: '',
+  })
 
   const opcoes = OPCOES_POR_PLANO[plan]
   const selected = opcoes.find(o => o.key === selectedKey)!
@@ -138,11 +145,20 @@ export default function BillingPlanSelector({ plan }: Props) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
+    // Body do checkout: incluir customer se já preenchido (Asaas exige na 1ª vez)
+    const requestBody: Record<string, unknown> = { plan, modalidade: selectedKey }
+    if (provider === 'asaas' && customerData.name && customerData.cpfCnpj) {
+      requestBody.customer = {
+        name: customerData.name,
+        cpfCnpj: customerData.cpfCnpj.replace(/\D/g, ''),
+      }
+    }
+
     try {
       const res = await fetch(checkoutUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, modalidade: selectedKey }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       })
       clearTimeout(timeoutId)
@@ -155,6 +171,13 @@ export default function BillingPlanSelector({ plan }: Props) {
       }
 
       const data = await res.json().catch(() => ({}))
+
+      // Asaas pede CPF/CNPJ na primeira vez
+      if (data.needs_customer_data) {
+        setNeedsCustomerData(true)
+        setLoading(false)
+        return
+      }
 
       if (!res.ok || !data.url) {
         setError(
@@ -281,10 +304,63 @@ export default function BillingPlanSelector({ plan }: Props) {
         })}
       </div>
 
+      {needsCustomerData && (
+        <div
+          className="rounded-xl p-3 space-y-2"
+          style={{
+            background: 'rgba(16,185,129,0.08)',
+            border: '1.5px solid rgba(16,185,129,0.4)',
+          }}
+        >
+          <p className="text-xs text-emerald-200 font-semibold">
+            Pra emitir a cobrança a gente precisa de 2 dados rápidos:
+          </p>
+          <input
+            type="text"
+            placeholder="Nome completo (do titular do cartão)"
+            value={customerData.name}
+            onChange={(e) =>
+              setCustomerData({ ...customerData, name: e.target.value })
+            }
+            className="w-full px-3 py-2 rounded-lg text-sm"
+            style={{
+              background: 'rgba(0,0,0,0.3)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff',
+            }}
+          />
+          <input
+            type="text"
+            placeholder="CPF ou CNPJ (só números)"
+            value={customerData.cpfCnpj}
+            onChange={(e) =>
+              setCustomerData({
+                ...customerData,
+                cpfCnpj: e.target.value.replace(/\D/g, '').slice(0, 14),
+              })
+            }
+            inputMode="numeric"
+            className="w-full px-3 py-2 rounded-lg text-sm"
+            style={{
+              background: 'rgba(0,0,0,0.3)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff',
+            }}
+          />
+          <p className="text-[10px] text-slate-400">
+            Esses dados ficam só com o Asaas pra emitir nota — nunca compartilhamos.
+          </p>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={handleCheckout}
-        disabled={loading}
+        disabled={
+          loading ||
+          (needsCustomerData &&
+            (!customerData.name.trim() || customerData.cpfCnpj.length < 11))
+        }
         className="w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
         style={{
           background: 'linear-gradient(135deg, #10B981 0%, #06B6D4 100%)',
@@ -292,7 +368,11 @@ export default function BillingPlanSelector({ plan }: Props) {
           color: '#fff',
         }}
       >
-        {loading ? 'Abrindo checkout…' : labelBotao}
+        {loading
+          ? 'Abrindo checkout…'
+          : needsCustomerData
+          ? 'Continuar pro pagamento'
+          : labelBotao}
       </button>
 
       {error && (
