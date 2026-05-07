@@ -37,12 +37,19 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+type RefundInfo = {
+  refunded: boolean
+  refund_amount: number | null
+  payment_method: 'cartao' | 'pix' | null
+}
+
 export default function PlanoCard() {
   const [sub, setSub] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState('')
+  const [refundInfo, setRefundInfo] = useState<RefundInfo | null>(null)
 
   async function loadStatus() {
     setLoading(true)
@@ -77,14 +84,22 @@ export default function PlanoCard() {
   async function handleCancel() {
     setCancelling(true)
     setError('')
+    setRefundInfo(null)
     try {
       const res = await fetch('/api/billing/cancel', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
         setError(data.error || 'Erro ao cancelar.')
         setCancelling(false)
         return
       }
+      // Captura info de reembolso pra mostrar feedback visual
+      setRefundInfo({
+        refunded: data.refunded === true,
+        refund_amount:
+          typeof data.refund_amount === 'number' ? data.refund_amount : null,
+        payment_method: data.payment_method ?? null,
+      })
       await loadStatus()
       setConfirmCancel(false)
     } finally {
@@ -219,6 +234,25 @@ export default function PlanoCard() {
           <span>
             Plano cancelado. Você pode usar o painel até a próxima data de cobrança. Pra reativar,
             fala com o suporte no WhatsApp.
+          </span>
+        </div>
+      )}
+
+      {refundInfo?.refunded && (
+        <div
+          className="rounded-lg px-3 py-2 flex items-start gap-2 text-[11px]"
+          style={{
+            background: 'color-mix(in srgb, var(--admin-success, #16A34A) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--admin-success, #16A34A) 30%, transparent)',
+            color: 'var(--admin-success, #16A34A)',
+          }}
+        >
+          <IconCheck size={14} style={{ marginTop: 1 }} />
+          <span>
+            <strong>Reembolso solicitado{refundInfo.refund_amount != null ? ` de R$ ${refundInfo.refund_amount.toFixed(2).replace('.', ',')}` : ''}.</strong>{' '}
+            {refundInfo.payment_method === 'pix'
+              ? 'A grana volta no seu PIX em até 24h (no app do banco).'
+              : 'A grana volta no seu cartão em 5 a 10 dias úteis (depende do banco).'}
           </span>
         </div>
       )}
