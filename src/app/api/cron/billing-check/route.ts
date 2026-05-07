@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { gerarPixPreference, diasAteVencer } from '@/lib/billing'
+import { diasAteVencer } from '@/lib/billing'
+import { createPayment, getNextDueDate } from '@/lib/asaas'
 import { sendBillingReminderD3, sendBillingOverdue, sendBillingBlocked } from '@/lib/email'
-import type { ModalidadeKey, PlanoTipo } from '@/config/pricing'
+import { calcularPreco, type ModalidadeKey, type PlanoTipo } from '@/config/pricing'
 
 export const maxDuration = 60
 
@@ -19,14 +20,15 @@ function getAdminClient() {
  * Cron daily — roda 1x por dia (configurado em vercel.json).
  *
  * Pra cada subscription ativa com modalidade PIX (mensal_pix / semestral_pix / anual_pix):
- *   D-3:  gera PIX novo + envia email lembrete
- *   D-2:  email lembrete (sem regenerar PIX — usa o anterior)
+ *   D-3:  cria nova cobrança PIX no Asaas + envia email lembrete
+ *   D-2:  email lembrete (sem regenerar — usa link anterior)
  *   D-1:  email lembrete intensificado
  *   D+0:  email "vence hoje"
  *   D+3:  email "atrasada"
  *   D+6+: marca status=past_due (bloqueia painel) + email "bloqueado"
  *
- * mensal_cartao não passa por aqui — preapproval renova automático via MP.
+ * mensal_cartao não passa por aqui — Asaas Subscription renova automático
+ * via API e dispara webhook PAYMENT_CONFIRMED.
  */
 export async function GET(req: NextRequest) {
   // Auth: Vercel cron envia Bearer CRON_SECRET
@@ -36,12 +38,7 @@ export async function GET(req: NextRequest) {
   }
 
   const admin = getAdminClient()
-  const accessToken = process.env.MP_ACCESS_TOKEN
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'
-
-  if (!accessToken) {
-    return NextResponse.json({ error: 'MP não configurado' }, { status: 500 })
-  }
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.agendapro.net.br'
 
   const { data: subscriptions, error } = await admin
     .from('subscriptions')
@@ -53,6 +50,8 @@ export async function GET(req: NextRequest) {
       pago_ate,
       status,
       pix_link_atual,
+      asaas_customer_id,
+      provider,
       businesses!inner ( id, name, owner_id )
     `)
     .in('plan_modalidade', ['mensal_pix', 'semestral_pix', 'anual_pix'])
@@ -92,32 +91,42 @@ export async function GET(req: NextRequest) {
       'R$ ?'
 
     try {
-      // D-3: Gera PIX novo + envia email
+      // D-3: Cria cobrança Asaas nova + envia email
       if (dias === 3) {
-        const pix = await gerarPixPreference({
-          businessId: business.id,
-          payerEmail: ownerUser.email,
-          plan: sub.plan as PlanoTipo,
-          modalidade: sub.plan_modalidade as Exclude<ModalidadeKey, 'mensal_cartao'>,
-          appUrl: APP_URL,
-          accessToken,
+        if (!sub.asaas_customer_id) {
+          errors.push({ id: sub.id, error: 'sem asaas_customer_id pra criar cobrança' })
+          continue
+        }
+
+        const preco = calcularPreco(
+          sub.plan as PlanoTipo,
+          sub.plan_modalidade as ModalidadeKey
+        )
+
+        const payRes = await createPayment({
+          customer: sub.asaas_customer_id,
+          billingType: 'PIX',
+          value: preco.valorReais,
+          dueDate: getNextDueDate(3), // vence em 3 dias
+          description: `AgendaPRO ${sub.plan === 'solo' ? 'Solo' : 'Equipe'} — renovação ${sub.plan_modalidade}`,
+          externalReference: `${business.id}|${sub.plan_modalidade}|${preco.coberturaMeses}`,
         })
 
-        if (!pix.ok) {
-          errors.push({ id: sub.id, error: pix.error })
+        if (!payRes.ok || !payRes.data?.invoiceUrl) {
+          errors.push({ id: sub.id, error: payRes.error ?? 'asaas createPayment falhou' })
           continue
         }
 
         await admin
           .from('subscriptions')
-          .update({ pix_link_atual: pix.init_point })
+          .update({ pix_link_atual: payRes.data.invoiceUrl })
           .eq('id', sub.id)
 
         await sendBillingReminderD3({
           ownerEmail: ownerUser.email,
           ownerName: business.name,
           businessName: business.name,
-          pixUrl: pix.init_point,
+          pixUrl: payRes.data.invoiceUrl,
           valor,
           diasParaVencer: 3,
           modalidade: sub.plan_modalidade as 'mensal_pix' | 'semestral_pix' | 'anual_pix',
@@ -125,7 +134,7 @@ export async function GET(req: NextRequest) {
 
         alertsSent++
       }
-      // D-2 e D-1: email lembrete (sem regenerar — usa pix anterior)
+      // D-2 e D-1: email lembrete (usa pix anterior)
       else if (dias === 2 || dias === 1) {
         if (sub.pix_link_atual) {
           await sendBillingReminderD3({
@@ -190,5 +199,6 @@ export async function GET(req: NextRequest) {
     blocked,
     errors: errors.length,
     errors_detail: errors.slice(0, 10),
+    _APP_URL: APP_URL,
   })
 }

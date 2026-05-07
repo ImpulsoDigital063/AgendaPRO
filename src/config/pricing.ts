@@ -48,9 +48,9 @@ export const PRICING = {
   semFidelidade: true,
 
   /**
-   * Modalidades de pagamento (introduzidas em 29/04/2026)
-   * - mensal_cartao: cobrança automática recorrente via cartão (preapproval MP)
-   * - mensal_pix:    PIX único renovado mensalmente (cron gera novo a cada D-3)
+   * Modalidades de pagamento (introduzidas em 29/04/2026, migradas pra Asaas em 07/05/2026)
+   * - mensal_cartao: cobrança automática recorrente via cartão (Asaas Subscription CREDIT_CARD)
+   * - mensal_pix:    PIX único renovado mensalmente (Asaas Payment PIX)
    * - semestral_pix: PIX único cobre 6 meses (desconto ~13%)
    * - anual_pix:     PIX único cobre 12 meses (desconto ~17%)
    */
@@ -63,7 +63,7 @@ export const PRICING = {
       multiplicador: 1,
       descontoReais: 0,
       descontoPercent: 0,
-      metodoMP: 'preapproval' as const, // assinatura recorrente
+      tipo: 'recorrente' as const, // assinatura Asaas
     },
     mensal_pix: {
       key: 'mensal_pix',
@@ -73,7 +73,7 @@ export const PRICING = {
       multiplicador: 1,
       descontoReais: 0,
       descontoPercent: 0,
-      metodoMP: 'preference' as const, // PIX único, regenerado por cron
+      tipo: 'avulso' as const, // payment Asaas
     },
     semestral_pix: {
       key: 'semestral_pix',
@@ -84,7 +84,7 @@ export const PRICING = {
       // Solo: 6×67 - 52 = 350. Equipe: 6×97 - 82 = 500
       descontoReais: { solo: 52, equipe: 82 },
       descontoPercent: 13,
-      metodoMP: 'preference' as const,
+      tipo: 'avulso' as const,
     },
     anual_pix: {
       key: 'anual_pix',
@@ -95,7 +95,7 @@ export const PRICING = {
       // Solo: 12×67 - 134 = 670. Equipe: 12×97 - 194 = 970
       descontoReais: { solo: 134, equipe: 194 },
       descontoPercent: 17,
-      metodoMP: 'preference' as const,
+      tipo: 'avulso' as const,
     },
   },
 } as const
@@ -143,7 +143,7 @@ export function calcularPreco(plano: PlanoTipo, modalidade: ModalidadeKey): {
   valorCentavos: number
   descontoReais: number
   coberturaMeses: number
-  metodoMP: 'preapproval' | 'preference'
+  tipo: 'recorrente' | 'avulso'
 } {
   const planoConfig = PRICING[plano]
   const modalidadeConfig = PRICING.modalidades[modalidade]
@@ -163,6 +163,6 @@ export function calcularPreco(plano: PlanoTipo, modalidade: ModalidadeKey): {
     valorCentavos: valorReais * 100,
     descontoReais: desconto,
     coberturaMeses: modalidadeConfig.multiplicador,
-    metodoMP: modalidadeConfig.metodoMP,
+    tipo: modalidadeConfig.tipo,
   }
 }

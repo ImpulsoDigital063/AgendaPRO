@@ -87,12 +87,7 @@ export default function PlanoCard() {
     setError('')
     setRefundInfo(null)
     try {
-      // Roteamento por provider: respeita o que está salvo na subscription
-      // (assinaturas antigas MP cancelam via MP; novas Asaas cancelam via Asaas)
-      const provider = sub?.provider ?? 'mercado_pago'
-      const cancelUrl =
-        provider === 'asaas' ? '/api/billing/cancel-asaas' : '/api/billing/cancel'
-      const res = await fetch(cancelUrl, { method: 'POST' })
+      const res = await fetch('/api/billing/cancel-asaas', { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(data.error || 'Erro ao cancelar.')

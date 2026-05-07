@@ -75,8 +75,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   // Preconnect ao Supabase economiza ~150-300ms de TLS handshake na
-  // primeira query do server component. dns-prefetch pro MP e barato e
-  // ajuda checkout/regenerate-pix abrirem mais rapido.
+  // primeira query do server component. dns-prefetch pro Asaas é barato e
+  // ajuda checkout abrir mais rápido.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 
   return (
@@ -96,7 +96,7 @@ export default function RootLayout({
         {supabaseUrl && (
           <link rel="preconnect" href={supabaseUrl} crossOrigin="anonymous" />
         )}
-        <link rel="dns-prefetch" href="https://api.mercadopago.com" />
+        <link rel="dns-prefetch" href="https://api.asaas.com" />
       </head>
       <body className="min-h-full flex flex-col" style={{ background: '#030510' }}>
         <RegisterSW />

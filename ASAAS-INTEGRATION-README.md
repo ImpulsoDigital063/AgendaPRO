@@ -1,8 +1,10 @@
 # 🟢 Integração Asaas — Pronta pra ativar
 
-**Status:** código 100% feito · aguarda 6 cliques do Eduardo pra ativar.
-**Data:** 2026-05-07 (madrugada)
+**Status:** código 100% feito + MP removido · aguarda 5 cliques do Eduardo pra ativar.
+**Data:** 2026-05-07
 **Por:** Verbo (autônomo enquanto Eduardo dormia)
+
+> ⚠ **MP foi removido completamente do código.** Não tem mais fallback. Setar as 3 envs Asaas é obrigatório pra qualquer cobrança funcionar.
 
 ---
 
@@ -52,19 +54,17 @@
    - ✅ `PAYMENT_REFUNDED`
    - ✅ `PAYMENT_OVERDUE`
 
-### Passo 4 · Setar 3 env vars no Vercel (1min)
+### Passo 4 · Setar 2 env vars no Vercel (1min)
 
 ```bash
 # Substitui pelos seus valores
 printf "$aact_prod_SEU_TOKEN_AQUI" | vercel env add ASAAS_API_KEY production
 printf "SEU_WEBHOOK_TOKEN_AQUI" | vercel env add ASAAS_WEBHOOK_TOKEN production
-printf "asaas" | vercel env add NEXT_PUBLIC_BILLING_PROVIDER production
 ```
 
 Ou faz pelo painel Vercel: **Settings → Environment Variables → Add**:
 - `ASAAS_API_KEY` = sua API key (Production scope)
 - `ASAAS_WEBHOOK_TOKEN` = o token que você definiu no webhook (Production scope)
-- `NEXT_PUBLIC_BILLING_PROVIDER` = `asaas` (Production scope)
 
 ### Passo 5 · Redeploy (1min)
 

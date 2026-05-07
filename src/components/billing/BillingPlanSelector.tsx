@@ -135,19 +135,13 @@ export default function BillingPlanSelector({ plan }: Props) {
     setFallbackUrl(null)
     setLoading(true)
 
-    // Feature flag: roteia pro Asaas se BILLING_PROVIDER=asaas
-    const provider =
-      process.env.NEXT_PUBLIC_BILLING_PROVIDER === 'asaas' ? 'asaas' : 'mercado_pago'
-    const checkoutUrl =
-      provider === 'asaas' ? '/api/billing/checkout-asaas' : '/api/billing/checkout'
-
     // Timeout de 30s pra evitar loading infinito
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     // Body do checkout: incluir customer se já preenchido (Asaas exige na 1ª vez)
     const requestBody: Record<string, unknown> = { plan, modalidade: selectedKey }
-    if (provider === 'asaas' && customerData.name && customerData.cpfCnpj) {
+    if (customerData.name && customerData.cpfCnpj) {
       requestBody.customer = {
         name: customerData.name,
         cpfCnpj: customerData.cpfCnpj.replace(/\D/g, ''),
@@ -155,7 +149,7 @@ export default function BillingPlanSelector({ plan }: Props) {
     }
 
     try {
-      const res = await fetch(checkoutUrl, {
+      const res = await fetch('/api/billing/checkout-asaas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
@@ -406,11 +400,7 @@ export default function BillingPlanSelector({ plan }: Props) {
       )}
 
       <p className="text-[11px] text-slate-500 text-center leading-snug">
-        Pagamento processado pelo{' '}
-        {process.env.NEXT_PUBLIC_BILLING_PROVIDER === 'asaas'
-          ? 'Asaas'
-          : 'Mercado Pago'}
-        . Você pode cancelar a qualquer momento.
+        Pagamento processado pelo Asaas. Você pode cancelar a qualquer momento.
       </p>
     </div>
   )
