@@ -128,12 +128,18 @@ export default function BillingPlanSelector({ plan }: Props) {
     setFallbackUrl(null)
     setLoading(true)
 
+    // Feature flag: roteia pro Asaas se BILLING_PROVIDER=asaas
+    const provider =
+      process.env.NEXT_PUBLIC_BILLING_PROVIDER === 'asaas' ? 'asaas' : 'mercado_pago'
+    const checkoutUrl =
+      provider === 'asaas' ? '/api/billing/checkout-asaas' : '/api/billing/checkout'
+
     // Timeout de 30s pra evitar loading infinito
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     try {
-      const res = await fetch('/api/billing/checkout', {
+      const res = await fetch(checkoutUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan, modalidade: selectedKey }),
@@ -320,7 +326,11 @@ export default function BillingPlanSelector({ plan }: Props) {
       )}
 
       <p className="text-[11px] text-slate-500 text-center leading-snug">
-        Pagamento processado pelo Mercado Pago. Você pode cancelar a qualquer momento.
+        Pagamento processado pelo{' '}
+        {process.env.NEXT_PUBLIC_BILLING_PROVIDER === 'asaas'
+          ? 'Asaas'
+          : 'Mercado Pago'}
+        . Você pode cancelar a qualquer momento.
       </p>
     </div>
   )

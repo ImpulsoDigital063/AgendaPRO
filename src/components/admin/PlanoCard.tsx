@@ -86,7 +86,14 @@ export default function PlanoCard() {
     setError('')
     setRefundInfo(null)
     try {
-      const res = await fetch('/api/billing/cancel', { method: 'POST' })
+      // Feature flag: roteia pro Asaas se BILLING_PROVIDER=asaas
+      const provider =
+        process.env.NEXT_PUBLIC_BILLING_PROVIDER === 'asaas'
+          ? 'asaas'
+          : 'mercado_pago'
+      const cancelUrl =
+        provider === 'asaas' ? '/api/billing/cancel-asaas' : '/api/billing/cancel'
+      const res = await fetch(cancelUrl, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(data.error || 'Erro ao cancelar.')
