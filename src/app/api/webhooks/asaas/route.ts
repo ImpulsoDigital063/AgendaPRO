@@ -376,9 +376,14 @@ async function notifyPaymentConfirmed(
   )
   if (!ownerUser?.email) return
 
-  // ownerName: pega do user_metadata se tiver, senao usa businessName
+  // ownerName: prioridade user_metadata → email (parte antes do @) → businessName.
+  // Evita "Olá, Salão" quando businessName eh tipo "Salão da Erlane".
   const meta = (ownerUser.user_metadata ?? {}) as { full_name?: string; name?: string }
-  const ownerName = meta.full_name || meta.name || business.name
+  const ownerName =
+    meta.full_name ||
+    meta.name ||
+    ownerUser.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) ||
+    business.name
 
   const valorReais = paymentValue ?? sub.price_cents / 100
   const valorFmt = valorReais.toLocaleString('pt-BR', {
@@ -421,7 +426,11 @@ async function notifyRefundProcessed(
   if (!ownerUser?.email) return
 
   const meta = (ownerUser.user_metadata ?? {}) as { full_name?: string; name?: string }
-  const ownerName = meta.full_name || meta.name || business.name
+  const ownerName =
+    meta.full_name ||
+    meta.name ||
+    ownerUser.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) ||
+    business.name
 
   const valorReais = payment.value ?? sub.price_cents / 100
   const valorFmt = valorReais.toLocaleString('pt-BR', {
