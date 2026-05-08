@@ -7,7 +7,10 @@ import {
   getUpcomingAppointments,
   getRecentActivity,
   getFocoDoDia,
+  getOnboardingState,
 } from '@/lib/admin-data'
+import WelcomeModal from '@/components/admin/onboarding/WelcomeModal'
+import OnboardingChecklist from '@/components/admin/onboarding/OnboardingChecklist'
 import AppointmentCard from '@/components/AppointmentCard'
 import LogoutButton from '@/components/LogoutButton'
 import ShareButton from '@/components/ShareButton'
@@ -316,6 +319,11 @@ export default async function AdminPage() {
   const business = await getCurrentBusiness(user.id)
   if (!business) redirect('/cadastro')
 
+  // Onboarding state — derivado do estado SQL (sem chamadas extras se
+  // checklist já está completo, query é leve em todos os casos: 3
+  // counts head:true).
+  const onboarding = await getOnboardingState(business.id, business)
+
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
@@ -381,6 +389,26 @@ export default async function AdminPage() {
           </span>
         </p>
       </header>
+
+      {/* Onboarding checklist — só renderiza se ainda não completou
+          tudo (done=false). Fica no topo, acima dos KPIs, pq o admin
+          novo precisa ver os passos antes de qualquer coisa. */}
+      {!onboarding.done && (
+        <OnboardingChecklist
+          items={onboarding.items}
+          percent={onboarding.percent}
+          done={onboarding.done}
+          slug={business.slug}
+        />
+      )}
+
+      {/* Welcome modal · 1ª vez · só client renderiza após delay 400ms */}
+      {!onboarding.welcomeModalSeen && (
+        <WelcomeModal
+          businessName={business.name}
+          category={business.description ?? null}
+        />
+      )}
 
       {/* KPIs — streaming, fallback skeleton enquanto query carrega */}
       <Suspense fallback={<KPIsSkeleton />}>

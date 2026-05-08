@@ -377,3 +377,74 @@ export const getFocoDoDia = unstable_cache(
   ['admin-foco-do-dia'],
   { revalidate: 30 }
 )
+
+/**
+ * ============================================================
+ * Onboarding state — checklist do tutorial admin
+ * ============================================================
+ *
+ * Deriva o progresso direto do estado SQL (sem flag "checklist
+ * completed" — defensivo: se admin deletar tudo, checklist volta).
+ * Apenas as flags de "intenção do usuário" (welcome_modal_seen,
+ * qr_code_compartilhado, etc.) vivem em colunas booleanas.
+ *
+ * Usado em: /admin/(protected)/page.tsx (home) pra renderizar
+ * WelcomeModal + OnboardingChecklist no topo.
+ */
+export type OnboardingChecklistKey =
+  | 'horarios'
+  | 'servicos'
+  | 'profissionais'
+  | 'qrcode'
+  | 'agendamento'
+
+export type OnboardingState = {
+  /** Flags do business — controlam dismiss persistente cross-device */
+  welcomeModalSeen: boolean
+  fidelidadeDicaLida: boolean
+  /** Itens do checklist com status done */
+  items: Record<OnboardingChecklistKey, boolean>
+  /** Progresso 0-100 baseado nos 5 itens */
+  percent: number
+  /** Se já completou tudo (checklist some) */
+  done: boolean
+}
+
+export const getOnboardingState = cache(
+  async (businessId: string, business: {
+    welcome_modal_seen?: boolean | null
+    onboarding_horarios_revisado?: boolean | null
+    qr_code_compartilhado?: boolean | null
+    fidelidade_dica_lida?: boolean | null
+  }): Promise<OnboardingState> => {
+    const supabase = await createClient()
+
+    // 3 counts em paralelo: serviços, profissionais ativos, qualquer
+    // agendamento já criado (mesmo cancelado conta — admin testou ao menos uma vez)
+    const [servicesRes, profsRes, apptsRes] = await Promise.all([
+      supabase.from('services').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
+      supabase.from('professionals').select('id', { count: 'exact', head: true }).eq('business_id', businessId).eq('active', true),
+      supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
+    ])
+
+    const items: Record<OnboardingChecklistKey, boolean> = {
+      horarios: !!business.onboarding_horarios_revisado,
+      servicos: (servicesRes.count ?? 0) > 0,
+      profissionais: (profsRes.count ?? 0) > 0,
+      qrcode: !!business.qr_code_compartilhado,
+      agendamento: (apptsRes.count ?? 0) > 0,
+    }
+
+    const doneCount = Object.values(items).filter(Boolean).length
+    const total = Object.keys(items).length
+    const percent = Math.round((doneCount / total) * 100)
+
+    return {
+      welcomeModalSeen: !!business.welcome_modal_seen,
+      fidelidadeDicaLida: !!business.fidelidade_dica_lida,
+      items,
+      percent,
+      done: doneCount === total,
+    }
+  }
+)

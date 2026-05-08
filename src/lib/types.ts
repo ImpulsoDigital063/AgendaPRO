@@ -24,6 +24,11 @@ export type Business = {
   tiktok_url?: string | null
   website_url?: string | null
   whatsapp_intro_message?: string | null
+  // Onboarding flags (v41 · 08/05/2026)
+  welcome_modal_seen?: boolean | null
+  onboarding_horarios_revisado?: boolean | null
+  qr_code_compartilhado?: boolean | null
+  fidelidade_dica_lida?: boolean | null
 }
 
 export type Professional = {

@@ -9,6 +9,8 @@ import HorariosTab from './HorariosTab'
 import WhatsAppQRTab from './WhatsAppQRTab'
 import NegocioTab from './NegocioTab'
 import FidelidadeTab from './FidelidadeTab'
+import FidelidadeOnboardingCard from './onboarding/FidelidadeOnboardingCard'
+import OnboardingMarker from './onboarding/OnboardingMarker'
 import AparenciaTab from './AparenciaTab'
 import PlanoCard from './PlanoCard'
 
@@ -131,16 +133,27 @@ export default function ConfiguracoesTabs({
       )}
 
       {activeTab === 'horarios' && (
-        <HorariosTab
-          professionals={professionals}
-          initialWorkingHours={initialWorkingHours}
-          isAdmin
-        />
+        <>
+          <OnboardingMarker
+            field="onboarding_horarios_revisado"
+            alreadyMarked={business.onboarding_horarios_revisado ?? false}
+          />
+          <HorariosTab
+            professionals={professionals}
+            initialWorkingHours={initialWorkingHours}
+            isAdmin
+          />
+        </>
       )}
 
       {activeTab === 'fidelidade' && (
-        <FidelidadeTab
-          businessId={business.id}
+        <>
+          <FidelidadeOnboardingCard
+            category={business.description ?? null}
+            initialDismissed={business.fidelidade_dica_lida ?? false}
+          />
+          <FidelidadeTab
+            businessId={business.id}
           rewards={rewards}
           onRewardsChange={setRewards}
           initialCustomers={initialCustomers}
@@ -157,6 +170,7 @@ export default function ConfiguracoesTabs({
             if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
         />
+        </>
       )}
 
       {activeTab === 'aparencia' && (
@@ -171,13 +185,19 @@ export default function ConfiguracoesTabs({
       )}
 
       {activeTab === 'qr-code' && (
-        <WhatsAppQRTab
-          business={business}
-          onNavigateToNegocio={() => {
-            setActiveTab('negocio')
-            if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
-          }}
-        />
+        <>
+          <OnboardingMarker
+            field="qr_code_compartilhado"
+            alreadyMarked={business.qr_code_compartilhado ?? false}
+          />
+          <WhatsAppQRTab
+            business={business}
+            onNavigateToNegocio={() => {
+              setActiveTab('negocio')
+              if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+          />
+        </>
       )}
 
       {activeTab === 'plano' && <PlanoCard />}
