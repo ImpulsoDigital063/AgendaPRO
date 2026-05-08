@@ -601,3 +601,45 @@ export async function sendRefundProcessed({
     }),
   })
 }
+
+/**
+ * Alerta interno (pra Eduardo) quando refund obrigatorio falha no Asaas.
+ * Causa mais comum: saldo insuficiente (Asaas exige saldo INTEGRAL pra
+ * estornar, mas cobrou taxa antes de receber). Eduardo precisa verificar
+ * + fazer refund manual via API ou painel + falar com cliente.
+ */
+export async function sendRefundFailedAlert({
+  businessId,
+  paymentMethod,
+  refundError,
+}: {
+  businessId: string
+  paymentMethod: 'pix' | 'cartao'
+  refundError: string
+}) {
+  const ALERT_TO = 'edubchaves5@gmail.com'
+
+  const body = `
+    Cliente tentou cancelar dentro dos <strong>7 dias da garantia</strong> mas
+    o Asaas rejeitou o estorno.<br><br>
+    <strong>Business ID:</strong> <code>${esc(businessId)}</code><br>
+    <strong>Método:</strong> ${paymentMethod}<br>
+    <strong>Erro Asaas:</strong> <code>${esc(refundError)}</code><br><br>
+    O cancelamento <strong>NÃO foi efetivado no DB</strong> — cliente continua com acesso.
+    Resolve no painel Asaas e fala com o cliente pra refazer.<br><br>
+    Causa típica: <em>"Não há saldo suficiente"</em>. Solução: garantir buffer
+    no saldo Asaas ou processar refund manual via API.
+  `
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: ALERT_TO,
+    subject: `[ALERTA] Refund Asaas falhou — business ${businessId.slice(0, 8)}`,
+    html: emailTemplate({
+      title: 'Refund falhou — intervir',
+      body,
+      actionUrl: 'https://www.asaas.com/dashboard/home',
+      actionLabel: 'Abrir painel Asaas',
+    }),
+  })
+}

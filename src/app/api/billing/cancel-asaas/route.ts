@@ -9,6 +9,7 @@ import {
   refundPayment,
   type AsaasPayment,
 } from '@/lib/asaas'
+import { sendRefundFailedAlert } from '@/lib/email'
 
 // =====================================================================
 // POST /api/billing/cancel-asaas
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
   const { data: subscription } = await admin
     .from('subscriptions')
     .select(
-      'id, asaas_subscription_id, asaas_payment_id_atual, plan_modalidade, status, provider'
+      'id, asaas_subscription_id, asaas_payment_id_atual, plan_modalidade, status, provider, refund_deadline_at'
     )
     .eq('business_id', business.id)
     .single()
@@ -100,6 +101,17 @@ export async function POST(req: NextRequest) {
 
   const isCartao = subscription.plan_modalidade === 'mensal_cartao'
   const isPix = subscription.plan_modalidade?.endsWith('_pix') ?? false
+
+  const now = new Date()
+
+  // Cliente esta dentro da janela de garantia de 7 dias?
+  // Source of truth: refund_deadline_at (setado no webhook quando setup_paid_at).
+  // Se sim, refund eh OBRIGATORIO — se Asaas rejeitar (saldo insuficiente,
+  // payment ja estornado, etc), NAO cancela no DB. Cliente tenta de novo
+  // ou fala no WhatsApp.
+  const withinRefundWindow =
+    !!subscription.refund_deadline_at &&
+    new Date(subscription.refund_deadline_at) > now
 
   // ─────────────────────────────────────────────────────────────────
   // FLUXO 1 · CARTÃO (subscription)
@@ -187,19 +199,61 @@ export async function POST(req: NextRequest) {
   }
 
   // ─────────────────────────────────────────────────────────────────
+  // Decisao: cancelar no DB ou bloquear?
+  // ─────────────────────────────────────────────────────────────────
+
+  // Cliente dentro da janela de garantia + refund FALHOU = NAO cancela.
+  // Cliente fica em estado "pendente cancelamento" — tenta de novo ou
+  // contata suporte. Evita: cliente cancelar, perder acesso, mas nao
+  // receber a grana de volta.
+  if (withinRefundWindow && !refunded && refundError) {
+    console.error(
+      `[cancel-asaas] refund obrigatorio FALHOU pra business ${business.id}: ${refundError}`
+    )
+
+    // Alerta o owner (Eduardo) por email pra intervir manualmente
+    void sendRefundFailedAlert({
+      businessId: business.id,
+      paymentMethod: paymentMethod ?? 'pix',
+      refundError,
+    }).catch((err) =>
+      console.error('[cancel-asaas] sendRefundFailedAlert falhou:', err)
+    )
+
+    return NextResponse.json(
+      {
+        error:
+          'Não conseguimos processar o reembolso agora. Tenta de novo em alguns minutos ou fala comigo no WhatsApp pra resolver.',
+        refund_error: refundError,
+      },
+      { status: 502 }
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────────
   // Marcar DB como cancelado
   // ─────────────────────────────────────────────────────────────────
-  const now = new Date()
   const deleteAt = new Date(now)
   deleteAt.setDate(deleteAt.getDate() + 90)
 
+  const updatePayload: Record<string, unknown> = {
+    status: 'cancelled',
+    cancelled_at: now.toISOString(),
+    data_delete_at: deleteAt.toISOString(),
+  }
+
+  // Se refund foi processado (Asaas aceitou), marca refunded_at IMEDIATO.
+  // Webhook PAYMENT_REFUNDED vai chegar depois e re-confirmar — eh idempotente.
+  // Marcar agora resolve: layout /admin/(protected) ja redireciona pra
+  // /admin/bloqueado (porque blocked = !!refunded_at), cliente nao continua
+  // usando o painel apos pedir reembolso.
+  if (refunded) {
+    updatePayload.refunded_at = now.toISOString()
+  }
+
   await admin
     .from('subscriptions')
-    .update({
-      status: 'cancelled',
-      cancelled_at: now.toISOString(),
-      data_delete_at: deleteAt.toISOString(),
-    })
+    .update(updatePayload)
     .eq('id', subscription.id)
 
   return NextResponse.json({
@@ -209,5 +263,6 @@ export async function POST(req: NextRequest) {
     refunded,
     refund_amount: refundAmount,
     refund_error: refundError,
+    within_refund_window: withinRefundWindow,
   })
 }

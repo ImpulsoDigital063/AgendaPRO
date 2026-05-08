@@ -233,8 +233,19 @@ export default function PlanoCard() {
         >
           <IconCheck size={14} style={{ color: 'var(--admin-success, #16A34A)', marginTop: 1 }} />
           <span>
-            Plano cancelado. Você pode usar o painel até a próxima data de cobrança. Pra reativar,
-            fala com o suporte no WhatsApp.
+            {sub.refunded_at ? (
+              <>
+                Plano cancelado e <strong>reembolso solicitado</strong>. Acesso encerrado.
+                Pra voltar, fala com o suporte no WhatsApp.
+              </>
+            ) : sub.current_period_end ? (
+              <>
+                Plano cancelado. Você pode usar o painel até <strong>{formatDate(sub.current_period_end)}</strong>.
+                Pra reativar, fala com o suporte no WhatsApp.
+              </>
+            ) : (
+              'Plano cancelado. Pra reativar, fala com o suporte no WhatsApp.'
+            )}
           </span>
         </div>
       )}
