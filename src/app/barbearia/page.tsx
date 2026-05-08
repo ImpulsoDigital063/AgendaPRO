@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+import { redirectIfLoggedIn } from '@/lib/auth-guard'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Barbearias — Agenda Online com Lembrete Automático',
@@ -169,7 +170,8 @@ function CTAInline({ titulo, sub }: { titulo: string; sub: string }) {
   )
 }
 
-export default function BarbeariaPage() {
+export default async function BarbeariaPage() {
+  await redirectIfLoggedIn()
   return (
     <main className="relative overflow-hidden" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+import { redirectIfLoggedIn } from '@/lib/auth-guard'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Salões de Beleza — Agenda Online com Lembrete Automático',
@@ -283,7 +284,8 @@ function DorComissaoPlanilha() {
   )
 }
 
-export default function SalaoPage() {
+export default async function SalaoPage() {
+  await redirectIfLoggedIn()
   return (
     <main className="relative overflow-hidden" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
 

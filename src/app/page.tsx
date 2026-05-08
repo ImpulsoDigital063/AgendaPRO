@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import FAQ from '@/components/FAQ'
+import { redirectIfLoggedIn } from '@/lib/auth-guard'
 import AgendaDesktopMockup from '@/components/AgendaDesktopMockup'
 import IPhoneMockup from '@/components/IPhoneMockup'
 import { MechanismCard } from '@/components/MechanismCard'
@@ -84,7 +85,8 @@ const STEPS: { n: '01' | '02' | '03'; title: string; desc: string }[] = [
    Página
 ═══════════════════════════════════════════════════════════ */
 
-export default function HomePage() {
+export default async function HomePage() {
+  await redirectIfLoggedIn()
   return (
     <main className="relative overflow-hidden" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
 
