@@ -25,12 +25,29 @@ export const getCurrentUser = cache(async () => {
 
 export const getCurrentBusiness = cache(async (ownerId: string) => {
   const supabase = await createClient()
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('*')
-    .eq('owner_id', ownerId)
-    .single()
-  return business
+
+  // Race em pos-cadastro/pos-pagamento: webhook ou polling triggera refresh,
+  // query Supabase pode retornar null transitoriamente (replicacao, conexao
+  // pool exaurida). Sem retry, page redireciona pra /cadastro mesmo com
+  // business EXISTINDO no DB — risco de cliente criar negocio duplicado.
+  // .maybeSingle() distingue "0 rows" (sem erro) de erro real de query.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data: business, error } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('owner_id', ownerId)
+      .maybeSingle()
+
+    if (business) return business
+    if (!error) return null // 0 rows confirmado, nao precisa tentar de novo
+
+    if (attempt === 0) {
+      await new Promise((r) => setTimeout(r, 200))
+      continue
+    }
+    console.error('[getCurrentBusiness] erro persistente:', error.message)
+  }
+  return null
 })
 
 export const getCurrentSubscription = cache(async (businessId: string) => {
