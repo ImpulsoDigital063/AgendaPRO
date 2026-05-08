@@ -22,7 +22,7 @@ export default async function AdminBloqueadoPage() {
 
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('status, plan, refunded_at, cancelled_at, grace_ends_at')
+    .select('status, plan, refunded_at, cancelled_at, grace_ends_at, pix_link_atual')
     .eq('business_id', business.id)
     .single()
 
@@ -166,6 +166,37 @@ export default async function AdminBloqueadoPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Checkout em aberto — cliente ja iniciou pagamento mas nao concluiu */}
+              {subscription?.pix_link_atual && (
+                <div
+                  className="rounded-2xl p-4 space-y-2"
+                  style={{
+                    background: 'rgba(59,130,246,0.10)',
+                    border: '1px solid rgba(59,130,246,0.35)',
+                  }}
+                >
+                  <p className="text-xs font-semibold text-blue-200">
+                    Você já iniciou um pagamento.
+                  </p>
+                  <p className="text-[11px] text-slate-300 leading-snug">
+                    Continua de onde parou ou escolhe outra forma de pagamento abaixo.
+                  </p>
+                  <a
+                    href={subscription.pix_link_atual}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block w-full text-center py-2.5 rounded-xl font-bold text-sm mt-1"
+                    style={{
+                      background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)',
+                      color: '#fff',
+                      boxShadow: '0 8px 20px -6px rgba(59,130,246,0.5)',
+                    }}
+                  >
+                    Continuar pagamento →
+                  </a>
+                </div>
+              )}
 
               {/* CTA primário: seletor de modalidade + checkout */}
               <BillingPlanSelector plan={plan} />

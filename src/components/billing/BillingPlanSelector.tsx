@@ -135,6 +135,11 @@ export default function BillingPlanSelector({ plan }: Props) {
     setFallbackUrl(null)
     setLoading(true)
 
+    // Abre janela IMEDIATAMENTE no clique (about:blank) pra preservar
+    // a "user gesture chain" — Safari iOS bloqueia window.open chamado
+    // depois de await fetch. A gente preenche a URL quando a API responder.
+    const newWindow = window.open('about:blank', '_blank')
+
     // Timeout de 30s pra evitar loading infinito
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000)
@@ -159,6 +164,7 @@ export default function BillingPlanSelector({ plan }: Props) {
 
       // Tratamento explícito de rate limit
       if (res.status === 429) {
+        if (newWindow) newWindow.close()
         setError('Muitas tentativas em pouco tempo. Espera 5 minutos e tenta de novo.')
         setLoading(false)
         return
@@ -168,12 +174,14 @@ export default function BillingPlanSelector({ plan }: Props) {
 
       // Asaas pede CPF/CNPJ na primeira vez
       if (data.needs_customer_data) {
+        if (newWindow) newWindow.close()
         setNeedsCustomerData(true)
         setLoading(false)
         return
       }
 
       if (!res.ok || !data.url) {
+        if (newWindow) newWindow.close()
         setError(
           data.error ||
             'Não conseguimos abrir o checkout. Tente outra modalidade ou fala com a gente no WhatsApp.'
@@ -182,20 +190,19 @@ export default function BillingPlanSelector({ plan }: Props) {
         return
       }
 
-      // Tenta redirect. Se Safari bloquear, mostra link clicável de fallback
-      try {
-        window.location.href = data.url
-        // Backup: se em 2s o redirect não rolou (Safari iOS bloqueou),
-        // mostra link clicável manual
-        setTimeout(() => {
-          setFallbackUrl(data.url)
-          setLoading(false)
-        }, 2000)
-      } catch {
+      // Aba ja foi aberta — agora preenche a URL.
+      if (newWindow && !newWindow.closed) {
+        newWindow.location.href = data.url
+        // Sucesso: deixa o link de fallback visivel pra cliente reabrir
+        // se fechar a aba sem querer ou bloqueador estiver ativo.
         setFallbackUrl(data.url)
-        setLoading(false)
+      } else {
+        // Popup bloqueado totalmente — cliente precisa clicar no fallback
+        setFallbackUrl(data.url)
       }
+      setLoading(false)
     } catch (err) {
+      if (newWindow) newWindow.close()
       clearTimeout(timeoutId)
       if (err instanceof Error && err.name === 'AbortError') {
         setError('A operação demorou demais. Verifica sua conexão e tenta de novo.')
@@ -375,14 +382,14 @@ export default function BillingPlanSelector({ plan }: Props) {
 
       {fallbackUrl && (
         <div
-          className="mt-2 p-3 rounded-lg text-center"
+          className="mt-2 p-3 rounded-lg text-center space-y-2"
           style={{
             background: 'rgba(16,185,129,0.10)',
             border: '1px solid rgba(16,185,129,0.35)',
           }}
         >
-          <p className="text-xs text-emerald-200 mb-2">
-            O navegador bloqueou o redirect automático. Toca no link abaixo:
+          <p className="text-xs text-emerald-200">
+            Checkout aberto em <strong>nova aba</strong>. Se fechou sem querer, clica de novo:
           </p>
           <a
             href={fallbackUrl}
@@ -394,8 +401,11 @@ export default function BillingPlanSelector({ plan }: Props) {
               color: '#fff',
             }}
           >
-            Abrir checkout seguro →
+            Reabrir checkout →
           </a>
+          <p className="text-[10px] text-slate-400 leading-snug">
+            Ou escolha outra forma de pagamento acima e clica de novo.
+          </p>
         </div>
       )}
 

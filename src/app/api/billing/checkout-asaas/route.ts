@@ -197,10 +197,14 @@ export async function POST(req: NextRequest) {
       .from('subscriptions')
       .update({
         asaas_subscription_id: subRes.data.id,
+        asaas_payment_id_atual: firstPayment?.id ?? null,
         provider: 'asaas',
         plan,
         plan_modalidade: modalidadeKey,
         price_cents: preco.valorCentavos,
+        // Reusa pix_link_atual como "checkout em aberto" tambem pra cartao —
+        // permite /admin/bloqueado mostrar "Continuar pagamento iniciado".
+        pix_link_atual: firstPayment?.invoiceUrl ?? null,
       })
       .eq('id', subscription.id)
 
