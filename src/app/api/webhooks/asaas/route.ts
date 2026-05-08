@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { sendPaymentConfirmed, sendRefundProcessed } from '@/lib/email'
 
 // =====================================================================
 // POST /api/webhooks/asaas
@@ -195,6 +196,12 @@ async function handlePaymentConfirmed(
   console.log(
     `[Asaas Webhook] PIX confirmado pra ${businessId} (${modalidade}, ${coberturaMeses}m) — pago_ate=${novoPagoAte.toISOString()}`
   )
+
+  // Email branded "Pagamento recebido" — substitui o do Asaas (que mostraria
+  // "64.585.949 EDUARDO BARROS CHAVES" no header).
+  void notifyPaymentConfirmed(admin, sub.id, payment.value).catch((err) =>
+    console.error('[Asaas Webhook] sendPaymentConfirmed falhou:', err)
+  )
 }
 
 async function handleRecurringPayment(
@@ -246,6 +253,10 @@ async function handleRecurringPayment(
   console.log(
     `[Asaas Webhook] Cartão recorrente confirmado pra ${sub.business_id} — pago_ate=${periodEnd.toISOString()}`
   )
+
+  void notifyPaymentConfirmed(admin, sub.id, payment.value).catch((err) =>
+    console.error('[Asaas Webhook] sendPaymentConfirmed (cartao) falhou:', err)
+  )
 }
 
 async function handlePaymentRefunded(
@@ -282,6 +293,11 @@ async function handlePaymentRefunded(
 
   console.log(
     `[Asaas Webhook] Refund processado pra ${sub.business_id}, status → cancelled`
+  )
+
+  // Email branded "Reembolso processado" — substitui o do Asaas.
+  void notifyRefundProcessed(admin, sub.id, payment).catch((err) =>
+    console.error('[Asaas Webhook] sendRefundProcessed falhou:', err)
   )
 }
 
@@ -334,4 +350,94 @@ async function handlePaymentOverdue(
   console.log(
     `[Asaas Webhook] OVERDUE pra ${subscription.business_id} → past_due, graça até ${graceEnds.toISOString()}`
   )
+}
+
+// ─────────────────────────────────────────────────────────────────
+// EMAIL HELPERS — disparados em fire-and-forget (void + catch) pra
+// nao quebrar webhook se Resend falhar. Webhook sempre devolve 200.
+// ─────────────────────────────────────────────────────────────────
+
+async function notifyPaymentConfirmed(
+  admin: AdminClient,
+  subscriptionId: string,
+  paymentValue: number | undefined
+) {
+  const { data: sub } = await admin
+    .from('subscriptions')
+    .select('plan, plan_modalidade, price_cents, refund_deadline_at, business_id, businesses!inner(name, owner_id)')
+    .eq('id', subscriptionId)
+    .single()
+
+  if (!sub) return
+  const business = (sub.businesses as unknown) as { name: string; owner_id: string }
+
+  const { data: { user: ownerUser } } = await admin.auth.admin.getUserById(
+    business.owner_id
+  )
+  if (!ownerUser?.email) return
+
+  // ownerName: pega do user_metadata se tiver, senao usa businessName
+  const meta = (ownerUser.user_metadata ?? {}) as { full_name?: string; name?: string }
+  const ownerName = meta.full_name || meta.name || business.name
+
+  const valorReais = paymentValue ?? sub.price_cents / 100
+  const valorFmt = valorReais.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+
+  await sendPaymentConfirmed({
+    ownerEmail: ownerUser.email,
+    ownerName,
+    businessName: business.name,
+    plan: (sub.plan === 'equipe' ? 'equipe' : 'solo') as 'solo' | 'equipe',
+    valor: valorFmt,
+    modalidade: sub.plan_modalidade as
+      | 'mensal_cartao'
+      | 'mensal_pix'
+      | 'semestral_pix'
+      | 'anual_pix',
+    refundDeadline: sub.refund_deadline_at ? new Date(sub.refund_deadline_at) : null,
+  })
+}
+
+async function notifyRefundProcessed(
+  admin: AdminClient,
+  subscriptionId: string,
+  payment: AsaasWebhookPayment
+) {
+  const { data: sub } = await admin
+    .from('subscriptions')
+    .select('price_cents, business_id, businesses!inner(name, owner_id)')
+    .eq('id', subscriptionId)
+    .single()
+
+  if (!sub) return
+  const business = (sub.businesses as unknown) as { name: string; owner_id: string }
+
+  const { data: { user: ownerUser } } = await admin.auth.admin.getUserById(
+    business.owner_id
+  )
+  if (!ownerUser?.email) return
+
+  const meta = (ownerUser.user_metadata ?? {}) as { full_name?: string; name?: string }
+  const ownerName = meta.full_name || meta.name || business.name
+
+  const valorReais = payment.value ?? sub.price_cents / 100
+  const valorFmt = valorReais.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+
+  // billingType vem como 'PIX' | 'CREDIT_CARD' | 'BOLETO' do Asaas
+  const paymentMethod: 'pix' | 'cartao' =
+    payment.billingType === 'CREDIT_CARD' ? 'cartao' : 'pix'
+
+  await sendRefundProcessed({
+    ownerEmail: ownerUser.email,
+    ownerName,
+    businessName: business.name,
+    valor: valorFmt,
+    paymentMethod,
+  })
 }

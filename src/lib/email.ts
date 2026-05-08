@@ -18,6 +18,14 @@ function esc(text: string): string {
     .replace(/'/g, '&#039;')
 }
 
+// Brand kit AgendaPRO (07/05/2026 - reskin pos-1a-venda):
+// - Header gradient emerald → cyan + logo branco
+// - Botao CTA mesmo gradient
+// - Footer com WhatsApp suporte + assinatura "Eduardo · AgendaPRO"
+// - Sem mencionar CNPJ ou razao social do recebedor (LGPD/UX)
+const LOGO_URL = `${APP_URL}/logo-agendapro-mono-white.svg`
+const SUPPORT_WHATSAPP = 'https://wa.me/5563992920080'
+
 function emailTemplate({
   title,
   body,
@@ -40,30 +48,38 @@ function emailTemplate({
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">
+<body style="margin:0;padding:0;background:#F1F5F9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
     <tr>
       <td align="center">
-        <table width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e4e4e7;">
+        <table width="100%" style="max-width:520px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px -8px rgba(15,23,42,0.10);">
 
-          <!-- Header -->
+          <!-- Header — gradient emerald to cyan -->
           <tr>
-            <td style="background:#18181b;padding:24px 32px;">
-              <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;">AgendaPRO</p>
-              <p style="margin:4px 0 0;color:#a1a1aa;font-size:12px;">by Impulso Digital</p>
+            <td style="background:linear-gradient(135deg,#10B981 0%,#06B6D4 100%);padding:36px 32px;text-align:center;">
+              <img src="${LOGO_URL}" alt="AgendaPRO" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;outline:none;" />
+              <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:11px;letter-spacing:0.5px;text-transform:uppercase;font-weight:600;">by Impulso Digital</p>
             </td>
           </tr>
 
+          ${title ? `
+          <!-- Title -->
+          <tr>
+            <td style="padding:32px 32px 8px;">
+              <h1 style="margin:0;color:#0F172A;font-size:22px;font-weight:700;line-height:1.3;">${title}</h1>
+            </td>
+          </tr>` : ''}
+
           <!-- Body -->
           <tr>
-            <td style="padding:32px;">
-              <p style="margin:0 0 24px;color:#18181b;font-size:16px;line-height:1.6;">${body}</p>
+            <td style="padding:${title ? '8px' : '32px'} 32px 24px;">
+              <div style="color:#334155;font-size:15px;line-height:1.65;">${body}</div>
 
               ${actionUrl && actionLabel ? `
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
                 <tr>
                   <td align="center">
-                    <a href="${actionUrl}" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:600;width:100%;text-align:center;box-sizing:border-box;">
+                    <a href="${actionUrl}" style="display:inline-block;background:linear-gradient(135deg,#10B981 0%,#06B6D4 100%);color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;width:100%;text-align:center;box-sizing:border-box;letter-spacing:0.2px;">
                       ${actionLabel}
                     </a>
                   </td>
@@ -71,10 +87,10 @@ function emailTemplate({
               </table>` : ''}
 
               ${secondaryUrl && secondaryLabel ? `
-              <table width="100%" cellpadding="0" cellspacing="0">
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">
                 <tr>
                   <td align="center">
-                    <a href="${secondaryUrl}" style="display:inline-block;background:#f4f4f5;color:#52525b;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:600;width:100%;text-align:center;box-sizing:border-box;">
+                    <a href="${secondaryUrl}" style="display:inline-block;background:#F1F5F9;color:#334155;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:14px;font-weight:600;width:100%;text-align:center;box-sizing:border-box;border:1px solid #E2E8F0;">
                       ${secondaryLabel}
                     </a>
                   </td>
@@ -85,9 +101,12 @@ function emailTemplate({
 
           <!-- Footer -->
           <tr>
-            <td style="padding:16px 32px;border-top:1px solid #f4f4f5;">
-              <p style="margin:0;color:#a1a1aa;font-size:11px;text-align:center;">
-                AgendaPRO · Impulso Digital
+            <td style="padding:24px 32px;background:#F8FAFC;border-top:1px solid #E2E8F0;text-align:center;">
+              <p style="margin:0 0 8px;color:#64748B;font-size:13px;line-height:1.5;">
+                Dúvida? <a href="${SUPPORT_WHATSAPP}" style="color:#10B981;text-decoration:none;font-weight:600;">Fala comigo no WhatsApp</a>
+              </p>
+              <p style="margin:0;color:#94A3B8;font-size:11px;line-height:1.5;">
+                Eduardo · AgendaPRO · Palmas/TO
               </p>
             </td>
           </tr>
@@ -478,6 +497,107 @@ export async function sendBillingBlocked({
       body,
       actionUrl: pixUrl,
       actionLabel: `Pagar ${esc(valor)} via PIX e reativar`,
+    }),
+  })
+}
+
+// ── Pos-pagamento (substitui emails do Asaas pra esconder o CNPJ do recebedor) ──
+
+/**
+ * Disparado pelo webhook Asaas em PAYMENT_CONFIRMED ou PAYMENT_RECEIVED.
+ * Substitui o email padrao do Asaas (que expoe "64.585.949 EDUARDO BARROS
+ * CHAVES" no header). Cliente passa a receber email branded AgendaPRO.
+ */
+export async function sendPaymentConfirmed({
+  ownerEmail,
+  ownerName,
+  businessName,
+  plan,
+  valor,
+  modalidade,
+  refundDeadline,
+}: {
+  ownerEmail: string
+  ownerName: string
+  businessName: string
+  plan: 'solo' | 'equipe'
+  valor: string  // ex: "R$ 67"
+  modalidade: 'mensal_cartao' | 'mensal_pix' | 'semestral_pix' | 'anual_pix'
+  refundDeadline: Date | null
+}) {
+  const planLabel = plan === 'equipe' ? 'Equipe' : 'Solo'
+
+  const proxima =
+    modalidade === 'mensal_pix' ? 'Próxima cobrança em 1 mês.' :
+    modalidade === 'semestral_pix' ? 'Próxima cobrança em 6 meses.' :
+    modalidade === 'anual_pix' ? 'Próxima cobrança em 12 meses.' :
+    'Renovação automática no cartão todo mês.'
+
+  const refundLine = refundDeadline
+    ? `<br><br>Garantia de 7 dias: se não fizer sentido até <strong>${refundDeadline.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</strong>, eu devolvo a grana sem burocracia.`
+    : ''
+
+  const firstName = ownerName.split(' ')[0]
+
+  const body = `
+    Olá, <strong>${esc(firstName)}</strong>.<br><br>
+    Recebi seu pagamento de <strong>${esc(valor)}</strong>. A conta da <strong>${esc(businessName)}</strong> tá ativa.<br><br>
+    ${proxima}${refundLine}
+  `
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: ownerEmail,
+    subject: `Pagamento confirmado · AgendaPRO ${planLabel} ${esc(valor)}`,
+    html: emailTemplate({
+      title: 'Pagamento recebido',
+      body,
+      actionUrl: `${APP_URL}/admin`,
+      actionLabel: 'Acessar o painel',
+    }),
+  })
+}
+
+/**
+ * Disparado pelo webhook Asaas em PAYMENT_REFUNDED.
+ * Garante que cliente saiba que o reembolso foi processado, com info sobre
+ * prazo de retorno do dinheiro (PIX 24h, cartão 5-10 dias).
+ */
+export async function sendRefundProcessed({
+  ownerEmail,
+  ownerName,
+  businessName,
+  valor,
+  paymentMethod,
+}: {
+  ownerEmail: string
+  ownerName: string
+  businessName: string
+  valor: string
+  paymentMethod: 'pix' | 'cartao'
+}) {
+  const prazoLine = paymentMethod === 'pix'
+    ? 'A grana volta no seu PIX em até <strong>24h</strong> (no app do banco).'
+    : 'A grana volta no seu cartão em <strong>5 a 10 dias úteis</strong> (depende do banco).'
+
+  const firstName = ownerName.split(' ')[0]
+
+  const body = `
+    Olá, <strong>${esc(firstName)}</strong>.<br><br>
+    Solicitei o estorno de <strong>${esc(valor)}</strong> da assinatura da <strong>${esc(businessName)}</strong>.<br><br>
+    ${prazoLine}<br><br>
+    Se mudar de ideia, fala comigo no WhatsApp que eu reativo na hora.
+  `
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: ownerEmail,
+    subject: `Reembolso processado · ${esc(valor)} voltando pra você`,
+    html: emailTemplate({
+      title: 'Reembolso solicitado',
+      body,
+      actionUrl: SUPPORT_WHATSAPP,
+      actionLabel: 'Falar comigo no WhatsApp',
     }),
   })
 }

@@ -124,7 +124,10 @@ export async function createCustomer(input: {
       email: input.email,
       mobilePhone: input.mobilePhone,
       externalReference: input.externalReference,
-      notificationDisabled: false,
+      // Desabilitamos pq nos enviamos email branded via Resend (cliente nao
+      // recebe mais o email do Asaas com "64.585.949 EDUARDO BARROS CHAVES"
+      // exposto). Cravado 08/05/2026 pos-1a-venda Erlane.
+      notificationDisabled: true,
     }),
   })
 }
