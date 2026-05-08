@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import PixInlineCheckout from './PixInlineCheckout'
 
 type Modalidade = 'mensal_cartao' | 'mensal_pix' | 'semestral_pix' | 'anual_pix'
 type Plano = 'solo' | 'equipe'
@@ -109,11 +110,21 @@ const OPCOES_POR_PLANO: Record<Plano, ModalidadeOpcao[]> = {
 
 type CustomerData = { name: string; cpfCnpj: string }
 
+type PixInline = {
+  qr_image: string | null
+  qr_payload: string | null
+  payment_id: string
+  modalidade: string
+  cobertura_meses: number
+  valor_reais: number
+}
+
 export default function BillingPlanSelector({ plan }: Props) {
   const [selectedKey, setSelectedKey] = useState<Modalidade>('anual_pix')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null)
+  const [pixInline, setPixInline] = useState<PixInline | null>(null)
   const [needsCustomerData, setNeedsCustomerData] = useState(false)
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: '',
@@ -128,17 +139,21 @@ export default function BillingPlanSelector({ plan }: Props) {
     setSelectedKey(key)
     setError(null)
     setFallbackUrl(null)
+    setPixInline(null)
   }
 
   async function handleCheckout() {
     setError(null)
     setFallbackUrl(null)
+    setPixInline(null)
     setLoading(true)
 
-    // Abre janela IMEDIATAMENTE no clique (about:blank) pra preservar
+    // Pra cartao: abre janela IMEDIATAMENTE no clique (about:blank) pra preservar
     // a "user gesture chain" — Safari iOS bloqueia window.open chamado
     // depois de await fetch. A gente preenche a URL quando a API responder.
-    const newWindow = window.open('about:blank', '_blank')
+    // Pra PIX: NAO abre nova aba — render inline aqui mesmo.
+    const isCartao = selectedKey === 'mensal_cartao'
+    const newWindow = isCartao ? window.open('about:blank', '_blank') : null
 
     // Timeout de 30s pra evitar loading infinito
     const controller = new AbortController()
@@ -180,6 +195,22 @@ export default function BillingPlanSelector({ plan }: Props) {
         return
       }
 
+      // Resposta PIX: renderiza QR Code inline (cliente nao sai do AgendaPRO)
+      if (data.inline === true && data.qr_image) {
+        setPixInline({
+          qr_image: data.qr_image,
+          qr_payload: data.qr_payload,
+          payment_id: data.payment_id,
+          modalidade: data.modalidade,
+          cobertura_meses: data.cobertura_meses,
+          valor_reais: data.valor_reais,
+        })
+        // fallback URL fica disponivel caso QR falhe (raro)
+        if (data.invoice_url) setFallbackUrl(data.invoice_url)
+        setLoading(false)
+        return
+      }
+
       if (!res.ok || !data.url) {
         if (newWindow) newWindow.close()
         setError(
@@ -190,7 +221,7 @@ export default function BillingPlanSelector({ plan }: Props) {
         return
       }
 
-      // Aba ja foi aberta — agora preenche a URL.
+      // Cartao: aba ja foi aberta — agora preenche a URL.
       if (newWindow && !newWindow.closed) {
         newWindow.location.href = data.url
         // Sucesso: deixa o link de fallback visivel pra cliente reabrir
@@ -218,6 +249,29 @@ export default function BillingPlanSelector({ plan }: Props) {
     selectedKey === 'mensal_pix'    ? `Pagar primeira mensalidade (${selected.valor}) via PIX` :
     selectedKey === 'semestral_pix' ? `Pagar 6 meses (${selected.valor}) via PIX` :
                                        `Pagar 12 meses (${selected.valor}) via PIX`
+
+  // PIX inline: cliente esta na tela de pagamento. Mostra QR + chave + status.
+  if (pixInline) {
+    return (
+      <div className="space-y-3">
+        <PixInlineCheckout
+          qrImage={pixInline.qr_image}
+          qrPayload={pixInline.qr_payload}
+          valorReais={pixInline.valor_reais}
+          modalidade={pixInline.modalidade}
+          coberturaMeses={pixInline.cobertura_meses}
+          paymentId={pixInline.payment_id}
+        />
+        <button
+          type="button"
+          onClick={() => setPixInline(null)}
+          className="w-full text-[11px] text-slate-400 hover:text-slate-200 underline pt-1"
+        >
+          Trocar forma de pagamento
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-3">

@@ -8,6 +8,7 @@ import {
   findCustomerByExternalReference,
   createSubscription,
   createPayment,
+  getPixQrCode,
   toAsaasParams,
   getNextDueDate,
 } from '@/lib/asaas'
@@ -244,6 +245,9 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Puxa QR Code direto pra renderizar dentro do AgendaPRO (sem cliente sair)
+  const qrRes = await getPixQrCode(payRes.data.id)
+
   await admin
     .from('subscriptions')
     .update({
@@ -252,14 +256,21 @@ export async function POST(req: NextRequest) {
       plan_modalidade: modalidadeKey,
       price_cents: preco.valorCentavos,
       pix_link_atual: payRes.data.invoiceUrl,
+      asaas_payment_id_atual: payRes.data.id,
     })
     .eq('id', subscription.id)
 
   return NextResponse.json({
-    url: payRes.data.invoiceUrl,
+    // inline=true sinaliza pro front: renderiza QR no AgendaPRO, NAO redireciona
+    inline: true,
     payment_id: payRes.data.id,
     modalidade: modalidadeKey,
     cobertura_meses: preco.coberturaMeses,
     valor_reais: preco.valorReais,
+    qr_image: qrRes.data?.encodedImage ?? null,
+    qr_payload: qrRes.data?.payload ?? null,
+    qr_expiration: qrRes.data?.expirationDate ?? null,
+    // fallback se cliente preferir abrir checkout Asaas (raro)
+    invoice_url: payRes.data.invoiceUrl,
   })
 }

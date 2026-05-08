@@ -259,6 +259,23 @@ export async function getPaymentById(paymentId: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// PIX QR CODE (pra renderizar dentro do AgendaPRO sem cliente sair)
+// ─────────────────────────────────────────────────────────────────
+
+export type AsaasPixQrCode = {
+  encodedImage: string  // base64 PNG
+  payload: string        // chave PIX copia-cola
+  expirationDate: string // ISO
+  success: boolean
+}
+
+export async function getPixQrCode(paymentId: string) {
+  return asaasFetch<AsaasPixQrCode>(`/payments/${paymentId}/pixQrCode`, {
+    method: 'GET',
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────
 // REFUND
 // ─────────────────────────────────────────────────────────────────
 
