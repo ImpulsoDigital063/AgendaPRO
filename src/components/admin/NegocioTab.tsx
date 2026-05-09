@@ -19,7 +19,6 @@ import {
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import GoogleReviewGuide from '@/components/admin/GoogleReviewGuide'
 import StickyActionBar from '@/components/admin/StickyActionBar'
-import PlanoCard from '@/components/admin/PlanoCard'
 
 type Props = {
   business: Business
@@ -516,13 +515,6 @@ export default function NegocioTab({ business }: Props) {
         <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
           O endereço não pode ser alterado após o cadastro.
         </p>
-      </Section>
-
-      <Section
-        title="Plano e cobrança"
-        subtitle="Gerencie sua assinatura. Sem multa, sem fidelidade."
-      >
-        <PlanoCard />
       </Section>
 
       <ConfirmActionModal

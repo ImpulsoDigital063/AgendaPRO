@@ -77,7 +77,7 @@ export const getOwnerProfessional = cache(async (ownerId: string, businessId: st
   const supabase = await createClient()
   const { data } = await supabase
     .from('professionals')
-    .select('id, name, commission_percentage, employment_type')
+    .select('id, name, commission_percentage, employment_type, photo_url')
     .eq('auth_user_id', ownerId)
     .eq('business_id', businessId)
     .eq('active', true)

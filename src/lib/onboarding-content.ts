@@ -186,9 +186,9 @@ export const CHECKLIST_ITEMS: Array<{
   {
     key: 'perfil',
     emoji: '✨',
-    title: 'Personalize seu perfil',
-    subtitle: 'Foto, comissão, descrição',
-    ctaLabel: 'Editar meu perfil',
+    title: 'Sua foto profissional',
+    subtitle: 'Aparece nos cards e na sua página',
+    ctaLabel: 'Adicionar foto',
     ctaHref: '/admin/eu',
   },
   {

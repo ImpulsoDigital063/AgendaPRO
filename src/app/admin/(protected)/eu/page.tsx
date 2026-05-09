@@ -20,6 +20,7 @@ import {
   IconDollar,
   IconInbox,
 } from '@/components/ui/Icon'
+import OwnerPhotoCard from '@/components/admin/eu/OwnerPhotoCard'
 
 /**
  * /admin/eu — Agenda pessoal do dono que também atende.
@@ -44,6 +45,7 @@ type Business = {
 type OwnerProf = {
   id: string
   name: string
+  photo_url?: string | null
 }
 
 async function PersonalKPIs({
@@ -359,6 +361,13 @@ export default async function AdminEuPage() {
           {business.name}
         </p>
       </header>
+
+      <OwnerPhotoCard
+        professionalId={owner.id}
+        businessId={business.id}
+        name={owner.name}
+        initialPhotoUrl={owner.photo_url ?? null}
+      />
 
       <Suspense fallback={null}>
         <PersonalKPIs business={business} owner={owner} />

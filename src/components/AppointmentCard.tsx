@@ -42,18 +42,33 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
   // (Atendi OU Atendi e recebi) dispara o bônus depois do update.
   const [withPunctuality, setWithPunctuality] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  // Modal "atendi com antecedência" — pede confirmação se o admin
+  // tentar marcar como atendido antes da janela de 15min pré-horário.
+  // Memória da decisão: profissional que atende cedo (cliente chegou
+  // antes, próximo cancelou) precisa do controle. Sem isso o slot fica
+  // ocupado mesmo o atendimento já tendo ocorrido.
+  const [earlyConfirm, setEarlyConfirm] = useState<null | 'atendi' | 'recebi'>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
 
   const config = statusOf(status)
   const isPaid = !!appointment.paid_at
-  // Bloqueia "Atendi" antes da janela de 15min pré-agendamento.
-  // Evita admin marcar concluído por engano em data futura (visto em
-  // teste 04/05 com agendamento 05/05). Recalcula a cada render — barato.
+  // canComplete: true se faltam ≤15min pro horário (regra v1).
+  // v1.2: deixou de bloquear o botão — agora só decide se abre direto
+  // ou pede confirmação extra ao admin.
   const canComplete = canCompleteAppointment(
     appointment.appointment_date,
     appointment.start_time
   )
+
+  // Quantos minutos faltam pro horário. Usado pra mostrar no modal de
+  // confirmação ("faltam X min"). Negativo se o horário já passou —
+  // nesse caso canComplete já é true e o modal nem aparece.
+  function minutesUntilStart(): number {
+    const start = new Date(`${appointment.appointment_date}T${appointment.start_time}`)
+    const diffMs = start.getTime() - Date.now()
+    return Math.max(0, Math.round(diffMs / 60000))
+  }
 
   useEffect(() => {
     if (!menuOpen) return
@@ -291,7 +306,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
               <button
                 type="button"
                 onClick={() => setWithPunctuality((v) => !v)}
-                disabled={loading || !canComplete}
+                disabled={loading}
                 aria-pressed={withPunctuality}
                 className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full transition-all disabled:opacity-40"
                 style={{
@@ -312,36 +327,34 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
 
             <div className="flex items-stretch gap-2 flex-wrap">
               <button
-                onClick={() => completeWithPayment(null, withPunctuality)}
-                disabled={loading || !canComplete}
+                onClick={() => {
+                  if (canComplete) completeWithPayment(null, withPunctuality)
+                  else setEarlyConfirm('atendi')
+                }}
+                disabled={loading}
                 className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                 style={{
                   background: 'var(--admin-surface-hi)',
                   color: 'var(--admin-text)',
                   border: '1px solid var(--admin-border)',
                 }}
-                title={
-                  canComplete
-                    ? 'Conclui o atendimento. Pagamento fica pendente — admin confirma depois no Financeiro.'
-                    : 'Disponível 15min antes do horário do agendamento'
-                }
+                title="Conclui o atendimento. Pagamento fica pendente — admin confirma depois no Financeiro."
               >
                 <IconCheck size={14} /> Atendi{withPunctuality ? ` +${punctualityBonus}` : ''}
               </button>
               <button
-                onClick={() => setPaymentModal(true)}
-                disabled={loading || !canComplete}
+                onClick={() => {
+                  if (canComplete) setPaymentModal(true)
+                  else setEarlyConfirm('recebi')
+                }}
+                disabled={loading}
                 className="flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                 style={{
                   background: 'linear-gradient(135deg, #10B981, #059669)',
                   color: '#fff',
                   boxShadow: '0 8px 20px rgba(16,185,129,0.3)',
                 }}
-                title={
-                  canComplete
-                    ? 'Conclui o atendimento e marca o pagamento agora.'
-                    : 'Disponível 15min antes do horário do agendamento'
-                }
+                title="Conclui o atendimento e marca o pagamento agora."
               >
                 <IconCheck size={14} /> Atendi e recebi
               </button>
@@ -441,6 +454,34 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         loading={loading}
         onChoose={(method) => completeWithPayment(method, withPunctuality)}
         onClose={() => !loading && setPaymentModal(false)}
+      />
+      {/* Confirmação "atendi com antecedência" — só aparece se o admin
+          tentar marcar concluído antes da janela de 15min. Caminho A
+          decidido em 09/05/2026: tirar bloqueio + pedir confirmação. */}
+      <ConfirmActionModal
+        open={earlyConfirm !== null}
+        title="Atender com antecedência?"
+        message={(() => {
+          const min = minutesUntilStart()
+          const tempo = min >= 60
+            ? `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}min` : ''}`
+            : `${min} min`
+          return `O horário do agendamento ainda não chegou — faltam ${tempo}. Tem certeza que já atendeu ${appointment.client_name}?`
+        })()}
+        confirmLabel={earlyConfirm === 'recebi' ? 'Sim, atendi e recebi' : 'Sim, já atendi'}
+        cancelLabel="Cancelar"
+        tone="warn"
+        loading={loading}
+        onConfirm={() => {
+          const action = earlyConfirm
+          setEarlyConfirm(null)
+          if (action === 'atendi') {
+            completeWithPayment(null, withPunctuality)
+          } else if (action === 'recebi') {
+            setPaymentModal(true)
+          }
+        }}
+        onClose={() => !loading && setEarlyConfirm(null)}
       />
     </div>
   )
