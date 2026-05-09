@@ -392,9 +392,9 @@ export const getFocoDoDia = unstable_cache(
  * WelcomeModal + OnboardingChecklist no topo.
  */
 export type OnboardingChecklistKey =
-  | 'horarios'
+  | 'perfil'
   | 'servicos'
-  | 'profissionais'
+  | 'horarios'
   | 'qrcode'
   | 'agendamento'
 
@@ -411,26 +411,39 @@ export type OnboardingState = {
 }
 
 export const getOnboardingState = cache(
-  async (businessId: string, business: {
-    welcome_modal_seen?: boolean | null
-    onboarding_horarios_revisado?: boolean | null
-    qr_code_compartilhado?: boolean | null
-    fidelidade_dica_lida?: boolean | null
-  }): Promise<OnboardingState> => {
+  async (
+    businessId: string,
+    ownerId: string,
+    business: {
+      welcome_modal_seen?: boolean | null
+      onboarding_horarios_revisado?: boolean | null
+      qr_code_compartilhado?: boolean | null
+      fidelidade_dica_lida?: boolean | null
+    }
+  ): Promise<OnboardingState> => {
     const supabase = await createClient()
 
-    // 3 counts em paralelo: serviços, profissionais ativos, qualquer
-    // agendamento já criado (mesmo cancelado conta — admin testou ao menos uma vez)
-    const [servicesRes, profsRes, apptsRes] = await Promise.all([
+    // 4 queries em paralelo:
+    //  · serviços ativos
+    //  · agendamentos (qualquer status, indica que admin testou ao menos uma vez)
+    //  · perfil personalizado: owner-prof tem photo_url? — sinaliza personalização real
+    //    (cadastro cria owner-prof automático com photo_url=null; admin precisa subir foto)
+    const [servicesRes, apptsRes, ownerProfRes] = await Promise.all([
       supabase.from('services').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
-      supabase.from('professionals').select('id', { count: 'exact', head: true }).eq('business_id', businessId).eq('active', true),
       supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
+      supabase
+        .from('professionals')
+        .select('photo_url')
+        .eq('business_id', businessId)
+        .eq('auth_user_id', ownerId)
+        .eq('active', true)
+        .maybeSingle(),
     ])
 
     const items: Record<OnboardingChecklistKey, boolean> = {
-      horarios: !!business.onboarding_horarios_revisado,
+      perfil: !!ownerProfRes.data?.photo_url,
       servicos: (servicesRes.count ?? 0) > 0,
-      profissionais: (profsRes.count ?? 0) > 0,
+      horarios: !!business.onboarding_horarios_revisado,
       qrcode: !!business.qr_code_compartilhado,
       agendamento: (apptsRes.count ?? 0) > 0,
     }

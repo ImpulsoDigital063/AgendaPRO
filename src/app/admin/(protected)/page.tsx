@@ -320,9 +320,8 @@ export default async function AdminPage() {
   if (!business) redirect('/cadastro')
 
   // Onboarding state — derivado do estado SQL (sem chamadas extras se
-  // checklist já está completo, query é leve em todos os casos: 3
-  // counts head:true).
-  const onboarding = await getOnboardingState(business.id, business)
+  // checklist já está completo, queries são leves em todos os casos).
+  const onboarding = await getOnboardingState(business.id, user.id, business)
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',

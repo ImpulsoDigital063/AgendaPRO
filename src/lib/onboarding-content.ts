@@ -155,12 +155,23 @@ export function getOnboardingCopy(category: string | null | undefined): Onboardi
 
 /**
  * Itens fixos do checklist · derivados do estado SQL.
- * O 1º label é o título; o 2º é o subtítulo motivacional.
+ *
+ * ORDEM v1.1 (08/05/2026):
+ *   1. Personalizar perfil (foto/comissão na aba Eu)
+ *   2. Cadastrar 1º serviço
+ *   3. Configurar horários (depende de profissional existente)
+ *   4. Compartilhar link/QR Code
+ *   5. Receber 1º agendamento
+ *
+ * Mudou da v1: trocou "Adicionar profissional" → "Personalize seu perfil"
+ * (cadastro JÁ cria owner-prof automático), e moveu Horários pra DEPOIS
+ * de Serviços (na v1 vinha 1º mas falhava com "adicione um profissional
+ * primeiro" pq horários são por profissional).
  */
 export type ChecklistItemKey =
-  | 'horarios'
+  | 'perfil'
   | 'servicos'
-  | 'profissionais'
+  | 'horarios'
   | 'qrcode'
   | 'agendamento'
 
@@ -173,12 +184,12 @@ export const CHECKLIST_ITEMS: Array<{
   ctaHref: string
 }> = [
   {
-    key: 'horarios',
-    emoji: '⏰',
-    title: 'Configurar horários',
-    subtitle: 'Quando seu negócio atende',
-    ctaLabel: 'Configurar horários',
-    ctaHref: '/admin/configuracoes?tab=horarios',
+    key: 'perfil',
+    emoji: '✨',
+    title: 'Personalize seu perfil',
+    subtitle: 'Foto, comissão, descrição',
+    ctaLabel: 'Editar meu perfil',
+    ctaHref: '/admin/eu',
   },
   {
     key: 'servicos',
@@ -189,12 +200,12 @@ export const CHECKLIST_ITEMS: Array<{
     ctaHref: '/admin/configuracoes?tab=servicos',
   },
   {
-    key: 'profissionais',
-    emoji: '👤',
-    title: 'Adicionar profissional',
-    subtitle: 'Você ou sua equipe',
-    ctaLabel: 'Adicionar profissional',
-    ctaHref: '/admin/configuracoes?tab=profissionais',
+    key: 'horarios',
+    emoji: '⏰',
+    title: 'Configurar horários',
+    subtitle: 'Quando seu negócio atende',
+    ctaLabel: 'Configurar horários',
+    ctaHref: '/admin/configuracoes?tab=horarios',
   },
   {
     key: 'qrcode',

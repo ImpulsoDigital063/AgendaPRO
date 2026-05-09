@@ -169,7 +169,6 @@ export default function WelcomeModal({ businessName, category }: Props) {
 /* ──────────────────────────────────────────────────────── */
 
 function Slide0({ businessName, subtitle }: { businessName: string; subtitle: string }) {
-  const firstName = businessName.split(' ')[0]
   return (
     <div className="space-y-4">
       <div
@@ -186,7 +185,8 @@ function Slide0({ businessName, subtitle }: { businessName: string; subtitle: st
         className="text-2xl sm:text-3xl font-bold tracking-tight leading-tight"
         style={{ color: 'var(--admin-text)' }}
       >
-        Olá, <span style={{ color: 'var(--admin-accent)' }}>{firstName}</span>.
+        Olá,{' '}
+        <span style={{ color: 'var(--admin-accent)' }}>{businessName}</span>.
       </h1>
       <p
         className="text-base leading-relaxed"
@@ -272,7 +272,7 @@ function Slide1() {
 }
 
 function Slide2({ motivacao }: { motivacao: string }) {
-  const passos = ['Configurar horários', 'Cadastrar serviço', 'Adicionar profissional', 'Compartilhar link', 'Receber 1º agendamento']
+  const passos = ['Personalize seu perfil', 'Cadastrar serviço', 'Configurar horários', 'Compartilhar link', 'Receber 1º agendamento']
   return (
     <div className="space-y-4">
       <h2
