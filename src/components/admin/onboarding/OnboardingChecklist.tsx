@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { CHECKLIST_ITEMS } from '@/lib/onboarding-content'
 import type { OnboardingChecklistKey } from '@/lib/admin-data'
+import InstallChecklistItem from './InstallChecklistItem'
 
 /**
  * Checklist persistente no topo da home admin.
@@ -138,6 +139,13 @@ export default function OnboardingChecklist({ items, percent, done, slug }: Prop
                 />
               )
             })}
+
+            {/* Item EXTRA · "Instalar como app" · gerenciado 100% client-side
+                via display-mode + UA. Self-contained — não afeta os 5 items
+                do server (CHECKLIST_ITEMS). Auto-detecta plataforma:
+                Android = botão direto · iOS Safari = guide · iOS Chrome =
+                aviso pra abrir no Safari. Desktop não renderiza. */}
+            <InstallChecklistItem index={CHECKLIST_ITEMS.length + 1} />
           </div>
         )}
       </div>
