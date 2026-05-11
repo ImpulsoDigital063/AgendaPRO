@@ -266,7 +266,7 @@ export default function CadastroPage() {
               className="w-full py-3.5 rounded-xl font-bold text-white text-sm transition-all"
               style={ctaStyle}
             >
-              Continuar para liberar acesso →
+              Escolher plano e liberar painel →
             </button>
           </div>
 
