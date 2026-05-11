@@ -1,21 +1,20 @@
 'use client'
 
 /**
- * Pack de Divulgação — gerador de criativos prontos pro cliente postar
- * no Insta (story + feed). Cada template puxa logo + paleta + slug do
- * próprio business e gera PNG via Canvas API.
+ * Pack de Divulgação V2 — gerador de criativos premium pro cliente postar
+ * no Insta. Cada template puxa logo + paleta + slug do business e gera
+ * PNG via Canvas API (zero custo servidor).
  *
  * Estratégia branding: rodapé discreto "Agendamento por agendapro.net.br"
  * em todos templates. Cada post do cliente vira distribuição passiva da
  * marca (loop viral estilo Calendly/Linktree).
  *
- * 3 templates MVP:
- *  1. "Estamos no digital"     (story 9:16) — anúncio de lançamento
- *  2. "Hoje tem horário"       (story 9:16) — urgência diária
- *  3. "Você ainda liga?"       (feed 1:1)   — educação recorrente
- *
- * Cada um adapta cor de fundo via business.brand_primary (white-label
- * soft do v4-branding). Logo do cliente puxada de business.logo_url.
+ * V2 fixes pós-feedback Eduardo (11/05/2026):
+ *  - Design premium (gradient mesh · serif · padrões geométricos · ornamentação)
+ *  - Usa primary + secondary juntos (resolve cor lisa quando primary é preto)
+ *  - Preview mais fiel ao PNG final
+ *  - Mobile 2 colunas (não ocupar tela inteira)
+ *  - Logo do cliente em destaque (não só centralizada pequena)
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -25,31 +24,27 @@ import type { Business } from '@/lib/types'
 type TemplateFormat = 'story' | 'feed'
 
 type TemplateDef = {
-  id: 'digital' | 'horario-hoje' | 'ainda-liga'
+  id: 'estamos-digital' | 'horario-hoje' | 'ainda-liga'
   title: string
   desc: string
   format: TemplateFormat
   size: { w: number; h: number }
-  /** Cor de preview do card (gradient ou sólido) */
-  previewBg: (brand: string) => string
 }
 
 const TEMPLATES: TemplateDef[] = [
   {
-    id: 'digital',
+    id: 'estamos-digital',
     title: 'Estamos no digital',
-    desc: 'Anúncio do lançamento — posta uma vez quando começar a usar o app',
+    desc: 'Anúncio do lançamento — posta uma vez quando começar',
     format: 'story',
     size: { w: 1080, h: 1920 },
-    previewBg: (b) => `linear-gradient(135deg, ${b} 0%, ${shade(b, -30)} 100%)`,
   },
   {
     id: 'horario-hoje',
     title: 'Hoje tem horário',
-    desc: 'Manhã com agenda fraca? Posta isso pra criar urgência',
+    desc: 'Manhã com agenda fraca — cria urgência diária',
     format: 'story',
     size: { w: 1080, h: 1920 },
-    previewBg: (b) => b,
   },
   {
     id: 'ainda-liga',
@@ -57,14 +52,20 @@ const TEMPLATES: TemplateDef[] = [
     desc: 'Post educativo — pode usar no feed toda semana',
     format: 'feed',
     size: { w: 1080, h: 1080 },
-    previewBg: (b) => `linear-gradient(180deg, ${b} 0%, ${b} 60%, #ffffff 60%, #ffffff 100%)`,
   },
 ]
+
+// ─────────────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────────────
 
 /** Clareia (+) ou escurece (-) cor hex. */
 function shade(hex: string, percent: number): string {
   const h = hex.replace('#', '')
-  const num = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16)
+  const num = parseInt(
+    h.length === 3 ? h.split('').map((c) => c + c).join('') : h,
+    16,
+  )
   let r = (num >> 16) + Math.round(2.55 * percent)
   let g = ((num >> 8) & 0xff) + Math.round(2.55 * percent)
   let b = (num & 0xff) + Math.round(2.55 * percent)
@@ -74,18 +75,31 @@ function shade(hex: string, percent: number): string {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
 }
 
-/** Carrega imagem (logo) com CORS habilitado pra drawImage funcionar. */
+/** Detecta se cor é "muito escura" pra decidir contrast. */
+function isDark(hex: string): boolean {
+  const h = hex.replace('#', '')
+  const num = parseInt(
+    h.length === 3 ? h.split('').map((c) => c + c).join('') : h,
+    16,
+  )
+  const r = num >> 16
+  const g = (num >> 8) & 0xff
+  const b = num & 0xff
+  // luminância relativa simplificada
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128
+}
+
+/** Carrega imagem (logo) com CORS · funciona pra data URI também. */
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image()
-    img.crossOrigin = 'anonymous'
+    if (!src.startsWith('data:')) img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = () => resolve(null)
     img.src = src
   })
 }
 
-/** Converte string SVG em Image pra drawImage no canvas. */
 function svgStringToImage(svgString: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
@@ -103,7 +117,6 @@ function svgStringToImage(svgString: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Desenha retângulo arredondado. */
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -125,7 +138,6 @@ function roundRect(
   ctx.closePath()
 }
 
-/** Quebra texto em linhas que cabem em maxWidth. */
 function wrapLines(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -147,24 +159,117 @@ function wrapLines(
   return lines
 }
 
-/** Selo padrão de branding · canto inferior · fonte fina + opacity baixa. */
+/** Selo discreto rodapé · cor automática conforme fundo. */
 function drawBrandSeal(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
-  dark: boolean,
+  darkBg: boolean,
 ) {
   ctx.save()
-  ctx.font = '500 22px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillStyle = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.42)'
+  ctx.font = '500 22px "Georgia", "Times New Roman", serif'
+  ctx.fillStyle = darkBg ? 'rgba(255,255,255,0.42)' : 'rgba(15,23,42,0.42)'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'bottom'
-  ctx.fillText('Agendamento por agendapro.net.br', w / 2, h - 36)
+  ctx.fillText(
+    'Agendamento por agendapro.net.br',
+    w / 2,
+    h - 44,
+  )
+  ctx.restore()
+}
+
+/** Gradient mesh (3 cores) — base premium pra evitar cor lisa. */
+function fillMeshBg(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  primary: string,
+  secondary: string,
+) {
+  // Camada 1: gradient diagonal primary → escurecido
+  const g1 = ctx.createLinearGradient(0, 0, w, h)
+  g1.addColorStop(0, primary)
+  g1.addColorStop(1, shade(primary, -40))
+  ctx.fillStyle = g1
+  ctx.fillRect(0, 0, w, h)
+
+  // Camada 2: glow secondary canto superior direito
+  const g2 = ctx.createRadialGradient(w * 0.85, h * 0.15, 0, w * 0.85, h * 0.15, w * 0.7)
+  g2.addColorStop(0, hexToRgba(secondary, 0.35))
+  g2.addColorStop(1, hexToRgba(secondary, 0))
+  ctx.fillStyle = g2
+  ctx.fillRect(0, 0, w, h)
+
+  // Camada 3: vinheta escurecida nos cantos pra profundidade
+  const g3 = ctx.createRadialGradient(w / 2, h / 2, w * 0.4, w / 2, h / 2, w * 0.9)
+  g3.addColorStop(0, 'rgba(0,0,0,0)')
+  g3.addColorStop(1, 'rgba(0,0,0,0.35)')
+  ctx.fillStyle = g3
+  ctx.fillRect(0, 0, w, h)
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '')
+  const num = parseInt(
+    h.length === 3 ? h.split('').map((c) => c + c).join('') : h,
+    16,
+  )
+  return `rgba(${num >> 16}, ${(num >> 8) & 0xff}, ${num & 0xff}, ${alpha})`
+}
+
+/** Padrão de pontos sutis (tipo grain) — adiciona depth ao fundo. */
+function drawDotPattern(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  alpha = 0.05,
+) {
+  ctx.save()
+  ctx.fillStyle = `rgba(255,255,255,${alpha})`
+  for (let x = 0; x < w; x += 50) {
+    for (let y = 0; y < h; y += 50) {
+      ctx.beginPath()
+      ctx.arc(x, y, 1.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  ctx.restore()
+}
+
+/** Divisor ornamental: linha + diamante central. */
+function drawOrnament(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  width: number,
+  color: string,
+) {
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.fillStyle = color
+  ctx.lineWidth = 1.5
+  // linha esquerda
+  ctx.beginPath()
+  ctx.moveTo(cx - width / 2, cy)
+  ctx.lineTo(cx - 18, cy)
+  ctx.stroke()
+  // linha direita
+  ctx.beginPath()
+  ctx.moveTo(cx + 18, cy)
+  ctx.lineTo(cx + width / 2, cy)
+  ctx.stroke()
+  // diamante central
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(Math.PI / 4)
+  ctx.fillRect(-6, -6, 12, 12)
+  ctx.restore()
   ctx.restore()
 }
 
 // ─────────────────────────────────────────────────────────────────
-// RENDERS POR TEMPLATE
+// RENDERS
 // ─────────────────────────────────────────────────────────────────
 
 type RenderArgs = {
@@ -174,91 +279,161 @@ type RenderArgs = {
   qrSvgString: string | null
 }
 
-async function renderDigital({ canvas, business, bookingUrl, qrSvgString }: RenderArgs) {
+async function renderEstamosDigital({
+  canvas,
+  business,
+  bookingUrl,
+  qrSvgString,
+}: RenderArgs) {
   const W = 1080
   const H = 1920
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')!
   const primary = business.brand_primary ?? '#3B82F6'
+  const secondary = business.brand_secondary ?? '#06B6D4'
 
-  // Background gradient diagonal
-  const grad = ctx.createLinearGradient(0, 0, W, H)
-  grad.addColorStop(0, primary)
-  grad.addColorStop(1, shade(primary, -35))
-  ctx.fillStyle = grad
-  ctx.fillRect(0, 0, W, H)
+  // BG mesh
+  fillMeshBg(ctx, W, H, primary, secondary)
+  drawDotPattern(ctx, W, H, 0.04)
 
-  // Top text
-  ctx.fillStyle = 'rgba(255,255,255,0.85)'
-  ctx.font = '500 36px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+  // EYEBROW
+  ctx.fillStyle = hexToRgba(secondary, 0.85)
+  ctx.font = '500 30px system-ui, -apple-system, "Helvetica Neue", sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText('A G O R A   N O   D I G I T A L', W / 2, 200)
+  ctx.textBaseline = 'top'
+  ctx.fillText('A G O R A   N O   D I G I T A L', W / 2, 130)
 
-  // Business name
-  ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 78px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  const nameLines = wrapLines(ctx, business.name, W - 160)
-  let nameY = 290
-  for (const line of nameLines) {
-    ctx.fillText(line, W / 2, nameY)
-    nameY += 96
-  }
+  drawOrnament(ctx, W / 2, 200, 220, hexToRgba(secondary, 0.55))
 
-  // White card (centro) com logo + QR
-  const cardX = 90
-  const cardY = nameY + 60
-  const cardW = W - 180
-  const cardH = 1100
+  // HEADLINE SERIF
   ctx.fillStyle = '#ffffff'
-  roundRect(ctx, cardX, cardY, cardW, cardH, 48)
+  ctx.font = '700 96px "Georgia", "Times New Roman", serif'
+  ctx.textBaseline = 'top'
+  ctx.fillText('Agendamento', W / 2, 260)
+  ctx.font = 'italic 700 96px "Georgia", "Times New Roman", serif'
+  ctx.fillText('online', W / 2, 380)
+
+  // CARD BRANCO COM LOGO + QR
+  const cardX = 80
+  const cardY = 560
+  const cardW = W - 160
+  const cardH = 1080
+
+  // Sombra projetada
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.4)'
+  ctx.shadowBlur = 60
+  ctx.shadowOffsetY = 30
+  ctx.fillStyle = '#ffffff'
+  roundRect(ctx, cardX, cardY, cardW, cardH, 56)
   ctx.fill()
-  ctx.shadowColor = 'rgba(0,0,0,0.15)'
-  ctx.shadowBlur = 40
-  ctx.shadowOffsetY = 20
+  ctx.restore()
 
-  // Logo dentro do card (se tiver)
-  let cursorY = cardY + 80
+  // Decorações nos cantos do card (linhas L)
+  ctx.save()
+  ctx.strokeStyle = hexToRgba(primary, 0.4)
+  ctx.lineWidth = 3
+  const cornerSize = 30
+  const inset = 28
+  // canto top-left
+  ctx.beginPath()
+  ctx.moveTo(cardX + inset, cardY + inset + cornerSize)
+  ctx.lineTo(cardX + inset, cardY + inset)
+  ctx.lineTo(cardX + inset + cornerSize, cardY + inset)
+  ctx.stroke()
+  // canto top-right
+  ctx.beginPath()
+  ctx.moveTo(cardX + cardW - inset - cornerSize, cardY + inset)
+  ctx.lineTo(cardX + cardW - inset, cardY + inset)
+  ctx.lineTo(cardX + cardW - inset, cardY + inset + cornerSize)
+  ctx.stroke()
+  // canto bottom-left
+  ctx.beginPath()
+  ctx.moveTo(cardX + inset, cardY + cardH - inset - cornerSize)
+  ctx.lineTo(cardX + inset, cardY + cardH - inset)
+  ctx.lineTo(cardX + inset + cornerSize, cardY + cardH - inset)
+  ctx.stroke()
+  // canto bottom-right
+  ctx.beginPath()
+  ctx.moveTo(cardX + cardW - inset - cornerSize, cardY + cardH - inset)
+  ctx.lineTo(cardX + cardW - inset, cardY + cardH - inset)
+  ctx.lineTo(cardX + cardW - inset, cardY + cardH - inset - cornerSize)
+  ctx.stroke()
+  ctx.restore()
+
+  // Conteúdo do card
+  let cy = cardY + 100
+
+  // Logo do cliente OU iniciais como fallback
   if (business.logo_url) {
     const logo = await loadImage(business.logo_url)
     if (logo) {
-      const logoMax = 200
-      const ratio = Math.min(logoMax / logo.width, logoMax / logo.height)
+      const maxSize = 220
+      const ratio = Math.min(maxSize / logo.width, maxSize / logo.height)
       const lw = logo.width * ratio
       const lh = logo.height * ratio
-      ctx.shadowColor = 'transparent'
-      ctx.drawImage(logo, W / 2 - lw / 2, cursorY, lw, lh)
-      cursorY += lh + 60
+      ctx.drawImage(logo, W / 2 - lw / 2, cy, lw, lh)
+      cy += lh + 30
+    } else {
+      cy += 30
     }
   } else {
-    cursorY += 40
+    // Fallback: círculo com iniciais
+    const initial = business.name.charAt(0).toUpperCase()
+    ctx.save()
+    ctx.fillStyle = primary
+    ctx.beginPath()
+    ctx.arc(W / 2, cy + 90, 90, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '700 110px "Georgia", serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(initial, W / 2, cy + 90)
+    ctx.restore()
+    cy += 220
   }
+
+  // Nome do negócio
+  ctx.fillStyle = '#0F172A'
+  ctx.font = '700 48px "Georgia", "Times New Roman", serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  const nameLines = wrapLines(ctx, business.name, cardW - 120)
+  for (const line of nameLines) {
+    ctx.fillText(line, W / 2, cy)
+    cy += 60
+  }
+  cy += 20
+
+  drawOrnament(ctx, W / 2, cy, 180, hexToRgba(primary, 0.4))
+  cy += 50
 
   // QR Code
   if (qrSvgString) {
     try {
       const qrImg = await svgStringToImage(qrSvgString)
-      const qrSize = 560
-      ctx.shadowColor = 'transparent'
-      ctx.drawImage(qrImg, W / 2 - qrSize / 2, cursorY, qrSize, qrSize)
-      cursorY += qrSize + 50
+      const qrSize = 480
+      ctx.drawImage(qrImg, W / 2 - qrSize / 2, cy, qrSize, qrSize)
+      cy += qrSize + 40
     } catch {
-      cursorY += 50
+      cy += 40
     }
   }
 
-  // URL textual
+  // URL textual em destaque
   ctx.fillStyle = primary
-  ctx.font = 'bold 38px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillText(bookingUrl, W / 2, cursorY + 20)
+  ctx.font = '700 38px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+  ctx.fillText(bookingUrl, W / 2, cy)
 
-  // CTA
+  // CTA pós-card
   ctx.fillStyle = '#ffffff'
-  ctx.font = '500 42px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillText('Aponte sua câmera no QR', W / 2, cardY + cardH + 100)
-  ctx.font = '300 32px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillStyle = 'rgba(255,255,255,0.75)'
-  ctx.fillText('e marque seu horário em segundos', W / 2, cardY + cardH + 145)
+  ctx.font = '500 44px "Georgia", serif'
+  ctx.fillText('Aponte sua câmera no QR', W / 2, cardY + cardH + 80)
+  ctx.font = 'italic 32px "Georgia", serif'
+  ctx.fillStyle = hexToRgba(secondary, 0.9)
+  ctx.fillText('e marque seu horário em segundos', W / 2, cardY + cardH + 140)
 
   drawBrandSeal(ctx, W, H, true)
 }
@@ -270,76 +445,122 @@ async function renderHorarioHoje({ canvas, business, bookingUrl }: RenderArgs) {
   canvas.height = H
   const ctx = canvas.getContext('2d')!
   const primary = business.brand_primary ?? '#3B82F6'
+  const secondary = business.brand_secondary ?? '#06B6D4'
 
-  // Background sólido com gradient sutil
-  const grad = ctx.createLinearGradient(0, 0, 0, H)
-  grad.addColorStop(0, shade(primary, 15))
-  grad.addColorStop(1, shade(primary, -20))
-  ctx.fillStyle = grad
-  ctx.fillRect(0, 0, W, H)
+  // BG mesh
+  fillMeshBg(ctx, W, H, primary, secondary)
+  drawDotPattern(ctx, W, H, 0.05)
 
-  // Texture: linhas diagonais sutis
+  // Linhas diagonais decorativas (canto superior esquerdo)
   ctx.save()
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)'
+  ctx.strokeStyle = hexToRgba(secondary, 0.18)
   ctx.lineWidth = 2
-  for (let i = -H; i < W + H; i += 60) {
+  for (let i = 0; i < 8; i++) {
     ctx.beginPath()
-    ctx.moveTo(i, 0)
-    ctx.lineTo(i + H, H)
+    ctx.moveTo(0, 100 + i * 80)
+    ctx.lineTo(400 - i * 50, 0)
     ctx.stroke()
   }
   ctx.restore()
 
-  // Top eyebrow
-  ctx.fillStyle = 'rgba(255,255,255,0.7)'
-  ctx.font = '500 32px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText('S Ó   H O J E', W / 2, 280)
+  // DATA (canto superior direito)
+  const today = new Date()
+  const dia = String(today.getDate()).padStart(2, '0')
+  const mes = today
+    .toLocaleString('pt-BR', { month: 'short' })
+    .replace('.', '')
+    .toUpperCase()
 
-  // Headline grande
-  ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 130px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillText('Hoje', W / 2, 480)
-  ctx.font = 'bold 110px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillText('tem horário', W / 2, 620)
-
-  // Ícone relógio (SVG path)
   ctx.save()
-  ctx.translate(W / 2, 900)
-  ctx.strokeStyle = 'rgba(255,255,255,0.9)'
-  ctx.lineWidth = 10
-  ctx.beginPath()
-  ctx.arc(0, 0, 140, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(0, 0)
-  ctx.lineTo(0, -80)
-  ctx.moveTo(0, 0)
-  ctx.lineTo(60, 0)
-  ctx.lineCap = 'round'
-  ctx.stroke()
+  ctx.fillStyle = hexToRgba(secondary, 0.95)
+  ctx.font = '700 38px "Georgia", serif'
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'top'
+  ctx.fillText(`${dia} · ${mes}`, W - 80, 140)
   ctx.restore()
 
-  // Negócio
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'
-  ctx.font = '500 46px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+  // EYEBROW
+  ctx.fillStyle = hexToRgba(secondary, 0.85)
+  ctx.font = '500 30px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  ctx.fillText('S Ó   H O J E', W / 2, 320)
+
+  // HEADLINE GIGANTE — "Hoje" italic serif
+  ctx.fillStyle = '#ffffff'
+  ctx.font = 'italic 700 220px "Georgia", "Times New Roman", serif'
+  ctx.fillText('Hoje', W / 2, 380)
+
+  // Subhead "tem horário"
+  ctx.font = '700 92px "Georgia", serif'
+  ctx.fillText('tem horário', W / 2, 640)
+
+  drawOrnament(ctx, W / 2, 800, 200, hexToRgba(secondary, 0.6))
+
+  // CHIPS DE HORÁRIOS SUGERIDOS
+  const chips = ['14:00', '15:30', '17:00']
+  const chipW = 230
+  const chipH = 90
+  const gap = 30
+  const totalW = chips.length * chipW + (chips.length - 1) * gap
+  let chipX = W / 2 - totalW / 2
+  const chipY = 870
+
+  for (const time of chips) {
+    // chip bg
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'
+    roundRect(ctx, chipX, chipY, chipW, chipH, 18)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    // text
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '700 46px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(time, chipX + chipW / 2, chipY + chipH / 2)
+    chipX += chipW + gap
+  }
+
+  ctx.textBaseline = 'top'
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'
+  ctx.font = 'italic 28px "Georgia", serif'
+  ctx.textAlign = 'center'
+  ctx.fillText('exemplos de horários abertos', W / 2, chipY + chipH + 20)
+
+  // NOME NEGÓCIO
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '600 56px "Georgia", serif'
   ctx.fillText(business.name, W / 2, 1280)
 
-  // CTA card
-  const ctaX = 100
-  const ctaY = 1420
-  const ctaW = W - 200
-  const ctaH = 280
+  // CTA CARD
+  const ctaX = 90
+  const ctaY = 1430
+  const ctaW = W - 180
+  const ctaH = 290
+
+  // sombra
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'
+  ctx.shadowBlur = 50
+  ctx.shadowOffsetY = 24
   ctx.fillStyle = '#ffffff'
-  roundRect(ctx, ctaX, ctaY, ctaW, ctaH, 36)
+  roundRect(ctx, ctaX, ctaY, ctaW, ctaH, 32)
   ctx.fill()
+  ctx.restore()
 
   ctx.fillStyle = '#0F172A'
-  ctx.font = 'bold 56px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillText('Garanta o seu', W / 2, ctaY + 110)
+  ctx.font = '700 50px "Georgia", serif'
+  ctx.fillText('Garante o seu', W / 2, ctaY + 65)
 
+  ctx.fillStyle = 'rgba(15,23,42,0.55)'
+  ctx.font = 'italic 26px "Georgia", serif'
+  ctx.fillText('antes que esgote', W / 2, ctaY + 130)
+
+  // URL
   ctx.fillStyle = primary
-  ctx.font = 'bold 38px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+  ctx.font = '700 36px system-ui, -apple-system, "Helvetica Neue", sans-serif'
   ctx.fillText(bookingUrl, W / 2, ctaY + 200)
 
   drawBrandSeal(ctx, W, H, true)
@@ -352,68 +573,110 @@ async function renderAindaLiga({ canvas, business, bookingUrl }: RenderArgs) {
   canvas.height = H
   const ctx = canvas.getContext('2d')!
   const primary = business.brand_primary ?? '#3B82F6'
+  const secondary = business.brand_secondary ?? '#06B6D4'
 
-  // Top 60% color, bottom 40% white
-  ctx.fillStyle = primary
-  ctx.fillRect(0, 0, W, Math.floor(H * 0.6))
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, Math.floor(H * 0.6), W, Math.ceil(H * 0.4))
+  // BG mesh
+  fillMeshBg(ctx, W, H, primary, secondary)
+  drawDotPattern(ctx, W, H, 0.05)
 
-  // Top text
-  ctx.fillStyle = 'rgba(255,255,255,0.8)'
-  ctx.font = '500 26px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText('A G E N D A M E N T O', W / 2, 100)
-
-  ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 68px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillText('Você ainda liga', W / 2, 220)
-  ctx.fillText('pra marcar', W / 2, 305)
-  ctx.fillText('horário?', W / 2, 390)
-
-  // Telefone com X (ícone)
+  // FAIXA BRANCA DIAGONAL na parte de baixo (não horizontal)
   ctx.save()
-  ctx.translate(W / 2, 530)
-  ctx.strokeStyle = 'rgba(255,255,255,0.9)'
-  ctx.lineWidth = 8
-  ctx.lineCap = 'round'
-  // Telefone simplificado
-  roundRect(ctx, -40, -50, 80, 100, 12)
-  ctx.stroke()
-  // Linha do X
-  ctx.strokeStyle = '#ffffff'
-  ctx.lineWidth = 14
+  ctx.fillStyle = '#ffffff'
   ctx.beginPath()
-  ctx.moveTo(-90, -90)
-  ctx.lineTo(90, 90)
-  ctx.moveTo(90, -90)
-  ctx.lineTo(-90, 90)
+  ctx.moveTo(0, H * 0.65)
+  ctx.lineTo(W, H * 0.55)
+  ctx.lineTo(W, H)
+  ctx.lineTo(0, H)
+  ctx.closePath()
+  ctx.shadowColor = 'rgba(0,0,0,0.3)'
+  ctx.shadowBlur = 40
+  ctx.shadowOffsetY = -10
+  ctx.fill()
+  ctx.restore()
+
+  // EYEBROW
+  ctx.fillStyle = hexToRgba(secondary, 0.85)
+  ctx.font = '500 24px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  ctx.fillText('A G E N D A M E N T O', W / 2, 80)
+
+  // PERGUNTA · SERIF ITALIC GRANDE
+  ctx.fillStyle = '#ffffff'
+  ctx.font = 'italic 700 78px "Georgia", "Times New Roman", serif'
+  ctx.fillText('Você ainda liga', W / 2, 170)
+  ctx.fillText('pra marcar', W / 2, 265)
+  ctx.fillText('horário?', W / 2, 360)
+
+  // Ícone telefone tachado (minimalist)
+  ctx.save()
+  ctx.translate(W / 2, 540)
+  // Telefone arredondado
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'
+  ctx.lineWidth = 7
+  ctx.lineCap = 'round'
+  roundRect(ctx, -40, -55, 80, 110, 14)
+  ctx.stroke()
+  // botão de speaker
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'
+  ctx.lineWidth = 4
+  ctx.beginPath()
+  ctx.moveTo(-12, -38)
+  ctx.lineTo(12, -38)
+  ctx.stroke()
+  // X tachado (dois traços diagonais)
+  ctx.strokeStyle = secondary
+  ctx.lineWidth = 12
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(-75, -75)
+  ctx.lineTo(75, 75)
+  ctx.moveTo(75, -75)
+  ctx.lineTo(-75, 75)
   ctx.stroke()
   ctx.restore()
 
-  // Bottom (branco)
-  const bottomY = Math.floor(H * 0.6) + 90
+  // BLOCO BRANCO INFERIOR — nome + agora no digital + URL
+  // Logo do cliente discreta (se tiver)
+  let bottomY = H * 0.7
+  if (business.logo_url) {
+    const logo = await loadImage(business.logo_url)
+    if (logo) {
+      const maxSize = 80
+      const ratio = Math.min(maxSize / logo.width, maxSize / logo.height)
+      const lw = logo.width * ratio
+      const lh = logo.height * ratio
+      ctx.drawImage(logo, W / 2 - lw / 2, bottomY, lw, lh)
+      bottomY += lh + 16
+    }
+  }
+
   ctx.fillStyle = '#0F172A'
-  ctx.font = 'bold 48px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+  ctx.font = '700 52px "Georgia", "Times New Roman", serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
   ctx.fillText(business.name, W / 2, bottomY)
+  bottomY += 65
 
   ctx.fillStyle = primary
-  ctx.font = '500 38px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillText('agora no digital', W / 2, bottomY + 56)
+  ctx.font = 'italic 36px "Georgia", serif'
+  ctx.fillText('agora no digital', W / 2, bottomY)
+  bottomY += 65
 
   ctx.fillStyle = '#0F172A'
-  ctx.font = 'bold 36px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillText(bookingUrl, W / 2, bottomY + 138)
+  ctx.font = '700 34px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+  ctx.fillText(bookingUrl, W / 2, bottomY)
+  bottomY += 45
 
-  ctx.fillStyle = 'rgba(15,23,42,0.55)'
-  ctx.font = '500 24px system-ui, -apple-system, "Helvetica Neue", sans-serif'
-  ctx.fillText('(link na bio do Insta)', W / 2, bottomY + 184)
+  ctx.fillStyle = 'rgba(15,23,42,0.5)'
+  ctx.font = 'italic 24px "Georgia", serif'
+  ctx.fillText('→ link na bio', W / 2, bottomY)
 
   drawBrandSeal(ctx, W, H, false)
 }
 
 const RENDERERS: Record<TemplateDef['id'], (args: RenderArgs) => Promise<void>> = {
-  'digital': renderDigital,
+  'estamos-digital': renderEstamosDigital,
   'horario-hoje': renderHorarioHoje,
   'ainda-liga': renderAindaLiga,
 }
@@ -431,6 +694,7 @@ export default function DivulgacaoTab({ business }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null)
 
   const primary = business.brand_primary ?? '#3B82F6'
+  const secondary = business.brand_secondary ?? '#06B6D4'
 
   const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.agendapro.net.br')
     .replace(/^https?:\/\//, '')
@@ -438,7 +702,6 @@ export default function DivulgacaoTab({ business }: Props) {
   const bookingUrl = `${APP_URL}/${business.slug}`
   const bookingFull = `https://${bookingUrl}`
 
-  // Auto-clear feedback após 3s
   useEffect(() => {
     if (!feedback) return
     const id = setTimeout(() => setFeedback(null), 3000)
@@ -450,7 +713,6 @@ export default function DivulgacaoTab({ business }: Props) {
     setDownloading(templateId)
     setFeedback(null)
     try {
-      // Captura SVG do QR Code (escondido)
       const qrSvg = qrContainerRef.current?.querySelector('svg')
       const qrSvgString = qrSvg
         ? new XMLSerializer().serializeToString(qrSvg)
@@ -476,9 +738,6 @@ export default function DivulgacaoTab({ business }: Props) {
         type: 'image/png',
       })
 
-      // Web Share API com files (iOS 15+/Android Chrome) — abre share sheet
-      // direto: Photos, Insta, WhatsApp etc. Resolve a tela "data:" do iOS
-      // que parecia "arquivo desconhecido".
       if (
         typeof navigator !== 'undefined' &&
         navigator.canShare &&
@@ -494,11 +753,9 @@ export default function DivulgacaoTab({ business }: Props) {
           return
         } catch (err) {
           if (err instanceof Error && err.name === 'AbortError') return
-          // erro real cai pro fallback
         }
       }
 
-      // Fallback download tradicional
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.download = file.name
@@ -519,7 +776,10 @@ export default function DivulgacaoTab({ business }: Props) {
       {/* Header explicativo */}
       <div
         className="admin-card-deep p-5"
-        style={{ borderLeft: `3px solid ${primary}` }}
+        style={{
+          background: `linear-gradient(135deg, ${hexToRgba(primary, 0.06)} 0%, ${hexToRgba(secondary, 0.04)} 100%)`,
+          borderLeft: `3px solid ${primary}`,
+        }}
       >
         <h3
           className="text-base font-semibold mb-1"
@@ -532,18 +792,19 @@ export default function DivulgacaoTab({ business }: Props) {
           style={{ color: 'var(--admin-text-mute)' }}
         >
           Artes prontas com a sua marca · clica em Baixar e posta no Insta.
-          Cada cliente que ver, vai poder agendar direto com você sem precisar ligar.
+          Cada cliente que ver, agenda direto com você sem precisar ligar.
         </p>
       </div>
 
-      {/* Grid de templates */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Grid de templates — 2 col mobile, 3 col desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {TEMPLATES.map((t) => (
           <TemplatePreview
             key={t.id}
             template={t}
             business={business}
             primary={primary}
+            secondary={secondary}
             downloading={downloading === t.id}
             onDownload={() => handleDownload(t.id)}
           />
@@ -564,55 +825,47 @@ export default function DivulgacaoTab({ business }: Props) {
         </div>
       )}
 
-      {/* Dica de uso */}
+      {/* Dica */}
       <div
         className="admin-card-deep p-4 text-xs leading-relaxed"
         style={{ color: 'var(--admin-text-mute)' }}
       >
-        <strong style={{ color: 'var(--admin-text)' }}>Dica:</strong> a arte sai
-        com a sua logo, sua cor e o link da sua página. Quanto mais a galera
-        ver no story dos seus clientes, mais agendamento orgânico você ganha
-        sem pagar anúncio.
+        <strong style={{ color: 'var(--admin-text)' }}>Dica:</strong> as artes
+        saem com sua logo, sua cor e o link da sua página. Quanto mais cliente
+        ver no story do seu cliente, mais agendamento orgânico você ganha sem
+        pagar anúncio.
       </div>
 
-      {/* QR Code escondido — usado pra render no canvas */}
+      {/* QR Code escondido */}
       <div
         ref={qrContainerRef}
         style={{
           position: 'absolute',
           left: -99999,
           top: 0,
-          width: 400,
-          height: 400,
+          width: 480,
+          height: 480,
         }}
         aria-hidden="true"
       >
-        <QRCode
-          value={bookingFull}
-          size={400}
-          bgColor="#FFFFFF"
-          fgColor="#0F172A"
-        />
+        <QRCode value={bookingFull} size={480} bgColor="#FFFFFF" fgColor="#0F172A" />
       </div>
 
-      {/* Canvas escondido — usado pra gerar PNG */}
-      <canvas
-        ref={canvasRef}
-        style={{ display: 'none' }}
-        aria-hidden="true"
-      />
+      {/* Canvas escondido */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} aria-hidden="true" />
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────
-// CARD DE PREVIEW
+// PREVIEW CARD — visualmente fiel ao PNG (não simplificado)
 // ─────────────────────────────────────────────────────────────────
 
 type CardProps = {
   template: TemplateDef
   business: Business
   primary: string
+  secondary: string
   downloading: boolean
   onDownload: () => void
 }
@@ -621,82 +874,23 @@ function TemplatePreview({
   template,
   business,
   primary,
+  secondary,
   downloading,
   onDownload,
 }: CardProps) {
   const isStory = template.format === 'story'
   const aspect = isStory ? '9 / 16' : '1 / 1'
 
-  // Preview visual simples — não é o PNG final, só pra cliente entender o que vai sair
-  let previewBg = template.previewBg(primary)
-  let previewContent: React.ReactNode
-
-  if (template.id === 'digital') {
-    previewContent = (
-      <div className="flex flex-col items-center justify-center h-full text-white text-center px-3">
-        <span className="text-[7px] tracking-[0.3em] opacity-80 mb-1">
-          NO DIGITAL
-        </span>
-        <span className="text-[12px] font-bold leading-tight px-2 mb-2">
-          {business.name}
-        </span>
-        <div
-          className="bg-white rounded-lg flex items-center justify-center"
-          style={{ width: 60, height: 60 }}
-        >
-          <span className="text-[8px] font-mono" style={{ color: primary }}>
-            QR
-          </span>
-        </div>
-        <span className="text-[7px] opacity-70 mt-2">aponte a câmera</span>
-      </div>
-    )
-  } else if (template.id === 'horario-hoje') {
-    previewContent = (
-      <div className="flex flex-col items-center justify-center h-full text-white text-center px-3">
-        <span className="text-[6px] tracking-[0.3em] opacity-80 mb-1">
-          SÓ HOJE
-        </span>
-        <span className="text-[18px] font-bold leading-none">Hoje</span>
-        <span className="text-[14px] font-bold leading-none mt-1">
-          tem horário
-        </span>
-        <div className="w-6 h-6 rounded-full border-2 border-white/80 my-2" />
-        <div
-          className="bg-white text-slate-900 px-2 py-1 rounded text-[8px] font-bold mt-1"
-          style={{ color: primary }}
-        >
-          Garanta o seu
-        </div>
-      </div>
-    )
-  } else {
-    previewContent = (
-      <div className="h-full flex flex-col">
-        <div className="flex-1 flex items-center justify-center text-white text-center px-3">
-          <span className="text-[10px] font-bold leading-tight">
-            Você ainda liga
-            <br />
-            pra marcar
-            <br />
-            horário?
-          </span>
-        </div>
-        <div className="bg-white p-2 flex flex-col items-center justify-center" style={{ height: '40%' }}>
-          <span className="text-[8px] font-bold text-slate-900">
-            {business.name}
-          </span>
-          <span className="text-[7px]" style={{ color: primary }}>
-            agora no digital
-          </span>
-        </div>
-      </div>
-    )
-  }
+  // BG mesh CSS equivalente ao Canvas
+  const meshBg = `
+    radial-gradient(ellipse 90% 60% at 85% 15%, ${hexToRgba(secondary, 0.35)} 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 15% 85%, rgba(0,0,0,0.35) 0%, transparent 55%),
+    linear-gradient(135deg, ${primary} 0%, ${shade(primary, -40)} 100%)
+  `
 
   return (
     <div
-      className="admin-card-deep p-3 flex flex-col gap-3"
+      className="admin-card-deep p-2.5 flex flex-col gap-2.5"
       style={{ borderColor: 'var(--admin-border)' }}
     >
       {/* Preview */}
@@ -704,50 +898,246 @@ function TemplatePreview({
         className="w-full overflow-hidden rounded-lg relative"
         style={{
           aspectRatio: aspect,
-          background: previewBg,
-          border: '1px solid rgba(255,255,255,0.04)',
+          background: meshBg,
+          border: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        {previewContent}
+        {template.id === 'estamos-digital' && (
+          <PreviewEstamosDigital
+            business={business}
+            primary={primary}
+            secondary={secondary}
+          />
+        )}
+        {template.id === 'horario-hoje' && (
+          <PreviewHorarioHoje secondary={secondary} />
+        )}
+        {template.id === 'ainda-liga' && (
+          <PreviewAindaLiga
+            business={business}
+            primary={primary}
+            secondary={secondary}
+          />
+        )}
       </div>
 
       {/* Info + CTA */}
-      <div className="flex flex-col gap-2">
-        <div>
-          <h4
-            className="text-sm font-semibold"
-            style={{ color: 'var(--admin-text)' }}
-          >
-            {template.title}
-          </h4>
-          <p
-            className="text-xs leading-snug mt-0.5"
-            style={{ color: 'var(--admin-text-mute)' }}
-          >
-            {template.desc}
-          </p>
-        </div>
-
-        <div
-          className="flex items-center gap-2 text-[10px] uppercase tracking-wider"
+      <div className="flex flex-col gap-1.5">
+        <h4
+          className="text-xs sm:text-sm font-semibold leading-tight"
+          style={{ color: 'var(--admin-text)' }}
+        >
+          {template.title}
+        </h4>
+        <p
+          className="text-[10px] sm:text-xs leading-snug"
           style={{ color: 'var(--admin-text-mute)' }}
         >
-          <span>{isStory ? 'Story · 9:16' : 'Feed · 1:1'}</span>
-        </div>
+          {template.desc}
+        </p>
+        <p
+          className="text-[9px] uppercase tracking-wider opacity-60 mt-0.5"
+          style={{ color: 'var(--admin-text-mute)' }}
+        >
+          {isStory ? 'Story · 9:16' : 'Feed · 1:1'}
+        </p>
 
         <button
           type="button"
           onClick={onDownload}
           disabled={downloading}
-          className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
+          className="w-full py-2 mt-1 rounded-lg text-xs sm:text-sm font-semibold transition-all disabled:opacity-50"
           style={{
             background: `linear-gradient(135deg, ${primary} 0%, ${shade(primary, -20)} 100%)`,
             color: '#ffffff',
-            boxShadow: `0 6px 16px -8px ${primary}`,
+            boxShadow: `0 6px 14px -8px ${primary}`,
           }}
         >
           {downloading ? 'Gerando…' : 'Baixar PNG'}
         </button>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PREVIEWS (CSS · fiel ao Canvas final)
+// ─────────────────────────────────────────────────────────────────
+
+function PreviewEstamosDigital({
+  business,
+  primary,
+  secondary,
+}: {
+  business: Business
+  primary: string
+  secondary: string
+}) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center px-2 py-3 text-white">
+      <span
+        className="text-[6px] tracking-[0.25em] mb-1 mt-1"
+        style={{ color: hexToRgba(secondary, 0.85) }}
+      >
+        AGORA NO DIGITAL
+      </span>
+      <span
+        className="text-[15px] font-bold leading-none mt-1"
+        style={{ fontFamily: 'Georgia, serif' }}
+      >
+        Agendamento
+      </span>
+      <span
+        className="text-[15px] italic font-bold leading-none"
+        style={{ fontFamily: 'Georgia, serif' }}
+      >
+        online
+      </span>
+
+      <div
+        className="mt-2 w-[85%] flex-1 bg-white rounded-lg flex flex-col items-center justify-center px-2 py-2 relative"
+        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
+      >
+        {business.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={business.logo_url}
+            alt={business.name}
+            className="max-w-[40px] max-h-[40px] object-contain mb-1"
+          />
+        ) : (
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center mb-1"
+            style={{ background: primary }}
+          >
+            <span className="text-white text-[9px] font-bold">
+              {business.name.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
+        <span
+          className="text-[7px] font-bold leading-tight text-center px-1"
+          style={{ color: '#0F172A', fontFamily: 'Georgia, serif' }}
+        >
+          {business.name.length > 18
+            ? business.name.slice(0, 16) + '…'
+            : business.name}
+        </span>
+        <div
+          className="my-1 bg-slate-800 rounded"
+          style={{ width: 38, height: 38 }}
+        >
+          <div className="w-full h-full grid grid-cols-5 grid-rows-5 gap-px p-px">
+            {Array.from({ length: 25 }).map((_, i) => (
+              <div
+                key={i}
+                className={i % 3 === 0 ? 'bg-white' : 'bg-slate-800'}
+              />
+            ))}
+          </div>
+        </div>
+        <span
+          className="text-[5px] font-bold"
+          style={{ color: primary }}
+        >
+          agendapro.net.br
+        </span>
+      </div>
+
+      <span className="text-[6px] mt-1 opacity-80">aponte sua câmera</span>
+    </div>
+  )
+}
+
+function PreviewHorarioHoje({ secondary }: { secondary: string }) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-2">
+      <span
+        className="text-[5px] tracking-[0.25em] mb-1"
+        style={{ color: hexToRgba(secondary, 0.85) }}
+      >
+        SÓ HOJE
+      </span>
+      <span
+        className="text-[28px] italic font-bold leading-none"
+        style={{ fontFamily: 'Georgia, serif' }}
+      >
+        Hoje
+      </span>
+      <span
+        className="text-[12px] font-bold leading-tight mt-0.5"
+        style={{ fontFamily: 'Georgia, serif' }}
+      >
+        tem horário
+      </span>
+      <div className="flex gap-1 mt-2">
+        {['14:00', '15:30', '17:00'].map((t) => (
+          <div
+            key={t}
+            className="px-1 py-0.5 rounded text-[6px] font-bold border"
+            style={{
+              background: 'rgba(255,255,255,0.12)',
+              borderColor: 'rgba(255,255,255,0.25)',
+            }}
+          >
+            {t}
+          </div>
+        ))}
+      </div>
+      <div
+        className="mt-2 px-2 py-1 bg-white rounded text-[7px] font-bold"
+        style={{ color: '#0F172A', fontFamily: 'Georgia, serif' }}
+      >
+        Garante o seu
+      </div>
+    </div>
+  )
+}
+
+function PreviewAindaLiga({
+  business,
+  primary,
+}: {
+  business: Business
+  primary: string
+  secondary: string
+}) {
+  return (
+    <div className="absolute inset-0">
+      <div className="absolute inset-0 flex flex-col items-center justify-start text-white pt-3 px-2">
+        <span
+          className="text-[10px] italic font-bold leading-tight text-center"
+          style={{ fontFamily: 'Georgia, serif' }}
+        >
+          Você ainda
+          <br />
+          liga pra marcar
+          <br />
+          horário?
+        </span>
+      </div>
+      <div
+        className="absolute left-0 right-0 bottom-0 bg-white flex flex-col items-center justify-center text-center px-2"
+        style={{
+          height: '40%',
+          clipPath: 'polygon(0 15%, 100% 0%, 100% 100%, 0% 100%)',
+          paddingTop: '10%',
+        }}
+      >
+        <span
+          className="text-[8px] font-bold leading-tight"
+          style={{ color: '#0F172A', fontFamily: 'Georgia, serif' }}
+        >
+          {business.name.length > 16
+            ? business.name.slice(0, 14) + '…'
+            : business.name}
+        </span>
+        <span
+          className="text-[6px] italic mt-0.5"
+          style={{ color: primary, fontFamily: 'Georgia, serif' }}
+        >
+          agora no digital
+        </span>
       </div>
     </div>
   )
