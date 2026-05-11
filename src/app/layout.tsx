@@ -21,7 +21,11 @@ export const metadata: Metadata = {
   title: 'AgendaPRO — Sua agenda virou o turno da noite do seu negócio',
   description:
     'Agendamento online com fidelidade, lista de espera automática, indicação e reputação Google. Enquanto você vive, o AgendaPRO agenda, lembra, cobra e traz cliente de volta. A partir de R$67/mês com garantia de 7 dias.',
-  manifest: '/manifest.json',
+  // Next gera o manifest em /manifest.webmanifest (src/app/manifest.ts).
+  // Antes apontava pra /manifest.json (404) — iOS caía pra modo bookmark
+  // em vez de PWA standalone com splash. Fix descoberto durante onboarding
+  // Olímpio (11/05/2026) quando ele tentou Add to Home Screen no Safari.
+  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
