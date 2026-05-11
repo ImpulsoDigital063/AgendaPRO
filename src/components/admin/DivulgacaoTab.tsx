@@ -529,14 +529,14 @@ async function renderHorarioHoje({ canvas, business, bookingUrl }: RenderArgs) {
   ctx.textAlign = 'center'
   ctx.fillText('exemplos de horários abertos', W / 2, chipY + chipH + 20)
 
-  // NOME NEGÓCIO
+  // NOME NEGÓCIO — sobe pra fechar o gap entre chips e CTA card
   ctx.fillStyle = '#ffffff'
   ctx.font = '600 56px "Georgia", serif'
-  ctx.fillText(business.name, W / 2, 1280)
+  ctx.fillText(business.name, W / 2, 1180)
 
-  // CTA CARD
+  // CTA CARD (aproximado do nome — antes tinha gap visual feio)
   const ctaX = 90
-  const ctaY = 1430
+  const ctaY = 1330
   const ctaW = W - 180
   const ctaH = 290
 
@@ -637,42 +637,57 @@ async function renderAindaLiga({ canvas, business, bookingUrl }: RenderArgs) {
   ctx.restore()
 
   // BLOCO BRANCO INFERIOR — nome + agora no digital + URL
-  // Logo do cliente discreta (se tiver)
-  let bottomY = H * 0.7
+  // Logo cliente em destaque (era 80px, ficou perdida — agora 130px)
+  let bottomY = H * 0.66
   if (business.logo_url) {
     const logo = await loadImage(business.logo_url)
     if (logo) {
-      const maxSize = 80
+      const maxSize = 130
       const ratio = Math.min(maxSize / logo.width, maxSize / logo.height)
       const lw = logo.width * ratio
       const lh = logo.height * ratio
       ctx.drawImage(logo, W / 2 - lw / 2, bottomY, lw, lh)
-      bottomY += lh + 16
+      bottomY += lh + 14
     }
   }
 
   ctx.fillStyle = '#0F172A'
-  ctx.font = '700 52px "Georgia", "Times New Roman", serif'
+  ctx.font = '700 48px "Georgia", "Times New Roman", serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'top'
   ctx.fillText(business.name, W / 2, bottomY)
-  bottomY += 65
+  bottomY += 58
 
-  ctx.fillStyle = primary
-  ctx.font = 'italic 36px "Georgia", serif'
+  // "agora no digital" — escurece primary pra ter contraste no fundo branco.
+  // Antes ficava ilegível quando primary era azul claro / cor saturada.
+  ctx.fillStyle = shade(primary, -30)
+  ctx.font = 'italic 32px "Georgia", serif'
   ctx.fillText('agora no digital', W / 2, bottomY)
-  bottomY += 65
+  bottomY += 54
 
   ctx.fillStyle = '#0F172A'
-  ctx.font = '700 34px system-ui, -apple-system, "Helvetica Neue", sans-serif'
+  ctx.font = '700 30px system-ui, -apple-system, "Helvetica Neue", sans-serif'
   ctx.fillText(bookingUrl, W / 2, bottomY)
-  bottomY += 45
+  bottomY += 38
 
-  ctx.fillStyle = 'rgba(15,23,42,0.5)'
-  ctx.font = 'italic 24px "Georgia", serif'
+  ctx.fillStyle = 'rgba(15,23,42,0.45)'
+  ctx.font = 'italic 22px "Georgia", serif'
   ctx.fillText('→ link na bio', W / 2, bottomY)
 
-  drawBrandSeal(ctx, W, H, false)
+  // Selo do feed 1:1 fica EMBUTIDO na faixa branca → some sobreposto com
+  // "link na bio". Renderiza acima da faixa branca (no fundo azul) onde
+  // tem espaço respirando.
+  ctx.save()
+  ctx.font = '500 18px "Georgia", "Times New Roman", serif'
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(
+    'Agendamento por agendapro.net.br',
+    W / 2,
+    H * 0.57,
+  )
+  ctx.restore()
 }
 
 const RENDERERS: Record<TemplateDef['id'], (args: RenderArgs) => Promise<void>> = {
