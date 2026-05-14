@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { IconWhatsapp, IconCheck, IconClose } from '@/components/ui/Icon'
+import { IconWhatsapp, IconCheck, IconClose, IconPencil } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import PaymentMethodModal, { type PaymentMethodChoice } from '@/components/admin/PaymentMethodModal'
+import EditServicesModal from '@/components/admin/EditServicesModal'
 import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
 import { statusOf, canCompleteAppointment } from '@/lib/appointment-status'
 
@@ -48,8 +49,15 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
   // antes, próximo cancelou) precisa do controle. Sem isso o slot fica
   // ocupado mesmo o atendimento já tendo ocorrido.
   const [earlyConfirm, setEarlyConfirm] = useState<null | 'atendi' | 'recebi'>(null)
+  // Modal de edição de serviços (v · 14/05/2026) — disponível em
+  // pending/confirmed/completed/no_show. Acionado pelo lápis ao lado do
+  // chip do serviço. Não toca em pontos · ajuste fica manual no perfil
+  // do cliente.
+  const [editServicesOpen, setEditServicesOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
+
+  const canEditServices = ['pending', 'confirmed', 'completed', 'no_show'].includes(status)
 
   const config = statusOf(status)
   const isPaid = !!appointment.paid_at
@@ -231,7 +239,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
           <div className="flex flex-wrap items-center gap-1.5 min-w-0">
             {appointment.service_name && (
               <span
-                className="text-xs px-2 py-0.5 rounded-full truncate"
+                className="text-xs px-2 py-0.5 rounded-full truncate inline-flex items-center gap-1"
                 style={{
                   background: 'var(--admin-surface-hi)',
                   color: 'var(--admin-text-2)',
@@ -240,6 +248,24 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
               >
                 {appointment.service_name}
               </span>
+            )}
+            {canEditServices && (
+              <button
+                type="button"
+                onClick={() => setEditServicesOpen(true)}
+                aria-label="Editar serviços"
+                title="Editar serviços do agendamento"
+                className="inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
+                style={{
+                  width: 22,
+                  height: 22,
+                  background: 'var(--admin-surface-hi)',
+                  border: '1px solid var(--admin-border)',
+                  color: 'var(--admin-text-mute)',
+                }}
+              >
+                <IconPencil size={11} />
+              </button>
             )}
             {appointment.professional?.name && (
               <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
@@ -483,6 +509,14 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         }}
         onClose={() => !loading && setEarlyConfirm(null)}
       />
+      {editServicesOpen && (
+        <EditServicesModal
+          appointmentId={appointment.id}
+          startTime={appointment.start_time}
+          currentStatus={status}
+          onClose={() => setEditServicesOpen(false)}
+        />
+      )}
     </div>
   )
 }
