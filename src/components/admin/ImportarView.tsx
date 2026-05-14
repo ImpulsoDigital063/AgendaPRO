@@ -137,10 +137,10 @@ export default function ImportarView({
             {CONNECTORS[source].hint}
           </p>
 
-          <label className="block text-sm font-medium">CSV de clientes (obrigatório)</label>
+          <label className="block text-sm font-medium">Arquivo de clientes — CSV ou Excel (obrigatório)</label>
           <input
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={(e) => setClientsFile(e.target.files?.[0] ?? null)}
             className="block w-full text-sm"
           />
@@ -153,11 +153,11 @@ export default function ImportarView({
           {source === 'salao365' && (
             <>
               <label className="block text-sm font-medium pt-2">
-                CSV de agendamentos (opcional)
+                Arquivo de agendamentos — CSV ou Excel (opcional)
               </label>
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 onChange={(e) => setAppointmentsFile(e.target.files?.[0] ?? null)}
                 className="block w-full text-sm"
               />

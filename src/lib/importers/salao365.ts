@@ -18,7 +18,7 @@
  */
 
 import type { CanonicalClient, CanonicalImport, ImportWarning } from './canonical'
-import { findHeader, normalizeEmail, normalizePhoneBR, parseCsv, parseDateFlexible } from './normalize'
+import { findHeader, normalizeEmail, normalizePhoneBR, parseDateFlexible, type SheetRow } from './normalize'
 
 const CLIENT_HEADER_MAP = {
   // Candidatos em ordem de prioridade. Primeiro match vence.
@@ -31,21 +31,20 @@ const CLIENT_HEADER_MAP = {
   lastVisitAt: ['ultimaVisita', 'última visita', 'ultimoAtendimento', 'último atendimento'],
 } as const
 
-export type Salao365ParseInput = {
-  /** Conteúdo do CSV de clientes (texto). */
-  clientsCsv?: string
-  /** Conteúdo do CSV de agendamentos (texto). Opcional — fase 1 foca em clientes. */
-  appointmentsCsv?: string
+export type ConnectorInput = {
+  /** Linhas já parseadas (CSV ou XLSX detectado e convertido na API route). */
+  clientsRows?: SheetRow[]
+  appointmentsRows?: SheetRow[]
 }
 
-export function parseSalao365(input: Salao365ParseInput): CanonicalImport {
+export function parseSalao365(input: ConnectorInput): CanonicalImport {
   const warnings: ImportWarning[] = []
   const clients: CanonicalClient[] = []
 
-  if (input.clientsCsv) {
-    const rows = parseCsv(input.clientsCsv)
+  if (input.clientsRows) {
+    const rows = input.clientsRows
     if (rows.length === 0) {
-      warnings.push({ level: 'info', message: 'CSV de clientes vazio ou sem linhas válidas.' })
+      warnings.push({ level: 'info', message: 'Arquivo de clientes vazio ou sem linhas válidas.' })
     } else {
       const headers = Object.keys(rows[0])
       const nameCol = findHeader(headers, [...CLIENT_HEADER_MAP.name])
@@ -123,13 +122,13 @@ export function parseSalao365(input: Salao365ParseInput): CanonicalImport {
     }
   }
 
-  // Agendamentos: implementação pendente até CSV real chegar — o formato
+  // Agendamentos: implementação pendente até arquivo real chegar — o formato
   // do export de agendamentos do Salão 365 não é público e varia por plano.
-  if (input.appointmentsCsv) {
+  if (input.appointmentsRows && input.appointmentsRows.length > 0) {
     warnings.push({
       level: 'info',
       message:
-        'Connector de agendamentos do Salão 365 ainda não calibrado (aguardando CSV real). Importando apenas clientes nesta versão.',
+        'Connector de agendamentos do Salão 365 ainda não calibrado (aguardando arquivo real). Importando apenas clientes nesta versão.',
     })
   }
 

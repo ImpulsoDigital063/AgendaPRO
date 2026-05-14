@@ -9,7 +9,7 @@
  */
 
 import type { CanonicalImport, ImportSource } from './canonical'
-import { parseSalao365, type Salao365ParseInput } from './salao365'
+import { parseSalao365, type ConnectorInput } from './salao365'
 
 export type ConnectorDef = {
   id: ImportSource
@@ -31,8 +31,8 @@ export const CONNECTORS: Record<ImportSource, ConnectorDef> = {
     hint:
       'No Salão 365: Configurações → Exportar dados → baixar CSV de Clientes. Cole o arquivo aqui.',
     inputFields: [
-      { key: 'clientsCsv', label: 'CSV de clientes', required: true, accept: '.csv,text/csv' },
-      { key: 'appointmentsCsv', label: 'CSV de agendamentos (opcional)', required: false, accept: '.csv,text/csv' },
+      { key: 'clientsCsv', label: 'Arquivo de clientes', required: true, accept: '.csv,.xlsx,text/csv' },
+      { key: 'appointmentsCsv', label: 'Arquivo de agendamentos (opcional)', required: false, accept: '.csv,.xlsx,text/csv' },
     ],
   },
   trinks: {
@@ -49,23 +49,24 @@ export const CONNECTORS: Record<ImportSource, ConnectorDef> = {
   },
   'csv-manual': {
     id: 'csv-manual',
-    label: 'CSV genérico',
+    label: 'CSV ou Excel',
     hint:
-      'Use se seu sistema não tem connector dedicado. Colunas mínimas: nome, telefone. Opcionais: email, aniversário (DD/MM/AAAA), observações.',
+      'Use se seu sistema não tem connector dedicado, ou se você mantém seus clientes numa planilha (Excel, Google Sheets). Colunas mínimas: nome, telefone. Opcionais: email, aniversário (DD/MM/AAAA), observações.',
     inputFields: [
-      { key: 'clientsCsv', label: 'CSV de clientes', required: true, accept: '.csv,text/csv' },
+      { key: 'clientsCsv', label: 'Arquivo de clientes', required: true, accept: '.csv,.xlsx,text/csv' },
     ],
   },
 }
 
 /**
- * Dispatch — recebe source + arquivos brutos e devolve canonical.
+ * Dispatch — recebe source + linhas tabulares (já parseadas de CSV/XLSX)
+ * e devolve canonical.
  *
  * Throw se source não tem connector implementado.
  */
 export function parseBySource(
   source: ImportSource,
-  input: Salao365ParseInput,
+  input: ConnectorInput,
 ): CanonicalImport {
   switch (source) {
     case 'salao365':

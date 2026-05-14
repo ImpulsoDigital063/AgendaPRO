@@ -20,6 +20,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { CONNECTORS, parseBySource, runImport, type ImportSource, type DedupeStrategy } from '@/lib/importers'
+import { parseCsv, parseXlsxBuffer, type SheetRow } from '@/lib/importers/normalize'
+
+async function fileToRows(file: File | null): Promise<SheetRow[] | undefined> {
+  if (!file) return undefined
+  const name = file.name.toLowerCase()
+  const isXlsx = name.endsWith('.xlsx') || file.type.includes('spreadsheetml')
+  if (isXlsx) {
+    return await parseXlsxBuffer(await file.arrayBuffer())
+  }
+  // Default: trata como CSV (texto). Coverage: .csv · sem extensão · text/plain.
+  return parseCsv(await file.text())
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -63,16 +75,23 @@ export async function POST(req: NextRequest) {
   const clientsFile = form.get('clientsCsv')
   const appointmentsFile = form.get('appointmentsCsv')
 
-  const clientsCsv = clientsFile instanceof File ? await clientsFile.text() : undefined
-  const appointmentsCsv = appointmentsFile instanceof File ? await appointmentsFile.text() : undefined
+  let clientsRows: SheetRow[] | undefined
+  let appointmentsRows: SheetRow[] | undefined
+  try {
+    clientsRows = await fileToRows(clientsFile instanceof File ? clientsFile : null)
+    appointmentsRows = await fileToRows(appointmentsFile instanceof File ? appointmentsFile : null)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: `Erro ao ler arquivo: ${msg}` }, { status: 400 })
+  }
 
-  if (!clientsCsv) {
-    return NextResponse.json({ error: 'CSV de clientes obrigatório.' }, { status: 400 })
+  if (!clientsRows || clientsRows.length === 0) {
+    return NextResponse.json({ error: 'Arquivo de clientes obrigatório (vazio ou ilegível).' }, { status: 400 })
   }
 
   let canonical
   try {
-    canonical = parseBySource(source, { clientsCsv, appointmentsCsv })
+    canonical = parseBySource(source, { clientsRows, appointmentsRows })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg }, { status: 400 })

@@ -120,6 +120,12 @@ export function parseMoneyBR(raw: string | null | undefined): number | null {
 }
 
 /**
+ * Linha tabular já parseada (de CSV ou XLSX). Connectors recebem isso —
+ * não precisam saber de qual formato veio.
+ */
+export type SheetRow = Record<string, string>
+
+/**
  * Parse CSV simples — suporta:
  *  - Separador , ou ; (auto-detect pela primeira linha)
  *  - Quoting com aspas duplas (escape de aspas via "")
@@ -132,7 +138,7 @@ export function parseMoneyBR(raw: string | null | undefined): number | null {
  *
  * Retorna array de objetos { [header]: cellValue }.
  */
-export function parseCsv(text: string): Array<Record<string, string>> {
+export function parseCsv(text: string): SheetRow[] {
   if (!text) return []
 
   const lines = text.replace(/\r\n/g, '\n').split('\n').filter((l) => l.length > 0)
@@ -141,16 +147,46 @@ export function parseCsv(text: string): Array<Record<string, string>> {
   const sep = detectSeparator(lines[0])
   const headers = splitCsvLine(lines[0], sep).map((h) => h.trim())
 
-  const rows: Array<Record<string, string>> = []
+  const rows: SheetRow[] = []
   for (let i = 1; i < lines.length; i++) {
     const cells = splitCsvLine(lines[i], sep)
-    const row: Record<string, string> = {}
+    const row: SheetRow = {}
     for (let j = 0; j < headers.length; j++) {
       row[headers[j]] = (cells[j] ?? '').trim()
     }
     rows.push(row)
   }
   return rows
+}
+
+/**
+ * Parse de planilha XLSX (Excel · Google Sheets exportado · LibreOffice).
+ *
+ * Estratégia: lê a primeira aba via SheetJS (xlsx). Converte tudo pra
+ * string — o connector já trata vazio/inválido depois (mesmo caminho do
+ * parseCsv).
+ *
+ * Datas em Excel são serial numbers (45000.5). Não converte aqui — deixa
+ * pro parseDateFlexible no connector lidar com o formato visível (a opção
+ * `raw: false` do sheet_to_json devolve a string formatada como o user vê).
+ */
+export async function parseXlsxBuffer(buffer: ArrayBuffer): Promise<SheetRow[]> {
+  const XLSX = await import('xlsx')
+  const wb = XLSX.read(buffer, { type: 'array' })
+  const firstSheetName = wb.SheetNames[0]
+  if (!firstSheetName) return []
+  const sheet = wb.Sheets[firstSheetName]
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    defval: '',
+    raw: false,
+  })
+  return rows.map((r) => {
+    const out: SheetRow = {}
+    for (const k of Object.keys(r)) {
+      out[k.trim()] = String(r[k] ?? '').trim()
+    }
+    return out
+  })
 }
 
 function detectSeparator(headerLine: string): ',' | ';' {
