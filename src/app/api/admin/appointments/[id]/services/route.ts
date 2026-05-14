@@ -25,6 +25,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
@@ -324,6 +325,13 @@ export async function PATCH(
     target_id: appointmentId,
     description: `Serviços atualizados: ${services.map((s) => s.name).join(' + ')} · R$ ${totalPrice.toFixed(2).replace('.', ',')} · ${totalDurationMin}min`,
   })
+
+  // Invalida cache server-side de getAppointmentsToday/Upcoming (unstable_cache
+  // com revalidate 15s). Sem isso, router.refresh() no client iria buscar
+  // server component que ainda lê do cache · UI mostraria dados antigos
+  // por até 15s.
+  revalidatePath('/admin')
+  revalidatePath('/profissional')
 
   return NextResponse.json({
     ok: true,

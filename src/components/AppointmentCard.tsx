@@ -257,14 +257,14 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
                 title="Editar serviços do agendamento"
                 className="inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
                 style={{
-                  width: 22,
-                  height: 22,
+                  width: 24,
+                  height: 24,
                   background: 'var(--admin-surface-hi)',
                   border: '1px solid var(--admin-border)',
                   color: 'var(--admin-text-mute)',
                 }}
               >
-                <IconPencil size={11} />
+                <IconPencil size={13} />
               </button>
             )}
             {appointment.professional?.name && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconClose, IconCheck } from '@/components/ui/Icon'
 
@@ -48,6 +48,13 @@ export default function EditServicesModal({
   const [services, setServices] = useState<Service[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
+  // Flag pra evitar setState após unmount em fluxos async (cancelar
+  // durante fetch, fechar antes de salvar concluir). React 18 não loga
+  // mais o warning, mas continua boa prática evitar memory leaks.
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    return () => { mountedRef.current = false }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -104,15 +111,23 @@ export default function EditServicesModal({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(data.error || 'Erro ao salvar')
-        setSaving(false)
+        if (mountedRef.current) {
+          setError(data.error || 'Erro ao salvar')
+        }
         return
       }
       router.refresh()
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro')
-      setSaving(false)
+      if (mountedRef.current) {
+        setError(e instanceof Error ? e.message : 'Erro')
+      }
+    } finally {
+      // Garante que botão "Salvando..." nunca trava — vale pra sucesso
+      // (modal vai desmontar mas defensive), erro tratado e exceção.
+      if (mountedRef.current) {
+        setSaving(false)
+      }
     }
   }
 
