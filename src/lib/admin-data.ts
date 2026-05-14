@@ -205,6 +205,8 @@ export type FocoDoDia = {
   pendingClaims: number
   pendingPayments: { count: number; total: number }
   sumidosSemCupom: number
+  /** v42 · 14/05 — aniversariantes do mês atual sem cupom ativo */
+  aniversariantesSemCupom: number
   cupomExpirando: number
   lucroVsAnterior: { current: number; previous: number; pct: number | null } | null
 }
@@ -364,10 +366,41 @@ export const getFocoDoDia = unstable_cache(
     const prevLucro = prevRev - prevExp
     const pct = prevLucro > 0 ? ((currentLucro - prevLucro) / prevLucro) * 100 : null
 
+    // Aniversariantes do mês sem cupom ativo (v42 · 14/05)
+    const currentMonth = today.getMonth() + 1
+    const monthStr = String(currentMonth).padStart(2, '0')
+    const { data: customersWithBirthday } = await admin
+      .from('customers')
+      .select('id, birthday')
+      .eq('business_id', businessId)
+      .not('birthday', 'is', null)
+
+    const aniversariantesIds = (customersWithBirthday || [])
+      .filter((c) => typeof c.birthday === 'string' && c.birthday.slice(5, 7) === monthStr)
+      .map((c) => c.id)
+
+    const { data: activeCouponsForBday } = aniversariantesIds.length > 0
+      ? await admin
+          .from('coupons')
+          .select('customer_id')
+          .eq('business_id', businessId)
+          .is('used_at', null)
+          .gt('expires_at', nowIso)
+      : { data: [] }
+    const bdayActiveCouponSet = new Set(
+      (activeCouponsForBday || [])
+        .map((c) => c.customer_id)
+        .filter(Boolean) as string[]
+    )
+    const aniversariantesSemCupom = aniversariantesIds.filter(
+      (id) => !bdayActiveCouponSet.has(id)
+    ).length
+
     return {
       pendingClaims: claimsRes.count ?? 0,
       pendingPayments: { count: pendingPaymentsRes.data?.length ?? 0, total: pendingTotal },
       sumidosSemCupom,
+      aniversariantesSemCupom,
       cupomExpirando: couponsRes.data?.length ?? 0,
       lucroVsAnterior: currentRev > 0 || prevRev > 0
         ? { current: currentLucro, previous: prevLucro, pct }

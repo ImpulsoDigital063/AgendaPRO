@@ -128,6 +128,55 @@ export function suggestTemplates(description: string | null | undefined): string
 }
 
 /**
+ * Templates de mensagem de ANIVERSÁRIO (v42 · 14/05/2026).
+ *
+ * Trigger separado do "Oi Sumido" — tom mais celebrativo, foco no mês
+ * de aniversário do cliente. Cliente recebe via WhatsApp do dono no
+ * início do mês de aniversário e tem até a validade pra agendar.
+ *
+ * Placeholders idênticos aos do oi-sumido (reusa fillTemplate).
+ */
+const BIRTHDAY_TEMPLATES: Record<CategoryKey, string[]> = {
+  barbearia: [
+    'Fala {nome}! Tá fazendo aniversário esse mês 🎉 Te dei {desconto} de desconto na próxima visita à {negocio}. Vale {validade}: {link}',
+    '{nome}, mês de aniversário pede uma boa visita à {negocio}! Separei {desconto} de presente — vale {validade}: {link}',
+  ],
+  salao: [
+    'Oi {nome}, feliz mês de aniversário! 🎉 Preparei {desconto} de desconto na próxima sessão aqui no {negocio}. Vale {validade}: {link}',
+    '{nome}, o mês é todo seu! Tem {desconto} de presente de aniversário na sua próxima visita ao {negocio}. Vale {validade}: {link}',
+  ],
+  estetica: [
+    'Oi {nome}, feliz mês de aniversário! 🎉 Tem {desconto} de desconto te esperando na próxima sessão na {negocio}. Vale {validade}: {link}',
+    '{nome}, presente de aniversário: {desconto} na próxima visita à {negocio}. Vale {validade}: {link}',
+  ],
+  nail: [
+    'Oi {nome}, feliz mês de aniversário! 🎉 Separei {desconto} de desconto na próxima nail na {negocio}. Vale {validade}: {link}',
+    '{nome}, mês de aniversário merece nail nova! Tem {desconto} de presente na {negocio} — vale {validade}: {link}',
+  ],
+  manicure: [
+    'Oi {nome}, feliz mês de aniversário! 🎉 Tem {desconto} de desconto na próxima visita à {negocio}. Vale {validade}: {link}',
+  ],
+  tatuagem: [
+    'Fala {nome}, mês de aniversário! Pra comemorar, separei {desconto} de desconto na próxima sessão na {negocio}. Vale {validade}: {link}',
+  ],
+  psicologo: [
+    'Oi {nome}, feliz mês de aniversário. Quando quiser, tem {desconto} de desconto na próxima sessão. Vale {validade}: {link}',
+  ],
+  personal: [
+    'Fala {nome}, feliz mês de aniversário! 🎉 Tem {desconto} de desconto na próxima sessão pra você comemorar com saúde. Vale {validade}: {link}',
+  ],
+  generic: [
+    'Oi {nome}, feliz mês de aniversário! 🎉 Preparei {desconto} de desconto na próxima visita à {negocio}. Vale {validade}: {link}',
+    '{nome}, mês especial pede presente: {desconto} de desconto na {negocio} — vale {validade}: {link}',
+  ],
+}
+
+export function suggestBirthdayTemplates(description: string | null | undefined): string[] {
+  const cat = detectCategory(description)
+  return BIRTHDAY_TEMPLATES[cat] || BIRTHDAY_TEMPLATES.generic
+}
+
+/**
  * Substitui placeholders do template por valores reais.
  */
 export function fillTemplate(

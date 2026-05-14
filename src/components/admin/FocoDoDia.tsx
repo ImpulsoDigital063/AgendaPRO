@@ -74,7 +74,7 @@ export default function FocoDoDia({ data }: { data: FocoDoDia }) {
   if (data.sumidosSemCupom > 0) {
     cards.push({
       key: 'sumidos',
-      href: '/admin/clientes/reativar',
+      href: '/admin/clientes/campanhas?tab=sumidos',
       bg: 'linear-gradient(135deg, rgba(239,68,68,0.10), rgba(239,68,68,0.04))',
       border: 'rgba(239,68,68,0.28)',
       icon: '🎯',
@@ -83,6 +83,22 @@ export default function FocoDoDia({ data }: { data: FocoDoDia }) {
       title: `${data.sumidosSemCupom} sumido${data.sumidosSemCupom > 1 ? 's' : ''} sem cupom`,
       subtitle: 'Gere campanha de reativação via WhatsApp',
       ctaColor: '#EF4444',
+    })
+  }
+
+  // 3b. Aniversariantes do mês sem cupom (v42)
+  if (data.aniversariantesSemCupom > 0) {
+    cards.push({
+      key: 'aniversariantes',
+      href: '/admin/clientes/campanhas?tab=aniversariantes',
+      bg: 'linear-gradient(135deg, rgba(59,130,246,0.10), rgba(59,130,246,0.04))',
+      border: 'rgba(59,130,246,0.28)',
+      icon: '🎂',
+      iconBg: 'rgba(59,130,246,0.18)',
+      iconColor: '#3B82F6',
+      title: `${data.aniversariantesSemCupom} aniversariante${data.aniversariantesSemCupom > 1 ? 's' : ''} esse mês`,
+      subtitle: 'Dispare cupom de aniversário via WhatsApp',
+      ctaColor: '#3B82F6',
     })
   }
 
