@@ -261,6 +261,10 @@ export default function BookingFlow({
   const [clientName, setClientName] = useState(prefill?.name || '')
   const [clientPhone, setClientPhone] = useState(prefill?.phone || '')
   const [clientEmail, setClientEmail] = useState(prefill?.email || '')
+  // v42 · 14/05/2026 — aniversário OPCIONAL pra captura passiva no booking.
+  // Cliente final NÃO faz cadastro · esse campo só captura quando ele quiser
+  // (gancho de lembrança de aniversário). Vazio = não preenche · nunca sobrescreve.
+  const [clientBirthday, setClientBirthday] = useState('')
 
   // Modal "você já tem outro agendamento esse dia"
   const [showOtherApptAlert, setShowOtherApptAlert] = useState(!!prefill?.otherAppointment)
@@ -696,22 +700,29 @@ export default function BookingFlow({
     // 1b. Criar ou recuperar customer do negócio (para pontos)
     const { data: existingCustomer } = await supabase
       .from('customers')
-      .select('id, total_points')
+      .select('id, total_points, birthday')
       .eq('business_id', business.id)
       .eq('phone', clientPhone.trim())
       .maybeSingle()
 
     let customerId: string | null = existingCustomer?.id ?? null
 
+    // v42 · birthday é opcional · só preenche se cliente forneceu.
+    // Cliente input type=date entrega 'YYYY-MM-DD' ou string vazia.
+    const birthdayInput = clientBirthday.trim()
+    const validBirthday = /^\d{4}-\d{2}-\d{2}$/.test(birthdayInput) ? birthdayInput : null
+
     if (!customerId) {
+      const insertData: Record<string, unknown> = {
+        business_id: business.id,
+        name: clientName.trim(),
+        phone: clientPhone.trim(),
+        email: clientEmail.trim() || null,
+      }
+      if (validBirthday) insertData.birthday = validBirthday
       const { data: newCustomer } = await supabase
         .from('customers')
-        .insert({
-          business_id: business.id,
-          name: clientName.trim(),
-          phone: clientPhone.trim(),
-          email: clientEmail.trim() || null,
-        })
+        .insert(insertData)
         .select('id, referral_code')
         .single()
       customerId = newCustomer?.id ?? null
@@ -727,6 +738,16 @@ export default function BookingFlow({
         .single()
       if (existingFull?.referral_code) {
         setMyReferralLink(`${window.location.origin}/${business.slug}?ref=${existingFull.referral_code}`)
+      }
+
+      // v42 · "preenche se faltar" — se cliente já existe SEM birthday e
+      // agora forneceu, atualiza. Se já tinha, não sobrescreve (respeita
+      // dado prévio do import ou edição manual do dono).
+      if (validBirthday && !existingCustomer?.birthday) {
+        await supabase
+          .from('customers')
+          .update({ birthday: validBirthday })
+          .eq('id', customerId)
       }
     }
 
@@ -2078,6 +2099,24 @@ export default function BookingFlow({
                 value={clientEmail}
                 onChange={(e) => setClientEmail(e.target.value)}
                 placeholder="seu@email.com"
+                className="w-full rounded-xl px-4 py-3 focus:outline-none text-sm"
+                style={{
+                  background: C.input,
+                  border: `1px solid ${C.border}`,
+                  color: C.text,
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1 font-medium" style={{ color: C.body }}>
+                Aniversário <span className="font-normal" style={{ color: C.faded }}>(opcional — pra você receber uma lembrança no seu mês)</span>
+              </label>
+              <input
+                type="date"
+                value={clientBirthday}
+                onChange={(e) => setClientBirthday(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
                 className="w-full rounded-xl px-4 py-3 focus:outline-none text-sm"
                 style={{
                   background: C.input,
