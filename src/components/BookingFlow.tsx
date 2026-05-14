@@ -709,8 +709,20 @@ export default function BookingFlow({
 
     // v42 · birthday é opcional · só preenche se cliente forneceu.
     // Cliente input type=date entrega 'YYYY-MM-DD' ou string vazia.
+    // Round-trip pra validar data REAL (rejeita 30/02 e similares que
+    // passam no regex mas Date corrige silenciosamente).
     const birthdayInput = clientBirthday.trim()
-    const validBirthday = /^\d{4}-\d{2}-\d{2}$/.test(birthdayInput) ? birthdayInput : null
+    let validBirthday: string | null = null
+    if (/^\d{4}-\d{2}-\d{2}$/.test(birthdayInput)) {
+      const [by, bm, bd] = birthdayInput.split('-').map(Number)
+      const bDate = new Date(`${birthdayInput}T00:00:00Z`)
+      const isReal =
+        bDate.getUTCFullYear() === by &&
+        bDate.getUTCMonth() + 1 === bm &&
+        bDate.getUTCDate() === bd
+      const isPastOrToday = bDate.getTime() <= Date.now()
+      if (isReal && isPastOrToday) validBirthday = birthdayInput
+    }
 
     if (!customerId) {
       const insertData: Record<string, unknown> = {

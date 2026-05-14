@@ -261,7 +261,12 @@ export const getFocoDoDia = unstable_cache(
         .select('client_id, appointment_date')
         .eq('business_id', businessId)
         .not('client_id', 'is', null)
-        .order('appointment_date', { ascending: false }),
+        .order('appointment_date', { ascending: false })
+        // LIMIT defensivo · businesses com 10k+ agendamentos teriam query
+        // lenta. 10k cobre ~ano de uso de salão movimentado (30 agend/dia).
+        // Cliente cujo último agendamento esteja além disso = sumido absoluto
+        // e não muda decisão de campanha.
+        .limit(10000),
       admin
         .from('coupons')
         .select('id, customer_id, used_at, expires_at')

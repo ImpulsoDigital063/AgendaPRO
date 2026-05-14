@@ -59,6 +59,9 @@ export default async function CampanhasPage({
     .eq('business_id', business.id)
     .not('client_id', 'is', null)
     .order('appointment_date', { ascending: false })
+    // LIMIT defensivo idêntico ao FocoDoDia (admin-data.ts). 10k cobre
+    // ~ano de salão movimentado · evita scan de tabela em base grande.
+    .limit(10000)
 
   const lastByClient = new Map<string, string>()
   for (const a of lastAppts || []) {

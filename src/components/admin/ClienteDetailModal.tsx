@@ -222,14 +222,24 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
     if (!customer) return
     const trimmedName = editName.trim()
     if (!trimmedName) return
+    if (trimmedName.length > 200) {
+      setPointsError('Nome muito longo (máx 200 caracteres)')
+      return
+    }
+    const trimmedEmail = editEmail.trim()
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setPointsError('Email inválido')
+      return
+    }
     const trimmedBirthday = editBirthday.trim()
     const trimmedNotes = editNotes.trim()
+    setPointsError(null)
     const res = await fetch(`/api/admin/customers/${customerId}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         name: trimmedName,
-        email: editEmail.trim(),
+        email: trimmedEmail,
         birthday: trimmedBirthday || null,
         notes: trimmedNotes || null,
       }),
@@ -238,12 +248,20 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
       setCustomer({
         ...customer,
         name: trimmedName,
-        email: editEmail.trim() || null,
+        email: trimmedEmail || null,
         birthday: trimmedBirthday || null,
         notes: trimmedNotes || null,
       })
       setEditing(false)
       router.refresh()
+    } else {
+      const data = await res.json().catch(() => ({}))
+      const map: Record<string, string> = {
+        email_invalid_format: 'Email inválido',
+        birthday_invalid_format: 'Data de aniversário inválida',
+        name_too_long: 'Nome muito longo',
+      }
+      setPointsError(map[data.error] || 'Erro ao salvar')
     }
   }
 

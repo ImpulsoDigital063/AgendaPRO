@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 
+// Valida que a string é uma data ISO REAL (não só "regex passa").
+// "2024-02-30" passa no regex YYYY-MM-DD mas não existe — Date corrige
+// pra 2024-03-01 silenciosamente. Checamos round-trip pra garantir
+// equivalência exata.
+function isValidIsoDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+  const [y, m, d] = s.split('-').map(Number)
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false
+  const date = new Date(`${s}T00:00:00Z`)
+  return (
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() + 1 === m &&
+    date.getUTCDate() === d
+  )
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const NAME_MAX_LEN = 200
+
 /**
  * GET /api/admin/customers/[id]
  *
@@ -181,14 +200,30 @@ export async function PATCH(
     notes?: string | null
   } = {}
 
-  if (typeof body.name === 'string' && body.name.trim()) updates.name = body.name.trim()
-  if ('email' in body) updates.email = body.email?.trim?.() || null
+  if (typeof body.name === 'string' && body.name.trim()) {
+    const trimmedName = body.name.trim()
+    if (trimmedName.length > NAME_MAX_LEN) {
+      return NextResponse.json({ error: 'name_too_long' }, { status: 400 })
+    }
+    updates.name = trimmedName
+  }
+  if ('email' in body) {
+    const rawEmail = typeof body.email === 'string' ? body.email.trim() : ''
+    if (!rawEmail) {
+      updates.email = null
+    } else if (!EMAIL_RE.test(rawEmail)) {
+      return NextResponse.json({ error: 'email_invalid_format' }, { status: 400 })
+    } else {
+      updates.email = rawEmail.toLowerCase()
+    }
+  }
   if ('birthday' in body) {
-    // Aceita YYYY-MM-DD ou null/'' (limpa). Qualquer outra string vira erro.
+    // Aceita YYYY-MM-DD VÁLIDO (passa por validação de calendário real)
+    // ou null/'' pra limpar. 30/02, mês 13, ano com 2 dígitos etc → 400.
     const v = body.birthday
     if (v === null || v === '' || v === undefined) {
       updates.birthday = null
-    } else if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    } else if (typeof v === 'string' && isValidIsoDate(v)) {
       updates.birthday = v
     } else {
       return NextResponse.json({ error: 'birthday_invalid_format' }, { status: 400 })
@@ -208,10 +243,13 @@ export async function PATCH(
     return NextResponse.json({ error: 'no_changes' }, { status: 400 })
   }
 
-  // Validacao via business+owner (mesma logica do GET)
+  // Validacao via business+owner (mesma logica do GET).
+  // Lê valores ATUAIS de name/email pra comparar antes de espelhar em
+  // `clients` (legado v2 · global por phone) — evita disparar UPDATE em
+  // outros businesses que compartilham telefone quando nada mudou.
   const { data: customer } = await supabase
     .from('customers')
-    .select('id, business_id, phone')
+    .select('id, business_id, phone, name, email')
     .eq('id', id)
     .single()
   if (!customer) return NextResponse.json({ error: 'not_found' }, { status: 404 })
@@ -227,13 +265,19 @@ export async function PATCH(
   const { error: custErr } = await supabase.from('customers').update(updates).eq('id', id)
   if (custErr) return NextResponse.json({ error: 'update_failed' }, { status: 500 })
 
-  // Espelha em `clients` (universal) — mesmo phone. Apenas name + email
-  // (clients é tabela global v2 sem birthday/notes — campos novos ficam só
-  // em customers).
-  if (updates.name || 'email' in updates) {
-    const clientsUpdate: { name?: string; email?: string | null } = {}
-    if (updates.name) clientsUpdate.name = updates.name
-    if ('email' in updates) clientsUpdate.email = updates.email
+  // Espelha em `clients` (universal v2) APENAS quando name ou email
+  // efetivamente mudaram. `clients` é tabela global por phone — se
+  // 2 businesses compartilham phone (cliente comum a 2 salões), um
+  // UPDATE sem mudança real propagaria estado desnecessariamente.
+  // Por isso comparamos com valores atuais antes de tocar.
+  const clientsUpdate: { name?: string; email?: string | null } = {}
+  if (updates.name && updates.name !== customer.name) {
+    clientsUpdate.name = updates.name
+  }
+  if ('email' in updates && updates.email !== customer.email) {
+    clientsUpdate.email = updates.email
+  }
+  if (Object.keys(clientsUpdate).length > 0) {
     await supabase.from('clients').update(clientsUpdate).eq('phone', customer.phone)
   }
 
