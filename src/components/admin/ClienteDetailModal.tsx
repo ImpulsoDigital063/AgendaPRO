@@ -13,6 +13,33 @@ type Customer = {
   total_points: number
   referral_code: string | null
   created_at: string
+  // v42 · 14/05/2026
+  birthday: string | null         // 'YYYY-MM-DD' ou null
+  notes: string | null
+  import_source: 'salao365' | 'trinks' | 'booksy' | 'csv-manual' | null
+  imported_at: string | null
+}
+
+const IMPORT_SOURCE_LABEL: Record<NonNullable<Customer['import_source']>, string> = {
+  salao365: 'Salão 365',
+  trinks: 'Trinks',
+  booksy: 'Booksy',
+  'csv-manual': 'Planilha',
+}
+
+function formatBirthday(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function calcAge(iso: string): number {
+  const [y, m, d] = iso.split('-').map(Number)
+  const today = new Date()
+  let age = today.getFullYear() - y
+  const m1 = today.getMonth() + 1
+  const d1 = today.getDate()
+  if (m1 < m || (m1 === m && d1 < d)) age--
+  return age
 }
 
 type Appointment = {
@@ -91,6 +118,9 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  // v42 · campos novos
+  const [editBirthday, setEditBirthday] = useState('')
+  const [editNotes, setEditNotes] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -112,6 +142,8 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
         setRewards(data.rewards ?? [])
         setEditName(data.customer.name)
         setEditEmail(data.customer.email || '')
+        setEditBirthday(data.customer.birthday || '')
+        setEditNotes(data.customer.notes || '')
       } catch (e) {
         if (cancelled) return
         setError(e instanceof Error ? e.message : 'Erro')
@@ -190,13 +222,26 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
     if (!customer) return
     const trimmedName = editName.trim()
     if (!trimmedName) return
+    const trimmedBirthday = editBirthday.trim()
+    const trimmedNotes = editNotes.trim()
     const res = await fetch(`/api/admin/customers/${customerId}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: trimmedName, email: editEmail.trim() }),
+      body: JSON.stringify({
+        name: trimmedName,
+        email: editEmail.trim(),
+        birthday: trimmedBirthday || null,
+        notes: trimmedNotes || null,
+      }),
     })
     if (res.ok) {
-      setCustomer({ ...customer, name: trimmedName, email: editEmail.trim() || null })
+      setCustomer({
+        ...customer,
+        name: trimmedName,
+        email: editEmail.trim() || null,
+        birthday: trimmedBirthday || null,
+        notes: trimmedNotes || null,
+      })
       setEditing(false)
       router.refresh()
     }
@@ -277,6 +322,18 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                   <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
                     Cliente desde {formatDate(customer.created_at.split('T')[0])}
                   </p>
+                  {customer.import_source && (
+                    <p
+                      className="text-[10px] font-semibold uppercase tracking-wider mt-1 inline-block px-2 py-0.5 rounded"
+                      style={{
+                        background: 'rgba(59,130,246,0.12)',
+                        color: '#3B82F6',
+                        border: '1px solid rgba(59,130,246,0.25)',
+                      }}
+                    >
+                      Importado · {IMPORT_SOURCE_LABEL[customer.import_source]}
+                    </p>
+                  )}
                 </div>
                 {!editing && (
                   <button
@@ -443,27 +500,80 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                   </p>
                 ) : null}
 
-                {editing && (
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => { setEditing(false); setEditName(customer.name); setEditEmail(customer.email || '') }}
-                      className="flex-1 py-2 rounded-lg text-xs font-semibold"
-                      style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={saveEdit}
-                      className="flex-1 py-2 rounded-lg text-xs font-semibold"
-                      style={{ background: 'var(--admin-accent)', color: '#fff' }}
-                    >
-                      Salvar
-                    </button>
-                  </div>
-                )}
               </div>
+
+              {/* Aniversário (v42) — view ou edit. Em view só renderiza
+                  se houver data; em edit sempre aparece pra permitir
+                  preencher pela primeira vez. */}
+              {(customer.birthday || editing) && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                    Aniversário
+                  </p>
+                  {editing ? (
+                    <input
+                      type="date"
+                      value={editBirthday}
+                      onChange={(e) => setEditBirthday(e.target.value)}
+                      className="admin-input w-full px-3 py-2.5 text-sm"
+                    />
+                  ) : customer.birthday ? (
+                    <p className="text-sm px-3 py-2.5 rounded-xl" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
+                      {formatBirthday(customer.birthday)} · {calcAge(customer.birthday)} anos
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              {/* Observações / ficha de anamnese (v42) */}
+              {(customer.notes || editing) && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                    Observações / ficha
+                  </p>
+                  {editing ? (
+                    <textarea
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      rows={3}
+                      maxLength={1000}
+                      placeholder="Alergias, preferências, histórico relevante..."
+                      className="admin-input w-full px-3 py-2.5 text-sm resize-y"
+                    />
+                  ) : customer.notes ? (
+                    <p className="text-sm px-3 py-2.5 rounded-xl whitespace-pre-wrap" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
+                      {customer.notes}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              {editing && (
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditing(false)
+                      setEditName(customer.name)
+                      setEditEmail(customer.email || '')
+                      setEditBirthday(customer.birthday || '')
+                      setEditNotes(customer.notes || '')
+                    }}
+                    className="flex-1 py-2 rounded-lg text-xs font-semibold"
+                    style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    className="flex-1 py-2 rounded-lg text-xs font-semibold"
+                    style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                  >
+                    Salvar
+                  </button>
+                </div>
+              )}
 
               {/* Histórico */}
               <div className="space-y-2">

@@ -28,7 +28,7 @@ export async function GET(
   // Customer + business filtrado pelo owner — RLS garante seguranca
   const { data: customer, error: custErr } = await supabase
     .from('customers')
-    .select('id, business_id, name, phone, email, total_points, referral_code, created_at')
+    .select('id, business_id, name, phone, email, total_points, referral_code, created_at, birthday, notes, import_source, imported_at')
     .eq('id', id)
     .single()
 
@@ -142,6 +142,11 @@ export async function GET(
       total_points: customer.total_points ?? 0,
       referral_code: customer.referral_code,
       created_at: customer.created_at,
+      // v42 · 14/05/2026 — campos novos (todos nullable)
+      birthday: customer.birthday ?? null,
+      notes: customer.notes ?? null,
+      import_source: customer.import_source ?? null,
+      imported_at: customer.imported_at ?? null,
     },
     history,
     pointsHistory,
@@ -169,10 +174,35 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
-  const updates: { name?: string; email?: string | null } = {}
+  const updates: {
+    name?: string
+    email?: string | null
+    birthday?: string | null
+    notes?: string | null
+  } = {}
 
   if (typeof body.name === 'string' && body.name.trim()) updates.name = body.name.trim()
   if ('email' in body) updates.email = body.email?.trim?.() || null
+  if ('birthday' in body) {
+    // Aceita YYYY-MM-DD ou null/'' (limpa). Qualquer outra string vira erro.
+    const v = body.birthday
+    if (v === null || v === '' || v === undefined) {
+      updates.birthday = null
+    } else if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      updates.birthday = v
+    } else {
+      return NextResponse.json({ error: 'birthday_invalid_format' }, { status: 400 })
+    }
+  }
+  if ('notes' in body) {
+    const v = body.notes
+    if (v === null || v === '' || v === undefined) {
+      updates.notes = null
+    } else if (typeof v === 'string') {
+      // Limita pra evitar abuso (1000 chars cobre ficha de anamnese razoável)
+      updates.notes = v.trim().slice(0, 1000)
+    }
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'no_changes' }, { status: 400 })
@@ -197,9 +227,14 @@ export async function PATCH(
   const { error: custErr } = await supabase.from('customers').update(updates).eq('id', id)
   if (custErr) return NextResponse.json({ error: 'update_failed' }, { status: 500 })
 
-  // Espelha em `clients` (universal) — mesmo phone
+  // Espelha em `clients` (universal) — mesmo phone. Apenas name + email
+  // (clients é tabela global v2 sem birthday/notes — campos novos ficam só
+  // em customers).
   if (updates.name || 'email' in updates) {
-    await supabase.from('clients').update(updates).eq('phone', customer.phone)
+    const clientsUpdate: { name?: string; email?: string | null } = {}
+    if (updates.name) clientsUpdate.name = updates.name
+    if ('email' in updates) clientsUpdate.email = updates.email
+    await supabase.from('clients').update(clientsUpdate).eq('phone', customer.phone)
   }
 
   return NextResponse.json({ ok: true })
