@@ -75,6 +75,12 @@ export type Customer = {
   referral_code: string
   referred_by: string | null
   created_at: string
+  // Import + fichas (v42 · 14/05/2026) — opcionais até migration rodar
+  birthday?: string | null
+  notes?: string | null
+  import_source?: 'salao365' | 'trinks' | 'booksy' | 'csv-manual' | null
+  import_external_id?: string | null
+  imported_at?: string | null
 }
 
 export type Reward = {
@@ -152,6 +158,8 @@ export type Appointment = {
   reminded_1d: boolean
   reminded_1h: boolean
   created_at: string
+  // FK pra customers (v42 · 14/05/2026) — paralelo ao client_id legado da v2
+  customer_id?: string | null
 }
 
 export type AppointmentWithDetails = Appointment & {
