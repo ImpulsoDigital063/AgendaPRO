@@ -54,6 +54,14 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
   // chip do serviço. Não toca em pontos · ajuste fica manual no perfil
   // do cliente.
   const [editServicesOpen, setEditServicesOpen] = useState(false)
+  // Punição por no-show (v45 · 14/05/2026) — lazy-load quando status=no_show.
+  // Mostra tag "−Xpts" + botão "Reverter" se houve punição aplicada.
+  const [penaltyInfo, setPenaltyInfo] = useState<{
+    hasPenalty: boolean
+    penaltyPoints: number | null
+    alreadyRelevado: boolean
+  } | null>(null)
+  const [revertingPenalty, setRevertingPenalty] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
 
@@ -87,6 +95,40 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [menuOpen])
+
+  // Carrega penalty info quando status=no_show (v45 · lazy-load)
+  useEffect(() => {
+    if (status !== 'no_show') return
+    let cancelled = false
+    fetch(`/api/admin/appointments/${appointment.id}/penalty-info`, {
+      cache: 'no-store',
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (cancelled || !data) return
+        setPenaltyInfo({
+          hasPenalty: !!data.hasPenalty,
+          penaltyPoints: data.penaltyPoints ?? null,
+          alreadyRelevado: !!data.alreadyRelevado,
+        })
+      })
+      .catch(() => { /* silently */ })
+    return () => { cancelled = true }
+  }, [status, appointment.id])
+
+  async function reverterPunicao() {
+    if (revertingPenalty) return
+    setRevertingPenalty(true)
+    const res = await fetch(`/api/admin/appointments/${appointment.id}/relevar`, {
+      method: 'POST',
+    })
+    setRevertingPenalty(false)
+    if (res.ok) {
+      // Atualiza estado local · evita refetch desnecessário
+      setPenaltyInfo((prev) => (prev ? { ...prev, alreadyRelevado: true } : prev))
+      router.refresh()
+    }
+  }
 
   async function updateStatus(newStatus: 'confirmed' | 'cancelled' | 'no_show' | 'completed') {
     setLoading(true)
@@ -229,6 +271,32 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
                 title={`Pago via ${appointment.payment_method ?? 'dinheiro'}`}
               >
                 <span aria-hidden>$</span> Pago
+              </span>
+            )}
+            {penaltyInfo?.hasPenalty && penaltyInfo.penaltyPoints != null && !penaltyInfo.alreadyRelevado && (
+              <span
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                style={{
+                  background: 'rgba(239,68,68,0.12)',
+                  color: '#EF4444',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                }}
+                title="Cliente perdeu pontos por não comparecer"
+              >
+                −{penaltyInfo.penaltyPoints} pts
+              </span>
+            )}
+            {penaltyInfo?.alreadyRelevado && (
+              <span
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                style={{
+                  background: 'rgba(148,163,184,0.12)',
+                  color: 'var(--admin-text-mute)',
+                  border: '1px solid rgba(148,163,184,0.25)',
+                }}
+                title="Punição revertida pelo dono"
+              >
+                Punição revertida
               </span>
             )}
           </div>
@@ -439,6 +507,28 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Ação · Reverter punição quando status=no_show e houve penalty não revertida (v45 · 14/05/2026) */}
+        {status === 'no_show' && penaltyInfo?.hasPenalty && !penaltyInfo.alreadyRelevado && (
+          <div className="pl-[64px] pt-2">
+            <button
+              type="button"
+              onClick={reverterPunicao}
+              disabled={revertingPenalty}
+              className="text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center gap-1.5 disabled:opacity-50"
+              style={{
+                background: 'var(--admin-surface-hi)',
+                color: 'var(--admin-text)',
+                border: '1px solid var(--admin-border)',
+              }}
+              title="Devolver os pontos descontados (caso de emergência real)"
+            >
+              {revertingPenalty
+                ? 'Revertendo...'
+                : `Reverter punição · devolver ${penaltyInfo.penaltyPoints} pts`}
+            </button>
           </div>
         )}
       </div>

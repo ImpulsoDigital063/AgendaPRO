@@ -102,6 +102,22 @@ export default function FocoDoDia({ data }: { data: FocoDoDia }) {
     })
   }
 
+  // 3c. Punições por no-show aplicadas hoje (v45 · descoberta no FocoDoDia)
+  if (data.noShowPenaltiesToday > 0) {
+    cards.push({
+      key: 'no-show-penalties',
+      href: '/admin', // dono volta pra home pra revisar cards no_show
+      bg: 'linear-gradient(135deg, rgba(148,163,184,0.10), rgba(148,163,184,0.04))',
+      border: 'rgba(148,163,184,0.28)',
+      icon: '⚠️',
+      iconBg: 'rgba(148,163,184,0.18)',
+      iconColor: '#64748B',
+      title: `${data.noShowPenaltiesToday} punição${data.noShowPenaltiesToday > 1 ? 'ões' : ''} de no-show nas últimas 24h`,
+      subtitle: 'Cliente teve emergência? Reverte no card do agendamento',
+      ctaColor: '#64748B',
+    })
+  }
+
   // 4. Cupons expirando (ate amanha)
   if (data.cupomExpirando > 0) {
     cards.push({

@@ -208,6 +208,8 @@ export type FocoDoDia = {
   /** v42 · 14/05 — aniversariantes do mês atual sem cupom ativo */
   aniversariantesSemCupom: number
   cupomExpirando: number
+  /** v45 · 14/05 — punições aplicadas nas últimas 24h ainda não revertidas */
+  noShowPenaltiesToday: number
   lucroVsAnterior: { current: number; previous: number; pct: number | null } | null
 }
 
@@ -401,12 +403,40 @@ export const getFocoDoDia = unstable_cache(
       (id) => !bdayActiveCouponSet.has(id)
     ).length
 
+    // Punições por no-show aplicadas nas últimas 24h ainda não revertidas (v45)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayIso = yesterday.toISOString()
+    const { data: penalties } = await admin
+      .from('points_transactions')
+      .select('appointment_id')
+      .eq('business_id', businessId)
+      .eq('reason', 'no_show_penalty')
+      .gte('created_at', yesterdayIso)
+    const penaltyAppointmentIds = (penalties || [])
+      .map((p) => p.appointment_id)
+      .filter(Boolean) as string[]
+    let noShowPenaltiesToday = 0
+    if (penaltyAppointmentIds.length > 0) {
+      const { data: relevados } = await admin
+        .from('points_transactions')
+        .select('appointment_id')
+        .eq('business_id', businessId)
+        .eq('reason', 'no_show_relevado')
+        .in('appointment_id', penaltyAppointmentIds)
+      const relevadoIds = new Set(
+        (relevados || []).map((r) => r.appointment_id).filter(Boolean) as string[],
+      )
+      noShowPenaltiesToday = penaltyAppointmentIds.filter((id) => !relevadoIds.has(id)).length
+    }
+
     return {
       pendingClaims: claimsRes.count ?? 0,
       pendingPayments: { count: pendingPaymentsRes.data?.length ?? 0, total: pendingTotal },
       sumidosSemCupom,
       aniversariantesSemCupom,
       cupomExpirando: couponsRes.data?.length ?? 0,
+      noShowPenaltiesToday,
       lucroVsAnterior: currentRev > 0 || prevRev > 0
         ? { current: currentLucro, previous: prevLucro, pct }
         : null,

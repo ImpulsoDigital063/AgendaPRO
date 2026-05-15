@@ -29,6 +29,10 @@ export type Business = {
   onboarding_horarios_revisado?: boolean | null
   qr_code_compartilhado?: boolean | null
   fidelidade_dica_lida?: boolean | null
+  // Punição por no-show (v45 · 14/05/2026)
+  no_show_punishment_enabled?: boolean | null
+  no_show_penalty_mode?: 'proportional' | 'fixed' | null
+  no_show_fixed_points?: number | null
 }
 
 export type Professional = {

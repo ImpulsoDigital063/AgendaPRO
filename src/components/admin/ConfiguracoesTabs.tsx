@@ -173,6 +173,9 @@ export default function ConfiguracoesTabs({
             setActiveTab('negocio')
             if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
+          initialNoShowEnabled={business.no_show_punishment_enabled ?? false}
+          initialNoShowMode={business.no_show_penalty_mode ?? 'proportional'}
+          initialNoShowFixedPoints={business.no_show_fixed_points ?? 20}
         />
         </>
       )}

@@ -285,6 +285,8 @@ export async function sendReminderEmail({
   startTime,
   serviceName,
   type,
+  appointmentId,
+  noShowPenaltyPoints,
 }: {
   clientEmail: string
   clientName: string
@@ -292,32 +294,78 @@ export async function sendReminderEmail({
   date: string
   startTime: string
   serviceName?: string | null
-  type: '1d' | '1h'
+  type: '1d' | '1h' | '3h'
+  /** v45 · 14/05/2026 — opcional · usado pra gerar link de cancelamento 1-click no lembrete 3h */
+  appointmentId?: string
+  /** v45 · 14/05/2026 — opcional · se >0 e business tem punição ativa, texto adapta avisando da perda de pontos (decisão 8 com Eduardo: lembrete híbrido) */
+  noShowPenaltyPoints?: number
 }) {
   const [year, month, day] = date.split('-')
   const dateFormatted = `${day}/${month}/${year}`
 
-  const subject = type === '1d'
-    ? `Lembrete: seu horário amanhã na ${esc(businessName)}`
-    : `Falta 1 hora! Seu horário na ${esc(businessName)}`
+  let subject: string
+  if (type === '1d') {
+    subject = `Lembrete: seu horário amanhã na ${esc(businessName)}`
+  } else if (type === '1h') {
+    subject = `Falta 1 hora! Seu horário na ${esc(businessName)}`
+  } else {
+    subject = `Faltam 3 horas — confirme seu horário na ${esc(businessName)}`
+  }
 
-  const body = `
-    Olá, <strong>${esc(clientName)}</strong>!
-    ${type === '1d'
-      ? `Lembrando que você tem um agendamento <strong>amanhã</strong> na <strong>${esc(businessName)}</strong>.`
-      : `Seu agendamento na <strong>${esc(businessName)}</strong> é <strong>daqui a 1 hora</strong>. Já se prepare!`
-    }<br><br>
-    ${serviceName ? `✂️ <strong>Serviço:</strong> ${esc(serviceName)}<br>` : ''}
-    📅 <strong>Data:</strong> ${dateFormatted}<br>
-    🕐 <strong>Horário:</strong> ${startTime}<br><br>
-    ${type === '1h' ? 'Não se atrase! Te esperamos lá. 👊' : 'Qualquer dúvida, entre em contato com o estabelecimento. Te esperamos! 👊'}
-  `
+  // Lembrete 3h tem link de cancelamento 1-click (decisão 9 com Eduardo).
+  const cancelUrl = type === '3h' && appointmentId
+    ? `${APP_URL}/cancelar?id=${appointmentId}&token=${generateCancelToken(appointmentId)}`
+    : null
+
+  // Aviso da política de punição · só aparece se business tem ativa
+  // (noShowPenaltyPoints > 0). Caller decide se passa o número ou não.
+  const punishmentWarning = type === '3h' && noShowPenaltyPoints && noShowPenaltyPoints > 0
+    ? `<br><br><span style="display:inline-block;padding:8px 12px;background:#FEF3C7;border-radius:8px;color:#92400E;font-size:14px;">⚠️ <strong>Cancele agora</strong> pra não perder <strong>${noShowPenaltyPoints} pts</strong>. Se você não comparecer sem avisar, os pontos saem do seu saldo.</span>`
+    : ''
+
+  let body: string
+  if (type === '1d') {
+    body = `
+      Olá, <strong>${esc(clientName)}</strong>!
+      Lembrando que você tem um agendamento <strong>amanhã</strong> na <strong>${esc(businessName)}</strong>.<br><br>
+      ${serviceName ? `✂️ <strong>Serviço:</strong> ${esc(serviceName)}<br>` : ''}
+      📅 <strong>Data:</strong> ${dateFormatted}<br>
+      🕐 <strong>Horário:</strong> ${startTime}<br><br>
+      Qualquer dúvida, entre em contato com o estabelecimento. Te esperamos! 👊
+    `
+  } else if (type === '1h') {
+    body = `
+      Olá, <strong>${esc(clientName)}</strong>!
+      Seu agendamento na <strong>${esc(businessName)}</strong> é <strong>daqui a 1 hora</strong>. Já se prepare!<br><br>
+      ${serviceName ? `✂️ <strong>Serviço:</strong> ${esc(serviceName)}<br>` : ''}
+      📅 <strong>Data:</strong> ${dateFormatted}<br>
+      🕐 <strong>Horário:</strong> ${startTime}<br><br>
+      Não se atrase! Te esperamos lá. 👊
+    `
+  } else {
+    // type === '3h' · texto adaptativo + link de cancelamento
+    body = `
+      Olá, <strong>${esc(clientName)}</strong>!
+      Você tem um agendamento na <strong>${esc(businessName)}</strong> <strong>daqui a 3 horas</strong>.<br><br>
+      ${serviceName ? `✂️ <strong>Serviço:</strong> ${esc(serviceName)}<br>` : ''}
+      📅 <strong>Data:</strong> ${dateFormatted}<br>
+      🕐 <strong>Horário:</strong> ${startTime}
+      ${punishmentWarning}
+      <br><br>
+      Vai dar pra comparecer? Se algo mudou, cancele agora pra liberar a vaga pra outro cliente.
+    `
+  }
 
   await getResend().emails.send({
     from: FROM_EMAIL,
     to: clientEmail,
     subject,
-    html: emailTemplate({ title: '', body }),
+    html: emailTemplate({
+      title: '',
+      body,
+      actionUrl: cancelUrl ?? undefined,
+      actionLabel: cancelUrl ? '❌ Não vou conseguir · cancelar agora' : undefined,
+    }),
   })
 }
 

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
+import PunicaoNoShowCard from '@/components/admin/PunicaoNoShowCard'
 
 type ReviewClaim = {
   id: string
@@ -53,6 +54,10 @@ type Props = {
   pointsForReview: number
   pointsMode: 'business' | 'professional'
   onNavigateToNegocio?: () => void
+  // Punição por no-show (v45 · 14/05/2026)
+  initialNoShowEnabled: boolean
+  initialNoShowMode: 'proportional' | 'fixed'
+  initialNoShowFixedPoints: number
 }
 
 /**
@@ -118,6 +123,9 @@ export default function FidelidadeTab({
   pointsForReview,
   pointsMode: initialPointsMode,
   onNavigateToNegocio,
+  initialNoShowEnabled,
+  initialNoShowMode,
+  initialNoShowFixedPoints,
 }: Props) {
   const supabase = createClient()
 
@@ -919,6 +927,14 @@ export default function FidelidadeTab({
             </p>
           )}
         </div>
+
+        {/* Punição por não-comparecimento (v45 · 14/05/2026) */}
+        <PunicaoNoShowCard
+          businessId={businessId}
+          initialEnabled={initialNoShowEnabled}
+          initialMode={initialNoShowMode}
+          initialFixedPoints={initialNoShowFixedPoints}
+        />
 
         {/* Pontos por avaliação no Google */}
         <button

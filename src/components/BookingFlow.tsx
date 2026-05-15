@@ -2145,6 +2145,24 @@ export default function BookingFlow({
 
             {error && <p className="text-sm" style={{ color: '#EF4444' }}>{error}</p>}
 
+            {/* Aviso de transparência da política de no-show (v45 · 14/05/2026 · decisão 5 com Eduardo)
+                Só aparece se business tem punição ativa · cliente fica ciente antes de confirmar */}
+            {business.no_show_punishment_enabled && (
+              <div
+                className="rounded-xl p-3 text-xs"
+                style={{
+                  background: 'rgba(245,158,11,0.10)',
+                  border: '1px solid rgba(245,158,11,0.30)',
+                  color: C.body,
+                }}
+              >
+                <strong style={{ color: C.text }}>Política de cancelamento</strong>
+                <br />
+                Se não puder ir, <strong>cancele até 3h antes</strong> pra não perder pontos.
+                Falta sem aviso pode descontar pontos do seu saldo.
+              </div>
+            )}
+
             <button
               onClick={handleSubmit}
               disabled={submitting || !clientName.trim() || !clientPhone.trim()}
