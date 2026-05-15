@@ -3,6 +3,21 @@
 import { useState } from 'react'
 import ReativarSumidosView from './ReativarSumidosView'
 import AniversariantesView from './AniversariantesView'
+import CupomAvulsoView from './CupomAvulsoView'
+
+type StandaloneCoupon = {
+  id: string
+  code: string
+  discount_type: 'fixed' | 'percent'
+  discount_value: number
+  expires_at: string
+  standalone_label: string | null
+  professional_id: string | null
+  professional_name: string | null
+  uses: number
+  share_url: string
+  created_at: string
+}
 
 type Props = {
   businessSlug: string
@@ -27,10 +42,15 @@ type Props = {
   aniversariantesWithoutCoupon: number
   mesAtualNome: string
 
-  initialTab: 'sumidos' | 'aniversariantes'
+  // Avulso (v44)
+  professionals: Array<{ id: string; name: string }>
+  standaloneCoupons: StandaloneCoupon[]
+  standaloneAtivos: number
+
+  initialTab: 'sumidos' | 'aniversariantes' | 'avulso'
 }
 
-type Tab = 'sumidos' | 'aniversariantes'
+type Tab = 'sumidos' | 'aniversariantes' | 'avulso'
 
 export default function CampanhasTabs({
   businessSlug,
@@ -43,6 +63,9 @@ export default function CampanhasTabs({
   aniversariantesTotal,
   aniversariantesWithoutCoupon,
   mesAtualNome,
+  professionals,
+  standaloneCoupons,
+  standaloneAtivos,
   initialTab,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
@@ -87,6 +110,21 @@ export default function CampanhasTabs({
             </span>
           )}
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('avulso')}
+          className={`admin-tab flex-1 ${activeTab === 'avulso' ? 'admin-tab-active' : ''}`}
+        >
+          Avulso
+          {standaloneAtivos > 0 && (
+            <span
+              className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+              style={{ background: 'rgba(124,58,237,0.20)', color: '#7C3AED' }}
+            >
+              {standaloneAtivos}
+            </span>
+          )}
+        </button>
       </div>
 
       {activeTab === 'sumidos' && (
@@ -109,6 +147,15 @@ export default function CampanhasTabs({
           aniversariantesTotal={aniversariantesTotal}
           aniversariantesWithoutCoupon={aniversariantesWithoutCoupon}
           mesAtualNome={mesAtualNome}
+        />
+      )}
+
+      {activeTab === 'avulso' && (
+        <CupomAvulsoView
+          businessSlug={businessSlug}
+          businessName={businessName}
+          professionals={professionals}
+          initialCoupons={standaloneCoupons}
         />
       )}
     </div>

@@ -27,8 +27,10 @@ export default async function CampanhasPage({
   if (!business) redirect('/cadastro')
 
   const { tab } = await searchParams
-  const initialTab: 'sumidos' | 'aniversariantes' =
-    tab === 'aniversariantes' ? 'aniversariantes' : 'sumidos'
+  const initialTab: 'sumidos' | 'aniversariantes' | 'avulso' =
+    tab === 'aniversariantes' ? 'aniversariantes' :
+    tab === 'avulso' ? 'avulso' :
+    'sumidos'
 
   // Cupons ativos (compartilhado entre as duas abas pra contar quem já tem)
   const nowIso = new Date().toISOString()
@@ -128,6 +130,57 @@ export default async function CampanhasPage({
     (id) => !customerIdsWithActiveCoupon.has(id)
   ).length
 
+  // ─────────────────────────────────────────────────
+  // ABA AVULSO (v44) — cupons standalone ativos + profs
+  // ─────────────────────────────────────────────────
+  const { data: standaloneCouponsRaw } = await supabase
+    .from('coupons')
+    .select('id, code, discount_type, discount_value, expires_at, standalone_label, professional_id, created_at')
+    .eq('business_id', business.id)
+    .eq('is_standalone', true)
+    .gt('expires_at', nowIso)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const { data: professionalsAtivos } = await supabase
+    .from('professionals')
+    .select('id, name')
+    .eq('business_id', business.id)
+    .eq('active', true)
+    .order('name')
+
+  // Conta usos em batch
+  const standaloneIds = (standaloneCouponsRaw || []).map((c) => c.id)
+  const { data: standaloneRedemptions } = standaloneIds.length > 0
+    ? await supabase
+        .from('coupon_redemptions')
+        .select('coupon_id')
+        .in('coupon_id', standaloneIds)
+    : { data: [] }
+  const usageByCoupon: Record<string, number> = {}
+  for (const r of standaloneRedemptions || []) {
+    if (r.coupon_id) usageByCoupon[r.coupon_id] = (usageByCoupon[r.coupon_id] ?? 0) + 1
+  }
+
+  const profNameById = new Map(
+    (professionalsAtivos || []).map((p) => [p.id, p.name as string]),
+  )
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+  const standaloneCoupons = (standaloneCouponsRaw || []).map((c) => ({
+    id: c.id,
+    code: c.code,
+    discount_type: c.discount_type as 'fixed' | 'percent',
+    discount_value: Number(c.discount_value),
+    expires_at: c.expires_at,
+    standalone_label: c.standalone_label,
+    professional_id: c.professional_id,
+    professional_name: c.professional_id ? profNameById.get(c.professional_id) ?? null : null,
+    uses: usageByCoupon[c.id] ?? 0,
+    share_url: `${appUrl}/${business.slug}?cupom=${c.code}`,
+    created_at: c.created_at,
+  }))
+  const standaloneAtivos = standaloneCoupons.length
+
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -166,6 +219,9 @@ export default async function CampanhasPage({
             aniversariantesTotal={aniversariantesTotal}
             aniversariantesWithoutCoupon={aniversariantesWithoutCoupon}
             mesAtualNome={MESES_PT[currentMonth - 1]}
+            professionals={professionalsAtivos || []}
+            standaloneCoupons={standaloneCoupons}
+            standaloneAtivos={standaloneAtivos}
             initialTab={initialTab}
           />
         </div>

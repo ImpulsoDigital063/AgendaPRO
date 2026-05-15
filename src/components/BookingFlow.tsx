@@ -840,7 +840,12 @@ export default function BookingFlow({
       fetch('/api/coupons/use', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code: coupon.code, appointment_id: appointment.id }),
+        // client_phone pra cupom standalone (v44 · 1 uso por telefone)
+        body: JSON.stringify({
+          code: coupon.code,
+          appointment_id: appointment.id,
+          client_phone: clientPhone.trim(),
+        }),
       }).catch((err) => {
         console.warn('Falha ao marcar cupom como usado:', err)
       })
