@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconWhatsapp, IconCopy, IconCheck } from '@/components/ui/Icon'
-import { formatDiscount, formatValidity } from '@/lib/coupon-templates'
+import { formatDiscount, formatValidity, buildStandaloneWhatsappText } from '@/lib/coupon-templates'
 
 type Professional = {
   id: string
@@ -139,10 +139,15 @@ export default function CupomAvulsoView({
   }
 
   function buildWhatsappText(c: StandaloneCoupon): string {
-    const valueStr = formatDiscount(c.discount_type, c.discount_value)
-    const exp = new Date(c.expires_at)
-    const validityStr = formatValidity(exp)
-    return `Cupom pra cortar comigo: ${valueStr} de desconto · use o código ${c.code} ou abra direto: ${c.share_url} · vale ${validityStr}`
+    return buildStandaloneWhatsappText({
+      businessName,
+      code: c.code,
+      shareUrl: c.share_url,
+      discountType: c.discount_type,
+      discountValue: c.discount_value,
+      expiresAt: new Date(c.expires_at),
+      label: c.standalone_label,
+    })
   }
 
   // Após criar cupom, mostra card de sucesso. Botão "Criar outro" reseta.
@@ -152,7 +157,7 @@ export default function CupomAvulsoView({
         <div
           className="rounded-2xl p-4 text-center"
           style={{
-            background: 'linear-gradient(135deg, rgba(16,185,129,0.18) 0%, color-mix(in srgb, var(--brand-primary) 12%, var(--admin-surface)) 100%)',
+            background: 'linear-gradient(135deg, rgba(124,58,237,0.18) 0%, color-mix(in srgb, var(--brand-primary) 12%, var(--admin-surface)) 100%)',
             border: '1px solid var(--admin-border)',
           }}
         >
@@ -246,7 +251,7 @@ export default function CupomAvulsoView({
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder='Ex: "Promo do rapaz"'
+            placeholder="Ex: Inauguração · Indicação de cliente · Black Friday"
             maxLength={80}
             className="admin-input w-full mt-1.5 px-3 py-2.5 text-sm"
           />
@@ -402,9 +407,9 @@ function CouponList({
                 <p
                   className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block"
                   style={{
-                    background: 'rgba(59,130,246,0.12)',
-                    color: '#3B82F6',
-                    border: '1px solid rgba(59,130,246,0.25)',
+                    background: 'rgba(124,58,237,0.12)',
+                    color: '#7C3AED',
+                    border: '1px solid rgba(124,58,237,0.25)',
                   }}
                 >
                   {c.uses} {c.uses === 1 ? 'uso' : 'usos'}

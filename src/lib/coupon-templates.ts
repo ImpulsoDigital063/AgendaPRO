@@ -177,6 +177,36 @@ export function suggestBirthdayTemplates(description: string | null | undefined)
 }
 
 /**
+ * Texto do WhatsApp pra cupom AVULSO (standalone · v44).
+ *
+ * Cupom avulso é distribuído pelo dono pra DIVULGAÇÃO (panfleto · IG ·
+ * status WhatsApp do funcionário). Texto precisa ser:
+ *   · Universal: não assume nicho (barbearia/salão/clínica/etc).
+ *   · Identificável: deixa claro de qual negócio é · cliente vê o nome.
+ *   · Curto: cabe no preview do WhatsApp sem cortar.
+ *   · Acionável: link direto pra agendar com cupom já aplicado.
+ *
+ * Não usa categoria (diferente de Oi Sumido / Aniversário) porque o
+ * cupom avulso pode ser usado pra qualquer ação de divulgação, não
+ * tem tom fixo · dono ajusta no momento da distribuição.
+ */
+export function buildStandaloneWhatsappText(args: {
+  businessName: string
+  code: string
+  shareUrl: string
+  discountType: 'fixed' | 'percent'
+  discountValue: number
+  expiresAt: Date
+  /** Nome opcional da campanha (ex: "Inauguração"). Prefixa a mensagem se presente. */
+  label?: string | null
+}): string {
+  const valueStr = formatDiscount(args.discountType, args.discountValue)
+  const validityStr = formatValidity(args.expiresAt)
+  const labelPrefix = args.label?.trim() ? `${args.label.trim()} · ` : ''
+  return `${labelPrefix}Cupom pra você no ${args.businessName}: ${valueStr} de desconto · use o código ${args.code} ou abra direto ${args.shareUrl} · vale ${validityStr}`
+}
+
+/**
  * Substitui placeholders do template por valores reais.
  */
 export function fillTemplate(

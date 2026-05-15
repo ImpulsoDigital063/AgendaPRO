@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { buildStandaloneWhatsappText } from '@/lib/coupon-templates'
 
 const DISCOUNT_TYPES = new Set(['fixed', 'percent'])
 const COUPON_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -114,11 +115,15 @@ export async function POST(req: NextRequest) {
     if (!error && inserted) {
       // URL pública: /{slug}?cupom=CODE · BookingFlow detecta e aplica
       const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/${business.slug}?cupom=${code}`
-      const valueStr = discount_type === 'percent'
-        ? `${discount_value.toFixed(0)}% off`
-        : `R$ ${discount_value.toFixed(2).replace('.', ',')} de desconto`
-      const expDate = expires_at.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-      const whatsappText = `Cupom pra cortar comigo: ${valueStr} · use o código ${code} ou abra direto: ${shareUrl} · vale até ${expDate}`
+      const whatsappText = buildStandaloneWhatsappText({
+        businessName: business.name,
+        code,
+        shareUrl,
+        discountType: discount_type,
+        discountValue: discount_value,
+        expiresAt: expires_at,
+        label,
+      })
 
       revalidatePath('/admin')
       revalidatePath('/admin/clientes/campanhas')
