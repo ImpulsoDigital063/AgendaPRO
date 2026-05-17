@@ -1,0 +1,44 @@
+-- =================================================================
+-- V48 — FIX: infinite recursion na policy "recepcao ve profissionais"
+-- =================================================================
+--
+-- v47 criou esta policy:
+--   CREATE POLICY "recepcao ve profissionais" ON professionals
+--     FOR SELECT USING (
+--       EXISTS (
+--         SELECT 1 FROM professionals me   -- ← subquery na MESMA tabela
+--         WHERE me.business_id = professionals.business_id
+--           AND me.auth_user_id = auth.uid()
+--           AND me.is_receptionist = true
+--       )
+--     );
+--
+-- Postgres detecta a recursão (policy de professionals chama professionals
+-- dentro de si) e RETORNA ERRO em qualquer SELECT na tabela: "infinite
+-- recursion detected in policy for relation 'professionals'".
+--
+-- Reproduzido 17/05/2026: login do profissional não conseguia ler o
+-- próprio registro de professionals → caía em fallback /admin → /cadastro.
+--
+-- FIX: a policy era redundante. A policy legacy "publico ver profissionais"
+-- (using active = true) já permite que a recep veja todos os profs ativos
+-- do business. Profs desativados não interessam à recep — quando a Adm
+-- desativa alguém, a recep deixa de marcar pra essa pessoa, que é o
+-- comportamento desejado.
+--
+-- IDEMPOTENTE.
+-- =================================================================
+
+DROP POLICY IF EXISTS "recepcao ve profissionais" ON professionals;
+
+
+-- =================================================================
+-- VALIDAÇÃO
+-- =================================================================
+-- Confirma que a policy foi removida (esperado: 0 linhas):
+--   SELECT polname FROM pg_policy
+--   WHERE polname = 'recepcao ve profissionais';
+--
+-- Teste manual do bug original (rodar como anon · esperado: retorna registro):
+--   SELECT id, name FROM professionals WHERE auth_user_id = '<uuid>';
+-- =================================================================
