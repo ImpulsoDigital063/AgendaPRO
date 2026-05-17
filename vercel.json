@@ -9,10 +9,6 @@
       "schedule": "0 9 * * *"
     },
     {
-      "path": "/api/cron/reminder-3h",
-      "schedule": "*/15 * * * *"
-    },
-    {
       "path": "/api/cron/auto-complete",
       "schedule": "0 6 * * *"
     },
