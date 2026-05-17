@@ -4,6 +4,18 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   async headers() {
     return [
+      // Rotas de auth/redirect-sensitive NÃO podem ser cacheadas pelo CDN
+      // do Vercel. Confirmado em 17/05/2026: /profissional/login tava com
+      // Age=60h no cache do edge, servindo JS antigo (sem redirect novo
+      // pra recep), o que travou o redirect pra /recepcao do is_receptionist.
+      {
+        source: '/:path(profissional|profissional/login|profissional/trocar-senha|admin|admin/login|recepcao|recepcao/:slug*)',
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-cache, no-store, max-age=0, must-revalidate' },
+          { key: 'CDN-Cache-Control', value: 'no-store' },
+          { key: 'Vercel-CDN-Cache-Control', value: 'no-store' },
+        ],
+      },
       {
         source: '/(.*)',
         headers: [
