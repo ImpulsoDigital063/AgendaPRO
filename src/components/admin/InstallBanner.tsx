@@ -6,16 +6,60 @@ type Platform = 'ios' | 'android' | null
 
 /**
  * Seta animada flutuando sobre o modal — aponta pro icone real do
- * navegador (canto superior direito da barra de endereco):
- *   iOS Safari:    icone de compartilhar (quadrado com seta pra cima)
- *   Android Chrome: 3 pontinhos verticais (menu)
+ * navegador:
+ *   iOS Safari:    icone de compartilhar na BARRA INFERIOR (centro)
+ *                  — padrão do iOS 15+ é barra inferior
+ *   Android Chrome: 3 pontinhos verticais no CANTO SUPERIOR DIREITO
  *
  * Reforca o passo 1 pra usuarios leigos: alem do mockup dentro do modal,
  * uma seta REAL na tela mostra exatamente onde tocar.
  */
 function BrowserMenuArrow({ platform }: { platform: 'ios' | 'android' }) {
-  const label = platform === 'ios' ? 'compartilhar' : '3 pontinhos'
+  if (platform === 'ios') {
+    // Aponta pra BAIXO no CENTRO (botão de compartilhar fica na bottom bar do Safari)
+    return (
+      <div
+        className="fixed pointer-events-none z-[101] install-anim-arrow-float flex flex-col items-center"
+        style={{
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 70px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+        }}
+      >
+        <span
+          className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap mb-1"
+          style={{
+            background: 'var(--brand-primary)',
+            color: 'white',
+            boxShadow:
+              '0 6px 16px -2px color-mix(in srgb, var(--brand-primary) 50%, transparent)',
+          }}
+        >
+          compartilhar
+        </span>
+        {/* Seta apontando pra BAIXO (botão fica abaixo, na bottom bar do Safari) */}
+        <svg
+          width="56"
+          height="56"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--brand-primary)"
+          strokeWidth="2.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            filter:
+              'drop-shadow(0 4px 12px color-mix(in srgb, var(--brand-primary) 60%, transparent))',
+          }}
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <polyline points="19 12 12 19 5 12" />
+        </svg>
+      </div>
+    )
+  }
 
+  // Android: 3 pontinhos continuam no canto superior direito (Chrome padrão)
   return (
     <div
       className="fixed pointer-events-none z-[101] install-anim-arrow-float flex flex-col items-center"
@@ -24,7 +68,6 @@ function BrowserMenuArrow({ platform }: { platform: 'ios' | 'android' }) {
         right: '4px',
       }}
     >
-      {/* Seta diagonal arrow-up-right (estilo Lucide) — encostada no topo do viewport, ponta saindo em direcao ao icone REAL do Safari/Chrome na barra de URL acima */}
       <svg
         width="64"
         height="64"
@@ -51,7 +94,7 @@ function BrowserMenuArrow({ platform }: { platform: 'ios' | 'android' }) {
             '0 6px 16px -2px color-mix(in srgb, var(--brand-primary) 50%, transparent)',
         }}
       >
-        {label}
+        3 pontinhos
       </span>
     </div>
   )
