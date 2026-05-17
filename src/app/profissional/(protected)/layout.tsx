@@ -20,7 +20,7 @@ export default async function ProfissionalLayout({
   // Verifica se e um profissional com auth_user_id
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, employment_type')
+    .select('id, business_id, password_changed, employment_type, is_receptionist')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -32,6 +32,11 @@ export default async function ProfissionalLayout({
   // Forca troca de senha no primeiro acesso
   if (!professional.password_changed) {
     redirect('/profissional/trocar-senha')
+  }
+
+  // Recepcionista: tela própria, não atende
+  if (professional.is_receptionist) {
+    redirect('/recepcao')
   }
 
   const cookieStore = await cookies()

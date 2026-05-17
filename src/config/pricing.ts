@@ -22,14 +22,15 @@ export const PRICING = {
     mensalidadeCompleta: 'R$ 67/mês',
   },
 
-  /** Plano Equipe — até 5 profissionais */
+  /** Plano Equipe — até 5 profissionais + 1 recepcionista inclusa */
   equipe: {
     nome: 'Equipe',
-    publico: 'até 5 profissionais',
+    publico: 'até 5 profissionais + 1 recepção',
     mensalidadeReais: 97,
     mensalidadeCentavos: 9700,
     mensalidadeFormatada: 'R$ 97',
     mensalidadeCompleta: 'R$ 97/mês',
+    incluiRecepcao: true,
   },
 
   /** Garantia (substitui o trial antigo) */

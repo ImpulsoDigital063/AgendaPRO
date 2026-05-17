@@ -49,13 +49,17 @@ export default function ProfissionaisTab({
 
   const [newName, setNewName] = useState('')
   const [newType, setNewType] = useState<'commissioned' | 'employed'>('commissioned')
+  // Recepcionista vive em professionals mas não atende — só Equipe permite (trigger v47)
+  const [newIsReceptionist, setNewIsReceptionist] = useState(false)
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
 
   const maxProfs = PLAN_LIMITS[subscriptionPlan]
-  const currentCount = professionals.length
+  // Limite de PROFISSIONAIS é só sobre quem atende — recep não conta (v47)
+  const currentCount = professionals.filter((p) => !p.is_receptionist).length
   const remaining = Math.max(0, maxProfs - currentCount)
   const limitReached = currentCount >= maxProfs
+  const hasReceptionist = professionals.some((p) => p.is_receptionist)
 
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -118,7 +122,8 @@ export default function ProfissionaisTab({
 
   async function handleAdd() {
     if (!newName.trim()) return
-    if (limitReached) {
+    // Limite de profissionais só importa se a pessoa atende (recep não conta)
+    if (!newIsReceptionist && limitReached) {
       setAddError(
         `Plano ${subscriptionPlan === 'solo' ? 'Solo' : 'Equipe'} permite no máximo ${maxProfs} profissionais. Pra adicionar mais, faça upgrade entrando em contato com a Impulso.`
       )
@@ -135,7 +140,9 @@ export default function ProfissionaisTab({
         active: true,
         commission_percentage: 0,
         role: 'professional',
-        employment_type: newType,
+        // Recep não tem comissão/tipo — força commissioned por compat mas não usa
+        employment_type: newIsReceptionist ? 'employed' : newType,
+        is_receptionist: newIsReceptionist,
       })
       .select()
       .single()
@@ -148,6 +155,7 @@ export default function ProfissionaisTab({
       onChange([...professionals, data])
       setNewName('')
       setNewType('commissioned')
+      setNewIsReceptionist(false)
     }
     setAdding(false)
   }
@@ -652,10 +660,42 @@ export default function ProfissionaisTab({
               if (addError) setAddError(null)
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            placeholder="Nome do profissional"
+            placeholder={newIsReceptionist ? 'Nome da recepcionista' : 'Nome do profissional'}
             className="admin-input w-full px-3 py-2.5 text-sm"
           />
 
+          {/* Toggle "Recepção" — só disponível no Equipe (v47) · 1 max */}
+          {subscriptionPlan === 'equipe' && !hasReceptionist && (
+            <label
+              className="flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all"
+              style={{
+                background: newIsReceptionist
+                  ? 'color-mix(in srgb, var(--admin-accent) 12%, transparent)'
+                  : 'var(--admin-surface)',
+                border: `1px solid ${newIsReceptionist ? 'color-mix(in srgb, var(--admin-accent) 45%, transparent)' : 'var(--admin-border)'}`,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={newIsReceptionist}
+                onChange={(e) => setNewIsReceptionist(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <div className="flex-1">
+                <p
+                  className="text-sm font-semibold"
+                  style={{ color: newIsReceptionist ? 'var(--admin-accent)' : 'var(--admin-text)' }}
+                >
+                  Esta pessoa é da recepção
+                </p>
+                <p className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
+                  Não atende clientes. Vê todas as agendas, marca/cancela e cadastra clientes. Não conta no limite de profissionais.
+                </p>
+              </div>
+            </label>
+          )}
+
+          {!newIsReceptionist && (
           <div>
             <p
               className="text-[11px] font-medium uppercase tracking-wider mb-1.5"
@@ -703,6 +743,7 @@ export default function ProfissionaisTab({
               })}
             </div>
           </div>
+          )}
 
           {addError && (
             <p

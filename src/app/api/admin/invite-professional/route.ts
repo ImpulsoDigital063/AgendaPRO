@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const { data: prof } = await adminClient
     .from('professionals')
-    .select('id, name, auth_user_id')
+    .select('id, name, auth_user_id, is_receptionist')
     .eq('id', professionalId)
     .eq('business_id', business.id)
     .single()
@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
   if (prof.auth_user_id) {
     return NextResponse.json({ error: 'Este profissional já tem acesso ao sistema.' }, { status: 409 })
   }
+
+  const isRecep = prof.is_receptionist === true
 
   // 4. Gera senha temporária segura (crypto random)
   const { randomBytes } = await import('crypto')
@@ -95,6 +97,7 @@ export async function POST(req: NextRequest) {
   // Retorna a senha pra UI mostrar pro dono passar via WhatsApp/manual.
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br').replace(/\/$/, '')
   const loginUrl = `${appUrl}/profissional/login`
+  const painelLabel = isRecep ? 'painel da recepção' : 'painel do profissional'
 
   let emailSent = false
   if (process.env.RESEND_API_KEY) {
@@ -108,7 +111,7 @@ export async function POST(req: NextRequest) {
         html: `
           <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;color:#0F172A">
             <p>Olá, <strong>${prof.name}</strong>!</p>
-            <p>Seu acesso ao painel do profissional foi criado.</p>
+            <p>Seu acesso ao ${painelLabel} foi criado.</p>
             <p><strong>Email:</strong> ${emailNorm}<br/>
             <strong>Senha temporária:</strong> ${tempPassword}</p>
             <p style="margin:24px 0">

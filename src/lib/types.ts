@@ -46,6 +46,7 @@ export type Professional = {
   auth_user_id: string | null
   role: 'owner' | 'professional'
   employment_type?: 'commissioned' | 'employed'
+  is_receptionist?: boolean
   password_changed: boolean
   created_at: string
 }
