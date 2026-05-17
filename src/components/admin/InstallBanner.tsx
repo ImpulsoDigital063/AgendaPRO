@@ -4,101 +4,14 @@ import { useEffect, useState } from 'react'
 
 type Platform = 'ios' | 'android' | null
 
-/**
- * Seta animada flutuando sobre o modal — aponta pro icone real do
- * navegador:
- *   iOS Safari:    icone de compartilhar na BARRA INFERIOR (centro)
- *                  — padrão do iOS 15+ é barra inferior
- *   Android Chrome: 3 pontinhos verticais no CANTO SUPERIOR DIREITO
- *
- * Reforca o passo 1 pra usuarios leigos: alem do mockup dentro do modal,
- * uma seta REAL na tela mostra exatamente onde tocar.
- */
-function BrowserMenuArrow({ platform }: { platform: 'ios' | 'android' }) {
-  if (platform === 'ios') {
-    // Aponta pra BAIXO no CENTRO (botão de compartilhar fica na bottom bar do Safari)
-    return (
-      <div
-        className="fixed pointer-events-none z-[101] install-anim-arrow-float flex flex-col items-center"
-        style={{
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 70px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-        }}
-      >
-        <span
-          className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap mb-1"
-          style={{
-            background: 'var(--brand-primary)',
-            color: 'white',
-            boxShadow:
-              '0 6px 16px -2px color-mix(in srgb, var(--brand-primary) 50%, transparent)',
-          }}
-        >
-          compartilhar
-        </span>
-        {/* Seta apontando pra BAIXO (botão fica abaixo, na bottom bar do Safari) */}
-        <svg
-          width="56"
-          height="56"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--brand-primary)"
-          strokeWidth="2.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            filter:
-              'drop-shadow(0 4px 12px color-mix(in srgb, var(--brand-primary) 60%, transparent))',
-          }}
-        >
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <polyline points="19 12 12 19 5 12" />
-        </svg>
-      </div>
-    )
-  }
-
-  // Android: 3 pontinhos continuam no canto superior direito (Chrome padrão)
-  return (
-    <div
-      className="fixed pointer-events-none z-[101] install-anim-arrow-float flex flex-col items-center"
-      style={{
-        top: 'calc(env(safe-area-inset-top, 0px) + 2px)',
-        right: '4px',
-      }}
-    >
-      <svg
-        width="64"
-        height="64"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="var(--brand-primary)"
-        strokeWidth="2.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{
-          filter:
-            'drop-shadow(0 4px 12px color-mix(in srgb, var(--brand-primary) 60%, transparent))',
-        }}
-      >
-        <line x1="7" y1="17" x2="17" y2="7" />
-        <polyline points="7 7 17 7 17 17" />
-      </svg>
-      <span
-        className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap -mt-1"
-        style={{
-          background: 'var(--brand-primary)',
-          color: 'white',
-          boxShadow:
-            '0 6px 16px -2px color-mix(in srgb, var(--brand-primary) 50%, transparent)',
-        }}
-      >
-        3 pontinhos
-      </span>
-    </div>
-  )
-}
+// BrowserMenuArrow removido (17/05/2026): a seta flutuante apontava pra
+// posição fixa do botão de compartilhar (canto superior direito), mas:
+//   - iOS 15+: barra de URL fica EMBAIXO por padrão (botão no centro inferior)
+//   - iOS 14-: barra fica EM CIMA
+//   - iOS 15+ "Single Tab": volta pra cima (configurável pelo usuário)
+//   - Android Chrome: sempre topo direito
+// Sem detecção confiável da config do usuário, qualquer seta acerta uns
+// e erra outros. Mantemos só o mockup interno do modal — claro o suficiente.
 
 function GuideSheet({
   platform,
@@ -111,8 +24,6 @@ function GuideSheet({
 
   return (
     <>
-      {/* Seta flutuante apontando pro icone real do navegador (iOS + Android) */}
-      <BrowserMenuArrow platform={platform} />
       <div className="fixed inset-0 z-[100] bg-black/70 flex items-end" onClick={onClose}>
       <div
         className="w-full max-w-lg mx-auto rounded-t-3xl p-6 pb-10 animate-slideUp"
@@ -147,6 +58,26 @@ function GuideSheet({
           </div>
         </div>
 
+        {/* Aviso destacado pra iOS: instalar só funciona no Safari nativo */}
+        {isIOS && (
+          <div
+            className="mt-4 rounded-xl p-3 flex items-start gap-2.5"
+            style={{
+              background: 'color-mix(in srgb, var(--brand-primary) 12%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--brand-primary) 30%, transparent)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <p className="text-xs leading-snug" style={{ color: 'var(--admin-text)' }}>
+              No iPhone, instalar funciona <strong>só no Safari</strong>. Se você abriu este link no Chrome ou outro navegador, copie o endereço e abra no Safari primeiro.
+            </p>
+          </div>
+        )}
+
         <div className="mt-5 space-y-3">
           {/* Passo 1 — toque compartilhar (iOS) ou 3 pontinhos (Android) */}
           <div
@@ -165,10 +96,15 @@ function GuideSheet({
               </span>
               <p className="font-semibold text-sm" style={{ color: 'var(--admin-text)' }}>
                 {isIOS
-                  ? 'Toque no botão compartilhar'
+                  ? 'Toque no botão compartilhar do Safari'
                   : 'Toque nos 3 pontinhos no canto superior'}
               </p>
             </div>
+            {isIOS && (
+              <p className="text-[11px] mb-2 leading-snug" style={{ color: 'var(--admin-text-mute)' }}>
+                Esse ícone (quadrado com seta pra cima) fica na barra do Safari — pode estar <strong>embaixo</strong> (mais comum) ou <strong>em cima</strong>, dependendo da configuração do seu iPhone.
+              </p>
+            )}
             <div
               className="rounded-xl p-3"
               style={{
