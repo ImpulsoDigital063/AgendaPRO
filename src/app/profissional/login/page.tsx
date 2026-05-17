@@ -46,7 +46,7 @@ export default function ProfissionalLoginPage() {
 
     const { data: prof } = await supabase
       .from('professionals')
-      .select('id, role, password_changed')
+      .select('id, role, password_changed, is_receptionist')
       .eq('auth_user_id', user.id)
       .single()
 
@@ -60,6 +60,13 @@ export default function ProfissionalLoginPage() {
     // Primeiro login — forca troca de senha
     if (!prof.password_changed) {
       router.push('/profissional/trocar-senha')
+      router.refresh()
+      return
+    }
+
+    // Recepcionista: tela própria, não atende
+    if (prof.is_receptionist) {
+      router.push('/recepcao')
       router.refresh()
       return
     }

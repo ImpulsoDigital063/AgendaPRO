@@ -11,13 +11,17 @@ export default async function TrocarSenhaPage() {
   // dentro do app — evita reaparecer o copy de "senha temporária".
   const { data: professional } = await supabase
     .from('professionals')
-    .select('password_changed')
+    .select('password_changed, is_receptionist')
     .eq('auth_user_id', user.id)
     .single()
 
   if (professional?.password_changed) {
+    // Recepcionista: tela própria, não atende
+    if (professional.is_receptionist) {
+      redirect('/recepcao')
+    }
     redirect('/profissional/conta')
   }
 
-  return <TrocarSenhaForm />
+  return <TrocarSenhaForm isReceptionist={professional?.is_receptionist === true} />
 }

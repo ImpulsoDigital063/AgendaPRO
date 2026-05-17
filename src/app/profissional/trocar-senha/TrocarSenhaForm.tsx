@@ -4,7 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
-export default function TrocarSenhaForm() {
+type Props = {
+  isReceptionist?: boolean
+}
+
+export default function TrocarSenhaForm({ isReceptionist = false }: Props) {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -48,7 +52,7 @@ export default function TrocarSenhaForm() {
     setDone(true)
     setLoading(false)
     setTimeout(() => {
-      router.push('/profissional')
+      router.push(isReceptionist ? '/recepcao' : '/profissional')
       router.refresh()
     }, 1500)
   }
