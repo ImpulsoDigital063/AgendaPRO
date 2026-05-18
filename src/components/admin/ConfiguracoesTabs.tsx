@@ -16,8 +16,9 @@ import DivulgacaoTab from './DivulgacaoTab'
 import PlanoCard from './PlanoCard'
 import ImportarView from './ImportarView'
 import MaquininhasTab from './MaquininhasTab'
+import BloqueiosTab from './BloqueiosTab'
 
-type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas' | 'bloqueios'
 
 // Alias retrocompat: URLs antigas com ?tab=whatsapp continuam funcionando.
 const TAB_ALIASES: Record<string, Tab> = {
@@ -45,7 +46,7 @@ export default function ConfiguracoesTabs({
 }: Props) {
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas']
+  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios']
   // Resolve alias antes de validar (ex: ?tab=whatsapp → 'qr-code')
   const resolvedTab = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null
   const [activeTab, setActiveTab] = useState<Tab>(
@@ -86,6 +87,7 @@ export default function ConfiguracoesTabs({
     { id: 'horarios', label: 'Horários' },
     { id: 'fidelidade', label: 'Fidelidade' },
     { id: 'maquininhas', label: 'Maquininhas' },
+    { id: 'bloqueios', label: 'Bloqueios' },
     { id: 'aparencia', label: 'Aparência' },
     { id: 'qr-code', label: 'QR Code' },
     { id: 'divulgacao', label: 'Divulgação' },
@@ -219,6 +221,10 @@ export default function ConfiguracoesTabs({
 
       {activeTab === 'maquininhas' && (
         <MaquininhasTab businessId={business.id} />
+      )}
+
+      {activeTab === 'bloqueios' && (
+        <BloqueiosTab businessId={business.id} professionals={professionals} />
       )}
     </div>
   )

@@ -4,6 +4,7 @@ import Image from 'next/image'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import Greeting from '@/components/admin/Greeting'
+import BrandHeaderLogo from '@/components/admin/BrandHeaderLogo'
 import CountUp from '@/components/admin/CountUp'
 import RecepAppointmentCard from '@/components/recepcao/RecepAppointmentCard'
 import RecepMarcarFAB from '@/components/recepcao/RecepMarcarFAB'
@@ -40,14 +41,14 @@ export default async function RecepcaoAgendaPage() {
 
   const { data: recep } = await supabase
     .from('professionals')
-    .select('id, name, business:businesses(id, name, slug)')
+    .select('id, name, business:businesses(id, name, slug, brand_logo_url)')
     .eq('auth_user_id', user.id)
     .eq('is_receptionist', true)
     .single()
 
   if (!recep || !recep.business) redirect('/profissional/login')
 
-  const business = recep.business as unknown as { id: string; name: string; slug: string }
+  const business = recep.business as unknown as { id: string; name: string; slug: string; brand_logo_url: string | null }
   const recepName = (recep.name as string) || 'Recepção'
   const firstName = recepName.split(' ')[0]
 
@@ -146,13 +147,9 @@ export default async function RecepcaoAgendaPage() {
             {/* Header */}
             <header>
               <div className="flex items-center justify-between mb-4">
-                <Image
-                  src="/logo-agendapro-dark.svg"
-                  alt="AgendaPRO"
-                  width={120}
-                  height={24}
-                  priority
-                  style={{ filter: 'var(--admin-logo-filter)' }}
+                <BrandHeaderLogo
+                  brandLogoUrl={business.brand_logo_url}
+                  businessName={business.name}
                 />
                 <div className="flex items-center gap-2">
                   <ThemeToggle compact />

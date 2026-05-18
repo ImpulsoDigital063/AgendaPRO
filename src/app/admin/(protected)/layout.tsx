@@ -38,6 +38,7 @@ export default async function AdminLayout({
     brand_secondary?: string | null
     brand_accent?: string | null
     brand_neutral?: string | null
+    brand_logo_url?: string | null
   } = {}
 
   if (business) {
@@ -45,7 +46,7 @@ export default async function AdminLayout({
     const supabase = await createClient()
     const { data: brandData } = await supabase
       .from('businesses')
-      .select('brand_primary, brand_secondary, brand_accent, brand_neutral')
+      .select('brand_primary, brand_secondary, brand_accent, brand_neutral, brand_logo_url')
       .eq('id', business.id)
       .maybeSingle()
     if (brandData) brand = brandData

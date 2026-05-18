@@ -136,30 +136,57 @@ export default function MarcarAgendamentoForm({
     return out
   }, [])
 
-  // Horários já ocupados pra esse profissional/dia
+  // Horários já ocupados pra esse profissional/dia (appointments + business_blocks)
   const [busy, setBusy] = useState<Set<string>>(new Set())
+  const [blocked, setBlocked] = useState<Set<string>>(new Set())
   useEffect(() => {
     if (step !== 'horario' || !prof || !date) return
     let cancelled = false
     async function load() {
-      const { data } = await supabase
-        .from('appointments')
-        .select('start_time, end_time, status')
-        .eq('business_id', businessId)
-        .eq('professional_id', prof!.id)
-        .eq('appointment_date', date)
-        .neq('status', 'cancelled')
+      const dayOfWeek = new Date(date + 'T00:00:00').getDay()
+
+      const [{ data: appts }, { data: blocks }] = await Promise.all([
+        supabase
+          .from('appointments')
+          .select('start_time, end_time, status')
+          .eq('business_id', businessId)
+          .eq('professional_id', prof!.id)
+          .eq('appointment_date', date)
+          .neq('status', 'cancelled'),
+        supabase
+          .from('business_blocks')
+          .select('professional_id, block_type, day_of_week, block_date, start_time, end_time')
+          .eq('business_id', businessId)
+          .eq('active', true),
+      ])
       if (cancelled) return
+
       const occ = new Set<string>()
-      for (const a of data ?? []) {
-        // marca de start até end (em slots de 30min)
+      for (const a of appts ?? []) {
         const start = (a.start_time as string).slice(0, 5)
         const end = (a.end_time as string).slice(0, 5)
         for (const s of slots) {
           if (s >= start && s < end) occ.add(s)
         }
       }
+
+      const blk = new Set<string>()
+      for (const b of blocks ?? []) {
+        // só conta bloqueio se for pro prof selecionado OU pro business inteiro
+        if (b.professional_id && b.professional_id !== prof!.id) continue
+        let applies = false
+        if (b.block_type === 'recurring' && b.day_of_week === dayOfWeek) applies = true
+        else if (b.block_type === 'specific' && b.block_date === date) applies = true
+        if (!applies) continue
+        const start = (b.start_time as string).slice(0, 5)
+        const end = (b.end_time as string).slice(0, 5)
+        for (const s of slots) {
+          if (s >= start && s < end) blk.add(s)
+        }
+      }
+
       setBusy(occ)
+      setBlocked(blk)
     }
     load()
     return () => {
@@ -484,24 +511,29 @@ export default function MarcarAgendamentoForm({
               <div className="grid grid-cols-4 gap-1.5">
                 {slots.map((s) => {
                   const occupied = busy.has(s)
+                  const isBlocked = blocked.has(s)
+                  const disabled = occupied || isBlocked
                   const selected = time === s
                   return (
                     <button
                       key={s}
                       onClick={() => {
-                        if (!occupied) setTime(s)
+                        if (!disabled) setTime(s)
                       }}
-                      disabled={occupied}
+                      disabled={disabled}
+                      title={isBlocked ? 'Horário bloqueado' : occupied ? 'Horário ocupado' : ''}
                       className="py-2 rounded-lg text-sm font-semibold tabular-nums disabled:opacity-30"
                       style={{
                         background: selected
                           ? 'var(--admin-accent)'
-                          : occupied
-                            ? 'var(--admin-surface-hi)'
-                            : 'var(--admin-surface)',
-                        color: selected ? '#fff' : 'var(--admin-text)',
+                          : isBlocked
+                            ? 'color-mix(in srgb, var(--admin-danger,#EF4444) 12%, transparent)'
+                            : occupied
+                              ? 'var(--admin-surface-hi)'
+                              : 'var(--admin-surface)',
+                        color: selected ? '#fff' : isBlocked ? 'var(--admin-danger,#EF4444)' : 'var(--admin-text)',
                         border: selected ? 'none' : '1px solid var(--admin-border)',
-                        textDecoration: occupied ? 'line-through' : 'none',
+                        textDecoration: disabled ? 'line-through' : 'none',
                       }}
                     >
                       {s}
@@ -509,6 +541,9 @@ export default function MarcarAgendamentoForm({
                   )
                 })}
               </div>
+              <p className="text-[10px] mt-2" style={{ color: 'var(--admin-text-faded)' }}>
+                Riscado em vermelho = bloqueado · Riscado cinza = ocupado
+              </p>
             </div>
             <button
               onClick={() => setStep('confirma')}

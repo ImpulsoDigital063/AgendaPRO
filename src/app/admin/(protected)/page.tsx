@@ -28,6 +28,7 @@ import TopProfsCard from '@/components/admin/TopProfsCard'
 import TopServicesCard from '@/components/admin/TopServicesCard'
 import TopClienteCard from '@/components/admin/TopClienteCard'
 import TrendReceitaCard from '@/components/admin/TrendReceitaCard'
+import BrandHeaderLogo from '@/components/admin/BrandHeaderLogo'
 import {
   IconCalendar,
   IconDollar,
@@ -378,13 +379,9 @@ export default async function AdminPage() {
             {/* Header */}
             <header>
               <div className="flex items-center justify-between mb-4">
-                <Image
-                  src="/logo-agendapro-dark.svg"
-                  alt="AgendaPRO"
-                  width={92}
-                  height={18}
-                  priority
-                  style={{ filter: 'var(--admin-logo-filter)', opacity: 0.75 }}
+                <BrandHeaderLogo
+                  brandLogoUrl={business.brand_logo_url}
+                  businessName={business.name}
                 />
                 <div className="flex items-center gap-2">
                   <ThemeToggle compact />
