@@ -8,13 +8,16 @@ import CountUp from '@/components/admin/CountUp'
 import RecepAppointmentCard from '@/components/recepcao/RecepAppointmentCard'
 import RecepMarcarFAB from '@/components/recepcao/RecepMarcarFAB'
 import RecepFocoDoDia from '@/components/recepcao/RecepFocoDoDia'
+import RecepProximoAtendimento from '@/components/recepcao/RecepProximoAtendimento'
+import RecepCaixaQuick from '@/components/recepcao/RecepCaixaQuick'
+import RecepAniversariantesCard from '@/components/recepcao/RecepAniversariantesCard'
+import RecepQRCodeCard from '@/components/recepcao/RecepQRCodeCard'
 import {
   IconCalendar,
   IconClock,
   IconDollar,
   IconCheck,
   IconInbox,
-  IconUser,
 } from '@/components/ui/Icon'
 
 export const dynamic = 'force-dynamic'
@@ -42,7 +45,6 @@ export default async function RecepcaoAgendaPage() {
   nextWeek.setDate(nextWeek.getDate() + 7)
   const nextWeekStr = nextWeek.toISOString().split('T')[0]
 
-  // Agenda do dia (todos profs)
   const { data: todayAppts } = await supabase
     .from('appointments')
     .select('*, professional:professionals(id, name)')
@@ -67,7 +69,6 @@ export default async function RecepcaoAgendaPage() {
   const confirmed = active.filter((a) => a.status === 'confirmed')
   const completed = active.filter((a) => a.status === 'completed')
 
-  // KPI · valores recebidos hoje
   const recebidos = list.filter((a) => a.paid_at != null)
   const recebidoTotal = recebidos.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
@@ -77,7 +78,6 @@ export default async function RecepcaoAgendaPage() {
     month: 'long',
   })
 
-  // Stats grid · 4 cards
   const stats = [
     {
       label: 'Pendentes',
@@ -125,155 +125,174 @@ export default async function RecepcaoAgendaPage() {
         />
       </div>
 
-      {/* Header */}
-      <header className="relative max-w-lg mx-auto px-4 pt-7 pb-5">
-        <div className="flex items-center justify-between mb-5">
-          <Image
-            src="/logo-agendapro-dark.svg"
-            alt="AgendaPRO"
-            width={130}
-            height={26}
-            priority
-            style={{ filter: 'var(--admin-logo-filter)' }}
-          />
-          <div className="flex items-center gap-2">
-            <ThemeToggle compact />
-            <LogoutButton />
-          </div>
-        </div>
-        <p className="text-[13px] font-medium mb-0.5" style={{ color: 'var(--admin-text-faded)' }}>
-          <Greeting />, {firstName}
-        </p>
-        <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--admin-text-faded)' }}>
-          Recepção · {business.name}
-        </p>
-        <h1 className="text-[26px] font-bold tracking-tight leading-tight" style={{ color: 'var(--admin-text)' }}>
-          Sua agenda hoje
-        </h1>
-        <p className="text-sm capitalize mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-          <span className="inline-flex items-center gap-1.5">
-            <IconCalendar size={14} /> {todayFormatted}
-          </span>
-        </p>
-      </header>
-
-      {/* KPIs · grid 2x2 */}
-      <section className="relative max-w-lg mx-auto px-4 mb-5">
-        <div className="grid grid-cols-2 gap-2.5">
-          {stats.map((s) => {
-            const Icon = s.icon
-            return (
-              <div key={s.label} className="admin-card p-3.5 relative overflow-hidden">
-                <div
-                  className="absolute -top-4 -right-4 w-16 h-16 rounded-full blur-2xl opacity-70 pointer-events-none"
-                  style={{ background: s.glow }}
+      <div className="relative max-w-7xl mx-auto px-4 lg:px-8 pt-7 pb-32">
+        {/* Layout responsivo · mobile: 1 coluna empilhada · lg: 2 colunas */}
+        <div className="lg:grid lg:grid-cols-[400px_1fr] lg:gap-6">
+          {/* ════════════════════════════════════════════════════
+              COLUNA ESQUERDA (sidebar) · mobile = topo
+              ════════════════════════════════════════════════════ */}
+          <aside className="lg:sticky lg:top-7 lg:self-start space-y-4">
+            {/* Header */}
+            <header>
+              <div className="flex items-center justify-between mb-4">
+                <Image
+                  src="/logo-agendapro-dark.svg"
+                  alt="AgendaPRO"
+                  width={120}
+                  height={24}
+                  priority
+                  style={{ filter: 'var(--admin-logo-filter)' }}
                 />
-                <div className="relative flex items-start justify-between">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-                      {s.label}
-                    </p>
-                    <p className="text-xl font-bold mt-1.5 leading-none tabular-nums" style={{ color: s.color }}>
-                      {typeof s.value === 'number' ? <CountUp value={s.value} duration={500} /> : s.value}
-                    </p>
-                  </div>
-                  <span
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${s.pulse ? 'admin-pulse-warn' : ''}`}
-                    style={{ background: s.glow, color: s.color }}
-                  >
-                    <Icon size={16} />
-                  </span>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle compact />
+                  <LogoutButton />
                 </div>
               </div>
-            )
-          })}
-        </div>
-      </section>
+              <p className="text-[13px] font-medium" style={{ color: 'var(--admin-text-faded)' }}>
+                <Greeting />, {firstName}
+              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-widest mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                Recepção · {business.name}
+              </p>
+              <h1 className="text-[22px] lg:text-[26px] font-bold tracking-tight leading-tight mt-1" style={{ color: 'var(--admin-text)' }}>
+                Sua agenda hoje
+              </h1>
+              <p className="text-sm capitalize mt-1 inline-flex items-center gap-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+                <IconCalendar size={14} /> {todayFormatted}
+              </p>
+            </header>
 
-      {/* Foco do Dia · ações que precisam atenção */}
-      <RecepFocoDoDia businessId={business.id} todayAppts={list} />
+            {/* KPIs · 2x2 */}
+            <section>
+              <div className="grid grid-cols-2 gap-2.5">
+                {stats.map((s) => {
+                  const Icon = s.icon
+                  return (
+                    <div key={s.label} className="admin-card p-3 relative overflow-hidden">
+                      <div
+                        className="absolute -top-4 -right-4 w-14 h-14 rounded-full blur-2xl opacity-70 pointer-events-none"
+                        style={{ background: s.glow }}
+                      />
+                      <div className="relative flex items-start justify-between">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                            {s.label}
+                          </p>
+                          <p className="text-lg font-bold mt-1 leading-none tabular-nums" style={{ color: s.color }}>
+                            {typeof s.value === 'number' ? <CountUp value={s.value} duration={500} /> : s.value}
+                          </p>
+                        </div>
+                        <span
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${s.pulse ? 'admin-pulse-warn' : ''}`}
+                          style={{ background: s.glow, color: s.color }}
+                        >
+                          <Icon size={14} />
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
 
-      <div className="relative max-w-lg mx-auto px-4 pb-32 space-y-6">
-        {/* Pendentes em destaque */}
-        {pending.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-warn)' }}>
-              Aguardando confirmação · {pending.length}
-            </p>
-            <div className="space-y-3">
-              {pending.map((a) => (
-                <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} />
-              ))}
-            </div>
-          </section>
-        )}
+            {/* Foco do Dia */}
+            <RecepFocoDoDia businessId={business.id} todayAppts={list} />
 
-        {/* Hoje */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-              Hoje
-            </p>
-            {active.length > 0 && (
-              <span
-                className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
-                style={{
-                  background: 'var(--admin-accent-bg)',
-                  color: 'var(--admin-accent)',
-                  border: '1px solid var(--admin-accent-border)',
-                }}
-              >
-                {active.length} agendamento{active.length > 1 ? 's' : ''}
-              </span>
+            {/* Caixa quick */}
+            <RecepCaixaQuick todayAppts={list} />
+
+            {/* Aniversariantes */}
+            <RecepAniversariantesCard businessId={business.id} businessName={business.name} />
+
+            {/* QR Code */}
+            <RecepQRCodeCard slug={business.slug} />
+          </aside>
+
+          {/* ════════════════════════════════════════════════════
+              COLUNA DIREITA (main)
+              ════════════════════════════════════════════════════ */}
+          <div className="space-y-5 mt-5 lg:mt-0">
+            {/* Próximo atendimento */}
+            <RecepProximoAtendimento todayAppts={list} />
+
+            {/* Pendentes em destaque */}
+            {pending.length > 0 && (
+              <section>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-warn)' }}>
+                  Aguardando confirmação · {pending.length}
+                </p>
+                <div className="space-y-3">
+                  {pending.map((a) => (
+                    <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Hoje */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+                  Hoje
+                </p>
+                {active.length > 0 && (
+                  <span
+                    className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                    style={{
+                      background: 'var(--admin-accent-bg)',
+                      color: 'var(--admin-accent)',
+                      border: '1px solid var(--admin-accent-border)',
+                    }}
+                  >
+                    {active.length} agendamento{active.length > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+
+              {active.length === 0 ? (
+                <div className="admin-card p-8 text-center">
+                  <div
+                    className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
+                    style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}
+                  >
+                    <IconInbox size={26} />
+                  </div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--admin-text-2)' }}>
+                    Nenhum agendamento hoje
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                    Toque em &quot;Marcar novo&quot; pra começar
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {active.filter((a) => a.status !== 'pending').map((a) => (
+                    <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Próximos dias */}
+            {upcoming && upcoming.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+                    Próximos dias
+                  </p>
+                  <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                    7 dias
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {upcoming.map((a) => (
+                    <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} showDate />
+                  ))}
+                </div>
+              </section>
             )}
           </div>
-
-          {active.length === 0 ? (
-            <div className="admin-card p-8 text-center">
-              <div
-                className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
-                style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}
-              >
-                <IconInbox size={26} />
-              </div>
-              <p className="text-sm font-medium" style={{ color: 'var(--admin-text-2)' }}>
-                Nenhum agendamento hoje
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                Toque em &quot;Marcar novo&quot; pra começar
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {active.filter((a) => a.status !== 'pending').map((a) => (
-                <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Próximos dias */}
-        {upcoming && upcoming.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-                Próximos dias
-              </p>
-              <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
-                7 dias
-              </span>
-            </div>
-            <div className="space-y-3">
-              {upcoming.map((a) => (
-                <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} showDate />
-              ))}
-            </div>
-          </section>
-        )}
-
-        <p className="text-center text-xs pb-2" style={{ color: 'var(--admin-text-faded)' }}>
-          AgendaPRO · Impulso Digital
-        </p>
+        </div>
       </div>
 
       <RecepMarcarFAB businessId={business.id} />
