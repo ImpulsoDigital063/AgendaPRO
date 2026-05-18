@@ -65,7 +65,8 @@ export default async function VendasPage() {
     { auth: { persistSession: false } },
   )
 
-  // Últimos 100 atendimentos do business · ordenados desc
+  // Últimas 100 vendas realizadas (passado + hoje) · futuros são recorrências da agenda
+  const today = new Date().toISOString().slice(0, 10)
   const { data: appts } = await sb
     .from('appointments')
     .select(`
@@ -82,6 +83,7 @@ export default async function VendasPage() {
       professional:professionals(name)
     `)
     .eq('business_id', business.id)
+    .lte('appointment_date', today)
     .order('appointment_date', { ascending: false })
     .order('start_time', { ascending: false })
     .limit(100)
@@ -101,11 +103,12 @@ export default async function VendasPage() {
     }
   }
 
-  // Contagem total · pra mostrar "X de Y"
+  // Contagem total de vendas realizadas (passado + hoje)
   const { count: totalCount } = await sb
     .from('appointments')
     .select('id', { count: 'exact', head: true })
     .eq('business_id', business.id)
+    .lte('appointment_date', today)
 
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
