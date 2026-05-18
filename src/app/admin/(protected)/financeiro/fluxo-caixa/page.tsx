@@ -2,29 +2,32 @@ import { redirect } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
+import FluxoCaixaTable, { type CashMonth, type MonthCol } from '@/components/admin/financeiro/FluxoCaixaTable'
 
-type CashRow = {
-  saldoInicial: number
-  receitas: number
-  despesas: number
-  resultado: number
-  saldoFinal: number
+const METHOD_LABELS: Record<string, string> = {
+  cash: 'Dinheiro',
+  pix: 'Pix',
+  credit: 'Cartão de Crédito',
+  credit_card: 'Cartão de Crédito',
+  debit: 'Cartão de Débito',
+  debit_card: 'Cartão de Débito',
+  transfer: 'Transferência Bancária',
+  other: 'Outro',
 }
 
-function formatBRL(v: number): string {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const CATEGORY_LABELS: Record<string, string> = {
+  rent: 'Aluguel',
+  products: 'Produtos',
+  salary: 'Salários',
+  utilities: 'Contas (água · luz · internet)',
+  marketing: 'Marketing',
+  taxes: 'Impostos',
+  other: 'Outros',
 }
 
 function monthLabel(year: number, month0: number): string {
-  // month0: 0-11
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
   return `${months[month0]}/${String(year).slice(2)}`
-}
-
-function rangeForMonth(year: number, month0: number): { from: string; to: string } {
-  const from = new Date(Date.UTC(year, month0, 1))
-  const to = new Date(Date.UTC(year, month0 + 1, 1))
-  return { from: from.toISOString(), to: to.toISOString() }
 }
 
 export default async function FluxoCaixaPage() {
@@ -40,29 +43,27 @@ export default async function FluxoCaixaPage() {
     { auth: { persistSession: false } },
   )
 
-  // Visão Mensal · 4 últimos meses (atual + 3 anteriores)
+  // 4 últimos meses (atual + 3 anteriores)
   const now = new Date()
   const currentY = now.getFullYear()
   const currentM = now.getMonth()
-  const months: { year: number; month0: number; label: string }[] = []
+  const months: MonthCol[] = []
   for (let i = 3; i >= 0; i--) {
     const d = new Date(currentY, currentM - i, 1)
     months.push({
       year: d.getFullYear(),
       month0: d.getMonth(),
       label: monthLabel(d.getFullYear(), d.getMonth()),
+      key: `${d.getFullYear()}-${d.getMonth()}`,
     })
   }
 
-  // Busca todos os pagamentos + despesas do range que cobre os 4 meses + algum anterior pro Saldo Inicial
   const fullRangeFrom = new Date(Date.UTC(months[0].year, months[0].month0, 1))
   const fullRangeTo = new Date(Date.UTC(currentY, currentM + 1, 1))
-
-  // Pra Saldo Inicial do mês mais antigo: precisa saber acumulado TUDO até esse mês
   const startOfPeriod = fullRangeFrom.toISOString()
+  const fullRangeFromDate = fullRangeFrom.toISOString().slice(0, 10)
+  const fullRangeToDate = fullRangeTo.toISOString().slice(0, 10)
 
-  // Receitas: appointments com paid_at (modelo híbrido) · ignora futuros
-  // + Despesas no período · + Saldo acumulado ANTERIOR pra calcular Saldo Inicial
   const [
     { data: paidAppts },
     { data: expensesData },
@@ -71,17 +72,17 @@ export default async function FluxoCaixaPage() {
   ] = await Promise.all([
     sb
       .from('appointments')
-      .select('paid_at, total_price')
+      .select('paid_at, total_price, payment_method')
       .eq('business_id', business.id)
       .gte('paid_at', fullRangeFrom.toISOString())
       .lt('paid_at', fullRangeTo.toISOString())
       .not('paid_at', 'is', null),
     sb
       .from('expenses')
-      .select('paid_at, amount')
+      .select('occurred_at, amount, category')
       .eq('business_id', business.id)
-      .gte('paid_at', fullRangeFrom.toISOString())
-      .lt('paid_at', fullRangeTo.toISOString()),
+      .gte('occurred_at', fullRangeFromDate)
+      .lt('occurred_at', fullRangeToDate),
     sb
       .from('appointments')
       .select('total_price')
@@ -92,47 +93,59 @@ export default async function FluxoCaixaPage() {
       .from('expenses')
       .select('amount')
       .eq('business_id', business.id)
-      .lt('paid_at', startOfPeriod),
+      .lt('occurred_at', fullRangeFromDate),
   ])
 
   const priorReceitas = (priorR ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)
   const priorDespesas = (priorD ?? []).reduce((s, e) => s + Number(e.amount ?? 0), 0)
   const saldoAcumulado = priorReceitas - priorDespesas
 
-  // Monta receitas/despesas por mês
-  const rows: Map<string, CashRow> = new Map()
+  // Inicializa map por mês
+  const data: Record<string, CashMonth> = {}
   for (const m of months) {
-    rows.set(`${m.year}-${m.month0}`, {
+    data[m.key] = {
       saldoInicial: 0,
-      receitas: 0,
-      despesas: 0,
+      receitasByMethod: {},
+      receitasTotal: 0,
+      despesasByCategory: {},
+      despesasTotal: 0,
       resultado: 0,
       saldoFinal: 0,
-    })
+    }
   }
 
+  // Receitas por mês + método
   for (const a of paidAppts ?? []) {
     if (!a.paid_at) continue
     const d = new Date(a.paid_at)
     const key = `${d.getFullYear()}-${d.getMonth()}`
-    const row = rows.get(key)
-    if (row) row.receitas += Number(a.total_price ?? 0)
+    const row = data[key]
+    if (!row) continue
+    const method = (a.payment_method as string | null) ?? 'other'
+    const amt = Number(a.total_price ?? 0)
+    row.receitasByMethod[method] = (row.receitasByMethod[method] ?? 0) + amt
+    row.receitasTotal += amt
   }
 
+  // Despesas por mês + categoria
   for (const e of expensesData ?? []) {
-    if (!e.paid_at) continue
-    const d = new Date(e.paid_at)
+    if (!e.occurred_at) continue
+    const d = new Date(e.occurred_at + 'T00:00:00')
     const key = `${d.getFullYear()}-${d.getMonth()}`
-    const row = rows.get(key)
-    if (row) row.despesas += Number(e.amount ?? 0)
+    const row = data[key]
+    if (!row) continue
+    const cat = (e.category as string | null) ?? 'other'
+    const amt = Number(e.amount ?? 0)
+    row.despesasByCategory[cat] = (row.despesasByCategory[cat] ?? 0) + amt
+    row.despesasTotal += amt
   }
 
   // Calcula saldo encadeado
   let acc = saldoAcumulado
   for (const m of months) {
-    const row = rows.get(`${m.year}-${m.month0}`)!
+    const row = data[m.key]
     row.saldoInicial = acc
-    row.resultado = row.receitas - row.despesas
+    row.resultado = row.receitasTotal - row.despesasTotal
     row.saldoFinal = row.saldoInicial + row.resultado
     acc = row.saldoFinal
   }
@@ -162,152 +175,16 @@ export default async function FluxoCaixaPage() {
             </button>
           </div>
 
-          {/* Tabela matricial */}
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{
-              background: 'var(--admin-surface)',
-              border: '1px solid var(--admin-border)',
-            }}
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr
-                    style={{
-                      background: 'var(--admin-surface-hi)',
-                      borderBottom: '1px solid var(--admin-border)',
-                    }}
-                  >
-                    <th
-                      className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider"
-                      style={{ color: 'var(--admin-text-mute)', minWidth: 180 }}
-                    />
-                    {months.map((m) => (
-                      <th
-                        key={`${m.year}-${m.month0}`}
-                        className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider"
-                        style={{ color: 'var(--admin-text-mute)' }}
-                      >
-                        {m.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Saldo Inicial */}
-                  <tr style={{ borderBottom: '1px solid var(--admin-divider)' }}>
-                    <td className="px-4 py-3 font-semibold" style={{ color: 'var(--admin-text)' }}>
-                      Saldo Inicial
-                    </td>
-                    {months.map((m) => {
-                      const row = rows.get(`${m.year}-${m.month0}`)!
-                      return (
-                        <td
-                          key={`si-${m.year}-${m.month0}`}
-                          className="px-4 py-3 text-right tabular-nums font-semibold"
-                          style={{ color: row.saldoInicial < 0 ? 'var(--admin-danger,#EF4444)' : 'var(--admin-text)' }}
-                        >
-                          {formatBRL(row.saldoInicial)}
-                        </td>
-                      )
-                    })}
-                  </tr>
-
-                  {/* Receitas · fundo verde pálido */}
-                  <tr
-                    style={{
-                      background: 'color-mix(in srgb, #10B981 8%, transparent)',
-                      borderBottom: '1px solid var(--admin-divider)',
-                    }}
-                  >
-                    <td className="px-4 py-3 font-semibold" style={{ color: '#059669' }}>
-                      Receitas
-                    </td>
-                    {months.map((m) => {
-                      const row = rows.get(`${m.year}-${m.month0}`)!
-                      return (
-                        <td
-                          key={`r-${m.year}-${m.month0}`}
-                          className="px-4 py-3 text-right tabular-nums font-bold"
-                          style={{ color: '#059669' }}
-                        >
-                          {formatBRL(row.receitas)}
-                        </td>
-                      )
-                    })}
-                  </tr>
-
-                  {/* Despesas · fundo vermelho pálido */}
-                  <tr
-                    style={{
-                      background: 'color-mix(in srgb, #EF4444 8%, transparent)',
-                      borderBottom: '1px solid var(--admin-divider)',
-                    }}
-                  >
-                    <td className="px-4 py-3 font-semibold" style={{ color: 'var(--admin-danger,#EF4444)' }}>
-                      Despesas
-                    </td>
-                    {months.map((m) => {
-                      const row = rows.get(`${m.year}-${m.month0}`)!
-                      return (
-                        <td
-                          key={`d-${m.year}-${m.month0}`}
-                          className="px-4 py-3 text-right tabular-nums font-bold"
-                          style={{ color: 'var(--admin-danger,#EF4444)' }}
-                        >
-                          {formatBRL(row.despesas)}
-                        </td>
-                      )
-                    })}
-                  </tr>
-
-                  {/* Resultado Líquido */}
-                  <tr style={{ borderBottom: '1px solid var(--admin-divider)' }}>
-                    <td className="px-4 py-3 font-semibold" style={{ color: 'var(--admin-text)' }}>
-                      Resultado Líquido
-                    </td>
-                    {months.map((m) => {
-                      const row = rows.get(`${m.year}-${m.month0}`)!
-                      return (
-                        <td
-                          key={`res-${m.year}-${m.month0}`}
-                          className="px-4 py-3 text-right tabular-nums font-semibold"
-                          style={{ color: row.resultado < 0 ? 'var(--admin-danger,#EF4444)' : row.resultado > 0 ? '#059669' : 'var(--admin-text-mute)' }}
-                        >
-                          {formatBRL(row.resultado)}
-                        </td>
-                      )
-                    })}
-                  </tr>
-
-                  {/* Saldo Final */}
-                  <tr style={{ background: 'var(--admin-surface-hi)' }}>
-                    <td className="px-4 py-3 font-bold" style={{ color: 'var(--admin-text)' }}>
-                      Saldo Final
-                    </td>
-                    {months.map((m) => {
-                      const row = rows.get(`${m.year}-${m.month0}`)!
-                      return (
-                        <td
-                          key={`sf-${m.year}-${m.month0}`}
-                          className="px-4 py-3 text-right tabular-nums font-bold"
-                          style={{ color: row.saldoFinal < 0 ? 'var(--admin-danger,#EF4444)' : 'var(--admin-accent)' }}
-                        >
-                          {formatBRL(row.saldoFinal)}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <FluxoCaixaTable
+            months={months}
+            data={data}
+            methodLabels={METHOD_LABELS}
+            categoryLabels={CATEGORY_LABELS}
+          />
 
           {/* Hint */}
           <p className="text-[11px] mt-3 text-center" style={{ color: 'var(--admin-text-faded)' }}>
-            Receitas: atendimentos pagos no período · Despesas: lançamentos manuais ·
-            Saldo Inicial = Saldo Final do mês anterior
+            Clica em <b>Receitas</b> ou <b>Despesas</b> pra ver breakdown por método/categoria · Saldo Inicial = Saldo Final do mês anterior
           </p>
         </div>
       </div>
