@@ -65,6 +65,7 @@ export default async function FinanceiroPage({
       .select(`
         id, client_name, client_phone, appointment_date, start_time,
         status, service_name, total_price, paid_at, payment_method,
+        payment_card_type, payment_card_brand, payment_fee_percent, payment_installments,
         professional:professionals(id, name, commission_percentage, employment_type)
       `)
       .eq('business_id', business.id)

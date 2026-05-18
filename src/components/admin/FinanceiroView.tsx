@@ -18,6 +18,10 @@ export type AppointmentRow = {
   total_price: number | null
   paid_at: string | null
   payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | null
+  payment_card_type?: 'credit' | 'debit' | null
+  payment_card_brand?: string | null
+  payment_fee_percent?: number | null
+  payment_installments?: number | null
   professional: { id: string; name: string; commission_percentage: number; employment_type?: string | null } | null
 }
 
@@ -68,14 +72,41 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
   const totalFaturado = ativos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const ticketMedio = ativos.length > 0 ? totalFaturado / ativos.length : 0
 
+  // Total de taxas (cartão · Pix com fee · etc) descontadas do bruto
+  const totalTaxas = pagosReceita.reduce((sum, a) => {
+    if (!a.payment_fee_percent || a.payment_fee_percent <= 0) return sum
+    const price = a.total_price ?? 0
+    return sum + (price * a.payment_fee_percent) / 100
+  }, 0)
+  const totalLiquido = totalRealizado - totalTaxas
+
   // Breakdown por método (recorta cortesia em metric separada acima).
   // pagosReceita ja exclui courtesy — byMethod soma so PIX/cash/card.
-  type MethodKey = 'pix' | 'cash' | 'card' | 'courtesy'
-  const byMethod: Record<MethodKey, number> = { pix: 0, cash: 0, card: 0, courtesy: 0 }
-  for (const a of pagosReceita) {
-    if (a.payment_method) byMethod[a.payment_method] += a.total_price ?? 0
+  // 'card' separado em credit/debit via payment_card_type.
+  type MethodKey = 'pix' | 'cash' | 'card_credit' | 'card_debit' | 'card_other' | 'courtesy'
+  const byMethod: Record<MethodKey, { gross: number; fees: number; count: number }> = {
+    pix: { gross: 0, fees: 0, count: 0 },
+    cash: { gross: 0, fees: 0, count: 0 },
+    card_credit: { gross: 0, fees: 0, count: 0 },
+    card_debit: { gross: 0, fees: 0, count: 0 },
+    card_other: { gross: 0, fees: 0, count: 0 },
+    courtesy: { gross: totalCortesia, fees: 0, count: cortesias.length },
   }
-  byMethod.courtesy = totalCortesia // pra exibicao informativa
+  for (const a of pagosReceita) {
+    const price = a.total_price ?? 0
+    const fee = a.payment_fee_percent ? (price * a.payment_fee_percent) / 100 : 0
+    let key: MethodKey
+    if (a.payment_method === 'pix') key = 'pix'
+    else if (a.payment_method === 'cash') key = 'cash'
+    else if (a.payment_method === 'card') {
+      if (a.payment_card_type === 'credit') key = 'card_credit'
+      else if (a.payment_card_type === 'debit') key = 'card_debit'
+      else key = 'card_other'
+    } else continue
+    byMethod[key].gross += price
+    byMethod[key].fees += fee
+    byMethod[key].count += 1
+  }
 
   // Agrupamento por profissional — comissao baseada em PAGOS DE RECEITA
   // (cortesia exclusa — profissional nao recebe comissao sobre brinde).
@@ -279,6 +310,42 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
             </div>
           </div>
         </Link>
+      )}
+
+      {/* Card de Taxas · Líquido — só se houve fees descontadas */}
+      {totalTaxas > 0 && (
+        <div
+          className="rounded-2xl p-4 grid grid-cols-3 gap-3 text-center"
+          style={{
+            background: 'var(--admin-surface)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              Bruto
+            </p>
+            <p className="text-base font-bold tabular-nums mt-1" style={{ color: 'var(--admin-text)' }}>
+              {formatPrice(totalRealizado)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              Taxas
+            </p>
+            <p className="text-base font-bold tabular-nums mt-1" style={{ color: 'var(--admin-danger,#EF4444)' }}>
+              − {formatPrice(totalTaxas)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              Líquido
+            </p>
+            <p className="text-base font-bold tabular-nums mt-1" style={{ color: 'var(--admin-success,#10B981)' }}>
+              {formatPrice(totalLiquido)}
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Breakdown por método de pagamento — só os que tem valor.
@@ -558,19 +625,23 @@ function Sparkline({
  * Antes mostrava 4 cards mesmo com 3 zerados — desperdício de tela.
  * Se admin quiser ver os zerados, "Ver outros métodos" expande.
  */
+type MethodTotals = { gross: number; fees: number; count: number }
+
 function MethodBreakdown({
   byMethod,
 }: {
-  byMethod: Record<'pix' | 'cash' | 'card' | 'courtesy', number>
+  byMethod: Record<'pix' | 'cash' | 'card_credit' | 'card_debit' | 'card_other' | 'courtesy', MethodTotals>
 }) {
   const all = [
-    { key: 'pix' as const,      label: 'PIX',      letter: 'P', color: '#10B981' },
-    { key: 'cash' as const,     label: 'Dinheiro', letter: '$', color: '#16A34A' },
-    { key: 'card' as const,     label: 'Cartão',   letter: 'C', color: '#3B82F6' },
-    { key: 'courtesy' as const, label: 'Cortesia', letter: '•', color: '#A855F7' },
+    { key: 'pix' as const,         label: 'PIX',             letter: 'P', color: '#10B981' },
+    { key: 'cash' as const,        label: 'Dinheiro',        letter: '$', color: '#16A34A' },
+    { key: 'card_credit' as const, label: 'Cartão crédito',  letter: 'C', color: '#3B82F6' },
+    { key: 'card_debit' as const,  label: 'Cartão débito',   letter: 'D', color: '#0EA5E9' },
+    { key: 'card_other' as const,  label: 'Cartão (outro)',  letter: 'C', color: '#6366F1' },
+    { key: 'courtesy' as const,    label: 'Cortesia',        letter: '•', color: '#A855F7' },
   ]
-  const ativos = all.filter((m) => byMethod[m.key] > 0)
-  const zerados = all.filter((m) => byMethod[m.key] === 0)
+  const ativos = all.filter((m) => byMethod[m.key].gross > 0)
+  const zerados = all.filter((m) => byMethod[m.key].gross === 0)
 
   if (ativos.length === 0) return null
 
@@ -579,9 +650,16 @@ function MethodBreakdown({
       <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
         Recebido por método
       </h2>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2">
         {ativos.map((m) => (
-          <MethodTile key={m.key} label={m.label} value={byMethod[m.key]} letter={m.letter} color={m.color} />
+          <MethodTile
+            key={m.key}
+            label={m.label}
+            totals={byMethod[m.key]}
+            letter={m.letter}
+            color={m.color}
+            isCourtesy={m.key === 'courtesy'}
+          />
         ))}
       </div>
       {zerados.length > 0 && (
@@ -594,7 +672,14 @@ function MethodBreakdown({
           </summary>
           <div className="grid grid-cols-2 gap-2 mt-2">
             {zerados.map((m) => (
-              <MethodTile key={m.key} label={m.label} value={0} letter={m.letter} color={m.color} />
+              <MethodTile
+                key={m.key}
+                label={m.label}
+                totals={byMethod[m.key]}
+                letter={m.letter}
+                color={m.color}
+                isCourtesy={m.key === 'courtesy'}
+              />
             ))}
           </div>
         </details>
@@ -605,38 +690,50 @@ function MethodBreakdown({
 
 function MethodTile({
   label,
-  value,
+  totals,
   letter,
   color,
+  isCourtesy = false,
 }: {
   label: string
-  value: number
+  totals: MethodTotals
   letter: string
   color: string
+  isCourtesy?: boolean
 }) {
-  const has = value > 0
+  const has = totals.gross > 0
+  const net = totals.gross - totals.fees
+  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   return (
     <div
-      className="admin-card p-3 flex items-center gap-3"
+      className="admin-card p-3"
       style={{ opacity: has ? 1 : 0.55 }}
     >
-      <span
-        className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
-        style={{
-          background: `${color}1F`,
-          color: color,
-        }}
-      >
-        {letter}
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wider truncate" style={{ color: 'var(--admin-text-faded)' }}>
-          {label}
-        </p>
-        <p className="text-sm font-bold tabular-nums leading-tight truncate" style={{ color: 'var(--admin-text)' }}>
-          {value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-        </p>
+      <div className="flex items-center gap-3">
+        <span
+          className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
+          style={{ background: `${color}1F`, color }}
+        >
+          {letter}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider truncate" style={{ color: 'var(--admin-text-faded)' }}>
+            {label} {totals.count > 0 && `· ${totals.count}`}
+          </p>
+          <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--admin-text)' }}>
+            {fmt(totals.gross)}
+          </p>
+        </div>
       </div>
+      {has && !isCourtesy && totals.fees > 0 && (
+        <div
+          className="mt-2 pt-2 border-t flex justify-between text-[11px] tabular-nums"
+          style={{ borderColor: 'var(--admin-divider)' }}
+        >
+          <span style={{ color: 'var(--admin-danger,#EF4444)' }}>− {fmt(totals.fees)} taxa</span>
+          <span style={{ color: 'var(--admin-success,#10B981)' }}>{fmt(net)} líquido</span>
+        </div>
+      )}
     </div>
   )
 }
