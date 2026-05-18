@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { IconChevronDown, IconChevronRight } from '@/components/ui/Icon'
 
 export type MonthCol = {
@@ -100,16 +101,18 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
               })}
             </tr>
 
-            {/* Receitas · linha principal (clicável) */}
+            {/* Receitas · linha principal */}
             <tr
-              onClick={() => setReceitasOpen((o) => !o)}
               style={{
                 background: 'color-mix(in srgb, #10B981 8%, transparent)',
                 borderBottom: '1px solid var(--admin-divider)',
-                cursor: 'pointer',
               }}
             >
-              <td className="px-4 py-3 font-semibold" style={{ color: '#059669' }}>
+              <td
+                className="px-4 py-3 font-semibold cursor-pointer"
+                style={{ color: '#059669' }}
+                onClick={() => setReceitasOpen((o) => !o)}
+              >
                 <span className="inline-flex items-center gap-1.5">
                   {receitasOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
                   Receitas
@@ -117,13 +120,24 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
               </td>
               {months.map((m) => {
                 const r = data[m.key]
+                const monthParam = `${m.year}-${String(m.month0 + 1).padStart(2, '0')}`
                 return (
                   <td
                     key={`r-${m.key}`}
                     className="px-4 py-3 text-right tabular-nums font-bold"
                     style={{ color: '#059669' }}
                   >
-                    {formatBRL(r.receitasTotal)}
+                    {r.receitasTotal > 0 ? (
+                      <Link
+                        href={`/admin/financeiro/fluxo-caixa/detalhamento?month=${monthParam}&type=receitas`}
+                        className="hover:underline"
+                        title="Ver movimentações"
+                      >
+                        {formatBRL(r.receitasTotal)}
+                      </Link>
+                    ) : (
+                      <span style={{ opacity: 0.5 }}>{formatBRL(r.receitasTotal)}</span>
+                    )}
                   </td>
                 )
               })}
@@ -143,13 +157,23 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                 </td>
                 {months.map((m) => {
                   const v = data[m.key]?.receitasByMethod[key] ?? 0
+                  const monthParam = `${m.year}-${String(m.month0 + 1).padStart(2, '0')}`
                   return (
                     <td
                       key={`r-sub-${key}-${m.key}`}
                       className="px-4 py-2 text-right tabular-nums text-xs"
-                      style={{ color: v > 0 ? 'var(--admin-text)' : 'var(--admin-text-faded)' }}
                     >
-                      {formatBRL(v)}
+                      {v > 0 ? (
+                        <Link
+                          href={`/admin/financeiro/fluxo-caixa/detalhamento?month=${monthParam}&type=receitas&method=${key}`}
+                          className="hover:underline"
+                          style={{ color: 'var(--admin-text)' }}
+                        >
+                          {formatBRL(v)}
+                        </Link>
+                      ) : (
+                        <span style={{ color: 'var(--admin-text-faded)' }}>{formatBRL(v)}</span>
+                      )}
                     </td>
                   )
                 })}
@@ -168,16 +192,18 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
               </tr>
             )}
 
-            {/* Despesas · linha principal (clicável) */}
+            {/* Despesas · linha principal */}
             <tr
-              onClick={() => setDespesasOpen((o) => !o)}
               style={{
                 background: 'color-mix(in srgb, #EF4444 8%, transparent)',
                 borderBottom: '1px solid var(--admin-divider)',
-                cursor: 'pointer',
               }}
             >
-              <td className="px-4 py-3 font-semibold" style={{ color: 'var(--admin-danger,#EF4444)' }}>
+              <td
+                className="px-4 py-3 font-semibold cursor-pointer"
+                style={{ color: 'var(--admin-danger,#EF4444)' }}
+                onClick={() => setDespesasOpen((o) => !o)}
+              >
                 <span className="inline-flex items-center gap-1.5">
                   {despesasOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
                   Despesas
@@ -185,13 +211,24 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
               </td>
               {months.map((m) => {
                 const r = data[m.key]
+                const monthParam = `${m.year}-${String(m.month0 + 1).padStart(2, '0')}`
                 return (
                   <td
                     key={`d-${m.key}`}
                     className="px-4 py-3 text-right tabular-nums font-bold"
                     style={{ color: 'var(--admin-danger,#EF4444)' }}
                   >
-                    {formatBRL(r.despesasTotal)}
+                    {r.despesasTotal > 0 ? (
+                      <Link
+                        href={`/admin/financeiro/fluxo-caixa/detalhamento?month=${monthParam}&type=despesas`}
+                        className="hover:underline"
+                        title="Ver movimentações"
+                      >
+                        {formatBRL(r.despesasTotal)}
+                      </Link>
+                    ) : (
+                      <span style={{ opacity: 0.5 }}>{formatBRL(r.despesasTotal)}</span>
+                    )}
                   </td>
                 )
               })}
@@ -211,13 +248,23 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                 </td>
                 {months.map((m) => {
                   const v = data[m.key]?.despesasByCategory[key] ?? 0
+                  const monthParam = `${m.year}-${String(m.month0 + 1).padStart(2, '0')}`
                   return (
                     <td
                       key={`d-sub-${key}-${m.key}`}
                       className="px-4 py-2 text-right tabular-nums text-xs"
-                      style={{ color: v > 0 ? 'var(--admin-text)' : 'var(--admin-text-faded)' }}
                     >
-                      {formatBRL(v)}
+                      {v > 0 ? (
+                        <Link
+                          href={`/admin/financeiro/fluxo-caixa/detalhamento?month=${monthParam}&type=despesas&category=${key}`}
+                          className="hover:underline"
+                          style={{ color: 'var(--admin-text)' }}
+                        >
+                          {formatBRL(v)}
+                        </Link>
+                      ) : (
+                        <span style={{ color: 'var(--admin-text-faded)' }}>{formatBRL(v)}</span>
+                      )}
                     </td>
                   )
                 })}
