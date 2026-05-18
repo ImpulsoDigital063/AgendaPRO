@@ -1,6 +1,7 @@
 /**
  * Gera magic link one-shot pro admin do Palace (Marko).
- * Sem afetar a senha dele — link expira após uso ou em 1h.
+ * Usa hashed_token + /auth/confirm (server-side verifyOtp).
+ * Sem afetar senha. Expira em 1h ou após uso.
  *
  * Rodar:
  *   node --env-file=.env.local scripts/magic-link-marko.mjs
@@ -14,12 +15,11 @@ const sb = createClient(
 )
 
 const email = 'palacenailspamacae@gmail.com'
-const redirectTo = 'https://agenda-pro-seven.vercel.app/auth/callback?next=/admin'
+const base = 'https://agenda-pro-seven.vercel.app'
 
 const { data, error } = await sb.auth.admin.generateLink({
   type: 'magiclink',
   email,
-  options: { redirectTo },
 })
 
 if (error) {
@@ -27,6 +27,9 @@ if (error) {
   process.exit(1)
 }
 
+const tokenHash = data.properties.hashed_token
+const url = `${base}/auth/confirm?token_hash=${tokenHash}&type=magiclink&next=/admin`
+
 console.log('\nMagic link gerado pro admin Marko:\n')
-console.log(data.properties.action_link)
+console.log(url)
 console.log('\nCole no navegador desktop. Loga direto em /admin.')
