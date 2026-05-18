@@ -30,19 +30,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A senha deve conter pelo menos uma letra maiúscula e um número.' }, { status: 400 })
   }
 
-  const adminClient = getAdminClient()
-
-  // Atualiza a senha no Auth
-  const { error: authError } = await adminClient.auth.admin.updateUserById(user.id, {
-    password: newPassword,
-  })
+  // Atualiza a senha com a sessão do próprio user — NÃO invalida sessões ativas.
+  // Bug reportado 17/05 (Leticia): adminClient.auth.admin.updateUserById invalida
+  // todas as sessões automaticamente, deixando o user em loop de login após
+  // trocar senha pela 1ª vez.
+  const { error: authError } = await supabase.auth.updateUser({ password: newPassword })
 
   if (authError) {
     console.error('Password update error:', authError)
     return NextResponse.json({ error: 'Erro ao atualizar senha.' }, { status: 500 })
   }
 
-  // Marca que o profissional já trocou a senha
+  // Marca que o profissional já trocou a senha — usa admin pra bypassar
+  // RLS (não tem policy de UPDATE em professionals pelo próprio user).
+  const adminClient = getAdminClient()
   await adminClient
     .from('professionals')
     .update({ password_changed: true })
