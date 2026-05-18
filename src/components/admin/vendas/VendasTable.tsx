@@ -32,6 +32,9 @@ function describeStatus(a: SaleRow, invoicesById: Record<string, InvoiceItemRef>
       if (inv.invoice.status === 'open') {
         return { label: `#${inv.invoice.invoice_number} · Aberta`, tone: 'invoiced' }
       }
+      if (inv.invoice.status === 'cancelled') {
+        return { label: `#${inv.invoice.invoice_number} · Cancelada`, tone: 'cancelled' }
+      }
     }
   }
   if (a.paid_at) return { label: 'Pago', tone: 'paid' }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { IconClose, IconWhatsapp, IconPencil, IconTrash, IconUser, IconExternalLink } from '@/components/ui/Icon'
 import FaturarModal from './FaturarModal'
+import ComandaModal from './ComandaModal'
 
 export type SaleRow = {
   id: string
@@ -24,7 +25,7 @@ export type SaleRow = {
 
 export type InvoiceItemRef = {
   id: string
-  invoice: { invoice_number: number; status: string } | null
+  invoice: { id: string; invoice_number: number; status: string } | null
 }
 
 type Props = {
@@ -61,15 +62,16 @@ function statusLabel(value: string): string {
 
 export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
   const [showFaturar, setShowFaturar] = useState(false)
+  const [showComanda, setShowComanda] = useState(false)
 
-  // Esc fecha (só quando faturar não está aberto)
+  // Esc fecha (só quando nenhum modal interno tá aberto)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !showFaturar) onClose()
+      if (e.key === 'Escape' && !showFaturar && !showComanda) onClose()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose, showFaturar])
+  }, [onClose, showFaturar, showComanda])
 
   const isInvoiced = !!sale.invoice_item_id && invoiceRef?.invoice
   const isPaid = !!sale.paid_at
@@ -244,8 +246,8 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
               <button
                 type="button"
                 aria-label="Ver comanda"
-                disabled
-                className="p-1 rounded disabled:opacity-30"
+                onClick={() => setShowComanda(true)}
+                className="p-1 rounded"
                 style={{ color: 'var(--admin-accent)' }}
               >
                 <IconExternalLink size={14} />
@@ -275,6 +277,14 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
           customerId={sale.customer_id ?? null}
           triggerAppointmentId={sale.id}
           onClose={() => setShowFaturar(false)}
+        />
+      )}
+
+      {/* Modal Comanda */}
+      {showComanda && invoiceRef?.invoice?.id && (
+        <ComandaModal
+          invoiceId={invoiceRef.invoice.id}
+          onClose={() => setShowComanda(false)}
         />
       )}
     </div>

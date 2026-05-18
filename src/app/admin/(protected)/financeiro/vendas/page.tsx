@@ -100,7 +100,7 @@ export default async function VendasPage({
   if (invoiceItemIds.length > 0) {
     const { data: items } = await sb
       .from('invoice_items')
-      .select(`id, invoice:invoices(invoice_number, status)`)
+      .select(`id, invoice:invoices(id, invoice_number, status)`)
       .in('id', invoiceItemIds)
     for (const item of (items ?? []) as unknown as InvoiceItemRef[]) {
       invoicesById[item.id] = item
