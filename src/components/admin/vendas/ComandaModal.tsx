@@ -372,9 +372,17 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
                       <button
                         type="button"
                         onClick={() => setEditMode(true)}
-                        className="text-xs font-bold uppercase tracking-wider"
-                        style={{ color: 'var(--admin-accent)' }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition hover:opacity-90"
+                        style={{
+                          background: 'color-mix(in srgb, var(--admin-accent) 14%, transparent)',
+                          color: 'var(--admin-accent)',
+                          border: '1px solid color-mix(in srgb, var(--admin-accent) 30%, transparent)',
+                        }}
                       >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+                        </svg>
                         Gerenciar Itens
                       </button>
                     )}

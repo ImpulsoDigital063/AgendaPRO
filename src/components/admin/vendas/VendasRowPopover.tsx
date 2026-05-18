@@ -215,45 +215,44 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
             </select>
           </div>
 
-          {/* Linha Comanda */}
-          <div
-            className="flex items-center gap-2 px-3 py-2.5 rounded-lg"
-            style={{
-              background: isInvoiced
-                ? 'color-mix(in srgb, var(--admin-accent) 12%, transparent)'
-                : isPaid
-                  ? 'color-mix(in srgb, #10B981 12%, transparent)'
-                  : 'var(--admin-surface-hi)',
-            }}
-          >
-            <span
-              className="text-xs font-semibold flex-1"
+          {/* Linha Comanda · clicável quando faturada */}
+          {isInvoiced ? (
+            <button
+              type="button"
+              onClick={() => setShowComanda(true)}
+              className="w-full flex items-center gap-2 px-3 py-3 rounded-lg transition hover:opacity-90"
               style={{
-                color: isInvoiced
-                  ? 'var(--admin-accent)'
-                  : isPaid
-                    ? '#10B981'
-                    : 'var(--admin-text-mute)',
+                background: 'color-mix(in srgb, var(--admin-accent) 14%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--admin-accent) 30%, transparent)',
               }}
             >
-              {isInvoiced
-                ? `✓ Comanda Fechada: #${invoiceRef!.invoice!.invoice_number}`
-                : isPaid
-                  ? '✓ Pago direto'
-                  : '○ Sem Comanda'}
-            </span>
-            {isInvoiced && (
-              <button
-                type="button"
-                aria-label="Ver comanda"
-                onClick={() => setShowComanda(true)}
-                className="p-1 rounded"
-                style={{ color: 'var(--admin-accent)' }}
+              <span className="text-left flex-1 text-sm font-bold" style={{ color: 'var(--admin-accent)' }}>
+                ✓ Comanda Fechada: #{invoiceRef!.invoice!.invoice_number}
+                <span className="block text-[10px] font-medium mt-0.5" style={{ opacity: 0.75 }}>
+                  Clique pra ver detalhes
+                </span>
+              </span>
+              <IconExternalLink size={16} />
+            </button>
+          ) : (
+            <div
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg"
+              style={{
+                background: isPaid
+                  ? 'color-mix(in srgb, #10B981 12%, transparent)'
+                  : 'var(--admin-surface-hi)',
+              }}
+            >
+              <span
+                className="text-xs font-semibold flex-1"
+                style={{
+                  color: isPaid ? '#10B981' : 'var(--admin-text-mute)',
+                }}
               >
-                <IconExternalLink size={14} />
-              </button>
-            )}
-          </div>
+                {isPaid ? '✓ Pago direto' : '○ Sem Comanda'}
+              </span>
+            </div>
+          )}
 
           {/* Botão FATURAR · só pra Sem Fatura */}
           {isPending && (
