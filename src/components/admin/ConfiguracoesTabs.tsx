@@ -97,10 +97,10 @@ export default function ConfiguracoesTabs({
 
   return (
     <div>
-      {/* Tab bar — flex-wrap em mobile (8 tabs não cabem em 1 linha em
-          viewport <430px). Em desktop fica linha única naturalmente. */}
+      {/* Tab bar — só em mobile/tablet. Em desktop (lg+), navegação
+          pelas tabs vem direto da sidebar lateral · evita duplicar UX. */}
       <div
-        className="flex flex-wrap rounded-2xl p-1.5 mb-6 gap-1"
+        className="lg:hidden flex flex-wrap rounded-2xl p-1.5 mb-6 gap-1"
         style={{
           background: 'var(--admin-surface)',
           border: '1px solid var(--admin-border)',

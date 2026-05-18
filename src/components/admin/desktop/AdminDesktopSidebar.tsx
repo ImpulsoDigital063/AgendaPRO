@@ -17,6 +17,13 @@ import {
   IconInbox,
   IconGift,
   IconDollar,
+  IconClock,
+  IconStar,
+  IconShare,
+  IconPalette,
+  IconUpload,
+  IconCamera,
+  IconMapPin,
 } from '@/components/ui/Icon'
 
 type Brand = {
@@ -36,6 +43,11 @@ type SidebarItem = {
   badge?: number
 }
 
+type SidebarGroup = {
+  label: string
+  items: SidebarItem[]
+}
+
 type Props = {
   brand: Brand
   pendingAppointments?: number
@@ -48,22 +60,59 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
   const currentTab = searchParams.get('tab')
   const [collapsed, setCollapsed] = useState(false)
 
-  const items: SidebarItem[] = [
-    { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
-    { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
-    { label: 'WhatsApp', href: '/admin/configuracoes?tab=qr-code', tabMatch: 'qr-code', Icon: IconWhatsapp },
-    { label: 'Vendas', href: '/admin/financeiro', exact: true, Icon: IconWallet },
-    { label: 'Comandas', Icon: IconInbox, comingSoon: true },
-    { label: 'Fluxo de Caixa', Icon: IconDollar, comingSoon: true },
-    { label: 'Remunerações', Icon: IconTrendingUp, comingSoon: true },
-    { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconReceipt },
-    { label: 'Notas Fiscais', Icon: IconFile, comingSoon: true },
-    { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', tabMatch: 'servicos', Icon: IconSparkles },
-    { label: 'Produtos', Icon: IconPackage, comingSoon: true },
-    { label: 'Pacotes', Icon: IconGift, comingSoon: true },
-    { label: 'Colaboradores', href: '/admin/configuracoes?tab=profissionais', tabMatch: 'profissionais', Icon: IconUser },
-    { label: 'Relatórios', Icon: IconChart, comingSoon: true },
-    { label: 'Configurações', href: '/admin/configuracoes', exact: true, Icon: IconSettings },
+  const groups: SidebarGroup[] = [
+    {
+      label: 'Atendimentos',
+      items: [
+        { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
+        { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
+      ],
+    },
+    {
+      label: 'Financeiro',
+      items: [
+        { label: 'Vendas', href: '/admin/financeiro', exact: true, Icon: IconWallet },
+        { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconReceipt },
+        { label: 'Comandas', Icon: IconInbox, comingSoon: true },
+        { label: 'Fluxo de Caixa', Icon: IconDollar, comingSoon: true },
+        { label: 'Remunerações', Icon: IconTrendingUp, comingSoon: true },
+        { label: 'Notas Fiscais', Icon: IconFile, comingSoon: true },
+      ],
+    },
+    {
+      label: 'Catálogo',
+      items: [
+        { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', tabMatch: 'servicos', Icon: IconSparkles },
+        { label: 'Produtos', Icon: IconPackage, comingSoon: true },
+        { label: 'Pacotes', Icon: IconGift, comingSoon: true },
+      ],
+    },
+    {
+      label: 'Equipe',
+      items: [
+        { label: 'Colaboradores', href: '/admin/configuracoes?tab=profissionais', tabMatch: 'profissionais', Icon: IconUser },
+        { label: 'Horários', href: '/admin/configuracoes?tab=horarios', tabMatch: 'horarios', Icon: IconClock },
+      ],
+    },
+    {
+      label: 'Configurações',
+      items: [
+        { label: 'Negócio', href: '/admin/configuracoes?tab=negocio', tabMatch: 'negocio', Icon: IconMapPin },
+        { label: 'Fidelidade', href: '/admin/configuracoes?tab=fidelidade', tabMatch: 'fidelidade', Icon: IconStar },
+        { label: 'Maquininhas', href: '/admin/configuracoes?tab=maquininhas', tabMatch: 'maquininhas', Icon: IconWallet },
+        { label: 'Bloqueios', href: '/admin/configuracoes?tab=bloqueios', tabMatch: 'bloqueios', Icon: IconClock },
+        { label: 'Aparência', href: '/admin/configuracoes?tab=aparencia', tabMatch: 'aparencia', Icon: IconPalette },
+        { label: 'WhatsApp', href: '/admin/configuracoes?tab=qr-code', tabMatch: 'qr-code', Icon: IconWhatsapp },
+        { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', tabMatch: 'divulgacao', Icon: IconShare },
+        { label: 'Importar', href: '/admin/configuracoes?tab=importar', tabMatch: 'importar', Icon: IconUpload },
+      ],
+    },
+    {
+      label: 'Outros',
+      items: [
+        { label: 'Relatórios', Icon: IconChart, comingSoon: true },
+      ],
+    },
   ]
 
   function isActive(item: SidebarItem): boolean {
@@ -141,81 +190,98 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {items.map((item, idx) => {
-          const active = isActive(item)
-          const Icon = item.Icon
-          const content = (
-            <span
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
-              style={{
-                background: active ? 'color-mix(in srgb, var(--admin-accent) 16%, transparent)' : 'transparent',
-                color: active
-                  ? 'var(--admin-accent)'
-                  : item.comingSoon
-                    ? 'var(--admin-text-faded)'
-                    : 'var(--admin-text-2)',
-                cursor: item.comingSoon ? 'not-allowed' : 'pointer',
-                opacity: item.comingSoon ? 0.5 : 1,
-              }}
-              title={collapsed ? item.label : undefined}
-            >
-              <span className="flex-shrink-0 relative">
-                <Icon size={18} />
-                {item.badge !== undefined && item.badge > 0 && !collapsed && (
+      {/* Nav · agrupado por seção */}
+      <nav className="flex-1 overflow-y-auto py-2 px-2">
+        {groups.map((group, gIdx) => (
+          <div key={gIdx} className={gIdx > 0 ? 'mt-3' : ''}>
+            {!collapsed && (
+              <p
+                className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5"
+                style={{ color: 'var(--admin-text-faded)' }}
+              >
+                {group.label}
+              </p>
+            )}
+            {collapsed && gIdx > 0 && (
+              <div className="mx-3 my-2" style={{ borderTop: '1px solid var(--admin-divider)' }} />
+            )}
+            <div className="space-y-0.5">
+              {group.items.map((item, iIdx) => {
+                const active = isActive(item)
+                const Icon = item.Icon
+                const content = (
                   <span
-                    aria-label={`${item.badge} pendente`}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition"
                     style={{
-                      position: 'absolute',
-                      top: -4,
-                      right: -6,
-                      background: 'var(--admin-danger,#EF4444)',
-                      color: '#fff',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      borderRadius: 8,
-                      padding: '1px 5px',
-                      lineHeight: 1.2,
+                      background: active ? 'color-mix(in srgb, var(--admin-accent) 16%, transparent)' : 'transparent',
+                      color: active
+                        ? 'var(--admin-accent)'
+                        : item.comingSoon
+                          ? 'var(--admin-text-faded)'
+                          : 'var(--admin-text-2)',
+                      cursor: item.comingSoon ? 'not-allowed' : 'pointer',
+                      opacity: item.comingSoon ? 0.5 : 1,
                     }}
+                    title={collapsed ? item.label : undefined}
                   >
-                    {item.badge > 9 ? '9+' : item.badge}
-                  </span>
-                )}
-              </span>
-              {!collapsed && (
-                <>
-                  <span className="truncate flex-1">{item.label}</span>
-                  {item.comingSoon && (
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                      style={{
-                        background: 'var(--admin-surface-hi)',
-                        color: 'var(--admin-text-faded)',
-                      }}
-                    >
-                      Em breve
+                    <span className="flex-shrink-0 relative">
+                      <Icon size={18} />
+                      {item.badge !== undefined && item.badge > 0 && !collapsed && (
+                        <span
+                          aria-label={`${item.badge} pendente`}
+                          style={{
+                            position: 'absolute',
+                            top: -4,
+                            right: -6,
+                            background: 'var(--admin-danger,#EF4444)',
+                            color: '#fff',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            borderRadius: 8,
+                            padding: '1px 5px',
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {item.badge > 9 ? '9+' : item.badge}
+                        </span>
+                      )}
                     </span>
-                  )}
-                </>
-              )}
-            </span>
-          )
+                    {!collapsed && (
+                      <>
+                        <span className="truncate flex-1">{item.label}</span>
+                        {item.comingSoon && (
+                          <span
+                            className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                            style={{
+                              background: 'var(--admin-surface-hi)',
+                              color: 'var(--admin-text-faded)',
+                            }}
+                          >
+                            Em breve
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </span>
+                )
 
-          if (item.comingSoon || !item.href) {
-            return (
-              <div key={idx} aria-disabled="true">
-                {content}
-              </div>
-            )
-          }
+                if (item.comingSoon || !item.href) {
+                  return (
+                    <div key={iIdx} aria-disabled="true">
+                      {content}
+                    </div>
+                  )
+                }
 
-          return (
-            <Link key={idx} href={item.href} prefetch={false}>
-              {content}
-            </Link>
-          )
-        })}
+                return (
+                  <Link key={iIdx} href={item.href} prefetch={false}>
+                    {content}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer · Plano */}
