@@ -4,6 +4,8 @@ import BottomNav from '@/components/admin/BottomNav'
 import InstallBanner from '@/components/admin/InstallBanner'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import AppSplash from '@/components/admin/AppSplash'
+import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
+import { createClient } from '@/lib/supabase/server'
 import {
   getCurrentUser,
   getCurrentBusiness,
@@ -31,6 +33,23 @@ export default async function AdminLayout({
   let pendingAppointments = 0
   let pendingClaims = 0
   let showOwnerTab = false
+  let brand: {
+    brand_primary?: string | null
+    brand_secondary?: string | null
+    brand_accent?: string | null
+    brand_neutral?: string | null
+  } = {}
+
+  if (business) {
+    // Fetch brand colors (v50) · NULL = default AgendaPRO
+    const supabase = await createClient()
+    const { data: brandData } = await supabase
+      .from('businesses')
+      .select('brand_primary, brand_secondary, brand_accent, brand_neutral')
+      .eq('id', business.id)
+      .maybeSingle()
+    if (brandData) brand = brandData
+  }
 
   if (business) {
     // Subscription + counts + owner-prof em paralelo. Counts via
@@ -76,6 +95,7 @@ export default async function AdminLayout({
 
   return (
     <AdminThemeProvider initial={initialTheme}>
+      <BrandThemeInjector brand={brand} />
       <div className="admin-shell" data-admin-theme={initialTheme}>
         <AppSplash />
         <InstallBanner />

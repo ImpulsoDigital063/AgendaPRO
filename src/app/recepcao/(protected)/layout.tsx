@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import InstallBanner from '@/components/admin/InstallBanner'
 import RecepcaoBottomNav from '@/components/recepcao/RecepcaoBottomNav'
+import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 
 export default async function RecepcaoLayout({
   children,
@@ -22,7 +23,7 @@ export default async function RecepcaoLayout({
 
   const { data: professional, error: profError } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, is_receptionist')
+    .select('id, business_id, password_changed, is_receptionist, business:businesses(brand_primary, brand_secondary, brand_accent, brand_neutral)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -48,8 +49,16 @@ export default async function RecepcaoLayout({
   const cookieStore = await cookies()
   const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as 'dark' | 'light'
 
+  const brand = (professional.business ?? {}) as {
+    brand_primary?: string | null
+    brand_secondary?: string | null
+    brand_accent?: string | null
+    brand_neutral?: string | null
+  }
+
   return (
     <AdminThemeProvider initial={initialTheme}>
+      <BrandThemeInjector brand={brand} />
       <div className="admin-shell" data-admin-theme={initialTheme}>
         <InstallBanner area="profissional" />
         <div style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
