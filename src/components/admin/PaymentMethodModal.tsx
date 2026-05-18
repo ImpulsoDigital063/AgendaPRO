@@ -19,6 +19,7 @@ export type CardPaymentDetails = {
   card_brand: CardBrand
   card_type: CardType
   fee_percent: number
+  installments: number
 }
 
 type Props = {
@@ -264,6 +265,7 @@ function CardStep({
   const [deviceId, setDeviceId] = useState<string>('')
   const [cardType, setCardType] = useState<CardType>('credit')
   const [brand, setBrand] = useState<CardBrand>('visa')
+  const [installments, setInstallments] = useState<number>(1)
 
   useEffect(() => {
     let cancelled = false
@@ -298,22 +300,39 @@ function CardStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId])
 
-  // Taxa atual baseada em device + brand + cardType
+  // Taxa atual baseada em device + brand + cardType + installments
   const currentFee = fees.find(
     (f) => f.device_id === deviceId && f.brand === brand && f.card_type === cardType,
   )
-  const rate = currentFee?.rate_percent ?? null
+  const isParcelado = installments > 1
+  const rate =
+    currentFee == null
+      ? null
+      : isParcelado && currentFee.installment_rate_percent != null
+        ? currentFee.installment_rate_percent
+        : currentFee.rate_percent
+  const allowsInstallments = currentFee?.allows_installments && cardType === 'credit'
+  const maxInstallments = allowsInstallments ? (currentFee?.installments_max ?? 1) : 1
+
+  // Reset installments quando troca tipo ou bandeira (evita ficar com 3x num débito)
+  // Hook simples · effect com deps
+  useEffect(() => {
+    if (!allowsInstallments && installments > 1) setInstallments(1)
+    if (installments > maxInstallments) setInstallments(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardType, brand, deviceId, allowsInstallments, maxInstallments])
+
   const feeValue =
     totalPrice && rate != null ? (totalPrice * rate) / 100 : null
   const netValue = totalPrice && rate != null ? totalPrice - (feeValue ?? 0) : null
 
   function handleConfirm() {
-    // Permite confirmar mesmo sem taxa cadastrada — apenas registra device/brand/type
     onConfirm({
       device_id: deviceId || null,
       card_brand: brand,
       card_type: cardType,
       fee_percent: rate ?? 0,
+      installments,
     })
   }
 
@@ -445,6 +464,29 @@ function CardStep({
                 ))}
               </select>
             </div>
+
+            {/* Parcelas · só se permitido pra essa combinação */}
+            {allowsInstallments && maxInstallments > 1 && (
+              <div>
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-wider mb-1.5"
+                  style={{ color: 'var(--admin-text-mute)' }}
+                >
+                  Parcelas
+                </p>
+                <select
+                  value={installments}
+                  onChange={(e) => setInstallments(parseInt(e.target.value, 10))}
+                  className="admin-input w-full text-sm py-2 px-2"
+                >
+                  {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n === 1 ? 'À vista' : `${n}x` + (totalPrice ? ` de ${(totalPrice / n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : '')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Display taxa + líquido */}
             <div

@@ -76,7 +76,13 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
         appointmentId: appointment.id,
         action: 'completed',
         paymentMethod: method,
-        cardDetails: method === 'card' && cardDetails ? cardDetails : undefined,
+        cardDetails: method === 'card' && cardDetails ? {
+          device_id: cardDetails.device_id,
+          card_brand: cardDetails.card_brand,
+          card_type: cardDetails.card_type,
+          fee_percent: cardDetails.fee_percent,
+          installments: cardDetails.installments,
+        } : undefined,
       }),
     })
     if (res.ok) {

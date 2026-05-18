@@ -74,6 +74,7 @@ export async function POST(
     payment_card_brand?: string | null
     payment_card_type?: string | null
     payment_fee_percent?: number | null
+    payment_installments?: number
   } = {
     paid_at: null,
     payment_method: null,
@@ -81,6 +82,7 @@ export async function POST(
     payment_card_brand: null,
     payment_card_type: null,
     payment_fee_percent: null,
+    payment_installments: 1,
   }
 
   if (body.paid !== false) {
@@ -128,6 +130,11 @@ export async function POST(
       updates.payment_card_brand = brand
       updates.payment_card_type = cardType
       updates.payment_fee_percent = feePercent
+
+      const installments = typeof body.installments === 'number' && body.installments >= 1 && body.installments <= 12
+        ? body.installments
+        : 1
+      updates.payment_installments = installments
     }
   }
 

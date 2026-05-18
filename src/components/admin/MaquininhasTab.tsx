@@ -36,7 +36,17 @@ export default function MaquininhasTab({ businessId }: Props) {
     brand: CardBrand
     card_type: CardType
     rate_percent: string
-  }>({ brand: 'visa', card_type: 'credit', rate_percent: '' })
+    allows_installments: boolean
+    installments_max: string
+    installment_rate_percent: string
+  }>({
+    brand: 'visa',
+    card_type: 'credit',
+    rate_percent: '',
+    allows_installments: false,
+    installments_max: '1',
+    installment_rate_percent: '',
+  })
   const [addingFee, setAddingFee] = useState(false)
 
   const [confirmDelete, setConfirmDelete] = useState<MerchantDevice | null>(null)
@@ -133,6 +143,15 @@ export default function MaquininhasTab({ businessId }: Props) {
       setError('Taxa precisa estar entre 0 e 99,99%')
       return
     }
+    const allowsInstall = newFee.allows_installments && newFee.card_type === 'credit'
+    const installMax = allowsInstall ? Math.min(12, Math.max(1, parseInt(newFee.installments_max || '1', 10))) : 1
+    const installRate = allowsInstall && newFee.installment_rate_percent
+      ? parseFloat(newFee.installment_rate_percent.replace(',', '.'))
+      : null
+    if (allowsInstall && installRate != null && (isNaN(installRate) || installRate < 0 || installRate >= 100)) {
+      setError('Taxa parcelada precisa estar entre 0 e 99,99%')
+      return
+    }
     setAddingFee(true)
     setError(null)
 
@@ -143,6 +162,9 @@ export default function MaquininhasTab({ businessId }: Props) {
         brand: newFee.brand,
         card_type: newFee.card_type,
         rate_percent: rate,
+        allows_installments: allowsInstall,
+        installments_max: installMax,
+        installment_rate_percent: installRate,
         active: true,
       })
       .select()
@@ -162,7 +184,14 @@ export default function MaquininhasTab({ businessId }: Props) {
       ...prev,
       [deviceId]: [...(prev[deviceId] ?? []), data as MerchantDeviceFee],
     }))
-    setNewFee({ brand: 'visa', card_type: 'credit', rate_percent: '' })
+    setNewFee({
+      brand: 'visa',
+      card_type: 'credit',
+      rate_percent: '',
+      allows_installments: false,
+      installments_max: '1',
+      installment_rate_percent: '',
+    })
   }
 
   async function handleDeleteFee(deviceId: string, feeId: string) {
@@ -362,6 +391,55 @@ export default function MaquininhasTab({ businessId }: Props) {
                           </span>
                         </div>
                       </div>
+                      {/* Parcelamento · só faz sentido pra crédito */}
+                      {newFee.card_type === 'credit' && (
+                        <div
+                          className="rounded-lg p-2.5 space-y-2"
+                          style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+                        >
+                          <label className="flex items-center gap-2 text-xs cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={newFee.allows_installments}
+                              onChange={(e) => setNewFee({ ...newFee, allows_installments: e.target.checked })}
+                            />
+                            <span style={{ color: 'var(--admin-text)' }}>Permite parcelar</span>
+                          </label>
+                          {newFee.allows_installments && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                                  Máx parcelas
+                                </p>
+                                <select
+                                  value={newFee.installments_max}
+                                  onChange={(e) => setNewFee({ ...newFee, installments_max: e.target.value })}
+                                  className="admin-input w-full text-sm py-1.5 px-1.5"
+                                >
+                                  {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                                    <option key={n} value={n}>
+                                      {n}x
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                                  Taxa parcelado (%)
+                                </p>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={newFee.installment_rate_percent}
+                                  onChange={(e) => setNewFee({ ...newFee, installment_rate_percent: e.target.value })}
+                                  placeholder="4,50"
+                                  className="admin-input w-full text-sm py-1.5 px-1.5"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <button
                         onClick={() => handleAddFee(d.id)}
                         disabled={addingFee || !newFee.rate_percent}

@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
     payment_card_brand?: string | null
     payment_card_type?: string | null
     payment_fee_percent?: number | null
+    payment_installments?: number
   } = {
     status: action,
   }
@@ -136,6 +137,10 @@ export async function POST(req: NextRequest) {
       updates.payment_card_brand = cardDetails.card_brand ?? null
       updates.payment_card_type = cardDetails.card_type ?? null
       updates.payment_fee_percent = cardDetails.fee_percent ?? null
+      updates.payment_installments =
+        typeof cardDetails.installments === 'number' && cardDetails.installments >= 1 && cardDetails.installments <= 12
+          ? cardDetails.installments
+          : 1
     }
   }
 

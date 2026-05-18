@@ -173,6 +173,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
       payment_card_brand?: string | null
       payment_card_type?: string | null
       payment_fee_percent?: number | null
+      payment_installments?: number
     } = {
       status: 'completed',
     }
@@ -184,6 +185,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         updates.payment_card_brand = cardDetails.card_brand
         updates.payment_card_type = cardDetails.card_type
         updates.payment_fee_percent = cardDetails.fee_percent
+        updates.payment_installments = cardDetails.installments ?? 1
       }
     }
     await supabase.from('appointments').update(updates).eq('id', appointment.id)

@@ -82,6 +82,10 @@ export type MerchantDeviceFee = {
   rate_percent: number
   active: boolean
   created_at: string
+  // v52 · parcelado
+  allows_installments?: boolean
+  installments_max?: number
+  installment_rate_percent?: number | null
 }
 
 export type Client = {
