@@ -38,11 +38,13 @@ export default async function VendasPage({
     .from('appointments')
     .select(`
       id,
+      business_id,
       appointment_date,
       start_time,
       end_time,
       client_name,
       client_phone,
+      customer_id,
       service_name,
       total_price,
       status,

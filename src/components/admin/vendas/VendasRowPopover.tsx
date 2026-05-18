@@ -1,15 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { IconClose, IconWhatsapp, IconPencil, IconTrash, IconUser, IconExternalLink } from '@/components/ui/Icon'
+import FaturarModal from './FaturarModal'
 
 export type SaleRow = {
   id: string
+  business_id?: string
   appointment_date: string
   start_time: string
   end_time?: string | null
   client_name: string | null
   client_phone?: string | null
+  customer_id?: string | null
   service_name: string | null
   total_price: number | null
   status: string
@@ -57,14 +60,16 @@ function statusLabel(value: string): string {
 }
 
 export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
-  // Esc fecha
+  const [showFaturar, setShowFaturar] = useState(false)
+
+  // Esc fecha (só quando faturar não está aberto)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !showFaturar) onClose()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  }, [onClose, showFaturar])
 
   const isInvoiced = !!sale.invoice_item_id && invoiceRef?.invoice
   const isPaid = !!sale.paid_at
@@ -252,16 +257,26 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
           {isPending && (
             <button
               type="button"
-              disabled
-              className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-60"
+              onClick={() => setShowFaturar(true)}
+              className="w-full py-3 rounded-xl text-sm font-bold"
               style={{ background: 'var(--admin-accent)', color: '#fff' }}
-              title="Fluxo de Faturar vem na próxima etapa (1.6)"
             >
               FATURAR
             </button>
           )}
         </div>
       </div>
+
+      {/* Modal Faturar */}
+      {showFaturar && sale.business_id && (
+        <FaturarModal
+          businessId={sale.business_id}
+          customerName={sale.client_name ?? 'Cliente'}
+          customerId={sale.customer_id ?? null}
+          triggerAppointmentId={sale.id}
+          onClose={() => setShowFaturar(false)}
+        />
+      )}
     </div>
   )
 }
