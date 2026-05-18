@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { IconSearch, IconPlus, IconClose } from '@/components/ui/Icon'
+import { IconSearch, IconPlus, IconClose, IconStar, IconGift } from '@/components/ui/Icon'
 import { maskPhone } from '@/lib/client-display'
 
 type Customer = {
@@ -138,6 +138,13 @@ export default function RecepClientesList({ businessId, initial }: Props) {
   )
 }
 
+type Reward = {
+  id: string
+  name: string
+  description: string | null
+  points_required: number
+}
+
 function CustomerModal({
   businessId,
   customer,
@@ -155,6 +162,55 @@ function CustomerModal({
   const [notes, setNotes] = useState(customer?.notes ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Resgate de pontos · só faz sentido pra cliente existente com saldo
+  const [rewards, setRewards] = useState<Reward[]>([])
+  const [currentPoints, setCurrentPoints] = useState<number>(customer?.total_points ?? 0)
+  const [redeeming, setRedeeming] = useState<string | null>(null)
+  const [redeemMessage, setRedeemMessage] = useState<string | null>(null)
+
+  // Carrega rewards do business se editando cliente existente
+  useEffect(() => {
+    if (!customer) return
+    let cancelled = false
+    async function load() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('rewards')
+        .select('id, name, description, points_required')
+        .eq('business_id', businessId)
+        .eq('active', true)
+        .order('points_required')
+      if (!cancelled) setRewards((data ?? []) as Reward[])
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [customer, businessId])
+
+  async function handleRedeem(reward: Reward) {
+    if (!customer) return
+    if (currentPoints < reward.points_required) {
+      setRedeemMessage(`Saldo insuficiente (atual: ${currentPoints} · custa: ${reward.points_required})`)
+      return
+    }
+    setRedeeming(reward.id)
+    setRedeemMessage(null)
+    const res = await fetch(`/api/admin/customers/${customer.id}/redeem`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reward_id: reward.id }),
+    })
+    const data = await res.json()
+    setRedeeming(null)
+    if (!res.ok) {
+      setRedeemMessage(`Erro: ${data.error ?? 'falha'}`)
+      return
+    }
+    setCurrentPoints(data.total_points)
+    setRedeemMessage(`Resgate de "${reward.name}" registrado. Saldo: ${data.total_points} pts`)
+  }
 
   async function save() {
     setError(null)
@@ -250,6 +306,82 @@ function CustomerModal({
             />
           </Field>
         </div>
+
+        {/* Saldo de pontos + resgate · só pra cliente existente */}
+        {customer && (
+          <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--admin-divider)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                Saldo de pontos
+              </p>
+              <span className="text-xl font-bold tabular-nums inline-flex items-center gap-1.5" style={{ color: 'var(--admin-accent)' }}>
+                <IconStar size={16} /> {currentPoints}
+              </span>
+            </div>
+
+            {redeemMessage && (
+              <p
+                className="text-xs px-3 py-2 rounded-lg mb-2"
+                style={{
+                  background: redeemMessage.startsWith('Erro')
+                    ? 'color-mix(in srgb, var(--admin-danger,#EF4444) 12%, transparent)'
+                    : 'color-mix(in srgb, var(--admin-success,#10B981) 12%, transparent)',
+                  color: redeemMessage.startsWith('Erro') ? 'var(--admin-danger,#EF4444)' : 'var(--admin-success,#10B981)',
+                }}
+              >
+                {redeemMessage}
+              </p>
+            )}
+
+            {rewards.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                Nenhuma recompensa cadastrada · peça pra Adm criar em Fidelidade.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {rewards.map((r) => {
+                  const canRedeem = currentPoints >= r.points_required
+                  const isLoading = redeeming === r.id
+                  return (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg"
+                      style={{
+                        background: 'var(--admin-surface-hi)',
+                        border: '1px solid var(--admin-border)',
+                      }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                          {r.name}
+                        </p>
+                        <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                          {r.points_required} pts {r.description ? `· ${r.description}` : ''}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRedeem(r)}
+                        disabled={!canRedeem || isLoading}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-30 inline-flex items-center gap-1"
+                        style={{
+                          background: canRedeem ? 'var(--admin-accent)' : 'transparent',
+                          color: canRedeem ? '#fff' : 'var(--admin-text-faded)',
+                          border: canRedeem ? 'none' : '1px solid var(--admin-border)',
+                        }}
+                      >
+                        {isLoading ? '…' : (
+                          <>
+                            <IconGift size={12} /> Resgatar
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {error && (
           <p className="text-xs mt-3" style={{ color: 'var(--admin-danger)' }}>

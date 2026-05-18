@@ -5,6 +5,7 @@ import {
   IconCalendarSolid,
   IconUsers,
   IconUsersSolid,
+  IconSearch,
 } from '@/components/ui/Icon'
 import DockNav, { type DockTab } from '@/components/admin/DockNav'
 
@@ -26,6 +27,11 @@ export default function RecepcaoBottomNav({ pendingAppointments = 0 }: Props) {
       label: 'Clientes',
       Icon: IconUsers,
       IconSolid: IconUsersSolid,
+    },
+    {
+      href: '/recepcao/consultas',
+      label: 'Consultas',
+      Icon: IconSearch,
     },
   ]
 
