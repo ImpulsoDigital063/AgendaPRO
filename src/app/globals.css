@@ -221,6 +221,27 @@ html.admin-theme-switching *::after {
 .admin-shell main {
   padding-bottom: calc(120px + env(safe-area-inset-bottom));
 }
+
+/* Desktop shell · sidebar fixa esquerda + conteúdo à direita.
+   Breakpoint xl (≥1280px). Mobile/tablet mantêm o BottomNav e
+   conteúdo full-width sem deslocamento. */
+.admin-shell-content {
+  min-height: 100svh;
+}
+@media (min-width: 1280px) {
+  .admin-shell--with-sidebar .admin-shell-content {
+    padding-left: 256px;
+    transition: padding-left 220ms ease;
+  }
+  /* Quando sidebar tá colapsada (data-collapsed=true), encolhe padding */
+  .admin-shell--with-sidebar:has(.admin-desktop-sidebar[data-collapsed="true"]) .admin-shell-content {
+    padding-left: 72px;
+  }
+  /* Sem BottomNav em desktop · zero padding-bottom desnecessário. */
+  .admin-shell--with-sidebar .admin-shell-content main {
+    padding-bottom: 32px;
+  }
+}
 .admin-shell::before {
   content: '';
   position: fixed;

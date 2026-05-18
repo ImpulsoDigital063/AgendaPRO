@@ -5,6 +5,7 @@ import InstallBanner from '@/components/admin/InstallBanner'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import AppSplash from '@/components/admin/AppSplash'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
+import AdminDesktopSidebar from '@/components/admin/desktop/AdminDesktopSidebar'
 import { createClient } from '@/lib/supabase/server'
 import {
   getCurrentUser,
@@ -40,16 +41,20 @@ export default async function AdminLayout({
     brand_neutral?: string | null
     brand_logo_url?: string | null
   } = {}
+  let businessName: string | null = null
 
   if (business) {
-    // Fetch brand colors (v50) · NULL = default AgendaPRO
+    // Fetch brand colors (v50) + nome · NULL = default AgendaPRO
     const supabase = await createClient()
     const { data: brandData } = await supabase
       .from('businesses')
-      .select('brand_primary, brand_secondary, brand_accent, brand_neutral, brand_logo_url')
+      .select('name, brand_primary, brand_secondary, brand_accent, brand_neutral, brand_logo_url')
       .eq('id', business.id)
       .maybeSingle()
-    if (brandData) brand = brandData
+    if (brandData) {
+      brand = brandData
+      businessName = brandData.name ?? null
+    }
   }
 
   if (business) {
@@ -97,17 +102,24 @@ export default async function AdminLayout({
   return (
     <AdminThemeProvider initial={initialTheme}>
       <BrandThemeInjector brand={brand} />
-      <div className="admin-shell" data-admin-theme={initialTheme}>
+      <div className="admin-shell admin-shell--with-sidebar" data-admin-theme={initialTheme}>
         <AppSplash />
         <InstallBanner />
-        <div style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
-          {children}
-        </div>
-        <BottomNav
+        <AdminDesktopSidebar
+          brand={{ business_name: businessName, brand_logo_url: brand.brand_logo_url ?? null }}
           pendingAppointments={pendingAppointments}
           pendingClaims={pendingClaims}
-          showOwnerTab={showOwnerTab}
         />
+        <div className="admin-shell-content">
+          {children}
+        </div>
+        <div className="xl:hidden">
+          <BottomNav
+            pendingAppointments={pendingAppointments}
+            pendingClaims={pendingClaims}
+            showOwnerTab={showOwnerTab}
+          />
+        </div>
       </div>
     </AdminThemeProvider>
   )
