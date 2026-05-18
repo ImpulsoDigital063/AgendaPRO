@@ -1,14 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import Image from 'next/image'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
+import Greeting from '@/components/admin/Greeting'
+import CountUp from '@/components/admin/CountUp'
 import RecepAppointmentCard from '@/components/recepcao/RecepAppointmentCard'
 import RecepMarcarFAB from '@/components/recepcao/RecepMarcarFAB'
+import RecepFocoDoDia from '@/components/recepcao/RecepFocoDoDia'
 import {
   IconCalendar,
+  IconClock,
+  IconDollar,
+  IconCheck,
   IconInbox,
+  IconUser,
 } from '@/components/ui/Icon'
 
 export const dynamic = 'force-dynamic'
@@ -18,7 +24,6 @@ export default async function RecepcaoAgendaPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/profissional/login')
 
-  // Recepcionista logada — pega business via tabela professionals
   const { data: recep } = await supabase
     .from('professionals')
     .select('id, name, business:businesses(id, name, slug)')
@@ -28,19 +33,16 @@ export default async function RecepcaoAgendaPage() {
 
   if (!recep || !recep.business) redirect('/profissional/login')
 
-  const business = recep.business as unknown as {
-    id: string
-    name: string
-    slug: string
-  }
+  const business = recep.business as unknown as { id: string; name: string; slug: string }
+  const recepName = (recep.name as string) || 'Recepção'
+  const firstName = recepName.split(' ')[0]
 
   const today = new Date().toISOString().split('T')[0]
   const nextWeek = new Date()
   nextWeek.setDate(nextWeek.getDate() + 7)
   const nextWeekStr = nextWeek.toISOString().split('T')[0]
 
-  // Hoje e próximos 7 dias do BUSINESS inteiro (RLS já garante via is_receptionist=true)
-  // + join nos profissionais pra mostrar quem atende cada agendamento
+  // Agenda do dia (todos profs)
   const { data: todayAppts } = await supabase
     .from('appointments')
     .select('*, professional:professionals(id, name)')
@@ -62,12 +64,53 @@ export default async function RecepcaoAgendaPage() {
   const list = todayAppts ?? []
   const active = list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')
   const pending = active.filter((a) => a.status === 'pending')
+  const confirmed = active.filter((a) => a.status === 'confirmed')
+  const completed = active.filter((a) => a.status === 'completed')
+
+  // KPI · valores recebidos hoje
+  const recebidos = list.filter((a) => a.paid_at != null)
+  const recebidoTotal = recebidos.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   })
+
+  // Stats grid · 4 cards
+  const stats = [
+    {
+      label: 'Pendentes',
+      value: pending.length,
+      icon: IconClock,
+      color: 'var(--admin-warn)',
+      glow: 'rgba(245,158,11,0.18)',
+      pulse: pending.length > 0,
+    },
+    {
+      label: 'Confirmados',
+      value: confirmed.length,
+      icon: IconCheck,
+      color: 'var(--admin-accent)',
+      glow: 'rgba(59,130,246,0.18)',
+    },
+    {
+      label: 'Atendidos',
+      value: completed.length,
+      icon: IconCheck,
+      color: 'var(--admin-success)',
+      glow: 'rgba(16,185,129,0.18)',
+    },
+    {
+      label: 'Recebido',
+      value: recebidoTotal > 0
+        ? recebidoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
+        : 'R$0',
+      icon: IconDollar,
+      color: 'var(--admin-success)',
+      glow: 'rgba(16,185,129,0.18)',
+    },
+  ]
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
@@ -76,11 +119,15 @@ export default async function RecepcaoAgendaPage() {
           className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full blur-[120px]"
           style={{ background: 'var(--admin-bg-orb-1)' }}
         />
+        <div
+          className="absolute top-[40%] -right-24 w-72 h-72 rounded-full blur-[80px]"
+          style={{ background: 'var(--admin-bg-orb-2)' }}
+        />
       </div>
 
       {/* Header */}
-      <header className="relative max-w-lg mx-auto px-4 pt-7 pb-6">
-        <div className="flex items-center justify-between mb-6">
+      <header className="relative max-w-lg mx-auto px-4 pt-7 pb-5">
+        <div className="flex items-center justify-between mb-5">
           <Image
             src="/logo-agendapro-dark.svg"
             alt="AgendaPRO"
@@ -94,11 +141,14 @@ export default async function RecepcaoAgendaPage() {
             <LogoutButton />
           </div>
         </div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--admin-text-faded)' }}>
-          Recepção
+        <p className="text-[13px] font-medium mb-0.5" style={{ color: 'var(--admin-text-faded)' }}>
+          <Greeting />, {firstName}
         </p>
-        <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
-          {business.name}
+        <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+          Recepção · {business.name}
+        </p>
+        <h1 className="text-[26px] font-bold tracking-tight leading-tight" style={{ color: 'var(--admin-text)' }}>
+          Sua agenda hoje
         </h1>
         <p className="text-sm capitalize mt-1" style={{ color: 'var(--admin-text-mute)' }}>
           <span className="inline-flex items-center gap-1.5">
@@ -107,7 +157,43 @@ export default async function RecepcaoAgendaPage() {
         </p>
       </header>
 
-      <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
+      {/* KPIs · grid 2x2 */}
+      <section className="relative max-w-lg mx-auto px-4 mb-5">
+        <div className="grid grid-cols-2 gap-2.5">
+          {stats.map((s) => {
+            const Icon = s.icon
+            return (
+              <div key={s.label} className="admin-card p-3.5 relative overflow-hidden">
+                <div
+                  className="absolute -top-4 -right-4 w-16 h-16 rounded-full blur-2xl opacity-70 pointer-events-none"
+                  style={{ background: s.glow }}
+                />
+                <div className="relative flex items-start justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                      {s.label}
+                    </p>
+                    <p className="text-xl font-bold mt-1.5 leading-none tabular-nums" style={{ color: s.color }}>
+                      {typeof s.value === 'number' ? <CountUp value={s.value} duration={500} /> : s.value}
+                    </p>
+                  </div>
+                  <span
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${s.pulse ? 'admin-pulse-warn' : ''}`}
+                    style={{ background: s.glow, color: s.color }}
+                  >
+                    <Icon size={16} />
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* Foco do Dia · ações que precisam atenção */}
+      <RecepFocoDoDia businessId={business.id} todayAppts={list} />
+
+      <div className="relative max-w-lg mx-auto px-4 pb-32 space-y-6">
         {/* Pendentes em destaque */}
         {pending.length > 0 && (
           <section>
@@ -146,10 +232,7 @@ export default async function RecepcaoAgendaPage() {
             <div className="admin-card p-8 text-center">
               <div
                 className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
-                style={{
-                  background: 'var(--admin-accent-bg)',
-                  color: 'var(--admin-accent)',
-                }}
+                style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}
               >
                 <IconInbox size={26} />
               </div>
@@ -157,7 +240,7 @@ export default async function RecepcaoAgendaPage() {
                 Nenhum agendamento hoje
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                Toque em "Marcar novo" pra começar
+                Toque em &quot;Marcar novo&quot; pra começar
               </p>
             </div>
           ) : (
@@ -193,7 +276,6 @@ export default async function RecepcaoAgendaPage() {
         </p>
       </div>
 
-      {/* Botão flutuante "Marcar novo" */}
       <RecepMarcarFAB businessId={business.id} />
     </main>
   )
