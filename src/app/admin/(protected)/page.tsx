@@ -29,6 +29,7 @@ import TopServicesCard from '@/components/admin/TopServicesCard'
 import TopClienteCard from '@/components/admin/TopClienteCard'
 import TrendReceitaCard from '@/components/admin/TrendReceitaCard'
 import BrandHeaderLogo from '@/components/admin/BrandHeaderLogo'
+import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import {
   IconCalendar,
   IconDollar,
@@ -316,7 +317,11 @@ async function ActivitySection({ businessId }: { businessId: string }) {
  * conforme cada query termina (skeleton enquanto carrega).
  * ============================================================ */
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>
+}) {
   // user + business cacheados via React cache() — ja resolvidos pelo layout
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
@@ -333,6 +338,10 @@ export default async function AdminPage() {
     day: 'numeric',
     month: 'long',
   })
+
+  // Data selecionada pra grade desktop (?date=YYYY-MM-DD · default = hoje)
+  const sp = await searchParams
+  const gradeDate = sp.date ?? new Date().toISOString().slice(0, 10)
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
@@ -369,9 +378,20 @@ export default async function AdminPage() {
         />
       )}
 
-      <div className="relative max-w-7xl mx-auto px-4 lg:px-8 pt-5 pb-32">
-        {/* Layout responsivo · mobile = 1 coluna empilhada · lg = 2 colunas */}
-        <div className="lg:grid lg:grid-cols-[360px_1fr] lg:gap-8">
+      {/* ============================================================
+          DESKTOP (≥1024px) · Grade Timeline estilo Salão99
+          ============================================================ */}
+      <div className="hidden lg:block relative px-6 pt-6 pb-8">
+        <Suspense fallback={<div className="h-96 rounded-2xl" style={{ background: 'var(--admin-surface)' }} />}>
+          <GradeTimeline businessId={business.id} date={gradeDate} />
+        </Suspense>
+      </div>
+
+      {/* ============================================================
+          MOBILE/TABLET (<1024px) · Dashboard atual
+          ============================================================ */}
+      <div className="lg:hidden relative max-w-7xl mx-auto px-4 pt-5 pb-32">
+        <div className="space-y-5">
           {/* ════════════════════════════════════════════════════
               COLUNA ESQUERDA (sidebar sticky no desktop)
               ════════════════════════════════════════════════════ */}
