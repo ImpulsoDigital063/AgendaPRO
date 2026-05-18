@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Profissional não encontrado.' }, { status: 403 })
   }
 
-  const { appointmentId, action, paymentMethod } = await req.json()
+  const { appointmentId, action, paymentMethod, cardDetails } = await req.json()
 
   if (!appointmentId || !['confirmed', 'cancelled', 'completed', 'no_show'].includes(action)) {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
   // confirma depois no Financeiro.
   // 'courtesy' aceito como legacy (V34). UI nova produz 'points' no lugar.
   const VALID_METHODS = new Set(['pix', 'cash', 'card', 'courtesy', 'points'])
+  const VALID_CARD_TYPES = new Set(['credit', 'debit'])
   if (paymentMethod != null && !VALID_METHODS.has(paymentMethod)) {
     return NextResponse.json(
       { error: 'método de pagamento inválido' },
@@ -55,6 +56,22 @@ export async function POST(req: NextRequest) {
       { error: 'paymentMethod só pode acompanhar action=completed' },
       { status: 400 }
     )
+  }
+
+  // cardDetails é opcional · usado pra registrar snapshot de taxa quando method='card'
+  if (cardDetails) {
+    if (paymentMethod !== 'card') {
+      return NextResponse.json({ error: 'cardDetails só com paymentMethod=card' }, { status: 400 })
+    }
+    if (cardDetails.card_type && !VALID_CARD_TYPES.has(cardDetails.card_type)) {
+      return NextResponse.json({ error: 'card_type inválido' }, { status: 400 })
+    }
+    if (
+      cardDetails.fee_percent != null &&
+      (typeof cardDetails.fee_percent !== 'number' || cardDetails.fee_percent < 0 || cardDetails.fee_percent >= 100)
+    ) {
+      return NextResponse.json({ error: 'fee_percent inválido' }, { status: 400 })
+    }
   }
 
   const adminClient = getAdminClient()
@@ -87,12 +104,39 @@ export async function POST(req: NextRequest) {
   // Update atômico: status + (opcionalmente) paid_at/payment_method.
   // 1 round-trip em vez de 2 — evita estado intermediário inconsistente
   // (status=completed sem paid_at quando deveria ter).
-  const updates: { status: string; paid_at?: string; payment_method?: string } = {
+  const updates: {
+    status: string
+    paid_at?: string
+    payment_method?: string
+    payment_device_id?: string | null
+    payment_card_brand?: string | null
+    payment_card_type?: string | null
+    payment_fee_percent?: number | null
+  } = {
     status: action,
   }
   if (paymentMethod != null) {
     updates.paid_at = new Date().toISOString()
     updates.payment_method = paymentMethod
+
+    if (paymentMethod === 'card' && cardDetails) {
+      // Validação cross-business: device tem que pertencer ao business do profissional
+      if (cardDetails.device_id) {
+        const { data: device } = await adminClient
+          .from('merchant_devices')
+          .select('id')
+          .eq('id', cardDetails.device_id)
+          .eq('business_id', professional.business_id)
+          .maybeSingle()
+        if (!device) {
+          return NextResponse.json({ error: 'maquininha não pertence a este negócio' }, { status: 400 })
+        }
+      }
+      updates.payment_device_id = cardDetails.device_id ?? null
+      updates.payment_card_brand = cardDetails.card_brand ?? null
+      updates.payment_card_type = cardDetails.card_type ?? null
+      updates.payment_fee_percent = cardDetails.fee_percent ?? null
+    }
   }
 
   const { error: updateError } = await adminClient

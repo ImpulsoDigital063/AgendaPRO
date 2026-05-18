@@ -51,6 +51,39 @@ export type Professional = {
   created_at: string
 }
 
+// Maquininhas e taxas (v49)
+export type MerchantDevice = {
+  id: string
+  business_id: string
+  name: string
+  active: boolean
+  created_at: string
+}
+
+export type CardType = 'credit' | 'debit'
+
+export const CARD_BRANDS = ['visa', 'mastercard', 'elo', 'amex', 'hipercard', 'outros'] as const
+export type CardBrand = (typeof CARD_BRANDS)[number]
+
+export const CARD_BRAND_LABEL: Record<CardBrand, string> = {
+  visa: 'Visa',
+  mastercard: 'Mastercard',
+  elo: 'Elo',
+  amex: 'Amex',
+  hipercard: 'Hipercard',
+  outros: 'Outros',
+}
+
+export type MerchantDeviceFee = {
+  id: string
+  device_id: string
+  brand: CardBrand
+  card_type: CardType
+  rate_percent: number
+  active: boolean
+  created_at: string
+}
+
 export type Client = {
   id: string
   name: string

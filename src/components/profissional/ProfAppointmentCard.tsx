@@ -4,12 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconWhatsapp, IconCheck, IconClose, IconClock } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
-import PaymentMethodModal, { type PaymentMethodChoice } from '@/components/admin/PaymentMethodModal'
+import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 import { statusOf, canCompleteAppointment } from '@/lib/appointment-status'
 
 type Props = {
   appointment: {
     id: string
+    business_id?: string
     client_name: string
     client_phone: string
     client_email?: string | null
@@ -64,7 +65,8 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
    */
   async function completeWithPayment(
     method: PaymentMethodChoice,
-    withPunctuality: boolean
+    withPunctuality: boolean,
+    cardDetails?: CardPaymentDetails,
   ) {
     setLoading(true)
     const res = await fetch('/api/profissional/action', {
@@ -74,6 +76,7 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
         appointmentId: appointment.id,
         action: 'completed',
         paymentMethod: method,
+        cardDetails: method === 'card' && cardDetails ? cardDetails : undefined,
       }),
     })
     if (res.ok) {
@@ -353,7 +356,8 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
         withPunctualityBonus={withPunctuality}
         punctualityPoints={punctualityBonus}
         loading={loading}
-        onChoose={(method) => completeWithPayment(method, withPunctuality)}
+        businessId={appointment.business_id}
+        onChoose={(method, cardDetails) => completeWithPayment(method, withPunctuality, cardDetails)}
         onClose={() => !loading && setPaymentModal(false)}
       />
     </div>

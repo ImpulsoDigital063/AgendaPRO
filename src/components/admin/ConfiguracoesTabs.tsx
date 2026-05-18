@@ -15,8 +15,9 @@ import AparenciaTab from './AparenciaTab'
 import DivulgacaoTab from './DivulgacaoTab'
 import PlanoCard from './PlanoCard'
 import ImportarView from './ImportarView'
+import MaquininhasTab from './MaquininhasTab'
 
-type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas'
 
 // Alias retrocompat: URLs antigas com ?tab=whatsapp continuam funcionando.
 const TAB_ALIASES: Record<string, Tab> = {
@@ -44,7 +45,7 @@ export default function ConfiguracoesTabs({
 }: Props) {
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar']
+  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas']
   // Resolve alias antes de validar (ex: ?tab=whatsapp → 'qr-code')
   const resolvedTab = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null
   const [activeTab, setActiveTab] = useState<Tab>(
@@ -84,6 +85,7 @@ export default function ConfiguracoesTabs({
     { id: 'servicos', label: 'Serviços' },
     { id: 'horarios', label: 'Horários' },
     { id: 'fidelidade', label: 'Fidelidade' },
+    { id: 'maquininhas', label: 'Maquininhas' },
     { id: 'aparencia', label: 'Aparência' },
     { id: 'qr-code', label: 'QR Code' },
     { id: 'divulgacao', label: 'Divulgação' },
@@ -213,6 +215,10 @@ export default function ConfiguracoesTabs({
 
       {activeTab === 'importar' && (
         <ImportarView businessId={business.id} businessName={business.name} />
+      )}
+
+      {activeTab === 'maquininhas' && (
+        <MaquininhasTab businessId={business.id} />
       )}
     </div>
   )

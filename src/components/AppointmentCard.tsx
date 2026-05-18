@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { IconWhatsapp, IconCheck, IconClose, IconPencil } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
-import PaymentMethodModal, { type PaymentMethodChoice } from '@/components/admin/PaymentMethodModal'
+import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 import EditServicesModal from '@/components/admin/EditServicesModal'
 import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
 import { statusOf, canCompleteAppointment } from '@/lib/appointment-status'
@@ -13,6 +13,7 @@ import { statusOf, canCompleteAppointment } from '@/lib/appointment-status'
 type Props = {
   appointment: {
     id: string
+    business_id?: string
     client_name: string
     client_phone: string
     client_email?: string | null
@@ -159,16 +160,31 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
    */
   async function completeWithPayment(
     method: PaymentMethodChoice,
-    withPunctuality: boolean
+    withPunctuality: boolean,
+    cardDetails?: CardPaymentDetails,
   ) {
     setLoading(true)
     const supabase = createClient()
-    const updates: { status: string; paid_at?: string; payment_method?: string } = {
+    const updates: {
+      status: string
+      paid_at?: string
+      payment_method?: string
+      payment_device_id?: string | null
+      payment_card_brand?: string | null
+      payment_card_type?: string | null
+      payment_fee_percent?: number | null
+    } = {
       status: 'completed',
     }
     if (method != null) {
       updates.paid_at = new Date().toISOString()
       updates.payment_method = method
+      if (method === 'card' && cardDetails) {
+        updates.payment_device_id = cardDetails.device_id
+        updates.payment_card_brand = cardDetails.card_brand
+        updates.payment_card_type = cardDetails.card_type
+        updates.payment_fee_percent = cardDetails.fee_percent
+      }
     }
     await supabase.from('appointments').update(updates).eq('id', appointment.id)
     setStatus('completed')
@@ -568,7 +584,8 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         withPunctualityBonus={withPunctuality}
         punctualityPoints={punctualityBonus}
         loading={loading}
-        onChoose={(method) => completeWithPayment(method, withPunctuality)}
+        businessId={appointment.business_id}
+        onChoose={(method, cardDetails) => completeWithPayment(method, withPunctuality, cardDetails)}
         onClose={() => !loading && setPaymentModal(false)}
       />
       {/* Confirmação "atendi com antecedência" — só aparece se o admin
