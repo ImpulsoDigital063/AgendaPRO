@@ -24,6 +24,10 @@ import EmptyTodayCTA from '@/components/admin/EmptyTodayCTA'
 import FocoDoDia from '@/components/admin/FocoDoDia'
 import Link from 'next/link'
 import Image from 'next/image'
+import TopProfsCard from '@/components/admin/TopProfsCard'
+import TopServicesCard from '@/components/admin/TopServicesCard'
+import TopClienteCard from '@/components/admin/TopClienteCard'
+import TrendReceitaCard from '@/components/admin/TrendReceitaCard'
 import {
   IconCalendar,
   IconDollar,
@@ -356,51 +360,6 @@ export default async function AdminPage() {
         }}
       />
 
-      {/* Header */}
-      <header className="relative max-w-lg mx-auto px-4 pt-5 pb-5">
-        <div className="flex items-center justify-between mb-4">
-          <Image
-            src="/logo-agendapro-dark.svg"
-            alt="AgendaPRO"
-            width={92}
-            height={18}
-            priority
-            style={{ filter: 'var(--admin-logo-filter)', opacity: 0.75 }}
-          />
-          <div className="flex items-center gap-2">
-            <ThemeToggle compact />
-            <ShareButton slug={business.slug} />
-            <LogoutButton />
-          </div>
-        </div>
-        <p
-          className="text-[13px] font-medium mb-1"
-          style={{ color: 'var(--admin-text-faded)' }}
-        >
-          <Greeting />
-        </p>
-        <h1 className="text-[28px] font-bold tracking-tight leading-tight" style={{ color: 'var(--admin-text)' }}>
-          {business.name}
-        </h1>
-        <p className="text-sm capitalize mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-          <span className="inline-flex items-center gap-1.5">
-            <IconCalendar size={14} /> {todayFormatted}
-          </span>
-        </p>
-      </header>
-
-      {/* Onboarding checklist — só renderiza se ainda não completou
-          tudo (done=false). Fica no topo, acima dos KPIs, pq o admin
-          novo precisa ver os passos antes de qualquer coisa. */}
-      {!onboarding.done && (
-        <OnboardingChecklist
-          items={onboarding.items}
-          percent={onboarding.percent}
-          done={onboarding.done}
-          slug={business.slug}
-        />
-      )}
-
       {/* Welcome modal · 1ª vez · só client renderiza após delay 400ms */}
       {!onboarding.welcomeModalSeen && (
         <WelcomeModal
@@ -409,39 +368,112 @@ export default async function AdminPage() {
         />
       )}
 
-      {/* KPIs — streaming, fallback skeleton enquanto query carrega */}
-      <Suspense fallback={<KPIsSkeleton />}>
-        <KPIsSection business={business} />
-      </Suspense>
+      <div className="relative max-w-7xl mx-auto px-4 lg:px-8 pt-5 pb-32">
+        {/* Layout responsivo · mobile = 1 coluna empilhada · lg = 2 colunas */}
+        <div className="lg:grid lg:grid-cols-[360px_1fr] lg:gap-8">
+          {/* ════════════════════════════════════════════════════
+              COLUNA ESQUERDA (sidebar sticky no desktop)
+              ════════════════════════════════════════════════════ */}
+          <aside className="lg:sticky lg:top-5 lg:self-start space-y-5">
+            {/* Header */}
+            <header>
+              <div className="flex items-center justify-between mb-4">
+                <Image
+                  src="/logo-agendapro-dark.svg"
+                  alt="AgendaPRO"
+                  width={92}
+                  height={18}
+                  priority
+                  style={{ filter: 'var(--admin-logo-filter)', opacity: 0.75 }}
+                />
+                <div className="flex items-center gap-2">
+                  <ThemeToggle compact />
+                  <ShareButton slug={business.slug} />
+                  <LogoutButton />
+                </div>
+              </div>
+              <p
+                className="text-[13px] font-medium mb-1"
+                style={{ color: 'var(--admin-text-faded)' }}
+              >
+                <Greeting />
+              </p>
+              <h1 className="text-[22px] lg:text-[26px] font-bold tracking-tight leading-tight" style={{ color: 'var(--admin-text)' }}>
+                {business.name}
+              </h1>
+              <p className="text-sm capitalize mt-1 inline-flex items-center gap-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+                <IconCalendar size={14} /> {todayFormatted}
+              </p>
+            </header>
 
-      <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
-        {/* Foco do dia — secao proativa: claims + pagamentos pendentes
-            + sumidos sem cupom + cupons expirando + lucro motivacional.
-            Some inteiro se nada pra mostrar (sem poluir home). */}
-        <Suspense fallback={null}>
-          <FocoDoDiaSection businessId={business.id} />
-        </Suspense>
+            {/* Onboarding checklist · só se não completou tudo */}
+            {!onboarding.done && (
+              <OnboardingChecklist
+                items={onboarding.items}
+                percent={onboarding.percent}
+                done={onboarding.done}
+                slug={business.slug}
+              />
+            )}
 
-        {/* Divulgação — estatica, renderiza imediato */}
-        <DivulgarCard
-          slug={business.slug}
-          appUrl={process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'}
-        />
+            {/* KPIs */}
+            <Suspense fallback={<KPIsSkeleton />}>
+              <KPIsSection business={business} />
+            </Suspense>
 
-        {/* Hoje — streaming */}
-        <Suspense fallback={null}>
-          <TodaySection business={business} />
-        </Suspense>
+            {/* Foco do dia · ações proativas */}
+            <Suspense fallback={null}>
+              <FocoDoDiaSection businessId={business.id} />
+            </Suspense>
 
-        {/* Próximos dias — streaming, fallback null (some se vazio) */}
-        <Suspense fallback={null}>
-          <UpcomingSection business={business} />
-        </Suspense>
+            {/* Divulgação · estática */}
+            <DivulgarCard
+              slug={business.slug}
+              appUrl={process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'}
+            />
+          </aside>
 
-        {/* Atividade da equipe — streaming, fallback null (some se vazio) */}
-        <Suspense fallback={null}>
-          <ActivitySection businessId={business.id} />
-        </Suspense>
+          {/* ════════════════════════════════════════════════════
+              COLUNA DIREITA (main · com painel analytics em XL)
+              ════════════════════════════════════════════════════ */}
+          <div className="space-y-6 mt-6 lg:mt-0">
+            <div className="xl:grid xl:grid-cols-[1fr_320px] xl:gap-6">
+              {/* Main · agenda */}
+              <div className="space-y-6">
+                {/* Trend de receita · widget analítico premium */}
+                <Suspense fallback={null}>
+                  <TrendReceitaCard businessId={business.id} />
+                </Suspense>
+
+                {/* Hoje */}
+                <Suspense fallback={null}>
+                  <TodaySection business={business} />
+                </Suspense>
+
+                {/* Próximos dias */}
+                <Suspense fallback={null}>
+                  <UpcomingSection business={business} />
+                </Suspense>
+              </div>
+
+              {/* Painel analytics direito · só visível em xl */}
+              <aside className="space-y-5 mt-6 xl:mt-0">
+                <Suspense fallback={null}>
+                  <TopProfsCard businessId={business.id} />
+                </Suspense>
+                <Suspense fallback={null}>
+                  <TopServicesCard businessId={business.id} />
+                </Suspense>
+                <Suspense fallback={null}>
+                  <TopClienteCard businessId={business.id} />
+                </Suspense>
+                <Suspense fallback={null}>
+                  <ActivitySection businessId={business.id} />
+                </Suspense>
+              </aside>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Skel pulse pro fallback de KPIs */}
