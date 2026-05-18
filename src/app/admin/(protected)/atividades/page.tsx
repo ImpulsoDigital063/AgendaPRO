@@ -11,7 +11,17 @@ export default async function AtividadesPage() {
   if (!user) redirect('/admin/login')
 
   const business = await getCurrentBusiness(user.id)
-  if (!business) redirect('/admin')
+  if (!business) {
+    // Não é dono · pode ser recep tentando acessar · manda pra /recepcao
+    const supabaseCheck = await createClient()
+    const { data: prof } = await supabaseCheck
+      .from('professionals')
+      .select('is_receptionist')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+    if (prof?.is_receptionist) redirect('/recepcao')
+    redirect('/admin/login')
+  }
 
   const supabase = await createClient()
 
