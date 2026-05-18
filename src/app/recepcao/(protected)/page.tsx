@@ -22,6 +22,17 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+function SectionHeader({ label, tone = 'mute' }: { label: string; tone?: 'mute' | 'warn' }) {
+  return (
+    <p
+      className="text-[11px] font-semibold uppercase tracking-widest mb-4"
+      style={{ color: tone === 'warn' ? 'var(--admin-warn)' : 'var(--admin-text-mute)' }}
+    >
+      {label}
+    </p>
+  )
+}
+
 export default async function RecepcaoAgendaPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -127,11 +138,11 @@ export default async function RecepcaoAgendaPage() {
 
       <div className="relative max-w-7xl mx-auto px-4 lg:px-8 pt-7 pb-32">
         {/* Layout responsivo · mobile: 1 coluna empilhada · lg: 2 colunas */}
-        <div className="lg:grid lg:grid-cols-[400px_1fr] lg:gap-6">
+        <div className="lg:grid lg:grid-cols-[360px_1fr] lg:gap-8">
           {/* ════════════════════════════════════════════════════
               COLUNA ESQUERDA (sidebar) · mobile = topo
               ════════════════════════════════════════════════════ */}
-          <aside className="lg:sticky lg:top-7 lg:self-start space-y-4">
+          <aside className="lg:sticky lg:top-7 lg:self-start space-y-5">
             {/* Header */}
             <header>
               <div className="flex items-center justify-between mb-4">
@@ -211,17 +222,15 @@ export default async function RecepcaoAgendaPage() {
           {/* ════════════════════════════════════════════════════
               COLUNA DIREITA (main)
               ════════════════════════════════════════════════════ */}
-          <div className="space-y-5 mt-5 lg:mt-0">
+          <div className="space-y-7 mt-6 lg:mt-0">
             {/* Próximo atendimento */}
             <RecepProximoAtendimento todayAppts={list} />
 
             {/* Pendentes em destaque */}
             {pending.length > 0 && (
               <section>
-                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-warn)' }}>
-                  Aguardando confirmação · {pending.length}
-                </p>
-                <div className="space-y-3">
+                <SectionHeader label={`Aguardando confirmação · ${pending.length}`} tone="warn" />
+                <div className="space-y-3.5">
                   {pending.map((a) => (
                     <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} />
                   ))}
@@ -231,13 +240,13 @@ export default async function RecepcaoAgendaPage() {
 
             {/* Hoje */}
             <section>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
                   Hoje
                 </p>
                 {active.length > 0 && (
                   <span
-                    className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                    className="text-[11px] font-semibold tabular-nums px-2.5 py-0.5 rounded-full"
                     style={{
                       background: 'var(--admin-accent-bg)',
                       color: 'var(--admin-accent)',
@@ -265,7 +274,7 @@ export default async function RecepcaoAgendaPage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   {active.filter((a) => a.status !== 'pending').map((a) => (
                     <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} />
                   ))}
@@ -276,15 +285,15 @@ export default async function RecepcaoAgendaPage() {
             {/* Próximos dias */}
             {upcoming && upcoming.length > 0 && (
               <section>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
                     Próximos dias
                   </p>
-                  <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                  <span className="text-[11px] tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
                     7 dias
                   </span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   {upcoming.map((a) => (
                     <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} showDate />
                   ))}
