@@ -71,7 +71,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
     {
       label: 'Financeiro',
       items: [
-        { label: 'Vendas', href: '/admin/financeiro', exact: true, Icon: IconWallet },
+        { label: 'Vendas', href: '/admin/financeiro/vendas', Icon: IconWallet },
         { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconReceipt },
         { label: 'Comandas', Icon: IconInbox, comingSoon: true },
         { label: 'Fluxo de Caixa', Icon: IconDollar, comingSoon: true },
