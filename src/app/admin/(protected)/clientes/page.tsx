@@ -157,7 +157,7 @@ export default async function ClientesPage() {
           title="Clientes"
           subtitle={`${todosClientes.length} cadastrado${todosClientes.length !== 1 ? 's' : ''}`}
         />
-        <div className="max-w-lg mx-auto px-4 py-6">
+        <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-7xl lg:px-8">
           <ClientesView
             clients={todosClientes}
             bookingSlug={business.slug}

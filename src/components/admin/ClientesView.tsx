@@ -221,18 +221,18 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
 
   return (
     <div className="space-y-4">
-      {/* KPIs */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* KPIs · 3 cols mobile · 5 cols desktop (mesma altura · stretch) */}
+      <div className="grid grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3">
         <KpiCell label="Total"    value={stats.total}      tone="neutral" />
         <KpiCell label="Novos/mês" value={stats.novosNoMes} tone="success" />
         <KpiCell label="Sumidos"  value={stats.sumidos}    tone="warn"    />
       </div>
 
-      {/* Botão + Novo cliente */}
+      {/* Botão + Novo cliente · em desktop alinha à esquerda com largura limitada */}
       <button
         type="button"
         onClick={() => setShowAddModal(true)}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
+        className="w-full lg:w-auto lg:px-6 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
         style={{
           background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))',
           color: '#fff',
@@ -341,7 +341,7 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
       ) : filtered.length === 0 ? (
         <EmptyFiltered search={search} onClear={() => { setSearch(''); setFilter('todos') }} />
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-2.5 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-3">
           {(showAllClients ? filtered : filtered.slice(0, 20)).map((c, i) => {
             const hasActiveCoupon = !!(c.customer_id && activeCustomerIds.includes(c.customer_id))
             return (
