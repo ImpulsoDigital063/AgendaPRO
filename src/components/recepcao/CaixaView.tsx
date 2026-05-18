@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { logActivity } from '@/lib/activity-log'
 import {
   IconDollar,
   IconCheck,
@@ -153,6 +154,13 @@ export default function CaixaView({
       setError(`Erro: ${e.message}`)
       return
     }
+    logActivity({
+      business_id: businessId,
+      professional_id: professionalId,
+      action: 'close_cash',
+      target_type: 'cash_closing',
+      description: `Caixa de ${today} fechado · líquido R$${(totals.net / 100).toFixed(2).replace('.', ',')}${cashDiff && cashDiff !== 0 ? ` · ${cashDiff > 0 ? 'sobra' : 'falta'} de R$${Math.abs(cashDiff / 100).toFixed(2).replace('.', ',')}` : ''}`,
+    })
     setDone(true)
     router.refresh()
   }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { logActivity } from '@/lib/activity-log'
 import {
   IconArrowLeft,
   IconCheck,
@@ -180,7 +181,7 @@ export default function MarcarAgendamentoForm({
     const endDate = new Date(startDate.getTime() + duration * 60_000)
     const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
 
-    const { error: e } = await supabase.from('appointments').insert({
+    const { data: inserted, error: e } = await supabase.from('appointments').insert({
       business_id: businessId,
       professional_id: prof.id,
       customer_id: cliente.id,
@@ -194,13 +195,32 @@ export default function MarcarAgendamentoForm({
       total_price: service.price,
       status: 'confirmed',
       notes: 'Marcado pela recepção',
-    })
+    }).select('id').single()
 
     setSaving(false)
     if (e) {
       setError(`Erro ao marcar: ${e.message}`)
       return
     }
+
+    // Log de atividade
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: prof2 } = await supabase
+        .from('professionals')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+      logActivity({
+        business_id: businessId,
+        professional_id: prof2?.id,
+        action: 'create_appointment',
+        target_type: 'appointment',
+        target_id: inserted?.id,
+        description: `${cliente.name} · ${service.name} · ${date} ${time} · com ${prof.name}`,
+      })
+    }
+
     router.push('/recepcao')
     router.refresh()
   }

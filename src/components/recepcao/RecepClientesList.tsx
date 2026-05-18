@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { logActivity } from '@/lib/activity-log'
 import { IconSearch, IconPlus, IconClose, IconStar, IconGift } from '@/components/ui/Icon'
 import { maskPhone } from '@/lib/client-display'
 
@@ -210,6 +211,13 @@ function CustomerModal({
     }
     setCurrentPoints(data.total_points)
     setRedeemMessage(`Resgate de "${reward.name}" registrado. Saldo: ${data.total_points} pts`)
+    await logActionForCustomer(
+      createClient(),
+      businessId,
+      'redeem_points',
+      customer.id,
+      `${customer.name} resgatou "${reward.name}" (${reward.points_required} pts)`,
+    )
   }
 
   async function save() {
@@ -239,6 +247,7 @@ function CustomerModal({
         .single()
       setLoading(false)
       if (error) return setError(error.message)
+      await logActionForCustomer(supabase, businessId, 'update_customer', data.id, `Editou ${data.name}`)
       onSaved(data as Customer)
     } else {
       const { data, error } = await supabase
@@ -248,6 +257,7 @@ function CustomerModal({
         .single()
       setLoading(false)
       if (error) return setError(error.message)
+      await logActionForCustomer(supabase, businessId, 'create_customer', data.id, `Cadastrou ${data.name}`)
       onSaved(data as Customer)
     }
   }
@@ -429,6 +439,30 @@ function CustomerModal({
       </div>
     </div>
   )
+}
+
+async function logActionForCustomer(
+  supabase: ReturnType<typeof createClient>,
+  businessId: string,
+  action: 'create_customer' | 'update_customer' | 'redeem_points',
+  customerId: string,
+  description: string,
+) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const { data: prof } = await supabase
+    .from('professionals')
+    .select('id')
+    .eq('auth_user_id', user.id)
+    .maybeSingle()
+  logActivity({
+    business_id: businessId,
+    professional_id: prof?.id,
+    action,
+    target_type: 'customer',
+    target_id: customerId,
+    description,
+  })
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
