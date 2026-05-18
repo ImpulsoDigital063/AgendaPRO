@@ -55,15 +55,24 @@ export async function GET(
     return NextResponse.json({ error: 'customer_not_found' }, { status: 404 })
   }
 
-  // Valida que o user é dono do business deste customer
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('id, slug')
-    .eq('id', customer.business_id)
-    .eq('owner_id', user.id)
-    .maybeSingle()
-
-  if (!business) {
+  // Autorização: dono OU recepcionista do business
+  const [{ data: business }, { data: prof }] = await Promise.all([
+    supabase
+      .from('businesses')
+      .select('id, slug')
+      .eq('id', customer.business_id)
+      .eq('owner_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('professionals')
+      .select('id, is_receptionist')
+      .eq('business_id', customer.business_id)
+      .eq('auth_user_id', user.id)
+      .maybeSingle(),
+  ])
+  const isOwner = !!business
+  const isReceptionist = prof?.is_receptionist === true
+  if (!isOwner && !isReceptionist) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
@@ -254,13 +263,23 @@ export async function PATCH(
     .single()
   if (!customer) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('id', customer.business_id)
-    .eq('owner_id', user.id)
-    .maybeSingle()
-  if (!business) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  const [{ data: business }, { data: profPatch }] = await Promise.all([
+    supabase
+      .from('businesses')
+      .select('id')
+      .eq('id', customer.business_id)
+      .eq('owner_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('professionals')
+      .select('id, is_receptionist')
+      .eq('business_id', customer.business_id)
+      .eq('auth_user_id', user.id)
+      .maybeSingle(),
+  ])
+  if (!business && profPatch?.is_receptionist !== true) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
 
   const { error: custErr } = await supabase.from('customers').update(updates).eq('id', id)
   if (custErr) return NextResponse.json({ error: 'update_failed' }, { status: 500 })

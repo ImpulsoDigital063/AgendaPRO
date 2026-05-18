@@ -68,7 +68,7 @@ export async function POST(
       .maybeSingle(),
     admin
       .from('professionals')
-      .select('id, business_id')
+      .select('id, business_id, is_receptionist')
       .eq('auth_user_id', user.id)
       .maybeSingle(),
   ])
@@ -77,7 +77,11 @@ export async function POST(
     !!profRes.data &&
     profRes.data.business_id === appointment.business_id &&
     profRes.data.id === appointment.professional_id
-  if (!isOwner && !isProfOfAppt) {
+  const isRecepOfBiz =
+    !!profRes.data &&
+    profRes.data.business_id === appointment.business_id &&
+    profRes.data.is_receptionist === true
+  if (!isOwner && !isProfOfAppt && !isRecepOfBiz) {
     return NextResponse.json({ error: 'Acesso negado.' }, { status: 403 })
   }
 

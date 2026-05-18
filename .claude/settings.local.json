@@ -79,7 +79,15 @@
       "WebFetch(domain:stripe.com)",
       "WebFetch(domain:pagar.me)",
       "WebFetch(domain:docs.asaas.com)",
-      "Bash(awk '{print $5, $9}')"
+      "Bash(awk '{print $5, $9}')",
+      "Bash(code --version)",
+      "Bash(code --list-extensions)",
+      "Bash(npm --version)",
+      "Bash(npm i *)",
+      "Bash(winget install *)",
+      "Bash(code --install-extension dbaeumer.vscode-eslint --install-extension esbenp.prettier-vscode --install-extension bradlc.vscode-tailwindcss --install-extension yoavbls.pretty-ts-errors --install-extension usernamehw.errorlens --install-extension eamodio.gitlens --install-extension formulahendry.auto-rename-tag --install-extension christian-kohler.path-intellisense --install-extension mikestead.dotenv --install-extension PKief.material-icon-theme)",
+      "Bash(echo \"git user.name agora: $\\(git config --global user.name\\)\")",
+      "PowerShell(Set-LocalUser *)"
     ]
   }
 }

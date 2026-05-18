@@ -23,11 +23,24 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
-  const { data: business } = await supabase
+  // Pega business como dono OU via professional (recep também precisa criar cliente)
+  let { data: business } = await supabase
     .from('businesses')
     .select('id')
     .eq('owner_id', user.id)
-    .single()
+    .maybeSingle()
+
+  if (!business) {
+    const { data: prof } = await supabase
+      .from('professionals')
+      .select('business_id, is_receptionist')
+      .eq('auth_user_id', user.id)
+      .eq('is_receptionist', true)
+      .maybeSingle()
+    if (prof) {
+      business = { id: prof.business_id }
+    }
+  }
 
   if (!business) return NextResponse.json({ error: 'business_not_found' }, { status: 404 })
 

@@ -21,7 +21,7 @@ export default async function RecepcaoAgendaPage() {
   // Recepcionista logada — pega business via tabela professionals
   const { data: recep } = await supabase
     .from('professionals')
-    .select('id, name, business:businesses(id, name, slug, points_per_professional)')
+    .select('id, name, business:businesses(id, name, slug)')
     .eq('auth_user_id', user.id)
     .eq('is_receptionist', true)
     .single()
@@ -32,7 +32,6 @@ export default async function RecepcaoAgendaPage() {
     id: string
     name: string
     slug: string
-    points_per_professional: boolean | null
   }
 
   const today = new Date().toISOString().split('T')[0]
