@@ -12,7 +12,7 @@ type ApptRow = {
   start_time: string
   end_time: string
   status: string
-  customer_name: string | null
+  client_name: string | null
   service_name: string | null
   total_price: number | null
   paid_at: string | null
@@ -71,7 +71,7 @@ export default async function GradeTimeline({ businessId, date }: Props) {
       .order('name'),
     sb
       .from('appointments')
-      .select('id, professional_id, start_time, end_time, status, customer_name, service_name, total_price, paid_at')
+      .select('id, professional_id, start_time, end_time, status, client_name, service_name, total_price, paid_at')
       .eq('business_id', businessId)
       .eq('appointment_date', date)
       .neq('status', 'cancelled')
@@ -212,7 +212,7 @@ export default async function GradeTimeline({ businessId, date }: Props) {
                         boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
                         zIndex: 2,
                       }}
-                      title={`${a.start_time.slice(0, 5)} · ${a.customer_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}`}
+                      title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}`}
                     >
                       <span
                         className="text-[11px] font-bold tabular-nums leading-tight"
@@ -224,7 +224,7 @@ export default async function GradeTimeline({ businessId, date }: Props) {
                         className="text-xs font-semibold truncate"
                         style={{ color: 'var(--admin-text)' }}
                       >
-                        {a.customer_name ?? 'Cliente'}
+                        {a.client_name ?? 'Cliente'}
                       </span>
                       {height >= SLOT_HEIGHT * 1.5 && (
                         <span
