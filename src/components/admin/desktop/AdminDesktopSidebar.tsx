@@ -54,15 +54,15 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
     { label: 'WhatsApp', href: '/admin/configuracoes?tab=qr-code', tabMatch: 'qr-code', Icon: IconWhatsapp },
     { label: 'Vendas', href: '/admin/financeiro', exact: true, Icon: IconWallet },
     { label: 'Comandas', Icon: IconInbox, comingSoon: true },
-    { label: 'Fluxo de Caixa', href: '/admin/relatorios', Icon: IconDollar },
-    { label: 'Remunerações', href: '/admin/financeiro/despesas', Icon: IconTrendingUp },
+    { label: 'Fluxo de Caixa', Icon: IconDollar, comingSoon: true },
+    { label: 'Remunerações', Icon: IconTrendingUp, comingSoon: true },
     { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconReceipt },
     { label: 'Notas Fiscais', Icon: IconFile, comingSoon: true },
     { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', tabMatch: 'servicos', Icon: IconSparkles },
     { label: 'Produtos', Icon: IconPackage, comingSoon: true },
     { label: 'Pacotes', Icon: IconGift, comingSoon: true },
     { label: 'Colaboradores', href: '/admin/configuracoes?tab=profissionais', tabMatch: 'profissionais', Icon: IconUser },
-    { label: 'Relatórios', href: '/admin/relatorios', exact: true, Icon: IconChart },
+    { label: 'Relatórios', Icon: IconChart, comingSoon: true },
     { label: 'Configurações', href: '/admin/configuracoes', exact: true, Icon: IconSettings },
   ]
 
