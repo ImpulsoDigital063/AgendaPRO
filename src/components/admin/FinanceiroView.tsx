@@ -231,8 +231,8 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
         </div>
       </div>
 
-      {/* Pendente + Faturado total + Ticket médio */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Pendente + Faturado total + Ticket médio · 3 cols mobile · 6 cols desktop */}
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 lg:gap-3">
         <KpiTile
           label="Em aberto"
           value={formatPrice(totalPendente)}
@@ -650,7 +650,7 @@ function MethodBreakdown({
       <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
         Recebido por método
       </h2>
-      <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3">
         {ativos.map((m) => (
           <MethodTile
             key={m.key}

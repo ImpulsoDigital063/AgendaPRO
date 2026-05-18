@@ -63,7 +63,7 @@ export default async function DespesasPage({
 
       <div className="relative">
         <SubPageHeader title="Despesas" subtitle={business.name} back="/admin/financeiro" />
-        <div className="max-w-lg mx-auto px-4 py-6">
+        <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8">
           <DespesasView
             expenses={(expenses || []) as Expense[]}
             periodo={periodo}

@@ -191,7 +191,7 @@ export default function DespesasView({ expenses, periodo }: Props) {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-2">
             {(showAllExpenses ? expenses : expenses.slice(0, 10)).map((e) => (
               <button
                 key={e.id}

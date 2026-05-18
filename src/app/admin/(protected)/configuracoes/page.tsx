@@ -66,7 +66,7 @@ export default async function ConfiguracoesPage() {
 
       <div className="relative">
         <SubPageHeader title="Configurações" subtitle={business.name} />
-        <div className="max-w-lg mx-auto px-4 py-6">
+        <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-6xl lg:px-8">
           <ConfiguracoesTabs
             business={business}
             initialProfessionals={professionals || []}

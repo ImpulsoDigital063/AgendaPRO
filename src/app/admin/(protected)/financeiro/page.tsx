@@ -114,7 +114,7 @@ export default async function FinanceiroPage({
 
       <div className="relative">
         <SubPageHeader title="Financeiro" subtitle={business.name} />
-        <div className="max-w-lg mx-auto px-4 py-6">
+        <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-7xl lg:px-8">
           <FinanceiroView
             appointments={(appointments || []) as unknown as AppointmentRow[]}
             periodo={periodo}
