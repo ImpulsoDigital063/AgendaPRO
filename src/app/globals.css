@@ -228,7 +228,7 @@ html.admin-theme-switching *::after {
 .admin-shell-content {
   min-height: 100svh;
 }
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .admin-shell--with-sidebar .admin-shell-content {
     padding-left: 256px;
     transition: padding-left 220ms ease;

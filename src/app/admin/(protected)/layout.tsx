@@ -113,7 +113,7 @@ export default async function AdminLayout({
         <div className="admin-shell-content">
           {children}
         </div>
-        <div className="xl:hidden">
+        <div className="lg:hidden">
           <BottomNav
             pendingAppointments={pendingAppointments}
             pendingClaims={pendingClaims}

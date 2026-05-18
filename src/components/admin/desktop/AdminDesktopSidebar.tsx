@@ -82,7 +82,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
 
   return (
     <aside
-      className="admin-desktop-sidebar hidden xl:flex flex-col"
+      className="admin-desktop-sidebar hidden lg:flex flex-col"
       data-collapsed={collapsed}
       style={{
         position: 'fixed',
