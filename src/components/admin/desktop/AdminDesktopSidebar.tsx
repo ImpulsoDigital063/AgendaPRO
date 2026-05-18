@@ -110,7 +110,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
     {
       label: 'Outros',
       items: [
-        { label: 'Relatórios', Icon: IconChart, comingSoon: true },
+        { label: 'Relatórios', href: '/admin/relatorios', Icon: IconChart },
       ],
     },
   ]
