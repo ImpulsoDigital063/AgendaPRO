@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { IconClose, IconChevronDown } from '@/components/ui/Icon'
+import { IconClose, IconChevronDown, IconTrash, IconCheck } from '@/components/ui/Icon'
 
 type InvoiceDetail = {
   invoice: {
@@ -80,6 +80,8 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [actionMenuOpen, setActionMenuOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editingItems, setEditingItems] = useState<Record<string, { unit_price: string; discount: string }>>({})
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -89,22 +91,84 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
+  async function loadInvoice() {
+    setLoading(true)
+    const res = await fetch(`/api/admin/invoices/${invoiceId}`)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setError(j.error ?? 'erro')
+      setLoading(false)
+      return
+    }
+    const j = (await res.json()) as InvoiceDetail
+    setData(j)
+    // Reset editing state quando recarrega
+    const map: Record<string, { unit_price: string; discount: string }> = {}
+    for (const it of j.items) {
+      map[it.id] = {
+        unit_price: String(it.unit_price),
+        discount: String(it.discount),
+      }
+    }
+    setEditingItems(map)
+    setLoading(false)
+  }
+
   useEffect(() => {
-    async function load() {
-      setLoading(true)
-      const res = await fetch(`/api/admin/invoices/${invoiceId}`)
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        setError(j.error ?? 'erro')
-        setLoading(false)
+    loadInvoice()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceId])
+
+  async function saveItemEdits() {
+    if (!data) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const promises = data.items.map((it) => {
+        const ed = editingItems[it.id]
+        if (!ed) return null
+        const newUnitPrice = parseFloat(ed.unit_price.replace(',', '.')) || 0
+        const newDiscount = parseFloat(ed.discount.replace(',', '.')) || 0
+        if (newUnitPrice === Number(it.unit_price) && newDiscount === Number(it.discount)) return null
+        return fetch(`/api/admin/invoices/${invoiceId}/items/${it.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ unit_price: newUnitPrice, discount: newDiscount }),
+        })
+      })
+      const results = await Promise.all(promises.filter(Boolean))
+      const failed = results.find((r) => r && !r.ok)
+      if (failed) {
+        const j = await failed.json().catch(() => ({}))
+        setError(j.error ?? 'falha_ao_salvar')
+        setSubmitting(false)
         return
       }
-      const j = (await res.json()) as InvoiceDetail
-      setData(j)
-      setLoading(false)
+      await loadInvoice()
+      setEditMode(false)
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'erro')
+    } finally {
+      setSubmitting(false)
     }
-    load()
-  }, [invoiceId])
+  }
+
+  async function removeItem(itemId: string) {
+    if (!confirm('Remover esse item da comanda? O atendimento volta a ficar Sem Fatura.')) return
+    setSubmitting(true)
+    setError(null)
+    const res = await fetch(`/api/admin/invoices/${invoiceId}/items/${itemId}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setError(j.error ?? 'falha_ao_remover')
+      setSubmitting(false)
+      return
+    }
+    await loadInvoice()
+    router.refresh()
+    setSubmitting(false)
+  }
 
   async function changeStatus(action: 'reopen' | 'cancel') {
     if (!data) return
@@ -153,22 +217,49 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
             style={{ borderBottom: '1px solid var(--admin-divider)' }}
           >
             <h2 className="text-lg font-bold flex-1" style={{ color: 'var(--admin-text)' }}>
-              {loading ? 'Comanda…' : `Comanda #${data?.invoice.invoice_number ?? '—'}`}
+              {loading ? 'Comanda…' : editMode ? `Editar Comanda #${data?.invoice.invoice_number}` : `Comanda #${data?.invoice.invoice_number ?? '—'}`}
             </h2>
-            <button
-              type="button"
-              aria-label="Imprimir"
-              disabled
-              className="p-2 rounded-lg disabled:opacity-30"
-              style={{ color: 'var(--admin-text-mute)' }}
-              title="Imprimir (em breve)"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 6 2 18 2 18 9" />
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                <rect x="6" y="14" width="12" height="8" />
-              </svg>
-            </button>
+            {editMode && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditMode(false)
+                    loadInvoice()
+                  }}
+                  disabled={submitting}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider"
+                  style={{ color: 'var(--admin-text-mute)' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={saveItemEdits}
+                  disabled={submitting}
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+                  style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                >
+                  {submitting ? 'Salvando…' : 'Salvar'}
+                </button>
+              </>
+            )}
+            {!editMode && (
+              <button
+                type="button"
+                aria-label="Imprimir"
+                disabled
+                className="p-2 rounded-lg disabled:opacity-30"
+                style={{ color: 'var(--admin-text-mute)' }}
+                title="Imprimir (em breve)"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9" />
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                  <rect x="6" y="14" width="12" height="8" />
+                </svg>
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -277,15 +368,16 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
                     <h3 className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
                       Resumo
                     </h3>
-                    <button
-                      type="button"
-                      disabled
-                      className="text-xs font-bold uppercase tracking-wider disabled:opacity-40"
-                      style={{ color: 'var(--admin-accent)' }}
-                      title="Em breve (etapa 1.8)"
-                    >
-                      Gerenciar Itens
-                    </button>
+                    {!editMode && data.invoice.status !== 'cancelled' && (
+                      <button
+                        type="button"
+                        onClick={() => setEditMode(true)}
+                        className="text-xs font-bold uppercase tracking-wider"
+                        style={{ color: 'var(--admin-accent)' }}
+                      >
+                        Gerenciar Itens
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
@@ -320,7 +412,7 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
                   </div>
                 </div>
 
-                {/* Itens · listinha simples */}
+                {/* Itens */}
                 {data.items.length > 0 && (
                   <div>
                     <h3 className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--admin-text-faded)' }}>
@@ -333,29 +425,83 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
                         border: '1px solid var(--admin-divider)',
                       }}
                     >
-                      {data.items.map((it, idx) => (
-                        <div
-                          key={it.id}
-                          className="flex items-center gap-3 px-4 py-3"
-                          style={{
-                            borderBottom: idx < data.items.length - 1 ? '1px solid var(--admin-divider)' : 'none',
-                          }}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
-                              {it.description}
-                            </p>
-                            {it.professional?.name && (
-                              <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-                                {it.professional.name}
-                              </p>
+                      {data.items.map((it, idx) => {
+                        const ed = editingItems[it.id]
+                        return (
+                          <div
+                            key={it.id}
+                            className="px-4 py-3"
+                            style={{
+                              borderBottom: idx < data.items.length - 1 ? '1px solid var(--admin-divider)' : 'none',
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                                  {it.description}
+                                </p>
+                                {it.professional?.name && (
+                                  <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+                                    {it.professional.name}
+                                  </p>
+                                )}
+                              </div>
+                              {!editMode && (
+                                <p className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                                  {formatBRL(it.total)}
+                                </p>
+                              )}
+                              {editMode && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeItem(it.id)}
+                                  disabled={submitting}
+                                  aria-label="Remover item"
+                                  className="p-1.5 rounded-lg disabled:opacity-30"
+                                  style={{ color: 'var(--admin-danger,#EF4444)' }}
+                                >
+                                  <IconTrash size={14} />
+                                </button>
+                              )}
+                            </div>
+
+                            {editMode && (
+                              <div className="grid grid-cols-2 gap-2 mt-2">
+                                <div>
+                                  <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+                                    Valor unitário (R$)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={ed?.unit_price ?? ''}
+                                    onChange={(e) =>
+                                      setEditingItems((p) => ({ ...p, [it.id]: { ...(p[it.id] ?? { unit_price: '', discount: '' }), unit_price: e.target.value } }))
+                                    }
+                                    disabled={submitting}
+                                    className="admin-input w-full px-2 py-1.5 text-sm tabular-nums"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+                                    Desconto (R$)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={ed?.discount ?? ''}
+                                    onChange={(e) =>
+                                      setEditingItems((p) => ({ ...p, [it.id]: { ...(p[it.id] ?? { unit_price: '', discount: '' }), discount: e.target.value } }))
+                                    }
+                                    disabled={submitting}
+                                    className="admin-input w-full px-2 py-1.5 text-sm tabular-nums"
+                                  />
+                                </div>
+                              </div>
                             )}
                           </div>
-                          <p className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
-                            {formatBRL(it.total)}
-                          </p>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
