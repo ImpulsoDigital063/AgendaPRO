@@ -190,7 +190,12 @@ export default async function RemuneracoesPage({
               </p>
             </div>
           ) : (
-            <RemuneracoesTable rows={rows} monthIso={`${year}-${String(month0 + 1).padStart(2, '0')}`} />
+            <RemuneracoesTable
+              rows={rows}
+              monthIso={`${year}-${String(month0 + 1).padStart(2, '0')}`}
+              periodStart={fromDate}
+              periodEnd={new Date(Date.UTC(year, month0 + 1, 0)).toISOString().slice(0, 10)}
+            />
           )}
 
           {/* Hint */}

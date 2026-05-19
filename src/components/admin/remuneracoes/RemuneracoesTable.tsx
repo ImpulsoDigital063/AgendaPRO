@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import RegistrarPagamentoModal from './RegistrarPagamentoModal'
 
 export type ProfRow = {
   id: string
@@ -16,6 +17,8 @@ export type ProfRow = {
 type Props = {
   rows: ProfRow[]
   monthIso: string
+  periodStart: string
+  periodEnd: string
 }
 
 function buildDetailHref(profId: string, monthIso: string) {
@@ -26,8 +29,9 @@ function formatBRL(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-export default function RemuneracoesTable({ rows, monthIso }: Props) {
+export default function RemuneracoesTable({ rows, monthIso, periodStart, periodEnd }: Props) {
   const [menuFor, setMenuFor] = useState<string | null>(null)
+  const [paymentFor, setPaymentFor] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   // Fecha menu ao clicar fora
@@ -50,6 +54,7 @@ export default function RemuneracoesTable({ rows, monthIso }: Props) {
   }, [menuFor])
 
   const selected = rows.find((r) => r.id === menuFor)
+  const payingFor = rows.find((r) => r.id === paymentFor)
 
   return (
     <>
@@ -153,6 +158,18 @@ export default function RemuneracoesTable({ rows, monthIso }: Props) {
         </div>
       </div>
 
+      {/* Wizard de pagamento */}
+      {payingFor && (
+        <RegistrarPagamentoModal
+          professionalId={payingFor.id}
+          professionalName={payingFor.name}
+          defaultCommissionPercent={payingFor.default_commission_percent}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          onClose={() => setPaymentFor(null)}
+        />
+      )}
+
       {/* Menu de contexto · modal-style overlay */}
       {selected && (
         <div
@@ -216,10 +233,14 @@ export default function RemuneracoesTable({ rows, monthIso }: Props) {
               </Link>
               <button
                 type="button"
-                disabled
-                className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => {
+                  setPaymentFor(selected.id)
+                  setMenuFor(null)
+                }}
+                disabled={selected.pendente <= 0}
+                className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--admin-surface-hi)]"
                 style={{ color: 'var(--admin-text)' }}
-                title="Em breve (etapa 3.5)"
+                title={selected.pendente <= 0 ? 'Nada pendente pra pagar' : undefined}
               >
                 <span style={{ color: 'var(--admin-text-mute)' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
