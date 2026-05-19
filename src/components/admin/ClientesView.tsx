@@ -20,6 +20,11 @@ const ClienteDetailModal = dynamic(() => import('./ClienteDetailModal'), {
   ssr: false,
 })
 
+// Drawer estilo Salão99 · desktop · 8 tabs (Perfil/Configurações/Atividades/Galeria/Fichas/Pacotes/Saldo/Fidelidade)
+const ClienteDrawer = dynamic(() => import('./clientes/ClienteDrawer'), {
+  ssr: false,
+})
+
 type Cliente = {
   id: string
   name: string
@@ -521,11 +526,24 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         />
       )}
 
+      {/* Mobile/tablet · modal antigo (mais compacto) */}
       {detailCustomerId && (
-        <ClienteDetailModal
-          customerId={detailCustomerId}
-          onClose={() => setDetailCustomerId(null)}
-        />
+        <div className="lg:hidden">
+          <ClienteDetailModal
+            customerId={detailCustomerId}
+            onClose={() => setDetailCustomerId(null)}
+          />
+        </div>
+      )}
+
+      {/* Desktop (lg+) · drawer estilo Salão99 */}
+      {detailCustomerId && (
+        <div className="hidden lg:block">
+          <ClienteDrawer
+            customerId={detailCustomerId}
+            onClose={() => setDetailCustomerId(null)}
+          />
+        </div>
       )}
     </div>
   )
