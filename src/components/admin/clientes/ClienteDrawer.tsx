@@ -293,7 +293,18 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
             </p>
           ) : (
             <>
-              {tab === 'perfil' && <PerfilTab customer={customer} />}
+              {tab === 'perfil' && (
+                <PerfilTab
+                  customer={customer}
+                  onSaved={async () => {
+                    // Reload do cliente
+                    const sb = createClient()
+                    const { data: refreshed } = await sb.from('customers').select('*').eq('id', customerId).maybeSingle()
+                    if (refreshed) setCustomer(refreshed as Customer)
+                    router.refresh()
+                  }}
+                />
+              )}
               {tab === 'configuracoes' && (
                 <Placeholder text="Preferências e permissões do cliente · em breve" />
               )}
@@ -352,67 +363,292 @@ function Placeholder({ text }: { text: string }) {
   )
 }
 
-function PerfilTab({ customer }: { customer: Customer }) {
-  const linhas: { label: string; value: string | null | undefined }[] = [
-    { label: 'Apelido', value: customer.nickname },
-    { label: 'Telefone', value: customer.phone },
-    { label: 'Email', value: customer.email },
-    { label: 'Instagram', value: customer.instagram },
-    { label: 'CPF', value: customer.cpf },
-    { label: 'RG', value: customer.rg },
-    { label: 'Profissão', value: customer.profession },
-    { label: 'Aniversário', value: customer.birthday },
-    {
-      label: 'Endereço',
-      value: customer.address
-        ? `${customer.address}${customer.address_number ? ', ' + customer.address_number : ''}${customer.neighborhood ? ' · ' + customer.neighborhood : ''}${customer.city ? ' · ' + customer.city : ''}${customer.state ? '/' + customer.state : ''}`
-        : null,
-    },
-    { label: 'Como Conheceu', value: customer.referral_source },
-    { label: 'Anotação Importante', value: customer.important_note },
-  ].filter((l) => l.value)
+function PerfilTab({ customer, onSaved }: { customer: Customer; onSaved: () => void }) {
+  const [editMode, setEditMode] = useState(false)
+  const [form, setForm] = useState({
+    name: customer.name ?? '',
+    nickname: customer.nickname ?? '',
+    important_note: customer.important_note ?? '',
+    referral_source: customer.referral_source ?? '',
+    customer_type: customer.customer_type ?? 'pf',
+    email: customer.email ?? '',
+    instagram: customer.instagram ?? '',
+    phone: customer.phone ?? '',
+    birthday: customer.birthday ?? '',
+    sex: customer.sex ?? '',
+    cpf: customer.cpf ?? '',
+    rg: customer.rg ?? '',
+    profession: customer.profession ?? '',
+    address: customer.address ?? '',
+    address_number: customer.address_number ?? '',
+    address_complement: customer.address_complement ?? '',
+    neighborhood: customer.neighborhood ?? '',
+    city: customer.city ?? '',
+    state: customer.state ?? '',
+    zip_code: customer.zip_code ?? '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
+  function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
+    setForm((prev) => ({ ...prev, [k]: v }))
+  }
+
+  async function save() {
+    setSubmitting(true)
+    setError(null)
+    const payload: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(form)) {
+      if (v === '' && k !== 'name' && k !== 'customer_type') payload[k] = null
+      else payload[k] = v
+    }
+    const res = await fetch(`/api/admin/customers/${customer.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setError(j.error ?? 'falha')
+      setSubmitting(false)
+      return
+    }
+    setSubmitting(false)
+    setEditMode(false)
+    onSaved()
+  }
+
+  if (!editMode) {
+    const linhas: { label: string; value: string | null | undefined }[] = [
+      { label: 'Apelido', value: customer.nickname },
+      { label: 'Tipo', value: customer.customer_type === 'pj' ? 'Pessoa Jurídica' : 'Pessoa Física' },
+      { label: 'Telefone', value: customer.phone },
+      { label: 'Email', value: customer.email },
+      { label: 'Instagram', value: customer.instagram },
+      { label: 'CPF', value: customer.cpf },
+      { label: 'RG', value: customer.rg },
+      { label: 'Profissão', value: customer.profession },
+      { label: 'Aniversário', value: customer.birthday },
+      {
+        label: 'Endereço',
+        value: customer.address
+          ? `${customer.address}${customer.address_number ? ', ' + customer.address_number : ''}${customer.neighborhood ? ' · ' + customer.neighborhood : ''}${customer.city ? ' · ' + customer.city : ''}${customer.state ? '/' + customer.state : ''}`
+          : null,
+      },
+      { label: 'CEP', value: customer.zip_code },
+      { label: 'Como Conheceu', value: customer.referral_source },
+      { label: 'Anotação Importante', value: customer.important_note },
+    ].filter((l) => l.value)
+
+    return (
+      <div
+        className="rounded-2xl p-5"
+        style={{
+          background: 'var(--admin-surface)',
+          border: '1px solid var(--admin-border)',
+        }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+            Dados Cadastrais
+          </h3>
+          <button
+            type="button"
+            onClick={() => setEditMode(true)}
+            className="text-xs font-bold uppercase tracking-wider"
+            style={{ color: 'var(--admin-accent)' }}
+          >
+            Editar
+          </button>
+        </div>
+
+        {linhas.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--admin-text-faded)' }}>
+            Só nome cadastrado · clica em <b>Editar</b> pra adicionar contato, endereço, anotação.
+          </p>
+        ) : (
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            {linhas.map((l) => (
+              <div key={l.label}>
+                <dt className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+                  {l.label}
+                </dt>
+                <dd className="text-sm" style={{ color: 'var(--admin-text)' }}>
+                  {l.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+    )
+  }
+
+  // Form editMode
   return (
-    <div
-      className="rounded-2xl p-5"
-      style={{
-        background: 'var(--admin-surface)',
-        border: '1px solid var(--admin-border)',
-      }}
-    >
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-          Dados Cadastrais
+          Editar Cliente
         </h3>
-        <button
-          type="button"
-          disabled
-          className="text-xs font-bold uppercase tracking-wider disabled:opacity-40"
-          style={{ color: 'var(--admin-accent)' }}
-          title="Form completo vem na etapa 4.4"
-        >
-          Editar
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setEditMode(false)}
+            disabled={submitting}
+            className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider"
+            style={{ color: 'var(--admin-text-mute)' }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={submitting || !form.name.trim()}
+            className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+            style={{ background: 'var(--admin-accent)', color: '#fff' }}
+          >
+            {submitting ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
       </div>
 
-      {linhas.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--admin-text-faded)' }}>
-          Só nome cadastrado · edite pra adicionar contato, endereço, anotação.
+      {error && (
+        <p className="text-xs px-3 py-2 rounded-lg" style={{
+          background: 'color-mix(in srgb, var(--admin-danger,#EF4444) 14%, transparent)',
+          color: 'var(--admin-danger,#EF4444)',
+        }}>
+          Erro: {error}
         </p>
-      ) : (
-        <dl className="space-y-3">
-          {linhas.map((l) => (
-            <div key={l.label}>
-              <dt className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-                {l.label}
-              </dt>
-              <dd className="text-sm" style={{ color: 'var(--admin-text)' }}>
-                {l.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
       )}
+
+      {/* Bloco principal · sem cabeçalho */}
+      <div className="rounded-2xl p-5 space-y-3" style={{
+        background: 'var(--admin-surface)',
+        border: '1px solid var(--admin-border)',
+      }}>
+        <Field label="Nome do cliente" required>
+          <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)} className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Apelido">
+            <input type="text" value={form.nickname} onChange={(e) => set('nickname', e.target.value)} className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+          </Field>
+          <Field label="Tipo">
+            <select value={form.customer_type} onChange={(e) => set('customer_type', e.target.value)} className="admin-input w-full px-3 py-2 text-sm" disabled={submitting}>
+              <option value="pf">Pessoa Física</option>
+              <option value="pj">Pessoa Jurídica</option>
+            </select>
+          </Field>
+        </div>
+        <Field label="Como Conheceu">
+          <input type="text" value={form.referral_source} onChange={(e) => set('referral_source', e.target.value)} placeholder="Indicação · Instagram · Vizinho · Outro" className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+        </Field>
+        <Field label="Anotação Importante">
+          <input type="text" value={form.important_note} onChange={(e) => set('important_note', e.target.value)} placeholder="Alergia · Preferência · Observação interna" className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+        </Field>
+      </div>
+
+      {/* Contato */}
+      <div className="rounded-2xl p-5 space-y-3" style={{
+        background: 'var(--admin-surface)',
+        border: '1px solid var(--admin-border)',
+      }}>
+        <h4 className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>📞 Contato</h4>
+        <Field label="Telefone (WhatsApp)">
+          <input type="text" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="(00) 00000-0000" className="admin-input w-full px-3 py-2 text-sm tabular-nums" disabled={submitting} />
+        </Field>
+        <Field label="Email">
+          <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="cliente@email.com" className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+        </Field>
+        <Field label="Instagram">
+          <input type="text" value={form.instagram} onChange={(e) => set('instagram', e.target.value)} placeholder="@usuario" className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+        </Field>
+      </div>
+
+      {/* Informações Pessoais */}
+      <div className="rounded-2xl p-5 space-y-3" style={{
+        background: 'var(--admin-surface)',
+        border: '1px solid var(--admin-border)',
+      }}>
+        <h4 className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>👤 Informações Pessoais</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Data de Nascimento">
+            <input type="date" value={form.birthday} onChange={(e) => set('birthday', e.target.value)} className="admin-input w-full px-3 py-2 text-sm tabular-nums" disabled={submitting} />
+          </Field>
+          <Field label="Sexo">
+            <select value={form.sex} onChange={(e) => set('sex', e.target.value)} className="admin-input w-full px-3 py-2 text-sm" disabled={submitting}>
+              <option value="">—</option>
+              <option value="f">Feminino</option>
+              <option value="m">Masculino</option>
+              <option value="other">Outro</option>
+              <option value="na">Prefiro não informar</option>
+            </select>
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="CPF">
+            <input type="text" value={form.cpf} onChange={(e) => set('cpf', e.target.value)} placeholder="000.000.000-00" className="admin-input w-full px-3 py-2 text-sm tabular-nums" disabled={submitting} />
+          </Field>
+          <Field label="RG">
+            <input type="text" value={form.rg} onChange={(e) => set('rg', e.target.value)} className="admin-input w-full px-3 py-2 text-sm tabular-nums" disabled={submitting} />
+          </Field>
+        </div>
+        <Field label="Profissão">
+          <input type="text" value={form.profession} onChange={(e) => set('profession', e.target.value)} className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+        </Field>
+      </div>
+
+      {/* Endereço */}
+      <div className="rounded-2xl p-5 space-y-3" style={{
+        background: 'var(--admin-surface)',
+        border: '1px solid var(--admin-border)',
+      }}>
+        <h4 className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>📍 Endereço</h4>
+        <Field label="Endereço (rua)">
+          <input type="text" value={form.address} onChange={(e) => set('address', e.target.value)} className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Número">
+            <input type="text" value={form.address_number} onChange={(e) => set('address_number', e.target.value)} className="admin-input w-full px-3 py-2 text-sm tabular-nums" disabled={submitting} />
+          </Field>
+          <Field label="Complemento">
+            <input type="text" value={form.address_complement} onChange={(e) => set('address_complement', e.target.value)} className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+          </Field>
+        </div>
+        <Field label="Bairro">
+          <input type="text" value={form.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+        </Field>
+        <Field label="Cidade">
+          <input type="text" value={form.city} onChange={(e) => set('city', e.target.value)} className="admin-input w-full px-3 py-2 text-sm" disabled={submitting} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Estado">
+            <input type="text" value={form.state} onChange={(e) => set('state', e.target.value.toUpperCase().slice(0, 2))} placeholder="RJ" className="admin-input w-full px-3 py-2 text-sm uppercase" disabled={submitting} />
+          </Field>
+          <Field label="CEP">
+            <input type="text" value={form.zip_code} onChange={(e) => set('zip_code', e.target.value)} placeholder="00000-000" className="admin-input w-full px-3 py-2 text-sm tabular-nums" disabled={submitting} />
+          </Field>
+        </div>
+      </div>
+
+      {/* Disclaimer LGPD */}
+      <p className="text-[11px] px-2" style={{ color: 'var(--admin-text-faded)' }}>
+        Certifique-se de obter a autorização de pais ou responsáveis para cadastrar menores de 13 anos.
+        Os dados serão tratados nos termos da Política de Privacidade.
+      </p>
+    </div>
+  )
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+        {label}
+        {required && <span style={{ color: 'var(--admin-danger,#EF4444)' }}> *</span>}
+      </label>
+      {children}
     </div>
   )
 }

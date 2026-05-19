@@ -47,7 +47,7 @@ export async function GET(
   // Customer + business filtrado pelo owner — RLS garante seguranca
   const { data: customer, error: custErr } = await supabase
     .from('customers')
-    .select('id, business_id, name, phone, email, total_points, referral_code, created_at, birthday, notes, import_source, imported_at')
+    .select('*')
     .eq('id', id)
     .single()
 
@@ -202,12 +202,7 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
-  const updates: {
-    name?: string
-    email?: string | null
-    birthday?: string | null
-    notes?: string | null
-  } = {}
+  const updates: Record<string, unknown> = {}
 
   if (typeof body.name === 'string' && body.name.trim()) {
     const trimmedName = body.name.trim()
@@ -227,8 +222,6 @@ export async function PATCH(
     }
   }
   if ('birthday' in body) {
-    // Aceita YYYY-MM-DD VÁLIDO (passa por validação de calendário real)
-    // ou null/'' pra limpar. 30/02, mês 13, ano com 2 dígitos etc → 400.
     const v = body.birthday
     if (v === null || v === '' || v === undefined) {
       updates.birthday = null
@@ -243,12 +236,50 @@ export async function PATCH(
     if (v === null || v === '' || v === undefined) {
       updates.notes = null
     } else if (typeof v === 'string') {
-      // Limita pra evitar abuso (1000 chars cobre ficha de anamnese razoável)
       updates.notes = v.trim().slice(0, 1000)
     }
   }
 
-  if (Object.keys(updates).length === 0) {
+  // Campos novos v56 · todos texto livre (trim + cap 500 por campo) ou null
+  const textFields = [
+    'nickname', 'important_note', 'referral_source', 'instagram',
+    'cpf', 'rg', 'profession', 'address', 'address_number',
+    'address_complement', 'neighborhood', 'city', 'state', 'zip_code',
+  ] as const
+  for (const f of textFields) {
+    if (f in body) {
+      const v = body[f]
+      if (v === null || v === '' || v === undefined) {
+        updates[f] = null
+      } else if (typeof v === 'string') {
+        updates[f] = v.trim().slice(0, 500)
+      }
+    }
+  }
+
+  // customer_type · enum PF/PJ
+  if ('customer_type' in body) {
+    const v = body.customer_type
+    if (v === 'pf' || v === 'pj') updates.customer_type = v
+  }
+
+  // sex · enum
+  if ('sex' in body) {
+    const v = body.sex
+    if (v === null || v === '' || v === undefined) {
+      updates.sex = null
+    } else if (typeof v === 'string' && ['f', 'm', 'other', 'na'].includes(v)) {
+      updates.sex = v
+    }
+  }
+
+  // Ajuste de pontos · soma/subtrai do total_points existente
+  if (typeof body.pointsAdjustment === 'number' && body.pointsAdjustment !== 0) {
+    // tratado abaixo via RPC ou direto após buscar customer
+  }
+
+  const hasPointsAdj = typeof body.pointsAdjustment === 'number' && body.pointsAdjustment !== 0
+  if (Object.keys(updates).length === 0 && !hasPointsAdj) {
     return NextResponse.json({ error: 'no_changes' }, { status: 400 })
   }
 
@@ -281,8 +312,28 @@ export async function PATCH(
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  const { error: custErr } = await supabase.from('customers').update(updates).eq('id', id)
-  if (custErr) return NextResponse.json({ error: 'update_failed' }, { status: 500 })
+  if (Object.keys(updates).length > 0) {
+    const { error: custErr } = await supabase.from('customers').update(updates).eq('id', id)
+    if (custErr) return NextResponse.json({ error: 'update_failed' }, { status: 500 })
+  }
+
+  // Ajuste de pontos · cria transaction + atualiza total
+  if (hasPointsAdj) {
+    const delta = body.pointsAdjustment as number
+    const { data: cur } = await supabase
+      .from('customers')
+      .select('total_points')
+      .eq('id', id)
+      .maybeSingle()
+    const newTotal = Math.max(0, (cur?.total_points ?? 0) + delta)
+    await supabase.from('customers').update({ total_points: newTotal }).eq('id', id)
+    await supabase.from('points_transactions').insert({
+      customer_id: id,
+      business_id: customer.business_id,
+      points: delta,
+      reason: 'manual',
+    })
+  }
 
   // Espelha em `clients` (universal v2) APENAS quando name ou email
   // efetivamente mudaram. `clients` é tabela global por phone — se
@@ -290,11 +341,12 @@ export async function PATCH(
   // UPDATE sem mudança real propagaria estado desnecessariamente.
   // Por isso comparamos com valores atuais antes de tocar.
   const clientsUpdate: { name?: string; email?: string | null } = {}
-  if (updates.name && updates.name !== customer.name) {
+  if (typeof updates.name === 'string' && updates.name !== customer.name) {
     clientsUpdate.name = updates.name
   }
-  if ('email' in updates && updates.email !== customer.email) {
-    clientsUpdate.email = updates.email
+  if ('email' in updates) {
+    const newEmail = (updates.email as string | null | undefined) ?? null
+    if (newEmail !== customer.email) clientsUpdate.email = newEmail
   }
   if (Object.keys(clientsUpdate).length > 0) {
     await supabase.from('clients').update(clientsUpdate).eq('phone', customer.phone)
