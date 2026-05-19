@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- Ogiva externa (árabe / vesica piscis estilizada) -->
+  <path
+    d="M 100 10
+       C 60 30, 30 80, 30 140
+       C 30 200, 70 250, 100 270
+       C 130 250, 170 200, 170 140
+       C 170 80, 140 30, 100 10 Z"
+    stroke="currentColor"
+    stroke-width="3.5"
+    fill="none"
+  />
+  <!-- Letra P caligráfica estilizada dentro -->
+  <path
+    d="M 82 95
+       L 82 215
+       M 82 95
+       C 100 95, 130 100, 130 130
+       C 130 165, 95 168, 82 165"
+    stroke="currentColor"
+    stroke-width="4.5"
+    fill="none"
+    stroke-linecap="round"
+  />
+  <!-- Linha decorativa diagonal do P (assinatura caligráfica) -->
+  <path
+    d="M 96 110
+       Q 75 145, 95 175
+       Q 115 200, 92 213"
+    stroke="currentColor"
+    stroke-width="2.5"
+    fill="none"
+    stroke-linecap="round"
+    opacity="0.7"
+  />
+</svg>

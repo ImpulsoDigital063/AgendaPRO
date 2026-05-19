@@ -22,6 +22,8 @@ import {
   IconUser,
   IconWallet,
 } from '@/components/ui/Icon'
+import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
+import Image from 'next/image'
 
 function IconReceipt({ size = 20 }: { size?: number }) {
   return (
@@ -288,19 +290,43 @@ export default async function AdminInicioPage() {
   })
 
   return (
-    <main className="relative" style={{ minHeight: '100svh' }}>
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 pt-6 pb-32 lg:pb-12 space-y-6">
-        {/* Header · saudação */}
-        <header>
-          <p className="text-sm font-medium" style={{ color: 'var(--admin-text-faded)' }}>
-            <Greeting />, {business.name}
-          </p>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight mt-1" style={{ color: 'var(--admin-text)' }}>
-            Painel inicial
-          </h1>
-          <p className="text-sm capitalize mt-1 inline-flex items-center gap-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-            <IconCalendar size={14} /> {todayFormatted}
-          </p>
+    <main className="relative overflow-hidden" style={{ minHeight: '100svh' }}>
+      <div className="max-w-7xl mx-auto px-4 lg:px-6 pt-6 pb-32 lg:pb-12 space-y-6 relative">
+        {/* Header · saudação · hero com logo da marca no canto */}
+        <header
+          className="relative rounded-3xl overflow-hidden p-6 lg:p-8"
+          style={{
+            background:
+              'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary, var(--admin-accent)) 12%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-secondary, var(--admin-accent)) 8%, var(--admin-surface)) 100%)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          <BrandDecorBackground pattern="corner" brand={business.slug} />
+          <div className="relative z-10 flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium" style={{ color: 'var(--admin-text-mute)' }}>
+                <Greeting />, {business.name}
+              </p>
+              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight mt-1" style={{ color: 'var(--admin-text)' }}>
+                Painel inicial
+              </h1>
+              <p className="text-sm capitalize mt-1 inline-flex items-center gap-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+                <IconCalendar size={14} /> {todayFormatted}
+              </p>
+            </div>
+            {business.brand_logo_url && (
+              <div className="hidden sm:block relative w-32 h-32 lg:w-40 lg:h-40 flex-shrink-0">
+                <Image
+                  src={business.brand_logo_url}
+                  alt={business.name}
+                  fill
+                  style={{ objectFit: 'contain' }}
+                  priority
+                  unoptimized
+                />
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Atalhos rápidos */}
