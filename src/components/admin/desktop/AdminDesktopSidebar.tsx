@@ -102,6 +102,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         { label: 'Maquininhas', href: '/admin/configuracoes?tab=maquininhas', tabMatch: 'maquininhas', Icon: IconWallet },
         { label: 'Bloqueios', href: '/admin/configuracoes?tab=bloqueios', tabMatch: 'bloqueios', Icon: IconClock },
         { label: 'Aparência', href: '/admin/configuracoes?tab=aparencia', tabMatch: 'aparencia', Icon: IconPalette },
+        { label: 'Fichas Modelo', href: '/admin/configuracoes?tab=fichas-modelo', tabMatch: 'fichas-modelo', Icon: IconFile },
         { label: 'WhatsApp', href: '/admin/configuracoes?tab=qr-code', tabMatch: 'qr-code', Icon: IconWhatsapp },
         { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', tabMatch: 'divulgacao', Icon: IconShare },
         { label: 'Importar', href: '/admin/configuracoes?tab=importar', tabMatch: 'importar', Icon: IconUpload },

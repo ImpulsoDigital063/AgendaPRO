@@ -1,0 +1,421 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { IconPlus, IconTrash } from '@/components/ui/Icon'
+
+type FieldDef = {
+  name: string
+  label: string
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox'
+  required?: boolean
+  options?: string[]
+}
+
+type Template = {
+  id: string
+  name: string
+  description: string | null
+  fields: FieldDef[]
+}
+
+type Response = {
+  id: string
+  template_id: string
+  data: Record<string, string | boolean | number>
+  created_at: string
+  template?: Template
+}
+
+type Props = {
+  customerId: string
+}
+
+function formatDate(d: string): string {
+  return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })
+}
+
+export default function FichasTab({ customerId }: Props) {
+  const router = useRouter()
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [responses, setResponses] = useState<Response[]>([])
+  const [loading, setLoading] = useState(true)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
+  const [formData, setFormData] = useState<Record<string, string | boolean | number>>({})
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function load() {
+    setLoading(true)
+    const sb = createClient()
+    const [tplRes, respRes] = await Promise.all([
+      sb.from('client_form_templates').select('*').eq('active', true).order('name'),
+      sb
+        .from('client_form_responses')
+        .select('id, template_id, data, created_at, template:client_form_templates(id, name, fields)')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false }),
+    ])
+    setTemplates((tplRes.data ?? []) as Template[])
+    setResponses(
+      ((respRes.data ?? []) as unknown as Array<{
+        id: string
+        template_id: string
+        data: Record<string, string | boolean | number>
+        created_at: string
+        template: Template | Template[] | null
+      }>).map((r) => ({
+        ...r,
+        template: Array.isArray(r.template) ? r.template[0] : r.template ?? undefined,
+      })),
+    )
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerId])
+
+  function openTemplate(t: Template) {
+    setEditingTemplate(t)
+    setFormData({})
+    setPickerOpen(false)
+  }
+
+  async function saveResponse() {
+    if (!editingTemplate) return
+    // Valida required
+    for (const f of editingTemplate.fields) {
+      if (f.required) {
+        const v = formData[f.name]
+        if (v === undefined || v === null || v === '' || (typeof v === 'boolean' && f.type === 'checkbox' && !v && false)) {
+          // só bloqueia se for de fato vazio (checkbox false é válido)
+          if (f.type !== 'checkbox') {
+            setError(`O campo "${f.label}" é obrigatório`)
+            return
+          }
+        }
+      }
+    }
+    setSubmitting(true)
+    setError(null)
+    const res = await fetch(`/api/admin/customers/${customerId}/form-responses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        templateId: editingTemplate.id,
+        data: formData,
+      }),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setError(j.error ?? 'falha')
+      setSubmitting(false)
+      return
+    }
+    setSubmitting(false)
+    setEditingTemplate(null)
+    setFormData({})
+    await load()
+    router.refresh()
+  }
+
+  async function removeResponse(responseId: string) {
+    if (!confirm('Remover essa ficha preenchida?')) return
+    const res = await fetch(`/api/admin/customers/${customerId}/form-responses?responseId=${responseId}`, { method: 'DELETE' })
+    if (res.ok) {
+      await load()
+      router.refresh()
+    }
+  }
+
+  // FORM ATIVO
+  if (editingTemplate) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
+              {editingTemplate.name}
+            </h3>
+            {editingTemplate.description && (
+              <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                {editingTemplate.description}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingTemplate(null)
+                setFormData({})
+                setError(null)
+              }}
+              disabled={submitting}
+              className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={saveResponse}
+              disabled={submitting}
+              className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+              style={{ background: 'var(--admin-accent)', color: '#fff' }}
+            >
+              {submitting ? 'Salvando…' : 'Salvar Ficha'}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-xs px-3 py-2 rounded-lg" style={{
+            background: 'color-mix(in srgb, var(--admin-danger,#EF4444) 14%, transparent)',
+            color: 'var(--admin-danger,#EF4444)',
+          }}>
+            {error}
+          </p>
+        )}
+
+        <div className="rounded-2xl p-5 space-y-4" style={{
+          background: 'var(--admin-surface)',
+          border: '1px solid var(--admin-border)',
+        }}>
+          {editingTemplate.fields.map((f) => (
+            <FieldInput
+              key={f.name}
+              field={f}
+              value={formData[f.name]}
+              onChange={(v) => setFormData((p) => ({ ...p, [f.name]: v }))}
+              disabled={submitting}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+          {responses.length} {responses.length === 1 ? 'ficha' : 'fichas'} preenchida{responses.length === 1 ? '' : 's'}
+        </p>
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider"
+          style={{ background: 'var(--admin-accent)', color: '#fff' }}
+        >
+          <IconPlus size={14} /> Adicionar Ficha
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-center text-sm py-10" style={{ color: 'var(--admin-text-mute)' }}>
+          Carregando…
+        </p>
+      ) : responses.length === 0 ? (
+        <div
+          className="rounded-2xl p-10 text-center"
+          style={{ background: 'var(--admin-surface)', border: '1px dashed var(--admin-border)' }}
+        >
+          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--admin-text)' }}>
+            Nenhuma ficha foi adicionada
+          </p>
+          <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+            Fichas são modelos cadastrados em <Link href="/admin/configuracoes?tab=fichas-modelo" className="underline" style={{ color: 'var(--admin-accent)' }}>Configurações → Fichas Modelo</Link> (anamnese · ficha técnica · etc) que você aplica no cliente e preenche aqui.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {responses.map((r) => (
+            <div
+              key={r.id}
+              className="rounded-2xl p-4"
+              style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <h4 className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+                    {r.template?.name ?? 'Ficha'}
+                  </h4>
+                  <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+                    Preenchida em {formatDate(r.created_at)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeResponse(r.id)}
+                  aria-label="Remover"
+                  className="p-1.5 rounded-lg"
+                  style={{ color: 'var(--admin-danger,#EF4444)' }}
+                >
+                  <IconTrash size={14} />
+                </button>
+              </div>
+              <dl className="space-y-2">
+                {r.template?.fields.map((f) => {
+                  const v = r.data[f.name]
+                  if (v === undefined || v === null || v === '') return null
+                  return (
+                    <div key={f.name}>
+                      <dt className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+                        {f.label}
+                      </dt>
+                      <dd className="text-sm" style={{ color: 'var(--admin-text)' }}>
+                        {typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : String(v)}
+                      </dd>
+                    </div>
+                  )
+                })}
+              </dl>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Picker de templates */}
+      {pickerOpen && (
+        <div className="fixed inset-0 z-[150]" role="dialog" aria-modal="true">
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setPickerOpen(false)} />
+          <div
+            className="absolute rounded-2xl p-5"
+            style={{
+              top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'var(--admin-surface)', border: '1px solid var(--admin-border)',
+              minWidth: 360, maxWidth: 480, maxHeight: '80vh', overflowY: 'auto',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+            }}
+          >
+            <h3 className="text-base font-bold mb-3" style={{ color: 'var(--admin-text)' }}>
+              Selecione uma ficha
+            </h3>
+            {templates.length === 0 ? (
+              <p className="text-sm" style={{ color: 'var(--admin-text-mute)' }}>
+                Nenhuma ficha pré-cadastrada foi encontrada. Entre em <Link href="/admin/configuracoes?tab=fichas-modelo" className="underline" style={{ color: 'var(--admin-accent)' }}>Configurações → Fichas Modelo</Link> e cadastre uma.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {templates.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => openTemplate(t)}
+                    className="w-full text-left p-3 rounded-xl"
+                    style={{
+                      background: 'var(--admin-surface-hi)',
+                      border: '1px solid var(--admin-divider)',
+                    }}
+                  >
+                    <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{t.name}</p>
+                    {t.description && (
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                        {t.description}
+                      </p>
+                    )}
+                    <p className="text-[10px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                      {t.fields.length} {t.fields.length === 1 ? 'campo' : 'campos'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setPickerOpen(false)}
+              className="w-full mt-3 py-2 text-xs font-semibold"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FieldInput({
+  field,
+  value,
+  onChange,
+  disabled,
+}: {
+  field: FieldDef
+  value: string | boolean | number | undefined
+  onChange: (v: string | boolean | number) => void
+  disabled?: boolean
+}) {
+  const id = `f-${field.name}`
+  return (
+    <div>
+      <label htmlFor={id} className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+        {field.label}
+        {field.required && <span style={{ color: 'var(--admin-danger,#EF4444)' }}> *</span>}
+      </label>
+      {field.type === 'textarea' && (
+        <textarea
+          id={id}
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          rows={3}
+          className="admin-input w-full px-3 py-2 text-sm"
+        />
+      )}
+      {(field.type === 'text' || field.type === 'number') && (
+        <input
+          id={id}
+          type={field.type === 'number' ? 'number' : 'text'}
+          value={(value as string | number) ?? ''}
+          onChange={(e) => onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)}
+          disabled={disabled}
+          className="admin-input w-full px-3 py-2 text-sm"
+        />
+      )}
+      {field.type === 'date' && (
+        <input
+          id={id}
+          type="date"
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="admin-input w-full px-3 py-2 text-sm tabular-nums"
+        />
+      )}
+      {field.type === 'select' && (
+        <select
+          id={id}
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="admin-input w-full px-3 py-2 text-sm"
+        >
+          <option value="">—</option>
+          {(field.options ?? []).map((o) => (
+            <option key={o} value={o}>{o}</option>
+          ))}
+        </select>
+      )}
+      {field.type === 'checkbox' && (
+        <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--admin-text)' }}>
+          <input
+            id={id}
+            type="checkbox"
+            checked={!!value}
+            onChange={(e) => onChange(e.target.checked)}
+            disabled={disabled}
+          />
+          Sim
+        </label>
+      )}
+    </div>
+  )
+}

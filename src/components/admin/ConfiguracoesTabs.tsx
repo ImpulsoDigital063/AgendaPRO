@@ -17,8 +17,9 @@ import PlanoCard from './PlanoCard'
 import ImportarView from './ImportarView'
 import MaquininhasTab from './MaquininhasTab'
 import BloqueiosTab from './BloqueiosTab'
+import FichasModeloTab from './FichasModeloTab'
 
-type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas' | 'bloqueios'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas' | 'bloqueios' | 'fichas-modelo'
 
 // Alias retrocompat: URLs antigas com ?tab=whatsapp continuam funcionando.
 const TAB_ALIASES: Record<string, Tab> = {
@@ -46,7 +47,7 @@ export default function ConfiguracoesTabs({
 }: Props) {
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios']
+  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo']
   // Resolve alias antes de validar (ex: ?tab=whatsapp → 'qr-code')
   const resolvedTab = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null
   const [activeTab, setActiveTab] = useState<Tab>(
@@ -88,6 +89,7 @@ export default function ConfiguracoesTabs({
     { id: 'fidelidade', label: 'Fidelidade' },
     { id: 'maquininhas', label: 'Maquininhas' },
     { id: 'bloqueios', label: 'Bloqueios' },
+    { id: 'fichas-modelo', label: 'Fichas Modelo' },
     { id: 'aparencia', label: 'Aparência' },
     { id: 'qr-code', label: 'QR Code' },
     { id: 'divulgacao', label: 'Divulgação' },
@@ -226,6 +228,8 @@ export default function ConfiguracoesTabs({
       {activeTab === 'bloqueios' && (
         <BloqueiosTab businessId={business.id} professionals={professionals} />
       )}
+
+      {activeTab === 'fichas-modelo' && <FichasModeloTab />}
     </div>
   )
 }
