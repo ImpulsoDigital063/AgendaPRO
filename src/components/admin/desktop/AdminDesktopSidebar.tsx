@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import {
+  IconHome,
   IconCalendar,
   IconUsers,
   IconWallet,
@@ -62,8 +63,9 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
 
   const groups: SidebarGroup[] = [
     {
-      label: 'Atendimentos',
+      label: 'Painel',
       items: [
+        { label: 'Início', href: '/admin/inicio', exact: true, Icon: IconHome },
         { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
       ],

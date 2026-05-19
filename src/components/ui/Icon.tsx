@@ -16,6 +16,16 @@ function base({ size = 20, strokeWidth = 1.8, ...rest }: IconProps) {
   }
 }
 
+export function IconHome(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M3 11.5L12 4l9 7.5" />
+      <path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" />
+      <path d="M10 21v-6h4v6" />
+    </svg>
+  )
+}
+
 export function IconCalendar(p: IconProps) {
   return (
     <svg {...base(p)}>
