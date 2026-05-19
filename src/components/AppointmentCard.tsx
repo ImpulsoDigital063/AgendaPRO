@@ -215,11 +215,9 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
 
   return (
     <div
-      className="rounded-2xl admin-card relative"
+      className="rounded-2xl admin-card relative overflow-hidden"
       style={{
         borderLeft: `3px solid ${config.color}`,
-        overflow: menuOpen ? 'visible' : 'hidden',
-        zIndex: menuOpen ? 40 : undefined,
       }}
     >
       <div className="p-4">
@@ -436,67 +434,67 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
               </button>
             )}
 
-            <div className="flex items-stretch gap-2 flex-wrap">
-              <button
-                onClick={() => {
-                  if (canComplete) completeWithPayment(null, withPunctuality)
-                  else setEarlyConfirm('atendi')
-                }}
-                disabled={loading}
-                className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
-                style={{
-                  background: 'var(--admin-surface-hi)',
-                  color: 'var(--admin-text)',
-                  border: '1px solid var(--admin-border)',
-                }}
-                title="Conclui o atendimento. Pagamento fica pendente — admin confirma depois no Financeiro."
-              >
-                <IconCheck size={14} /> Atendi{withPunctuality ? ` +${punctualityBonus}` : ''}
-              </button>
-              <button
-                onClick={() => {
-                  if (canComplete) setPaymentModal(true)
-                  else setEarlyConfirm('recebi')
-                }}
-                disabled={loading}
-                className="flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
-                style={{
-                  background: 'linear-gradient(135deg, #10B981, #059669)',
-                  color: '#fff',
-                  boxShadow: '0 8px 20px rgba(16,185,129,0.3)',
-                }}
-                title="Conclui o atendimento e marca o pagamento agora."
-              >
-                <IconCheck size={14} /> Atendi e recebi
-              </button>
-            </div>
-            <div className="relative flex-shrink-0" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen((o) => !o)}
-                disabled={loading}
-                aria-label="Mais ações"
-                title="Mais ações"
-                className="h-full w-11 rounded-xl flex items-center justify-center transition-colors disabled:opacity-40"
-                style={{
-                  background: 'var(--admin-surface-hi)',
-                  color: 'var(--admin-text-mute)',
-                  border: '1px solid var(--admin-border)',
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <circle cx="5" cy="12" r="1.6" />
-                  <circle cx="12" cy="12" r="1.6" />
-                  <circle cx="19" cy="12" r="1.6" />
-                </svg>
-              </button>
+            <div ref={menuRef}>
+              <div className="flex items-stretch gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    if (canComplete) completeWithPayment(null, withPunctuality)
+                    else setEarlyConfirm('atendi')
+                  }}
+                  disabled={loading}
+                  className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+                  style={{
+                    background: 'var(--admin-surface-hi)',
+                    color: 'var(--admin-text)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                  title="Conclui o atendimento. Pagamento fica pendente — admin confirma depois no Financeiro."
+                >
+                  <IconCheck size={14} /> Atendi{withPunctuality ? ` +${punctualityBonus}` : ''}
+                </button>
+                <button
+                  onClick={() => {
+                    if (canComplete) setPaymentModal(true)
+                    else setEarlyConfirm('recebi')
+                  }}
+                  disabled={loading}
+                  className="flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+                  style={{
+                    background: 'linear-gradient(135deg, #10B981, #059669)',
+                    color: '#fff',
+                    boxShadow: '0 8px 20px rgba(16,185,129,0.3)',
+                  }}
+                  title="Conclui o atendimento e marca o pagamento agora."
+                >
+                  <IconCheck size={14} /> Atendi e recebi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((o) => !o)}
+                  disabled={loading}
+                  aria-label="Mais ações"
+                  aria-expanded={menuOpen}
+                  title="Mais ações"
+                  className="w-11 rounded-xl flex items-center justify-center transition-colors disabled:opacity-40 flex-shrink-0"
+                  style={{
+                    background: menuOpen ? 'var(--admin-accent-bg)' : 'var(--admin-surface-hi)',
+                    color: 'var(--admin-text-mute)',
+                    border: `1px solid ${menuOpen ? 'var(--admin-accent-border)' : 'var(--admin-border)'}`,
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <circle cx="5" cy="12" r="1.6" />
+                    <circle cx="12" cy="12" r="1.6" />
+                    <circle cx="19" cy="12" r="1.6" />
+                  </svg>
+                </button>
+              </div>
               {menuOpen && (
                 <div
-                  className="absolute right-0 top-full mt-1.5 z-30 rounded-xl py-1.5 min-w-[160px] shadow-lg"
+                  className="mt-2 rounded-xl overflow-hidden"
                   style={{
-                    background: 'var(--admin-surface)',
+                    background: 'var(--admin-surface-hi)',
                     border: '1px solid var(--admin-border)',
-                    boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
                   }}
                 >
                   <button
@@ -505,18 +503,19 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
                       setMenuOpen(false)
                       setConfirm('no_show')
                     }}
-                    className="w-full text-left px-3 py-2 text-xs font-medium transition-colors hover:opacity-80"
+                    className="w-full text-left px-4 py-3 text-sm font-medium transition-colors hover:opacity-80"
                     style={{ color: 'var(--admin-warn)' }}
                   >
                     Não veio
                   </button>
+                  <div style={{ height: 1, background: 'var(--admin-divider)' }} />
                   <button
                     type="button"
                     onClick={() => {
                       setMenuOpen(false)
                       setConfirm('cancelled')
                     }}
-                    className="w-full text-left px-3 py-2 text-xs font-medium transition-colors hover:opacity-80"
+                    className="w-full text-left px-4 py-3 text-sm font-medium transition-colors hover:opacity-80"
                     style={{ color: 'var(--admin-text-faded)' }}
                   >
                     Cancelar agendamento
