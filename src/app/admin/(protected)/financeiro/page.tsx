@@ -22,6 +22,8 @@ const METHOD_LABEL: Record<string, string> = {
   debit: 'Cartão de Débito',
   debit_card: 'Cartão de Débito',
   transfer: 'Transferência',
+  other: 'Não classificado',
+  null: 'Não classificado',
 }
 
 const METHOD_COLORS: Record<string, string> = {

@@ -114,9 +114,70 @@ export default function DashboardFinanceiro({
         ))}
       </div>
 
-      {/* KPI cards · 2 cols mobile · 4 cols desktop */}
+      {/* HERO · Lucro Líquido destacado */}
+      {(() => {
+        const lucroKpi = kpis.find((k) => k.label === 'Lucro líquido')
+        const recebidoKpi = kpis.find((k) => k.label === 'Valor recebido')
+        if (!lucroKpi) return null
+        const variation = pctVariation(lucroKpi.value, lucroKpi.previous)
+        const positivo = lucroKpi.value >= 0
+        return (
+          <div
+            className="rounded-2xl p-6 lg:p-7 relative overflow-hidden"
+            style={{
+              background: positivo
+                ? 'linear-gradient(135deg, color-mix(in srgb, var(--admin-accent) 16%, var(--admin-surface)) 0%, color-mix(in srgb, #10B981 10%, var(--admin-surface)) 100%)'
+                : 'linear-gradient(135deg, color-mix(in srgb, #EF4444 16%, var(--admin-surface)) 0%, var(--admin-surface) 100%)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--admin-text-mute)' }}>
+                  Lucro Líquido · {PERIODO_LABEL[periodo]}
+                </p>
+                <p
+                  className="font-extrabold tabular-nums leading-none"
+                  style={{
+                    fontSize: 'clamp(2.5rem, 5vw, 4rem)',
+                    color: positivo ? 'var(--admin-accent)' : '#DC2626',
+                  }}
+                >
+                  {formatBRL(lucroKpi.value)}
+                </p>
+                {variation.direction !== 'flat' && (
+                  <p className="mt-3 text-sm">
+                    <span
+                      className="inline-flex items-center gap-1 font-bold uppercase tracking-wider px-2 py-0.5 rounded-md text-xs"
+                      style={{
+                        background: variation.direction === 'up' ? 'color-mix(in srgb, #10B981 18%, transparent)' : 'color-mix(in srgb, #EF4444 14%, transparent)',
+                        color: variation.direction === 'up' ? '#059669' : '#DC2626',
+                      }}
+                    >
+                      {variation.direction === 'up' ? '↑' : '↓'} {variation.pct}%
+                    </span>{' '}
+                    <span style={{ color: 'var(--admin-text-mute)' }}>vs período anterior · {formatBRL(lucroKpi.previous)}</span>
+                  </p>
+                )}
+              </div>
+              {recebidoKpi && (
+                <div className="text-right">
+                  <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+                    Receita Bruta
+                  </p>
+                  <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: 'var(--admin-text)' }}>
+                    {formatBRL(recebidoKpi.value)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* KPIs secundários · 2 cols mobile · 4 cols desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {kpis.map((k) => {
+        {kpis.filter((k) => k.label !== 'Lucro líquido' && k.label !== 'Valor recebido').map((k) => {
           const colors = TONE_COLORS[k.tone]
           const variation = pctVariation(k.value, k.previous)
           return (
@@ -131,7 +192,7 @@ export default function DashboardFinanceiro({
               <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
                 {k.label}
               </p>
-              <p className="text-2xl font-bold tabular-nums mt-1.5" style={{ color: colors.text }}>
+              <p className="text-xl font-bold tabular-nums mt-1.5" style={{ color: colors.text }}>
                 {k.format === 'count' ? k.value.toLocaleString('pt-BR') : formatBRL(k.value)}
               </p>
               {variation.direction !== 'flat' && (
@@ -142,12 +203,7 @@ export default function DashboardFinanceiro({
                     color: variation.direction === 'up' ? colors.text : 'var(--admin-text-mute)',
                   }}
                 >
-                  {variation.direction === 'up' ? '↑ Alta' : '↓ Baixa'} {variation.pct}%
-                </p>
-              )}
-              {variation.direction === 'flat' && (
-                <p className="text-[10px] mt-2" style={{ color: 'var(--admin-text-faded)' }}>
-                  Estável vs período anterior
+                  {variation.direction === 'up' ? '↑' : '↓'} {variation.pct}%
                 </p>
               )}
             </div>
@@ -194,7 +250,11 @@ export default function DashboardFinanceiro({
       {/* Donuts · 2 cards lado a lado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <DonutCard title="Formas de Pagamento" slices={formasPagamento} />
-        <DonutCard title="Principais Despesas" slices={principaisDespesas} />
+        <DonutCard
+          title="Principais Despesas"
+          slices={principaisDespesas}
+          emptyAction={{ label: '+ Cadastrar Despesa', href: '/admin/financeiro/despesas' }}
+        />
       </div>
 
       {/* Tops · profissionais + serviços */}
@@ -322,7 +382,7 @@ function ResumoLine({ color, label, value }: { color: string; label: string; val
   )
 }
 
-function DonutCard({ title, slices }: { title: string; slices: DonutSlice[] }) {
+function DonutCard({ title, slices, emptyAction }: { title: string; slices: DonutSlice[]; emptyAction?: { label: string; href: string } }) {
   const total = slices.reduce((s, v) => s + v.value, 0)
   const filtered = slices.filter((s) => s.value > 0)
 
@@ -338,9 +398,20 @@ function DonutCard({ title, slices }: { title: string; slices: DonutSlice[] }) {
         {title}
       </h3>
       {total === 0 || filtered.length === 0 ? (
-        <p className="text-sm text-center py-8" style={{ color: 'var(--admin-text-faded)' }}>
-          Sem dados no período
-        </p>
+        <div className="text-center py-8">
+          <p className="text-sm mb-3" style={{ color: 'var(--admin-text-faded)' }}>
+            Sem dados no período
+          </p>
+          {emptyAction && (
+            <Link
+              href={emptyAction.href}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider"
+              style={{ background: 'var(--admin-accent)', color: '#fff' }}
+            >
+              {emptyAction.label}
+            </Link>
+          )}
+        </div>
       ) : (
         <div className="flex items-center gap-5">
           <DonutSvg slices={filtered} total={total} />
@@ -427,22 +498,47 @@ function ComparativoBars({ data }: { data: ComparativoPoint[] }) {
   }
 
   const max = Math.max(...data.map((d) => Math.max(d.current, d.previous, 0))) || 1
-  const height = 200
-  const barGap = 6
-  const groupGap = 18
-  const barWidth = Math.max(8, Math.floor((100 / data.length) - 4))
+  const height = 220
+  const barGap = 4
+  const groupGap = 14
+  const barWidth = 14
+  const totalWidth = data.length * (barWidth * 2 + barGap + groupGap)
+
+  // Linhas guia · 25/50/75%
+  const guides = [0.25, 0.5, 0.75, 1]
 
   return (
     <div className="overflow-x-auto">
       <svg
         width="100%"
-        height={height + 40}
-        viewBox={`0 0 ${data.length * (barWidth * 2 + barGap + groupGap)} ${height + 40}`}
-        preserveAspectRatio="none"
-        style={{ minWidth: data.length * (barWidth * 2 + barGap + groupGap) }}
+        height={height + 44}
+        viewBox={`0 0 ${totalWidth + 50} ${height + 44}`}
+        style={{ minWidth: totalWidth + 50 }}
       >
+        {/* Linhas guia horizontais */}
+        {guides.map((g) => (
+          <g key={g}>
+            <line
+              x1={40}
+              y1={height - height * g}
+              x2={totalWidth + 50}
+              y2={height - height * g}
+              stroke="var(--admin-divider)"
+              strokeDasharray="2 4"
+            />
+            <text
+              x={36}
+              y={height - height * g + 4}
+              textAnchor="end"
+              style={{ fontSize: 9, fill: 'var(--admin-text-faded)' }}
+            >
+              {formatBRL(max * g).replace(/[\sR$,]/g, (m) => m === 'R' ? '' : m === '$' ? '' : m === ' ' ? '' : '')}
+            </text>
+          </g>
+        ))}
+
         {data.map((d, i) => {
-          const x = i * (barWidth * 2 + barGap + groupGap)
+          const x = 50 + i * (barWidth * 2 + barGap + groupGap)
           const hCur = Math.max(2, (d.current / max) * height)
           const hPrev = Math.max(2, (d.previous / max) * height)
           return (
@@ -452,23 +548,27 @@ function ComparativoBars({ data }: { data: ComparativoPoint[] }) {
                 y={height - hCur}
                 width={barWidth}
                 height={hCur}
-                rx={2}
+                rx={3}
                 fill="var(--admin-accent)"
-              />
+              >
+                <title>{`${d.label} · Atual: ${formatBRL(d.current)}`}</title>
+              </rect>
               <rect
                 x={x + barWidth + barGap}
                 y={height - hPrev}
                 width={barWidth}
                 height={hPrev}
-                rx={2}
+                rx={3}
                 fill="none"
                 stroke="var(--admin-text-faded)"
                 strokeWidth={1.5}
                 strokeDasharray="3 2"
-              />
+              >
+                <title>{`${d.label} · Anterior: ${formatBRL(d.previous)}`}</title>
+              </rect>
               <text
-                x={x + barWidth}
-                y={height + 16}
+                x={x + barWidth + barGap / 2}
+                y={height + 18}
                 textAnchor="middle"
                 style={{ fontSize: 10, fill: 'var(--admin-text-mute)' }}
               >
