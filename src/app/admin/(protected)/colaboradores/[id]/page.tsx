@@ -4,6 +4,8 @@ import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ColaboradorTabs from '@/components/admin/colaboradores/ColaboradorTabs'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ColaboradorPage({
   params,
 }: {
