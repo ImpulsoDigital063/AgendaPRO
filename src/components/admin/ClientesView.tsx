@@ -341,41 +341,173 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
       ) : filtered.length === 0 ? (
         <EmptyFiltered search={search} onClear={() => { setSearch(''); setFilter('todos') }} />
       ) : (
-        <div className="space-y-2.5 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-3">
-          {(showAllClients ? filtered : filtered.slice(0, 20)).map((c, i) => {
-            const hasActiveCoupon = !!(c.customer_id && activeCustomerIds.includes(c.customer_id))
-            return (
-            <div
-              key={c.id}
-              className="admin-enter"
-              style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 50}ms` }}
-            >
-              <ClienteCard
-                client={c}
-                bookingUrl={bookingUrl}
-                hasActiveCoupon={hasActiveCoupon}
-                onOpenDetail={() => {
-                  if (c.customer_id) setDetailCustomerId(c.customer_id)
+        <>
+          {/* MOBILE/TABLET · grid de cards (mantém atual) */}
+          <div className="lg:hidden space-y-2.5">
+            {(showAllClients ? filtered : filtered.slice(0, 20)).map((c, i) => {
+              const hasActiveCoupon = !!(c.customer_id && activeCustomerIds.includes(c.customer_id))
+              return (
+                <div
+                  key={c.id}
+                  className="admin-enter"
+                  style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 50}ms` }}
+                >
+                  <ClienteCard
+                    client={c}
+                    bookingUrl={bookingUrl}
+                    hasActiveCoupon={hasActiveCoupon}
+                    onOpenDetail={() => {
+                      if (c.customer_id) setDetailCustomerId(c.customer_id)
+                    }}
+                  />
+                </div>
+              )
+            })}
+            {!showAllClients && filtered.length > 20 && (
+              <button
+                type="button"
+                onClick={() => setShowAllClients(true)}
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-sm font-semibold mt-1"
+                style={{
+                  background: 'var(--admin-surface)',
+                  color: 'var(--admin-accent)',
+                  border: '1px solid var(--admin-divider)',
                 }}
-              />
+              >
+                Ver mais {filtered.length - 20} {filtered.length - 20 === 1 ? 'cliente' : 'clientes'}
+                <IconChevronRight size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* DESKTOP (lg+) · tabela minimal estilo Salão99 */}
+          <div
+            className="hidden lg:block rounded-2xl overflow-hidden"
+            style={{
+              background: 'var(--admin-surface)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr
+                    style={{
+                      background: 'var(--admin-surface-hi)',
+                      borderBottom: '1px solid var(--admin-border)',
+                    }}
+                  >
+                    <th className="w-10 px-3 py-3" />
+                    <th className="text-left px-3 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                      Nome
+                    </th>
+                    <th className="text-left px-3 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                      Telefone
+                    </th>
+                    <th className="text-left px-3 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                      Último atendimento
+                    </th>
+                    <th className="text-right px-3 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                      Total gasto
+                    </th>
+                    <th className="text-right px-3 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                      Pontos
+                    </th>
+                    <th className="w-12 px-3 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {(showAllClients ? filtered : filtered.slice(0, 50)).map((c, idx, arr) => {
+                    const hasActiveCoupon = !!(c.customer_id && activeCustomerIds.includes(c.customer_id))
+                    const lastDate = c.lastDate
+                      ? new Date(c.lastDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })
+                      : '—'
+                    return (
+                      <tr
+                        key={c.id}
+                        onDoubleClick={() => {
+                          if (c.customer_id) setDetailCustomerId(c.customer_id)
+                        }}
+                        className="cursor-pointer hover:bg-[var(--admin-surface-hi)]"
+                        style={{
+                          borderBottom: idx < arr.length - 1 ? '1px solid var(--admin-divider)' : 'none',
+                        }}
+                      >
+                        <td className="px-3 py-2">
+                          <span
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold"
+                            style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)' }}
+                          >
+                            {(c.name ?? '?').slice(0, 1).toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <p className="font-semibold" style={{ color: 'var(--admin-text)' }}>
+                            {c.name ?? '—'}
+                          </p>
+                          {hasActiveCoupon && (
+                            <p className="text-[10px]" style={{ color: 'var(--admin-warning,#F59E0B)' }}>
+                              Cupom ativo
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-xs tabular-nums" style={{ color: 'var(--admin-text-2)' }}>
+                          {c.phone ?? '—'}
+                        </td>
+                        <td className="px-3 py-2 text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+                          {c.count > 0 ? (
+                            <>
+                              <span className="font-semibold" style={{ color: 'var(--admin-text)' }}>{lastDate}</span>
+                              <span className="block text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                                {c.count} {c.count === 1 ? 'atendimento' : 'atendimentos'}
+                              </span>
+                            </>
+                          ) : (
+                            <span style={{ color: 'var(--admin-text-faded)' }}>Nunca</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold" style={{ color: c.totalSpent > 0 ? 'var(--admin-text)' : 'var(--admin-text-faded)' }}>
+                          {c.totalSpent > 0
+                            ? c.totalSpent.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                            : 'R$ 0,00'}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold" style={{ color: (c.total_points ?? 0) > 0 ? 'var(--admin-accent)' : 'var(--admin-text-faded)' }}>
+                          {c.total_points ?? 0}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (c.customer_id) setDetailCustomerId(c.customer_id)
+                            }}
+                            aria-label="Ver detalhes"
+                            className="p-1.5 rounded-lg"
+                            style={{ color: 'var(--admin-text-mute)' }}
+                          >
+                            <IconChevronRight size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-          )})}
-          {!showAllClients && filtered.length > 20 && (
-            <button
-              type="button"
-              onClick={() => setShowAllClients(true)}
-              className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 transition-opacity hover:opacity-90 text-sm font-semibold mt-1"
-              style={{
-                background: 'var(--admin-surface)',
-                color: 'var(--admin-accent)',
-                border: '1px solid var(--admin-divider)',
-              }}
-            >
-              Ver mais {filtered.length - 20} {filtered.length - 20 === 1 ? 'cliente' : 'clientes'}
-              <IconChevronRight size={14} />
-            </button>
-          )}
-        </div>
+            {!showAllClients && filtered.length > 50 && (
+              <div className="p-3 border-t" style={{ borderColor: 'var(--admin-divider)' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAllClients(true)}
+                  className="w-full py-2 rounded-lg text-sm font-semibold"
+                  style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-accent)' }}
+                >
+                  Ver mais {filtered.length - 50} {filtered.length - 50 === 1 ? 'cliente' : 'clientes'}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {showAddModal && (
