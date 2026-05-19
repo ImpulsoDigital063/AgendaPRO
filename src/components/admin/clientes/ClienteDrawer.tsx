@@ -7,6 +7,7 @@ import { IconClose, IconArrowLeft, IconPlus } from '@/components/ui/Icon'
 import ClienteAtividadesTab from './ClienteAtividadesTab'
 import SaldoTab from './SaldoTab'
 import AddCreditoModal from './AddCreditoModal'
+import ConfigClienteTab from './ConfigClienteTab'
 
 type Customer = {
   id: string
@@ -16,6 +17,10 @@ type Customer = {
   email: string | null
   total_points: number
   created_at: string
+  preferred_contact?: string | null
+  marketing_consent?: boolean | null
+  blocked?: boolean | null
+  blocked_reason?: string | null
   nickname?: string | null
   important_note?: string | null
   instagram?: string | null
@@ -337,7 +342,18 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                 />
               )}
               {tab === 'configuracoes' && (
-                <Placeholder text="Preferências e permissões do cliente · em breve" />
+                <ConfigClienteTab
+                  customerId={customer.id}
+                  initialPreferredContact={customer.preferred_contact ?? null}
+                  initialMarketingConsent={customer.marketing_consent ?? true}
+                  initialBlocked={customer.blocked ?? false}
+                  initialBlockedReason={customer.blocked_reason ?? null}
+                  onSaved={async () => {
+                    const sb = createClient()
+                    const { data: refreshed } = await sb.from('customers').select('*').eq('id', customerId).maybeSingle()
+                    if (refreshed) setCustomer(refreshed as Customer)
+                  }}
+                />
               )}
               {tab === 'atividades' && (
                 <ClienteAtividadesTab

@@ -263,6 +263,31 @@ export async function PATCH(
     if (v === 'pf' || v === 'pj') updates.customer_type = v
   }
 
+  // preferred_contact · enum
+  if ('preferred_contact' in body) {
+    const v = body.preferred_contact
+    if (v === null || v === '' || v === undefined) {
+      updates.preferred_contact = null
+    } else if (typeof v === 'string' && ['whatsapp', 'sms', 'email', 'none'].includes(v)) {
+      updates.preferred_contact = v
+    }
+  }
+
+  // marketing_consent · boolean
+  if ('marketing_consent' in body && typeof body.marketing_consent === 'boolean') {
+    updates.marketing_consent = body.marketing_consent
+  }
+
+  // blocked · boolean + reason
+  if ('blocked' in body && typeof body.blocked === 'boolean') {
+    updates.blocked = body.blocked
+  }
+  if ('blocked_reason' in body) {
+    const v = body.blocked_reason
+    if (v === null || v === '' || v === undefined) updates.blocked_reason = null
+    else if (typeof v === 'string') updates.blocked_reason = v.trim().slice(0, 500)
+  }
+
   // sex · enum
   if ('sex' in body) {
     const v = body.sex
