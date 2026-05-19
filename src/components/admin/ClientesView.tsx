@@ -25,6 +25,10 @@ const ClienteDrawer = dynamic(() => import('./clientes/ClienteDrawer'), {
   ssr: false,
 })
 
+const NovoClienteModal = dynamic(() => import('./clientes/NovoClienteModal'), {
+  ssr: false,
+})
+
 type Cliente = {
   id: string
   name: string
@@ -516,12 +520,15 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
       )}
 
       {showAddModal && (
-        <AddClientModal
+        <NovoClienteModal
           onClose={() => setShowAddModal(false)}
-          onSuccess={() => {
+          onSuccess={(createdId) => {
             setShowAddModal(false)
-            // refresh do server component pra trazer o novo cliente
             router.refresh()
+            // Se desktop, abre drawer no cliente recém-criado pra ele ver
+            if (createdId && window.innerWidth >= 1024) {
+              setTimeout(() => setDetailCustomerId(createdId), 300)
+            }
           }}
         />
       )}

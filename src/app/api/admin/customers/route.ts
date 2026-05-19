@@ -63,6 +63,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Email inválido' }, { status: 400 })
   }
 
+  // Campos extendidos opcionais (v56). Sanitizam string vazia → null.
+  const opt = (v: unknown): string | null => {
+    if (typeof v !== 'string') return null
+    const t = v.trim()
+    return t.length > 0 ? t : null
+  }
+  const customerType = body.customer_type === 'pj' ? 'pj' : 'pf'
+  const sexValue = ['f', 'm', 'other', 'na'].includes(body.sex) ? body.sex : null
+  const birthday = opt(body.birthday) // YYYY-MM-DD
+  const extras = {
+    nickname: opt(body.nickname),
+    important_note: opt(body.important_note),
+    referral_source: opt(body.referral_source),
+    customer_type: customerType,
+    instagram: opt(body.instagram),
+    cpf: opt(body.cpf),
+    rg: opt(body.rg),
+    profession: opt(body.profession),
+    sex: sexValue,
+    address: opt(body.address),
+    address_number: opt(body.address_number),
+    address_complement: opt(body.address_complement),
+    neighborhood: opt(body.neighborhood),
+    city: opt(body.city),
+    state: opt(body.state),
+    zip_code: opt(body.zip_code),
+    notes: opt(body.notes),
+    birthday,
+  }
+
   const phoneClean = phone.replace(/\D/g, '')
   const phoneFormatted = phoneClean.length === 11
     ? `(${phoneClean.slice(0, 2)}) ${phoneClean.slice(2, 7)}-${phoneClean.slice(7)}`
@@ -117,7 +147,7 @@ export async function POST(req: NextRequest) {
       .eq('id', clientId)
   }
 
-  // 3. Cria customer no business
+  // 3. Cria customer no business · inclui campos extras do v56
   const { data: customer, error: custErr } = await supabase
     .from('customers')
     .insert({
@@ -125,6 +155,7 @@ export async function POST(req: NextRequest) {
       name,
       phone: phoneFormatted,
       email: email || null,
+      ...extras,
     })
     .select('id, name, phone, email, total_points, created_at')
     .single()
