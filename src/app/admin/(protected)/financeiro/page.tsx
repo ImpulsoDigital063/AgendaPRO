@@ -154,16 +154,18 @@ export default async function FinanceiroPage({
   const credits = creditsRes.data ?? []
 
   // Cálculos
-  const valorRecebido = appointments
-    .filter((a) => a.paid_at)
-    .reduce((s, a) => s + Number(a.total_price ?? 0), 0)
-  const prevValorRecebido = prevAppts
-    .filter((a) => a.paid_at)
-    .reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  const paidAppts = appointments.filter((a) => a.paid_at)
+  const valorRecebido = paidAppts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  const prevPaid = prevAppts.filter((a) => a.paid_at)
+  const prevValorRecebido = prevPaid.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
 
-  const valorProgramado = appointments
-    .filter((a) => !a.paid_at && a.status !== 'cancelled')
-    .reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  const naoPagos = appointments.filter((a) => !a.paid_at && a.status !== 'cancelled')
+  const valorProgramado = naoPagos.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+
+  const qtdAtendimentos = paidAppts.length
+  const prevQtdAtendimentos = prevPaid.length
+  const ticketMedio = qtdAtendimentos > 0 ? valorRecebido / qtdAtendimentos : 0
+  const prevTicketMedio = prevQtdAtendimentos > 0 ? prevValorRecebido / prevQtdAtendimentos : 0
 
   const despesasPagas = expenses
     .filter((e) => e.paid_at)
@@ -179,9 +181,47 @@ export default async function FinanceiroPage({
   const lucroLiquido = valorRecebido - despesasPagas
   const prevLucroLiquido = prevValorRecebido - prevDespesasPagas
 
+  // Taxas (cartão crédito/débito · fee_percent)
+  const totalTaxas = paidAppts.reduce((s, a) => {
+    const pct = Number(a.payment_fee_percent ?? 0)
+    const price = Number(a.total_price ?? 0)
+    return s + (price * pct) / 100
+  }, 0)
+  const lucroPosTaxas = lucroLiquido - totalTaxas
+
   const creditosTotal = credits
     .filter((c) => !c.used_in_invoice_id)
     .reduce((s, c) => s + Number(c.amount ?? 0), 0)
+
+  // Top Profissionais (por receita gerada no período)
+  type ProfAgg = { id: string; name: string; total: number; count: number }
+  const profMap = new Map<string, ProfAgg>()
+  for (const a of paidAppts) {
+    const prof = a.professional
+    const pInfo = Array.isArray(prof) ? prof[0] : prof
+    if (!pInfo || !pInfo.id) continue
+    const cur = profMap.get(pInfo.id) ?? { id: pInfo.id, name: pInfo.name ?? '—', total: 0, count: 0 }
+    cur.total += Number(a.total_price ?? 0)
+    cur.count += 1
+    profMap.set(pInfo.id, cur)
+  }
+  const topProfissionais = Array.from(profMap.values())
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5)
+
+  // Top Serviços (por receita)
+  const servMap = new Map<string, ProfAgg>()
+  for (const a of paidAppts) {
+    const name = (a.service_name as string) ?? 'Sem nome'
+    const key = name
+    const cur = servMap.get(key) ?? { id: key, name, total: 0, count: 0 }
+    cur.total += Number(a.total_price ?? 0)
+    cur.count += 1
+    servMap.set(key, cur)
+  }
+  const topServicos = Array.from(servMap.values())
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5)
 
   // Donut · formas de pagamento
   const methodTotals = new Map<string, number>()
@@ -268,8 +308,12 @@ export default async function FinanceiroPage({
 
   const kpis = [
     { label: 'Valor recebido', value: valorRecebido, previous: prevValorRecebido, tone: 'positive' as const, format: 'currency' as const },
+    { label: 'A receber', value: valorProgramado, previous: 0, tone: 'neutral' as const, format: 'currency' as const },
     { label: 'Despesas pagas', value: despesasPagas, previous: prevDespesasPagas, tone: 'negative' as const, format: 'currency' as const },
     { label: 'Lucro líquido', value: lucroLiquido, previous: prevLucroLiquido, tone: 'primary' as const, format: 'currency' as const },
+    { label: 'Atendimentos', value: qtdAtendimentos, previous: prevQtdAtendimentos, tone: 'neutral' as const, format: 'count' as const },
+    { label: 'Ticket médio', value: ticketMedio, previous: prevTicketMedio, tone: 'primary' as const, format: 'currency' as const },
+    { label: 'Taxas cartão/Pix', value: totalTaxas, previous: 0, tone: 'negative' as const, format: 'currency' as const },
     { label: 'Créditos pendentes', value: creditosTotal, previous: 0, tone: 'neutral' as const, format: 'currency' as const },
   ]
 
@@ -292,6 +336,13 @@ export default async function FinanceiroPage({
                 valor_programado: valorProgramado,
                 despesas_pendentes: despesasPendentes,
               }}
+              taxasBreakdown={
+                totalTaxas > 0
+                  ? { bruto: valorRecebido, taxas: totalTaxas, liquido: valorRecebido - totalTaxas }
+                  : undefined
+              }
+              topProfissionais={topProfissionais}
+              topServicos={topServicos}
             />
           </div>
 

@@ -20,6 +20,19 @@ type ComparativoPoint = {
   previous: number
 }
 
+export type RankRow = {
+  id: string
+  name: string
+  total: number
+  count: number
+}
+
+export type TaxasBreakdown = {
+  bruto: number
+  taxas: number
+  liquido: number
+}
+
 type Props = {
   periodo: 'hoje' | 'semana' | 'mes'
   kpis: KpiCard[]
@@ -32,6 +45,9 @@ type Props = {
     valor_programado: number
     despesas_pendentes: number
   }
+  taxasBreakdown?: TaxasBreakdown
+  topProfissionais: RankRow[]
+  topServicos: RankRow[]
 }
 
 const PERIODO_LABEL: Record<Props['periodo'], string> = {
@@ -70,6 +86,9 @@ export default function DashboardFinanceiro({
   principaisDespesas,
   comparativo,
   comparativoTotals,
+  taxasBreakdown,
+  topProfissionais,
+  topServicos,
 }: Props) {
   return (
     <div className="space-y-5">
@@ -95,7 +114,7 @@ export default function DashboardFinanceiro({
         ))}
       </div>
 
-      {/* 4 KPI cards */}
+      {/* KPI cards · 2 cols mobile · 4 cols desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpis.map((k) => {
           const colors = TONE_COLORS[k.tone]
@@ -136,10 +155,52 @@ export default function DashboardFinanceiro({
         })}
       </div>
 
+      {/* Card Taxas (só quando há fees) */}
+      {taxasBreakdown && taxasBreakdown.taxas > 0 && (
+        <div
+          className="rounded-2xl p-5 grid grid-cols-3 gap-4 text-center"
+          style={{
+            background: 'var(--admin-surface)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+              Receita Bruta
+            </p>
+            <p className="text-xl font-bold tabular-nums mt-1" style={{ color: 'var(--admin-text)' }}>
+              {formatBRL(taxasBreakdown.bruto)}
+            </p>
+          </div>
+          <div style={{ borderLeft: '1px solid var(--admin-divider)', borderRight: '1px solid var(--admin-divider)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+              − Taxas Cartão/Pix
+            </p>
+            <p className="text-xl font-bold tabular-nums mt-1" style={{ color: '#DC2626' }}>
+              − {formatBRL(taxasBreakdown.taxas)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+              Líquido
+            </p>
+            <p className="text-xl font-bold tabular-nums mt-1" style={{ color: '#059669' }}>
+              {formatBRL(taxasBreakdown.liquido)}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Donuts · 2 cards lado a lado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <DonutCard title="Formas de Pagamento" slices={formasPagamento} />
         <DonutCard title="Principais Despesas" slices={principaisDespesas} />
+      </div>
+
+      {/* Tops · profissionais + serviços */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <RankCard title="Top Profissionais" rows={topProfissionais} />
+        <RankCard title="Top Serviços" rows={topServicos} />
       </div>
 
       {/* Comparativo · barras + painel resumo */}
@@ -183,6 +244,66 @@ export default function DashboardFinanceiro({
           <ResumoLine color="var(--admin-warning,#F59E0B)" label="Despesas pendentes" value={comparativoTotals.despesas_pendentes} />
         </div>
       </div>
+    </div>
+  )
+}
+
+function RankCard({ title, rows }: { title: string; rows: RankRow[] }) {
+  const max = Math.max(...rows.map((r) => r.total), 1)
+  return (
+    <div
+      className="rounded-2xl p-5"
+      style={{
+        background: 'var(--admin-surface)',
+        border: '1px solid var(--admin-border)',
+      }}
+    >
+      <h3 className="text-sm font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--admin-text-mute)' }}>
+        {title}
+      </h3>
+      {rows.length === 0 ? (
+        <p className="text-sm text-center py-6" style={{ color: 'var(--admin-text-faded)' }}>
+          Sem dados no período
+        </p>
+      ) : (
+        <ol className="space-y-3">
+          {rows.map((r, idx) => {
+            const pct = (r.total / max) * 100
+            return (
+              <li key={r.id}>
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="inline-flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                      style={{
+                        background: idx === 0 ? '#F59E0B' : idx === 1 ? '#94A3B8' : idx === 2 ? '#B45309' : 'var(--admin-surface-hi)',
+                        color: idx <= 2 ? '#fff' : 'var(--admin-text-mute)',
+                      }}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span className="font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                      {r.name}
+                    </span>
+                    <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--admin-text-faded)' }}>
+                      {r.count}×
+                    </span>
+                  </span>
+                  <span className="font-bold tabular-nums flex-shrink-0 ml-2" style={{ color: 'var(--admin-text)' }}>
+                    {formatBRL(r.total)}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full" style={{ background: 'var(--admin-surface-hi)' }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${pct}%`, background: 'var(--admin-accent)' }}
+                  />
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
     </div>
   )
 }
