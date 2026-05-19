@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconCheck, IconArrowLeft } from '@/components/ui/Icon'
 import {
@@ -92,7 +93,12 @@ export default function PaymentMethodModal({
     if (!open) setCardStep(false)
   }, [open])
 
-  if (!open) return null
+  // Portal-mount guard: createPortal precisa de document. Sem essa flag,
+  // SSR explode no build. Setado apos primeiro mount no client.
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+
+  if (!open || !portalReady) return null
 
   function handleMethodClick(method: NonNullable<PaymentMethodChoice>) {
     if (method === 'card' && businessId) {
@@ -104,7 +110,7 @@ export default function PaymentMethodModal({
 
   const priceLabel = formatPrice(totalPrice)
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -232,7 +238,8 @@ export default function PaymentMethodModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
