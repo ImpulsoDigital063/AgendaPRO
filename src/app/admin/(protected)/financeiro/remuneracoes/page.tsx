@@ -4,16 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import { IconChevronLeft, IconChevronRight } from '@/components/ui/Icon'
-
-type ProfRow = {
-  id: string
-  name: string
-  default_commission_percent: number
-  valorTotal: number
-  pago: number
-  pendente: number
-  valesPendentes: number
-}
+import RemuneracoesTable, { type ProfRow } from '@/components/admin/remuneracoes/RemuneracoesTable'
 
 function formatBRL(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -199,81 +190,7 @@ export default async function RemuneracoesPage({
               </p>
             </div>
           ) : (
-            <div
-              className="rounded-2xl overflow-hidden mb-6"
-              style={{
-                background: 'var(--admin-surface)',
-                border: '1px solid var(--admin-border)',
-              }}
-            >
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr
-                      style={{
-                        background: 'var(--admin-surface-hi)',
-                        borderBottom: '1px solid var(--admin-border)',
-                      }}
-                    >
-                      <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-                        Profissional
-                      </th>
-                      <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-                        Valor Total (R$)
-                      </th>
-                      <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-                        Valor Pago (R$)
-                      </th>
-                      <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-                        Pendente Pagamento (R$)
-                      </th>
-                      <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-                        Vales Pendentes (R$)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r, idx) => (
-                      <tr
-                        key={r.id}
-                        style={{ borderBottom: idx < rows.length - 1 ? '1px solid var(--admin-divider)' : 'none' }}
-                      >
-                        <td className="px-4 py-3 align-middle">
-                          <div className="flex items-center gap-3">
-                            <span
-                              className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold"
-                              style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)' }}
-                            >
-                              {r.name.slice(0, 1).toUpperCase()}
-                            </span>
-                            <div>
-                              <p className="font-semibold" style={{ color: 'var(--admin-text)' }}>
-                                {r.name}
-                              </p>
-                              <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
-                                Comissão {r.default_commission_percent}%
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: 'var(--admin-text)' }}>
-                          {formatBRL(r.valorTotal)}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: r.pago > 0 ? '#059669' : 'var(--admin-text-mute)' }}>
-                          {formatBRL(r.pago)}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums font-bold" style={{ color: r.pendente > 0 ? 'var(--admin-accent)' : 'var(--admin-text-mute)' }}>
-                          {formatBRL(r.pendente)}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: r.valesPendentes > 0 ? 'var(--admin-warning,#F59E0B)' : 'var(--admin-text-mute)' }}>
-                          {formatBRL(r.valesPendentes)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <RemuneracoesTable rows={rows} monthIso={`${year}-${String(month0 + 1).padStart(2, '0')}`} />
           )}
 
           {/* Hint */}
