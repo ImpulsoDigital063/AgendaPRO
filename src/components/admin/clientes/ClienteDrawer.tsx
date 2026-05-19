@@ -8,6 +8,7 @@ import ClienteAtividadesTab from './ClienteAtividadesTab'
 import SaldoTab from './SaldoTab'
 import AddCreditoModal from './AddCreditoModal'
 import ConfigClienteTab from './ConfigClienteTab'
+import GaleriaTab from './GaleriaTab'
 
 type Customer = {
   id: string
@@ -362,9 +363,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                   customerPhone={customer.phone}
                 />
               )}
-              {tab === 'galeria' && (
-                <Placeholder text="Galeria de fotos do trabalho · em breve" />
-              )}
+              {tab === 'galeria' && <GaleriaTab customerId={customer.id} />}
               {tab === 'fichas' && (
                 <Placeholder text="Fichas personalizadas (anamnese · técnica) · em breve" />
               )}
