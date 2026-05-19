@@ -1,15 +1,88 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import FinancePeriodTabs from './FinancePeriodTabs'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
-import { IconClose } from '@/components/ui/Icon'
+import { IconClose, IconChevronLeft, IconChevronRight } from '@/components/ui/Icon'
 import type { Expense, ExpenseCategory } from '@/lib/types'
 
 type Props = {
   expenses: Expense[]
   periodo: string
+  currentMonth?: string // YYYY-MM
+  mesEspecifico?: boolean // true se URL tem ?mes=YYYY-MM
+}
+
+const MES_LABEL = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+]
+
+function MonthNavigator({ currentMonth, isCustom }: { currentMonth: string; isCustom: boolean }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const [y, m] = currentMonth.split('-').map(Number)
+  const label = `${MES_LABEL[m - 1]}/${y}`
+
+  function navigate(delta: number) {
+    const d = new Date(y, m - 1 + delta, 1)
+    const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    router.push(`${pathname}?mes=${mes}`)
+  }
+
+  function goCurrentMonth() {
+    router.push(pathname)
+  }
+
+  // Hoje em YYYY-MM pra desabilitar o "próximo" no mês atual
+  const todayYM = (() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })()
+  const isFuture = currentMonth >= todayYM
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+        aria-label="Mês anterior"
+      >
+        <IconChevronLeft size={16} />
+      </button>
+      <div
+        className="flex-1 text-center py-2 rounded-xl"
+        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+      >
+        <p className="text-sm font-bold capitalize" style={{ color: 'var(--admin-text)' }}>
+          {label}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => navigate(1)}
+        disabled={isFuture}
+        className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors disabled:opacity-40"
+        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+        aria-label="Próximo mês"
+      >
+        <IconChevronRight size={16} />
+      </button>
+      {isCustom && (
+        <button
+          type="button"
+          onClick={goCurrentMonth}
+          className="px-3 h-9 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+          style={{ background: 'var(--admin-accent)', color: '#fff' }}
+        >
+          Hoje
+        </button>
+      )}
+    </div>
+  )
 }
 
 const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
@@ -59,7 +132,7 @@ function formatDate(dateStr: string) {
   })
 }
 
-export default function DespesasView({ expenses, periodo }: Props) {
+export default function DespesasView({ expenses, periodo, currentMonth, mesEspecifico }: Props) {
   const router = useRouter()
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -85,9 +158,22 @@ export default function DespesasView({ expenses, periodo }: Props) {
 
   const editingExpense = expenses.find((e) => e.id === editingId)
 
+  // Mês selecionado pra exibir no hero (label)
+  const headerLabel = mesEspecifico && currentMonth
+    ? (() => {
+        const [y, m] = currentMonth.split('-').map(Number)
+        return `${MES_LABEL[m - 1]}/${y}`
+      })()
+    : PERIODO_LABEL[periodo]
+
   return (
     <div className="space-y-5">
       <FinancePeriodTabs periodo={periodo} />
+
+      {/* Navegação mês-a-mês · só quando filtro é "Mês" */}
+      {periodo === 'mes' && currentMonth && (
+        <MonthNavigator currentMonth={currentMonth} isCustom={!!mesEspecifico} />
+      )}
 
       {/* Hero KPI: Total de despesas */}
       <div
@@ -104,7 +190,7 @@ export default function DespesasView({ expenses, periodo }: Props) {
         <div className="relative">
           <p className="text-[11px] font-semibold uppercase tracking-wider"
             style={{ color: 'var(--admin-text-faded)' }}>
-            Total · {PERIODO_LABEL[periodo]}
+            Total · {headerLabel}
           </p>
           <p className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
             style={{ color: 'var(--admin-text)' }}>
@@ -179,7 +265,7 @@ export default function DespesasView({ expenses, periodo }: Props) {
       {/* Lista de despesas */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-          Lista · {PERIODO_LABEL[periodo]}
+          Lista · {headerLabel}
         </h2>
         {expenses.length === 0 ? (
           <div className="admin-card p-8 text-center">

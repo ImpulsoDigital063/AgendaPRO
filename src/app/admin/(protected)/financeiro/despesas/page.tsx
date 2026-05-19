@@ -7,7 +7,7 @@ import type { Expense } from '@/lib/types'
 export default async function DespesasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string }>
+  searchParams: Promise<{ periodo?: string; mes?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -20,25 +20,37 @@ export default async function DespesasPage({
     .single()
   if (!business) redirect('/cadastro')
 
-  const { periodo: periodoParam } = await searchParams
-  const periodo = periodoParam || 'mes'
+  const { periodo: periodoParam, mes: mesParam } = await searchParams
+  // ?mes=YYYY-MM tem prioridade sobre ?periodo. Permite navegar histórico
+  // (essencial pra Marko que migrou despesas dos meses anteriores).
+  const periodo = mesParam ? 'mes' : (periodoParam || 'mes')
 
   const today = new Date()
   let startDate: string
   let endDate: string
-  if (periodo === 'hoje') {
+  let currentMonth: string // YYYY-MM do mês ativo (pra navegação)
+
+  if (mesParam) {
+    const [y, m] = mesParam.split('-').map(Number)
+    startDate = new Date(y, m - 1, 1).toISOString().split('T')[0]
+    endDate = new Date(y, m, 0).toISOString().split('T')[0]
+    currentMonth = mesParam
+  } else if (periodo === 'hoje') {
     startDate = today.toISOString().split('T')[0]
     endDate = startDate
+    currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
   } else if (periodo === 'semana') {
     const start = new Date(today)
     start.setDate(start.getDate() - 6)
     startDate = start.toISOString().split('T')[0]
     endDate = today.toISOString().split('T')[0]
+    currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
   } else {
     startDate = new Date(today.getFullYear(), today.getMonth(), 1)
       .toISOString().split('T')[0]
     endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0)
       .toISOString().split('T')[0]
+    currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
   }
 
   const { data: expenses } = await supabase
@@ -67,6 +79,8 @@ export default async function DespesasPage({
           <DespesasView
             expenses={(expenses || []) as Expense[]}
             periodo={periodo}
+            currentMonth={currentMonth}
+            mesEspecifico={!!mesParam}
           />
         </div>
       </div>
