@@ -266,7 +266,7 @@ export default function RemuneracoesTable({ rows, monthIso, periodStart, periodE
                 Histórico de Pagamentos
               </button>
               <Link
-                href={`/admin/configuracoes?tab=profissionais`}
+                href={`/admin/colaboradores/${selected.id}`}
                 className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[var(--admin-surface-hi)]"
                 style={{ color: 'var(--admin-text)' }}
                 onClick={() => setMenuFor(null)}
