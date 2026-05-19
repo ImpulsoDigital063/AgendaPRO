@@ -18,6 +18,10 @@ type Props = {
   monthIso: string
 }
 
+function buildDetailHref(profId: string, monthIso: string) {
+  return `/admin/financeiro/remuneracoes/${profId}?month=${monthIso}`
+}
+
 function formatBRL(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -196,12 +200,11 @@ export default function RemuneracoesTable({ rows, monthIso }: Props) {
 
             {/* Opções */}
             <div className="py-1">
-              <button
-                type="button"
-                disabled
-                className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              <Link
+                href={buildDetailHref(selected.id, monthIso)}
+                className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[var(--admin-surface-hi)]"
                 style={{ color: 'var(--admin-text)' }}
-                title="Em breve (etapa 3.4)"
+                onClick={() => setMenuFor(null)}
               >
                 <span style={{ color: 'var(--admin-text-mute)' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -210,7 +213,7 @@ export default function RemuneracoesTable({ rows, monthIso }: Props) {
                   </svg>
                 </span>
                 Exibir Detalhes
-              </button>
+              </Link>
               <button
                 type="button"
                 disabled
