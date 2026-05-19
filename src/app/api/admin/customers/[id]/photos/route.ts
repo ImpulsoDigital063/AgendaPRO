@@ -26,7 +26,7 @@ function getAdmin() {
 }
 
 const ALLOWED = ['image/png', 'image/jpeg', 'image/webp']
-const MAX = 5 * 1024 * 1024 // 5MB
+const MAX = 2 * 1024 * 1024 // 2MB · pós-compressão browser-side · folga 4x sobre o preset
 
 // POST · upload de foto · multipart/form-data
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {

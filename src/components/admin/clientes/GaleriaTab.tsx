@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { compressImage } from '@/lib/compress-image'
 import { IconPlus, IconTrash, IconClose } from '@/components/ui/Icon'
 
 type Photo = {
@@ -49,17 +50,18 @@ export default function GaleriaTab({ customerId }: Props) {
 
   async function handleUpload(file: File) {
     setError(null)
-    if (!file.type.startsWith('image/')) {
-      setError('Selecione um arquivo de imagem')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Máximo 5MB por foto')
-      return
-    }
     setUploading(true)
+
+    // Comprime no browser ANTES do upload (memória cravada: padrão AgendaPRO)
+    const compressed = await compressImage(file, 'gallery')
+    if (!compressed.ok) {
+      setError(compressed.reason)
+      setUploading(false)
+      return
+    }
+
     const form = new FormData()
-    form.append('file', file)
+    form.append('file', compressed.file)
     const res = await fetch(`/api/admin/customers/${customerId}/photos`, {
       method: 'POST',
       body: form,

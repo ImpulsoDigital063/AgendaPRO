@@ -1,6 +1,6 @@
 import imageCompression from 'browser-image-compression'
 
-export type CompressPreset = 'photo' | 'logo' | 'cover'
+export type CompressPreset = 'photo' | 'logo' | 'cover' | 'gallery'
 
 type PresetConfig = {
   maxWidthOrHeight: number
@@ -15,6 +15,9 @@ const PRESETS: Record<CompressPreset, PresetConfig> = {
   logo: { maxWidthOrHeight: 512, maxSizeMB: 0.15, fileType: 'image/webp' },
   // Capa do negócio — banner mais largo
   cover: { maxWidthOrHeight: 1600, maxSizeMB: 0.4, fileType: 'image/webp' },
+  // Galeria de fotos do trabalho (antes/depois) — qualidade boa pra detalhes,
+  // mas menor que cover pra economizar storage com volume.
+  gallery: { maxWidthOrHeight: 1200, maxSizeMB: 0.5, fileType: 'image/webp' },
 }
 
 const HARD_INPUT_LIMIT_MB = 15
