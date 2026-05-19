@@ -12,7 +12,15 @@ const PAGE_SIZE = 100
 export default async function VendasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; type?: string; offset?: string }>
+  searchParams: Promise<{
+    q?: string
+    status?: string
+    type?: string
+    offset?: string
+    from?: string
+    to?: string
+    prof?: string
+  }>
 }) {
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
@@ -23,6 +31,9 @@ export default async function VendasPage({
   const sp = await searchParams
   const q = (sp.q ?? '').trim()
   const status = sp.status ?? 'all'
+  const from = sp.from ?? ''
+  const to = sp.to ?? ''
+  const profFilter = sp.prof ?? ''
   const offset = Math.max(0, parseInt(sp.offset ?? '0', 10) || 0)
 
   const sb = createServiceClient(
@@ -32,8 +43,19 @@ export default async function VendasPage({
   )
 
   const today = new Date().toISOString().slice(0, 10)
+  // Se usuário definiu range, "to" prevalece sobre "today". Se só "from",
+  // mantém today como upper bound (não faz sentido exportar futuro).
+  const upperBound = to || today
 
-  // Query base · só vendas realizadas (passado + hoje)
+  // Lista de profissionais ativos pro select de filtro
+  const { data: professionals } = await sb
+    .from('professionals')
+    .select('id, name')
+    .eq('business_id', business.id)
+    .eq('active', true)
+    .order('name')
+
+  // Query base · só vendas realizadas (passado + hoje · respeitando range)
   let listQuery = sb
     .from('appointments')
     .select(`
@@ -54,13 +76,23 @@ export default async function VendasPage({
       professional:professionals(name)
     `)
     .eq('business_id', business.id)
-    .lte('appointment_date', today)
+    .lte('appointment_date', upperBound)
 
   let countQuery = sb
     .from('appointments')
     .select('id', { count: 'exact', head: true })
     .eq('business_id', business.id)
-    .lte('appointment_date', today)
+    .lte('appointment_date', upperBound)
+
+  if (from) {
+    listQuery = listQuery.gte('appointment_date', from)
+    countQuery = countQuery.gte('appointment_date', from)
+  }
+
+  if (profFilter) {
+    listQuery = listQuery.eq('professional_id', profFilter)
+    countQuery = countQuery.eq('professional_id', profFilter)
+  }
 
   // Filtro status
   if (status === 'pending') {
@@ -115,7 +147,7 @@ export default async function VendasPage({
       <div className="relative">
         <SubPageHeader title="Vendas" subtitle={business.name} back="/admin/financeiro" />
         <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-7xl lg:px-8">
-          <VendasFilters />
+          <VendasFilters professionals={professionals ?? []} />
 
           {/* Contador */}
           <div className="flex items-center justify-between mb-3">
