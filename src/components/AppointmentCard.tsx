@@ -438,27 +438,11 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
               <div className="flex items-stretch gap-2 flex-wrap">
                 <button
                   onClick={() => {
-                    if (canComplete) completeWithPayment(null, withPunctuality)
-                    else setEarlyConfirm('atendi')
-                  }}
-                  disabled={loading}
-                  className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
-                  style={{
-                    background: 'var(--admin-surface-hi)',
-                    color: 'var(--admin-text)',
-                    border: '1px solid var(--admin-border)',
-                  }}
-                  title="Conclui o atendimento. Pagamento fica pendente — admin confirma depois no Financeiro."
-                >
-                  <IconCheck size={14} /> Atendi{withPunctuality ? ` +${punctualityBonus}` : ''}
-                </button>
-                <button
-                  onClick={() => {
                     if (canComplete) setPaymentModal(true)
                     else setEarlyConfirm('recebi')
                   }}
                   disabled={loading}
-                  className="flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                   style={{
                     background: 'linear-gradient(135deg, #10B981, #059669)',
                     color: '#fff',

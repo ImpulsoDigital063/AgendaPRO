@@ -262,26 +262,9 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
 
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => completeWithPayment(null, withPunctuality)}
-                disabled={loading || !canComplete}
-                className="flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
-                style={{
-                  background: 'var(--admin-surface-hi)',
-                  color: 'var(--admin-text)',
-                  border: '1px solid var(--admin-border)',
-                }}
-                title={
-                  canComplete
-                    ? 'Conclui sem registrar pagamento. Admin confirma depois no Financeiro.'
-                    : 'Disponível 15min antes do horário do agendamento'
-                }
-              >
-                <IconCheck size={14} /> Atendi{withPunctuality ? ` +${punctualityBonus}` : ''}
-              </button>
-              <button
                 onClick={() => setPaymentModal(true)}
                 disabled={loading || !canComplete}
-                className="flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                 style={{
                   background: 'linear-gradient(135deg, #10B981, #059669)',
                   color: '#fff',
