@@ -144,28 +144,46 @@ export default function GaleriaTab({ customerId }: Props) {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {photos.map((p) => (
-            <button
+            <div
               key={p.id}
-              type="button"
-              onClick={() => setPreview(p)}
-              className="relative rounded-xl overflow-hidden aspect-square"
+              className="relative rounded-xl overflow-hidden aspect-square group"
               style={{ background: 'var(--admin-surface-hi)' }}
             >
-              <Image
-                src={p.url}
-                alt={p.caption ?? 'Foto'}
-                fill
-                sizes="(max-width: 640px) 50vw, 200px"
-                style={{ objectFit: 'cover' }}
-                unoptimized
-              />
+              <button
+                type="button"
+                onClick={() => setPreview(p)}
+                className="absolute inset-0 w-full h-full"
+                aria-label="Ampliar"
+              >
+                <Image
+                  src={p.url}
+                  alt={p.caption ?? 'Foto'}
+                  fill
+                  sizes="(max-width: 640px) 50vw, 200px"
+                  style={{ objectFit: 'cover' }}
+                  unoptimized
+                />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  remove(p.id)
+                }}
+                aria-label="Remover foto"
+                title="Remover foto"
+                className="absolute top-1.5 right-1.5 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                style={{ background: 'rgba(0,0,0,0.7)', color: '#fff' }}
+              >
+                <IconTrash size={14} />
+              </button>
               <div
-                className="absolute bottom-0 left-0 right-0 px-2 py-1.5 text-[10px]"
+                className="absolute bottom-0 left-0 right-0 px-2 py-1.5 text-[10px] pointer-events-none"
                 style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', color: '#fff' }}
               >
                 {formatDate(p.taken_at)}
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}
