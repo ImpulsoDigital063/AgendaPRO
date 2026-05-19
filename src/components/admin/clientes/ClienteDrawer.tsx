@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconArrowLeft, IconPlus } from '@/components/ui/Icon'
+import ClienteAtividadesTab from './ClienteAtividadesTab'
 
 type Customer = {
   id: string
@@ -309,7 +310,11 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                 <Placeholder text="Preferências e permissões do cliente · em breve" />
               )}
               {tab === 'atividades' && (
-                <Placeholder text="Timeline cruzada de atendimentos · em breve (etapa 4.5)" />
+                <ClienteAtividadesTab
+                  customerId={customer.id}
+                  customerName={customer.name}
+                  customerPhone={customer.phone}
+                />
               )}
               {tab === 'galeria' && (
                 <Placeholder text="Galeria de fotos do trabalho · em breve" />
