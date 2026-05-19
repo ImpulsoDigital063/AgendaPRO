@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { IconClose, IconCheck } from '@/components/ui/Icon'
 
@@ -55,6 +56,11 @@ export default function EditServicesModal({
   useEffect(() => {
     return () => { mountedRef.current = false }
   }, [])
+
+  // Portal-mount guard: createPortal precisa de document, que só existe
+  // no client. Sem essa flag, SSR explode. Setado após primeiro mount.
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -131,7 +137,9 @@ export default function EditServicesModal({
     }
   }
 
-  return (
+  if (!portalReady) return null
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
@@ -313,6 +321,7 @@ export default function EditServicesModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
