@@ -278,25 +278,6 @@ export default function RemuneracoesTable({ rows, monthIso, periodStart, periodE
                 </span>
                 Abrir Colaborador
               </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuFor(null)
-                  window.location.reload()
-                }}
-                className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[var(--admin-surface-hi)]"
-                style={{ color: 'var(--admin-text)' }}
-                title="Recarrega os valores da tabela com dados atualizados do banco"
-              >
-                <span style={{ color: 'var(--admin-text-mute)' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="23 4 23 10 17 10" />
-                    <polyline points="1 20 1 14 7 14" />
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                  </svg>
-                </span>
-                Atualizar Dados
-              </button>
             </div>
 
             {/* Footer */}
