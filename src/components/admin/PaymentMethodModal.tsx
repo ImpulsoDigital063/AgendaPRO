@@ -210,24 +210,6 @@ export default function PaymentMethodModal({
               ))}
             </div>
 
-            <div className="px-5 pb-5">
-              <button
-                type="button"
-                onClick={() => onChoose(null)}
-                disabled={loading}
-                className="w-full py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
-                style={{
-                  background: 'transparent',
-                  color: 'var(--admin-text-2, #475569)',
-                  border: '1px dashed var(--admin-border, #CBD5E1)',
-                }}
-                title="Marca como atendido. Pagamento fica pendente pra confirmar depois no Financeiro."
-              >
-                <IconCheck size={14} />
-                Atendido — pagar depois
-              </button>
-            </div>
-
             {loading && (
               <div className="px-5 pb-4">
                 <p className="text-xs text-center" style={{ color: 'var(--admin-text-faded)' }}>
