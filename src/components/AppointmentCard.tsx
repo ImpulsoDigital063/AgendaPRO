@@ -225,9 +225,9 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
       <div className="p-4">
         {/* Horário + nome + badge */}
         <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
-              className="text-center min-w-[58px] rounded-xl py-1.5 px-1.5"
+              className="text-center min-w-[58px] rounded-xl py-1.5 px-1.5 flex-shrink-0"
               style={{
                 background: 'var(--admin-accent-bg)',
                 border: '1px solid var(--admin-accent-border)',
@@ -341,16 +341,15 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
                 onClick={() => setEditServicesOpen(true)}
                 aria-label="Editar serviços"
                 title="Editar serviços do agendamento"
-                className="inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
+                className="inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-80 w-10 h-10 sm:w-6 sm:h-6 flex-shrink-0"
                 style={{
-                  width: 24,
-                  height: 24,
                   background: 'var(--admin-surface-hi)',
                   border: '1px solid var(--admin-border)',
                   color: 'var(--admin-text-mute)',
                 }}
               >
-                <IconPencil size={13} />
+                <IconPencil size={18} className="sm:hidden" />
+                <IconPencil size={13} className="hidden sm:block" />
               </button>
             )}
             {appointment.professional?.name && (
