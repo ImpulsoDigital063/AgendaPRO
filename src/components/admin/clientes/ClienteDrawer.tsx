@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconArrowLeft, IconPlus } from '@/components/ui/Icon'
 import ClienteAtividadesTab from './ClienteAtividadesTab'
+import SaldoTab from './SaldoTab'
+import AddCreditoModal from './AddCreditoModal'
 
 type Customer = {
   id: string
+  business_id: string
   name: string
   phone: string | null
   email: string | null
@@ -72,6 +75,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
   const [counts, setCounts] = useState<Counts>({ atendimentos: 0, produtos: 0, pacotes: 0, lastDate: null })
   const [loading, setLoading] = useState(true)
   const [fabOpen, setFabOpen] = useState(false)
+  const [showAddCredito, setShowAddCredito] = useState(false)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -242,18 +246,44 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                     boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
                   }}
                 >
-                  {['Novo Atendimento', 'Venda de Produto', 'Venda de Pacote', 'Adicionar Crédito'].map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      disabled
-                      className="w-full text-left px-4 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ color: 'var(--admin-text)' }}
-                      title="Vem nas próximas etapas (4.7)"
-                    >
-                      {opt}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full text-left px-4 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ color: 'var(--admin-text)' }}
+                    title="Em breve (precisa do módulo de agenda)"
+                  >
+                    Novo Atendimento
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full text-left px-4 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ color: 'var(--admin-text)' }}
+                    title="Em breve (módulo Produtos)"
+                  >
+                    Venda de Produto
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full text-left px-4 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ color: 'var(--admin-text)' }}
+                    title="Em breve (módulo Pacotes)"
+                  >
+                    Venda de Pacote
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFabOpen(false)
+                      setShowAddCredito(true)
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-[var(--admin-surface-hi)]"
+                    style={{ color: 'var(--admin-text)' }}
+                  >
+                    Adicionar Crédito
+                  </button>
                 </div>
               )}
             </div>
@@ -326,7 +356,11 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                 <Placeholder text="Pacotes contratados · em breve" />
               )}
               {tab === 'saldo' && (
-                <Placeholder text="Crédito pré-pago (créditos avulsos) · em breve (etapa 4.7)" />
+                <SaldoTab
+                  customerId={customer.id}
+                  customerName={customer.name}
+                  businessId={customer.business_id}
+                />
               )}
               {tab === 'fidelidade' && (
                 <FidelidadeTab customer={customer} onRefresh={() => router.refresh()} />
@@ -335,6 +369,21 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {/* Modal Adicionar Crédito (do FAB) */}
+      {showAddCredito && customer && (
+        <AddCreditoModal
+          customerId={customer.id}
+          customerName={customer.name}
+          businessId={customer.business_id}
+          onClose={() => setShowAddCredito(false)}
+          onSaved={() => {
+            setShowAddCredito(false)
+            setTab('saldo')
+            router.refresh()
+          }}
+        />
+      )}
     </div>
   )
 }
