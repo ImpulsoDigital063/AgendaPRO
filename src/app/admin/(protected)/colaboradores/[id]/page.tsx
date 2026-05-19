@@ -25,12 +25,16 @@ export default async function ColaboradorPage({
     { auth: { persistSession: false } },
   )
 
-  const { data: prof } = await sb
+  const { data: prof, error: profErr } = await sb
     .from('professionals')
-    .select('id, name, email, phone, default_commission_percent, is_receptionist, active, business_id')
+    .select('id, name, email, default_commission_percent, is_receptionist, active, business_id')
     .eq('id', id)
     .maybeSingle()
 
+  if (profErr) {
+    console.error('[colaborador/[id]] erro:', profErr.message)
+    notFound()
+  }
   if (!prof || prof.business_id !== business.id) notFound()
 
   const [{ data: vouchers }, { data: salaries }] = await Promise.all([
@@ -56,7 +60,7 @@ export default async function ColaboradorPage({
               id: prof.id,
               name: prof.name,
               email: prof.email,
-              phone: prof.phone,
+              phone: null,
               default_commission_percent: Number(prof.default_commission_percent ?? 40),
               is_receptionist: prof.is_receptionist ?? false,
               active: prof.active ?? true,
