@@ -49,6 +49,9 @@ export default function EditServicesModal({
   const [services, setServices] = useState<Service[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
+  // Conflict state: quando API retorna 409 com canForce=true, mostra warning
+  // amarelo + botao "Salvar mesmo assim" · profissional decide.
+  const [conflict, setConflict] = useState<string | null>(null)
   // Flag pra evitar setState após unmount em fluxos async (cancelar
   // durante fetch, fechar antes de salvar concluir). React 18 não loga
   // mais o warning, mas continua boa prática evitar memory leaks.
@@ -102,23 +105,29 @@ export default function EditServicesModal({
   const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
   const newEndTime = totalDuration > 0 ? calcEndTime(startTime, totalDuration) : null
 
-  async function salvar() {
+  async function salvar(force = false) {
     if (selectedIds.size === 0) {
       setError('Selecione pelo menos 1 serviço')
       return
     }
     setSaving(true)
     setError(null)
+    if (force) setConflict(null)
     try {
       const res = await fetch(`/api/admin/appointments/${appointmentId}/services`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ serviceIds: Array.from(selectedIds) }),
+        body: JSON.stringify({ serviceIds: Array.from(selectedIds), force }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         if (mountedRef.current) {
-          setError(data.error || 'Erro ao salvar')
+          // 409 com canForce=true: conflito de horario · profissional decide
+          if (res.status === 409 && data.canForce === true) {
+            setConflict(data.error || 'Conflito de horário')
+          } else {
+            setError(data.error || 'Erro ao salvar')
+          }
         }
         return
       }
@@ -291,10 +300,27 @@ export default function EditServicesModal({
               <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>
             )}
 
+            {conflict && (
+              <div
+                className="rounded-xl p-3 text-xs space-y-2"
+                style={{
+                  background: 'rgba(245,158,11,0.10)',
+                  border: '1px solid rgba(245,158,11,0.35)',
+                  color: 'var(--admin-text)',
+                }}
+              >
+                <p className="font-semibold" style={{ color: '#D97706' }}>Conflito de horário</p>
+                <p>{conflict}</p>
+                <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+                  Você pode salvar mesmo assim · você é responsável por organizar a agenda com os próximos clientes.
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={conflict ? () => setConflict(null) : onClose}
                 disabled={saving}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
                 style={{
@@ -303,19 +329,19 @@ export default function EditServicesModal({
                   border: '1px solid var(--admin-border)',
                 }}
               >
-                Cancelar
+                {conflict ? 'Voltar' : 'Cancelar'}
               </button>
               <button
                 type="button"
-                onClick={salvar}
+                onClick={() => salvar(conflict !== null)}
                 disabled={saving || selectedIds.size === 0}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
                 style={{
-                  background: 'var(--admin-accent)',
+                  background: conflict ? '#D97706' : 'var(--admin-accent)',
                   color: '#fff',
                 }}
               >
-                {saving ? 'Salvando...' : 'Salvar'}
+                {saving ? 'Salvando...' : conflict ? 'Salvar mesmo assim' : 'Salvar'}
               </button>
             </div>
           </div>

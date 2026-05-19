@@ -156,6 +156,10 @@ export async function PATCH(
     )
   }
   const uniqueServiceIds = Array.from(new Set(serviceIds as string[]))
+  // force=true: profissional confirmou que aceita overlap mesmo com aviso.
+  // API pula pre-check e seta manual_overlap_accepted=true · constraint
+  // v60 nao bloqueia mais o par (semantica EXCLUDE simetrica).
+  const force = body.force === true
 
   const admin = getAdminClient()
 
@@ -248,7 +252,8 @@ export async function PATCH(
 
   // Pre-check de sobreposição: outros appointments do mesmo professional
   // no mesmo dia que entrariam em conflito com o novo intervalo.
-  if (newEndTime !== appointment.end_time) {
+  // Pulado quando force=true (profissional ja confirmou no modal).
+  if (!force && newEndTime !== appointment.end_time) {
     const { data: conflicts } = await admin
       .from('appointments')
       .select('id, start_time, end_time, status, client_name')
@@ -265,8 +270,9 @@ export async function PATCH(
       const c = conflicts[0]
       return NextResponse.json(
         {
-          error: `Conflita com agendamento de ${c.client_name} às ${c.start_time.slice(0, 5)}. Diminua serviços ou reagende.`,
+          error: `Conflita com agendamento de ${c.client_name} às ${c.start_time.slice(0, 5)}. Você pode salvar mesmo assim ou diminuir serviços.`,
           conflict: { id: c.id, start_time: c.start_time, client_name: c.client_name },
+          canForce: true,
         },
         { status: 409 },
       )
@@ -301,15 +307,21 @@ export async function PATCH(
 
   // Atualiza os campos denormalizados em appointments (primeiro serviço
   // vira service_id/service_name pra retrocompat com card simples).
+  // Quando force=true, marca manual_overlap_accepted=true · constraint v60
+  // nao bloqueia o par com o appointment conflitante.
   const first = services[0]
+  const updatePayload: Record<string, unknown> = {
+    service_id: first.id,
+    service_name: services.length === 1 ? first.name : `${first.name} +${services.length - 1}`,
+    total_price: totalPrice,
+    end_time: newEndTime,
+  }
+  if (force) {
+    updatePayload.manual_overlap_accepted = true
+  }
   const { error: updErr } = await admin
     .from('appointments')
-    .update({
-      service_id: first.id,
-      service_name: services.length === 1 ? first.name : `${first.name} +${services.length - 1}`,
-      total_price: totalPrice,
-      end_time: newEndTime,
-    })
+    .update(updatePayload)
     .eq('id', appointmentId)
 
   if (updErr) {
