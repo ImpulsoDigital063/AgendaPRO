@@ -290,11 +290,26 @@ export default async function AdminInicioPage() {
   })
 
   return (
-    <main className="relative overflow-hidden" style={{ minHeight: '100svh' }}>
+    <main className="relative sm:overflow-hidden" style={{ minHeight: '100svh' }}>
       <div className="max-w-7xl mx-auto px-4 lg:px-6 pt-6 pb-32 lg:pb-12 space-y-6 relative">
-        {/* Header · saudação · hero com logo da marca no canto */}
+        {/* Header mobile · simples · sem gradient/logo · isolado de qualquer mudança desktop
+            Regra cravada 19/05: mudança no mobile ≠ mudança no desktop · vide AGENTS.md */}
+        <header className="sm:hidden">
+          <p className="text-sm font-medium" style={{ color: 'var(--admin-text-faded)' }}>
+            <Greeting />, {business.name}
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight mt-1" style={{ color: 'var(--admin-text)' }}>
+            Painel inicial
+          </h1>
+          <p className="text-sm capitalize mt-1 inline-flex items-center gap-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+            <IconCalendar size={14} /> {todayFormatted}
+          </p>
+        </header>
+
+        {/* Header desktop · hero com gradient + logo + decoração de canto
+            Só desktop (sm:block) · não toca em mobile */}
         <header
-          className="relative rounded-3xl overflow-hidden p-6 lg:p-8"
+          className="hidden sm:block relative rounded-3xl overflow-hidden p-6 lg:p-8"
           style={{
             background:
               'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary, var(--admin-accent)) 12%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-secondary, var(--admin-accent)) 8%, var(--admin-surface)) 100%)',
@@ -315,7 +330,7 @@ export default async function AdminInicioPage() {
               </p>
             </div>
             {business.brand_logo_url && (
-              <div className="hidden sm:block relative w-32 h-32 lg:w-40 lg:h-40 flex-shrink-0">
+              <div className="relative w-32 h-32 lg:w-40 lg:h-40 flex-shrink-0">
                 <Image
                   src={business.brand_logo_url}
                   alt={business.name}
