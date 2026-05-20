@@ -5,6 +5,7 @@ import InstallBanner from '@/components/admin/InstallBanner'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import AppSplash from '@/components/admin/AppSplash'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
+import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import AdminDesktopSidebar from '@/components/admin/desktop/AdminDesktopSidebar'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -42,18 +43,20 @@ export default async function AdminLayout({
     brand_logo_url?: string | null
   } = {}
   let businessName: string | null = null
+  let businessSlug: string | null = null
 
   if (business) {
-    // Fetch brand colors (v50) + nome · NULL = default AgendaPRO
+    // Fetch brand colors (v50) + nome + slug · NULL = default AgendaPRO
     const supabase = await createClient()
     const { data: brandData } = await supabase
       .from('businesses')
-      .select('name, brand_primary, brand_secondary, brand_accent, brand_neutral, brand_logo_url')
+      .select('name, slug, brand_primary, brand_secondary, brand_accent, brand_neutral, brand_logo_url')
       .eq('id', business.id)
       .maybeSingle()
     if (brandData) {
       brand = brandData
       businessName = brandData.name ?? null
+      businessSlug = brandData.slug ?? null
     }
   }
 
@@ -105,12 +108,23 @@ export default async function AdminLayout({
       <div className="admin-shell admin-shell--with-sidebar" data-admin-theme={initialTheme}>
         <AppSplash />
         <InstallBanner />
+        {/* Decoração de marca · só desktop · só Palace · pattern scatter sutil
+            atrás de todas as views admin. Mobile (Olímpio/Leticia/Erlane prod)
+            NÃO renderiza nada. Regra mobile/desktop isolation cravada 19-20/05. */}
+        {businessSlug === 'palace-nail-spa' && (
+          <div
+            aria-hidden
+            className="hidden lg:block pointer-events-none fixed inset-0 z-0"
+          >
+            <BrandDecorBackground pattern="scatter" brand={businessSlug} opacity={0.025} />
+          </div>
+        )}
         <AdminDesktopSidebar
-          brand={{ business_name: businessName, brand_logo_url: brand.brand_logo_url ?? null }}
+          brand={{ business_name: businessName, business_slug: businessSlug, brand_logo_url: brand.brand_logo_url ?? null }}
           pendingAppointments={pendingAppointments}
           pendingClaims={pendingClaims}
         />
-        <div className="admin-shell-content">
+        <div className="admin-shell-content relative z-10">
           {children}
         </div>
         <div className="lg:hidden">

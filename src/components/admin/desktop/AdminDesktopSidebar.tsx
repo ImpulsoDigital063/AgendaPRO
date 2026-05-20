@@ -29,6 +29,7 @@ import {
 
 type Brand = {
   business_name?: string | null
+  business_slug?: string | null
   brand_logo_url?: string | null
 }
 
@@ -148,49 +149,55 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         transition: 'width 220ms ease',
       }}
     >
-      {/* Brand area */}
+      {/* Brand area · Palace tem versão SVG inline (controle total · sem fundo PNG vazando) */}
       <div
-        className="flex items-center gap-2 px-4 py-4 flex-shrink-0"
+        className="px-4 py-4 flex-shrink-0 relative"
         style={{ borderBottom: '1px solid var(--admin-divider)' }}
       >
-        {brand.brand_logo_url ? (
-          <span className="flex-shrink-0 w-9 h-9 rounded-xl overflow-hidden" style={{ background: 'var(--admin-surface-hi)' }}>
-            <Image
-              src={brand.brand_logo_url}
-              alt="logo"
-              width={36}
-              height={36}
-              style={{ objectFit: 'cover', width: 36, height: 36 }}
-            />
-          </span>
+        {brand.business_slug === 'palace-nail-spa' ? (
+          <PalaceBrandArea collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
         ) : (
-          <span
-            className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm"
-            style={{ background: 'var(--admin-accent)', color: '#fff' }}
-          >
-            {(brand.business_name ?? 'A').slice(0, 1).toUpperCase()}
-          </span>
+          <div className="flex items-center gap-2">
+            {brand.brand_logo_url ? (
+              <span className="flex-shrink-0 w-9 h-9 rounded-xl overflow-hidden" style={{ background: 'var(--admin-surface-hi)' }}>
+                <Image
+                  src={brand.brand_logo_url}
+                  alt="logo"
+                  width={36}
+                  height={36}
+                  style={{ objectFit: 'cover', width: 36, height: 36 }}
+                />
+              </span>
+            ) : (
+              <span
+                className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm"
+                style={{ background: 'var(--admin-accent)', color: '#fff' }}
+              >
+                {(brand.business_name ?? 'A').slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            {!collapsed && (
+              <span
+                className="text-sm font-bold truncate"
+                style={{ color: 'var(--admin-text)' }}
+                title={brand.business_name ?? 'AgendaPRO'}
+              >
+                {brand.business_name ?? 'AgendaPRO'}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setCollapsed((c) => !c)}
+              aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              className="ml-auto p-1.5 rounded-lg flex-shrink-0"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {collapsed ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
+              </svg>
+            </button>
+          </div>
         )}
-        {!collapsed && (
-          <span
-            className="text-sm font-bold truncate"
-            style={{ color: 'var(--admin-text)' }}
-            title={brand.business_name ?? 'AgendaPRO'}
-          >
-            {brand.business_name ?? 'AgendaPRO'}
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={() => setCollapsed((c) => !c)}
-          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-          className="ml-auto p-1.5 rounded-lg flex-shrink-0"
-          style={{ color: 'var(--admin-text-mute)' }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {collapsed ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
-          </svg>
-        </button>
       </div>
 
       {/* Nav · agrupado por seção */}
@@ -339,6 +346,100 @@ function IconChart({ size = 20 }: { size?: number }) {
       <rect x="5" y="11" width="3" height="9" />
       <rect x="11" y="6" width="3" height="14" />
       <rect x="17" y="14" width="3" height="6" />
+    </svg>
+  )
+}
+
+/**
+ * Brand area customizada do Palace Nail Spa · usa SVG inline pra ter
+ * controle total da cor (sem fundo PNG vazando) · wordmark serif
+ * estilizado · adapta a expansão da sidebar.
+ *
+ * Exclusiva Palace (cravado por Eduardo 20/05). Outros businesses usam
+ * o padrão default (Image src brand_logo_url + nome).
+ */
+function PalaceBrandArea({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const palaceTeal = '#1AA9A8'
+  const palaceGold = '#C9A87C'
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <PalaceSymbolMini size={36} color={palaceTeal} />
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label="Expandir menu"
+          className="p-1.5 rounded-lg"
+          style={{ color: 'var(--admin-text-mute)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <PalaceSymbolMini size={44} color={palaceTeal} />
+      <div className="flex-1 min-w-0 leading-tight">
+        <p
+          className="font-serif tracking-[0.14em] text-[15px] font-semibold"
+          style={{ color: palaceTeal, fontFamily: '"Cinzel", "Trajan Pro", Cambria, Georgia, serif' }}
+        >
+          PALACE
+        </p>
+        <p
+          className="text-[9px] font-medium tracking-[0.35em] uppercase mt-0.5"
+          style={{ color: palaceGold }}
+        >
+          Nail Spa
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label="Recolher menu"
+        className="p-1.5 rounded-lg flex-shrink-0"
+        style={{ color: 'var(--admin-text-mute)' }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Mini símbolo Palace (ogiva com P caligráfico) inline · usado na brand
+ * area. Versão simplificada do PalaceSymbol pra footprint pequeno.
+ */
+function PalaceSymbolMini({ size = 40, color }: { size?: number; color: string }) {
+  return (
+    <svg
+      width={size}
+      height={size * (280 / 200)}
+      viewBox="0 0 200 280"
+      fill="none"
+      aria-hidden
+      style={{ flexShrink: 0 }}
+    >
+      <path
+        d="M 100 10 C 60 30, 30 80, 30 140 C 30 200, 70 250, 100 270 C 130 250, 170 200, 170 140 C 170 80, 140 30, 100 10 Z"
+        stroke={color}
+        strokeWidth="6"
+        fill="none"
+      />
+      <path
+        d="M 82 95 L 82 215 M 82 95 C 100 95, 130 100, 130 130 C 130 165, 95 168, 82 165"
+        stroke={color}
+        strokeWidth="7"
+        fill="none"
+        strokeLinecap="round"
+      />
     </svg>
   )
 }
