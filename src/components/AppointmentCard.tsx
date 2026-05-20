@@ -27,6 +27,10 @@ type Props = {
     payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | null
     professional?: { name: string } | null
     punctuality_awarded?: boolean
+    /** Array vindo do join com appointment_services. Quando presente,
+     *  card renderiza todos como pílulas (resolve B2 — sobrancelha
+     *  somia quando service_name denormalizado só tem primeiro). */
+    appointment_services?: { service_name: string | null }[] | null
   }
   showDate?: boolean
   nextUp?: boolean
@@ -321,18 +325,30 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         {/* Serviço + preço */}
         <div className="flex items-center justify-between pl-[64px] mb-2 gap-2">
           <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-            {appointment.service_name && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full truncate inline-flex items-center gap-1"
-                style={{
-                  background: 'var(--admin-surface-hi)',
-                  color: 'var(--admin-text-2)',
-                  border: '1px solid var(--admin-border)',
-                }}
-              >
-                {appointment.service_name}
-              </span>
-            )}
+            {(() => {
+              // Prioriza array completo do join (resolve B2 — todos os
+              // servicos visiveis). Fallback pro denormalizado quando
+              // join nao foi feito.
+              const svcs = (appointment.appointment_services ?? [])
+                .map((s) => s.service_name)
+                .filter((n): n is string => !!n)
+              const names = svcs.length > 0
+                ? svcs
+                : (appointment.service_name ? [appointment.service_name] : [])
+              return names.map((name, idx) => (
+                <span
+                  key={`${name}-${idx}`}
+                  className="text-xs px-2 py-0.5 rounded-full truncate inline-flex items-center gap-1"
+                  style={{
+                    background: 'var(--admin-surface-hi)',
+                    color: 'var(--admin-text-2)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                >
+                  {name}
+                </span>
+              ))
+            })()}
             {canEditServices && (
               <button
                 type="button"

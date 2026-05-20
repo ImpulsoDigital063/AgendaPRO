@@ -59,14 +59,14 @@ export default async function RecepcaoAgendaPage() {
 
   const { data: todayAppts } = await supabase
     .from('appointments')
-    .select('*, professional:professionals(id, name)')
+    .select('*, professional:professionals(id, name), appointment_services(service_name)')
     .eq('business_id', business.id)
     .eq('appointment_date', today)
     .order('start_time', { ascending: true })
 
   const { data: upcoming } = await supabase
     .from('appointments')
-    .select('*, professional:professionals(id, name)')
+    .select('*, professional:professionals(id, name), appointment_services(service_name)')
     .eq('business_id', business.id)
     .gt('appointment_date', today)
     .lte('appointment_date', nextWeekStr)

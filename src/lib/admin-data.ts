@@ -120,7 +120,7 @@ export const getAppointmentsToday = unstable_cache(
     const admin = getServiceClient()
     const { data } = await admin
       .from('appointments')
-      .select(`*, professional:professionals(name)`)
+      .select(`*, professional:professionals(name), appointment_services(service_name)`)
       .eq('business_id', businessId)
       .eq('appointment_date', today)
       .order('start_time', { ascending: true })
@@ -135,7 +135,7 @@ export const getUpcomingAppointments = unstable_cache(
     const admin = getServiceClient()
     const { data } = await admin
       .from('appointments')
-      .select(`*, professional:professionals(name)`)
+      .select(`*, professional:professionals(name), appointment_services(service_name)`)
       .eq('business_id', businessId)
       .gt('appointment_date', todayStr)
       .lte('appointment_date', nextWeekStr)

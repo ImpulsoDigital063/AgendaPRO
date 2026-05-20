@@ -41,7 +41,7 @@ export default async function ProfissionalPage() {
   // Agendamentos de hoje — só deste profissional
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('*')
+    .select('*, appointment_services(service_name)')
     .eq('professional_id', professional.id)
     .eq('appointment_date', today)
     .order('start_time', { ascending: true })
@@ -53,7 +53,7 @@ export default async function ProfissionalPage() {
 
   const { data: upcoming } = await supabase
     .from('appointments')
-    .select('*')
+    .select('*, appointment_services(service_name)')
     .eq('professional_id', professional.id)
     .gt('appointment_date', today)
     .lte('appointment_date', nextWeekStr)

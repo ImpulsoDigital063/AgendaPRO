@@ -23,6 +23,10 @@ type Props = {
     paid_at?: string | null
     payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | null
     punctuality_awarded?: boolean
+    /** Join com appointment_services · resolve B2 (sobrancelha somia
+     *  quando agendamento tem multi-servico e service_name denormalizado
+     *  guarda só o primeiro). */
+    appointment_services?: { service_name: string | null }[] | null
   }
   showDate?: boolean
   punctualityBonus?: number
@@ -170,18 +174,29 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
 
         {/* Serviço + preço */}
         <div className="flex items-center justify-between pl-[64px] mb-2 gap-2">
-          {appointment.service_name && (
-            <span
-              className="text-xs px-2 py-0.5 rounded-full truncate"
-              style={{
-                background: 'var(--admin-surface-hi)',
-                color: 'var(--admin-text-2)',
-                border: '1px solid var(--admin-border)',
-              }}
-            >
-              {appointment.service_name}
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            {(() => {
+              const svcs = (appointment.appointment_services ?? [])
+                .map((s) => s.service_name)
+                .filter((n): n is string => !!n)
+              const names = svcs.length > 0
+                ? svcs
+                : (appointment.service_name ? [appointment.service_name] : [])
+              return names.map((name, idx) => (
+                <span
+                  key={`${name}-${idx}`}
+                  className="text-xs px-2 py-0.5 rounded-full truncate"
+                  style={{
+                    background: 'var(--admin-surface-hi)',
+                    color: 'var(--admin-text-2)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                >
+                  {name}
+                </span>
+              ))
+            })()}
+          </div>
           {appointment.total_price != null && appointment.total_price > 0 && (
             <p className="text-sm font-bold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
               {appointment.total_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
