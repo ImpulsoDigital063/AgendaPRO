@@ -286,6 +286,39 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         </Link>
       )}
 
+      {/* Promoções · acesso a /admin/clientes/campanhas (3 abas: Sumidos,
+          Aniversário, Promoção). Olímpio reportou em 19/05 que procurou
+          a opção de criar cupom e não encontrou · este card resolve a
+          descoberta da aba Promoção (criação livre). */}
+      <Link
+        href="/admin/clientes/campanhas?tab=avulso"
+        className="flex items-center gap-3 p-3 rounded-2xl transition-all active:scale-[0.99]"
+        style={{
+          background: 'linear-gradient(135deg, rgba(124,58,237,0.14), rgba(124,58,237,0.04))',
+          border: '1px solid rgba(124,58,237,0.3)',
+        }}
+      >
+        <span
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(124,58,237,0.18)', color: '#7C3AED' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M20 12V8.4a2 2 0 0 0-.7-1.5l-5.2-4.6a2 2 0 0 0-2.6 0L6.3 6.9A2 2 0 0 0 5.6 8.4V12" />
+            <path d="M5 12h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z" />
+            <line x1="9" y1="16" x2="15" y2="16" />
+          </svg>
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+            Promoções e campanhas
+          </p>
+          <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+            Criar cupom · ver campanhas de aniversário e sumidos
+          </p>
+        </div>
+        <IconChevronRight size={16} />
+      </Link>
+
       {/* Busca */}
       <div className="relative">
         <span

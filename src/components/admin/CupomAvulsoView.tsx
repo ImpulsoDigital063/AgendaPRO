@@ -245,7 +245,7 @@ export default function CupomAvulsoView({
       <div className="space-y-4">
         <div>
           <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-            Nome da campanha (opcional)
+            Nome da promoção (opcional)
           </label>
           <input
             type="text"
@@ -260,20 +260,51 @@ export default function CupomAvulsoView({
         {professionals.length > 0 && (
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-              Direcionar pra profissional (opcional)
+              Para quem
             </label>
-            <select
-              value={professionalId}
-              onChange={(e) => setProfessionalId(e.target.value)}
-              className="admin-input w-full mt-1.5 px-3 py-2.5 text-sm"
-            >
-              <option value="">Qualquer profissional</option>
-              {professionals.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <div className="grid grid-cols-2 gap-2 mt-1.5">
+              <button
+                type="button"
+                onClick={() => setProfessionalId('')}
+                className="py-2.5 rounded-xl text-sm font-semibold transition-all"
+                style={{
+                  background: professionalId === '' ? 'var(--admin-accent-bg)' : 'var(--admin-input-bg)',
+                  border: `1px solid ${professionalId === '' ? 'var(--admin-accent-border)' : 'var(--admin-border)'}`,
+                  color: professionalId === '' ? 'var(--admin-accent)' : 'var(--admin-text)',
+                }}
+              >
+                Todo o salão
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Default pro primeiro profissional ao clicar · operador
+                  // troca no dropdown se quiser outro.
+                  if (professionalId === '') setProfessionalId(professionals[0].id)
+                }}
+                className="py-2.5 rounded-xl text-sm font-semibold transition-all"
+                style={{
+                  background: professionalId !== '' ? 'var(--admin-accent-bg)' : 'var(--admin-input-bg)',
+                  border: `1px solid ${professionalId !== '' ? 'var(--admin-accent-border)' : 'var(--admin-border)'}`,
+                  color: professionalId !== '' ? 'var(--admin-accent)' : 'var(--admin-text)',
+                }}
+              >
+                Profissional
+              </button>
+            </div>
+            {professionalId !== '' && (
+              <select
+                value={professionalId}
+                onChange={(e) => setProfessionalId(e.target.value)}
+                className="admin-input w-full mt-2 px-3 py-2.5 text-sm"
+              >
+                {professionals.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         )}
 
