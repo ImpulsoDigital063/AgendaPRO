@@ -150,6 +150,29 @@ export default function CupomAvulsoView({
     })
   }
 
+  // Preview do texto WhatsApp · usa cupom ficticio EXEMPLO123 pra mostrar
+  // como o cliente vai receber. Recalcula quando muda nome/desconto/validade.
+  // CRITICO: hooks no topo (antes do early return de createdCoupon) ·
+  // violacao de Rules of Hooks introduzida no V2 (commit b71eae6) causava
+  // "Rendered fewer hooks than expected" crash quando setCreatedCoupon
+  // disparava re-render · pagina inteira virava tela de erro.
+  const previewText = useMemo(() => {
+    const v = Number(discountValue) || 0
+    const d = Number(validityDays) || 30
+    if (v <= 0) return null
+    return buildStandaloneWhatsappText({
+      businessName,
+      code: 'EXEMPLO123',
+      shareUrl: `https://agendapro.net.br/${businessSlug}?cupom=EXEMPLO123`,
+      discountType,
+      discountValue: v,
+      expiresAt: new Date(Date.now() + d * 86400000),
+      label: label || null,
+    })
+  }, [businessName, businessSlug, label, discountType, discountValue, validityDays])
+
+  const symbolUnit = discountType === 'fixed' ? 'R$' : '%'
+
   // Após criar cupom, mostra card de sucesso. Botão "Criar outro" reseta.
   if (createdCoupon) {
     return (
@@ -238,25 +261,6 @@ export default function CupomAvulsoView({
       </div>
     )
   }
-
-  const symbolUnit = discountType === 'fixed' ? 'R$' : '%'
-
-  // Preview do texto WhatsApp · usa cupom ficticio EXEMPLO123 pra mostrar
-  // como o cliente vai receber. Recalcula quando muda nome/desconto/validade.
-  const previewText = useMemo(() => {
-    const v = Number(discountValue) || 0
-    const d = Number(validityDays) || 30
-    if (v <= 0) return null
-    return buildStandaloneWhatsappText({
-      businessName,
-      code: 'EXEMPLO123',
-      shareUrl: `https://agendapro.net.br/${businessSlug}?cupom=EXEMPLO123`,
-      discountType,
-      discountValue: v,
-      expiresAt: new Date(Date.now() + d * 86400000),
-      label: label || null,
-    })
-  }, [businessName, businessSlug, label, discountType, discountValue, validityDays])
 
   return (
     <div className="space-y-6">
