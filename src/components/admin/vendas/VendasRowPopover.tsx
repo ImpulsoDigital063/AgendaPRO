@@ -96,7 +96,7 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
         className="absolute top-0 right-0 bottom-0 flex flex-col"
         style={{
           width: 'min(420px, 100vw)',
-          background: 'var(--admin-surface)',
+          background: 'var(--admin-popover-bg, #FFFFFF)',
           borderLeft: '1px solid var(--admin-border)',
           boxShadow: '-8px 0 24px rgba(0,0,0,0.25)',
         }}

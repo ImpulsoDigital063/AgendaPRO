@@ -643,8 +643,11 @@ function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
       onClick={onClose}
     >
       <div
-        className="admin-card w-full sm:max-w-md p-5 rounded-t-3xl sm:rounded-3xl overflow-y-auto"
+        className="w-full sm:max-w-md p-5 rounded-t-3xl sm:rounded-3xl overflow-y-auto"
         style={{
+          background: 'var(--admin-popover-bg, #FFFFFF)',
+          border: '1px solid var(--admin-popover-border, #E2E8F0)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
           // svh exclui barras dinâmicas do iOS (status bar + home indicator)
           maxHeight: 'calc(100svh - 16px)',
           // Em mobile o card ancora no fundo (items-end) — reserva

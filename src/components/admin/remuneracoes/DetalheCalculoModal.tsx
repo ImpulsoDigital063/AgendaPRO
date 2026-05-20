@@ -38,7 +38,7 @@ export default function DetalheCalculoModal({ valorVenda, percent, valorBruto, v
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          background: 'var(--admin-surface)',
+          background: 'var(--admin-popover-bg, #FFFFFF)',
           border: '1px solid var(--admin-border)',
           minWidth: 320,
           boxShadow: '0 20px 50px rgba(0,0,0,0.3)',

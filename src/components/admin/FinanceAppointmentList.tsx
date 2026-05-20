@@ -296,8 +296,11 @@ function PaymentMethodSheet({
       onClick={onClose}
     >
       <div
-        className="admin-card w-full sm:max-w-md p-5 rounded-t-3xl sm:rounded-3xl"
+        className="w-full sm:max-w-md p-5 rounded-t-3xl sm:rounded-3xl"
         style={{
+          background: 'var(--admin-popover-bg, #FFFFFF)',
+          border: '1px solid var(--admin-popover-border, #E2E8F0)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
           maxHeight: 'calc(100svh - 16px)',
           paddingBottom: 'max(env(safe-area-inset-bottom, 0px) + 5rem, 5rem)',
         }}

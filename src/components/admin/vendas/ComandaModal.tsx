@@ -209,7 +209,7 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
         <div
           className="rounded-2xl flex flex-col pointer-events-auto"
           style={{
-            background: 'var(--admin-surface)',
+            background: 'var(--admin-popover-bg, #FFFFFF)',
             border: '1px solid var(--admin-border)',
             width: 'min(640px, 100%)',
             maxHeight: '90vh',

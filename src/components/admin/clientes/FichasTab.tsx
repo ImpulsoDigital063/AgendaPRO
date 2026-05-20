@@ -290,7 +290,7 @@ export default function FichasTab({ customerId }: Props) {
             className="absolute rounded-2xl p-5"
             style={{
               top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              background: 'var(--admin-surface)', border: '1px solid var(--admin-border)',
+              background: 'var(--admin-popover-bg, #FFFFFF)', border: '1px solid var(--admin-popover-border, #E2E8F0)',
               minWidth: 360, maxWidth: 480, maxHeight: '80vh', overflowY: 'auto',
               boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
             }}
