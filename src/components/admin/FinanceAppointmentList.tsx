@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient } from '@/lib/client-display'
 import { statusOf, isArchived } from '@/lib/appointment-status'
-import { IconChevronRight, IconClose } from '@/components/ui/Icon'
+import { IconChevronRight, IconClose, IconPencil } from '@/components/ui/Icon'
+import EditServicesModal from './EditServicesModal'
 
 export type FinanceRow = {
   id: string
@@ -72,6 +73,13 @@ function Row({
   const router = useRouter()
   const [showMethodMenu, setShowMethodMenu] = useState(false)
   const [updating, setUpdating] = useState(false)
+  // Edicao de servicos a partir do Financeiro · promessa cravada por
+  // Eduardo no audio 12:45:34 ("um botao na area do financeiro pra voce
+  // mudar la dentro mesmo"). Reusa EditServicesModal · suporta editar
+  // status completed/no_show/confirmed/pending. Bloqueado em archived
+  // (cancelled) e readOnly (profissional).
+  const [editOpen, setEditOpen] = useState(false)
+  const canEditServices = !readOnly && !archived
 
   async function setPayment(method: Method | null) {
     if (updating) return
@@ -119,19 +127,38 @@ function Row({
         </div>
 
         <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
-          {a.total_price ? (
-            <p
-              className="font-bold text-sm leading-none"
-              style={{
-                color: archived ? 'var(--admin-text-faded)' : 'var(--admin-text)',
-                textDecoration: archived ? 'line-through' : 'none',
-              }}
-            >
-              {formatPrice(a.total_price)}
-            </p>
-          ) : (
-            <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>—</p>
-          )}
+          <div className="flex items-center gap-1.5">
+            {a.total_price ? (
+              <p
+                className="font-bold text-sm leading-none"
+                style={{
+                  color: archived ? 'var(--admin-text-faded)' : 'var(--admin-text)',
+                  textDecoration: archived ? 'line-through' : 'none',
+                }}
+              >
+                {formatPrice(a.total_price)}
+              </p>
+            ) : (
+              <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>—</p>
+            )}
+            {canEditServices && (
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                aria-label="Editar serviços"
+                title="Editar serviços do atendimento"
+                className="inline-flex items-center justify-center rounded-full w-7 h-7 sm:w-6 sm:h-6 flex-shrink-0 transition-opacity hover:opacity-80"
+                style={{
+                  background: 'var(--admin-surface-hi)',
+                  border: '1px solid var(--admin-border)',
+                  color: 'var(--admin-text-mute)',
+                }}
+              >
+                <IconPencil size={13} className="sm:hidden" />
+                <IconPencil size={11} className="hidden sm:block" />
+              </button>
+            )}
+          </div>
           {/* Pill de status: só mostra pra status que precisam de
               atenção (cancelado, no_show, completed pago). Pra
               "confirmed" não-pago, a linha inferior já mostra
@@ -227,6 +254,15 @@ function Row({
           onClose={() => setShowMethodMenu(false)}
           clientName={a.client_name}
           price={a.total_price ?? 0}
+        />
+      )}
+
+      {editOpen && (
+        <EditServicesModal
+          appointmentId={a.id}
+          startTime={a.start_time}
+          currentStatus={a.status}
+          onClose={() => setEditOpen(false)}
         />
       )}
     </div>
