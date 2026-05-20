@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -189,7 +190,7 @@ export default function GaleriaTab({ customerId }: Props) {
       )}
 
       {/* Modal preview */}
-      {preview && (
+      {preview && createPortal(
         <div className="fixed inset-0 z-[200]" role="dialog" aria-modal="true">
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.85)' }} onClick={() => setPreview(null)} />
           <button
@@ -228,7 +229,8 @@ export default function GaleriaTab({ customerId }: Props) {
               {preview.caption}
             </p>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

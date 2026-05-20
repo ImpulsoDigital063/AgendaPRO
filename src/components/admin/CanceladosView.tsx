@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import FinancePeriodTabs from './FinancePeriodTabs'
 import { initialsFor, avatarGradient } from '@/lib/client-display'
@@ -295,7 +296,10 @@ function PaymentMethodSheet({
     { key: 'card' as const, label: 'Cartão', sub: 'Crédito ou débito' },
     { key: 'courtesy' as const, label: 'Cortesia', sub: 'Sem cobrança' },
   ]
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
@@ -353,6 +357,7 @@ function PaymentMethodSheet({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

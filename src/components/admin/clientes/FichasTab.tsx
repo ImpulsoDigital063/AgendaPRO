@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -282,7 +283,7 @@ export default function FichasTab({ customerId }: Props) {
       )}
 
       {/* Picker de templates */}
-      {pickerOpen && (
+      {pickerOpen && createPortal(
         <div className="fixed inset-0 z-[150]" role="dialog" aria-modal="true">
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setPickerOpen(false)} />
           <div
@@ -336,7 +337,8 @@ export default function FichasTab({ customerId }: Props) {
               Cancelar
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

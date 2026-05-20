@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import RegistrarPagamentoModal from './RegistrarPagamentoModal'
 
@@ -171,7 +172,7 @@ export default function RemuneracoesTable({ rows, monthIso, periodStart, periodE
       )}
 
       {/* Menu de contexto · modal-style overlay */}
-      {selected && (
+      {selected && createPortal(
         <div
           className="fixed inset-0 z-[100]"
           role="dialog"
@@ -295,7 +296,8 @@ export default function RemuneracoesTable({ rows, monthIso, periodStart, periodE
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

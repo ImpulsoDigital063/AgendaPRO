@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone, daysBetween } from '@/lib/client-display'
@@ -598,7 +599,11 @@ function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
     onSuccess()
   }
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
@@ -713,7 +718,8 @@ function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           Cliente entra com 0 pontos. Pode acumular ao usar serviços ou via "+ pontos" no detalhe.
         </p>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

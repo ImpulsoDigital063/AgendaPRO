@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import FinancePeriodTabs from './FinancePeriodTabs'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
@@ -423,7 +424,11 @@ function ExpenseFormModal({
     }
   }
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
@@ -626,6 +631,7 @@ function ExpenseFormModal({
         onConfirm={remove}
         onClose={() => setConfirmRemove(false)}
       />
-    </div>
+    </div>,
+    document.body
   )
 }

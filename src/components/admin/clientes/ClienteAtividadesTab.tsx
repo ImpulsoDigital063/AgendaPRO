@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconChevronRight, IconWhatsapp, IconExternalLink } from '@/components/ui/Icon'
@@ -359,7 +360,11 @@ function LembreteModal({
     onClose()
   }
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-[110]" role="dialog" aria-modal="true">
       <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose} />
       <div
@@ -416,6 +421,7 @@ function LembreteModal({
           Enviar Lembrete
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

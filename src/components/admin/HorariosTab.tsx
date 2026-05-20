@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import type { Professional, WorkingHours } from '@/lib/types'
 import { IconCheck, IconInfo, IconClose, IconCopy, IconPlus, IconClock } from '@/components/ui/Icon'
@@ -1279,7 +1280,11 @@ function CopyToAllProfsModal({
     ? `O outro profissional ativo vai receber`
     : `Os ${othersCount} outros profissionais ativos vão receber`
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -1389,7 +1394,8 @@ function CopyToAllProfsModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -1417,7 +1423,11 @@ function IntervalPickerModal({
     }
   }, [onClose])
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -1481,7 +1491,8 @@ function IntervalPickerModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -1515,7 +1526,11 @@ function SwitchProfessionalModal({
     }
   }, [saving, onCancel])
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -1586,7 +1601,8 @@ function SwitchProfessionalModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -1673,7 +1689,11 @@ function CopyToDaysModal({
     .map((p) => `${p.start_time}–${p.end_time}`)
     .join(' · ')
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -1786,6 +1806,7 @@ function CopyToDaysModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
