@@ -239,56 +239,86 @@ export default function CupomAvulsoView({
     )
   }
 
+  const symbolUnit = discountType === 'fixed' ? 'R$' : '%'
+
   return (
-    <div className="space-y-5">
-      {/* Form */}
-      <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Card do form · destaque visual sólido */}
+      <div
+        className="rounded-2xl p-5 space-y-5"
+        style={{
+          background: 'var(--admin-surface)',
+          border: '1px solid var(--admin-border)',
+          boxShadow: '0 1px 0 0 color-mix(in srgb, white 5%, transparent) inset',
+        }}
+      >
+        {/* Header amigável */}
         <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-            Nome da promoção (opcional)
+          <h2 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
+            Nova promoção
+          </h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+            Cupom livre pra divulgar onde quiser · panfleto, WhatsApp, Stories
+          </p>
+        </div>
+
+        {/* Nome */}
+        <div>
+          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--admin-text-2)' }}>
+            Nome
+            <span className="ml-1.5 text-[11px] font-normal" style={{ color: 'var(--admin-text-faded)' }}>opcional</span>
           </label>
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Ex: Inauguração · Indicação de cliente · Black Friday"
+            placeholder="Ex: Inauguração · Indicação · Black Friday"
             maxLength={80}
-            className="admin-input w-full mt-1.5 px-3 py-2.5 text-sm"
+            className="admin-input w-full px-3.5 py-3 text-sm"
           />
         </div>
 
+        {/* Para quem */}
         {professionals.length > 0 && (
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+            <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--admin-text-2)' }}>
               Para quem
             </label>
-            <div className="grid grid-cols-2 gap-2 mt-1.5">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setProfessionalId('')}
-                className="py-2.5 rounded-xl text-sm font-semibold transition-all"
+                className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
                 style={{
                   background: professionalId === '' ? 'var(--admin-accent-bg)' : 'var(--admin-input-bg)',
-                  border: `1px solid ${professionalId === '' ? 'var(--admin-accent-border)' : 'var(--admin-border)'}`,
+                  border: `1.5px solid ${professionalId === '' ? 'var(--admin-accent)' : 'var(--admin-border)'}`,
                   color: professionalId === '' ? 'var(--admin-accent)' : 'var(--admin-text)',
                 }}
               >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
                 Todo o salão
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  // Default pro primeiro profissional ao clicar · operador
-                  // troca no dropdown se quiser outro.
                   if (professionalId === '') setProfessionalId(professionals[0].id)
                 }}
-                className="py-2.5 rounded-xl text-sm font-semibold transition-all"
+                className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
                 style={{
                   background: professionalId !== '' ? 'var(--admin-accent-bg)' : 'var(--admin-input-bg)',
-                  border: `1px solid ${professionalId !== '' ? 'var(--admin-accent-border)' : 'var(--admin-border)'}`,
+                  border: `1.5px solid ${professionalId !== '' ? 'var(--admin-accent)' : 'var(--admin-border)'}`,
                   color: professionalId !== '' ? 'var(--admin-accent)' : 'var(--admin-text)',
                 }}
               >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
                 Profissional
               </button>
             </div>
@@ -296,7 +326,7 @@ export default function CupomAvulsoView({
               <select
                 value={professionalId}
                 onChange={(e) => setProfessionalId(e.target.value)}
-                className="admin-input w-full mt-2 px-3 py-2.5 text-sm"
+                className="admin-input w-full mt-2 px-3.5 py-3 text-sm"
               >
                 {professionals.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -308,52 +338,65 @@ export default function CupomAvulsoView({
           </div>
         )}
 
+        {/* Desconto */}
         <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--admin-text-2)' }}>
             Desconto
           </label>
-          <div className="flex gap-2 mt-1.5">
+          <div className="grid grid-cols-2 gap-2 mb-2">
             <button
               type="button"
               onClick={() => setDiscountType('fixed')}
-              className="flex-1 py-2 rounded-lg text-xs font-semibold"
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
               style={{
                 background: discountType === 'fixed' ? 'var(--admin-accent)' : 'var(--admin-input-bg)',
                 color: discountType === 'fixed' ? '#fff' : 'var(--admin-text)',
-                border: '1px solid var(--admin-border)',
+                border: `1.5px solid ${discountType === 'fixed' ? 'var(--admin-accent)' : 'var(--admin-border)'}`,
               }}
             >
-              R$ (valor fixo)
+              <span className="text-base font-bold tabular-nums">R$</span>
+              Valor fixo
             </button>
             <button
               type="button"
               onClick={() => setDiscountType('percent')}
-              className="flex-1 py-2 rounded-lg text-xs font-semibold"
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
               style={{
                 background: discountType === 'percent' ? 'var(--admin-accent)' : 'var(--admin-input-bg)',
                 color: discountType === 'percent' ? '#fff' : 'var(--admin-text)',
-                border: '1px solid var(--admin-border)',
+                border: `1.5px solid ${discountType === 'percent' ? 'var(--admin-accent)' : 'var(--admin-border)'}`,
               }}
             >
-              % (porcentagem)
+              <span className="text-base font-bold">%</span>
+              Porcentagem
             </button>
           </div>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={discountValue}
-            onChange={(e) => setDiscountValue(e.target.value)}
-            min={1}
-            className="admin-input w-full mt-2 px-3 py-2.5 text-sm"
-            placeholder={discountType === 'percent' ? '20' : '15'}
-          />
+          {/* Input com sufixo inline · valor + unidade juntos */}
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              value={discountValue}
+              onChange={(e) => setDiscountValue(e.target.value)}
+              min={1}
+              className="admin-input w-full pl-3.5 pr-14 py-3 text-base font-bold tabular-nums"
+              placeholder={discountType === 'percent' ? '20' : '15'}
+            />
+            <span
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              {symbolUnit}
+            </span>
+          </div>
         </div>
 
+        {/* Validade */}
         <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+          <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--admin-text-2)' }}>
             Validade
           </label>
-          <div className="flex items-center gap-2 mt-1.5">
+          <div className="relative w-32">
             <input
               type="number"
               inputMode="numeric"
@@ -361,25 +404,31 @@ export default function CupomAvulsoView({
               onChange={(e) => setValidityDays(e.target.value)}
               min={1}
               max={365}
-              className="admin-input w-24 px-3 py-2.5 text-sm"
+              className="admin-input w-full pl-3.5 pr-12 py-3 text-sm font-semibold tabular-nums"
             />
-            <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>dias</span>
+            <span
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium pointer-events-none"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              dias
+            </span>
           </div>
         </div>
 
-        {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: '#EF4444' }}>{error}</p>}
 
         <button
           type="button"
           onClick={gerar}
           disabled={submitting}
-          className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-50"
+          className="w-full py-3.5 rounded-xl text-sm font-bold transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
-            background: 'var(--admin-accent)',
+            background: 'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 70%, black))',
             color: '#fff',
+            boxShadow: '0 6px 18px -4px color-mix(in srgb, var(--admin-accent) 40%, transparent)',
           }}
         >
-          {submitting ? 'Gerando...' : 'Gerar cupom'}
+          {submitting ? 'Criando...' : 'Criar promoção'}
         </button>
       </div>
 
