@@ -511,17 +511,44 @@ export default function BookingFlow({
     // marcado completed por engano ainda ocupa slot. Se nao incluir,
     // CIC reportou (rodada 4) que slots ocupados apareciam livres pro
     // cliente publico — overbooking real possivel.
-    const { data: existing } = await supabase
-      .from('appointments')
-      .select('start_time, end_time')
-      .eq('professional_id', professional.id)
-      .eq('appointment_date', formatDate(date))
-      .in('status', ['pending', 'confirmed', 'completed'])
+    //
+    // V53 bloqueios: query em paralelo · cliente publico NAO podia ver
+    // bloqueios (cravado por Eduardo em 19/05 apos descobrir gap).
+    // Inclui bloqueios do prof + bloqueios do business inteiro
+    // (professional_id IS NULL).
+    const dateStr = formatDate(date)
+    const [{ data: existing }, { data: blocks }] = await Promise.all([
+      supabase
+        .from('appointments')
+        .select('start_time, end_time')
+        .eq('professional_id', professional.id)
+        .eq('appointment_date', dateStr)
+        .in('status', ['pending', 'confirmed', 'completed']),
+      supabase
+        .from('business_blocks')
+        .select('start_time, end_time, block_type, day_of_week, block_date')
+        .eq('business_id', business.id)
+        .eq('active', true)
+        .or(`professional_id.eq.${professional.id},professional_id.is.null`),
+    ])
 
-    const booked = (existing || []).map((a) => ({
-      start: toMinutes(a.start_time.slice(0, 5)),
-      end: toMinutes(a.end_time.slice(0, 5)),
-    }))
+    const blockedRanges = (blocks ?? [])
+      .filter((b) =>
+        (b.block_type === 'recurring' && b.day_of_week === dayOfWeek)
+        || (b.block_type === 'specific' && b.block_date === dateStr)
+      )
+      .map((b) => ({
+        start: toMinutes((b.start_time as string).slice(0, 5)),
+        end: toMinutes((b.end_time as string).slice(0, 5)),
+      }))
+
+    const booked = [
+      ...(existing || []).map((a) => ({
+        start: toMinutes(a.start_time.slice(0, 5)),
+        end: toMinutes(a.end_time.slice(0, 5)),
+      })),
+      ...blockedRanges,
+    ]
     const step = getSlotStep(date)
     const serviceDuration = getServiceDuration(date)
 
