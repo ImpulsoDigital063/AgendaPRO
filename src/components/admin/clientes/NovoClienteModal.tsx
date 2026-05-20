@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { IconClose, IconChevronDown, IconChevronRight } from '@/components/ui/Icon'
 
 type Props = {
@@ -150,7 +151,12 @@ export default function NovoClienteModal({ onClose, onSuccess }: Props) {
     onSuccess(data.customer?.id)
   }
 
-  return (
+  // Portal guard pra SSR. Sem isso, createPortal explode no build.
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
@@ -502,7 +508,8 @@ export default function NovoClienteModal({ onClose, onSuccess }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
