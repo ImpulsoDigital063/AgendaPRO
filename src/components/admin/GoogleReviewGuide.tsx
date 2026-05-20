@@ -1,5 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+
 type Props = {
   onClose: () => void
 }
@@ -8,7 +11,11 @@ export default function GoogleReviewGuide({ onClose }: Props) {
   const accent = '#4285F4'
   const accentBg = 'rgba(66,133,244,0.12)'
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-[100] bg-black/70 flex items-end sm:items-center" onClick={onClose}>
       <div
         className="bg-white w-full max-w-lg mx-auto rounded-t-3xl sm:rounded-3xl p-6 pb-10 sm:pb-6 animate-slideUp max-h-[90vh] overflow-y-auto"
@@ -157,6 +164,7 @@ export default function GoogleReviewGuide({ onClose }: Props) {
           animation: slideUp 0.3s ease-out;
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   )
 }

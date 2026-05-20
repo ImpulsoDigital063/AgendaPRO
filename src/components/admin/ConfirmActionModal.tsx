@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { IconClose } from '@/components/ui/Icon'
 
 type Tone = 'danger' | 'warn' | 'neutral'
@@ -59,11 +60,14 @@ export default function ConfirmActionModal({
     }
   }, [open, loading, onClose])
 
-  if (!open) return null
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+
+  if (!open || !portalReady) return null
 
   const t = TONES[tone]
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -141,6 +145,7 @@ export default function ConfirmActionModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

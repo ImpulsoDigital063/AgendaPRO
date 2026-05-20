@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { IconClose } from '@/components/ui/Icon'
 
 type Props = {
@@ -24,7 +25,11 @@ export default function DetalheCalculoModal({ valorVenda, percent, valorBruto, v
     return () => window.removeEventListener('keydown', h)
   }, [onClose])
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-[150]" role="dialog" aria-modal="true">
       <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose} />
       <div
@@ -95,6 +100,7 @@ export default function DetalheCalculoModal({ valorVenda, percent, valorBruto, v
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

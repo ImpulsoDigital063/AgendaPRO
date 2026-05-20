@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
 import { IconClose, IconWhatsapp, IconSparkles } from '@/components/ui/Icon'
@@ -268,7 +269,11 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const phoneDigits = customer?.phone.replace(/\D/g, '') ?? ''
   const waUrl = phoneDigits ? `https://wa.me/55${phoneDigits}` : null
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
@@ -711,7 +716,8 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
           ) : null}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

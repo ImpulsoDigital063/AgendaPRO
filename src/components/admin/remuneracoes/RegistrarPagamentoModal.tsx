@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconArrowLeft, IconCheck } from '@/components/ui/Icon'
@@ -154,7 +155,11 @@ export default function RegistrarPagamentoModal({
     router.refresh()
   }
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-[200]" role="dialog" aria-modal="true">
       <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} />
 
@@ -410,6 +415,7 @@ export default function RegistrarPagamentoModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

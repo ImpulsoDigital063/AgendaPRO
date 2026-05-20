@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconArrowLeft, IconPlus } from '@/components/ui/Icon'
@@ -128,7 +129,11 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
   const initial = (customer?.name ?? '?').slice(0, 1).toUpperCase()
   const hasHistory = counts.atendimentos > 0
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true">
       {/* Overlay */}
       <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose} />
@@ -416,7 +421,8 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
           }}
         />
       )}
-    </div>
+    </div>,
+    document.body
   )
 }
 

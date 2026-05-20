@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { getOnboardingCopy } from '@/lib/onboarding-content'
 
 /**
@@ -54,9 +55,12 @@ export default function WelcomeModal({ businessName, category }: Props) {
     setTimeout(() => setOpen(false), 250)
   }
 
-  if (!open) return null
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
 
-  return (
+  if (!open || !portalReady) return null
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -162,7 +166,8 @@ export default function WelcomeModal({ businessName, category }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { IconClose, IconChevronDown, IconTrash, IconCheck } from '@/components/ui/Icon'
 
@@ -194,7 +195,11 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
     router.refresh()
   }
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-[150]" role="dialog" aria-modal="true">
       <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose} />
 
@@ -583,6 +588,7 @@ export default function ComandaModal({ invoiceId, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

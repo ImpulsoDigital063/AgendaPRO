@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { IconClose, IconWhatsapp, IconPencil, IconTrash, IconUser, IconExternalLink } from '@/components/ui/Icon'
 import FaturarModal from './FaturarModal'
 import ComandaModal from './ComandaModal'
@@ -77,7 +78,11 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
   const isPaid = !!sale.paid_at
   const isPending = !isInvoiced && !isPaid && sale.status !== 'cancelled'
 
-  return (
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+  if (!portalReady) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true">
       {/* Overlay clicável */}
       <div
@@ -286,6 +291,7 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
           onClose={() => setShowComanda(false)}
         />
       )}
-    </div>
+    </div>,
+    document.body
   )
 }
