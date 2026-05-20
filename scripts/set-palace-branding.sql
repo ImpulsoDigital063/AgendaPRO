@@ -13,9 +13,11 @@
 -- - Creme (neutro):          #F4EDE0
 -- =================================================================
 
+-- IMPORTANTE: logo apontando pro PNG OFICIAL premium (dourado + turquesa em creme).
+-- NÃO usar versão mono · NÃO usar SVG simplificado · só os arquivos que Marko entregou.
 UPDATE public.businesses
 SET
-  brand_logo_url   = '/brand/palace/logo-teal-on-cream.png',
+  brand_logo_url   = '/brand/palace/logo-on-cream.png',
   brand_primary    = '#1AA9A8',
   brand_secondary  = '#C9A87C',
   brand_accent     = '#D9B5A7',
