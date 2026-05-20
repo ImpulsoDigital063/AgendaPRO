@@ -359,17 +359,18 @@ function IconChart({ size = 20 }: { size?: number }) {
  * o padrão default (BrandHeaderLogo).
  */
 function PalaceBrandArea({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  // Logo TRADICIONAL/PRINCIPAL: fundo turquesa #1AA9A8 com símbolo dourado
+  // e wordmark PALACE branco. É a versão oficial cravada por Marko.
+  // Variações com fundo creme/nude aparecem em OUTRAS telas (não na principal).
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-2">
-        {/* Card creme com logo cropada pra mostrar só o símbolo (parte superior).
-            object-position 'center top' + height fixa = só a ogiva aparece. */}
         <div
           className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0"
-          style={{ background: '#F4EDE0' }}
+          style={{ background: '#1AA9A8' }}
         >
           <Image
-            src="/brand/palace/logo-on-cream.png"
+            src="/brand/palace/logo-on-teal.png"
             alt="Palace"
             width={96}
             height={96}
@@ -400,17 +401,17 @@ function PalaceBrandArea({ collapsed, onToggle }: { collapsed: boolean; onToggle
 
   return (
     <div className="flex items-center gap-2">
-      {/* Logo oficial completa · símbolo + wordmark · em card creme da marca */}
+      {/* Logo tradicional · fundo turquesa com símbolo dourado + PALACE branco */}
       <div
         className="rounded-2xl overflow-hidden flex-shrink-0"
-        style={{ background: '#F4EDE0', padding: 6 }}
+        style={{ background: '#1AA9A8' }}
       >
         <Image
-          src="/brand/palace/logo-on-cream.png"
+          src="/brand/palace/logo-on-teal.png"
           alt="Palace Nail Spa"
           width={140}
           height={140}
-          style={{ width: 100, height: 100, objectFit: 'contain', display: 'block' }}
+          style={{ width: 110, height: 110, objectFit: 'contain', display: 'block' }}
           priority
         />
       </div>
