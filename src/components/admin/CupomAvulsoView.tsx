@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconWhatsapp, IconCopy, IconCheck } from '@/components/ui/Icon'
 import { formatDiscount, formatValidity, buildStandaloneWhatsappText } from '@/lib/coupon-templates'
@@ -241,8 +241,56 @@ export default function CupomAvulsoView({
 
   const symbolUnit = discountType === 'fixed' ? 'R$' : '%'
 
+  // Preview do texto WhatsApp · usa cupom ficticio EXEMPLO123 pra mostrar
+  // como o cliente vai receber. Recalcula quando muda nome/desconto/validade.
+  const previewText = useMemo(() => {
+    const v = Number(discountValue) || 0
+    const d = Number(validityDays) || 30
+    if (v <= 0) return null
+    return buildStandaloneWhatsappText({
+      businessName,
+      code: 'EXEMPLO123',
+      shareUrl: `https://agendapro.net.br/${businessSlug}?cupom=EXEMPLO123`,
+      discountType,
+      discountValue: v,
+      expiresAt: new Date(Date.now() + d * 86400000),
+      label: label || null,
+    })
+  }, [businessName, businessSlug, label, discountType, discountValue, validityDays])
+
   return (
     <div className="space-y-6">
+      {/* Como funciona · padroniza com Sumidos/Aniversário */}
+      <div
+        className="rounded-2xl p-4"
+        style={{
+          background: 'linear-gradient(135deg, rgba(124,58,237,0.10), rgba(168,85,247,0.04))',
+          border: '1px solid var(--admin-border)',
+        }}
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: '#7C3AED' }}>
+          Como funciona
+        </p>
+        <ol className="space-y-2 text-xs leading-relaxed">
+          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
+            <span className="font-bold flex-shrink-0" style={{ color: '#7C3AED' }}>1.</span>
+            <span>Você define o desconto, validade e pra quem vale</span>
+          </li>
+          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
+            <span className="font-bold flex-shrink-0" style={{ color: '#7C3AED' }}>2.</span>
+            <span>Sistema cria <strong>1 cupom único com link compartilhável</strong></span>
+          </li>
+          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
+            <span className="font-bold flex-shrink-0" style={{ color: '#7C3AED' }}>3.</span>
+            <span>Você divulga onde quiser: <strong>WhatsApp, Stories, panfleto, QR Code</strong></span>
+          </li>
+          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
+            <span className="font-bold flex-shrink-0" style={{ color: '#7C3AED' }}>4.</span>
+            <span>Cliente clica no link, agenda, e o desconto é aplicado automático (1 uso por telefone)</span>
+          </li>
+        </ol>
+      </div>
+
       {/* Card do form · destaque visual sólido */}
       <div
         className="rounded-2xl p-5 space-y-5"
@@ -415,6 +463,28 @@ export default function CupomAvulsoView({
           </div>
         </div>
 
+        {/* Preview WhatsApp · como o cliente vai receber */}
+        {previewText && (
+          <div>
+            <label className="block text-sm font-semibold mb-1.5" style={{ color: 'var(--admin-text-2)' }}>
+              Como o cliente vai receber
+            </label>
+            <p className="text-[11px] mb-2" style={{ color: 'var(--admin-text-mute)' }}>
+              Exemplo do texto que vai junto com o link de divulgação.
+            </p>
+            <div
+              className="rounded-xl p-3 text-sm whitespace-pre-wrap leading-relaxed"
+              style={{
+                background: 'rgba(37,211,102,0.08)',
+                border: '1px solid rgba(37,211,102,0.20)',
+                color: 'var(--admin-text)',
+              }}
+            >
+              {previewText}
+            </div>
+          </div>
+        )}
+
         {error && <p className="text-sm" style={{ color: '#EF4444' }}>{error}</p>}
 
         <button
@@ -428,7 +498,7 @@ export default function CupomAvulsoView({
             boxShadow: '0 6px 18px -4px color-mix(in srgb, var(--admin-accent) 40%, transparent)',
           }}
         >
-          {submitting ? 'Criando...' : 'Criar promoção'}
+          {submitting ? 'Criando...' : 'Criar promoção e ver link'}
         </button>
       </div>
 
