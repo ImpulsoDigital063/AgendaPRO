@@ -6,6 +6,7 @@ import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import AppSplash from '@/components/admin/AppSplash'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
+import SlugCacher from '@/components/admin/brand/SlugCacher'
 import AdminDesktopSidebar from '@/components/admin/desktop/AdminDesktopSidebar'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -105,6 +106,7 @@ export default async function AdminLayout({
   return (
     <AdminThemeProvider initial={initialTheme}>
       <BrandThemeInjector brand={brand} />
+      <SlugCacher slug={businessSlug} />
       <div className="admin-shell admin-shell--with-sidebar" data-admin-theme={initialTheme}>
         <AppSplash />
         <InstallBanner />

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
+import BrandHeaderLogo from '@/components/admin/BrandHeaderLogo'
 import ProfAppointmentCard from '@/components/profissional/ProfAppointmentCard'
 import ProfTodayList from '@/components/profissional/ProfTodayList'
 import WelcomeCard from '@/components/profissional/WelcomeCard'
@@ -24,16 +25,16 @@ export default async function ProfissionalPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/profissional/login')
 
-  // Busca o profissional logado
+  // Busca o profissional logado · inclui brand_logo_url pra header
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, business:businesses(name, slug, punctuality_bonus_points)')
+    .select('*, business:businesses(name, slug, punctuality_bonus_points, brand_logo_url)')
     .eq('auth_user_id', user.id)
     .single()
 
   if (!professional) redirect('/profissional/login')
 
-  const business = professional.business as { name: string; slug: string; punctuality_bonus_points?: number }
+  const business = professional.business as { name: string; slug: string; punctuality_bonus_points?: number; brand_logo_url?: string | null }
   const punctualityBonus = business.punctuality_bonus_points ?? 10
 
   const today = new Date().toISOString().split('T')[0]
@@ -165,13 +166,9 @@ export default async function ProfissionalPage() {
       {/* Header */}
       <header className="relative max-w-lg mx-auto px-4 pt-7 pb-6">
         <div className="flex items-center justify-between mb-6">
-          <Image
-            src="/logo-agendapro-dark.svg"
-            alt="AgendaPRO"
-            width={130}
-            height={26}
-            priority
-            style={{ filter: 'var(--admin-logo-filter)' }}
+          <BrandHeaderLogo
+            brandLogoUrl={business.brand_logo_url ?? null}
+            businessName={business.name}
           />
           <div className="flex items-center gap-2">
             <ThemeToggle compact />

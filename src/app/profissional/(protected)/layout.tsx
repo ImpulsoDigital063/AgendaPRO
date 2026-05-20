@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import ProfissionalBottomNav from '@/components/profissional/ProfissionalBottomNav'
 import InstallBanner from '@/components/admin/InstallBanner'
+import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
+import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
+import SlugCacher from '@/components/admin/brand/SlugCacher'
 import { cookies } from 'next/headers'
 
 export default async function ProfissionalLayout({
@@ -17,10 +20,10 @@ export default async function ProfissionalLayout({
     redirect('/profissional/login')
   }
 
-  // Verifica se e um profissional com auth_user_id
+  // Verifica se e um profissional com auth_user_id · puxa brand do business
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, employment_type, is_receptionist')
+    .select('id, business_id, password_changed, employment_type, is_receptionist, business:businesses(slug, brand_primary, brand_secondary, brand_accent, brand_neutral)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -58,11 +61,28 @@ export default async function ProfissionalLayout({
     .eq('status', 'pending')
     .gte('appointment_date', todayStr)
 
+  const business = (professional.business ?? {}) as {
+    slug?: string | null
+    brand_primary?: string | null
+    brand_secondary?: string | null
+    brand_accent?: string | null
+    brand_neutral?: string | null
+  }
+  const businessSlug = business.slug ?? null
+
   return (
     <AdminThemeProvider initial={initialTheme}>
+      <BrandThemeInjector brand={business} />
+      <SlugCacher slug={businessSlug} />
       <div className="admin-shell" data-admin-theme={initialTheme}>
+        {/* Decor scatter · só Palace · mobile+desktop · profissional opera no celular */}
+        {businessSlug === 'palace-nail-spa' && (
+          <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+            <BrandDecorBackground pattern="scatter" brand={businessSlug} opacity={0.02} />
+          </div>
+        )}
         <InstallBanner area="profissional" />
-        <div style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
+        <div className="relative z-10" style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
           {children}
         </div>
         <ProfissionalBottomNav
