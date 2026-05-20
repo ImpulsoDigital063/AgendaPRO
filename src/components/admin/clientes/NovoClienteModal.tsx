@@ -159,14 +159,20 @@ export default function NovoClienteModal({ onClose, onSuccess }: Props) {
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
-      style={{ background: 'rgba(0,0,0,0.6)' }}
+      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
       <div
         className="w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
         style={{
-          background: 'var(--admin-surface)',
-          border: '1px solid var(--admin-border)',
+          // Sólido pra não vazar conteúdo de fundo no tema dark
+          // (admin-surface é translúcido · usa popover-bg igual o
+          // PaymentMethodModal e ConfirmActionModal). Reportado pelo
+          // Olímpio em 20/05/2026 via áudio: "tela meio clara mistura
+          // com info do fundo · só escurecer a primeira tela".
+          background: 'var(--admin-popover-bg, #FFFFFF)',
+          border: '1px solid var(--admin-popover-border, #E2E8F0)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
           maxHeight: 'calc(100svh - 16px)',
         }}
         onClick={(e) => e.stopPropagation()}
