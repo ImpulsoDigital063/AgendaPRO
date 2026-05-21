@@ -55,6 +55,7 @@ export default async function AdminMarcarPage({
       defaultProfId={sp.prof ?? null}
       defaultDate={sp.date ?? null}
       defaultTime={sp.time ?? null}
+      area="admin"
     />
   )
 }

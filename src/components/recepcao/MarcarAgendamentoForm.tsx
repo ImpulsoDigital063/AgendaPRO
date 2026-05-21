@@ -34,6 +34,8 @@ type Props = {
   defaultDate?: string | null
   /** Horário pré-selecionado (HH:MM) */
   defaultTime?: string | null
+  /** Área que abriu o form · controla label header + rota de redirect pós-save */
+  area?: 'recepcao' | 'admin'
 }
 
 type Step = 'cliente' | 'profissional' | 'servico' | 'horario' | 'confirma'
@@ -46,6 +48,7 @@ export default function MarcarAgendamentoForm({
   defaultProfId = null,
   defaultDate = null,
   defaultTime = null,
+  area = 'recepcao',
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
@@ -264,8 +267,17 @@ export default function MarcarAgendamentoForm({
       })
     }
 
-    router.push('/recepcao')
-    router.refresh()
+    // Redirect baseado na área que abriu o form.
+    // Admin volta pra /admin (timeline) · recep volta pra /recepcao.
+    // Usar location.href força full nav · evita route guard rejeitar Adm em /recepcao.
+    if (area === 'admin') {
+      const params = new URLSearchParams()
+      if (date) params.set('date', date)
+      window.location.href = `/admin${params.toString() ? '?' + params.toString() : ''}`
+    } else {
+      router.push('/recepcao')
+      router.refresh()
+    }
   }
 
   return (
@@ -288,7 +300,7 @@ export default function MarcarAgendamentoForm({
           )}
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-              Recepção · Marcar
+              {area === 'admin' ? 'Atendimentos · Novo' : 'Recepção · Marcar'}
             </p>
             <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
               {step === 'cliente' && 'Quem é o cliente?'}
