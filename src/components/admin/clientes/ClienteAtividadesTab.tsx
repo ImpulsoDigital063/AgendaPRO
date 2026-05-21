@@ -31,6 +31,8 @@ type Props = {
   customerId: string
   customerName: string
   customerPhone: string | null
+  /** Fecha o drawer pai · usado ao Reagendar pra navegação ter efeito visual */
+  onCloseDrawer?: () => void
 }
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -64,7 +66,7 @@ const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'cancelled', label: 'Cancelados' },
 ]
 
-export default function ClienteAtividadesTab({ customerId, customerName, customerPhone }: Props) {
+export default function ClienteAtividadesTab({ customerId, customerName, customerPhone, onCloseDrawer }: Props) {
   const router = useRouter()
   const [activities, setActivities] = useState<Activity[]>([])
   const [invoicesById, setInvoicesById] = useState<Record<string, InvoiceRef>>({})
@@ -168,10 +170,13 @@ export default function ClienteAtividadesTab({ customerId, customerName, custome
   }
 
   function reagendarVia(activity: Activity) {
-    // Redireciona pra timeline na data do agendamento · prof pré-selecionado
+    // Redireciona pra timeline na data do agendamento · prof pré-selecionado.
+    // Fecha o drawer ANTES de navegar · senão fica sobreposto e usuario nao
+    // ve que algo aconteceu.
     const date = activity.appointment_date
-    router.push(`/admin?date=${date}#prof-${activity.professional_id ?? ''}`)
     setOpenKebab(null)
+    onCloseDrawer?.()
+    router.push(`/admin?date=${date}#prof-${activity.professional_id ?? ''}`)
   }
 
   async function confirmCancelar(activityId: string) {
@@ -607,16 +612,22 @@ function KebabMenu({
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
     }
+    // Usar 'click' (NÃO 'mousedown') · mousedown dispara ANTES do click do
+    // botão, fechando o dropdown sem deixar o botão processar. Click vem
+    // depois · botão dispara handler primeiro · dropdown fecha em seguida.
     function onClick(e: MouseEvent) {
-      if (btnRef.current && !btnRef.current.contains(e.target as Node)) {
-        onClose()
-      }
+      const target = e.target as Node
+      if (btnRef.current?.contains(target)) return
+      // Se clique foi dentro do menu portal · não fecha
+      const menu = document.querySelector('[data-kebab-menu="true"]')
+      if (menu?.contains(target)) return
+      onClose()
     }
     document.addEventListener('keydown', onKey)
-    setTimeout(() => document.addEventListener('mousedown', onClick), 0)
+    setTimeout(() => document.addEventListener('click', onClick), 0)
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('click', onClick)
     }
   }, [open, onClose])
 
@@ -639,6 +650,7 @@ function KebabMenu({
       </button>
       {open && coords && typeof document !== 'undefined' && createPortal(
         <div
+          data-kebab-menu="true"
           onClick={(e) => e.stopPropagation()}
           style={{
             position: 'fixed',

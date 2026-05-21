@@ -367,6 +367,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                   customerId={customer.id}
                   customerName={customer.name}
                   customerPhone={customer.phone}
+                  onCloseDrawer={onClose}
                 />
               )}
               {tab === 'galeria' && <GaleriaTab customerId={customer.id} />}
