@@ -83,16 +83,18 @@ export default function AppointmentActions({
   async function cancelar() {
     setLoading(true)
     setError(null)
-    // Update status direto via supabase client (RLS protege)
-    const { createClient } = await import('@/lib/supabase/client')
-    const sb = createClient()
-    const { error: e } = await sb
-      .from('appointments')
-      .update({ status: 'cancelled' })
-      .eq('id', appointmentId)
+    // Rota server-side com read-after-write · não dá pra confiar em supabase
+    // client direto: RLS pode bloquear silenciosamente (0 rows · sem error).
+    const res = await fetch(`/api/admin/appointments/${appointmentId}/cancel`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+    })
     setLoading(false)
-    if (e) {
-      setError('Erro ao cancelar')
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error === 'verification_failed'
+        ? `Cancelamento não foi confirmado pelo banco (status atual: ${d.actual_status ?? 'desconhecido'})`
+        : (d.detail || d.error || 'Erro ao cancelar'))
       return
     }
     setConfirmCancel(false)

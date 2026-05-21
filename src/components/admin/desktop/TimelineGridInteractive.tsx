@@ -48,16 +48,20 @@ function timeToMinutes(t: string): number {
   return h * 60 + m
 }
 
-function colorForService(seed: string | null): string {
+function colorForService(a: Appt): string {
+  // cancelado tem prioridade sobre cor do serviço — visual unificado pra "morto"
+  if (a.status === 'cancelled') return '#94A3B8'
+  const seed = a.service_name
   if (!seed) return SERVICE_COLORS[0]
   let h = 0
   for (let i = 0; i < seed.length; i++) h = (h << 5) - h + seed.charCodeAt(i)
   return SERVICE_COLORS[Math.abs(h) % SERVICE_COLORS.length]
 }
 
-// Por ANDAMENTO · fluxo do atendimento (status === pending/confirmed/completed/no_show)
+// Por ANDAMENTO · fluxo do atendimento (status === pending/confirmed/completed/no_show/cancelled)
 // Ignora pagamento. Pra "ja foi feito o atendimento?".
 function colorForProgress(a: Appt): string {
+  if (a.status === 'cancelled') return '#94A3B8' // cinza · cancelado
   if (a.status === 'pending') return '#F59E0B' // amber · aguardando confirmação
   if (a.status === 'completed') return '#3B82F6' // blue · realizado
   if (a.status === 'no_show') return '#94A3B8' // cinza · faltou
@@ -212,7 +216,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
     if (colorMode === 'professional') return colorForProf(a.professional_id)
     if (colorMode === 'progress') return colorForProgress(a)
     if (colorMode === 'payment') return colorForPayment(a)
-    return colorForService(a.service_name) // default
+    return colorForService(a) // default
   }
 
   return (
@@ -502,6 +506,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
                       const color = getColor(a)
                       const isPaid = !!a.paid_at
                       const isPending = a.status === 'pending'
+                      const isCancelled = a.status === 'cancelled'
                       return (
                         <button
                           key={a.id}
@@ -520,8 +525,10 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
                             boxShadow: `0 4px 12px -4px color-mix(in srgb, ${color} 30%, transparent), 0 1px 2px rgba(0,0,0,0.04)`,
                             zIndex: 2,
                             cursor: 'pointer',
+                            opacity: isCancelled ? 0.55 : 1,
+                            textDecoration: isCancelled ? 'line-through' : 'none',
                           }}
-                          title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}`}
+                          title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}${isCancelled ? ' · CANCELADO' : ''}`}
                         >
                           <span className="text-[11px] font-bold tabular-nums leading-tight" style={{ color }}>
                             {a.start_time.slice(0, 5)} · {a.end_time.slice(0, 5)}
@@ -534,7 +541,20 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
                               {a.service_name ?? '—'}
                             </span>
                           )}
-                          {isPending && (
+                          {isCancelled && (
+                            <span
+                              className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
+                              style={{
+                                background: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
+                                color: '#fff',
+                                boxShadow: '0 2px 4px -1px rgba(185,28,28,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+                                textDecoration: 'none',
+                              }}
+                            >
+                              Cancelado
+                            </span>
+                          )}
+                          {!isCancelled && isPending && (
                             <span
                               className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
                               style={{
@@ -546,7 +566,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
                               A confirmar
                             </span>
                           )}
-                          {isPaid && (
+                          {!isCancelled && isPaid && (
                             <span
                               className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
                               style={{
