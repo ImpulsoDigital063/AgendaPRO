@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { IconChevronLeft, IconChevronRight } from '@/components/ui/Icon'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useRouter } from 'next/navigation'
+import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus } from '@/components/ui/Icon'
 
 type Prof = { id: string; name: string; photo_url: string | null }
 type Appt = {
@@ -25,7 +27,17 @@ type Props = {
   appts: Appt[]
   hourStart: number
   hourEnd: number
+  /** Data da timeline (YYYY-MM-DD) · usado nos links do popover */
+  date: string
 }
+
+type PopoverState = {
+  profId: string
+  profName: string
+  time: string // HH:MM
+  x: number
+  y: number
+} | null
 
 const SLOT_HEIGHT_30 = 56 // base · 30min · igual ao anterior
 const SERVICE_COLORS = ['#01A197', '#C9A961', '#8B5CF6', '#EC4899', '#3B82F6', '#10B981', '#F59E0B', '#EF4444']
@@ -75,7 +87,65 @@ function buildSlots(hourStart: number, hourEnd: number, interval: Interval): str
   return out
 }
 
-export default function TimelineGridInteractive({ businessId, profs, appts, hourStart, hourEnd }: Props) {
+export default function TimelineGridInteractive({ businessId, profs, appts, hourStart, hourEnd, date }: Props) {
+  const router = useRouter()
+  const [popover, setPopover] = useState<PopoverState>(null)
+  const [hoveredSlot, setHoveredSlot] = useState<string | null>(null) // `${profId}-${time}`
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+
+  // Fecha popover · ESC + click fora
+  useEffect(() => {
+    if (!popover) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setPopover(null) }
+    function onClick(e: MouseEvent) {
+      const target = e.target as Element
+      if (!target.closest('[data-slot-popover]') && !target.closest('[data-slot-trigger]')) {
+        setPopover(null)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    setTimeout(() => document.addEventListener('click', onClick), 0)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('click', onClick)
+    }
+  }, [popover])
+
+  function openSlotPopover(e: React.MouseEvent, profId: string, profName: string, time: string) {
+    e.stopPropagation()
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setPopover({
+      profId,
+      profName,
+      time,
+      x: rect.left + rect.width / 2,
+      y: rect.top + window.scrollY,
+    })
+  }
+
+  function novoAtendimento() {
+    if (!popover) return
+    const params = new URLSearchParams({
+      prof: popover.profId,
+      date,
+      time: popover.time,
+    })
+    router.push(`/admin/marcar?${params.toString()}`)
+    setPopover(null)
+  }
+
+  function novaVenda() {
+    router.push('/admin/financeiro/vendas')
+    setPopover(null)
+  }
+
+  function bloquearHorario() {
+    if (!popover) return
+    router.push(`/admin/configuracoes?tab=bloqueios&prof=${popover.profId}&date=${date}&time=${popover.time}`)
+    setPopover(null)
+  }
+
   // Estado · profs visíveis · intervalo · cor · sidebar recolhida
   // Persistência via localStorage por business (key isolada por negócio).
   const [visibleProfIds, setVisibleProfIds] = useState<Set<string>>(() => new Set(profs.map((p) => p.id)))
@@ -373,22 +443,47 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
                     className="relative"
                     style={{ height: gridHeight, borderLeft: '1px solid var(--admin-divider)' }}
                   >
-                    {/* Linhas de fundo */}
-                    {slots.map((s, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          position: 'absolute',
-                          top: i * SLOT_HEIGHT,
-                          left: 0,
-                          right: 0,
-                          height: SLOT_HEIGHT,
-                          borderTop: s.endsWith(':00')
-                            ? '1px solid var(--admin-divider)'
-                            : '1px dashed color-mix(in srgb, var(--admin-divider) 50%, transparent)',
-                        }}
-                      />
-                    ))}
+                    {/* Slots clicáveis · hover-to-schedule · click abre popover */}
+                    {slots.map((s, i) => {
+                      const slotKey = `${p.id}-${s}`
+                      const isHovered = hoveredSlot === slotKey
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          data-slot-trigger
+                          onMouseEnter={() => setHoveredSlot(slotKey)}
+                          onMouseLeave={() => setHoveredSlot((cur) => (cur === slotKey ? null : cur))}
+                          onClick={(e) => openSlotPopover(e, p.id, p.name, s)}
+                          className="absolute left-0 right-0 transition-colors group flex items-center justify-center text-left"
+                          style={{
+                            top: i * SLOT_HEIGHT,
+                            height: SLOT_HEIGHT,
+                            borderTop: s.endsWith(':00')
+                              ? '1px solid var(--admin-divider)'
+                              : '1px dashed color-mix(in srgb, var(--admin-divider) 50%, transparent)',
+                            background: isHovered ? 'color-mix(in srgb, var(--brand-primary, #1AA9A8) 8%, transparent)' : 'transparent',
+                            cursor: 'pointer',
+                            zIndex: 1,
+                          }}
+                          aria-label={`Agendar ${p.name} às ${s}`}
+                          title={`+ Agendar ${p.name} às ${s}`}
+                        >
+                          {isHovered && (
+                            <span
+                              className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                              style={{
+                                background: 'var(--brand-primary, #1AA9A8)',
+                                color: '#fff',
+                                boxShadow: '0 2px 6px -1px color-mix(in srgb, var(--brand-primary, #1AA9A8) 40%, transparent)',
+                              }}
+                            >
+                              <IconPlus size={10} /> {s}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
 
                     {/* Cards de agendamento · padrão 3D premium */}
                     {profAppts.map((a) => {
@@ -470,6 +565,108 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
           </>
         )}
       </div>
+
+      {/* POPOVER · 3 opções ao clicar em slot vazio · via portal pra fugir do overflow */}
+      {popover && portalReady && createPortal(
+        <div
+          data-slot-popover
+          className="fixed z-[200] rounded-2xl overflow-hidden"
+          style={{
+            top: popover.y + 8,
+            left: Math.min(popover.x - 130, window.innerWidth - 280),
+            width: 260,
+            background: 'var(--admin-popover-bg, #FFFFFF)',
+            border: '1px solid var(--admin-popover-border, #E2E8F0)',
+            boxShadow: '0 20px 50px -10px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.06)',
+          }}
+        >
+          <div
+            className="px-4 py-3 flex items-center justify-between"
+            style={{ background: 'var(--admin-surface-hi)', borderBottom: '1px solid var(--admin-divider)' }}
+          >
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+                {popover.profName}
+              </p>
+              <p className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                {popover.time}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPopover(null)}
+              aria-label="Fechar"
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              <IconClose size={14} />
+            </button>
+          </div>
+          <div className="p-2 space-y-1">
+            <button
+              type="button"
+              onClick={novoAtendimento}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-[var(--admin-surface-hi)]"
+            >
+              <span
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: 'linear-gradient(135deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
+                  color: '#fff',
+                  boxShadow: '0 2px 6px -1px color-mix(in srgb, var(--brand-primary, #1AA9A8) 40%, transparent)',
+                }}
+              >
+                <IconCalendar size={14} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Novo Atendimento</p>
+                <p className="text-[10px]" style={{ color: 'var(--admin-text-mute)' }}>Cliente · serviço · horário</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={novaVenda}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-[var(--admin-surface-hi)]"
+            >
+              <span
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                  color: '#fff',
+                  boxShadow: '0 2px 6px -1px rgba(5,150,105,0.4)',
+                }}
+              >
+                <IconDollar size={14} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Nova Venda</p>
+                <p className="text-[10px]" style={{ color: 'var(--admin-text-mute)' }}>Produto ou serviço avulso</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={bloquearHorario}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-[var(--admin-surface-hi)]"
+            >
+              <span
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: 'linear-gradient(135deg, #94A3B8 0%, #64748B 100%)',
+                  color: '#fff',
+                  boxShadow: '0 2px 6px -1px rgba(100,116,139,0.4)',
+                }}
+              >
+                <IconClose size={14} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Bloqueio de Horário</p>
+                <p className="text-[10px]" style={{ color: 'var(--admin-text-mute)' }}>Almoço · folga · indisponível</p>
+              </div>
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

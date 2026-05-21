@@ -77,6 +77,7 @@ export default async function GradeTimeline({ businessId, date }: Props) {
         appts={appts}
         hourStart={HOUR_START}
         hourEnd={HOUR_END}
+        date={date}
       />
     </div>
   )
