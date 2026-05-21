@@ -20,19 +20,28 @@ export default async function ClientesPage() {
   // Busca todos os agendamentos com client_id deste negócio
   const { data: apptData } = await supabase
     .from('appointments')
-    .select('client_id, appointment_date, status, service_name, total_price')
+    .select('client_id, appointment_date, status, service_name, total_price, paid_at')
     .eq('business_id', business.id)
     .not('client_id', 'is', null)
     .order('appointment_date', { ascending: false })
 
-  // Monta estatísticas por cliente — inclui firstDate (primeira visita)
-  // pra que "Novos/mês" reflita comportamento real, não created_at do
-  // cadastro: cliente que veio em jan e voltou em mai não é "novo de mai".
+  // Stats por cliente · só conta atendimentos REALIZADOS (passado/hoje E não
+  // cancelado/no_show). Futuros agendados não contam como atendimento feito.
+  // Resolve bug do import Salao99 que trouxe recorrencias futuras inflando
+  // o numero (Ana Paula mostrava 202 quando real era 5).
+  // totalSpent: só conta dinheiro que JA ENTROU (paid_at IS NOT NULL).
   type Stats = { count: number; firstDate: string; lastDate: string; totalSpent: number }
   const statsMap: Record<string, Stats> = {}
+  const today = new Date().toISOString().slice(0, 10)
 
   for (const a of apptData || []) {
     if (!a.client_id) continue
+    const isPast = a.appointment_date <= today
+    const isCancelled = a.status === 'cancelled' || a.status === 'no_show'
+    const isRealized = isPast && !isCancelled
+
+    if (!isRealized) continue // futuros e cancelados nao entram no contador
+
     if (!statsMap[a.client_id]) {
       statsMap[a.client_id] = { count: 0, firstDate: '', lastDate: '', totalSpent: 0 }
     }
@@ -43,7 +52,9 @@ export default async function ClientesPage() {
     if (!statsMap[a.client_id].firstDate || a.appointment_date < statsMap[a.client_id].firstDate) {
       statsMap[a.client_id].firstDate = a.appointment_date
     }
-    if (a.total_price) {
+    // Total gasto = só pagamentos confirmados (paid_at). Sem isso, completed
+    // sem pagamento inflava o numero. Cliente devedor nao conta como gasto.
+    if (a.paid_at && a.total_price) {
       statsMap[a.client_id].totalSpent += a.total_price
     }
   }
