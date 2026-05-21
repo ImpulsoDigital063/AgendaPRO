@@ -266,10 +266,10 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         Adicionar cliente manualmente
       </button>
 
-      {/* Reativar sumidos — só aparece pra sumidos SEM cupom ativo.
-          Sumidos com cupom rodando ainda aparecem no KPI "Sumidos" e
-          no filtro, mas não disparam novo cupom (evita spam). */}
-      {stats.sumidosSemCupom > 0 && (
+      {/* Reativar sumidos · mostra SEMPRE que tem sumidos (número total honesto).
+          Sub-texto explica quantos já têm cupom rodando vs ainda precisam ·
+          padrão consultor: Marko vê o número real do negócio na primeira olhada. */}
+      {stats.sumidos > 0 && (
         <Link
           href="/admin/clientes/reativar"
           className="flex items-center gap-3 p-3 rounded-2xl transition-all active:scale-[0.99]"
@@ -286,10 +286,14 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
-              Reativar {stats.sumidosSemCupom} sumido{stats.sumidosSemCupom === 1 ? '' : 's'}
+              Reativar {stats.sumidos} sumido{stats.sumidos === 1 ? '' : 's'}
             </p>
             <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
-              Cupom de desconto via WhatsApp · 1 toque por cliente
+              {stats.sumidosSemCupom === stats.sumidos
+                ? 'Cupom de desconto via WhatsApp · 1 toque por cliente'
+                : stats.sumidosSemCupom === 0
+                  ? `Todos já com cupom rodando · aguarde resposta ou expirar pra reativar`
+                  : `${stats.sumidos - stats.sumidosSemCupom} com cupom rodando · ${stats.sumidosSemCupom} ainda precisam`}
             </p>
           </div>
           <IconChevronRight size={16} />
