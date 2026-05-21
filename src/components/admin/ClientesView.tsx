@@ -266,55 +266,70 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         Adicionar cliente manualmente
       </button>
 
-      {/* Reativar sumidos · mostra SEMPRE que tem sumidos (número total honesto).
-          Sub-texto explica quantos já têm cupom rodando vs ainda precisam ·
-          padrão consultor: Marko vê o número real do negócio na primeira olhada. */}
+      {/* Cards de ação · padrão premium "B híbrido" cravado 21/05:
+          - background sólido (sem translúcido)
+          - gradient interno SUTIL (96% → 100%) que dá vida sem virar glass
+          - border-top 1px highlight (luz refletida)
+          - drop shadow longa difusa colorida (sensação de papel premium)
+          - hover translateY(-1px) (flutua sutilmente) */}
+
       {stats.sumidos > 0 && (
         <Link
           href="/admin/clientes/reativar"
-          className="flex items-center gap-3 p-3 rounded-2xl transition-all active:scale-[0.99]"
+          className="flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all hover:-translate-y-px"
           style={{
-            background: 'linear-gradient(135deg, rgba(245,158,11,0.14), rgba(245,158,11,0.04))',
-            border: '1px solid rgba(245,158,11,0.3)',
+            background: 'linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%)',
+            border: '1px solid #FCD34D',
+            borderTopColor: 'rgba(255,255,255,0.7)',
+            boxShadow: '0 10px 28px -10px rgba(245,158,11,0.35), 0 2px 6px rgba(0,0,0,0.05)',
           }}
         >
           <span
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(245,158,11,0.18)', color: '#D97706' }}
+            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+              color: '#fff',
+              boxShadow: '0 4px 10px -2px rgba(217,119,6,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+            }}
           >
             <IconWhatsapp size={18} />
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+            <p className="text-sm font-bold" style={{ color: '#78350F' }}>
               Reativar {stats.sumidos} sumido{stats.sumidos === 1 ? '' : 's'}
             </p>
-            <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+            <p className="text-[11px] mt-0.5" style={{ color: '#92400E' }}>
               {stats.sumidosSemCupom === stats.sumidos
                 ? 'Cupom de desconto via WhatsApp · 1 toque por cliente'
                 : stats.sumidosSemCupom === 0
-                  ? `Todos já com cupom rodando · aguarde resposta ou expirar pra reativar`
+                  ? `Todos já com cupom rodando · aguarde resposta ou expirar`
                   : `${stats.sumidos - stats.sumidosSemCupom} com cupom rodando · ${stats.sumidosSemCupom} ainda precisam`}
             </p>
           </div>
-          <IconChevronRight size={16} />
+          <span style={{ color: '#D97706' }}>
+            <IconChevronRight size={18} />
+          </span>
         </Link>
       )}
 
-      {/* Promoções · acesso a /admin/clientes/campanhas (3 abas: Sumidos,
-          Aniversário, Promoção). Olímpio reportou em 19/05 que procurou
-          a opção de criar cupom e não encontrou · este card resolve a
-          descoberta da aba Promoção (criação livre). */}
+      {/* Promoções · acesso a /admin/clientes/campanhas */}
       <Link
         href="/admin/clientes/campanhas?tab=avulso"
-        className="flex items-center gap-3 p-3 rounded-2xl transition-all active:scale-[0.99]"
+        className="flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all hover:-translate-y-px"
         style={{
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.14), rgba(124,58,237,0.04))',
-          border: '1px solid rgba(124,58,237,0.3)',
+          background: 'linear-gradient(180deg, #FAF5FF 0%, #F3E8FF 100%)',
+          border: '1px solid #D8B4FE',
+          borderTopColor: 'rgba(255,255,255,0.7)',
+          boxShadow: '0 10px 28px -10px rgba(124,58,237,0.30), 0 2px 6px rgba(0,0,0,0.05)',
         }}
       >
         <span
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(124,58,237,0.18)', color: '#7C3AED' }}
+          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{
+            background: 'linear-gradient(135deg, #A855F7 0%, #7C3AED 100%)',
+            color: '#fff',
+            boxShadow: '0 4px 10px -2px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+          }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M20 12V8.4a2 2 0 0 0-.7-1.5l-5.2-4.6a2 2 0 0 0-2.6 0L6.3 6.9A2 2 0 0 0 5.6 8.4V12" />
@@ -323,14 +338,16 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
           </svg>
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+          <p className="text-sm font-bold" style={{ color: '#581C87' }}>
             Promoções e campanhas
           </p>
-          <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+          <p className="text-[11px] mt-0.5" style={{ color: '#6B21A8' }}>
             Criar cupom · ver campanhas de aniversário e sumidos
           </p>
         </div>
-        <IconChevronRight size={16} />
+        <span style={{ color: '#7C3AED' }}>
+          <IconChevronRight size={18} />
+        </span>
       </Link>
 
       {/* Busca */}

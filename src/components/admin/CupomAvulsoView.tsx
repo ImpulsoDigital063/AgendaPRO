@@ -260,17 +260,28 @@ export default function CupomAvulsoView({
           </div>
         </div>
 
-        {/* CTAs principais · sólidos · sem efeito vidro */}
+        {/* CTAs principais · padrão premium "B híbrido" 21/05:
+            gradient interno + highlight topo + shadow longa colorida + hover lift */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={() => copiarLink(createdCoupon.share_url, createdCoupon.code)}
-            className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
-            style={{
-              background: copiedCode === createdCoupon.code ? '#10B981' : 'var(--admin-text)',
-              color: '#fff',
-              boxShadow: '0 4px 10px rgba(0,0,0,0.12)',
-            }}
+            className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98]"
+            style={
+              copiedCode === createdCoupon.code
+                ? {
+                    background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+                    color: '#fff',
+                    borderTop: '1px solid rgba(255,255,255,0.25)',
+                    boxShadow: '0 10px 24px -8px rgba(16,185,129,0.5), 0 2px 4px rgba(0,0,0,0.08)',
+                  }
+                : {
+                    background: 'linear-gradient(180deg, #1F2937 0%, #0F172A 100%)',
+                    color: '#fff',
+                    borderTop: '1px solid rgba(255,255,255,0.15)',
+                    boxShadow: '0 10px 24px -8px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.08)',
+                  }
+            }
           >
             {copiedCode === createdCoupon.code ? (
               <>
@@ -287,11 +298,12 @@ export default function CupomAvulsoView({
             href={whatsappShareUrl(createdCoupon.whatsapp_text)}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
+            className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98]"
             style={{
-              background: '#25D366',
+              background: 'linear-gradient(180deg, #22C55E 0%, #1A8C45 100%)',
               color: '#fff',
-              boxShadow: '0 4px 10px rgba(37,211,102,0.35)',
+              borderTop: '1px solid rgba(255,255,255,0.25)',
+              boxShadow: '0 10px 24px -8px rgba(26,140,69,0.55), 0 2px 4px rgba(0,0,0,0.08)',
             }}
           >
             <IconWhatsapp size={16} /> Compartilhar WhatsApp
