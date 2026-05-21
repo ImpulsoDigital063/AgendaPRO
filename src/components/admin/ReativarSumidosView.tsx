@@ -381,8 +381,10 @@ export default function ReativarSumidosView({
         </ol>
       </div>
 
-      {/* Form de campanha */}
-      <div className="admin-card p-4 space-y-5">
+      {/* Form de campanha · grid 2-col em desktop (Salão99-style)
+          Mobile: tudo empilhado · Desktop: config esquerda · preview direita sticky */}
+      <div className="lg:grid lg:grid-cols-[1.4fr_1fr] lg:gap-6 lg:items-start space-y-5 lg:space-y-0">
+        <div className="admin-card p-4 space-y-5">
         {/* Etapa 1: Desconto */}
         <div>
           <p className="text-sm font-bold mb-1" style={{ color: 'var(--admin-text)' }}>
@@ -478,6 +480,11 @@ export default function ReativarSumidosView({
             placeholder="Sua mensagem aqui..."
           />
         </div>
+        </div>{/* fecha admin-card config (etapas 1+2) */}
+
+        {/* Coluna direita · preview + CTA · sticky em desktop */}
+        <div className="lg:sticky lg:top-6 lg:self-start">
+          <div className="admin-card p-4 space-y-4">
 
         {/* Etapa 3: Preview */}
         <div>
@@ -518,7 +525,9 @@ export default function ReativarSumidosView({
         >
           {submitting ? 'Gerando cupons...' : 'Gerar cupons e ver lista de envio →'}
         </button>
-      </div>
+          </div>{/* fecha admin-card preview */}
+        </div>{/* fecha lg:sticky wrapper */}
+      </div>{/* fecha grid 2-col */}
     </div>
   )
 }
