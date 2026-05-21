@@ -278,27 +278,27 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
           href="/admin/clientes/reativar"
           className="flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all hover:-translate-y-px"
           style={{
-            background: 'linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%)',
-            border: '1px solid #FCD34D',
+            background: 'linear-gradient(180deg, #F0FDF4 0%, #DCFCE7 100%)',
+            border: '1px solid #86EFAC',
             borderTopColor: 'rgba(255,255,255,0.7)',
-            boxShadow: '0 10px 28px -10px rgba(245,158,11,0.35), 0 2px 6px rgba(0,0,0,0.05)',
+            boxShadow: '0 10px 28px -10px rgba(34,197,94,0.35), 0 2px 6px rgba(0,0,0,0.05)',
           }}
         >
           <span
             className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+              background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)',
               color: '#fff',
-              boxShadow: '0 4px 10px -2px rgba(217,119,6,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+              boxShadow: '0 4px 10px -2px rgba(22,163,74,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
             }}
           >
             <IconWhatsapp size={18} />
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold" style={{ color: '#78350F' }}>
+            <p className="text-sm font-bold" style={{ color: '#14532D' }}>
               Reativar {stats.sumidos} sumido{stats.sumidos === 1 ? '' : 's'}
             </p>
-            <p className="text-[11px] mt-0.5" style={{ color: '#92400E' }}>
+            <p className="text-[11px] mt-0.5" style={{ color: '#166534' }}>
               {stats.sumidosSemCupom === stats.sumidos
                 ? 'Cupom de desconto via WhatsApp · 1 toque por cliente'
                 : stats.sumidosSemCupom === 0
@@ -306,7 +306,7 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
                   : `${stats.sumidos - stats.sumidosSemCupom} com cupom rodando · ${stats.sumidosSemCupom} ainda precisam`}
             </p>
           </div>
-          <span style={{ color: '#D97706' }}>
+          <span style={{ color: '#16A34A' }}>
             <IconChevronRight size={18} />
           </span>
         </Link>
