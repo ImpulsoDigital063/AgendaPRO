@@ -1,15 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import RecepSumidosView from '@/components/recepcao/RecepSumidosView'
+import RecepCuponsView from '@/components/recepcao/RecepCuponsView'
 
 export const dynamic = 'force-dynamic'
 
-export default async function RecepSumidosPage() {
+export default async function RecepCuponsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/profissional/login')
 
-  // Confirma que é recepcionista (layout já garante mas reforço)
   const { data: recep } = await supabase
     .from('professionals')
     .select('id, business_id, business:businesses(id, name, slug)')
@@ -20,9 +19,9 @@ export default async function RecepSumidosPage() {
 
   const business = recep.business as unknown as { id: string; name: string; slug: string }
 
-  // Busca cupons ativos do business · com customer info
   const nowIso = new Date().toISOString()
-  const { data: coupons } = await supabase
+  // 1. Cupons PERSONALIZADOS (sumidos + aniversariantes) · cliente específico
+  const { data: personalizados } = await supabase
     .from('coupons')
     .select(`
       id, code, discount_type, discount_value, expires_at,
@@ -36,7 +35,34 @@ export default async function RecepSumidosPage() {
     .order('created_at', { ascending: false })
     .limit(500)
 
-  type CouponRow = {
+  // 2. Cupons PROMOÇÃO (standalone) · link único compartilhável
+  const { data: promocoes } = await supabase
+    .from('coupons')
+    .select(`
+      id, code, discount_type, discount_value, expires_at,
+      standalone_label, professional_id, created_at,
+      professional:professionals(name)
+    `)
+    .eq('business_id', business.id)
+    .eq('is_standalone', true)
+    .gt('expires_at', nowIso)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  // Conta usos das promoções
+  const promoIds = (promocoes || []).map((c) => c.id)
+  const { data: redemptions } = promoIds.length > 0
+    ? await supabase
+        .from('coupon_redemptions')
+        .select('coupon_id')
+        .in('coupon_id', promoIds)
+    : { data: [] }
+  const usageByCoupon: Record<string, number> = {}
+  for (const r of redemptions || []) {
+    if (r.coupon_id) usageByCoupon[r.coupon_id] = (usageByCoupon[r.coupon_id] ?? 0) + 1
+  }
+
+  type PersonalRow = {
     id: string
     code: string
     discount_type: 'fixed' | 'percent'
@@ -49,7 +75,19 @@ export default async function RecepSumidosPage() {
     customer: { id: string; name: string; phone: string } | { id: string; name: string; phone: string }[] | null
   }
 
-  const list = ((coupons || []) as unknown as CouponRow[]).map((c) => ({
+  type PromoRow = {
+    id: string
+    code: string
+    discount_type: 'fixed' | 'percent'
+    discount_value: number
+    expires_at: string
+    standalone_label: string | null
+    professional_id: string | null
+    created_at: string
+    professional: { name: string } | { name: string }[] | null
+  }
+
+  const cuponsList = ((personalizados || []) as unknown as PersonalRow[]).map((c) => ({
     id: c.id,
     code: c.code,
     discount_type: c.discount_type,
@@ -61,13 +99,29 @@ export default async function RecepSumidosPage() {
     customer: Array.isArray(c.customer) ? c.customer[0] : c.customer,
   })).filter((c) => c.customer)
 
+  const promocoesList = ((promocoes || []) as unknown as PromoRow[]).map((c) => {
+    const prof = Array.isArray(c.professional) ? c.professional[0] : c.professional
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agendapro.net.br'
+    return {
+      id: c.id,
+      code: c.code,
+      discount_type: c.discount_type,
+      discount_value: c.discount_value,
+      expires_at: c.expires_at,
+      standalone_label: c.standalone_label,
+      professional_name: prof?.name ?? null,
+      uses: usageByCoupon[c.id] ?? 0,
+      share_url: `${appUrl}/${business.slug}?cupom=${c.code}`,
+    }
+  })
+
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
       <div className="max-w-lg lg:max-w-3xl mx-auto px-4 lg:px-6 py-5">
-        <RecepSumidosView
+        <RecepCuponsView
           businessSlug={business.slug}
           businessName={business.name}
-          coupons={list as Array<{
+          coupons={cuponsList as Array<{
             id: string
             code: string
             discount_type: 'fixed' | 'percent'
@@ -78,6 +132,7 @@ export default async function RecepSumidosPage() {
             whatsapp_message: string | null
             customer: { id: string; name: string; phone: string }
           }>}
+          promocoes={promocoesList}
         />
       </div>
     </main>

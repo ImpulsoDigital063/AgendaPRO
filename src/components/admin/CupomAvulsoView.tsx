@@ -29,6 +29,7 @@ type Props = {
   businessName: string
   professionals: Professional[]
   initialCoupons: StandaloneCoupon[]
+  ticketMedio?: number
 }
 
 export default function CupomAvulsoView({
@@ -36,9 +37,11 @@ export default function CupomAvulsoView({
   businessName,
   professionals,
   initialCoupons,
+  ticketMedio = 50,
 }: Props) {
   const router = useRouter()
   const [coupons, setCoupons] = useState<StandaloneCoupon[]>(initialCoupons)
+  const [showFAQ, setShowFAQ] = useState(false)
   const [label, setLabel] = useState('')
   const [discountType, setDiscountType] = useState<'fixed' | 'percent'>('percent')
   const [discountValue, setDiscountValue] = useState('20')
@@ -264,35 +267,120 @@ export default function CupomAvulsoView({
 
   return (
     <div className="space-y-6">
-      {/* Como funciona · padroniza com Sumidos/Aniversário */}
+      {/* HERO EDUCATIVO · O QUE É e PRA QUE SERVE */}
       <div
-        className="rounded-2xl p-4"
+        className="rounded-2xl p-5 lg:p-6"
         style={{
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.10), rgba(168,85,247,0.04))',
+          background:
+            'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 14%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-secondary) 10%, var(--admin-surface)) 100%)',
           border: '1px solid var(--admin-border)',
         }}
       >
-        <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: '#7C3AED' }}>
-          Como funciona
+        <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--admin-accent)' }}>
+          🎉 Crie promoções rápidas
         </p>
-        <ol className="space-y-2 text-xs leading-relaxed">
-          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
-            <span className="font-bold flex-shrink-0" style={{ color: '#7C3AED' }}>1.</span>
-            <span>Você define o desconto, validade e pra quem vale</span>
-          </li>
-          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
-            <span className="font-bold flex-shrink-0" style={{ color: '#7C3AED' }}>2.</span>
-            <span>Sistema cria <strong>1 cupom único com link compartilhável</strong></span>
-          </li>
-          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
-            <span className="font-bold flex-shrink-0" style={{ color: '#7C3AED' }}>3.</span>
-            <span>Você divulga onde quiser: <strong>WhatsApp, Stories, panfleto, QR Code</strong></span>
-          </li>
-          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
-            <span className="font-bold flex-shrink-0" style={{ color: '#7C3AED' }}>4.</span>
-            <span>Cliente clica no link, agenda, e o desconto é aplicado automático (1 uso por telefone)</span>
-          </li>
-        </ol>
+        <h2 className="text-lg lg:text-xl font-bold leading-snug" style={{ color: 'var(--admin-text)' }}>
+          Black Friday · Inauguração · Dia parado · Vaga aberta na agenda.
+        </h2>
+        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+          Gera <strong>1 link único compartilhável</strong> com desconto · uso ilimitado dentro da validade · você divulga onde quiser (Stories, WhatsApp, panfleto, QR Code). Cliente clica → agenda → desconto aplicado automático.
+        </p>
+      </div>
+
+      {/* CARD ROI · oportunidade · não pressão */}
+      {ticketMedio > 0 && (
+        <div
+          className="rounded-2xl p-4 lg:p-5"
+          style={{
+            background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))',
+            border: '1px solid rgba(16,185,129,0.30)',
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-3xl flex-shrink-0">📣</span>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <p className="text-base font-bold" style={{ color: '#059669' }}>
+                Quando usar?
+              </p>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+                <strong>Dia parado</strong> (quinta vazia? cria cupom 20% só hoje · posta no Stories) ·
+                <strong> Lançamento de serviço</strong> (primeiras 10 pessoas X% off) ·
+                <strong> Indicação</strong> (cliente leva cupom pra amiga).
+              </p>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+                💸 Link funciona pra qualquer pessoa · custo zero · você só dá desconto pra quem usar.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* COMO FUNCIONA · 4 passos com ícones */}
+      <div
+        className="rounded-2xl p-4 lg:p-5"
+        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+      >
+        <p className="text-[11px] font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--admin-text-mute)' }}>
+          Como funciona · 4 passos
+        </p>
+        <div className="space-y-3">
+          {[
+            { icon: '🎁', title: 'Você define o desconto e pra quem vale', desc: 'Valor + dias de validade + opcionalmente restringe a 1 profissional só' },
+            { icon: '🔗', title: 'Sistema cria 1 link compartilhável', desc: 'URL curta + texto pronto pra WhatsApp · você só copia e divulga' },
+            { icon: '📲', title: 'Você divulga onde quiser', desc: 'Stories, WhatsApp, panfleto, QR Code · 1 link serve pra tudo' },
+            { icon: '💰', title: 'Cliente clica, agenda e o desconto entra', desc: 'Sem trabalho seu · desconto aplicado automático · 1 uso por telefone (evita abuso)' },
+          ].map((step, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div
+                className="w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                style={{ background: 'var(--admin-accent-bg)' }}
+              >
+                {step.icon}
+              </div>
+              <div className="flex-1 min-w-0 pt-1">
+                <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+                  {i + 1}. {step.title}
+                </p>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  {step.desc}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FAQ COLAPSÁVEL */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+      >
+        <button
+          type="button"
+          onClick={() => setShowFAQ((v) => !v)}
+          className="w-full px-4 py-3 flex items-center justify-between transition-colors"
+        >
+          <span className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+            💬 Perguntas frequentes
+          </span>
+          <span style={{ color: 'var(--admin-text-mute)', fontSize: 14 }}>{showFAQ ? '▲' : '▼'}</span>
+        </button>
+        {showFAQ && (
+          <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: 'var(--admin-divider)', paddingTop: 12 }}>
+            {[
+              { q: 'Qual a diferença pra cupom de sumidos/aniversário?', a: 'Sumidos e aniversário são 1 cupom POR cliente (personalizado). Promoção é 1 link ÚNICO compartilhável pra qualquer pessoa.' },
+              { q: 'Quantas pessoas podem usar?', a: 'Ilimitado dentro da validade. Mas cada telefone só usa 1x (evita 1 cliente burlar várias vezes).' },
+              { q: 'Posso fazer promoção só pra serviço X?', a: 'Hoje vale pra qualquer serviço. Filtro por serviço entra em breve.' },
+              { q: 'Quanto de desconto ofereço?', a: 'Pra dia parado · 20-30% off chama atenção. Pra indicação · 15% off. Sempre teste e veja o que funciona melhor pra ti.' },
+              { q: 'Cliente precisa cadastrar pra usar?', a: 'Sim, ele agenda normalmente (cadastra telefone) e o desconto aplica automático no caixa.' },
+            ].map((item, i) => (
+              <div key={i}>
+                <p className="text-xs font-bold" style={{ color: 'var(--admin-text)' }}>{item.q}</p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>{item.a}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Card do form · destaque visual sólido */}

@@ -48,6 +48,9 @@ type Props = {
   standaloneAtivos: number
 
   initialTab: 'sumidos' | 'aniversariantes' | 'avulso'
+
+  /** Ticket médio do business (últimos 90 dias) · pra ROI estimado. */
+  ticketMedio?: number
 }
 
 type Tab = 'sumidos' | 'aniversariantes' | 'avulso'
@@ -67,6 +70,7 @@ export default function CampanhasTabs({
   standaloneCoupons,
   standaloneAtivos,
   initialTab,
+  ticketMedio = 50,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
 
@@ -136,6 +140,7 @@ export default function CampanhasTabs({
           sumidosTotal={sumidosTotal}
           sumidosWithoutCoupon={sumidosWithoutCoupon}
           orphanCoupons={orphanCoupons}
+          ticketMedio={ticketMedio}
         />
       )}
 
@@ -147,6 +152,7 @@ export default function CampanhasTabs({
           aniversariantesTotal={aniversariantesTotal}
           aniversariantesWithoutCoupon={aniversariantesWithoutCoupon}
           mesAtualNome={mesAtualNome}
+          ticketMedio={ticketMedio}
         />
       )}
 
@@ -156,6 +162,7 @@ export default function CampanhasTabs({
           businessName={businessName}
           professionals={professionals}
           initialCoupons={standaloneCoupons}
+          ticketMedio={ticketMedio}
         />
       )}
     </div>

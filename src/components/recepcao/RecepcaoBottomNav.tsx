@@ -32,8 +32,8 @@ export default function RecepcaoBottomNav({ pendingAppointments = 0 }: Props) {
       IconSolid: IconUsersSolid,
     },
     {
-      href: '/recepcao/sumidos',
-      label: 'Sumidos',
+      href: '/recepcao/cupons',
+      label: 'Cupons',
       Icon: IconGift,
     },
     {

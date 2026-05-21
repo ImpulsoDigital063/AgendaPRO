@@ -48,6 +48,20 @@ export default async function CampanhasPage({
       .filter(Boolean) as string[]
   )
 
+  // Ticket médio · últimos 90 dias de pagos · fallback R$ 50
+  const ninetyDaysAgoCamp = new Date()
+  ninetyDaysAgoCamp.setDate(ninetyDaysAgoCamp.getDate() - 90)
+  const { data: paidApptsCamp } = await supabase
+    .from('appointments')
+    .select('total_price')
+    .eq('business_id', business.id)
+    .not('paid_at', 'is', null)
+    .gte('appointment_date', ninetyDaysAgoCamp.toISOString().split('T')[0])
+  const validPricesCamp = (paidApptsCamp || []).map((a) => Number(a.total_price)).filter((p) => p > 0)
+  const ticketMedio = validPricesCamp.length > 0
+    ? validPricesCamp.reduce((s, p) => s + p, 0) / validPricesCamp.length
+    : 50
+
   // ─────────────────────────────────────────────────
   // ABA SUMIDOS — replicação da lógica de /clientes/reativar
   // ─────────────────────────────────────────────────
@@ -207,7 +221,7 @@ export default async function CampanhasPage({
           subtitle={business.name}
           back="/admin/clientes"
         />
-        <div className="max-w-lg mx-auto px-4 py-6">
+        <div className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6">
           <CampanhasTabs
             businessSlug={business.slug}
             businessName={business.name}
@@ -223,6 +237,7 @@ export default async function CampanhasPage({
             standaloneCoupons={standaloneCoupons}
             standaloneAtivos={standaloneAtivos}
             initialTab={initialTab}
+            ticketMedio={ticketMedio}
           />
         </div>
       </div>
