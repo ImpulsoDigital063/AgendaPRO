@@ -188,12 +188,22 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
     let list = clients
     const q = search.trim().toLowerCase()
     if (q) {
+      // Normaliza acentos pra busca funcionar com "joao" achando "João",
+      // "fatima" achando "Fátima" etc. Reportado pelo Olímpio em 20/05 noite:
+      // "digito o nome e coloca para buscar não está indo" — clientes com
+      // acento somiam porque "joão".includes("joao") = false.
+      const stripAccents = (s: string) =>
+        s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+      const qNorm = stripAccents(q)
+      const qDigits = q.replace(/\D/g, '')
       list = list.filter((c) => {
+        const nameNorm = stripAccents((c.name || '').toLowerCase())
         const phoneDigits = (c.phone || '').replace(/\D/g, '')
+        const emailNorm = c.email ? stripAccents(c.email.toLowerCase()) : ''
         return (
-          c.name.toLowerCase().includes(q) ||
-          phoneDigits.includes(q.replace(/\D/g, '')) ||
-          (c.email?.toLowerCase().includes(q) ?? false)
+          nameNorm.includes(qNorm) ||
+          (qDigits.length > 0 && phoneDigits.includes(qDigits)) ||
+          emailNorm.includes(qNorm)
         )
       })
     }
