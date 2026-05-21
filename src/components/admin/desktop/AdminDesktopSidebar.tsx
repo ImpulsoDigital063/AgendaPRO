@@ -21,6 +21,7 @@ import {
   IconClock,
   IconStar,
   IconShare,
+  IconSearch,
   IconPalette,
   IconUpload,
   IconCamera,
@@ -68,12 +69,15 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       items: [
         { label: 'Início', href: '/admin/inicio', exact: true, Icon: IconHome },
         { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
+        { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
+        { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
       ],
     },
     {
       label: 'Financeiro',
       items: [
+        { label: 'Caixa', href: '/admin/caixa', Icon: IconWallet },
         { label: 'Vendas', href: '/admin/financeiro/vendas', Icon: IconWallet },
         { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconReceipt },
         { label: 'Comandas', Icon: IconInbox, comingSoon: true },
