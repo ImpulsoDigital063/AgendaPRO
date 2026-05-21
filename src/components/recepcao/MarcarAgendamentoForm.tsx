@@ -28,6 +28,12 @@ type Props = {
   businessSlug: string
   professionals: Professional[]
   services: Service[]
+  /** Prof pré-selecionado (vem do popover hover-to-schedule da timeline) */
+  defaultProfId?: string | null
+  /** Data pré-selecionada (YYYY-MM-DD) */
+  defaultDate?: string | null
+  /** Horário pré-selecionado (HH:MM) */
+  defaultTime?: string | null
 }
 
 type Step = 'cliente' | 'profissional' | 'servico' | 'horario' | 'confirma'
@@ -37,19 +43,29 @@ export default function MarcarAgendamentoForm({
   businessSlug,
   professionals,
   services,
+  defaultProfId = null,
+  defaultDate = null,
+  defaultTime = null,
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
   const [step, setStep] = useState<Step>('cliente')
   const [cliente, setCliente] = useState<Customer | null>(null)
-  const [prof, setProf] = useState<Professional | null>(null)
+  const [prof, setProf] = useState<Professional | null>(() => {
+    if (!defaultProfId) return null
+    return professionals.find((p) => p.id === defaultProfId) ?? null
+  })
   const [service, setService] = useState<Service | null>(null)
   const [date, setDate] = useState<string>(() => {
+    if (defaultDate && /^\d{4}-\d{2}-\d{2}$/.test(defaultDate)) return defaultDate
     const t = new Date()
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
   })
-  const [time, setTime] = useState<string>('')
+  const [time, setTime] = useState<string>(() => {
+    if (defaultTime && /^\d{2}:\d{2}$/.test(defaultTime)) return defaultTime
+    return ''
+  })
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
