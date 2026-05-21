@@ -168,6 +168,8 @@ export default async function AppointmentDetailPage({
             backHref={backHref}
             customerName={appt.client_name ?? customer?.name ?? 'Cliente'}
             customerPhone={appt.client_phone ?? customer?.phone ?? null}
+            businessId={business.id}
+            totalPrice={appt.total_price}
           />
         )}
       </div>

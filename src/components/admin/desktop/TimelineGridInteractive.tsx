@@ -684,6 +684,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
       {/* DRAWER inline · click no card abre lateral sem trocar de rota · Salão99-style */}
       <AppointmentDrawer
         appointmentId={selectedApptId}
+        businessId={businessId}
         onClose={closeDrawer}
       />
     </div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconCheck, IconWhatsapp, IconClose } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
+import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 
 type Props = {
   appointmentId: string
@@ -11,6 +12,9 @@ type Props = {
   backHref: string
   customerName: string
   customerPhone: string | null
+  /** businessId obrigatório pra step de cartão (maquininha/bandeira/taxa). */
+  businessId: string
+  totalPrice: number | null
   /** Se passado, chamado após sucesso em vez de navegar pro backHref. Usado pelo drawer inline. */
   onDone?: () => void
 }
@@ -21,27 +25,57 @@ export default function AppointmentActions({
   backHref,
   customerName,
   customerPhone,
+  businessId,
+  totalPrice,
   onDone,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [paymentOpen, setPaymentOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function togglePaid() {
+  async function postPayment(body: Record<string, unknown>): Promise<boolean> {
     setLoading(true)
     setError(null)
     const res = await fetch(`/api/admin/appointments/${appointmentId}/payment`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(isPaid ? { paid: false } : { method: 'cash' }),
+      body: JSON.stringify(body),
     })
     setLoading(false)
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
       setError(d.error || 'Erro ao atualizar pagamento')
+      return false
+    }
+    return true
+  }
+
+  async function desmarcarPago() {
+    const ok = await postPayment({ paid: false })
+    if (!ok) return
+    if (onDone) onDone()
+    else router.refresh()
+  }
+
+  async function confirmarMetodo(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) {
+    if (!method) {
+      // null = "Pagar depois" — só fecha o modal
+      setPaymentOpen(false)
       return
     }
+    const body: Record<string, unknown> = { method }
+    if (method === 'card' && cardDetails) {
+      body.device_id = cardDetails.device_id
+      body.card_brand = cardDetails.card_brand
+      body.card_type = cardDetails.card_type
+      body.fee_percent = cardDetails.fee_percent
+      body.installments = cardDetails.installments
+    }
+    const ok = await postPayment(body)
+    if (!ok) return
+    setPaymentOpen(false)
     if (onDone) onDone()
     else router.refresh()
   }
@@ -92,10 +126,10 @@ export default function AppointmentActions({
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {/* Marcar/Desmarcar pago */}
+        {/* Marcar/Desmarcar pago · pago abre modal de método */}
         <button
           type="button"
-          onClick={togglePaid}
+          onClick={() => (isPaid ? desmarcarPago() : setPaymentOpen(true))}
           disabled={loading}
           className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98] disabled:opacity-50"
           style={
@@ -158,6 +192,16 @@ export default function AppointmentActions({
         loading={loading}
         onConfirm={cancelar}
         onClose={() => setConfirmCancel(false)}
+      />
+
+      <PaymentMethodModal
+        open={paymentOpen}
+        clientName={customerName}
+        totalPrice={totalPrice}
+        businessId={businessId}
+        loading={loading}
+        onChoose={confirmarMetodo}
+        onClose={() => setPaymentOpen(false)}
       />
     </>
   )

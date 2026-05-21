@@ -9,6 +9,7 @@ import Link from 'next/link'
 
 type Props = {
   appointmentId: string | null
+  businessId: string
   onClose: () => void
 }
 
@@ -57,7 +58,7 @@ function formatDateLong(d: string): string {
   })
 }
 
-export default function AppointmentDrawer({ appointmentId, onClose }: Props) {
+export default function AppointmentDrawer({ appointmentId, businessId, onClose }: Props) {
   const [data, setData] = useState<ApptDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [portalReady, setPortalReady] = useState(false)
@@ -230,6 +231,8 @@ export default function AppointmentDrawer({ appointmentId, onClose }: Props) {
                   backHref={`/admin?date=${data.appointment_date}`}
                   customerName={data.client_name ?? customer?.name ?? 'Cliente'}
                   customerPhone={data.client_phone ?? customer?.phone ?? null}
+                  businessId={businessId}
+                  totalPrice={data.total_price}
                   onDone={onClose}
                 />
               )}
