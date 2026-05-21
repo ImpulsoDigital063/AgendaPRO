@@ -16,7 +16,7 @@ type Appt = {
   paid_at: string | null
 }
 
-type ColorMode = 'service' | 'status'
+type ColorMode = 'service' | 'professional' | 'progress' | 'payment'
 type Interval = 15 | 30 | 60
 
 type Props = {
@@ -42,11 +42,21 @@ function colorForService(seed: string | null): string {
   return SERVICE_COLORS[Math.abs(h) % SERVICE_COLORS.length]
 }
 
-function colorForStatus(a: Appt): string {
+// Por ANDAMENTO · fluxo do atendimento (status === pending/confirmed/completed/no_show)
+// Ignora pagamento. Pra "ja foi feito o atendimento?".
+function colorForProgress(a: Appt): string {
+  if (a.status === 'pending') return '#F59E0B' // amber · aguardando confirmação
+  if (a.status === 'completed') return '#3B82F6' // blue · realizado
+  if (a.status === 'no_show') return '#94A3B8' // cinza · faltou
+  return '#01A197' // teal Palace · confirmed (default)
+}
+
+// Por PAGAMENTO · paid_at preenchido vs vazio · payment_method=courtesy = lavanda
+// Pra "quem deve?"
+function colorForPayment(a: Appt): string {
   if (a.paid_at) return '#10B981' // verde · pago
-  if (a.status === 'pending') return '#F59E0B' // amber · pendente
-  if (a.status === 'completed') return '#3B82F6' // blue · feito sem pagar
-  return '#01A197' // teal Palace · confirmed default
+  if (a.status === 'cancelled' || a.status === 'no_show') return '#94A3B8' // cinza · não conta
+  return '#F59E0B' // amber · pendente de pagamento
 }
 
 function colorForProf(profId: string): string {
@@ -81,7 +91,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
         const cfg = JSON.parse(raw) as { visibleProfIds?: string[]; interval?: Interval; colorMode?: ColorMode; collapsed?: boolean }
         if (cfg.visibleProfIds) setVisibleProfIds(new Set(cfg.visibleProfIds))
         if (cfg.interval && [15, 30, 60].includes(cfg.interval)) setInterval(cfg.interval)
-        if (cfg.colorMode && ['service', 'status'].includes(cfg.colorMode)) setColorMode(cfg.colorMode)
+        if (cfg.colorMode && ['service', 'professional', 'progress', 'payment'].includes(cfg.colorMode)) setColorMode(cfg.colorMode)
         if (typeof cfg.collapsed === 'boolean') setCollapsed(cfg.collapsed)
       }
     } catch {/* ignore */}
@@ -121,9 +131,10 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
   }
 
   function getColor(a: Appt): string {
-    if (colorMode === 'status') return colorForStatus(a)
-    if (colorMode === 'service') return colorForService(a.service_name)
-    return colorForProf(a.professional_id)
+    if (colorMode === 'professional') return colorForProf(a.professional_id)
+    if (colorMode === 'progress') return colorForProgress(a)
+    if (colorMode === 'payment') return colorForPayment(a)
+    return colorForService(a.service_name) // default
   }
 
   return (
@@ -191,28 +202,33 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
               </div>
             </div>
 
-            {/* Cor */}
+            {/* Cor · 4 modos (Salão99-style + nossa pegada) */}
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>
                 Cor dos cards
               </p>
               <div className="space-y-1">
                 {([
-                  { v: 'service', l: 'Por serviço' },
-                  { v: 'status', l: 'Por status' },
+                  { v: 'service', l: 'Por serviço', desc: 'Cada serviço uma cor' },
+                  { v: 'professional', l: 'Por profissional', desc: 'Cor da coluna' },
+                  { v: 'progress', l: 'Por andamento', desc: 'Aguardando · feito · faltou' },
+                  { v: 'payment', l: 'Por pagamento', desc: 'Pago · pendente' },
                 ] as const).map((opt) => (
                   <button
                     key={opt.v}
                     type="button"
                     onClick={() => setColorMode(opt.v)}
-                    className="w-full px-2.5 py-1.5 rounded-md text-[11px] font-semibold text-left transition-colors"
+                    className="w-full px-2.5 py-1.5 rounded-md text-left transition-colors"
                     style={
                       colorMode === opt.v
-                        ? { background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)', border: '1px solid var(--admin-accent)' }
-                        : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
+                        ? { background: 'var(--admin-accent-bg)', border: '1px solid var(--admin-accent)' }
+                        : { background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }
                     }
+                    title={opt.desc}
                   >
-                    {opt.l}
+                    <p className="text-[11px] font-semibold" style={{ color: colorMode === opt.v ? 'var(--admin-accent)' : 'var(--admin-text-mute)' }}>
+                      {opt.l}
+                    </p>
                   </button>
                 ))}
               </div>
