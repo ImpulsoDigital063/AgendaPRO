@@ -1,0 +1,459 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { IconChevronLeft, IconChevronRight } from '@/components/ui/Icon'
+
+type Prof = { id: string; name: string; photo_url: string | null }
+type Appt = {
+  id: string
+  professional_id: string
+  start_time: string
+  end_time: string
+  status: string
+  client_name: string | null
+  service_name: string | null
+  total_price: number | null
+  paid_at: string | null
+}
+
+type ColorMode = 'service' | 'status'
+type Interval = 15 | 30 | 60
+
+type Props = {
+  businessId: string
+  profs: Prof[]
+  appts: Appt[]
+  hourStart: number
+  hourEnd: number
+}
+
+const SLOT_HEIGHT_30 = 56 // base · 30min · igual ao anterior
+const SERVICE_COLORS = ['#01A197', '#C9A961', '#8B5CF6', '#EC4899', '#3B82F6', '#10B981', '#F59E0B', '#EF4444']
+
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+function colorForService(seed: string | null): string {
+  if (!seed) return SERVICE_COLORS[0]
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h << 5) - h + seed.charCodeAt(i)
+  return SERVICE_COLORS[Math.abs(h) % SERVICE_COLORS.length]
+}
+
+function colorForStatus(a: Appt): string {
+  if (a.paid_at) return '#10B981' // verde · pago
+  if (a.status === 'pending') return '#F59E0B' // amber · pendente
+  if (a.status === 'completed') return '#3B82F6' // blue · feito sem pagar
+  return '#01A197' // teal Palace · confirmed default
+}
+
+function colorForProf(profId: string): string {
+  let h = 0
+  for (let i = 0; i < profId.length; i++) h = (h << 5) - h + profId.charCodeAt(i)
+  return SERVICE_COLORS[Math.abs(h) % SERVICE_COLORS.length]
+}
+
+function buildSlots(hourStart: number, hourEnd: number, interval: Interval): string[] {
+  const out: string[] = []
+  for (let m = hourStart * 60; m < hourEnd * 60; m += interval) {
+    const h = Math.floor(m / 60)
+    const min = m % 60
+    out.push(`${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`)
+  }
+  return out
+}
+
+export default function TimelineGridInteractive({ businessId, profs, appts, hourStart, hourEnd }: Props) {
+  // Estado · profs visíveis · intervalo · cor · sidebar recolhida
+  // Persistência via localStorage por business (key isolada por negócio).
+  const [visibleProfIds, setVisibleProfIds] = useState<Set<string>>(() => new Set(profs.map((p) => p.id)))
+  const [interval, setInterval] = useState<Interval>(30)
+  const [colorMode, setColorMode] = useState<ColorMode>('service')
+  const [collapsed, setCollapsed] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`agendapro-timeline-config-${businessId}`)
+      if (raw) {
+        const cfg = JSON.parse(raw) as { visibleProfIds?: string[]; interval?: Interval; colorMode?: ColorMode; collapsed?: boolean }
+        if (cfg.visibleProfIds) setVisibleProfIds(new Set(cfg.visibleProfIds))
+        if (cfg.interval && [15, 30, 60].includes(cfg.interval)) setInterval(cfg.interval)
+        if (cfg.colorMode && ['service', 'status'].includes(cfg.colorMode)) setColorMode(cfg.colorMode)
+        if (typeof cfg.collapsed === 'boolean') setCollapsed(cfg.collapsed)
+      }
+    } catch {/* ignore */}
+    setHydrated(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    try {
+      localStorage.setItem(
+        `agendapro-timeline-config-${businessId}`,
+        JSON.stringify({
+          visibleProfIds: Array.from(visibleProfIds),
+          interval,
+          colorMode,
+          collapsed,
+        }),
+      )
+    } catch {/* ignore */}
+  }, [visibleProfIds, interval, colorMode, collapsed, hydrated, businessId])
+
+  const visibleProfs = profs.filter((p) => visibleProfIds.has(p.id))
+  const slots = buildSlots(hourStart, hourEnd, interval)
+  // Altura proporcional ao intervalo · 30min=56 · 15min=28 · 60min=112
+  const SLOT_HEIGHT = (SLOT_HEIGHT_30 * interval) / 30
+  const gridHeight = slots.length * SLOT_HEIGHT
+  const dayStartMin = hourStart * 60
+
+  function toggleProf(id: string) {
+    setVisibleProfIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function getColor(a: Appt): string {
+    if (colorMode === 'status') return colorForStatus(a)
+    if (colorMode === 'service') return colorForService(a.service_name)
+    return colorForProf(a.professional_id)
+  }
+
+  return (
+    <div className="flex gap-3 items-start">
+      {/* PAINEL LATERAL CONFIGURAÇÕES · recolhível */}
+      <aside
+        className="flex-shrink-0 rounded-2xl overflow-hidden transition-all"
+        style={{
+          width: collapsed ? 44 : 220,
+          background: 'var(--admin-surface)',
+          border: '1px solid var(--admin-border)',
+          borderTopColor: 'rgba(255,255,255,0.4)',
+          boxShadow: '0 4px 14px -4px rgba(0,0,0,0.06)',
+        }}
+      >
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={() => setCollapsed(false)}
+            aria-label="Abrir configurações"
+            className="w-full h-12 flex items-center justify-center"
+            style={{ color: 'var(--admin-text-mute)' }}
+            title="Configurações"
+          >
+            <IconChevronRight size={18} />
+          </button>
+        ) : (
+          <div className="p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+                Configurações
+              </p>
+              <button
+                type="button"
+                onClick={() => setCollapsed(true)}
+                aria-label="Recolher configurações"
+                className="w-6 h-6 rounded-md flex items-center justify-center"
+                style={{ color: 'var(--admin-text-mute)' }}
+              >
+                <IconChevronLeft size={14} />
+              </button>
+            </div>
+
+            {/* Intervalo */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                Intervalo
+              </p>
+              <div className="grid grid-cols-3 gap-1">
+                {([15, 30, 60] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setInterval(opt)}
+                    className="py-1.5 rounded-md text-[11px] font-semibold transition-colors"
+                    style={
+                      interval === opt
+                        ? { background: 'var(--admin-accent)', color: '#fff' }
+                        : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
+                    }
+                  >
+                    {opt}min
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Cor */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                Cor dos cards
+              </p>
+              <div className="space-y-1">
+                {([
+                  { v: 'service', l: 'Por serviço' },
+                  { v: 'status', l: 'Por status' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setColorMode(opt.v)}
+                    className="w-full px-2.5 py-1.5 rounded-md text-[11px] font-semibold text-left transition-colors"
+                    style={
+                      colorMode === opt.v
+                        ? { background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)', border: '1px solid var(--admin-accent)' }
+                        : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
+                    }
+                  >
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Profissionais */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                  Profissionais
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setVisibleProfIds(new Set(profs.map((p) => p.id)))}
+                  className="text-[10px] underline"
+                  style={{ color: 'var(--admin-accent)' }}
+                  title="Mostrar todos"
+                >
+                  todos
+                </button>
+              </div>
+              <div className="space-y-1">
+                {profs.map((p) => {
+                  const visible = visibleProfIds.has(p.id)
+                  return (
+                    <label
+                      key={p.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors"
+                      style={{ background: visible ? 'var(--admin-input-bg)' : 'transparent' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={visible}
+                        onChange={() => toggleProf(p.id)}
+                        className="w-3.5 h-3.5"
+                      />
+                      <span
+                        className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                        style={{ background: colorForProf(p.id), color: '#fff' }}
+                      >
+                        {p.name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="text-[11px] truncate flex-1" style={{ color: visible ? 'var(--admin-text)' : 'var(--admin-text-faded)' }}>
+                        {p.name}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </aside>
+
+      {/* GRADE */}
+      <div
+        className="flex-1 rounded-2xl overflow-hidden min-w-0"
+        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+      >
+        {visibleProfs.length === 0 ? (
+          <div className="p-10 text-center">
+            <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+              Nenhum profissional selecionado
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+              Marca pelo menos 1 no painel à esquerda pra ver a agenda.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Header de profs */}
+            <div
+              className="grid"
+              style={{
+                gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(140px, 1fr))`,
+                background: 'var(--admin-surface-hi)',
+                borderBottom: '1px solid var(--admin-border)',
+                position: 'sticky',
+                top: 0,
+                zIndex: 5,
+              }}
+            >
+              <div />
+              {visibleProfs.map((p) => (
+                <div key={p.id} className="px-3 py-3 flex items-center gap-2 min-w-0">
+                  <span
+                    className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
+                    style={{ background: colorForProf(p.id), color: '#fff' }}
+                  >
+                    {p.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.photo_url} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      p.name.slice(0, 1).toUpperCase()
+                    )}
+                  </span>
+                  <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }} title={p.name}>
+                    {p.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Grade scroll */}
+            <div
+              className="grid relative overflow-auto"
+              style={{
+                gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(140px, 1fr))`,
+                maxHeight: 'calc(100svh - 280px)',
+              }}
+            >
+              {/* Coluna de horas */}
+              <div className="relative" style={{ height: gridHeight }}>
+                {slots.map((s, i) => {
+                  const showLabel = s.endsWith(':00') || (interval === 15 && s.endsWith(':30'))
+                  return (
+                    <div
+                      key={s}
+                      className="text-[11px] font-medium tabular-nums px-2 flex items-start pt-1"
+                      style={{
+                        position: 'absolute',
+                        top: i * SLOT_HEIGHT,
+                        left: 0,
+                        right: 0,
+                        height: SLOT_HEIGHT,
+                        color: s.endsWith(':00') ? 'var(--admin-text-mute)' : 'var(--admin-text-faded)',
+                        borderTop: s.endsWith(':00') ? '1px solid var(--admin-divider)' : 'none',
+                      }}
+                    >
+                      {showLabel ? s : ''}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Colunas por prof visível */}
+              {visibleProfs.map((p) => {
+                const profAppts = appts.filter((a) => a.professional_id === p.id)
+                return (
+                  <div
+                    key={p.id}
+                    className="relative"
+                    style={{ height: gridHeight, borderLeft: '1px solid var(--admin-divider)' }}
+                  >
+                    {/* Linhas de fundo */}
+                    {slots.map((s, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          position: 'absolute',
+                          top: i * SLOT_HEIGHT,
+                          left: 0,
+                          right: 0,
+                          height: SLOT_HEIGHT,
+                          borderTop: s.endsWith(':00')
+                            ? '1px solid var(--admin-divider)'
+                            : '1px dashed color-mix(in srgb, var(--admin-divider) 50%, transparent)',
+                        }}
+                      />
+                    ))}
+
+                    {/* Cards de agendamento · padrão 3D premium */}
+                    {profAppts.map((a) => {
+                      const startMin = timeToMinutes(a.start_time)
+                      const endMin = timeToMinutes(a.end_time)
+                      const top = ((startMin - dayStartMin) / interval) * SLOT_HEIGHT
+                      const height = ((endMin - startMin) / interval) * SLOT_HEIGHT
+                      const color = getColor(a)
+                      const isPaid = !!a.paid_at
+                      const isPending = a.status === 'pending'
+                      return (
+                        <a
+                          key={a.id}
+                          href={`/admin/atendimentos/${a.id}`}
+                          className="absolute left-1 right-1 rounded-lg p-2 flex flex-col overflow-hidden transition-all hover:-translate-y-px"
+                          style={{
+                            top,
+                            height: Math.max(height - 2, 24),
+                            background: `linear-gradient(180deg, color-mix(in srgb, ${color} 14%, var(--admin-surface)) 0%, color-mix(in srgb, ${color} 22%, var(--admin-surface)) 100%)`,
+                            borderLeft: `3px solid ${color}`,
+                            borderTop: `1px solid color-mix(in srgb, ${color} 35%, rgba(255,255,255,0.5))`,
+                            boxShadow: `0 4px 12px -4px color-mix(in srgb, ${color} 30%, transparent), 0 1px 2px rgba(0,0,0,0.04)`,
+                            zIndex: 2,
+                          }}
+                          title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}`}
+                        >
+                          <span className="text-[11px] font-bold tabular-nums leading-tight" style={{ color }}>
+                            {a.start_time.slice(0, 5)} · {a.end_time.slice(0, 5)}
+                          </span>
+                          <span className="text-xs font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                            {a.client_name ?? 'Cliente'}
+                          </span>
+                          {height >= SLOT_HEIGHT * 1.5 && (
+                            <span className="text-[11px] truncate" style={{ color: 'var(--admin-text-mute)' }}>
+                              {a.service_name ?? '—'}
+                            </span>
+                          )}
+                          {isPending && (
+                            <span
+                              className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
+                              style={{
+                                background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                                color: '#fff',
+                                boxShadow: '0 2px 4px -1px rgba(217,119,6,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+                              }}
+                            >
+                              A confirmar
+                            </span>
+                          )}
+                          {isPaid && (
+                            <span
+                              className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
+                              style={{
+                                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                color: '#fff',
+                                boxShadow: '0 2px 4px -1px rgba(5,150,105,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+                              }}
+                            >
+                              Pago
+                            </span>
+                          )}
+                        </a>
+                      )
+                    })}
+
+                    {/* Vazio · sem agendamentos */}
+                    {profAppts.length === 0 && (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                        style={{ color: 'var(--admin-text-faded)' }}
+                      >
+                        <span className="text-xs">Livre</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

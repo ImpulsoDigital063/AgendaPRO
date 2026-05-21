@@ -1,5 +1,6 @@
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import GradeTimelineHeader from './GradeTimelineHeader'
+import TimelineGridInteractive from './TimelineGridInteractive'
 
 type Props = {
   businessId: string
@@ -18,42 +19,8 @@ type ApptRow = {
   paid_at: string | null
 }
 
-const SLOT_HEIGHT = 56 // px por slot de 30min
 const HOUR_START = 7 // 07:00 começa a grade (ajuste futuro: business_hours)
 const HOUR_END = 22 // 22:00 termina
-
-// 8 cores curadas pra cards · hash do service_name → cor consistente
-const SERVICE_COLORS = [
-  '#01A197', // teal Palace
-  '#C9A961', // dourado Palace
-  '#8B5CF6', // violet
-  '#EC4899', // pink
-  '#3B82F6', // blue
-  '#10B981', // emerald
-  '#F59E0B', // amber
-  '#EF4444', // red
-]
-
-function colorFor(seed: string | null): string {
-  if (!seed) return SERVICE_COLORS[0]
-  let h = 0
-  for (let i = 0; i < seed.length; i++) h = (h << 5) - h + seed.charCodeAt(i)
-  return SERVICE_COLORS[Math.abs(h) % SERVICE_COLORS.length]
-}
-
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
-function buildSlots(): string[] {
-  const out: string[] = []
-  for (let h = HOUR_START; h < HOUR_END; h++) {
-    out.push(`${String(h).padStart(2, '0')}:00`)
-    out.push(`${String(h).padStart(2, '0')}:30`)
-  }
-  return out
-}
 
 export default async function GradeTimeline({ businessId, date }: Props) {
   const sb = createServiceClient(
@@ -78,13 +45,14 @@ export default async function GradeTimeline({ businessId, date }: Props) {
       .order('start_time'),
   ])
 
-  const profs = (profsData ?? []).filter((p) => !p.is_receptionist)
+  const profs = (profsData ?? []).filter((p) => !p.is_receptionist).map((p) => ({
+    id: p.id,
+    name: p.name,
+    photo_url: p.photo_url ?? null,
+  }))
   const appts = (apptsData ?? []) as ApptRow[]
-  const slots = buildSlots()
-  const gridHeight = slots.length * SLOT_HEIGHT
-  const dayStartMin = HOUR_START * 60
 
-  // KPIs do dia · só servem se for HOJE (header só renderiza condicional)
+  // KPIs do dia · só renderizam quando date === HOJE (header gateia internamente)
   const recebidoHoje = appts
     .filter((a) => a.paid_at)
     .reduce((s, a) => s + (Number(a.total_price) || 0), 0)
@@ -103,196 +71,13 @@ export default async function GradeTimeline({ businessId, date }: Props) {
         pendentesHoje={pendentesHoje}
       />
 
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{
-          background: 'var(--admin-surface)',
-          border: '1px solid var(--admin-border)',
-        }}
-      >
-        {/* Header de profs (sticky) */}
-        <div
-          className="grid"
-          style={{
-            gridTemplateColumns: `64px repeat(${profs.length}, minmax(140px, 1fr))`,
-            background: 'var(--admin-surface-hi)',
-            borderBottom: '1px solid var(--admin-border)',
-            position: 'sticky',
-            top: 0,
-            zIndex: 5,
-          }}
-        >
-          <div /> {/* corner vazio */}
-          {profs.map((p) => (
-            <div key={p.id} className="px-3 py-3 flex items-center gap-2 min-w-0">
-              <span
-                className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
-                style={{ background: colorFor(p.id), color: '#fff' }}
-              >
-                {p.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.photo_url} alt={p.name} className="w-full h-full object-cover" />
-                ) : (
-                  p.name.slice(0, 1).toUpperCase()
-                )}
-              </span>
-              <span
-                className="text-sm font-semibold truncate"
-                style={{ color: 'var(--admin-text)' }}
-                title={p.name}
-              >
-                {p.name}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Grade */}
-        <div
-          className="grid relative overflow-auto"
-          style={{
-            gridTemplateColumns: `64px repeat(${profs.length}, minmax(140px, 1fr))`,
-            maxHeight: 'calc(100svh - 220px)',
-          }}
-        >
-          {/* Coluna de horas */}
-          <div className="relative" style={{ height: gridHeight }}>
-            {slots.map((s, i) => (
-              <div
-                key={s}
-                className="text-[11px] font-medium tabular-nums px-2 flex items-start pt-1"
-                style={{
-                  position: 'absolute',
-                  top: i * SLOT_HEIGHT,
-                  left: 0,
-                  right: 0,
-                  height: SLOT_HEIGHT,
-                  color: s.endsWith(':00') ? 'var(--admin-text-mute)' : 'var(--admin-text-faded)',
-                  borderTop: s.endsWith(':00') ? '1px solid var(--admin-divider)' : 'none',
-                }}
-              >
-                {s.endsWith(':00') ? s : ''}
-              </div>
-            ))}
-          </div>
-
-          {/* Colunas por prof */}
-          {profs.map((p) => {
-            const profAppts = appts.filter((a) => a.professional_id === p.id)
-            return (
-              <div
-                key={p.id}
-                className="relative"
-                style={{
-                  height: gridHeight,
-                  borderLeft: '1px solid var(--admin-divider)',
-                }}
-              >
-                {/* Linhas de fundo · uma por slot · linha mais escura nas horas cheias */}
-                {slots.map((s, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      position: 'absolute',
-                      top: i * SLOT_HEIGHT,
-                      left: 0,
-                      right: 0,
-                      height: SLOT_HEIGHT,
-                      borderTop: s.endsWith(':00')
-                        ? '1px solid var(--admin-divider)'
-                        : '1px dashed color-mix(in srgb, var(--admin-divider) 50%, transparent)',
-                    }}
-                  />
-                ))}
-
-                {/* Cards de agendamento · padrão 3D premium B-híbrido
-                    gradient interno sutil + border-top highlight + shadow longa */}
-                {profAppts.map((a) => {
-                  const startMin = timeToMinutes(a.start_time)
-                  const endMin = timeToMinutes(a.end_time)
-                  const top = ((startMin - dayStartMin) / 30) * SLOT_HEIGHT
-                  const height = ((endMin - startMin) / 30) * SLOT_HEIGHT
-                  const color = colorFor(a.service_name)
-                  const isPaid = !!a.paid_at
-                  const isPending = a.status === 'pending'
-                  return (
-                    <a
-                      key={a.id}
-                      href={`/admin/atendimentos/${a.id}`}
-                      className="absolute left-1 right-1 rounded-lg p-2 flex flex-col overflow-hidden transition-all hover:-translate-y-px hover:shadow-lg"
-                      style={{
-                        top,
-                        height: Math.max(height - 2, 24),
-                        background: `linear-gradient(180deg, color-mix(in srgb, ${color} 14%, var(--admin-surface)) 0%, color-mix(in srgb, ${color} 22%, var(--admin-surface)) 100%)`,
-                        borderLeft: `3px solid ${color}`,
-                        borderTop: `1px solid color-mix(in srgb, ${color} 35%, rgba(255,255,255,0.5))`,
-                        boxShadow: `0 4px 12px -4px color-mix(in srgb, ${color} 30%, transparent), 0 1px 2px rgba(0,0,0,0.04)`,
-                        zIndex: 2,
-                      }}
-                      title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}`}
-                    >
-                      <span
-                        className="text-[11px] font-bold tabular-nums leading-tight"
-                        style={{ color }}
-                      >
-                        {a.start_time.slice(0, 5)} · {a.end_time.slice(0, 5)}
-                      </span>
-                      <span
-                        className="text-xs font-semibold truncate"
-                        style={{ color: 'var(--admin-text)' }}
-                      >
-                        {a.client_name ?? 'Cliente'}
-                      </span>
-                      {height >= SLOT_HEIGHT * 1.5 && (
-                        <span
-                          className="text-[11px] truncate"
-                          style={{ color: 'var(--admin-text-mute)' }}
-                        >
-                          {a.service_name ?? '—'}
-                        </span>
-                      )}
-                      {isPending && (
-                        <span
-                          className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
-                          style={{
-                            background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                            color: '#fff',
-                            boxShadow: '0 2px 4px -1px rgba(217,119,6,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
-                          }}
-                        >
-                          A confirmar
-                        </span>
-                      )}
-                      {isPaid && (
-                        <span
-                          className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
-                          style={{
-                            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                            color: '#fff',
-                            boxShadow: '0 2px 4px -1px rgba(5,150,105,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
-                          }}
-                        >
-                          Pago
-                        </span>
-                      )}
-                    </a>
-                  )
-                })}
-
-                {/* Vazio · profs sem appointments */}
-                {profAppts.length === 0 && (
-                  <div
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                    style={{ color: 'var(--admin-text-faded)' }}
-                  >
-                    <span className="text-xs">Livre</span>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <TimelineGridInteractive
+        businessId={businessId}
+        profs={profs}
+        appts={appts}
+        hourStart={HOUR_START}
+        hourEnd={HOUR_END}
+      />
     </div>
   )
 }
