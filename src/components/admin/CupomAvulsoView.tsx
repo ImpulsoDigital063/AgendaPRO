@@ -176,43 +176,109 @@ export default function CupomAvulsoView({
 
   const symbolUnit = discountType === 'fixed' ? 'R$' : '%'
 
-  // Após criar cupom, mostra card de sucesso. Botão "Criar outro" reseta.
+  // Após criar cupom · tela "Pronto, agora compartilha".
+  // Visual premium Palace+Impulso · sólido, sem efeito glass/translúcido.
   if (createdCoupon) {
+    const validade = new Date()
+    validade.setDate(validade.getDate() + (Number(validityDays) || 30))
+    const validadeStr = validade.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    const discountStrCreated = discountType === 'fixed'
+      ? `R$ ${Number(discountValue || 0).toFixed(0)}`
+      : `${Number(discountValue || 0)}% off`
+
     return (
       <div className="space-y-5">
+        {/* HERO de sucesso · sólido premium turquesa Palace */}
         <div
-          className="rounded-2xl p-4 text-center"
+          className="rounded-2xl p-5 lg:p-6"
           style={{
-            background: 'linear-gradient(135deg, rgba(124,58,237,0.18) 0%, color-mix(in srgb, var(--brand-primary) 12%, var(--admin-surface)) 100%)',
-            border: '1px solid var(--admin-border)',
+            background:
+              'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 18%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-secondary) 14%, var(--admin-surface)) 100%)',
+            border: '1px solid color-mix(in srgb, var(--brand-primary) 30%, var(--admin-border))',
           }}
         >
-          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-            Cupom criado
-          </p>
-          <p className="text-3xl font-extrabold mt-2 tabular-nums tracking-wider" style={{ color: 'var(--admin-text)' }}>
-            {createdCoupon.code}
-          </p>
+          <div className="flex items-start gap-3">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl"
+              style={{ background: 'var(--admin-surface)' }}
+            >
+              🎉
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
+                Promoção criada com sucesso
+              </p>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+                Agora compartilha o link onde quiser pra ela ter movimento. Cada pessoa que clicar e agendar ganha o desconto automático.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-2">
+        {/* CARD DESTAQUE do cupom · informações principais juntas */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: 'var(--admin-surface)',
+            border: '1px solid var(--admin-border)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+          }}
+        >
+          <div
+            className="px-5 py-4 flex items-center justify-between"
+            style={{ background: 'var(--admin-surface-hi)', borderBottom: '1px solid var(--admin-divider)' }}
+          >
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+                Código do cupom
+              </p>
+              <p className="text-2xl lg:text-3xl font-extrabold tabular-nums tracking-wider mt-0.5" style={{ color: 'var(--admin-text)' }}>
+                {createdCoupon.code}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold" style={{ color: 'var(--brand-primary, var(--admin-accent))' }}>
+                {discountStrCreated}
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                vale até {validadeStr}
+              </p>
+            </div>
+          </div>
+
+          {/* Link visível · pra dar transparência */}
+          <div className="px-5 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+              Link compartilhável
+            </p>
+            <div
+              className="rounded-lg px-3 py-2 text-[11px] font-mono break-all"
+              style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-text-2)' }}
+            >
+              {createdCoupon.share_url}
+            </div>
+          </div>
+        </div>
+
+        {/* CTAs principais · sólidos · sem efeito vidro */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={() => copiarLink(createdCoupon.share_url, createdCoupon.code)}
-            className="w-full py-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
             style={{
-              background: 'var(--admin-surface)',
-              border: '1px solid var(--admin-border)',
-              color: 'var(--admin-text)',
+              background: copiedCode === createdCoupon.code ? '#10B981' : 'var(--admin-text)',
+              color: '#fff',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.12)',
             }}
           >
             {copiedCode === createdCoupon.code ? (
               <>
-                <IconCheck size={14} /> Link copiado
+                <IconCheck size={16} /> Link copiado!
               </>
             ) : (
               <>
-                <IconCopy size={14} /> Copiar link
+                <IconCopy size={16} /> Copiar link
               </>
             )}
           </button>
@@ -221,17 +287,52 @@ export default function CupomAvulsoView({
             href={whatsappShareUrl(createdCoupon.whatsapp_text)}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
             style={{
-              background: 'rgba(37,211,102,0.12)',
-              border: '1px solid rgba(37,211,102,0.30)',
-              color: '#16A34A',
+              background: '#25D366',
+              color: '#fff',
+              boxShadow: '0 4px 10px rgba(37,211,102,0.35)',
             }}
           >
-            <IconWhatsapp size={14} /> Compartilhar no WhatsApp
+            <IconWhatsapp size={16} /> Compartilhar WhatsApp
           </a>
         </div>
 
+        {/* DICAS · ONDE COMPARTILHAR · cards sólidos com sugestões */}
+        <div
+          className="rounded-2xl p-4 lg:p-5"
+          style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+        >
+          <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+            Onde compartilhar pra ter movimento
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { icon: '📸', title: 'Stories do Instagram', desc: 'Maior alcance · cole o link e divulga o desconto' },
+              { icon: '💬', title: 'Grupos de WhatsApp', desc: 'Cliente frequente · vizinhança · indicações' },
+              { icon: '🔗', title: 'Bio do Instagram', desc: 'Substitui o link de agendamento por 1 dia' },
+              { icon: '📋', title: 'Panfleto / QR Code', desc: 'Imprime o link como QR e cola na fachada' },
+            ].map((tip, i) => (
+              <div
+                key={i}
+                className="rounded-xl p-3 flex items-start gap-2"
+                style={{ background: 'var(--admin-input-bg)' }}
+              >
+                <span className="text-lg flex-shrink-0">{tip.icon}</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
+                    {tip.title}
+                  </p>
+                  <p className="text-[10px] mt-0.5 leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
+                    {tip.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Ação secundária · sutil · não compete com CTAs principais */}
         <button
           type="button"
           onClick={() => {
@@ -242,14 +343,10 @@ export default function CupomAvulsoView({
             setProfessionalId('')
             setError(null)
           }}
-          className="w-full py-2.5 rounded-xl text-sm font-semibold"
-          style={{
-            background: 'var(--admin-accent-bg)',
-            color: 'var(--admin-text)',
-            border: '1px solid var(--admin-border)',
-          }}
+          className="w-full py-2 text-xs font-semibold underline decoration-dotted underline-offset-4 transition-opacity hover:opacity-70"
+          style={{ color: 'var(--admin-text-mute)', background: 'transparent' }}
         >
-          Criar outro cupom
+          + Criar outra promoção
         </button>
 
         {coupons.length > 0 && (
