@@ -19,7 +19,8 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
-  // Validacao via business+owner
+  // Validacao via business+owner OU recepcionista do mesmo business.
+  // Recepcionista precisa marcar enviado quando dispara WhatsApp no painel /recepcao/sumidos.
   const { data: coupon } = await supabase
     .from('coupons')
     .select('id, business_id')
@@ -27,13 +28,25 @@ export async function POST(
     .single()
   if (!coupon) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-  const { data: business } = await supabase
+  const { data: ownerBusiness } = await supabase
     .from('businesses')
     .select('id')
     .eq('id', coupon.business_id)
     .eq('owner_id', user.id)
     .maybeSingle()
-  if (!business) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+
+  let authorized = !!ownerBusiness
+  if (!authorized) {
+    const { data: recep } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .eq('business_id', coupon.business_id)
+      .eq('is_receptionist', true)
+      .maybeSingle()
+    authorized = !!recep
+  }
+  if (!authorized) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   const { error } = await supabase
     .from('coupons')

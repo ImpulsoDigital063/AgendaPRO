@@ -8,6 +8,7 @@ import {
   IconSearch,
   IconWallet,
   IconWalletSolid,
+  IconGift,
 } from '@/components/ui/Icon'
 import DockNav, { type DockTab } from '@/components/admin/DockNav'
 
@@ -29,6 +30,11 @@ export default function RecepcaoBottomNav({ pendingAppointments = 0 }: Props) {
       label: 'Clientes',
       Icon: IconUsers,
       IconSolid: IconUsersSolid,
+    },
+    {
+      href: '/recepcao/sumidos',
+      label: 'Sumidos',
+      Icon: IconGift,
     },
     {
       href: '/recepcao/caixa',
