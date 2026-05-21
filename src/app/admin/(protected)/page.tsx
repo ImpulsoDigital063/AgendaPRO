@@ -1,5 +1,10 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
+
+// Garante revalidação imediata após mutações (router.refresh tras cancel/payment)
+// Sem isso o RSC cache de Next 16 pode devolver lista antiga e o card cancelado
+// aparece como se "continua lá".
+export const dynamic = 'force-dynamic'
 import {
   getCurrentUser,
   getCurrentBusiness,
