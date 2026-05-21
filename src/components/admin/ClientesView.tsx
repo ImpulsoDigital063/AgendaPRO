@@ -478,13 +478,14 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
                     return (
                       <tr
                         key={c.id}
-                        onDoubleClick={() => {
+                        onClick={() => {
                           if (c.customer_id) setDetailCustomerId(c.customer_id)
                         }}
-                        className="cursor-pointer hover:bg-[var(--admin-surface-hi)]"
+                        className="cursor-pointer hover:bg-[var(--admin-surface-hi)] transition-colors"
                         style={{
                           borderBottom: idx < arr.length - 1 ? '1px solid var(--admin-divider)' : 'none',
                         }}
+                        title="Clique pra ver detalhes"
                       >
                         <td className="px-3 py-2">
                           <span
