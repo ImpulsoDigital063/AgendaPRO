@@ -380,6 +380,7 @@ async function importAppointments(serviceMap, customerMaps) {
       customerId = customerMaps.customerIdByName.get(customerName.toLowerCase())
     }
 
+    let clientId = null
     if (customerId) {
       // Busca phone do cliente importado pra preencher client_phone (legacy obrigatório)
       const { data: cust } = await sb
@@ -388,6 +389,26 @@ async function importAppointments(serviceMap, customerMaps) {
         .eq('id', customerId)
         .single()
       customerPhone = cust?.phone || '00000000000'
+
+      // BUG FIX 21/05: appointments precisam de client_id (universal) E não só
+      // customer_id (business). /admin/clientes agrupa stats por client_id ·
+      // sem isso a tela mostra "Nunca" + R$ 0 em todos os clientes importados.
+      // Garante que existe clients row pra esse phone · idempotente.
+      const { data: existingClient } = await sb
+        .from('clients')
+        .select('id')
+        .eq('phone', customerPhone)
+        .maybeSingle()
+      if (existingClient) {
+        clientId = existingClient.id
+      } else {
+        const { data: newClient } = await sb
+          .from('clients')
+          .insert({ name: customerName, phone: customerPhone, email: null })
+          .select('id')
+          .single()
+        clientId = newClient?.id ?? null
+      }
     } else {
       // Cliente não encontrado — pula
       skipReasons.no_customer++
@@ -411,6 +432,7 @@ async function importAppointments(serviceMap, customerMaps) {
       client_name: customerName.substring(0, 100), // limite text
       client_phone: customerPhone || '00000000000',
       customer_id: customerId,
+      client_id: clientId,
       appointment_date: date,
       start_time: start,
       end_time: end,
