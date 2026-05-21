@@ -128,7 +128,7 @@ export default async function ReativarSumidosPage() {
           subtitle={business.name}
           back="/admin/clientes"
         />
-        <div className="max-w-lg mx-auto px-4 py-6">
+        <div className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6">
           <ReativarSumidosView
             businessSlug={business.slug}
             businessName={business.name}
