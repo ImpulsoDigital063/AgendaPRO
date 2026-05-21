@@ -84,9 +84,24 @@ export default async function GradeTimeline({ businessId, date }: Props) {
   const gridHeight = slots.length * SLOT_HEIGHT
   const dayStartMin = HOUR_START * 60
 
+  // KPIs do dia · só servem se for HOJE (header só renderiza condicional)
+  const recebidoHoje = appts
+    .filter((a) => a.paid_at)
+    .reduce((s, a) => s + (Number(a.total_price) || 0), 0)
+  const aReceberHoje = appts
+    .filter((a) => !a.paid_at && (a.status === 'confirmed' || a.status === 'completed') && (a.total_price ?? 0) > 0)
+    .reduce((s, a) => s + (Number(a.total_price) || 0), 0)
+  const pendentesHoje = appts.filter((a) => a.status === 'pending').length
+
   return (
     <div className="grade-timeline">
-      <GradeTimelineHeader date={date} totalAppts={appts.length} />
+      <GradeTimelineHeader
+        date={date}
+        totalAppts={appts.length}
+        recebidoHoje={recebidoHoje}
+        aReceberHoje={aReceberHoje}
+        pendentesHoje={pendentesHoje}
+      />
 
       <div
         className="rounded-2xl overflow-hidden"
@@ -190,7 +205,8 @@ export default async function GradeTimeline({ businessId, date }: Props) {
                   />
                 ))}
 
-                {/* Cards de agendamento */}
+                {/* Cards de agendamento · padrão 3D premium B-híbrido
+                    gradient interno sutil + border-top highlight + shadow longa */}
                 {profAppts.map((a) => {
                   const startMin = timeToMinutes(a.start_time)
                   const endMin = timeToMinutes(a.end_time)
@@ -203,13 +219,14 @@ export default async function GradeTimeline({ businessId, date }: Props) {
                     <a
                       key={a.id}
                       href={`/admin/atendimentos/${a.id}`}
-                      className="absolute left-1 right-1 rounded-lg p-2 flex flex-col overflow-hidden hover:scale-[1.02] transition-transform"
+                      className="absolute left-1 right-1 rounded-lg p-2 flex flex-col overflow-hidden transition-all hover:-translate-y-px hover:shadow-lg"
                       style={{
                         top,
                         height: Math.max(height - 2, 24),
-                        background: `color-mix(in srgb, ${color} 20%, var(--admin-surface))`,
+                        background: `linear-gradient(180deg, color-mix(in srgb, ${color} 14%, var(--admin-surface)) 0%, color-mix(in srgb, ${color} 22%, var(--admin-surface)) 100%)`,
                         borderLeft: `3px solid ${color}`,
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                        borderTop: `1px solid color-mix(in srgb, ${color} 35%, rgba(255,255,255,0.5))`,
+                        boxShadow: `0 4px 12px -4px color-mix(in srgb, ${color} 30%, transparent), 0 1px 2px rgba(0,0,0,0.04)`,
                         zIndex: 2,
                       }}
                       title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}`}
@@ -236,16 +253,24 @@ export default async function GradeTimeline({ businessId, date }: Props) {
                       )}
                       {isPending && (
                         <span
-                          className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1 py-0.5 rounded"
-                          style={{ background: 'var(--admin-warning,#F59E0B)', color: '#000' }}
+                          className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
+                          style={{
+                            background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                            color: '#fff',
+                            boxShadow: '0 2px 4px -1px rgba(217,119,6,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+                          }}
                         >
                           A confirmar
                         </span>
                       )}
                       {isPaid && (
                         <span
-                          className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1 py-0.5 rounded"
-                          style={{ background: 'var(--admin-success,#10B981)', color: '#fff' }}
+                          className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
+                          style={{
+                            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                            color: '#fff',
+                            boxShadow: '0 2px 4px -1px rgba(5,150,105,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+                          }}
                         >
                           Pago
                         </span>
