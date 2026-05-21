@@ -108,18 +108,25 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
           .maybeSingle(),
         sb
           .from('appointments')
-          .select('appointment_date, paid_at, total_price')
+          .select('appointment_date, paid_at, total_price, status')
           .eq('customer_id', customerId)
           .order('appointment_date', { ascending: false }),
       ])
       if (cust) setCustomer(cust as Customer)
       const list = appts ?? []
-      const last = list[0]
+      // Contador "ATENDIMENTOS" só conta os REAIS (passados que aconteceram).
+      // Exclui futuros agendados (recorrências importadas Salão99 inflavam o
+      // número · Ana Paula mostrava 202 quando real era 5) e cancelados.
+      const today = new Date().toISOString().slice(0, 10)
+      const realizados = list.filter(
+        (a) => a.appointment_date <= today && a.status !== 'cancelled' && a.status !== 'no_show'
+      )
+      const lastRealizado = realizados[0]
       setCounts({
-        atendimentos: list.length,
+        atendimentos: realizados.length,
         produtos: 0, // não temos ainda
         pacotes: 0, // não temos ainda
-        lastDate: last?.appointment_date ?? null,
+        lastDate: lastRealizado?.appointment_date ?? null,
       })
       setLoading(false)
     }
