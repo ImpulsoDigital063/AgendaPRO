@@ -84,6 +84,21 @@ export default async function ReativarSumidosPage() {
     ).length
   }
 
+  // Ticket médio do business · pra calcular ROI estimado da campanha.
+  // Pega últimos 90 dias de pagos · fallback R$ 50 se sem dados.
+  const ninetyDaysAgo = new Date()
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+  const { data: paidAppts } = await supabase
+    .from('appointments')
+    .select('total_price')
+    .eq('business_id', business.id)
+    .not('paid_at', 'is', null)
+    .gte('appointment_date', ninetyDaysAgo.toISOString().split('T')[0])
+  const validPrices = (paidAppts || []).map((a) => Number(a.total_price)).filter((p) => p > 0)
+  const ticketMedio = validPrices.length > 0
+    ? validPrices.reduce((s, p) => s + p, 0) / validPrices.length
+    : 50
+
   // Cupons "orfaos": ativos atribuidos a customer que NAO esta mais sumido
   // (cliente pegou cupom, depois reativou-se sozinho). CIC NB-3:
   // contador "8 ativos" misturava esses, dono nao entendia diferenca.
@@ -137,6 +152,7 @@ export default async function ReativarSumidosPage() {
             sumidosTotal={sumidosTotal}
             sumidosWithoutCoupon={sumidosWithoutCoupon}
             orphanCoupons={orphanCoupons}
+            ticketMedio={ticketMedio}
           />
         </div>
       </div>

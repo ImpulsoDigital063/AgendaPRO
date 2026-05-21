@@ -27,6 +27,8 @@ type Props = {
   sumidosTotal: number
   sumidosWithoutCoupon: number
   orphanCoupons: number
+  /** Ticket médio do business (últimos 90 dias) · pra calcular ROI */
+  ticketMedio?: number
 }
 
 type Coupon = {
@@ -61,6 +63,7 @@ export default function ReativarSumidosView({
   sumidosTotal,
   sumidosWithoutCoupon,
   orphanCoupons,
+  ticketMedio = 50,
 }: Props) {
   const router = useRouter()
   const [step, setStep] = useState<'config' | 'send'>('config')
@@ -75,8 +78,18 @@ export default function ReativarSumidosView({
   const [sentMap, setSentMap] = useState<Record<string, boolean>>({})
   // Paginação da lista de cupons gerados — campanha pode ter 50+ sumidos.
   const [showAllCoupons, setShowAllCoupons] = useState(false)
+  // FAQ colapsável · default fechado (não distrai usuário experiente)
+  const [showFAQ, setShowFAQ] = useState(false)
 
   const templates = useMemo(() => suggestTemplates(businessDescription), [businessDescription])
+
+  // ROI estimado · taxa de conversão típica 20% (1 em 5 sumidos volta)
+  // Custo zero — só o desconto que o dono define
+  const sumidosCount = sumidosWithoutCoupon > 0 ? sumidosWithoutCoupon : sumidosTotal
+  const retornoEsperado = Math.floor(sumidosCount * 0.2)
+  const receitaEstimada = retornoEsperado * ticketMedio
+  const formatBRL = (v: number) =>
+    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
   // Sync customMessage com template selecionado
   useEffect(() => {
@@ -289,28 +302,52 @@ export default function ReativarSumidosView({
 
   return (
     <div className="space-y-5">
-      {/* Card prioritario — sumidos QUE PRECISAM de campanha agora.
-          CIC NB-3 reportou: contador "ativos/usados" nao dizia o que
-          dono precisa pra agir. Aqui mostra "X sumidos sem cupom" =
-          alvo direto da proxima campanha. */}
-      {sumidosWithoutCoupon > 0 && (
+      {/* HERO EDUCATIVO · explica O QUE É e PRA QUE SERVE em 2 frases */}
+      <div
+        className="rounded-2xl p-5 lg:p-6"
+        style={{
+          background:
+            'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 14%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-secondary) 10%, var(--admin-surface)) 100%)',
+          border: '1px solid var(--admin-border)',
+        }}
+      >
+        <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--admin-accent)' }}>
+          Traga de volta seus clientes sumidos
+        </p>
+        <h2 className="text-lg lg:text-xl font-bold leading-snug" style={{ color: 'var(--admin-text)' }}>
+          Cliente que não vem há mais de 40 dias é dinheiro parado.
+        </h2>
+        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+          Aqui você manda <strong>1 cupom único de desconto por cliente via WhatsApp</strong> · sistema gera o link
+          pronto · você só clica e envia. Mede automaticamente quem voltou.
+        </p>
+      </div>
+
+      {/* CARD ROI · substitui o alerta vermelho · tom de OPORTUNIDADE não DOR */}
+      {sumidosCount > 0 && (
         <div
-          className="rounded-2xl p-4"
+          className="rounded-2xl p-4 lg:p-5"
           style={{
-            background: 'linear-gradient(135deg, rgba(239,68,68,0.10), rgba(239,68,68,0.04))',
-            border: '1px solid rgba(239,68,68,0.30)',
+            background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))',
+            border: '1px solid rgba(16,185,129,0.30)',
           }}
         >
-          <div className="flex items-center gap-3">
-            <span className="text-3xl flex-shrink-0">⚠️</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-bold" style={{ color: '#EF4444' }}>
-                {sumidosWithoutCoupon} sumido{sumidosWithoutCoupon === 1 ? '' : 's'} sem cupom
+          <div className="flex items-start gap-3">
+            <span className="text-3xl flex-shrink-0">🎯</span>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <p className="text-base font-bold" style={{ color: '#059669' }}>
+                Você tem {sumidosCount} cliente{sumidosCount === 1 ? '' : 's'} sumido{sumidosCount === 1 ? '' : 's'}{sumidosWithoutCoupon !== sumidosTotal && sumidosWithoutCoupon > 0 ? ' sem cupom' : ''}
               </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                {sumidosTotal === sumidosWithoutCoupon
-                  ? 'Esses precisam de campanha pra voltar.'
-                  : `${sumidosTotal - sumidosWithoutCoupon} já têm cupom rodando · ${sumidosWithoutCoupon} ainda precisam`}
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+                Se só <strong>1 em cada 5</strong> voltar (taxa típica), são <strong>{retornoEsperado} atendimento{retornoEsperado === 1 ? '' : 's'}</strong> de volta.
+              </p>
+              {receitaEstimada > 0 && (
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+                  No teu ticket médio ({formatBRL(ticketMedio)}), ~<strong style={{ color: '#059669' }}>{formatBRL(receitaEstimada)}</strong> de receita extra.
+                </p>
+              )}
+              <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+                💸 Custo: 0 · você só dá o desconto pra quem voltar.
               </p>
             </div>
           </div>
@@ -350,35 +387,96 @@ export default function ReativarSumidosView({
         </div>
       )}
 
-      {/* Como funciona — explicação visual do fluxo, antes do form */}
+      {/* COMO FUNCIONA · 4 passos com ícone grande · cada passo enfatiza BENEFÍCIO */}
       <div
-        className="rounded-2xl p-4"
+        className="rounded-2xl p-4 lg:p-5"
         style={{
-          background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(168,85,247,0.06))',
+          background: 'var(--admin-surface)',
           border: '1px solid var(--admin-border)',
         }}
       >
-        <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--admin-accent)' }}>
-          Como funciona
+        <p className="text-[11px] font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--admin-text-mute)' }}>
+          Como funciona · 4 passos
         </p>
-        <ol className="space-y-2 text-xs leading-relaxed">
-          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
-            <span className="font-bold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>1.</span>
-            <span>Você define o desconto e escolhe a mensagem aqui</span>
-          </li>
-          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
-            <span className="font-bold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>2.</span>
-            <span>Sistema cria <strong>1 cupom único por cliente sumido</strong> (substitui automaticamente nome, valor e link)</span>
-          </li>
-          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
-            <span className="font-bold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>3.</span>
-            <span>Aparece a lista de clientes com botão <strong>WhatsApp</strong> em cada — você clica pra abrir conversa pronta</span>
-          </li>
-          <li className="flex gap-2.5" style={{ color: 'var(--admin-text-2)' }}>
-            <span className="font-bold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>4.</span>
-            <span>Cliente clica no link, agenda, e o desconto é aplicado automático</span>
-          </li>
-        </ol>
+        <div className="space-y-3">
+          {[
+            { icon: '🎁', title: 'Você escolhe o desconto', desc: 'Valor fixo (R$) ou porcentagem · e quantos dias o cupom dura' },
+            { icon: '✍️', title: 'Escolhe a mensagem', desc: 'Templates prontos pro seu nicho · você pode editar à vontade' },
+            { icon: '📱', title: 'Sistema gera 1 link WhatsApp por cliente', desc: 'Cada um com nome, valor e cupom único · pronto pra enviar' },
+            { icon: '💰', title: 'Cliente clica, agenda e o desconto entra', desc: 'Sem trabalho seu · desconto é aplicado automaticamente no caixa' },
+          ].map((step, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div
+                className="w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                style={{ background: 'var(--admin-accent-bg)' }}
+              >
+                {step.icon}
+              </div>
+              <div className="flex-1 min-w-0 pt-1">
+                <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+                  {i + 1}. {step.title}
+                </p>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  {step.desc}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FAQ COLAPSÁVEL · responde dúvidas comuns sem poluir tela */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+      >
+        <button
+          type="button"
+          onClick={() => setShowFAQ((v) => !v)}
+          className="w-full px-4 py-3 flex items-center justify-between transition-colors"
+        >
+          <span className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+            💬 Perguntas frequentes
+          </span>
+          <span style={{ color: 'var(--admin-text-mute)', fontSize: 14 }}>
+            {showFAQ ? '▲' : '▼'}
+          </span>
+        </button>
+        {showFAQ && (
+          <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: 'var(--admin-divider)', paddingTop: 12 }}>
+            {[
+              {
+                q: 'Por que cupom único por cliente?',
+                a: 'Pra você saber EXATAMENTE quem voltou via campanha (relatório). Sem isso, fica difícil medir o que funcionou.',
+              },
+              {
+                q: 'Vou ter que mandar 135 mensagens uma por uma?',
+                a: 'Sim — mas cada uma é só 1 clique no botão WhatsApp da lista. Pra 100 clientes leva uns 20 minutos. Você pode fazer aos poucos.',
+              },
+              {
+                q: 'E se o cliente não usar o cupom?',
+                a: 'Sem prejuízo — o cupom expira sozinho na data que você definir. Você só perde o tempo de enviar.',
+              },
+              {
+                q: 'Quanto fica de desconto?',
+                a: 'Você decide. Sugestão pra esmalteria: R$ 10 fixo OU 15% off. O importante é ser tentador o suficiente pra ele voltar.',
+              },
+              {
+                q: 'O que conta como "cliente sumido"?',
+                a: 'Quem não vem há mais de 40 dias e nem agendou nada futuro. Sistema atualiza essa lista automaticamente.',
+              },
+            ].map((item, i) => (
+              <div key={i}>
+                <p className="text-xs font-bold" style={{ color: 'var(--admin-text)' }}>
+                  {item.q}
+                </p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  {item.a}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Form de campanha · grid 2-col em desktop (Salão99-style)
