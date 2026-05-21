@@ -11,6 +11,8 @@ type Props = {
   backHref: string
   customerName: string
   customerPhone: string | null
+  /** Se passado, chamado após sucesso em vez de navegar pro backHref. Usado pelo drawer inline. */
+  onDone?: () => void
 }
 
 export default function AppointmentActions({
@@ -19,6 +21,7 @@ export default function AppointmentActions({
   backHref,
   customerName,
   customerPhone,
+  onDone,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -39,7 +42,8 @@ export default function AppointmentActions({
       setError(d.error || 'Erro ao atualizar pagamento')
       return
     }
-    router.refresh()
+    if (onDone) onDone()
+    else router.refresh()
   }
 
   async function cancelar() {
@@ -58,8 +62,12 @@ export default function AppointmentActions({
       return
     }
     setConfirmCancel(false)
-    router.push(backHref)
-    router.refresh()
+    if (onDone) {
+      onDone()
+    } else {
+      router.push(backHref)
+      router.refresh()
+    }
   }
 
   function enviarWhatsApp() {

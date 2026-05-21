@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus } from '@/components/ui/Icon'
+import AppointmentDrawer from '@/components/admin/atendimentos/AppointmentDrawer'
 
 type Prof = { id: string; name: string; photo_url: string | null }
 type Appt = {
@@ -92,7 +93,14 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
   const [popover, setPopover] = useState<PopoverState>(null)
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null) // `${profId}-${time}`
   const [portalReady, setPortalReady] = useState(false)
+  // Drawer inline do agendamento clicado · Salão99-style · sem trocar de rota
+  const [selectedApptId, setSelectedApptId] = useState<string | null>(null)
   useEffect(() => { setPortalReady(true) }, [])
+
+  function closeDrawer() {
+    setSelectedApptId(null)
+    router.refresh() // pega mudanças de pagamento/cancelamento feitas no drawer
+  }
 
   // Fecha popover · ESC + click fora
   useEffect(() => {
@@ -495,10 +503,14 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
                       const isPaid = !!a.paid_at
                       const isPending = a.status === 'pending'
                       return (
-                        <a
+                        <button
                           key={a.id}
-                          href={`/admin/atendimentos/${a.id}`}
-                          className="absolute left-1 right-1 rounded-lg p-2 flex flex-col overflow-hidden transition-all hover:-translate-y-px"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedApptId(a.id)
+                          }}
+                          className="absolute left-1 right-1 rounded-lg p-2 flex flex-col overflow-hidden text-left transition-all hover:-translate-y-px"
                           style={{
                             top,
                             height: Math.max(height - 2, 24),
@@ -507,6 +519,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
                             borderTop: `1px solid color-mix(in srgb, ${color} 35%, rgba(255,255,255,0.5))`,
                             boxShadow: `0 4px 12px -4px color-mix(in srgb, ${color} 30%, transparent), 0 1px 2px rgba(0,0,0,0.04)`,
                             zIndex: 2,
+                            cursor: 'pointer',
                           }}
                           title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}`}
                         >
@@ -545,7 +558,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
                               Pago
                             </span>
                           )}
-                        </a>
+                        </button>
                       )
                     })}
 
@@ -667,6 +680,12 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
         </div>,
         document.body,
       )}
+
+      {/* DRAWER inline · click no card abre lateral sem trocar de rota · Salão99-style */}
+      <AppointmentDrawer
+        appointmentId={selectedApptId}
+        onClose={closeDrawer}
+      />
     </div>
   )
 }
