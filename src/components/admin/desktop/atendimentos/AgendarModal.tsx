@@ -15,6 +15,13 @@ import {
   IconCheck,
 } from '@/components/ui/Icon'
 import TimeSlotPicker from './TimeSlotPicker'
+import dynamic from 'next/dynamic'
+
+// Lazy: o cadastro full-form é grande (form com 20+ campos). Só baixa
+// quando o usuário decide criar cliente novo dentro do modal.
+const NovoClienteModal = dynamic(() => import('@/components/admin/clientes/NovoClienteModal'), {
+  ssr: false,
+})
 
 type Customer = { id: string; name: string; phone: string; total_points: number | null }
 type Professional = { id: string; name: string }
@@ -99,8 +106,9 @@ export default function AgendarModal({
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<Customer[]>([])
   const [searching, setSearching] = useState(false)
-  const [showCreateClient, setShowCreateClient] = useState(false)
-  const [newClient, setNewClient] = useState({ name: '', phone: '' })
+  // V3: cadastro completo via NovoClienteModal compartilhado · substitui
+  // o quick-create antigo (que só tinha nome+telefone inline).
+  const [showFullClientForm, setShowFullClientForm] = useState(false)
 
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
@@ -118,7 +126,7 @@ export default function AgendarModal({
     setCreatedId(null)
     setCreatedCustomerId(null)
     setShowClientPicker(false)
-    setShowCreateClient(false)
+    setShowFullClientForm(false)
     setSearch('')
     setResults([])
   }, [open, defaultProfId, defaultDate, defaultTime])
@@ -197,29 +205,21 @@ export default function AgendarModal({
     }
   }, [search, showClientPicker, businessId, supabase])
 
-  async function handleCreateClient() {
-    const n = newClient.name.trim()
-    const p = newClient.phone.trim()
-    if (!n || !p) {
-      setError('Nome e telefone obrigatórios')
-      return
-    }
-    setError(null)
-    setSaving(true)
-    const { data, error: e } = await supabase
+  // V3: cadastro full-form usa NovoClienteModal · onSuccess devolve só o id
+  // do customer criado · fazemos fetch dos campos básicos pra setar cliente
+  // sem precisar re-abrir o picker.
+  async function handleFullClientCreated(createdId?: string) {
+    setShowFullClientForm(false)
+    if (!createdId) return
+    const { data } = await supabase
       .from('customers')
-      .insert({ business_id: businessId, name: n, phone: p })
       .select('id, name, phone, total_points')
+      .eq('id', createdId)
       .single()
-    setSaving(false)
-    if (e) {
-      setError(`Erro ao criar cliente: ${e.message}`)
-      return
+    if (data) {
+      setCliente(data as Customer)
+      setShowClientPicker(false)
     }
-    setCliente(data as Customer)
-    setShowCreateClient(false)
-    setShowClientPicker(false)
-    setNewClient({ name: '', phone: '' })
   }
 
   // Linhas válidas = têm serviceId selecionado
@@ -659,9 +659,9 @@ export default function AgendarModal({
               />
               <button
                 type="button"
-                onClick={() => { setShowCreateClient(true); setNewClient({ name: search, phone: '' }) }}
-                aria-label="Criar novo cliente"
-                title="Criar cliente"
+                onClick={() => setShowFullClientForm(true)}
+                aria-label="Cadastrar novo cliente"
+                title="Cadastro completo (Apelido, CPF, endereço...)"
                 className="w-7 h-7 rounded-full flex items-center justify-center"
                 style={{ background: 'var(--admin-accent)', color: '#fff' }}
               >
@@ -678,54 +678,7 @@ export default function AgendarModal({
               </button>
             </div>
 
-            {showCreateClient ? (
-              <div className="p-4 space-y-3">
-                <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-                  Novo cliente rápido
-                </p>
-                <input
-                  type="text"
-                  value={newClient.name}
-                  onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                  placeholder="Nome completo"
-                  className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
-                />
-                <input
-                  type="tel"
-                  value={newClient.phone}
-                  onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                  placeholder="Telefone (DDD + número)"
-                  className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
-                />
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateClient(false)}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                    style={{
-                      background: 'transparent',
-                      color: 'var(--admin-text-2)',
-                      border: '1px solid var(--admin-border)',
-                    }}
-                  >
-                    Voltar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCreateClient}
-                    disabled={saving}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40"
-                    style={{
-                      background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
-                      color: '#fff',
-                    }}
-                  >
-                    {saving ? 'Criando...' : 'Criar e selecionar'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-y-auto">
+            <div className="overflow-y-auto">
                 {searching && (
                   <p className="text-xs text-center py-4" style={{ color: 'var(--admin-text-mute)' }}>Buscando...</p>
                 )}
@@ -764,9 +717,16 @@ export default function AgendarModal({
                   </button>
                 ))}
               </div>
-            )}
           </div>
         </div>
+      )}
+
+      {/* V3 · cadastro full-form de cliente · NovoClienteModal compartilhado */}
+      {showFullClientForm && (
+        <NovoClienteModal
+          onClose={() => setShowFullClientForm(false)}
+          onSuccess={handleFullClientCreated}
+        />
       )}
     </div>,
     document.body,
