@@ -14,6 +14,7 @@ import {
   IconClock,
   IconCheck,
 } from '@/components/ui/Icon'
+import TimeSlotPicker from './TimeSlotPicker'
 
 type Customer = { id: string; name: string; phone: string; total_points: number | null }
 type Professional = { id: string; name: string }
@@ -520,14 +521,16 @@ export default function AgendarModal({
             </select>
           </Field>
 
-          {/* Horário (inicial · serviços empilham sequenciais a partir daqui) */}
+          {/* Horário (inicial · serviços empilham sequenciais a partir daqui)
+              Grid de chips · marca slots ocupados em cinza/risco baseado em duracao total */}
           <Field icon={<IconClock size={14} />} label="Horário (início)">
-            <input
-              type="time"
+            <TimeSlotPicker
+              businessId={businessId}
+              profId={profId}
+              date={date}
+              totalDuration={totalDuration}
               value={time}
-              onChange={(e) => setTime(e.target.value)}
-              step={300}
-              className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
+              onChange={setTime}
             />
           </Field>
 
