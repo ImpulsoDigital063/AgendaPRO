@@ -71,6 +71,10 @@ export default function CadastroPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
+  // v67 · Mapeamento de canal de aquisição + dor primária (cravado pós-Studio Mood)
+  const [acquisitionChannel, setAcquisitionChannel] = useState<string>('')
+  const [primaryNeed, setPrimaryNeed] = useState<string>('')
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -165,6 +169,9 @@ export default function CadastroPage() {
         // Cliente final escolhe esse nome ao agendar (ex: "Olímpio" em vez
         // do nome da barbearia toda).
         professionalName: ownerName.trim(),
+        // v67 · canal de aquisição + dor primária (insight pós-Studio Mood)
+        acquisitionChannel: acquisitionChannel || null,
+        primaryNeed: primaryNeed || null,
       }),
     })
 
@@ -430,6 +437,47 @@ export default function CadastroPage() {
                 className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none text-sm"
                 style={inputStyle}
               />
+            </div>
+
+            {/* v67 · Mapeamento de canal + dor (insight pós-Studio Mood) */}
+            <div>
+              <label className="block text-sm font-medium text-slate-200 mb-1.5">
+                Como você descobriu o AgendaPRO?
+              </label>
+              <select
+                value={acquisitionChannel}
+                onChange={(e) => setAcquisitionChannel(e.target.value)}
+                className="w-full rounded-xl px-4 py-3 text-white focus:outline-none text-sm"
+                style={inputStyle}
+              >
+                <option value="" style={{ color: '#000' }}>Selecione (opcional)</option>
+                <option value="indicacao" style={{ color: '#000' }}>Indicação de amigo / cliente</option>
+                <option value="google" style={{ color: '#000' }}>Busca no Google</option>
+                <option value="instagram" style={{ color: '#000' }}>Instagram</option>
+                <option value="tiktok" style={{ color: '#000' }}>TikTok</option>
+                <option value="chatgpt_ia" style={{ color: '#000' }}>ChatGPT ou outra IA</option>
+                <option value="salao99_migrante" style={{ color: '#000' }}>Vim do Salão99</option>
+                <option value="whatsapp_organico" style={{ color: '#000' }}>WhatsApp / contato direto</option>
+                <option value="outro" style={{ color: '#000' }}>Outro</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-200 mb-1.5">
+                O que você mais precisa hoje?
+              </label>
+              <select
+                value={primaryNeed}
+                onChange={(e) => setPrimaryNeed(e.target.value)}
+                className="w-full rounded-xl px-4 py-3 text-white focus:outline-none text-sm"
+                style={inputStyle}
+              >
+                <option value="" style={{ color: '#000' }}>Selecione (opcional)</option>
+                <option value="agenda" style={{ color: '#000' }}>Organizar minha agenda · marcação de horários</option>
+                <option value="loja_vendas" style={{ color: '#000' }}>Gerir loja · vendas, estoque, financeiro</option>
+                <option value="ambos" style={{ color: '#000' }}>Os dois com igual importância</option>
+                <option value="indeciso" style={{ color: '#000' }}>Ainda explorando o que preciso</option>
+              </select>
             </div>
 
             {error && <p className="text-red-400 text-sm">{error}</p>}

@@ -18,8 +18,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Muitas tentativas. Tente novamente em 1 hora.' }, { status: 429 })
   }
 
-  const { businessName, category, phone, address, slug, email, password, professionalName, plan } =
-    await req.json()
+  const {
+    businessName, category, phone, address, slug, email, password, professionalName, plan,
+    // v67 · mapeamento de canal e dor (insight pós-Studio Mood/Izanara via ChatGPT)
+    acquisitionChannel, primaryNeed,
+  } = await req.json()
 
   if (!businessName || !slug || !email || !password) {
     return NextResponse.json({ error: 'Campos obrigatórios faltando.' }, { status: 400 })
@@ -75,6 +78,12 @@ export async function POST(req: NextRequest) {
   const ownerId = userData.user.id
 
   // 3. Cria o negócio (sem trial_ends_at — lógica agora é 100% via subscriptions)
+  // v67 valida acquisition_channel e primary_need contra os enums do banco
+  const VALID_CHANNELS = ['indicacao', 'google', 'instagram', 'tiktok', 'chatgpt_ia', 'salao99_migrante', 'whatsapp_organico', 'outro']
+  const VALID_NEEDS = ['agenda', 'loja_vendas', 'ambos', 'indeciso']
+  const channel = typeof acquisitionChannel === 'string' && VALID_CHANNELS.includes(acquisitionChannel) ? acquisitionChannel : null
+  const need = typeof primaryNeed === 'string' && VALID_NEEDS.includes(primaryNeed) ? primaryNeed : null
+
   const { data: business, error: bizError } = await supabase
     .from('businesses')
     .insert({
@@ -84,6 +93,8 @@ export async function POST(req: NextRequest) {
       phone: phone || null,
       address: address || null,
       owner_id: ownerId,
+      acquisition_channel: channel,
+      primary_need: need,
     })
     .select('id')
     .single()
