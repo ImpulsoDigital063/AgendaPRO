@@ -35,6 +35,7 @@ import TopClienteCard from '@/components/admin/TopClienteCard'
 import TrendReceitaCard from '@/components/admin/TrendReceitaCard'
 import BrandHeaderLogo from '@/components/admin/BrandHeaderLogo'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
+import EstoqueAlertCard from '@/components/admin/produtos/EstoqueAlertCard'
 import {
   IconCalendar,
   IconDollar,
@@ -446,6 +447,11 @@ export default async function AdminPage({
             {/* Foco do dia · ações proativas */}
             <Suspense fallback={null}>
               <FocoDoDiaSection businessId={business.id} />
+            </Suspense>
+
+            {/* Estoque baixo · só aparece se tem produtos abaixo do mínimo · gap Salão99 */}
+            <Suspense fallback={null}>
+              <EstoqueAlertCard businessId={business.id} />
             </Suspense>
 
             {/* Divulgação · estática */}
