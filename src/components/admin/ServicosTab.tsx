@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Service } from '@/lib/types'
 import {
@@ -8,6 +8,7 @@ import {
   IconClose,
   IconEye,
   IconEyeOff,
+  IconInbox,
   IconPencil,
   IconPlus,
   IconSearch,
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
+import ServicoUsoProdutosModal from '@/components/admin/produtos/ServicoUsoProdutosModal'
 
 type Props = {
   businessId: string
@@ -104,6 +106,29 @@ export default function ServicosTab({ businessId, initialServices, category }: P
   const [search, setSearch] = useState('')
 
   const [confirmDelete, setConfirmDelete] = useState<Service | null>(null)
+
+  // v68 · Uso de produtos por serviço (consumo automático)
+  const [usoProdutosFor, setUsoProdutosFor] = useState<Service | null>(null)
+  const [availableProducts, setAvailableProducts] = useState<Array<{
+    id: string; name: string; variant: string | null; unit: string; quantity: number
+  }>>([])
+  useEffect(() => {
+    const sb = createClient()
+    sb.from('products')
+      .select('id, name, variant, unit, quantity')
+      .eq('business_id', businessId)
+      .eq('active', true)
+      .order('name')
+      .then(({ data }) => {
+        setAvailableProducts((data ?? []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          variant: p.variant ?? null,
+          unit: p.unit,
+          quantity: Number(p.quantity ?? 0),
+        })))
+      })
+  }, [businessId])
 
   const addFormRef = useRef<HTMLDivElement | null>(null)
   const supabase = createClient()
@@ -376,6 +401,7 @@ export default function ServicosTab({ businessId, initialServices, category }: P
             onSaveEdit={() => handleSaveEdit(service.id)}
             onToggle={() => toggleActive(service)}
             onAskDelete={() => setConfirmDelete(service)}
+            onUsoProdutos={() => setUsoProdutosFor(service)}
           />
         ))
       )}
@@ -572,6 +598,16 @@ export default function ServicosTab({ businessId, initialServices, category }: P
         }}
         onClose={() => setConfirmDelete(null)}
       />
+
+      {/* v68 · Modal "Uso de produtos" por serviço · consumo automático no fechamento */}
+      {usoProdutosFor && (
+        <ServicoUsoProdutosModal
+          serviceId={usoProdutosFor.id}
+          serviceName={usoProdutosFor.name}
+          availableProducts={availableProducts}
+          onClose={() => setUsoProdutosFor(null)}
+        />
+      )}
     </div>
   )
 }
@@ -593,6 +629,7 @@ function ServiceCard({
   onSaveEdit,
   onToggle,
   onAskDelete,
+  onUsoProdutos,
 }: {
   service: Service
   isEditing: boolean
@@ -606,6 +643,7 @@ function ServiceCard({
   onSaveEdit: () => void
   onToggle: () => void
   onAskDelete: () => void
+  onUsoProdutos: () => void
 }) {
   const isLoading = loadingId === service.id
 
@@ -737,6 +775,11 @@ function ServiceCard({
       label: 'Editar',
       icon: <IconPencil size={15} />,
       onClick: onStartEdit,
+    },
+    {
+      label: 'Uso de produtos',
+      icon: <IconInbox size={15} />,
+      onClick: onUsoProdutos,
     },
     {
       label: service.active ? 'Ocultar' : 'Mostrar',
