@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
               "font-src 'self'",
               // Sentry: cliente envia eventos pra ingest do projeto (*.sentry.io e *.ingest.sentry.io)
               "connect-src 'self' https://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io",
+              // Web Worker via blob: pra compressImage (upload de foto de produto/perfil)
+              // Sem isso, navegador bloqueia o worker e a compressão trava silenciosa.
+              "worker-src 'self' blob:",
+              "child-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

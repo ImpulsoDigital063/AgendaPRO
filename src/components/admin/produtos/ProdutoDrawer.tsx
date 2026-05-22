@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { IconClose, IconPencil, IconClock, IconTrash, IconAlert, IconPlus } from '@/components/ui/Icon'
+import { IconClose, IconPencil, IconClock, IconTrash, IconAlert, IconPlus, IconCheck } from '@/components/ui/Icon'
 import AjustarEstoqueModal from './AjustarEstoqueModal'
 import ProductImageUpload from './ProductImageUpload'
 
@@ -420,6 +420,7 @@ function EditarTab({
   const [showVenda, setShowVenda] = useState(true)
 
   const [saving, setSaving] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -491,7 +492,11 @@ function EditarTab({
       setError(d.error ?? 'Erro ao salvar')
       return
     }
-    onSaved()
+    // Feedback visual · botão vira "✓ Salvo!" por 2s · drawer NÃO fecha
+    // (usuário pode querer editar mais campos)
+    setJustSaved(true)
+    onSaved() // refresh da lista no fundo
+    setTimeout(() => setJustSaved(false), 2000)
   }
 
   return (
@@ -636,15 +641,24 @@ function EditarTab({
           type="button"
           onClick={save}
           disabled={saving}
-          className="flex-1 py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-40"
-          style={{
-            background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
-            color: '#fff',
-            borderTop: '1px solid rgba(255,255,255,0.25)',
-            boxShadow: '0 8px 22px -8px color-mix(in srgb, var(--brand-primary, #1AA9A8) 55%, transparent)',
-          }}
+          className="flex-1 py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-40 transition-all"
+          style={
+            justSaved
+              ? {
+                  background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+                  color: '#fff',
+                  borderTop: '1px solid rgba(255,255,255,0.25)',
+                  boxShadow: '0 8px 22px -8px rgba(5,150,105,0.55)',
+                }
+              : {
+                  background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
+                  color: '#fff',
+                  borderTop: '1px solid rgba(255,255,255,0.25)',
+                  boxShadow: '0 8px 22px -8px color-mix(in srgb, var(--brand-primary, #1AA9A8) 55%, transparent)',
+                }
+          }
         >
-          <IconPencil size={14} /> {saving ? 'Salvando...' : 'Salvar alterações'}
+          {justSaved ? <><IconCheck size={14} /> Salvo!</> : <><IconPencil size={14} /> {saving ? 'Salvando...' : 'Salvar alterações'}</>}
         </button>
       </div>
 
