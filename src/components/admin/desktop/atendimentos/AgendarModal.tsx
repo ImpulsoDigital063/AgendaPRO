@@ -521,20 +521,9 @@ export default function AgendarModal({
             </select>
           </Field>
 
-          {/* Horário (inicial · serviços empilham sequenciais a partir daqui)
-              Grid de chips · marca slots ocupados em cinza/risco baseado em duracao total */}
-          <Field icon={<IconClock size={14} />} label="Horário (início)">
-            <TimeSlotPicker
-              businessId={businessId}
-              profId={profId}
-              date={date}
-              totalDuration={totalDuration}
-              value={time}
-              onChange={setTime}
-            />
-          </Field>
-
-          {/* Linhas de serviço · multi-serviços inline (V2) */}
+          {/* Linhas de serviço · multi-serviços inline (V2)
+              Vem ANTES do horário · duração total alimenta o TimeSlotPicker abaixo
+              pra calcular sobreposição corretamente (decisão cravada 22/05). */}
           {serviceLines.map((line, idx) => (
             <ServiceLineBlock
               key={line.uid}
@@ -563,6 +552,19 @@ export default function AgendarModal({
           >
             <IconPlus size={14} /> Adicionar mais serviços
           </button>
+
+          {/* Horário (início) · vem DEPOIS do serviço · grid de chips agora sabe
+              a duração total e calcula sobreposição corretamente */}
+          <Field icon={<IconClock size={14} />} label="Horário (início)">
+            <TimeSlotPicker
+              businessId={businessId}
+              profId={profId}
+              date={date}
+              totalDuration={totalDuration}
+              value={time}
+              onChange={setTime}
+            />
+          </Field>
 
           {/* Observação */}
           <Field label="Observação (opcional)">
