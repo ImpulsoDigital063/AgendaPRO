@@ -354,8 +354,11 @@ function InfoCard({ label, value }: { label: string; value: string }) {
 }
 
 /* ============================================================
- * TAB · Editar metadados
+ * TAB · Editar metadados · paridade total v64
  * ============================================================ */
+type Brand = { id: string; name: string }
+type Category = { id: string; name: string }
+
 function EditarTab({
   product, onSaved, onDelete,
 }: {
@@ -363,14 +366,76 @@ function EditarTab({
   onSaved: () => void
   onDelete: () => void
 }) {
+  // Básico
   const [name, setName] = useState(product.name)
   const [description, setDescription] = useState(product.description ?? '')
   const [unit, setUnit] = useState(product.unit)
+  // Categorização
+  const [brandId, setBrandId] = useState<string>(product.brand_id ?? '')
+  const [categoryId, setCategoryId] = useState<string>(product.category_id ?? '')
+  const [variant, setVariant] = useState<string>(product.variant ?? '')
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [newBrand, setNewBrand] = useState('')
+  const [newCategory, setNewCategory] = useState('')
+  // Estoque
+  const [trackStock, setTrackStock] = useState<boolean>(product.track_stock ?? true)
+  const [minQuantity, setMinQuantity] = useState<string>(product.min_quantity.toString())
+  const [packQuantity, setPackQuantity] = useState<string>(product.pack_quantity?.toString() ?? '')
+  const [expiresAt, setExpiresAt] = useState<string>(product.expires_at ?? '')
+  // Identificação
+  const [sku, setSku] = useState<string>(product.sku ?? '')
+  const [barcode, setBarcode] = useState<string>(product.barcode ?? '')
+  // Venda
+  const [saleActive, setSaleActive] = useState<boolean>(product.sale_active ?? true)
   const [price, setPrice] = useState<string>(product.price?.toString() ?? '')
   const [cost, setCost] = useState<string>(product.cost?.toString() ?? '')
-  const [minQuantity, setMinQuantity] = useState<string>(product.min_quantity.toString())
+  const [commissionType, setCommissionType] = useState<'percent' | 'fixed' | ''>(product.commission_type ?? '')
+  const [commissionValue, setCommissionValue] = useState<string>(product.commission_value?.toString() ?? '')
+
+  // Seções colapsáveis
+  const [showCategorizacao, setShowCategorizacao] = useState(true)
+  const [showEstoque, setShowEstoque] = useState(true)
+  const [showIdentificacao, setShowIdentificacao] = useState(false)
+  const [showVenda, setShowVenda] = useState(true)
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/product-brands').then((r) => r.json()).then((d) => setBrands(d.brands ?? []))
+    fetch('/api/admin/product-categories').then((r) => r.json()).then((d) => setCategories(d.categories ?? []))
+  }, [])
+
+  async function criarMarca() {
+    const n = newBrand.trim()
+    if (!n) return
+    const res = await fetch('/api/admin/product-brands', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: n }),
+    })
+    if (res.ok) {
+      const d = await res.json()
+      setBrands((prev) => [...prev.filter((b) => b.id !== d.brand.id), d.brand].sort((a, b) => a.name.localeCompare(b.name)))
+      setBrandId(d.brand.id)
+      setNewBrand('')
+    }
+  }
+
+  async function criarCategoria() {
+    const n = newCategory.trim()
+    if (!n) return
+    const res = await fetch('/api/admin/product-categories', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: n }),
+    })
+    if (res.ok) {
+      const d = await res.json()
+      setCategories((prev) => [...prev.filter((c) => c.id !== d.category.id), d.category].sort((a, b) => a.name.localeCompare(b.name)))
+      setCategoryId(d.category.id)
+      setNewCategory('')
+    }
+  }
 
   async function save() {
     setError(null)
@@ -383,9 +448,20 @@ function EditarTab({
         name: name.trim(),
         description: description.trim() || null,
         unit,
-        price: price ? Number(price) : null,
-        cost: cost ? Number(cost) : null,
+        brand_id: brandId || null,
+        category_id: categoryId || null,
+        variant: variant.trim() || null,
+        track_stock: trackStock,
         min_quantity: minQuantity ? Number(minQuantity) : 0,
+        pack_quantity: packQuantity ? Number(packQuantity) : null,
+        expires_at: expiresAt || null,
+        sku: sku.trim() || null,
+        barcode: barcode.trim() || null,
+        sale_active: saleActive,
+        price: saleActive && price ? Number(price) : null,
+        cost: cost ? Number(cost) : null,
+        commission_type: saleActive && commissionType ? commissionType : null,
+        commission_value: saleActive && commissionValue ? Number(commissionValue) : null,
       }),
     })
     setSaving(false)
@@ -399,44 +475,123 @@ function EditarTab({
 
   return (
     <div className="space-y-3">
-      <div>
-        <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>Nome</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
-        />
-      </div>
-      <div>
-        <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>Descrição</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={2}
-          className="admin-input w-full px-3 py-2.5 rounded-xl text-sm resize-none"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
+      {/* Básico */}
+      <div className="space-y-2">
+        <EditLabel>Nome</EditLabel>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm" />
+        <EditLabel>Descrição</EditLabel>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm resize-none" />
         <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>Unidade</label>
+          <EditLabel>Unidade</EditLabel>
           <input type="text" value={unit} onChange={(e) => setUnit(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm" />
         </div>
-        <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>Mínimo alerta</label>
-          <input type="number" min={0} step={0.01} value={minQuantity} onChange={(e) => setMinQuantity(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
-        </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+
+      {/* Categorização */}
+      <EditSection title="Categorização" open={showCategorizacao} onToggle={() => setShowCategorizacao((v) => !v)}>
+        <div className="grid grid-cols-1 gap-2">
+          <div>
+            <EditLabel>Marca</EditLabel>
+            <SelectWithCreate options={brands} value={brandId} onChange={setBrandId} placeholder="Sem marca" newValue={newBrand} setNewValue={setNewBrand} onCreate={criarMarca} createPlaceholder="Nome da marca" />
+          </div>
+          <div>
+            <EditLabel>Categoria</EditLabel>
+            <SelectWithCreate options={categories} value={categoryId} onChange={setCategoryId} placeholder="Sem categoria" newValue={newCategory} setNewValue={setNewCategory} onCreate={criarCategoria} createPlaceholder="Nome da categoria" />
+          </div>
+          <div>
+            <EditLabel>Variante (cor / tom / tamanho)</EditLabel>
+            <input type="text" value={variant} onChange={(e) => setVariant(e.target.value)} placeholder="#T1B/27 · Preto · Marsala" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm" />
+          </div>
+        </div>
+      </EditSection>
+
+      {/* Estoque */}
+      <EditSection
+        title="Controle de estoque"
+        open={showEstoque}
+        onToggle={() => setShowEstoque((v) => !v)}
+        toggle={{ value: trackStock, onChange: setTrackStock }}
+      >
+        {trackStock && (
+          <>
+            <div>
+              <EditLabel>Mínimo alerta</EditLabel>
+              <input type="number" min={0} step={0.01} value={minQuantity} onChange={(e) => setMinQuantity(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <EditLabel>Por embalagem</EditLabel>
+                <input type="number" min={0} step={0.01} value={packQuantity} onChange={(e) => setPackQuantity(e.target.value)} placeholder="Ex: 300" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+              </div>
+              <div>
+                <EditLabel>Validade</EditLabel>
+                <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm" />
+              </div>
+            </div>
+            <p className="text-[11px] italic" style={{ color: 'var(--admin-text-mute)' }}>
+              Pra alterar a <strong>quantidade atual</strong>, use a aba Resumo → Movimentar estoque.
+            </p>
+          </>
+        )}
+      </EditSection>
+
+      {/* Identificação */}
+      <EditSection title="Identificação" open={showIdentificacao} onToggle={() => setShowIdentificacao((v) => !v)}>
         <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>Preço venda (R$)</label>
-          <input type="number" min={0} step={0.01} value={price} onChange={(e) => setPrice(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+          <EditLabel>SKU (referência interna)</EditLabel>
+          <input type="text" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Ex: JUMBO-PRETO" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm" />
         </div>
         <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>Custo (R$)</label>
-          <input type="number" min={0} step={0.01} value={cost} onChange={(e) => setCost(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+          <EditLabel>Código de barras</EditLabel>
+          <input type="text" inputMode="numeric" value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="789..." className="admin-input w-full px-3 py-2.5 rounded-xl text-sm" />
         </div>
-      </div>
+      </EditSection>
+
+      {/* Venda */}
+      <EditSection
+        title="Dados de venda"
+        open={showVenda}
+        onToggle={() => setShowVenda((v) => !v)}
+        toggle={{ value: saleActive, onChange: setSaleActive }}
+      >
+        {saleActive && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <EditLabel>Preço de venda (R$)</EditLabel>
+                <input type="number" min={0} step={0.01} value={price} onChange={(e) => setPrice(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+              </div>
+              <div>
+                <EditLabel>Custo (R$)</EditLabel>
+                <input type="number" min={0} step={0.01} value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Opcional" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+              </div>
+            </div>
+            <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+              <div>
+                <EditLabel>Comissão</EditLabel>
+                <input type="number" min={0} step={0.01} value={commissionValue} onChange={(e) => setCommissionValue(e.target.value)} placeholder="0" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+              </div>
+              <div className="flex gap-1">
+                {(['percent', 'fixed'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setCommissionType(commissionType === t ? '' : t)}
+                    className="py-2.5 px-3 rounded-lg text-xs font-bold transition-colors"
+                    style={
+                      commissionType === t
+                        ? { background: 'var(--admin-accent)', color: '#fff' }
+                        : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
+                    }
+                  >
+                    {t === 'percent' ? '%' : 'R$'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </EditSection>
 
       {error && (
         <div className="rounded-xl px-3 py-2 text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#DC2626' }}>
@@ -444,7 +599,7 @@ function EditarTab({
         </div>
       )}
 
-      <div className="flex gap-2 pt-2">
+      <div className="flex gap-2 pt-1">
         <button
           type="button"
           onClick={save}
@@ -468,6 +623,120 @@ function EditarTab({
         style={{ background: 'transparent', color: '#DC2626', border: '1px solid rgba(220,38,38,0.30)' }}
       >
         <IconTrash size={12} /> Remover produto
+      </button>
+    </div>
+  )
+}
+
+function EditLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+      {children}
+    </label>
+  )
+}
+
+function EditSection({
+  title, open, onToggle, toggle, children,
+}: {
+  title: string
+  open: boolean
+  onToggle: () => void
+  toggle?: { value: boolean; onChange: (v: boolean) => void }
+  children: React.ReactNode
+}) {
+  return (
+    <section
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: 'var(--admin-surface-hi)',
+        border: '1px solid var(--admin-border)',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{title}</p>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {toggle && (
+            <span onClick={(e) => { e.stopPropagation(); toggle.onChange(!toggle.value) }}>
+              <span
+                className="inline-block w-9 h-5 rounded-full relative transition-colors"
+                style={{ background: toggle.value ? 'var(--admin-accent)' : 'var(--admin-border)' }}
+              >
+                <span
+                  className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
+                  style={{ left: toggle.value ? '18px' : '2px' }}
+                />
+              </span>
+            </span>
+          )}
+        </div>
+      </button>
+      {open && <div className="px-4 pb-4 space-y-2">{children}</div>}
+    </section>
+  )
+}
+
+function SelectWithCreate({
+  options, value, onChange, placeholder, newValue, setNewValue, onCreate, createPlaceholder,
+}: {
+  options: { id: string; name: string }[]
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  newValue: string
+  setNewValue: (v: string) => void
+  onCreate: () => void
+  createPlaceholder: string
+}) {
+  const [showCreate, setShowCreate] = useState(false)
+  const selectStyle = {
+    background: `var(--admin-input-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.625rem center`,
+    border: '1px solid var(--admin-border)',
+    color: 'var(--admin-text)',
+    appearance: 'none' as const,
+    WebkitAppearance: 'none' as const,
+    MozAppearance: 'none' as const,
+  }
+  if (showCreate) {
+    return (
+      <div className="flex gap-1.5">
+        <input
+          type="text"
+          autoFocus
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+          placeholder={createPlaceholder}
+          className="admin-input flex-1 px-3 py-2.5 rounded-xl text-sm"
+          onKeyDown={(e) => { if (e.key === 'Enter') { onCreate(); setShowCreate(false) } }}
+        />
+        <button type="button" onClick={() => { onCreate(); setShowCreate(false) }} className="px-3 rounded-xl text-xs font-bold" style={{ background: 'var(--admin-accent)', color: '#fff' }}>
+          ok
+        </button>
+        <button type="button" onClick={() => { setShowCreate(false); setNewValue('') }} className="px-2 rounded-xl text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+          ×
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className="flex gap-1.5">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 px-3 py-2.5 pr-9 rounded-xl text-sm" style={selectStyle}>
+        <option value="">{placeholder}</option>
+        {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+      </select>
+      <button
+        type="button"
+        onClick={() => setShowCreate(true)}
+        aria-label="Criar novo"
+        title="Criar novo"
+        className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center"
+        style={{ background: 'var(--admin-accent)', color: '#fff' }}
+      >
+        <IconPlus size={14} />
       </button>
     </div>
   )
