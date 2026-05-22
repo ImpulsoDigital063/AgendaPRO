@@ -12,13 +12,31 @@ import {
   IconUser,
   IconCalendar,
   IconClock,
-  IconDollar,
   IconCheck,
 } from '@/components/ui/Icon'
 
 type Customer = { id: string; name: string; phone: string; total_points: number | null }
 type Professional = { id: string; name: string }
 type Service = { id: string; name: string; price: number | null; duration_minutes: number | null }
+
+type ServiceLine = {
+  /** id local pra key do React · não vai pro banco */
+  uid: string
+  serviceId: string
+  duration: number
+  price: number
+  discount: number
+}
+
+function newLine(): ServiceLine {
+  return {
+    uid: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}${Math.random()}`,
+    serviceId: '',
+    duration: 60,
+    price: 0,
+    discount: 0,
+  }
+}
 
 type Props = {
   open: boolean
@@ -62,15 +80,12 @@ export default function AgendarModal({
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
-  // Form state
+  // Form state · multi-serviços (V2)
   const [cliente, setCliente] = useState<Customer | null>(null)
   const [profId, setProfId] = useState<string>('')
-  const [serviceId, setServiceId] = useState<string>('')
   const [date, setDate] = useState<string>('')
   const [time, setTime] = useState<string>('')
-  const [duration, setDuration] = useState<number>(60)
-  const [price, setPrice] = useState<number>(0)
-  const [discount, setDiscount] = useState<number>(0)
+  const [serviceLines, setServiceLines] = useState<ServiceLine[]>(() => [newLine()])
   const [notes, setNotes] = useState<string>('')
 
   const [saving, setSaving] = useState(false)
@@ -94,12 +109,9 @@ export default function AgendarModal({
     if (!open) return
     setCliente(null)
     setProfId(defaultProfId ?? '')
-    setServiceId('')
+    setServiceLines([newLine()])
     setDate(defaultDate ?? todayISO())
     setTime(defaultTime ?? '')
-    setDuration(60)
-    setPrice(0)
-    setDiscount(0)
     setNotes('')
     setError(null)
     setCreatedId(null)
@@ -124,14 +136,31 @@ export default function AgendarModal({
     }
   }, [open, saving, onClose])
 
-  // Quando troca serviço · auto-preenche duração + preço
-  useEffect(() => {
-    if (!serviceId) return
-    const s = services.find((x) => x.id === serviceId)
-    if (!s) return
-    setDuration(s.duration_minutes ?? 60)
-    setPrice(Number(s.price ?? 0))
-  }, [serviceId, services])
+  // Operações em linhas de serviço
+  function updateLine(uid: string, partial: Partial<ServiceLine>) {
+    setServiceLines((prev) => prev.map((l) => (l.uid === uid ? { ...l, ...partial } : l)))
+  }
+
+  function handleServicePick(uid: string, newServiceId: string) {
+    const s = services.find((x) => x.id === newServiceId)
+    if (!s) {
+      updateLine(uid, { serviceId: '' })
+      return
+    }
+    updateLine(uid, {
+      serviceId: newServiceId,
+      duration: s.duration_minutes ?? 60,
+      price: Number(s.price ?? 0),
+    })
+  }
+
+  function addLine() {
+    setServiceLines((prev) => [...prev, newLine()])
+  }
+
+  function removeLine(uid: string) {
+    setServiceLines((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.uid !== uid)))
+  }
 
   // Busca cliente (debounced)
   useEffect(() => {
@@ -192,17 +221,32 @@ export default function AgendarModal({
     setNewClient({ name: '', phone: '' })
   }
 
-  const valorTotal = Math.max(0, Number(price) - Number(discount))
-  const canSave = cliente && profId && serviceId && date && time && duration > 0
+  // Linhas válidas = têm serviceId selecionado
+  const validLines = serviceLines.filter((l) => l.serviceId)
+  const valorTotal = validLines.reduce(
+    (sum, l) => sum + Math.max(0, Number(l.price) - Number(l.discount)),
+    0,
+  )
+  const totalDuration = validLines.reduce((sum, l) => sum + Number(l.duration || 0), 0)
+  const canSave = !!cliente && !!profId && validLines.length >= 1 && !!date && !!time && totalDuration > 0
 
   async function handleSave() {
     if (!canSave || !cliente) return
     setError(null)
     setSaving(true)
-    const endTime = addMinutesToTime(time, duration)
+    const endTime = addMinutesToTime(time, totalDuration)
     const prof = professionals.find((p) => p.id === profId)
-    const svc = services.find((s) => s.id === serviceId)
 
+    // Snapshot dos serviços usados (resolve nome via lookup pra log/denormalização)
+    const linesWithMeta = validLines.map((l) => {
+      const s = services.find((x) => x.id === l.serviceId)
+      const linePrice = Math.max(0, Number(l.price) - Number(l.discount))
+      return { ...l, name: s?.name ?? '—', linePrice }
+    })
+    const first = linesWithMeta[0]
+    const displayName = linesWithMeta.length === 1 ? first.name : `${first.name} +${linesWithMeta.length - 1}`
+
+    // 1. Insert appointment (denormalizado com first service)
     const { data: inserted, error: e } = await supabase
       .from('appointments')
       .insert({
@@ -214,8 +258,8 @@ export default function AgendarModal({
         appointment_date: date,
         start_time: `${time}:00`,
         end_time: `${endTime}:00`,
-        service_id: serviceId,
-        service_name: svc?.name ?? null,
+        service_id: first.serviceId,
+        service_name: displayName,
         total_price: valorTotal,
         status: 'confirmed',
         notes: notes.trim() || null,
@@ -223,13 +267,29 @@ export default function AgendarModal({
       .select('id')
       .single()
 
-    setSaving(false)
     if (e || !inserted) {
+      setSaving(false)
       setError(`Erro ao salvar: ${e?.message ?? 'desconhecido'}`)
       return
     }
 
-    // Log
+    // 2. Insert appointment_services pra TODAS as linhas (mesma lógica do EditServicesModal)
+    const servicesRows = linesWithMeta.map((l) => ({
+      appointment_id: inserted.id,
+      service_id: l.serviceId,
+      service_name: l.name,
+      price: l.linePrice,
+      duration_minutes: l.duration,
+    }))
+    const { error: svcErr } = await supabase.from('appointment_services').insert(servicesRows)
+    if (svcErr) {
+      // Não bloqueia · appointment já criado · loga e avisa
+      console.error('appointment_services insert error:', svcErr)
+    }
+
+    setSaving(false)
+
+    // 3. Log
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const { data: prof2 } = await supabase
@@ -243,7 +303,7 @@ export default function AgendarModal({
         action: 'create_appointment',
         target_type: 'appointment',
         target_id: inserted.id,
-        description: `${cliente.name} · ${svc?.name ?? 'serviço'} · ${date} ${time} · com ${prof?.name ?? '—'}`,
+        description: `${cliente.name} · ${displayName} · ${date} ${time} · com ${prof?.name ?? '—'} · ${formatBRL(valorTotal)}`,
       })
     }
 
@@ -254,12 +314,9 @@ export default function AgendarModal({
   function novoAtendimento() {
     setCliente(null)
     setProfId('')
-    setServiceId('')
+    setServiceLines([newLine()])
     setDate(todayISO())
     setTime('')
-    setDuration(60)
-    setPrice(0)
-    setDiscount(0)
     setNotes('')
     setCreatedId(null)
     setCreatedCustomerId(null)
@@ -463,77 +520,46 @@ export default function AgendarModal({
             </select>
           </Field>
 
-          {/* Serviço */}
-          <Field label="Serviço">
-            <select
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
-              className="w-full px-3 py-2.5 pr-9 rounded-xl text-sm transition-colors"
-              style={{
-                background: `var(--admin-input-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.875rem center`,
-                border: '1px solid var(--admin-border)',
-                color: 'var(--admin-text)',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-              }}
-            >
-              <option value="">Selecionar serviço</option>
-              {services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} · {s.duration_minutes ?? 60}min · {formatBRL(Number(s.price ?? 0))}
-                </option>
-              ))}
-            </select>
+          {/* Horário (inicial · serviços empilham sequenciais a partir daqui) */}
+          <Field icon={<IconClock size={14} />} label="Horário (início)">
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              step={300}
+              className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
+            />
           </Field>
 
-          {/* Horário + Duração */}
-          <div className="grid grid-cols-2 gap-3">
-            <Field icon={<IconClock size={14} />} label="Horário">
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                step={300}
-                className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
-              />
-            </Field>
-            <Field label="Duração (min)">
-              <input
-                type="number"
-                min={5}
-                step={5}
-                value={duration}
-                onChange={(e) => setDuration(Math.max(5, parseInt(e.target.value, 10) || 0))}
-                className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums"
-              />
-            </Field>
-          </div>
+          {/* Linhas de serviço · multi-serviços inline (V2) */}
+          {serviceLines.map((line, idx) => (
+            <ServiceLineBlock
+              key={line.uid}
+              index={idx}
+              line={line}
+              services={services}
+              canRemove={serviceLines.length > 1}
+              onPickService={(id) => handleServicePick(line.uid, id)}
+              onChangeDuration={(v) => updateLine(line.uid, { duration: v })}
+              onChangePrice={(v) => updateLine(line.uid, { price: v })}
+              onChangeDiscount={(v) => updateLine(line.uid, { discount: v })}
+              onRemove={() => removeLine(line.uid)}
+            />
+          ))}
 
-          {/* Preço + Desconto */}
-          <div className="grid grid-cols-2 gap-3">
-            <Field icon={<IconDollar size={14} />} label="Preço (R$)">
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={price}
-                onChange={(e) => setPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums"
-              />
-            </Field>
-            <Field label="Desconto (R$)">
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={discount}
-                onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums"
-                placeholder="0,00"
-              />
-            </Field>
-          </div>
+          {/* Botão adicionar mais serviços */}
+          <button
+            type="button"
+            onClick={addLine}
+            className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-colors"
+            style={{
+              background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)',
+              border: '1px dashed color-mix(in srgb, var(--admin-accent) 50%, transparent)',
+              color: 'var(--admin-accent)',
+            }}
+          >
+            <IconPlus size={14} /> Adicionar mais serviços
+          </button>
 
           {/* Observação */}
           <Field label="Observação (opcional)">
@@ -748,6 +774,131 @@ function Field({ icon, label, children }: { icon?: React.ReactNode; label: strin
         {label}
       </label>
       {children}
+    </div>
+  )
+}
+
+/* Linha de serviço · usada em loop pelo array serviceLines (V2 multi-serviços) */
+function ServiceLineBlock({
+  index,
+  line,
+  services,
+  canRemove,
+  onPickService,
+  onChangeDuration,
+  onChangePrice,
+  onChangeDiscount,
+  onRemove,
+}: {
+  index: number
+  line: ServiceLine
+  services: Service[]
+  canRemove: boolean
+  onPickService: (id: string) => void
+  onChangeDuration: (v: number) => void
+  onChangePrice: (v: number) => void
+  onChangeDiscount: (v: number) => void
+  onRemove: () => void
+}) {
+  const lineTotal = Math.max(0, Number(line.price) - Number(line.discount))
+  return (
+    <div
+      className="rounded-2xl p-3 space-y-3"
+      style={{
+        background: 'var(--admin-surface-hi)',
+        border: '1px solid var(--admin-border)',
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+          Serviço {index + 1}
+        </p>
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label="Remover serviço"
+            className="w-6 h-6 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--admin-input-bg)]"
+            style={{ color: '#DC2626' }}
+            title="Remover este serviço"
+          >
+            <IconClose size={12} />
+          </button>
+        )}
+      </div>
+
+      <select
+        value={line.serviceId}
+        onChange={(e) => onPickService(e.target.value)}
+        className="w-full px-3 py-2.5 pr-9 rounded-xl text-sm transition-colors"
+        style={{
+          background: `var(--admin-input-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.875rem center`,
+          border: '1px solid var(--admin-border)',
+          color: 'var(--admin-text)',
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          MozAppearance: 'none',
+        }}
+      >
+        <option value="">Selecionar serviço</option>
+        {services.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name} · {s.duration_minutes ?? 60}min · {(Number(s.price ?? 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </option>
+        ))}
+      </select>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+            Duração (min)
+          </label>
+          <input
+            type="number"
+            min={5}
+            step={5}
+            value={line.duration}
+            onChange={(e) => onChangeDuration(Math.max(5, parseInt(e.target.value, 10) || 0))}
+            className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+            Preço (R$)
+          </label>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={line.price}
+            onChange={(e) => onChangePrice(Math.max(0, parseFloat(e.target.value) || 0))}
+            className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+            Desconto
+          </label>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={line.discount}
+            onChange={(e) => onChangeDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+            className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums"
+            placeholder="0,00"
+          />
+        </div>
+      </div>
+
+      {line.serviceId && (line.discount > 0 || line.price > 0) && (
+        <div className="flex items-center justify-between text-xs pt-1" style={{ color: 'var(--admin-text-mute)' }}>
+          <span>Subtotal desta linha</span>
+          <span className="font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+            {lineTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
