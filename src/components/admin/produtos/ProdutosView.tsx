@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconPlus, IconAlert, IconInbox } from '@/components/ui/Icon'
 import NovoProdutoModal from './NovoProdutoModal'
@@ -74,10 +74,28 @@ const STATUS_COLOR: Record<StockStatus, { bg: string; border: string; text: stri
 
 export default function ProdutosView({ businessId, initialProducts }: Props) {
   const router = useRouter()
-  const [products] = useState<Product[]>(initialProducts)
+  // Antes: useState(initialProducts) · congelava no snapshot inicial.
+  // Após router.refresh() o server passava lista nova mas state ignorava.
+  // Eduardo reportou 22/05: "só atualiza quando aperto F5".
+  // Fix: usar prop direto · sem state local · re-render automático.
+  const products = initialProducts
   const [showNovo, setShowNovo] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [search, setSearch] = useState('')
+
+  // Sincroniza o produto selecionado quando a lista atualiza · sem isso o
+  // drawer continua mostrando snapshot velho após movimentar/editar.
+  useEffect(() => {
+    if (!selectedProduct) return
+    const updated = initialProducts.find((p) => p.id === selectedProduct.id)
+    if (updated && updated !== selectedProduct) {
+      setSelectedProduct(updated)
+    } else if (!updated) {
+      // Produto foi removido (soft-delete) · fecha drawer
+      setSelectedProduct(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProducts])
 
   const [categoryFilter, setCategoryFilter] = useState<string>('')
 
