@@ -384,6 +384,12 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
           </div>
         ) : (
           <>
+            {/* LEGENDA contextual · varia conforme colorMode */}
+            <ColorLegend
+              colorMode={colorMode}
+              appts={appts.filter((a) => visibleProfIds.has(a.professional_id))}
+            />
+
             {/* Header de profs */}
             <div
               className="grid"
@@ -711,6 +717,80 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
         businessId={businessId}
         onClose={closeDrawer}
       />
+    </div>
+  )
+}
+
+/* ============================================================
+ * Legenda contextual da grade · explica o que cada cor significa.
+ * Varia conforme o colorMode escolhido no painel.
+ * Em modo "professional" omite (header de profs ja deixa claro).
+ * ============================================================ */
+function ColorLegend({ colorMode, appts }: { colorMode: ColorMode; appts: Appt[] }) {
+  // No modo profissional, header de profs ja eh autoexplicativo
+  if (colorMode === 'professional') return null
+
+  const chips: { color: string; label: string }[] = []
+
+  if (colorMode === 'service') {
+    // Deriva servicos unicos no dia (max 8 chips pra nao poluir)
+    const unique = new Map<string, string>() // service_name -> color
+    for (const a of appts) {
+      const name = a.service_name ?? '—'
+      if (!unique.has(name)) unique.set(name, colorForService(a))
+      if (unique.size >= 8) break
+    }
+    if (unique.size === 0) {
+      chips.push({ color: '#94A3B8', label: 'Sem agendamentos hoje' })
+    } else {
+      unique.forEach((color, name) => chips.push({ color, label: name }))
+    }
+  } else if (colorMode === 'progress') {
+    chips.push(
+      { color: '#F59E0B', label: 'A confirmar' },
+      { color: '#01A197', label: 'Confirmado' },
+      { color: '#3B82F6', label: 'Realizado' },
+      { color: '#94A3B8', label: 'Faltou / cancelado' },
+    )
+  } else if (colorMode === 'payment') {
+    chips.push(
+      { color: '#10B981', label: 'Pago' },
+      { color: '#F59E0B', label: 'A receber' },
+      { color: '#94A3B8', label: 'Cancelado / faltou' },
+    )
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2 flex-wrap"
+      style={{
+        borderBottom: '1px solid var(--admin-divider)',
+        background: 'var(--admin-surface-hi)',
+      }}
+    >
+      <span
+        className="text-[10px] font-bold uppercase tracking-widest flex-shrink-0"
+        style={{ color: 'var(--admin-text-faded)' }}
+      >
+        Legenda:
+      </span>
+      {chips.map((c, i) => (
+        <span
+          key={i}
+          className="inline-flex items-center gap-1.5 text-[11px] font-medium"
+          style={{ color: 'var(--admin-text-2)' }}
+        >
+          <span
+            className="inline-block w-3 h-3 rounded"
+            style={{
+              background: `linear-gradient(180deg, color-mix(in srgb, ${c.color} 30%, var(--admin-surface)) 0%, color-mix(in srgb, ${c.color} 50%, var(--admin-surface)) 100%)`,
+              borderLeft: `3px solid ${c.color}`,
+            }}
+            aria-hidden
+          />
+          {c.label}
+        </span>
+      ))}
     </div>
   )
 }
