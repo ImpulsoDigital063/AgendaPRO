@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { IconPlus, IconAlert, IconInbox } from '@/components/ui/Icon'
+import Link from 'next/link'
+import { IconPlus, IconAlert, IconInbox, IconDollar } from '@/components/ui/Icon'
 import NovoProdutoModal from './NovoProdutoModal'
 import ProdutoDrawer from './ProdutoDrawer'
 
@@ -171,19 +172,46 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
           placeholder="Buscar por nome, descrição, SKU ou variante"
           className="admin-input flex-1 px-3 py-2.5 rounded-xl text-sm"
         />
-        <button
-          type="button"
-          onClick={() => setShowNovo(true)}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
-          style={{
-            background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
-            color: '#fff',
-            borderTop: '1px solid rgba(255,255,255,0.25)',
-            boxShadow: '0 8px 22px -8px color-mix(in srgb, var(--brand-primary, #1AA9A8) 55%, transparent)',
-          }}
-        >
-          <IconPlus size={14} /> Novo produto
-        </button>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/produtos/entrada"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+            style={{
+              background: 'var(--admin-input-bg)',
+              color: 'var(--admin-text)',
+              border: '1px solid var(--admin-border)',
+            }}
+            title="Recebeu uma compra do fornecedor"
+          >
+            <IconInbox size={14} /> Entrada
+          </Link>
+          <Link
+            href="/admin/produtos/vender"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+            style={{
+              background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+              color: '#fff',
+              borderTop: '1px solid rgba(255,255,255,0.25)',
+              boxShadow: '0 8px 22px -8px rgba(5,150,105,0.55)',
+            }}
+            title="Vender produto pra cliente · baixa estoque automaticamente"
+          >
+            <IconDollar size={14} /> Vender
+          </Link>
+          <button
+            type="button"
+            onClick={() => setShowNovo(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+            style={{
+              background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
+              color: '#fff',
+              borderTop: '1px solid rgba(255,255,255,0.25)',
+              boxShadow: '0 8px 22px -8px color-mix(in srgb, var(--brand-primary, #1AA9A8) 55%, transparent)',
+            }}
+          >
+            <IconPlus size={14} /> Novo produto
+          </button>
+        </div>
       </div>
 
       {/* Filtro por categoria (chips) · só aparece quando há categorias */}
