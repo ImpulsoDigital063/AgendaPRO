@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus, IconInfo } from '@/components/ui/Icon'
 import AppointmentDrawer from '@/components/admin/atendimentos/AppointmentDrawer'
+import AgendarModal from '@/components/admin/desktop/atendimentos/AgendarModal'
 
 type Prof = { id: string; name: string; photo_url: string | null }
 type Appt = {
@@ -18,6 +19,7 @@ type Appt = {
   total_price: number | null
   paid_at: string | null
 }
+type Service = { id: string; name: string; price: number | null; duration_minutes: number | null }
 
 type ColorMode = 'service' | 'professional' | 'progress' | 'payment'
 type Interval = 15 | 30 | 60
@@ -26,6 +28,7 @@ type Props = {
   businessId: string
   profs: Prof[]
   appts: Appt[]
+  services: Service[]
   hourStart: number
   hourEnd: number
   /** Data da timeline (YYYY-MM-DD) · usado nos links do popover */
@@ -92,8 +95,9 @@ function buildSlots(hourStart: number, hourEnd: number, interval: Interval): str
   return out
 }
 
-export default function TimelineGridInteractive({ businessId, profs, appts, hourStart, hourEnd, date }: Props) {
+export default function TimelineGridInteractive({ businessId, profs, appts, services, hourStart, hourEnd, date }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [popover, setPopover] = useState<PopoverState>(null)
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null) // `${profId}-${time}`
   const [portalReady, setPortalReady] = useState(false)
@@ -139,11 +143,12 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
   function novoAtendimento() {
     if (!popover) return
     const params = new URLSearchParams({
+      agendar: '1',
       prof: popover.profId,
       date,
       time: popover.time,
     })
-    router.push(`/admin/marcar?${params.toString()}`)
+    router.push(`?${params.toString()}`)
     setPopover(null)
   }
 
@@ -733,6 +738,22 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
 
       {/* MODAL · Como interpretar as cores · explicação completa dos 4 modos */}
       <ColorHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+
+      {/* MODAL de agendamento Salão99-style · abre via ?agendar=1 */}
+      <AgendarModal
+        open={searchParams.get('agendar') === '1'}
+        businessId={businessId}
+        professionals={profs}
+        services={services}
+        defaultProfId={searchParams.get('prof')}
+        defaultDate={searchParams.get('date') ?? date}
+        defaultTime={searchParams.get('time')}
+        onClose={() => {
+          // limpa query params · mantém data se diferente da default
+          router.replace('/admin')
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

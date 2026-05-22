@@ -140,9 +140,9 @@ export default function GradeTimelineHeader({
           </span>
         </p>
 
-        {/* Botão Agendar · padrão B-híbrido premium turquesa Palace */}
+        {/* Botão Agendar · abre modal inline na timeline (Salão99-style) via ?agendar=1 */}
         <Link
-          href="/admin/marcar"
+          href={`?agendar=1&date=${date}`}
           className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
           style={{
             background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',

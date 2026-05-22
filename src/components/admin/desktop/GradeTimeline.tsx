@@ -29,7 +29,7 @@ export default async function GradeTimeline({ businessId, date }: Props) {
     { auth: { persistSession: false } },
   )
 
-  const [{ data: profsData }, { data: apptsData }] = await Promise.all([
+  const [{ data: profsData }, { data: apptsData }, { data: servicesData }] = await Promise.all([
     sb
       .from('professionals')
       .select('id, name, photo_url, is_receptionist')
@@ -43,6 +43,12 @@ export default async function GradeTimeline({ businessId, date }: Props) {
       .eq('appointment_date', date)
       .neq('status', 'cancelled')
       .order('start_time'),
+    sb
+      .from('services')
+      .select('id, name, price, duration_minutes')
+      .eq('business_id', businessId)
+      .eq('active', true)
+      .order('name'),
   ])
 
   const profs = (profsData ?? []).filter((p) => !p.is_receptionist).map((p) => ({
@@ -51,6 +57,7 @@ export default async function GradeTimeline({ businessId, date }: Props) {
     photo_url: p.photo_url ?? null,
   }))
   const appts = (apptsData ?? []) as ApptRow[]
+  const services = (servicesData ?? []) as { id: string; name: string; price: number | null; duration_minutes: number | null }[]
 
   // KPIs do dia · só renderizam quando date === HOJE (header gateia internamente)
   const recebidoHoje = appts
@@ -75,6 +82,7 @@ export default async function GradeTimeline({ businessId, date }: Props) {
         businessId={businessId}
         profs={profs}
         appts={appts}
+        services={services}
         hourStart={HOUR_START}
         hourEnd={HOUR_END}
         date={date}
