@@ -326,7 +326,8 @@ export default function AgendarModal({
 
   function verCliente() {
     if (!createdCustomerId) return
-    router.push(`/admin/clientes?id=${createdCustomerId}`)
+    // ClientesView lê ?customer=ID e abre o drawer automaticamente
+    router.push(`/admin/clientes?customer=${createdCustomerId}`)
     onClose()
   }
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone, daysBetween } from '@/lib/client-display'
 import Link from 'next/link'
 import {
@@ -147,6 +147,24 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
   const [filter, setFilter] = useState<FilterKey>('todos')
   const [showAddModal, setShowAddModal] = useState(false)
   const [detailCustomerId, setDetailCustomerId] = useState<string | null>(null)
+
+  // Deep-link: abre drawer quando /admin/clientes?customer=<id> · usado pelo
+  // botão Visualizar Cliente do AgendarModal pós-save. Limpa a query depois
+  // de abrir pra URL não ficar suja se o usuário fechar e abrir outro.
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const id = searchParams.get('customer')
+    if (id && id !== detailCustomerId) {
+      setDetailCustomerId(id)
+      // Remove o param da URL sem recarregar a página
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('customer')
+        window.history.replaceState({}, '', url.toString())
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
   // Paginação: barbearia com >50 clientes ativos renderiza muito card
   // de uma vez (DOM pesado em mobile). Mostra os 20 primeiros + "Ver
   // mais N". Reset quando muda search ou filter (lista filtrada já
