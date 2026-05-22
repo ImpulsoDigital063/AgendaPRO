@@ -90,7 +90,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       label: 'Catálogo',
       items: [
         { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', tabMatch: 'servicos', Icon: IconSparkles },
-        { label: 'Produtos', Icon: IconPackage, comingSoon: true },
+        { label: 'Produtos', href: '/admin/produtos', Icon: IconPackage },
         { label: 'Pacotes', Icon: IconGift, comingSoon: true },
       ],
     },
