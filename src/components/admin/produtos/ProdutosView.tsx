@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconPlus, IconAlert, IconInbox } from '@/components/ui/Icon'
 import NovoProdutoModal from './NovoProdutoModal'
-import AjustarEstoqueModal from './AjustarEstoqueModal'
+import ProdutoDrawer from './ProdutoDrawer'
 
 type Product = {
   id: string
@@ -54,7 +54,7 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
   const router = useRouter()
   const [products] = useState<Product[]>(initialProducts)
   const [showNovo, setShowNovo] = useState(false)
-  const [ajustando, setAjustando] = useState<Product | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [search, setSearch] = useState('')
 
   const filtered = useMemo(() => {
@@ -153,7 +153,7 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setAjustando(p)}
+                onClick={() => setSelectedProduct(p)}
                 className="text-left rounded-2xl p-4 transition-all hover:-translate-y-px"
                 style={{
                   background: `linear-gradient(180deg, var(--admin-surface) 0%, color-mix(in srgb, var(--admin-surface-hi) 70%, var(--admin-surface)) 100%)`,
@@ -226,14 +226,11 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
           }}
         />
       )}
-      {ajustando && (
-        <AjustarEstoqueModal
-          product={ajustando}
-          onClose={() => setAjustando(null)}
-          onSuccess={() => {
-            setAjustando(null)
-            refresh()
-          }}
+      {selectedProduct && (
+        <ProdutoDrawer
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onChanged={refresh}
         />
       )}
     </div>
