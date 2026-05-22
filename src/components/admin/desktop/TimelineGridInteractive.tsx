@@ -525,16 +525,20 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                       )
                     })}
 
-                    {/* Cards de agendamento · padrão 3D premium */}
+                    {/* Cards de agendamento · padrão 3D premium · layout adaptativo por duração */}
                     {profAppts.map((a) => {
                       const startMin = timeToMinutes(a.start_time)
                       const endMin = timeToMinutes(a.end_time)
+                      const durationMin = endMin - startMin
                       const top = ((startMin - dayStartMin) / interval) * SLOT_HEIGHT
                       const height = ((endMin - startMin) / interval) * SLOT_HEIGHT
                       const color = getColor(a)
                       const isPaid = !!a.paid_at
                       const isPending = a.status === 'pending'
                       const isCancelled = a.status === 'cancelled'
+                      // Tamanhos por duração (em minutos, previsível independente do interval)
+                      const isTiny = durationMin < 25 // 1 linha inline
+                      const isCompact = !isTiny && durationMin < 45 // 2 linhas
                       return (
                         <button
                           key={a.id}
@@ -543,10 +547,10 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                             e.stopPropagation()
                             setSelectedApptId(a.id)
                           }}
-                          className="absolute left-1 right-1 rounded-lg p-2 flex flex-col overflow-hidden text-left transition-all hover:-translate-y-px"
+                          className={`absolute left-1 right-1 rounded-lg flex flex-col overflow-hidden text-left transition-all hover:-translate-y-px ${isTiny ? 'px-1.5 py-0.5' : isCompact ? 'px-2 py-1' : 'p-2'}`}
                           style={{
                             top,
-                            height: Math.max(height - 2, 24),
+                            height: Math.max(height - 2, 22),
                             background: `linear-gradient(180deg, color-mix(in srgb, ${color} 14%, var(--admin-surface)) 0%, color-mix(in srgb, ${color} 22%, var(--admin-surface)) 100%)`,
                             borderLeft: `3px solid ${color}`,
                             borderTop: `1px solid color-mix(in srgb, ${color} 35%, rgba(255,255,255,0.5))`,
@@ -558,18 +562,33 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                           }}
                           title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}${isCancelled ? ' · CANCELADO' : ''}`}
                         >
-                          <span className="text-[11px] font-bold tabular-nums leading-tight" style={{ color }}>
-                            {a.start_time.slice(0, 5)} · {a.end_time.slice(0, 5)}
-                          </span>
-                          <span className="text-xs font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
-                            {a.client_name ?? 'Cliente'}
-                          </span>
-                          {height >= SLOT_HEIGHT * 1.5 && (
+                          {isTiny ? (
+                            // 1 linha · horário pequeno + nome inline
+                            <span className="flex items-center gap-1.5 truncate text-[10px] leading-none">
+                              <span className="font-bold tabular-nums flex-shrink-0" style={{ color }}>
+                                {a.start_time.slice(0, 5)}
+                              </span>
+                              <span className="font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                                {a.client_name ?? 'Cliente'}
+                              </span>
+                            </span>
+                          ) : (
+                            <>
+                              <span className={`font-bold tabular-nums leading-tight ${isCompact ? 'text-[10px]' : 'text-[11px]'}`} style={{ color }}>
+                                {a.start_time.slice(0, 5)} · {a.end_time.slice(0, 5)}
+                              </span>
+                              <span className={`font-semibold truncate ${isCompact ? 'text-[11px]' : 'text-xs'} leading-tight`} style={{ color: 'var(--admin-text)' }}>
+                                {a.client_name ?? 'Cliente'}
+                              </span>
+                            </>
+                          )}
+                          {!isTiny && !isCompact && (
                             <span className="text-[11px] truncate" style={{ color: 'var(--admin-text-mute)' }}>
                               {a.service_name ?? '—'}
                             </span>
                           )}
-                          {isCancelled && (
+                          {/* Chips só aparecem em cards com folga (>=45min) · evita poluir tiny/compact */}
+                          {!isTiny && !isCompact && isCancelled && (
                             <span
                               className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
                               style={{
@@ -582,7 +601,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                               Cancelado
                             </span>
                           )}
-                          {!isCancelled && isPending && (
+                          {!isTiny && !isCompact && !isCancelled && isPending && (
                             <span
                               className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
                               style={{
@@ -594,7 +613,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                               A confirmar
                             </span>
                           )}
-                          {!isCancelled && isPaid && (
+                          {!isTiny && !isCompact && !isCancelled && isPaid && (
                             <span
                               className="text-[9px] font-bold uppercase mt-auto inline-block w-fit px-1.5 py-0.5 rounded"
                               style={{

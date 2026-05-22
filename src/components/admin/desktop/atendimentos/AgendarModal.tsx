@@ -446,7 +446,15 @@ export default function AgendarModal({
             <select
               value={profId}
               onChange={(e) => setProfId(e.target.value)}
-              className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
+              className="w-full px-3 py-2.5 pr-9 rounded-xl text-sm transition-colors"
+              style={{
+                background: `var(--admin-input-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.875rem center`,
+                border: '1px solid var(--admin-border)',
+                color: 'var(--admin-text)',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+              }}
             >
               <option value="">Selecionar profissional</option>
               {professionals.map((p) => (
@@ -460,7 +468,15 @@ export default function AgendarModal({
             <select
               value={serviceId}
               onChange={(e) => setServiceId(e.target.value)}
-              className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
+              className="w-full px-3 py-2.5 pr-9 rounded-xl text-sm transition-colors"
+              style={{
+                background: `var(--admin-input-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.875rem center`,
+                border: '1px solid var(--admin-border)',
+                color: 'var(--admin-text)',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+              }}
             >
               <option value="">Selecionar serviço</option>
               {services.map((s) => (
