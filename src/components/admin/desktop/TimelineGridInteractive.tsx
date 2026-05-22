@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus } from '@/components/ui/Icon'
+import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus, IconInfo } from '@/components/ui/Icon'
 import AppointmentDrawer from '@/components/admin/atendimentos/AppointmentDrawer'
 
 type Prof = { id: string; name: string; photo_url: string | null }
@@ -165,6 +165,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
   const [colorMode, setColorMode] = useState<ColorMode>('service')
   const [collapsed, setCollapsed] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   useEffect(() => {
     try {
@@ -286,9 +287,21 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
 
             {/* Cor · 4 modos (Salão99-style + nossa pegada) */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-                Cor dos cards
-              </p>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                  Cor dos cards
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setHelpOpen(true)}
+                  aria-label="O que cada modo significa"
+                  title="Como interpretar as cores"
+                  className="w-4 h-4 rounded-full flex items-center justify-center transition-colors"
+                  style={{ color: 'var(--admin-text-mute)' }}
+                >
+                  <IconInfo size={14} />
+                </button>
+              </div>
               <div className="space-y-1">
                 {([
                   { v: 'service', l: 'Por serviço', desc: 'Cor diferente por tipo de serviço' },
@@ -717,6 +730,9 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
         businessId={businessId}
         onClose={closeDrawer}
       />
+
+      {/* MODAL · Como interpretar as cores · explicação completa dos 4 modos */}
+      <ColorHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   )
 }
@@ -792,5 +808,172 @@ function ColorLegend({ colorMode, appts }: { colorMode: ColorMode; appts: Appt[]
         </span>
       ))}
     </div>
+  )
+}
+
+/* ============================================================
+ * Modal de ajuda · explica os 4 modos de cor + quando usar cada um.
+ * Aberto pelo bot (?) no painel lateral. Educa cliente novo sem ser intrusivo.
+ * ============================================================ */
+function ColorHelpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [open, onClose])
+
+  if (!open || !portalReady) return null
+
+  const modes: { titulo: string; quando: string; chips: { color: string; label: string }[] }[] = [
+    {
+      titulo: 'Por serviço',
+      quando: 'Use no dia a dia pra bater o olho e ver o mix de serviços. Se o dia inteiro for da mesma cor, é monocultura.',
+      chips: [
+        { color: '#01A197', label: 'Serviço 1' },
+        { color: '#C9A961', label: 'Serviço 2' },
+        { color: '#8B5CF6', label: 'Serviço 3' },
+        { color: '#EC4899', label: 'Serviço 4' },
+      ],
+    },
+    {
+      titulo: 'Por profissional',
+      quando: 'Use pra ver coluna por coluna se cada profissional tem dia cheio ou furos. Coluna vazia = receita parada.',
+      chips: [
+        { color: '#01A197', label: 'Profissional A' },
+        { color: '#C9A961', label: 'Profissional B' },
+        { color: '#8B5CF6', label: 'Profissional C' },
+      ],
+    },
+    {
+      titulo: 'Por andamento',
+      quando: 'Use durante o expediente pra saber quem ainda não chegou e em quem cobrar confirmação no WhatsApp.',
+      chips: [
+        { color: '#F59E0B', label: 'A confirmar' },
+        { color: '#01A197', label: 'Confirmado' },
+        { color: '#3B82F6', label: 'Realizado' },
+        { color: '#94A3B8', label: 'Faltou / cancelado' },
+      ],
+    },
+    {
+      titulo: 'Por pagamento',
+      quando: 'Use no fechamento do caixa pra ver quem ainda está devendo. Tudo verde = caixa fechou redondo.',
+      chips: [
+        { color: '#10B981', label: 'Pago' },
+        { color: '#F59E0B', label: 'A receber' },
+        { color: '#94A3B8', label: 'Cancelado / faltou' },
+      ],
+    },
+  ]
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="color-help-title"
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col"
+        style={{
+          background: 'var(--admin-popover-bg, #FFFFFF)',
+          border: '1px solid var(--admin-popover-border, #E2E8F0)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
+          maxHeight: '90vh',
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-start justify-between p-5 pb-3 flex-shrink-0"
+          style={{ borderBottom: '1px solid var(--admin-divider)' }}
+        >
+          <div>
+            <p
+              className="text-[11px] font-bold uppercase tracking-widest mb-1"
+              style={{ color: 'var(--admin-text-faded)' }}
+            >
+              Ajuda · Cor dos cards
+            </p>
+            <h3
+              id="color-help-title"
+              className="text-lg font-bold leading-tight"
+              style={{ color: 'var(--admin-text)' }}
+            >
+              Como interpretar as cores
+            </h3>
+            <p className="text-sm mt-1.5" style={{ color: 'var(--admin-text-2)' }}>
+              Você escolhe 4 modos diferentes de pintar a agenda. Cada um responde uma pergunta diferente.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="p-1 rounded-full transition-opacity hover:opacity-70"
+            style={{ color: 'var(--admin-text-mute)' }}
+          >
+            <IconClose size={18} />
+          </button>
+        </div>
+
+        {/* Body · 4 modos */}
+        <div className="overflow-y-auto p-5 space-y-4">
+          {modes.map((m, i) => (
+            <div
+              key={i}
+              className="rounded-2xl p-4"
+              style={{
+                background: 'var(--admin-surface-hi)',
+                border: '1px solid var(--admin-border)',
+              }}
+            >
+              <h4 className="text-sm font-bold mb-1" style={{ color: 'var(--admin-text)' }}>
+                {m.titulo}
+              </h4>
+              <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--admin-text-2)' }}>
+                {m.quando}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {m.chips.map((c, j) => (
+                  <span
+                    key={j}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md"
+                    style={{
+                      background: `linear-gradient(180deg, color-mix(in srgb, ${c.color} 14%, var(--admin-surface)) 0%, color-mix(in srgb, ${c.color} 22%, var(--admin-surface)) 100%)`,
+                      borderLeft: `3px solid ${c.color}`,
+                      color: 'var(--admin-text)',
+                    }}
+                  >
+                    {c.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div
+            className="rounded-xl p-3 text-xs"
+            style={{
+              background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--admin-accent) 25%, transparent)',
+              color: 'var(--admin-text-2)',
+            }}
+          >
+            <strong style={{ color: 'var(--admin-text)' }}>Dica:</strong> a escolha do modo fica gravada no
+            seu navegador. Você pode trocar quantas vezes quiser sem afetar a equipe.
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   )
 }
