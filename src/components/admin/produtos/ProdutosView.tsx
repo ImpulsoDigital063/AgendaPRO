@@ -18,6 +18,25 @@ type Product = {
   active: boolean
   created_at: string
   updated_at: string
+  // v64
+  brand_id: string | null
+  category_id: string | null
+  variant: string | null
+  expires_at: string | null
+  pack_quantity: number | null
+  barcode: string | null
+  sku: string | null
+  track_stock: boolean
+  sale_active: boolean
+  commission_type: 'percent' | 'fixed' | null
+  commission_value: number | null
+  brand?: { id: string; name: string } | { id: string; name: string }[] | null
+  category?: { id: string; name: string } | { id: string; name: string }[] | null
+}
+
+function pickRel<T>(rel: T | T[] | null | undefined): T | null {
+  if (!rel) return null
+  return Array.isArray(rel) ? (rel[0] ?? null) : rel
 }
 
 type Props = {
@@ -39,6 +58,8 @@ function formatQty(v: number, unit: string): string {
 type StockStatus = 'ok' | 'low' | 'out'
 
 function stockStatus(p: Product): StockStatus {
+  // Produtos sem controle de estoque não entram em alerta
+  if (!p.track_stock) return 'ok'
   if (p.quantity <= 0) return 'out'
   if (p.min_quantity > 0 && p.quantity <= p.min_quantity) return 'low'
   return 'ok'
@@ -57,14 +78,34 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [search, setSearch] = useState('')
 
+  const [categoryFilter, setCategoryFilter] = useState<string>('')
+
+  // Lista de categorias únicas no inventário pra filtro
+  const categoriesInUse = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const p of products) {
+      const cat = pickRel(p.category)
+      if (cat) map.set(cat.id, cat.name)
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  }, [products])
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
-    if (!term) return products
-    return products.filter((p) =>
-      p.name.toLowerCase().includes(term) ||
-      (p.description ?? '').toLowerCase().includes(term),
-    )
-  }, [products, search])
+    return products.filter((p) => {
+      if (categoryFilter) {
+        const cat = pickRel(p.category)
+        if (cat?.id !== categoryFilter) return false
+      }
+      if (!term) return true
+      return (
+        p.name.toLowerCase().includes(term) ||
+        (p.description ?? '').toLowerCase().includes(term) ||
+        (p.sku ?? '').toLowerCase().includes(term) ||
+        (p.variant ?? '').toLowerCase().includes(term)
+      )
+    })
+  }, [products, search, categoryFilter])
 
   // KPIs
   const totalProdutos = products.length
@@ -108,7 +149,7 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar produto"
+          placeholder="Buscar por nome, descrição, SKU ou variante"
           className="admin-input flex-1 px-3 py-2.5 rounded-xl text-sm"
         />
         <button
@@ -125,6 +166,42 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
           <IconPlus size={14} /> Novo produto
         </button>
       </div>
+
+      {/* Filtro por categoria (chips) · só aparece quando há categorias */}
+      {categoriesInUse.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] font-bold uppercase tracking-widest mr-1" style={{ color: 'var(--admin-text-faded)' }}>
+            Categorias:
+          </span>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('')}
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors"
+            style={
+              categoryFilter === ''
+                ? { background: 'var(--admin-accent)', color: '#fff' }
+                : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
+            }
+          >
+            Todas
+          </button>
+          {categoriesInUse.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setCategoryFilter(c.id === categoryFilter ? '' : c.id)}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors"
+              style={
+                categoryFilter === c.id
+                  ? { background: 'var(--admin-accent)', color: '#fff' }
+                  : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
+              }
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Lista */}
       {filtered.length === 0 ? (
@@ -165,12 +242,26 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>{p.name}</p>
-                    {p.description && (
-                      <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--admin-text-mute)' }}>
-                        {p.description}
-                      </p>
-                    )}
+                    <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
+                      {p.name}{p.variant && <span style={{ color: 'var(--admin-text-mute)', fontWeight: 500 }}> · {p.variant}</span>}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                      {pickRel(p.brand) && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)' }}>
+                          {pickRel(p.brand)!.name}
+                        </span>
+                      )}
+                      {pickRel(p.category) && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)', color: 'var(--admin-accent)' }}>
+                          {pickRel(p.category)!.name}
+                        </span>
+                      )}
+                      {!p.track_stock && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(148,163,184,0.15)', color: '#64748B' }}>
+                          Sem controle
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span
                     className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-1"

@@ -14,6 +14,25 @@ type Product = {
   cost: number | null
   quantity: number
   min_quantity: number
+  // v64
+  brand_id?: string | null
+  category_id?: string | null
+  variant?: string | null
+  expires_at?: string | null
+  pack_quantity?: number | null
+  barcode?: string | null
+  sku?: string | null
+  track_stock?: boolean
+  sale_active?: boolean
+  commission_type?: 'percent' | 'fixed' | null
+  commission_value?: number | null
+  brand?: { id: string; name: string } | { id: string; name: string }[] | null
+  category?: { id: string; name: string } | { id: string; name: string }[] | null
+}
+
+function pickRel<T>(rel: T | T[] | null | undefined): T | null {
+  if (!rel) return null
+  return Array.isArray(rel) ? (rel[0] ?? null) : rel
 }
 
 type Movement = {
@@ -258,13 +277,52 @@ function ResumoTab({
         <IconPlus size={14} /> Movimentar estoque
       </button>
 
-      {/* Detalhes */}
+      {/* Categorização · chips */}
+      {(pickRel(product.brand) || pickRel(product.category) || product.variant) && (
+        <div className="flex flex-wrap gap-1.5">
+          {pickRel(product.brand) && (
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded" style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)' }}>
+              {pickRel(product.brand)!.name}
+            </span>
+          )}
+          {pickRel(product.category) && (
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)', color: 'var(--admin-accent)' }}>
+              {pickRel(product.category)!.name}
+            </span>
+          )}
+          {product.variant && (
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded" style={{ background: 'rgba(139,92,246,0.12)', color: '#8B5CF6' }}>
+              {product.variant}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Detalhes · KPIs */}
       <div className="grid grid-cols-2 gap-3">
         <InfoCard label="Preço de venda" value={formatBRL(product.price)} />
         <InfoCard label="Custo unitário" value={formatBRL(product.cost)} />
         <InfoCard label="Unidade" value={product.unit} />
         <InfoCard label="Valor estoque" value={formatBRL(valor)} />
+        {product.sku && <InfoCard label="SKU" value={product.sku} />}
+        {product.barcode && <InfoCard label="Código de barras" value={product.barcode} />}
+        {product.pack_quantity && <InfoCard label="Por embalagem" value={`${product.pack_quantity} ${product.unit}`} />}
+        {product.expires_at && <InfoCard label="Validade" value={new Date(product.expires_at + 'T12:00:00').toLocaleDateString('pt-BR')} />}
+        {product.commission_value && product.commission_type && (
+          <InfoCard label="Comissão" value={product.commission_type === 'percent' ? `${product.commission_value}%` : formatBRL(product.commission_value)} />
+        )}
       </div>
+
+      {product.track_stock === false && (
+        <div className="rounded-xl px-3 py-2 text-xs" style={{ background: 'rgba(148,163,184,0.12)', color: '#64748B' }}>
+          Este produto está marcado como <strong>sem controle de estoque</strong>.
+        </div>
+      )}
+      {product.sale_active === false && (
+        <div className="rounded-xl px-3 py-2 text-xs" style={{ background: 'rgba(148,163,184,0.12)', color: '#64748B' }}>
+          Este produto está marcado como <strong>uso interno</strong> (não vende).
+        </div>
+      )}
 
       {product.description && (
         <div>

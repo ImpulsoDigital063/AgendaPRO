@@ -30,6 +30,23 @@ export async function PATCH(
   else if (body.cost === null) update.cost = null
   if (typeof body.min_quantity === 'number' && body.min_quantity >= 0) update.min_quantity = body.min_quantity
 
+  // v64 extras
+  if ('brand_id' in body) update.brand_id = (typeof body.brand_id === 'string' && body.brand_id) ? body.brand_id : null
+  if ('category_id' in body) update.category_id = (typeof body.category_id === 'string' && body.category_id) ? body.category_id : null
+  if ('variant' in body) update.variant = (typeof body.variant === 'string' ? body.variant.trim() || null : null)
+  if ('expires_at' in body) update.expires_at = (typeof body.expires_at === 'string' && body.expires_at ? body.expires_at : null)
+  if ('pack_quantity' in body) update.pack_quantity = (typeof body.pack_quantity === 'number' && body.pack_quantity > 0 ? body.pack_quantity : null)
+  if ('barcode' in body) update.barcode = (typeof body.barcode === 'string' ? body.barcode.trim() || null : null)
+  if ('sku' in body) update.sku = (typeof body.sku === 'string' ? body.sku.trim() || null : null)
+  if (typeof body.track_stock === 'boolean') update.track_stock = body.track_stock
+  if (typeof body.sale_active === 'boolean') update.sale_active = body.sale_active
+  if ('commission_type' in body) {
+    update.commission_type = (typeof body.commission_type === 'string' && ['percent', 'fixed'].includes(body.commission_type) ? body.commission_type : null)
+  }
+  if ('commission_value' in body) {
+    update.commission_value = (typeof body.commission_value === 'number' && body.commission_value >= 0 ? body.commission_value : null)
+  }
+
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'nada pra atualizar' }, { status: 400 })
   }

@@ -16,6 +16,20 @@ type ProductRow = {
   active: boolean
   created_at: string
   updated_at: string
+  // v64
+  brand_id: string | null
+  category_id: string | null
+  variant: string | null
+  expires_at: string | null
+  pack_quantity: number | null
+  barcode: string | null
+  sku: string | null
+  track_stock: boolean
+  sale_active: boolean
+  commission_type: 'percent' | 'fixed' | null
+  commission_value: number | null
+  brand?: { id: string; name: string } | { id: string; name: string }[] | null
+  category?: { id: string; name: string } | { id: string; name: string }[] | null
 }
 
 export default async function AdminProdutosPage() {
@@ -32,7 +46,13 @@ export default async function AdminProdutosPage() {
 
   const { data: products } = await supabase
     .from('products')
-    .select('id, name, description, unit, price, cost, quantity, min_quantity, active, created_at, updated_at')
+    .select(`
+      id, name, description, unit, price, cost, quantity, min_quantity, active, created_at, updated_at,
+      brand_id, category_id, variant, expires_at, pack_quantity, barcode, sku,
+      track_stock, sale_active, commission_type, commission_value,
+      brand:product_brands(id, name),
+      category:product_categories(id, name)
+    `)
     .eq('business_id', business.id)
     .eq('active', true)
     .order('name')

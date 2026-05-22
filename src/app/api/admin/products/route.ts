@@ -21,7 +21,13 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, description, unit, price, cost, quantity, min_quantity, active, created_at, updated_at')
+    .select(`
+      id, name, description, unit, price, cost, quantity, min_quantity, active, created_at, updated_at,
+      brand_id, category_id, variant, expires_at, pack_quantity, barcode, sku,
+      track_stock, sale_active, commission_type, commission_value,
+      brand:product_brands(id, name),
+      category:product_categories(id, name)
+    `)
     .eq('business_id', businessId)
     .eq('active', true)
     .order('name')
@@ -53,7 +59,10 @@ export async function POST(req: NextRequest) {
 
   const initialQty = typeof body.quantity === 'number' && body.quantity >= 0 ? body.quantity : 0
 
-  // Insere com quantity=0 e usa movement pra setar (trigger v63 incrementa).
+  // Campos v64 (paridade Salão99)
+  const commissionType = typeof body.commission_type === 'string' && ['percent', 'fixed'].includes(body.commission_type) ? body.commission_type : null
+  const commissionValue = typeof body.commission_value === 'number' && body.commission_value >= 0 ? body.commission_value : null
+
   const { data: created, error: insErr } = await supabase
     .from('products')
     .insert({
@@ -65,6 +74,18 @@ export async function POST(req: NextRequest) {
       cost: typeof body.cost === 'number' && body.cost >= 0 ? body.cost : null,
       quantity: 0,
       min_quantity: typeof body.min_quantity === 'number' && body.min_quantity >= 0 ? body.min_quantity : 0,
+      // v64 extras
+      brand_id: typeof body.brand_id === 'string' && body.brand_id ? body.brand_id : null,
+      category_id: typeof body.category_id === 'string' && body.category_id ? body.category_id : null,
+      variant: typeof body.variant === 'string' ? body.variant.trim() || null : null,
+      expires_at: typeof body.expires_at === 'string' && body.expires_at ? body.expires_at : null,
+      pack_quantity: typeof body.pack_quantity === 'number' && body.pack_quantity > 0 ? body.pack_quantity : null,
+      barcode: typeof body.barcode === 'string' ? body.barcode.trim() || null : null,
+      sku: typeof body.sku === 'string' ? body.sku.trim() || null : null,
+      track_stock: typeof body.track_stock === 'boolean' ? body.track_stock : true,
+      sale_active: typeof body.sale_active === 'boolean' ? body.sale_active : true,
+      commission_type: commissionType,
+      commission_value: commissionValue,
     })
     .select('id')
     .single()
