@@ -71,6 +71,37 @@ function addMinutesToTime(time: string, minutes: number): string {
   return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`
 }
 
+/** Gera as N datas da série a partir da data inicial. Mensal usa mesmo dia
+ *  do próximo mês (com clamp pra meses curtos: 31/01 → 28/02 ou 29/02). */
+function buildRecurringDates(
+  startISO: string,
+  freq: 'weekly' | 'biweekly' | 'monthly',
+  count: number,
+): string[] {
+  const out: string[] = [startISO]
+  const base = new Date(startISO + 'T12:00:00') // meio-dia evita pulada de DST
+  for (let i = 1; i < count; i++) {
+    const d = new Date(base)
+    if (freq === 'weekly') d.setDate(base.getDate() + 7 * i)
+    else if (freq === 'biweekly') d.setDate(base.getDate() + 14 * i)
+    else {
+      const target = new Date(base)
+      target.setMonth(base.getMonth() + i)
+      // Se o mês destino tem menos dias, JavaScript faz overflow (ex 31/01 + 1m vira 02/03).
+      // Clampamos pro último dia do mês quando isso acontece.
+      if (target.getMonth() !== (base.getMonth() + i) % 12) {
+        target.setDate(0) // último dia do mês anterior, que é o mês alvo
+      }
+      d.setTime(target.getTime())
+    }
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    out.push(`${y}-${m}-${day}`)
+  }
+  return out
+}
+
 function formatBRL(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -95,6 +126,11 @@ export default function AgendarModal({
   const [time, setTime] = useState<string>('')
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(() => [newLine()])
   const [notes, setNotes] = useState<string>('')
+
+  // V3: Repetir atendimento (recorrência)
+  const [recurring, setRecurring] = useState<boolean>(false)
+  const [recurFreq, setRecurFreq] = useState<'weekly' | 'biweekly' | 'monthly'>('weekly')
+  const [recurCount, setRecurCount] = useState<number>(4) // total de ocorrências (inclui a primeira)
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -122,6 +158,9 @@ export default function AgendarModal({
     setDate(defaultDate ?? todayISO())
     setTime(defaultTime ?? '')
     setNotes('')
+    setRecurring(false)
+    setRecurFreq('weekly')
+    setRecurCount(4)
     setError(null)
     setCreatedId(null)
     setCreatedCustomerId(null)
@@ -247,46 +286,60 @@ export default function AgendarModal({
     const first = linesWithMeta[0]
     const displayName = linesWithMeta.length === 1 ? first.name : `${first.name} +${linesWithMeta.length - 1}`
 
-    // 1. Insert appointment (denormalizado com first service)
-    const { data: inserted, error: e } = await supabase
-      .from('appointments')
-      .insert({
-        business_id: businessId,
-        professional_id: profId,
-        customer_id: cliente.id,
-        client_name: cliente.name,
-        client_phone: cliente.phone,
-        appointment_date: date,
-        start_time: `${time}:00`,
-        end_time: `${endTime}:00`,
-        service_id: first.serviceId,
-        service_name: displayName,
-        total_price: valorTotal,
-        status: 'confirmed',
-        notes: notes.trim() || null,
-      })
-      .select('id')
-      .single()
+    // V3 · Repetir: gera N datas (ou 1 se sem recorrência)
+    const allDates = recurring && recurCount >= 1
+      ? buildRecurringDates(date, recurFreq, Math.max(1, Math.min(recurCount, 52)))
+      : [date]
+    const recurringGroupId = recurring && allDates.length > 1
+      ? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : null)
+      : null
 
-    if (e || !inserted) {
+    // Insert TODOS os appointments da série em batch
+    const appointmentRows = allDates.map((d, idx) => ({
+      business_id: businessId,
+      professional_id: profId,
+      customer_id: cliente.id,
+      client_name: cliente.name,
+      client_phone: cliente.phone,
+      appointment_date: d,
+      start_time: `${time}:00`,
+      end_time: `${endTime}:00`,
+      service_id: first.serviceId,
+      service_name: displayName,
+      total_price: valorTotal,
+      status: 'confirmed',
+      notes: notes.trim() || null,
+      recurring_group_id: recurringGroupId,
+      recurring_index: recurringGroupId ? idx + 1 : null,
+    }))
+    const { data: insertedRows, error: e } = await supabase
+      .from('appointments')
+      .insert(appointmentRows)
+      .select('id, appointment_date')
+
+    if (e || !insertedRows || insertedRows.length === 0) {
       setSaving(false)
       setError(`Erro ao salvar: ${e?.message ?? 'desconhecido'}`)
       return
     }
 
-    // 2. Insert appointment_services pra TODAS as linhas (mesma lógica do EditServicesModal)
-    const servicesRows = linesWithMeta.map((l) => ({
-      appointment_id: inserted.id,
-      service_id: l.serviceId,
-      service_name: l.name,
-      price: l.linePrice,
-      duration_minutes: l.duration,
-    }))
+    // Insert appointment_services pra TODAS as linhas × TODOS os appointments
+    const servicesRows = insertedRows.flatMap((row) =>
+      linesWithMeta.map((l) => ({
+        appointment_id: row.id,
+        service_id: l.serviceId,
+        service_name: l.name,
+        price: l.linePrice,
+        duration_minutes: l.duration,
+      })),
+    )
     const { error: svcErr } = await supabase.from('appointment_services').insert(servicesRows)
     if (svcErr) {
-      // Não bloqueia · appointment já criado · loga e avisa
       console.error('appointment_services insert error:', svcErr)
     }
+
+    // O primeiro appointment é o "principal" pra fins de log/redirect
+    const inserted = insertedRows[0]
 
     setSaving(false)
 
@@ -298,13 +351,16 @@ export default function AgendarModal({
         .select('id')
         .eq('auth_user_id', user.id)
         .maybeSingle()
+      const serieInfo = recurringGroupId
+        ? ` · série de ${insertedRows.length} (${recurFreq === 'weekly' ? 'semanal' : recurFreq === 'biweekly' ? 'quinzenal' : 'mensal'})`
+        : ''
       logActivity({
         business_id: businessId,
         professional_id: prof2?.id,
         action: 'create_appointment',
         target_type: 'appointment',
         target_id: inserted.id,
-        description: `${cliente.name} · ${displayName} · ${date} ${time} · com ${prof?.name ?? '—'} · ${formatBRL(valorTotal)}`,
+        description: `${cliente.name} · ${displayName} · ${date} ${time} · com ${prof?.name ?? '—'} · ${formatBRL(valorTotal)}${serieInfo}`,
       })
     }
 
@@ -553,6 +609,17 @@ export default function AgendarModal({
               onChange={setTime}
             />
           </Field>
+
+          {/* V3: Repetir atendimento (recorrência) */}
+          <RecurringBlock
+            enabled={recurring}
+            onToggle={setRecurring}
+            freq={recurFreq}
+            onChangeFreq={setRecurFreq}
+            count={recurCount}
+            onChangeCount={setRecurCount}
+            startDate={date}
+          />
 
           {/* Observação */}
           <Field label="Observação (opcional)">
@@ -864,6 +931,123 @@ function ServiceLineBlock({
           <span className="font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
             {lineTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** V3 · Bloco "Repetir atendimento" com toggle + frequência + quantidade +
+ *  preview das datas calculadas. Não dispara save direto; muda state no
+ *  AgendarModal pai que monta o batch de N appointments. */
+function RecurringBlock({
+  enabled,
+  onToggle,
+  freq,
+  onChangeFreq,
+  count,
+  onChangeCount,
+  startDate,
+}: {
+  enabled: boolean
+  onToggle: (v: boolean) => void
+  freq: 'weekly' | 'biweekly' | 'monthly'
+  onChangeFreq: (f: 'weekly' | 'biweekly' | 'monthly') => void
+  count: number
+  onChangeCount: (n: number) => void
+  startDate: string
+}) {
+  const dates = enabled && startDate
+    ? buildRecurringDates(startDate, freq, Math.max(1, Math.min(count, 52)))
+    : []
+  return (
+    <div
+      className="rounded-2xl p-3 space-y-3"
+      style={{
+        background: 'var(--admin-surface-hi)',
+        border: enabled ? '1px solid color-mix(in srgb, var(--admin-accent) 40%, transparent)' : '1px solid var(--admin-border)',
+      }}
+    >
+      <label className="flex items-center justify-between cursor-pointer">
+        <div>
+          <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+            Repetir atendimento
+          </p>
+          <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+            Cliente que marca toda semana, mês, etc
+          </p>
+        </div>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => onToggle(e.target.checked)}
+          className="w-5 h-5 cursor-pointer"
+        />
+      </label>
+
+      {enabled && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+                Frequência
+              </label>
+              <select
+                value={freq}
+                onChange={(e) => onChangeFreq(e.target.value as 'weekly' | 'biweekly' | 'monthly')}
+                className="w-full px-2.5 py-2 pr-8 rounded-lg text-sm"
+                style={{
+                  background: `var(--admin-input-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.625rem center`,
+                  border: '1px solid var(--admin-border)',
+                  color: 'var(--admin-text)',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                }}
+              >
+                <option value="weekly">Toda semana</option>
+                <option value="biweekly">A cada 2 semanas</option>
+                <option value="monthly">Todo mês</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+                Quantidade (inclui hoje)
+              </label>
+              <input
+                type="number"
+                min={2}
+                max={52}
+                value={count}
+                onChange={(e) => onChangeCount(Math.max(2, Math.min(52, parseInt(e.target.value, 10) || 2)))}
+                className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums"
+              />
+            </div>
+          </div>
+
+          {dates.length > 0 && (
+            <div
+              className="rounded-lg p-2.5 text-[11px] space-y-1"
+              style={{
+                background: 'var(--admin-input-bg)',
+                border: '1px solid var(--admin-border)',
+              }}
+            >
+              <p className="font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)', fontSize: 10 }}>
+                Vai criar {dates.length} agendamentos
+              </p>
+              <p style={{ color: 'var(--admin-text-2)' }}>
+                {dates.slice(0, 6).map((d) => {
+                  const dt = new Date(d + 'T12:00:00')
+                  return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                }).join(' · ')}
+                {dates.length > 6 && ` · ... +${dates.length - 6}`}
+              </p>
+              <p className="italic" style={{ color: 'var(--admin-text-faded)' }}>
+                Se algum horário estiver ocupado o sistema avisa qual.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
