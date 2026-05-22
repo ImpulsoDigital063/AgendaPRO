@@ -291,10 +291,10 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
               </p>
               <div className="space-y-1">
                 {([
-                  { v: 'service', l: 'Por serviço', desc: 'Cada serviço uma cor' },
-                  { v: 'professional', l: 'Por profissional', desc: 'Cor da coluna' },
+                  { v: 'service', l: 'Por serviço', desc: 'Cor diferente por tipo de serviço' },
+                  { v: 'professional', l: 'Por profissional', desc: 'Cor por coluna · vê o dia de cada um' },
                   { v: 'progress', l: 'Por andamento', desc: 'Aguardando · feito · faltou' },
-                  { v: 'payment', l: 'Por pagamento', desc: 'Pago · pendente' },
+                  { v: 'payment', l: 'Por pagamento', desc: 'Verde pago · âmbar a receber' },
                 ] as const).map((opt) => (
                   <button
                     key={opt.v}
@@ -308,8 +308,11 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
                     }
                     title={opt.desc}
                   >
-                    <p className="text-[11px] font-semibold" style={{ color: colorMode === opt.v ? 'var(--admin-accent)' : 'var(--admin-text-mute)' }}>
+                    <p className="text-[11px] font-semibold leading-tight" style={{ color: colorMode === opt.v ? 'var(--admin-accent)' : 'var(--admin-text)' }}>
                       {opt.l}
+                    </p>
+                    <p className="text-[10px] leading-snug mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
+                      {opt.desc}
                     </p>
                   </button>
                 ))}
@@ -425,7 +428,8 @@ export default function TimelineGridInteractive({ businessId, profs, appts, hour
               {/* Coluna de horas */}
               <div className="relative" style={{ height: gridHeight }}>
                 {slots.map((s, i) => {
-                  const showLabel = s.endsWith(':00') || (interval === 15 && s.endsWith(':30'))
+                  // 60min → só :00 · 30min → :00 e :30 · 15min → :00, :15, :30, :45
+                  const showLabel = s.endsWith(':00') || (interval <= 30 && s.endsWith(':30')) || interval === 15
                   return (
                     <div
                       key={s}
