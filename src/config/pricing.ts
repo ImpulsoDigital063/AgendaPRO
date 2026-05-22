@@ -20,6 +20,18 @@ export const PRICING = {
     mensalidadeCentavos: 6700,
     mensalidadeFormatada: 'R$ 67',
     mensalidadeCompleta: 'R$ 67/mês',
+    /** Features inclusas no Solo · cravado 22/05/2026 */
+    features: {
+      agenda: true,
+      clientes: true,
+      financeiro: true,
+      cupons: true,
+      relatorios: true,
+      catalogoProdutos: false, // ⚠️ Solo NÃO tem · diferencial pra venda Equipe
+      controleEstoque: false,
+      vendaProduto: false,
+      recepcao: false,
+    },
   },
 
   /** Plano Equipe — até 5 profissionais + 1 recepcionista inclusa */
@@ -31,6 +43,18 @@ export const PRICING = {
     mensalidadeFormatada: 'R$ 97',
     mensalidadeCompleta: 'R$ 97/mês',
     incluiRecepcao: true,
+    /** Features inclusas no Equipe · TUDO do Solo + extras */
+    features: {
+      agenda: true,
+      clientes: true,
+      financeiro: true,
+      cupons: true,
+      relatorios: true,
+      catalogoProdutos: true, // ⭐ Diferencial Equipe · cravado 22/05/2026 reunião Studio Mood
+      controleEstoque: true,
+      vendaProduto: true,
+      recepcao: true,
+    },
   },
 
   /** Garantia (substitui o trial antigo) */
