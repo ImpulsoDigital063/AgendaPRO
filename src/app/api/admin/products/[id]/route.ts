@@ -46,6 +46,9 @@ export async function PATCH(
   if ('commission_value' in body) {
     update.commission_value = (typeof body.commission_value === 'number' && body.commission_value >= 0 ? body.commission_value : null)
   }
+  if ('image_url' in body) {
+    update.image_url = (typeof body.image_url === 'string' && body.image_url.trim() ? body.image_url.trim() : null)
+  }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'nada pra atualizar' }, { status: 400 })

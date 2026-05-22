@@ -30,6 +30,7 @@ type Product = {
   sale_active: boolean
   commission_type: 'percent' | 'fixed' | null
   commission_value: number | null
+  image_url: string | null
   brand?: { id: string; name: string } | { id: string; name: string }[] | null
   category?: { id: string; name: string } | { id: string; name: string }[] | null
 }
@@ -241,6 +242,17 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
                 }}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
+                  {/* Thumb · só se tem foto */}
+                  {p.image_url && (
+                    <div
+                      className="w-12 h-12 rounded-lg flex-shrink-0"
+                      style={{
+                        background: `url(${p.image_url}) center/cover`,
+                        border: '1px solid var(--admin-border)',
+                      }}
+                      aria-hidden
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
                       {p.name}{p.variant && <span style={{ color: 'var(--admin-text-mute)', fontWeight: 500 }}> · {p.variant}</span>}
@@ -320,6 +332,7 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
       {selectedProduct && (
         <ProdutoDrawer
           product={selectedProduct}
+          businessId={businessId}
           onClose={() => setSelectedProduct(null)}
           onChanged={refresh}
         />

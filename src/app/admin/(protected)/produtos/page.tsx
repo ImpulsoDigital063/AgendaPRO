@@ -28,6 +28,7 @@ type ProductRow = {
   sale_active: boolean
   commission_type: 'percent' | 'fixed' | null
   commission_value: number | null
+  image_url: string | null
   brand?: { id: string; name: string } | { id: string; name: string }[] | null
   category?: { id: string; name: string } | { id: string; name: string }[] | null
 }
@@ -48,7 +49,7 @@ export default async function AdminProdutosPage() {
     .from('products')
     .select(`
       id, name, description, unit, price, cost, quantity, min_quantity, active, created_at, updated_at,
-      brand_id, category_id, variant, expires_at, pack_quantity, barcode, sku,
+      brand_id, category_id, variant, expires_at, pack_quantity, barcode, sku, image_url,
       track_stock, sale_active, commission_type, commission_value,
       brand:product_brands(id, name),
       category:product_categories(id, name)

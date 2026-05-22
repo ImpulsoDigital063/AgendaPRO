@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconClose, IconChevronDown, IconChevronRight, IconPlus } from '@/components/ui/Icon'
+import ProductImageUpload from './ProductImageUpload'
 
 type Props = {
   businessId: string
@@ -22,6 +23,7 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [unit, setUnit] = useState('un')
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
 
   // Categorização (colapsável)
   const [showCategorizacao, setShowCategorizacao] = useState(true)
@@ -118,6 +120,7 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
         name: name.trim(),
         description: description.trim() || null,
         unit,
+        image_url: imageUrl,
         brand_id: brandId || null,
         category_id: categoryId || null,
         variant: variant.trim() || null,
@@ -191,6 +194,15 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Básico */}
           <div className="space-y-3">
+            {/* Foto · upload com compressão automática (web worker) */}
+            <div>
+              <FieldLabel>Foto do produto</FieldLabel>
+              <ProductImageUpload
+                businessId={_businessId}
+                initialUrl={imageUrl}
+                onChange={setImageUrl}
+              />
+            </div>
             <FieldLabel>Nome *</FieldLabel>
             <input
               type="text"

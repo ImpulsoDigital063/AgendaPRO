@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     .from('products')
     .select(`
       id, name, description, unit, price, cost, quantity, min_quantity, active, created_at, updated_at,
-      brand_id, category_id, variant, expires_at, pack_quantity, barcode, sku,
+      brand_id, category_id, variant, expires_at, pack_quantity, barcode, sku, image_url,
       track_stock, sale_active, commission_type, commission_value,
       brand:product_brands(id, name),
       category:product_categories(id, name)
@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
       sale_active: typeof body.sale_active === 'boolean' ? body.sale_active : true,
       commission_type: commissionType,
       commission_value: commissionValue,
+      image_url: typeof body.image_url === 'string' && body.image_url.trim() ? body.image_url.trim() : null,
     })
     .select('id')
     .single()

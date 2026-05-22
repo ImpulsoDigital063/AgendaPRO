@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconClose, IconPencil, IconClock, IconTrash, IconAlert, IconPlus } from '@/components/ui/Icon'
 import AjustarEstoqueModal from './AjustarEstoqueModal'
+import ProductImageUpload from './ProductImageUpload'
 
 type Product = {
   id: string
@@ -26,6 +27,7 @@ type Product = {
   sale_active?: boolean
   commission_type?: 'percent' | 'fixed' | null
   commission_value?: number | null
+  image_url?: string | null
   brand?: { id: string; name: string } | { id: string; name: string }[] | null
   category?: { id: string; name: string } | { id: string; name: string }[] | null
 }
@@ -47,6 +49,7 @@ type Tab = 'resumo' | 'editar' | 'historico'
 
 type Props = {
   product: Product
+  businessId: string
   onClose: () => void
   onChanged: () => void // chamado após qualquer save (refresh)
 }
@@ -73,7 +76,7 @@ const TYPE_META: Record<Movement['type'], { label: string; color: string; sign: 
   adjust: { label: 'Ajuste', color: '#3B82F6', sign: '±' },
 }
 
-export default function ProdutoDrawer({ product, onClose, onChanged }: Props) {
+export default function ProdutoDrawer({ product, businessId, onClose, onChanged }: Props) {
   const [tab, setTab] = useState<Tab>('resumo')
   const [showAjustar, setShowAjustar] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -175,6 +178,7 @@ export default function ProdutoDrawer({ product, onClose, onChanged }: Props) {
           {tab === 'editar' && (
             <EditarTab
               product={product}
+              businessId={businessId}
               onSaved={onChanged}
               onDelete={() => setConfirmDelete(true)}
             />
@@ -228,6 +232,20 @@ function ResumoTab({
   const valor = (Number(product.cost ?? product.price ?? 0) * Number(product.quantity))
   return (
     <div className="space-y-4">
+      {/* Foto · só renderiza se tiver image_url */}
+      {product.image_url && (
+        <div
+          className="w-full rounded-2xl overflow-hidden"
+          style={{
+            aspectRatio: '4/3',
+            background: `url(${product.image_url}) center/cover, var(--admin-input-bg)`,
+            border: '1px solid var(--admin-border)',
+          }}
+          role="img"
+          aria-label={product.name}
+        />
+      )}
+
       {/* Status chip */}
       <span
         className="text-[11px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full inline-flex items-center gap-1.5"
@@ -360,12 +378,14 @@ type Brand = { id: string; name: string }
 type Category = { id: string; name: string }
 
 function EditarTab({
-  product, onSaved, onDelete,
+  product, businessId, onSaved, onDelete,
 }: {
   product: Product
+  businessId: string
   onSaved: () => void
   onDelete: () => void
 }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(product.image_url ?? null)
   // Básico
   const [name, setName] = useState(product.name)
   const [description, setDescription] = useState(product.description ?? '')
@@ -448,6 +468,7 @@ function EditarTab({
         name: name.trim(),
         description: description.trim() || null,
         unit,
+        image_url: imageUrl,
         brand_id: brandId || null,
         category_id: categoryId || null,
         variant: variant.trim() || null,
@@ -475,6 +496,17 @@ function EditarTab({
 
   return (
     <div className="space-y-3">
+      {/* Foto */}
+      <div>
+        <EditLabel>Foto do produto</EditLabel>
+        <ProductImageUpload
+          businessId={businessId}
+          productId={product.id}
+          initialUrl={imageUrl}
+          onChange={setImageUrl}
+        />
+      </div>
+
       {/* Básico */}
       <div className="space-y-2">
         <EditLabel>Nome</EditLabel>
