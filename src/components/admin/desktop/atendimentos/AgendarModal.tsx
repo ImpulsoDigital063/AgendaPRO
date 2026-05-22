@@ -444,19 +444,6 @@ export default function AgendarModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {error && (
-            <div
-              className="rounded-xl px-3 py-2 text-xs"
-              style={{
-                background: 'rgba(239,68,68,0.10)',
-                border: '1px solid rgba(239,68,68,0.3)',
-                color: '#DC2626',
-              }}
-            >
-              {error}
-            </div>
-          )}
-
           {/* Cliente */}
           <Field icon={<IconUser size={14} />} label="Cliente">
             {cliente ? (
@@ -579,22 +566,35 @@ export default function AgendarModal({
           </Field>
         </div>
 
-        {/* Footer · resumo + ações */}
+        {/* Footer · resumo + ações · erro fica AQUI pra usuário ver logo
+            acima do botão Salvar (regra cravada 22/05: erro no topo do body
+            era invisível com scroll) */}
         <div
-          className="flex items-center justify-between gap-3 p-4 flex-shrink-0"
+          className="flex-shrink-0"
           style={{
             borderTop: '1px solid var(--admin-divider)',
             background: 'var(--admin-surface-hi)',
           }}
         >
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-              Total
-            </p>
-            <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
-              {formatBRL(valorTotal)}
-            </p>
-          </div>
+          {error && (
+            <div
+              className="px-4 pt-3 pb-1 text-xs font-semibold flex items-start gap-2"
+              style={{ color: '#DC2626' }}
+              role="alert"
+            >
+              <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>⚠</span>
+              <span className="flex-1">{error}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+                Total
+              </p>
+              <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                {formatBRL(valorTotal)}
+              </p>
+            </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -623,6 +623,7 @@ export default function AgendarModal({
             >
               {saving ? 'Salvando...' : 'Salvar'}
             </button>
+          </div>
           </div>
         </div>
       </div>
