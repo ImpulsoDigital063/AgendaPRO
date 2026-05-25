@@ -233,6 +233,8 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
                   customerPhone={data.client_phone ?? customer?.phone ?? null}
                   businessId={businessId}
                   totalPrice={data.total_price}
+                  serviceName={data.service_name}
+                  professionalId={prof?.id ?? null}
                   onDone={onClose}
                 />
               )}

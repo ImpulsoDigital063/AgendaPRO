@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 import {
   getCurrentUser,
   getCurrentBusiness,
@@ -54,6 +55,21 @@ async function KPIsRow({ business }: { business: Business }) {
   const today = new Date().toISOString().split('T')[0]
   const list = await getAppointmentsToday(business.id, today)
 
+  // Vendas de produto pagas hoje · entram no "Recebido hoje"
+  const sb = await createClient()
+  const { data: salesToday } = await sb
+    .from('sales')
+    .select('id, total, paid_at')
+    .eq('business_id', business.id)
+    .eq('type', 'product_sale')
+    .eq('status', 'paid')
+    .not('payment_method', 'in', '(courtesy,credit)')
+    .gte('paid_at', `${today}T00:00:00`)
+    .lt('paid_at', `${today}T23:59:59`)
+  const productSalesPaidToday = salesToday ?? []
+  const recebidoSalesTotal = productSalesPaidToday.reduce((s, p) => s + Number(p.total ?? 0), 0)
+  const recebidoSalesCount = productSalesPaidToday.length
+
   const pending = list.filter((a) => a.status === 'pending')
   const aReceber = list.filter(
     (a) =>
@@ -61,8 +77,10 @@ async function KPIsRow({ business }: { business: Business }) {
       (a.total_price ?? 0) > 0 &&
       (a.status === 'confirmed' || a.status === 'completed')
   )
-  const recebidos = list.filter((a) => a.paid_at != null)
-  const recebidoTotal = recebidos.reduce((s, a) => s + (a.total_price || 0), 0)
+  const recebidos = list.filter((a) => a.paid_at != null && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
+  const recebidoApptsTotal = recebidos.reduce((s, a) => s + (a.total_price || 0), 0)
+  const recebidoTotal = recebidoApptsTotal + recebidoSalesTotal
+  const recebidoCount = recebidos.length + recebidoSalesCount
   const aReceberTotal = aReceber.reduce((s, a) => s + (a.total_price || 0), 0)
   const totalAgendados = list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show').length
 
@@ -71,7 +89,7 @@ async function KPIsRow({ business }: { business: Business }) {
       label: 'Recebido hoje',
       value: recebidoTotal,
       format: 'brl' as const,
-      subtitle: `${recebidos.length} pago${recebidos.length === 1 ? '' : 's'}`,
+      subtitle: `${recebidoCount} pago${recebidoCount === 1 ? '' : 's'}`,
       Icon: IconDollar,
       tone: 'success',
       href: '/admin/financeiro',

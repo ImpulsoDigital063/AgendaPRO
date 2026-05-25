@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { IconCheck, IconWhatsapp, IconClose } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
+import FaturarComandaModal from '@/components/admin/comandas/FaturarComandaModal'
 
 type Props = {
   appointmentId: string
@@ -15,6 +16,10 @@ type Props = {
   /** businessId obrigatório pra step de cartão (maquininha/bandeira/taxa). */
   businessId: string
   totalPrice: number | null
+  /** Nome do serviço · pré-pintado no modal FATURAR. */
+  serviceName?: string | null
+  /** Profissional default das vendas de produto adicionadas. */
+  professionalId?: string | null
   /** Se passado, chamado após sucesso em vez de navegar pro backHref. Usado pelo drawer inline. */
   onDone?: () => void
 }
@@ -27,12 +32,15 @@ export default function AppointmentActions({
   customerPhone,
   businessId,
   totalPrice,
+  serviceName,
+  professionalId,
   onDone,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [faturarOpen, setFaturarOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function postPayment(body: Record<string, unknown>): Promise<boolean> {
@@ -128,10 +136,10 @@ export default function AppointmentActions({
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {/* Marcar/Desmarcar pago · pago abre modal de método */}
+        {/* Faturar (abre modal de comanda com produtos) · ou desmarcar se já pago */}
         <button
           type="button"
-          onClick={() => (isPaid ? desmarcarPago() : setPaymentOpen(true))}
+          onClick={() => (isPaid ? desmarcarPago() : setFaturarOpen(true))}
           disabled={loading}
           className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98] disabled:opacity-50"
           style={
@@ -149,7 +157,7 @@ export default function AppointmentActions({
                 }
           }
         >
-          <IconCheck size={16} /> {isPaid ? 'Desmarcar pagamento' : 'Marcar como pago'}
+          <IconCheck size={16} /> {isPaid ? 'Desmarcar pagamento' : 'Faturar atendimento'}
         </button>
 
         {/* WhatsApp */}
@@ -204,6 +212,22 @@ export default function AppointmentActions({
         loading={loading}
         onChoose={confirmarMetodo}
         onClose={() => setPaymentOpen(false)}
+      />
+
+      <FaturarComandaModal
+        open={faturarOpen}
+        appointmentId={appointmentId}
+        appointmentServiceName={serviceName ?? 'Atendimento'}
+        appointmentTotal={totalPrice ?? 0}
+        appointmentProfessionalId={professionalId ?? null}
+        customerName={customerName}
+        businessId={businessId}
+        onClose={() => {
+          setFaturarOpen(false)
+          // O modal já navega pra /admin/comandas/[id] após sucesso · só atualiza UI local
+          if (onDone) onDone()
+          else router.refresh()
+        }}
       />
     </>
   )

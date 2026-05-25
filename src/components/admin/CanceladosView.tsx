@@ -17,7 +17,7 @@ type Appointment = {
   service_name: string | null
   total_price: number | null
   paid_at: string | null
-  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | null
+  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
   professional?: { id: string; name: string } | null
 }
 
@@ -48,6 +48,7 @@ const METHOD_LABEL: Record<NonNullable<Appointment['payment_method']>, string> =
   cash: 'Dinheiro',
   card: 'Cartão',
   courtesy: 'Cortesia',
+  credit: 'Crédito',
 }
 
 function formatPrice(value: number) {
@@ -287,8 +288,8 @@ function PaymentMethodSheet({
   clientName: string
   price: number
 }) {
-  const COLOR: Record<'pix' | 'cash' | 'card' | 'courtesy', string> = {
-    pix: '#10B981', cash: '#16A34A', card: '#3B82F6', courtesy: '#A855F7',
+  const COLOR: Record<'pix' | 'cash' | 'card' | 'courtesy' | 'credit', string> = {
+    pix: '#10B981', cash: '#16A34A', card: '#3B82F6', courtesy: '#A855F7', credit: '#8B5CF6',
   }
   const methods = [
     { key: 'pix' as const, label: 'PIX', sub: 'Transferência instantânea' },

@@ -17,19 +17,35 @@ export default async function TrendReceitaCard({ businessId }: { businessId: str
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
   const fourteenDaysAgoStr = fourteenDaysAgo.toISOString().split('T')[0]
 
-  const { data: appts } = await supabase
-    .from('appointments')
-    .select('appointment_date, total_price, payment_method')
-    .eq('business_id', businessId)
-    .not('paid_at', 'is', null)
-    .neq('payment_method', 'courtesy')
-    .gte('appointment_date', fourteenDaysAgoStr)
-    .lte('appointment_date', todayStr)
+  // Lê em paralelo: appointments pagos + vendas de produto pagas (sales)
+  const [apptsRes, salesRes] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select('appointment_date, total_price, payment_method')
+      .eq('business_id', businessId)
+      .not('paid_at', 'is', null)
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('appointment_date', fourteenDaysAgoStr)
+      .lte('appointment_date', todayStr),
+    supabase
+      .from('sales')
+      .select('sale_date, total, payment_method')
+      .eq('business_id', businessId)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('sale_date', fourteenDaysAgoStr)
+      .lte('sale_date', todayStr),
+    // TrendReceitaCard já filtrava cortesia em appointments · sales filtrado acima
+  ])
 
-  // Soma por dia
+  // Soma por dia (appointments + sales unificados)
   const byDay = new Map<string, number>()
-  for (const a of appts ?? []) {
+  for (const a of apptsRes.data ?? []) {
     byDay.set(a.appointment_date, (byDay.get(a.appointment_date) || 0) + (a.total_price ?? 0))
+  }
+  for (const s of salesRes.data ?? []) {
+    byDay.set(s.sale_date, (byDay.get(s.sale_date) || 0) + Number(s.total ?? 0))
   }
 
   const totalHoje = byDay.get(todayStr) ?? 0

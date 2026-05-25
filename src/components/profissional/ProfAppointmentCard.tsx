@@ -21,7 +21,7 @@ type Props = {
     service_name?: string | null
     total_price?: number | null
     paid_at?: string | null
-    payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | null
+    payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
     punctuality_awarded?: boolean
     /** Join com appointment_services · resolve B2 (sobrancelha somia
      *  quando agendamento tem multi-servico e service_name denormalizado

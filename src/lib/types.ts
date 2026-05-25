@@ -16,6 +16,10 @@ export type Business = {
   points_for_referral: number
   punctuality_bonus_points?: number
   points_mode?: 'business' | 'professional'
+  // Toggle global do programa de fidelidade (v72 · 25/05/2026)
+  // Quando false, UI esconde opções de pontos (resgate de recompensa,
+  // saldo na comanda, etc). Negócio decide ativar na aba Fidelidade.
+  loyalty_enabled?: boolean
   brand_primary?: string | null
   brand_secondary?: string | null
   brand_mode?: 'dark' | 'light' | null

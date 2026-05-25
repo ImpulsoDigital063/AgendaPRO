@@ -14,7 +14,7 @@ type AppointmentRow = {
   service_name: string | null
   total_price: number | null
   paid_at: string | null
-  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | null
+  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
 }
 
 type Props = {
@@ -38,7 +38,7 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
   // Cortesia (brinde) NAO conta — bug historico (CIC rodada 4): profissional
   // ganhava comissao sobre cortesia (R$0 de receita gera R$X de obrigacao).
   const pagos = appointments.filter(
-    (a) => a.paid_at && a.total_price && a.payment_method !== 'courtesy'
+    (a) => a.paid_at && a.total_price && a.payment_method !== 'courtesy' && a.payment_method !== 'credit'
   )
   const naoPagos = appointments.filter(
     (a) =>

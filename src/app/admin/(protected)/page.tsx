@@ -61,6 +61,21 @@ type Business = {
 async function KPIsSection({ business }: { business: Business }) {
   const today = new Date().toISOString().split('T')[0]
   const list = await getAppointmentsToday(business.id, today)
+
+  // Vendas de produto pagas hoje · entram em "Recebido hoje"
+  const { createClient: createSb } = await import('@/lib/supabase/server')
+  const sb = await createSb()
+  const { data: salesToday } = await sb
+    .from('sales')
+    .select('id, total, paid_at')
+    .eq('business_id', business.id)
+    .eq('type', 'product_sale')
+    .eq('status', 'paid')
+    .not('payment_method', 'in', '(courtesy,credit)')
+    .gte('paid_at', `${today}T00:00:00`)
+    .lt('paid_at', `${today}T23:59:59`)
+  const salesRecebidoTotal = (salesToday ?? []).reduce((s, p) => s + Number(p.total ?? 0), 0)
+
   // Atendimento != pagamento. Cada estado tem fonte de verdade própria:
   //   status            → fluxo do atendimento (pending/confirmed/completed)
   //   paid_at != null   → dinheiro entrou no caixa (independente do status)
@@ -72,8 +87,8 @@ async function KPIsSection({ business }: { business: Business }) {
       (a.total_price ?? 0) > 0 &&
       (a.status === 'confirmed' || a.status === 'completed')
   )
-  const recebidos = list.filter((a) => a.paid_at != null)
-  const recebidoTotal = recebidos.reduce((sum, a) => sum + (a.total_price || 0), 0)
+  const recebidos = list.filter((a) => a.paid_at != null && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
+  const recebidoTotal = recebidos.reduce((sum, a) => sum + (a.total_price || 0), 0) + salesRecebidoTotal
   const aReceberTotal = aReceber.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   return (

@@ -17,7 +17,7 @@ export type AppointmentRow = {
   service_name: string | null
   total_price: number | null
   paid_at: string | null
-  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | null
+  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
   payment_card_type?: 'credit' | 'debit' | null
   payment_card_brand?: string | null
   payment_fee_percent?: number | null
@@ -52,7 +52,7 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
   // - Cortesias = brinde dado, conta separada (nao soma em receita).
   // - Faturado = Realizado + Em aberto (cortesia exclusa).
   const pagosReceita = appointments.filter(
-    (a) => a.paid_at && a.total_price && a.payment_method !== 'courtesy'
+    (a) => a.paid_at && a.total_price && a.payment_method !== 'courtesy' && a.payment_method !== 'credit'
   )
   const cortesias = appointments.filter(
     (a) => a.paid_at && a.total_price && a.payment_method === 'courtesy'

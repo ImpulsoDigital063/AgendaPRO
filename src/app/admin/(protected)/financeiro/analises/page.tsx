@@ -41,6 +41,9 @@ export default async function AnalisesPage({
 
   // 1. Mes atual: TODOS agendamentos (pra calcular cancelamento e
   // taxa de conversao). Pagos vao agregar receita.
+  // Cortesia + Crédito não contam como receita (não filtra na query porque
+  // currentMonth precisa TODOS pra estatística de cancelamento/conversão · o
+  // filtro de receita acontece no AnalisesView ao agregar).
   let currentQuery = supabase
     .from('appointments')
     .select(`
@@ -56,16 +59,38 @@ export default async function AnalisesPage({
   if (profFilter) currentQuery = currentQuery.eq('professional_id', profFilter)
   if (serviceFilter) currentQuery = currentQuery.eq('service_name', serviceFilter)
 
-  // 2. Mes anterior: total pago (pra comparativo)
+  // 2. Mes anterior: total pago REAL (pra comparativo) · exclui cortesia e crédito
   let prevQuery = supabase
     .from('appointments')
     .select('total_price, payment_method')
     .eq('business_id', business.id)
+    .not('payment_method', 'in', '(courtesy,credit)')
     .gte('appointment_date', startPrev)
     .lte('appointment_date', endPrev)
     .not('paid_at', 'is', null)
   if (profFilter) prevQuery = prevQuery.eq('professional_id', profFilter)
   if (serviceFilter) prevQuery = prevQuery.eq('service_name', serviceFilter)
+
+  // 2b. Vendas de produto pagas (mes atual + anterior) · pra somar na receita
+  const salesCurrentQuery = supabase
+    .from('sales')
+    .select('total, sale_date, payment_method, professional_id')
+    .eq('business_id', business.id)
+    .eq('type', 'product_sale')
+    .eq('status', 'paid')
+    .not('payment_method', 'in', '(courtesy,credit)')
+    .gte('sale_date', startCurrent)
+    .lte('sale_date', endCurrent)
+
+  const salesPrevQuery = supabase
+    .from('sales')
+    .select('total')
+    .eq('business_id', business.id)
+    .eq('type', 'product_sale')
+    .eq('status', 'paid')
+    .not('payment_method', 'in', '(courtesy,credit)')
+    .gte('sale_date', startPrev)
+    .lte('sale_date', endPrev)
 
   // 3. Client IDs com agendamento ANTES do mes atual (pra distinguir
   // cliente novo vs recorrente). Trafega pouco — so client_ids.
@@ -91,12 +116,14 @@ export default async function AnalisesPage({
     .eq('active', true)
     .order('name')
 
-  const [currentRes, prevRes, prevClientsRes, profsRes, servicesRes] = await Promise.all([
+  const [currentRes, prevRes, prevClientsRes, profsRes, servicesRes, salesCurrentRes, salesPrevRes] = await Promise.all([
     currentQuery,
     prevQuery,
     previousClientsQuery,
     profsQuery,
     servicesQuery,
+    salesCurrentQuery,
+    salesPrevQuery,
   ])
 
   const previousClientIds = new Set(
@@ -127,6 +154,8 @@ export default async function AnalisesPage({
             endCurrent={endCurrent}
             profFilter={profFilter || ''}
             serviceFilter={serviceFilter || ''}
+            productSalesCurrent={(salesCurrentRes.data || []) as never[]}
+            productSalesPrev={(salesPrevRes.data || []) as never[]}
           />
         </div>
       </div>

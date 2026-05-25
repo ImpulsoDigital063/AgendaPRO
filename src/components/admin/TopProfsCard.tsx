@@ -13,22 +13,41 @@ export default async function TopProfsCard({ businessId }: { businessId: string 
   const startStr = start.toISOString().split('T')[0]
   const todayStr = new Date().toISOString().split('T')[0]
 
-  const { data: appts } = await supabase
-    .from('appointments')
-    .select('professional_id, total_price, payment_method, professional:professionals(id, name)')
-    .eq('business_id', businessId)
-    .not('paid_at', 'is', null)
-    .neq('payment_method', 'courtesy')
-    .gte('appointment_date', startStr)
-    .lte('appointment_date', todayStr)
+  const [apptsRes, salesRes] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select('professional_id, total_price, payment_method, professional:professionals(id, name)')
+      .eq('business_id', businessId)
+      .not('paid_at', 'is', null)
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('appointment_date', startStr)
+      .lte('appointment_date', todayStr),
+    supabase
+      .from('sales')
+      .select('professional_id, total, payment_method, professional:professionals(id, name)')
+      .eq('business_id', businessId)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('sale_date', startStr)
+      .lte('sale_date', todayStr),
+  ])
 
   type Row = { id: string; name: string; total: number; count: number }
   const map = new Map<string, Row>()
-  for (const a of appts ?? []) {
+  for (const a of apptsRes.data ?? []) {
     const p = a.professional as unknown as { id: string; name: string } | null
     if (!p) continue
     const existing = map.get(p.id) ?? { id: p.id, name: p.name, total: 0, count: 0 }
     existing.total += a.total_price ?? 0
+    existing.count += 1
+    map.set(p.id, existing)
+  }
+  for (const s of salesRes.data ?? []) {
+    const p = s.professional as unknown as { id: string; name: string } | null
+    if (!p) continue
+    const existing = map.get(p.id) ?? { id: p.id, name: p.name, total: 0, count: 0 }
+    existing.total += Number(s.total ?? 0)
     existing.count += 1
     map.set(p.id, existing)
   }

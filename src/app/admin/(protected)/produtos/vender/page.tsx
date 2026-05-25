@@ -4,7 +4,13 @@ import VenderProdutoView from '@/components/admin/produtos/VenderProdutoView'
 
 export const dynamic = 'force-dynamic'
 
-export default async function VenderProdutoPage() {
+export default async function VenderProdutoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ prefill?: string }>
+}) {
+  const sp = await searchParams
+  const prefillProductId = typeof sp.prefill === 'string' ? sp.prefill : null
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
@@ -34,7 +40,12 @@ export default async function VenderProdutoPage() {
       .maybeSingle(),
   ])
 
-  const profs = (professionals ?? []).filter((p) => !p.is_receptionist)
+  // Recep pode vender produto avulso (cenário Salão99: cliente compra esmalte na saída) ·
+  // ordenar profs primeiro, recep no fim com label (recepção) visualmente diferente.
+  const profs = [
+    ...(professionals ?? []).filter((p) => !p.is_receptionist),
+    ...(professionals ?? []).filter((p) => p.is_receptionist),
+  ]
 
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
@@ -51,8 +62,12 @@ export default async function VenderProdutoPage() {
           commissionType: p.commission_type ?? null,
           commissionValue: p.commission_value ?? null,
         }))}
-        professionals={profs.map((p) => ({ id: p.id, name: p.name }))}
+        professionals={profs.map((p) => ({
+          id: p.id,
+          name: p.is_receptionist ? `${p.name} (recepção)` : p.name,
+        }))}
         defaultProfId={ownerProfData?.id ?? null}
+        prefillProductId={prefillProductId}
       />
     </main>
   )

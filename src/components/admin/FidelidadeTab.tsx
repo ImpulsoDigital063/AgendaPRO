@@ -58,6 +58,9 @@ type Props = {
   initialNoShowEnabled: boolean
   initialNoShowMode: 'proportional' | 'fixed'
   initialNoShowFixedPoints: number
+  // Toggle global do programa (v72 · 25/05/2026)
+  // Default false em negócios novos · backfill marca true em quem já usa
+  initialLoyaltyEnabled: boolean
 }
 
 /**
@@ -126,8 +129,31 @@ export default function FidelidadeTab({
   initialNoShowEnabled,
   initialNoShowMode,
   initialNoShowFixedPoints,
+  initialLoyaltyEnabled,
 }: Props) {
   const supabase = createClient()
+
+  // Toggle global do programa (v72) — controla visibilidade das opções
+  // de pontos em toda a UI: chip Pontos no split, botão "Trocar
+  // recompensa" na comanda, saldo do cliente, etc.
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(initialLoyaltyEnabled)
+  const [savingLoyaltyToggle, setSavingLoyaltyToggle] = useState(false)
+  const [confirmToggleOff, setConfirmToggleOff] = useState(false)
+
+  async function toggleLoyalty(nextEnabled: boolean) {
+    setSavingLoyaltyToggle(true)
+    const prev = loyaltyEnabled
+    setLoyaltyEnabled(nextEnabled)
+    const { error } = await supabase
+      .from('businesses')
+      .update({ loyalty_enabled: nextEnabled })
+      .eq('id', businessId)
+    if (error) {
+      setLoyaltyEnabled(prev)
+    }
+    setSavingLoyaltyToggle(false)
+    setConfirmToggleOff(false)
+  }
 
   // rewards e setRewards agora vem do parent (controlled) — sobrevive
   // ao desmonte do componente quando troca de aba
@@ -500,6 +526,163 @@ export default function FidelidadeTab({
 
   return (
     <div className="space-y-5 pb-10">
+      {/* 0. TOGGLE GLOBAL — controla se o programa de fidelidade
+          aparece nas demais telas (comanda, split, cliente). Quando
+          off, todo o resto fica oculto. */}
+      <section>
+        <div
+          className="rounded-2xl p-4 sm:p-5 flex items-center gap-4"
+          style={{
+            background: loyaltyEnabled
+              ? 'linear-gradient(135deg, color-mix(in srgb, var(--admin-warn) 18%, transparent) 0%, var(--admin-surface) 70%)'
+              : 'var(--admin-surface)',
+            border: `1px solid ${
+              loyaltyEnabled
+                ? 'color-mix(in srgb, var(--admin-warn) 32%, transparent)'
+                : 'var(--admin-border)'
+            }`,
+          }}
+        >
+          <span
+            className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: loyaltyEnabled
+                ? 'color-mix(in srgb, var(--admin-warn) 22%, transparent)'
+                : 'var(--admin-input-bg)',
+              color: loyaltyEnabled ? 'var(--admin-warn)' : 'var(--admin-text-faded)',
+              border: `1px solid ${
+                loyaltyEnabled
+                  ? 'color-mix(in srgb, var(--admin-warn) 35%, transparent)'
+                  : 'var(--admin-border)'
+              }`,
+            }}
+          >
+            <IconStar size={20} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+                Programa de fidelidade
+              </p>
+              <span
+                className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                style={{
+                  background: loyaltyEnabled
+                    ? 'color-mix(in srgb, var(--admin-success) 18%, transparent)'
+                    : 'var(--admin-input-bg)',
+                  color: loyaltyEnabled
+                    ? 'var(--admin-success)'
+                    : 'var(--admin-text-faded)',
+                  border: `1px solid ${
+                    loyaltyEnabled
+                      ? 'color-mix(in srgb, var(--admin-success) 32%, transparent)'
+                      : 'var(--admin-border)'
+                  }`,
+                }}
+              >
+                {loyaltyEnabled ? 'Ativo' : 'Desativado'}
+              </span>
+            </div>
+            <p
+              className="text-[12px] mt-1 leading-relaxed"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              {loyaltyEnabled
+                ? 'Clientes acumulam pontos e podem trocar por recompensas. Cliente vê o saldo na comanda · você pode aplicar resgate na hora.'
+                : 'Ative pra liberar saldo de pontos do cliente, resgate de recompensas na comanda e bônus por avaliação · indicação · pontualidade.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (savingLoyaltyToggle) return
+              if (loyaltyEnabled) {
+                setConfirmToggleOff(true)
+              } else {
+                toggleLoyalty(true)
+              }
+            }}
+            disabled={savingLoyaltyToggle}
+            role="switch"
+            aria-checked={loyaltyEnabled}
+            aria-label={loyaltyEnabled ? 'Desativar programa de fidelidade' : 'Ativar programa de fidelidade'}
+            className="relative flex-shrink-0 rounded-full transition-colors disabled:opacity-60"
+            style={{
+              width: 52,
+              height: 30,
+              background: loyaltyEnabled
+                ? 'linear-gradient(135deg, var(--admin-warn) 0%, color-mix(in srgb, var(--admin-warn) 70%, #000) 100%)'
+                : 'var(--admin-input-bg)',
+              border: `1px solid ${
+                loyaltyEnabled
+                  ? 'color-mix(in srgb, var(--admin-warn) 45%, transparent)'
+                  : 'var(--admin-border)'
+              }`,
+              boxShadow: loyaltyEnabled
+                ? '0 4px 12px -4px color-mix(in srgb, var(--admin-warn) 50%, transparent)'
+                : 'inset 0 1px 2px rgba(0,0,0,0.08)',
+            }}
+          >
+            <span
+              className="absolute top-1/2 -translate-y-1/2 rounded-full bg-white transition-all"
+              style={{
+                width: 22,
+                height: 22,
+                left: loyaltyEnabled ? 26 : 4,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+              }}
+            />
+          </button>
+        </div>
+      </section>
+
+      {/* Quando desativado, mostra placeholder e esconde o resto */}
+      {!loyaltyEnabled && (
+        <section
+          className="admin-card-deep p-6 text-center space-y-3"
+        >
+          <span
+            className="inline-flex w-12 h-12 rounded-2xl items-center justify-center"
+            style={{
+              background: 'var(--admin-input-bg)',
+              color: 'var(--admin-text-faded)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            <IconGift size={20} />
+          </span>
+          <div>
+            <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+              Programa desativado
+            </p>
+            <p
+              className="text-[12px] mt-1 leading-relaxed max-w-md mx-auto"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              Suas configurações (recompensas · pontos por serviço · indicação)
+              ficam guardadas. Ao reativar, tudo volta no mesmo lugar sem perder
+              nada.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Modal de confirmação ao desligar — evita clique acidental */}
+      <ConfirmActionModal
+        open={confirmToggleOff}
+        title="Desativar programa de fidelidade?"
+        message="Os clientes vão parar de acumular pontos e o botão de trocar recompensa some da comanda. Saldos e recompensas ficam guardados · você pode reativar depois sem perder nada."
+        confirmLabel="Sim, desativar"
+        cancelLabel="Manter ativo"
+        tone="warn"
+        loading={savingLoyaltyToggle}
+        onConfirm={() => toggleLoyalty(false)}
+        onClose={() => setConfirmToggleOff(false)}
+      />
+
+      {/* Restante da aba só aparece quando programa está ativo */}
+      {loyaltyEnabled && (
+        <>
       {/* 1. PEDIDOS PENDENTES — topo, urgente */}
       {pendingClaims.length > 0 && (
         <section>
@@ -1277,6 +1460,9 @@ export default function FidelidadeTab({
           </div>
         )}
       </section>
+
+        </>
+      )}
 
       {/* MODAIS */}
       <ConfirmActionModal

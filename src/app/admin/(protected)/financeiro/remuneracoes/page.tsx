@@ -58,7 +58,13 @@ export default async function RemuneracoesPage({
     { auth: { persistSession: false } },
   )
 
-  const [{ data: profs }, { data: paidAppts }, { data: payments }, { data: vouchers }] = await Promise.all([
+  const [
+    { data: profs },
+    { data: paidAppts },
+    { data: payments },
+    { data: vouchers },
+    { data: paidSales },
+  ] = await Promise.all([
     sb
       .from('professionals')
       .select('id, name, default_commission_percent, is_receptionist, active')
@@ -69,6 +75,7 @@ export default async function RemuneracoesPage({
       .from('appointments')
       .select('professional_id, paid_at, total_price')
       .eq('business_id', business.id)
+      .not('payment_method', 'in', '(courtesy,credit)') // cortesia não gera comissão
       .gte('paid_at', from.toISOString())
       .lt('paid_at', to.toISOString())
       .not('paid_at', 'is', null),
@@ -83,18 +90,63 @@ export default async function RemuneracoesPage({
       .select('professional_id, amount, used_in_payment_id')
       .eq('business_id', business.id)
       .is('used_in_payment_id', null),
+    // Vendas de produto pagas no mês · comissão respeitando snapshot (exclui cortesia)
+    sb
+      .from('sales')
+      .select('professional_id, paid_at, sale_items(quantity, unit_price, commission_type, commission_value)')
+      .eq('business_id', business.id)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('paid_at', from.toISOString())
+      .lt('paid_at', to.toISOString())
+      .not('paid_at', 'is', null),
   ])
 
   // Filtra non-recep
   const activeProfs = (profs ?? []).filter((p) => !p.is_receptionist)
 
+  // Comissão por venda de produto · respeita snapshot do sale_item
+  // (commission_type pode ser 'percent', 'fixed' ou null·=fallback no pct do prof)
+  type SaleItemAgg = { quantity: number; unit_price: number; commission_type: string | null; commission_value: number | null }
+  function calcProductCommission(
+    sales: { professional_id: string | null; sale_items: SaleItemAgg[] | null }[],
+    professionalId: string,
+    defaultPct: number,
+  ): number {
+    let total = 0
+    for (const s of sales) {
+      if (s.professional_id !== professionalId) continue
+      const items = s.sale_items ?? []
+      for (const it of items) {
+        const qty = Number(it.quantity ?? 0)
+        const unit = Number(it.unit_price ?? 0)
+        const lineGross = qty * unit
+        if (it.commission_type === 'percent' && it.commission_value != null) {
+          total += (lineGross * Number(it.commission_value)) / 100
+        } else if (it.commission_type === 'fixed' && it.commission_value != null) {
+          total += qty * Number(it.commission_value)
+        } else {
+          total += (lineGross * defaultPct) / 100
+        }
+      }
+    }
+    return total
+  }
+
   // Calcula por prof
   const rows: ProfRow[] = activeProfs.map((p) => {
     const pct = Number(p.default_commission_percent ?? 40)
-    const sumPaid = (paidAppts ?? [])
+    const sumPaidAppts = (paidAppts ?? [])
       .filter((a) => a.professional_id === p.id)
       .reduce((s, a) => s + Number(a.total_price ?? 0), 0)
-    const valorTotal = (sumPaid * pct) / 100
+    const commissionFromAppts = (sumPaidAppts * pct) / 100
+    const commissionFromSales = calcProductCommission(
+      (paidSales ?? []) as { professional_id: string | null; sale_items: SaleItemAgg[] | null }[],
+      p.id,
+      pct,
+    )
+    const valorTotal = commissionFromAppts + commissionFromSales
 
     const pago = (payments ?? [])
       .filter((cp) => cp.professional_id === p.id)

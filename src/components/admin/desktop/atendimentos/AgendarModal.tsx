@@ -381,10 +381,17 @@ export default function AgendarModal({
   }
 
   function verCliente() {
-    if (!createdCustomerId) return
-    // ClientesView lê ?customer=ID e abre o drawer automaticamente
-    router.push(`/admin/clientes?customer=${createdCustomerId}`)
+    // Fallback pro cliente.id caso createdCustomerId não tenha sido setado
+    // (defensive · pega de qualquer fonte de verdade disponível).
+    const customerId = createdCustomerId ?? cliente?.id ?? null
+    if (!customerId) {
+      setError('Cliente não vinculado · não consegui abrir o cadastro')
+      return
+    }
+    // Fecha primeiro · senão o desmontar do modal pode cancelar o push
     onClose()
+    // ClientesView lê ?customer=ID e abre o drawer automaticamente
+    router.push(`/admin/clientes?customer=${customerId}`)
   }
 
   function irParaAgenda() {

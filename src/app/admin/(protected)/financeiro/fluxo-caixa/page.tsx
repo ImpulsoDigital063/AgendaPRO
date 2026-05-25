@@ -69,11 +69,14 @@ export default async function FluxoCaixaPage() {
     { data: expensesData },
     { data: priorR },
     { data: priorD },
+    { data: paidSales },
+    { data: priorRSales },
   ] = await Promise.all([
     sb
       .from('appointments')
       .select('paid_at, total_price, payment_method')
       .eq('business_id', business.id)
+      .not('payment_method', 'in', '(courtesy,credit)') // cortesia não é receita real
       .gte('paid_at', fullRangeFrom.toISOString())
       .lt('paid_at', fullRangeTo.toISOString())
       .not('paid_at', 'is', null),
@@ -87,6 +90,7 @@ export default async function FluxoCaixaPage() {
       .from('appointments')
       .select('total_price')
       .eq('business_id', business.id)
+      .not('payment_method', 'in', '(courtesy,credit)')
       .lt('paid_at', startOfPeriod)
       .not('paid_at', 'is', null),
     sb
@@ -94,9 +98,31 @@ export default async function FluxoCaixaPage() {
       .select('amount')
       .eq('business_id', business.id)
       .lt('occurred_at', fullRangeFromDate),
+    // Vendas de produto pagas dentro do range (exclui cortesia)
+    sb
+      .from('sales')
+      .select('paid_at, total, payment_method')
+      .eq('business_id', business.id)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('paid_at', fullRangeFrom.toISOString())
+      .lt('paid_at', fullRangeTo.toISOString())
+      .not('paid_at', 'is', null),
+    // Vendas de produto pagas ANTES do range · soma no saldo acumulado
+    sb
+      .from('sales')
+      .select('total')
+      .eq('business_id', business.id)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .lt('paid_at', startOfPeriod)
+      .not('paid_at', 'is', null),
   ])
 
   const priorReceitas = (priorR ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+    + (priorRSales ?? []).reduce((s, p) => s + Number(p.total ?? 0), 0)
   const priorDespesas = (priorD ?? []).reduce((s, e) => s + Number(e.amount ?? 0), 0)
   const saldoAcumulado = priorReceitas - priorDespesas
 
@@ -114,7 +140,7 @@ export default async function FluxoCaixaPage() {
     }
   }
 
-  // Receitas por mês + método
+  // Receitas por mês + método (appointments + vendas de produto)
   for (const a of paidAppts ?? []) {
     if (!a.paid_at) continue
     const d = new Date(a.paid_at)
@@ -123,6 +149,17 @@ export default async function FluxoCaixaPage() {
     if (!row) continue
     const method = (a.payment_method as string | null) ?? 'other'
     const amt = Number(a.total_price ?? 0)
+    row.receitasByMethod[method] = (row.receitasByMethod[method] ?? 0) + amt
+    row.receitasTotal += amt
+  }
+  for (const s of paidSales ?? []) {
+    if (!s.paid_at) continue
+    const d = new Date(s.paid_at as string)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    const row = data[key]
+    if (!row) continue
+    const method = (s.payment_method as string | null) ?? 'other'
+    const amt = Number(s.total ?? 0)
     row.receitasByMethod[method] = (row.receitasByMethod[method] ?? 0) + amt
     row.receitasTotal += amt
   }

@@ -55,15 +55,38 @@ export default async function AdminCaixaPage() {
   tomorrow.setDate(tomorrow.getDate() + 1)
   const tomorrowISO = tomorrow.toISOString().split('T')[0]
 
-  const { data: paidToday } = await supabase
-    .from('appointments')
-    .select('id, total_price, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name')
-    .eq('business_id', business.id)
-    .not('paid_at', 'is', null)
-    .gte('paid_at', today + 'T00:00:00')
-    .lt('paid_at', tomorrowISO + 'T00:00:00')
+  // Recebimentos do dia · soma appointments pagos + vendas de produto pagas
+  const [paidApptsRes, paidSalesRes] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select('id, total_price, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name')
+      .eq('business_id', business.id)
+      .not('paid_at', 'is', null)
+      .gte('paid_at', today + 'T00:00:00')
+      .lt('paid_at', tomorrowISO + 'T00:00:00'),
+    supabase
+      .from('sales')
+      .select('id, total, paid_at, payment_method, client_name')
+      .eq('business_id', business.id)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('paid_at', 'is', null)
+      .gte('paid_at', today + 'T00:00:00')
+      .lt('paid_at', tomorrowISO + 'T00:00:00'),
+  ])
 
-  const todayAppts = (paidToday ?? []) as AppointmentForCash[]
+  const apptsToday = (paidApptsRes.data ?? []) as AppointmentForCash[]
+  const salesToday: AppointmentForCash[] = (paidSalesRes.data ?? []).map((s) => ({
+    id: s.id as string,
+    total_price: Number(s.total ?? 0),
+    paid_at: s.paid_at as string | null,
+    payment_method: s.payment_method as string | null,
+    payment_card_type: null,
+    payment_fee_percent: null,
+    client_name: (s.client_name as string | null) ?? 'Venda de produto',
+  }))
+  const todayAppts = [...apptsToday, ...salesToday]
 
   const { data: closings } = await supabase
     .from('cash_closings')

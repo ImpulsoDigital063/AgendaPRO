@@ -124,10 +124,109 @@ export default async function VendasPage({
     .range(offset, offset + PAGE_SIZE - 1)
 
   const [{ data: appts }, { count: totalCount }] = await Promise.all([listQuery, countQuery])
-  const sales = (appts ?? []) as unknown as SaleRow[]
+  const apptSales = (appts ?? []) as unknown as SaleRow[]
 
-  // Carrega invoices vinculadas (pra status #NNNN)
-  const invoiceItemIds = sales.map((s) => s.invoice_item_id).filter(Boolean) as string[]
+  // ── Vendas avulsas de produto (sales type=product_sale) ───────────────
+  // Unifica na mesma listagem · cada sale vira uma "row" com descrição dos
+  // produtos vendidos juntados por "+". appointment_date = sale_date.
+  let productSalesQuery = sb
+    .from('sales')
+    .select(`
+      id, business_id, sale_date, created_at,
+      client_name, client_phone, customer_id,
+      total, status, paid_at, payment_method, invoice_id, professional_id,
+      appointment_id,
+      professional:professionals(name),
+      appointment:appointments(start_time),
+      sale_items(product_name, quantity)
+    `)
+    .eq('business_id', business.id)
+    .eq('type', 'product_sale')
+    .lte('sale_date', upperBound)
+    .order('sale_date', { ascending: false })
+    .limit(PAGE_SIZE * 2)
+
+  if (from) productSalesQuery = productSalesQuery.gte('sale_date', from)
+  if (profFilter) productSalesQuery = productSalesQuery.eq('professional_id', profFilter)
+  if (status === 'pending') productSalesQuery = productSalesQuery.eq('status', 'pending')
+  else if (status === 'paid') productSalesQuery = productSalesQuery.eq('status', 'paid').is('invoice_id', null)
+  else if (status === 'invoiced') productSalesQuery = productSalesQuery.not('invoice_id', 'is', null)
+  else if (status === 'cancelled') productSalesQuery = productSalesQuery.eq('status', 'cancelled')
+
+  if (q) {
+    const term = q.replace(/[%_]/g, '\\$&')
+    productSalesQuery = productSalesQuery.ilike('client_name', `%${term}%`)
+  }
+
+  const { data: rawProductSales } = await productSalesQuery
+
+  type ProductSaleRow = {
+    id: string
+    business_id: string
+    sale_date: string
+    created_at: string
+    client_name: string | null
+    client_phone: string | null
+    customer_id: string | null
+    total: number | null
+    status: string
+    paid_at: string | null
+    payment_method: string | null
+    invoice_id: string | null
+    professional_id: string | null
+    appointment_id: string | null
+    professional: { name: string } | { name: string }[] | null
+    appointment: { start_time: string } | { start_time: string }[] | null
+    sale_items: { product_name: string; quantity: number }[] | null
+  }
+
+  const productRows: SaleRow[] = ((rawProductSales ?? []) as ProductSaleRow[]).map((s) => {
+    const prof = Array.isArray(s.professional) ? s.professional[0] : s.professional
+    const appt = Array.isArray(s.appointment) ? s.appointment[0] : s.appointment
+    const items = s.sale_items ?? []
+    const desc = items.length === 0
+      ? 'Venda de produto'
+      : items.map((it) => `${it.product_name}${Number(it.quantity) > 1 ? ` (${it.quantity})` : ''}`).join(' + ')
+    // Horário: prioriza start_time do appointment vinculado (faz a linha
+    // do produto ficar grudada na linha do serviço na mesma comanda).
+    // Fallback: created_at da sale.
+    const apptHHMM = appt?.start_time ? appt.start_time.slice(0, 5) : null
+    const fallbackHHMM = new Date(s.created_at).toISOString().slice(11, 16)
+    const hh = apptHHMM ?? fallbackHHMM
+    return {
+      id: s.id,
+      business_id: s.business_id,
+      appointment_date: s.sale_date,
+      start_time: `${hh}:00`,
+      end_time: null,
+      client_name: s.client_name,
+      client_phone: s.client_phone,
+      customer_id: s.customer_id,
+      service_name: desc,
+      total_price: Number(s.total ?? 0),
+      status: s.status === 'paid' ? 'completed' : s.status,
+      paid_at: s.paid_at,
+      payment_method: s.payment_method,
+      // sales não tem invoice_item_id; mas tem invoice_id · pra a tabela
+      // mostrar chip de "#NN" precisamos resolver o invoice abaixo
+      invoice_item_id: s.invoice_id, // reaproveita o slot pra lookup
+      professional: prof ?? null,
+    }
+  })
+
+  // Merge ordenado por (data desc, hora desc) · slice no PAGE_SIZE
+  const merged = [...apptSales, ...productRows].sort((a, b) => {
+    if (a.appointment_date !== b.appointment_date) return a.appointment_date > b.appointment_date ? -1 : 1
+    return a.start_time > b.start_time ? -1 : 1
+  })
+  const sales = merged.slice(0, PAGE_SIZE)
+
+  // Carrega invoices vinculadas (pra status #NNNN) · agora aceita 2 fontes:
+  // - appointments.invoice_item_id (slot original)
+  // - sales.invoice_id (reaproveitado · busca invoice direto por id)
+  const apptInvoiceItemIds = apptSales.map((s) => s.invoice_item_id).filter(Boolean) as string[]
+  const productInvoiceIds = productRows.map((s) => s.invoice_item_id).filter(Boolean) as string[]
+  const invoiceItemIds = apptInvoiceItemIds
   const invoicesById: Record<string, InvoiceItemRef> = {}
   if (invoiceItemIds.length > 0) {
     const { data: items } = await sb
@@ -138,7 +237,26 @@ export default async function VendasPage({
       invoicesById[item.id] = item
     }
   }
+  // Pra sales (produto avulso), o slot invoice_item_id contém invoice.id direto
+  if (productInvoiceIds.length > 0) {
+    const { data: invs } = await sb
+      .from('invoices')
+      .select('id, invoice_number, status')
+      .in('id', productInvoiceIds)
+    for (const inv of invs ?? []) {
+      invoicesById[inv.id as string] = {
+        id: inv.id as string,
+        invoice: {
+          id: inv.id as string,
+          invoice_number: inv.invoice_number as number,
+          status: inv.status as string,
+        },
+      }
+    }
+  }
 
+  // totalCount agora soma appointments + sales · aproximação suficiente p/ paginação V1
+  const totalCountUnified = (totalCount ?? 0) + productRows.length
   const showingFrom = sales.length > 0 ? offset + 1 : 0
   const showingTo = offset + sales.length
 
@@ -152,9 +270,9 @@ export default async function VendasPage({
           {/* Contador */}
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-              {totalCount === 0
+              {totalCountUnified === 0
                 ? 'Nenhuma venda encontrada'
-                : `Exibindo ${showingFrom}–${showingTo} de ${totalCount ?? sales.length} ${(totalCount ?? sales.length) === 1 ? 'venda' : 'vendas'}`}
+                : `Exibindo ${showingFrom}–${showingTo} de ${totalCountUnified} ${totalCountUnified === 1 ? 'venda' : 'vendas'}`}
             </p>
           </div>
 
@@ -182,7 +300,7 @@ export default async function VendasPage({
 
           <VendasLoadMore
             currentCount={showingTo}
-            totalCount={totalCount ?? 0}
+            totalCount={totalCountUnified}
             pageSize={PAGE_SIZE}
           />
         </div>

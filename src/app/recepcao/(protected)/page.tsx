@@ -81,7 +81,7 @@ export default async function RecepcaoAgendaPage() {
   const confirmed = active.filter((a) => a.status === 'confirmed')
   const completed = active.filter((a) => a.status === 'completed')
 
-  const recebidos = list.filter((a) => a.paid_at != null)
+  const recebidos = list.filter((a) => a.paid_at != null && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
   const recebidoTotal = recebidos.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {

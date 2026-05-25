@@ -61,7 +61,7 @@ async function PersonalKPIs({
 
   // Mesma semântica das KPIs do admin/page.tsx, agora restritas a este
   // profissional. paid_at != null = entrou no caixa pessoal.
-  const recebidos = meus.filter((a) => a.paid_at != null)
+  const recebidos = meus.filter((a) => a.paid_at != null && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
   const aReceber = meus.filter(
     (a) =>
       a.paid_at == null &&

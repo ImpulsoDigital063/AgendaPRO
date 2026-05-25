@@ -1,0 +1,61 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import ComandasView, { type InvoiceListItem } from '@/components/admin/comandas/ComandasView'
+
+export const dynamic = 'force-dynamic'
+
+export default async function AdminComandasPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/admin/login')
+
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('id, name')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (!business) redirect('/cadastro')
+
+  // Service client pra bypassar RLS e contar items numa subquery
+  const admin = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+
+  const { data: invoices } = await admin
+    .from('invoices')
+    .select(`
+      id, invoice_number, status, subtotal, discount, total,
+      created_at, closed_at,
+      customer:customers(id, name, phone),
+      items:invoice_items(id, item_type)
+    `)
+    .eq('business_id', business.id)
+    .order('created_at', { ascending: false })
+    .limit(300)
+
+  const list: InvoiceListItem[] = (invoices ?? []).map((inv) => {
+    const customer = Array.isArray(inv.customer) ? inv.customer[0] : inv.customer
+    const items = Array.isArray(inv.items) ? inv.items : []
+    return {
+      id: inv.id as string,
+      invoice_number: inv.invoice_number as number,
+      status: inv.status as 'open' | 'closed' | 'cancelled',
+      total: Number(inv.total ?? 0),
+      created_at: inv.created_at as string,
+      closed_at: inv.closed_at as string | null,
+      customer_name: customer?.name ?? null,
+      items_count: items.length,
+      has_service: items.some((i) => i.item_type === 'appointment'),
+      has_product: items.some((i) => i.item_type === 'product'),
+    }
+  })
+
+  return (
+    <main className="relative" style={{ minHeight: '100svh' }}>
+      <ComandasView initialInvoices={list} />
+    </main>
+  )
+}

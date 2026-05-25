@@ -20,9 +20,13 @@ function formatDate(d: string): string {
 
 function describeStatus(a: SaleRow, invoicesById: Record<string, InvoiceItemRef>): {
   label: string
-  tone: 'pending' | 'paid' | 'invoiced' | 'cancelled'
+  tone: 'pending' | 'paid' | 'invoiced' | 'cancelled' | 'courtesy'
 } {
   if (a.status === 'cancelled') return { label: 'Cancelada', tone: 'cancelled' }
+  // Cortesia (bonificação · não conta receita) tem chip próprio rosa
+  if (a.payment_method === 'courtesy') {
+    return { label: 'CORTESIA', tone: 'courtesy' }
+  }
   if (a.invoice_item_id) {
     const inv = invoicesById[a.invoice_item_id]
     if (inv?.invoice) {
@@ -79,11 +83,26 @@ export default function VendasTable({ sales, invoicesById }: Props) {
                   paid: '#10B981',
                   invoiced: 'var(--admin-accent)',
                   cancelled: 'var(--admin-danger,#EF4444)',
+                  courtesy: '#EC4899',
                 }[st.tone]
+                // Detecta linhas vizinhas da MESMA comanda (faixa lateral
+                // pra deixar visualmente claro que estão agrupadas).
+                const myInv = s.invoice_item_id ? invoicesById[s.invoice_item_id]?.invoice?.invoice_number : null
+                const prev = idx > 0 ? sales[idx - 1] : null
+                const next = idx < sales.length - 1 ? sales[idx + 1] : null
+                const prevInv = prev?.invoice_item_id ? invoicesById[prev.invoice_item_id]?.invoice?.invoice_number : null
+                const nextInv = next?.invoice_item_id ? invoicesById[next.invoice_item_id]?.invoice?.invoice_number : null
+                const groupedWithPrev = myInv !== null && myInv === prevInv
+                const groupedWithNext = myInv !== null && myInv === nextInv
+                const inGroup = groupedWithPrev || groupedWithNext
                 return (
                   <tr
                     key={s.id}
-                    style={{ borderBottom: idx < sales.length - 1 ? '1px solid var(--admin-divider)' : 'none' }}
+                    style={{
+                      borderBottom: idx < sales.length - 1 ? '1px solid var(--admin-divider)' : 'none',
+                      borderLeft: inGroup ? `3px solid var(--admin-accent)` : '3px solid transparent',
+                      background: inGroup ? 'color-mix(in srgb, var(--admin-accent) 3%, transparent)' : 'transparent',
+                    }}
                   >
                     <td className="px-4 py-3 align-top">
                       <p className="font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>

@@ -544,6 +544,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                           key={a.id}
                           type="button"
                           onClick={(e) => {
+                            if (isCancelled) return // card cancelado é só histórico · slot por baixo é o que abre o popover de Agendar
                             e.stopPropagation()
                             setSelectedApptId(a.id)
                           }}
@@ -555,12 +556,15 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                             borderLeft: `3px solid ${color}`,
                             borderTop: `1px solid color-mix(in srgb, ${color} 35%, rgba(255,255,255,0.5))`,
                             boxShadow: `0 4px 12px -4px color-mix(in srgb, ${color} 30%, transparent), 0 1px 2px rgba(0,0,0,0.04)`,
-                            zIndex: 2,
-                            cursor: 'pointer',
+                            // Cancelado: z-index BAIXO (fica abaixo do slot) + pointer-events: none
+                            // → libera o slot pra novo agendamento por cima
+                            zIndex: isCancelled ? 0 : 2,
+                            pointerEvents: isCancelled ? 'none' : 'auto',
+                            cursor: isCancelled ? 'default' : 'pointer',
                             opacity: isCancelled ? 0.55 : 1,
                             textDecoration: isCancelled ? 'line-through' : 'none',
                           }}
-                          title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}${isCancelled ? ' · CANCELADO' : ''}`}
+                          title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}${isCancelled ? ' · CANCELADO · slot livre pra reagendar' : ''}`}
                         >
                           {isTiny ? (
                             // 1 linha · horário pequeno + nome inline

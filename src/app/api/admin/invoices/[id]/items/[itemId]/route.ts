@@ -99,19 +99,33 @@ export async function PATCH(
 }
 
 // DELETE /api/admin/invoices/[id]/items/[itemId]
+//
+// Remove 1 item específico fazendo cascata só do que pertence a ele:
+//  - item_type=appointment → solta paid_at + invoice_item_id + payment_method
+//  - item_type=product → cancela sale + devolve estoque (entry +qty)
+//
+// Recalcula subtotal/total da invoice. Se ficou com 0 items, marca a
+// invoice como cancelled e apaga invoice_payments.
+//
+// NÃO mexe em invoice_payments quando ainda há outros items · se o cliente
+// pagou a mais agora, fica "saldo a devolver" pra operador resolver no caixa.
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; itemId: string }> },
 ) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const businessId = await getBusinessId(supabase)
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const { id, itemId } = await params
-  const { admin, error } = await validateAccess(id, businessId)
+  const { admin, error, invoice } = await validateAccess(id, businessId)
   if (error) return error
+  if (invoice?.status === 'cancelled') {
+    return NextResponse.json({ error: 'invoice_already_cancelled' }, { status: 400 })
+  }
 
-  // Pega reference_id pra desvincular appointment
   const { data: item } = await admin
     .from('invoice_items')
     .select('id, invoice_id, reference_id, item_type')
@@ -119,17 +133,66 @@ export async function DELETE(
     .maybeSingle()
   if (!item || item.invoice_id !== id) return NextResponse.json({ error: 'item_not_found' }, { status: 404 })
 
-  // Desvincula appointment se for type=appointment
+  // Cascata por tipo
   if (item.item_type === 'appointment' && item.reference_id) {
-    await admin
+    // status volta pra 'confirmed' · simétrico ao "Faturar atendimento" que
+    // promove confirmed→completed na criação da invoice
+    const { error: aErr } = await admin
       .from('appointments')
-      .update({ invoice_item_id: null, paid_at: null })
+      .update({ invoice_item_id: null, paid_at: null, payment_method: null, status: 'confirmed' })
       .eq('id', item.reference_id)
+    if (aErr) return NextResponse.json({ error: `appointment_revert_failed: ${aErr.message}` }, { status: 500 })
   }
 
+  if (item.item_type === 'product' && item.reference_id) {
+    // sale_items pra devolver estoque
+    const { data: saleItems, error: siErr } = await admin
+      .from('sale_items')
+      .select('product_id, quantity')
+      .eq('sale_id', item.reference_id)
+    if (siErr) return NextResponse.json({ error: `sale_items_read_failed: ${siErr.message}` }, { status: 500 })
+
+    const compensations = (saleItems ?? [])
+      .filter((s) => s.product_id)
+      .map((s) => ({
+        business_id: businessId,
+        product_id: s.product_id as string,
+        type: 'entry' as const,
+        quantity: Number(s.quantity ?? 0),
+        reason: 'Item removido da comanda',
+        created_by: user.id,
+      }))
+    if (compensations.length > 0) {
+      const { error: movErr } = await admin.from('stock_movements').insert(compensations)
+      if (movErr) return NextResponse.json({ error: `stock_revert_failed: ${movErr.message}` }, { status: 500 })
+    }
+
+    const { error: saleErr } = await admin
+      .from('sales')
+      .update({ status: 'cancelled', paid_at: null })
+      .eq('id', item.reference_id)
+    if (saleErr) return NextResponse.json({ error: `sale_cancel_failed: ${saleErr.message}` }, { status: 500 })
+  }
+
+  // Deleta o invoice_item
   const { error: delErr } = await admin.from('invoice_items').delete().eq('id', itemId)
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
 
+  // Se foi o último item · cancela a invoice e apaga pagamentos
+  const { data: remaining } = await admin
+    .from('invoice_items')
+    .select('id')
+    .eq('invoice_id', id)
+
+  if ((remaining ?? []).length === 0) {
+    await admin
+      .from('invoices')
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), subtotal: 0, total: 0, discount: 0 })
+      .eq('id', id)
+    await admin.from('invoice_payments').delete().eq('invoice_id', id)
+    return NextResponse.json({ ok: true, invoice_status: 'cancelled', items_remaining: 0 })
+  }
+
   await recalculateInvoice(id)
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, items_remaining: (remaining ?? []).length })
 }

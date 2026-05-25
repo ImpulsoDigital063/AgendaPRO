@@ -170,6 +170,8 @@ export default async function AppointmentDetailPage({
             customerPhone={appt.client_phone ?? customer?.phone ?? null}
             businessId={business.id}
             totalPrice={appt.total_price}
+            serviceName={appt.service_name as string | null}
+            professionalId={prof?.id ?? null}
           />
         )}
       </div>

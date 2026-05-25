@@ -17,13 +17,25 @@ export default async function ClientesPage() {
 
   if (!business) redirect('/cadastro')
 
-  // Busca todos os agendamentos com client_id deste negócio
-  const { data: apptData } = await supabase
-    .from('appointments')
-    .select('client_id, appointment_date, status, service_name, total_price, paid_at')
-    .eq('business_id', business.id)
-    .not('client_id', 'is', null)
-    .order('appointment_date', { ascending: false })
+  // Busca atendimentos + vendas de produto pagas (entram em totalSpent)
+  const [apptRes, productSalesRes] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select('client_id, appointment_date, status, service_name, total_price, paid_at')
+      .eq('business_id', business.id)
+      .not('client_id', 'is', null)
+      .order('appointment_date', { ascending: false }),
+    supabase
+      .from('sales')
+      .select('customer_id, sale_date, total, paid_at')
+      .eq('business_id', business.id)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('customer_id', 'is', null)
+      .not('paid_at', 'is', null),
+  ])
+  const apptData = apptRes.data
+  const productSalesData = productSalesRes.data ?? []
 
   // Stats por cliente · só conta atendimentos REALIZADOS (passado/hoje E não
   // cancelado/no_show). Futuros agendados não contam como atendimento feito.
@@ -56,6 +68,23 @@ export default async function ClientesPage() {
     // sem pagamento inflava o numero. Cliente devedor nao conta como gasto.
     if (a.paid_at && a.total_price) {
       statsMap[a.client_id].totalSpent += a.total_price
+    }
+  }
+
+  // Soma vendas de produto pagas em totalSpent (customer_id é client_id global)
+  for (const s of productSalesData) {
+    const cid = s.customer_id as string
+    if (!cid) continue
+    if (!statsMap[cid]) {
+      statsMap[cid] = { count: 0, firstDate: s.sale_date as string, lastDate: s.sale_date as string, totalSpent: 0 }
+    }
+    statsMap[cid].totalSpent += Number(s.total ?? 0)
+    // Atualiza last/first date também
+    if (!statsMap[cid].lastDate || (s.sale_date as string) > statsMap[cid].lastDate) {
+      statsMap[cid].lastDate = s.sale_date as string
+    }
+    if (!statsMap[cid].firstDate || (s.sale_date as string) < statsMap[cid].firstDate) {
+      statsMap[cid].firstDate = s.sale_date as string
     }
   }
 

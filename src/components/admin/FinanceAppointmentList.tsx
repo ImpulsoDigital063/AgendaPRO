@@ -17,19 +17,20 @@ export type FinanceRow = {
   service_name: string | null
   total_price: number | null
   paid_at?: string | null
-  payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | null
+  payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
   professional_name?: string | null
 }
 
 // 'courtesy' é legacy (V34) — mantido pra exibição de registros antigos.
 // Novos atendimentos usam 'points' em vez de courtesy.
-type Method = 'pix' | 'cash' | 'card' | 'courtesy' | 'points'
+type Method = 'pix' | 'cash' | 'card' | 'courtesy' | 'points' | 'credit'
 
 const METHOD_LABEL: Record<Method, string> = {
   pix: 'PIX',
   cash: 'Dinheiro',
   card: 'Cartão',
   courtesy: 'Cortesia',
+  credit: 'Crédito',
   points: 'Pontos',
 }
 
@@ -38,6 +39,7 @@ const METHOD_COLOR: Record<Method, string> = {
   cash: '#16A34A',
   card: '#3B82F6',
   courtesy: '#A855F7',
+  credit: '#8B5CF6',
   points: '#F59E0B',
 }
 

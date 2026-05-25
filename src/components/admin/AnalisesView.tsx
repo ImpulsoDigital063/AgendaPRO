@@ -9,7 +9,7 @@ type Appointment = {
   start_time: string
   total_price: number | null
   paid_at: string | null
-  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | null
+  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
   status: string
   service_name: string | null
   client_id: string | null
@@ -18,7 +18,14 @@ type Appointment = {
 
 type PrevAppointment = {
   total_price: number | null
-  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | null
+  payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
+}
+
+type ProductSaleRow = {
+  total: number | string | null
+  sale_date?: string
+  payment_method?: string | null
+  professional_id?: string | null
 }
 
 type Props = {
@@ -31,16 +38,18 @@ type Props = {
   endCurrent: string
   profFilter: string
   serviceFilter: string
+  productSalesCurrent?: ProductSaleRow[]
+  productSalesPrev?: ProductSaleRow[]
 }
 
 const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const DAY_NAMES_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
-const METHOD_COLOR: Record<'pix' | 'cash' | 'card' | 'courtesy', string> = {
-  pix: '#10B981', cash: '#16A34A', card: '#3B82F6', courtesy: '#A855F7',
+const METHOD_COLOR: Record<'pix' | 'cash' | 'card' | 'courtesy' | 'credit', string> = {
+  pix: '#10B981', cash: '#16A34A', card: '#3B82F6', courtesy: '#A855F7', credit: '#8B5CF6',
 }
-const METHOD_LABEL: Record<'pix' | 'cash' | 'card' | 'courtesy', string> = {
-  pix: 'PIX', cash: 'Dinheiro', card: 'Cartão', courtesy: 'Cortesia',
+const METHOD_LABEL: Record<'pix' | 'cash' | 'card' | 'courtesy' | 'credit', string> = {
+  pix: 'PIX', cash: 'Dinheiro', card: 'Cartão', courtesy: 'Cortesia', credit: 'Crédito',
 }
 
 function formatPrice(value: number) {
@@ -64,28 +73,46 @@ export default function AnalisesView({
   endCurrent,
   profFilter,
   serviceFilter,
+  productSalesCurrent = [],
+  productSalesPrev = [],
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   // ===== Cálculos base =====
-  const pagos = useMemo(() => currentMonth.filter((a) => a.paid_at && a.total_price), [currentMonth])
+  // pagos = receita real (exclui cortesia e crédito · bonificação e abate não
+  // contam como faturamento novo)
+  const pagos = useMemo(() => currentMonth.filter((a) =>
+    a.paid_at && a.total_price &&
+    a.payment_method !== 'courtesy' &&
+    (a.payment_method as string | null) !== 'credit',
+  ), [currentMonth])
   const cancelados = useMemo(
     () => currentMonth.filter((a) => a.status === 'cancelled' || a.status === 'no_show'),
     [currentMonth]
   )
   const totalAgendamentos = currentMonth.length
-  const currentTotal = pagos.reduce((s, a) => s + Number(a.total_price || 0), 0)
-  const prevTotal = prevMonth.reduce((s, a) => s + Number(a.total_price || 0), 0)
+  // Receita total = appointments pagos + vendas de produto pagas (ambos já filtraram cortesia/crédito no server)
+  const currentTotalAppts = pagos.reduce((s, a) => s + Number(a.total_price || 0), 0)
+  const currentTotalSales = productSalesCurrent.reduce((s, p) => s + Number(p.total || 0), 0)
+  const currentTotal = currentTotalAppts + currentTotalSales
+  const prevTotalAppts = prevMonth.reduce((s, a) => s + Number(a.total_price || 0), 0)
+  const prevTotalSales = productSalesPrev.reduce((s, p) => s + Number(p.total || 0), 0)
+  const prevTotal = prevTotalAppts + prevTotalSales
   const variation = prevTotal > 0 ? ((currentTotal - prevTotal) / prevTotal) * 100 : null
 
   // ===== 4. Receita por dia (bar) + acumulada (line) =====
+  // Soma appointments pagos + vendas de produto pagas no mesmo dia
   const dailyData = useMemo(() => {
     const map = new Map<string, number>()
     for (const a of pagos) {
       const d = a.appointment_date
       map.set(d, (map.get(d) || 0) + Number(a.total_price || 0))
+    }
+    for (const s of productSalesCurrent) {
+      if (!s.sale_date) continue
+      map.set(s.sale_date, (map.get(s.sale_date) || 0) + Number(s.total || 0))
     }
     const start = new Date(startCurrent + 'T00:00:00')
     const end = new Date(endCurrent + 'T00:00:00')
@@ -98,7 +125,7 @@ export default function AnalisesView({
       days.push({ date: iso, value, cumulative, day: d.getDate() })
     }
     return days
-  }, [pagos, startCurrent, endCurrent])
+  }, [pagos, productSalesCurrent, startCurrent, endCurrent])
 
   const maxDailyValue = Math.max(1, ...dailyData.map((d) => d.value))
   const maxCumulative = Math.max(1, ...dailyData.map((d) => d.cumulative))
@@ -152,14 +179,14 @@ export default function AnalisesView({
 
   // ===== 6. Métodos comparativo =====
   const currentByMethod = useMemo(() => {
-    const map: Record<'pix' | 'cash' | 'card' | 'courtesy', number> = { pix: 0, cash: 0, card: 0, courtesy: 0 }
+    const map: Record<'pix' | 'cash' | 'card' | 'courtesy' | 'credit', number> = { pix: 0, cash: 0, card: 0, courtesy: 0, credit: 0 }
     for (const a of pagos) {
       if (a.payment_method) map[a.payment_method] += Number(a.total_price || 0)
     }
     return map
   }, [pagos])
   const prevByMethod = useMemo(() => {
-    const map: Record<'pix' | 'cash' | 'card' | 'courtesy', number> = { pix: 0, cash: 0, card: 0, courtesy: 0 }
+    const map: Record<'pix' | 'cash' | 'card' | 'courtesy' | 'credit', number> = { pix: 0, cash: 0, card: 0, courtesy: 0, credit: 0 }
     for (const a of prevMonth) {
       if (a.payment_method) map[a.payment_method] += Number(a.total_price || 0)
     }

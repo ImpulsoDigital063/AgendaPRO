@@ -182,6 +182,7 @@ export default function ConfiguracoesTabs({
           initialNoShowEnabled={business.no_show_punishment_enabled ?? false}
           initialNoShowMode={business.no_show_penalty_mode ?? 'proportional'}
           initialNoShowFixedPoints={business.no_show_fixed_points ?? 20}
+          initialLoyaltyEnabled={business.loyalty_enabled ?? false}
         />
         </>
       )}

@@ -13,21 +13,39 @@ export default async function TopClienteCard({ businessId }: { businessId: strin
   const startStr = start.toISOString().split('T')[0]
   const todayStr = new Date().toISOString().split('T')[0]
 
-  const { data: appts } = await supabase
-    .from('appointments')
-    .select('client_name, total_price, payment_method')
-    .eq('business_id', businessId)
-    .not('paid_at', 'is', null)
-    .neq('payment_method', 'courtesy')
-    .gte('appointment_date', startStr)
-    .lte('appointment_date', todayStr)
+  const [apptsRes, salesRes] = await Promise.all([
+    supabase
+      .from('appointments')
+      .select('client_name, total_price, payment_method')
+      .eq('business_id', businessId)
+      .not('paid_at', 'is', null)
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('appointment_date', startStr)
+      .lte('appointment_date', todayStr),
+    supabase
+      .from('sales')
+      .select('client_name, total, payment_method')
+      .eq('business_id', businessId)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('sale_date', startStr)
+      .lte('sale_date', todayStr),
+  ])
 
   type Row = { name: string; total: number; count: number }
   const map = new Map<string, Row>()
-  for (const a of appts ?? []) {
+  for (const a of apptsRes.data ?? []) {
     const name = (a.client_name || 'Sem nome').trim()
     const existing = map.get(name) ?? { name, total: 0, count: 0 }
     existing.total += a.total_price ?? 0
+    existing.count += 1
+    map.set(name, existing)
+  }
+  for (const s of salesRes.data ?? []) {
+    const name = (s.client_name || 'Sem nome').trim()
+    const existing = map.get(name) ?? { name, total: 0, count: 0 }
+    existing.total += Number(s.total ?? 0)
     existing.count += 1
     map.set(name, existing)
   }

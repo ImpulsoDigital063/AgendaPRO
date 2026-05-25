@@ -24,7 +24,7 @@ type Props = {
     service_name?: string | null
     total_price?: number | null
     paid_at?: string | null
-    payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | null
+    payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
     professional?: { name: string } | null
     punctuality_awarded?: boolean
     /** Array vindo do join com appointment_services. Quando presente,

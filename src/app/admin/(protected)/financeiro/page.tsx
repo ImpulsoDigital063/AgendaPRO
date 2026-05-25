@@ -105,13 +105,15 @@ export default async function FinanceiroPage({
   const prevStartStr = prevStart.toISOString().slice(0, 10)
   const prevEndStr = prevEnd.toISOString().slice(0, 10)
 
-  // Queries em paralelo · range atual + range anterior + créditos
+  // Queries em paralelo · range atual + range anterior + créditos + vendas de produto
   const [
     apptsCur,
     apptsPrev,
     expensesCur,
     expensesPrev,
     creditsRes,
+    productSalesCur,
+    productSalesPrev,
   ] = await Promise.all([
     supabase
       .from('appointments')
@@ -147,6 +149,29 @@ export default async function FinanceiroPage({
       .from('customer_credits')
       .select('amount, used_in_invoice_id')
       .eq('business_id', business.id),
+    // Vendas de produto pagas no range atual · soma na receita + KPIs (exclui cortesia)
+    supabase
+      .from('sales')
+      .select(`
+        id, sale_date, total, paid_at, payment_method, professional_id,
+        professional:professionals(id, name),
+        sale_items(product_name, quantity, unit_price)
+      `)
+      .eq('business_id', business.id)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('sale_date', startStr)
+      .lte('sale_date', endStr),
+    supabase
+      .from('sales')
+      .select('total, sale_date, paid_at, payment_method')
+      .eq('business_id', business.id)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('sale_date', prevStartStr)
+      .lte('sale_date', prevEndStr),
   ])
 
   const appointments = apptsCur.data ?? []
@@ -154,12 +179,19 @@ export default async function FinanceiroPage({
   const expenses = expensesCur.data ?? []
   const prevExpenses = expensesPrev.data ?? []
   const credits = creditsRes.data ?? []
+  const productSales = productSalesCur.data ?? []
+  const prevProductSales = productSalesPrev.data ?? []
 
-  // Cálculos
-  const paidAppts = appointments.filter((a) => a.paid_at)
-  const valorRecebido = paidAppts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  // Cálculos · receita = appointments pagos + vendas de produto pagas
+  // Receita real exclui cortesia (bonificação não conta como faturamento)
+  const paidAppts = appointments.filter((a) => a.paid_at && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
+  const valorRecebidoAppts = paidAppts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  const valorRecebidoSales = productSales.reduce((s, p) => s + Number(p.total ?? 0), 0)
+  const valorRecebido = valorRecebidoAppts + valorRecebidoSales
   const prevPaid = prevAppts.filter((a) => a.paid_at)
-  const prevValorRecebido = prevPaid.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  const prevValorRecebidoAppts = prevPaid.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  const prevValorRecebidoSales = prevProductSales.reduce((s, p) => s + Number(p.total ?? 0), 0)
+  const prevValorRecebido = prevValorRecebidoAppts + prevValorRecebidoSales
 
   const naoPagos = appointments.filter((a) => !a.paid_at && a.status !== 'cancelled')
   const valorProgramado = naoPagos.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
@@ -195,7 +227,7 @@ export default async function FinanceiroPage({
     .filter((c) => !c.used_in_invoice_id)
     .reduce((s, c) => s + Number(c.amount ?? 0), 0)
 
-  // Top Profissionais (por receita gerada no período)
+  // Top Profissionais (por receita gerada no período) · soma appts + produtos
   type ProfAgg = { id: string; name: string; total: number; count: number }
   const profMap = new Map<string, ProfAgg>()
   for (const a of paidAppts) {
@@ -207,11 +239,20 @@ export default async function FinanceiroPage({
     cur.count += 1
     profMap.set(pInfo.id, cur)
   }
+  for (const s of productSales) {
+    const prof = s.professional
+    const pInfo = Array.isArray(prof) ? prof[0] : prof
+    if (!pInfo || !pInfo.id) continue
+    const cur = profMap.get(pInfo.id) ?? { id: pInfo.id, name: pInfo.name ?? '—', total: 0, count: 0 }
+    cur.total += Number(s.total ?? 0)
+    cur.count += 1
+    profMap.set(pInfo.id, cur)
+  }
   const topProfissionais = Array.from(profMap.values())
     .sort((a, b) => b.total - a.total)
     .slice(0, 5)
 
-  // Top Serviços (por receita)
+  // Top Serviços + Produtos (por receita) · produtos ganham prefixo "Produto:"
   const servMap = new Map<string, ProfAgg>()
   for (const a of paidAppts) {
     const name = (a.service_name as string) ?? 'Sem nome'
@@ -221,16 +262,31 @@ export default async function FinanceiroPage({
     cur.count += 1
     servMap.set(key, cur)
   }
+  for (const s of productSales) {
+    const items = (s.sale_items ?? []) as { product_name?: string; quantity?: number; unit_price?: number }[]
+    for (const it of items) {
+      const baseName = it.product_name ?? 'Produto'
+      const key = `prod:${baseName}`
+      const cur = servMap.get(key) ?? { id: key, name: `Produto · ${baseName}`, total: 0, count: 0 }
+      cur.total += Number(it.unit_price ?? 0) * Number(it.quantity ?? 0)
+      cur.count += 1
+      servMap.set(key, cur)
+    }
+  }
   const topServicos = Array.from(servMap.values())
     .sort((a, b) => b.total - a.total)
     .slice(0, 5)
 
-  // Donut · formas de pagamento
+  // Donut · formas de pagamento · soma appts + produtos
   const methodTotals = new Map<string, number>()
   for (const a of appointments) {
     if (!a.paid_at) continue
     const m = (a.payment_method as string) ?? 'other'
     methodTotals.set(m, (methodTotals.get(m) ?? 0) + Number(a.total_price ?? 0))
+  }
+  for (const s of productSales) {
+    const m = (s.payment_method as string) ?? 'other'
+    methodTotals.set(m, (methodTotals.get(m) ?? 0) + Number(s.total ?? 0))
   }
   const formasPagamento = Array.from(methodTotals.entries())
     .map(([key, value]) => ({
@@ -267,10 +323,20 @@ export default async function FinanceiroPage({
       const h = new Date(a.paid_at).getHours()
       buckets[h].current += Number(a.total_price ?? 0)
     }
+    for (const s of productSales) {
+      if (!s.paid_at) continue
+      const h = new Date(s.paid_at as string).getHours()
+      if (buckets[h]) buckets[h].current += Number(s.total ?? 0)
+    }
     for (const a of prevAppts) {
       if (!a.paid_at) continue
       const h = new Date(a.paid_at).getHours()
       buckets[h].previous += Number(a.total_price ?? 0)
+    }
+    for (const s of prevProductSales) {
+      if (!s.paid_at) continue
+      const h = new Date(s.paid_at as string).getHours()
+      if (buckets[h]) buckets[h].previous += Number(s.total ?? 0)
     }
   } else {
     const days = periodoNorm === 'semana' ? 7 : 30

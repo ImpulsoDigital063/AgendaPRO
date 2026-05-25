@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { IconClose, IconPencil, IconClock, IconTrash, IconAlert, IconPlus, IconCheck } from '@/components/ui/Icon'
+import { useRouter } from 'next/navigation'
+import { IconClose, IconPencil, IconClock, IconTrash, IconAlert, IconPlus, IconCheck, IconDollar } from '@/components/ui/Icon'
 import AjustarEstoqueModal from './AjustarEstoqueModal'
 import ProductImageUpload from './ProductImageUpload'
+import AdicionarComandaAbertaModal from './AdicionarComandaAbertaModal'
 
 type Product = {
   id: string
@@ -77,8 +79,10 @@ const TYPE_META: Record<Movement['type'], { label: string; color: string; sign: 
 }
 
 export default function ProdutoDrawer({ product, businessId, onClose, onChanged }: Props) {
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('resumo')
   const [showAjustar, setShowAjustar] = useState(false)
+  const [showAddComanda, setShowAddComanda] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
@@ -173,6 +177,11 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
               statusColor={statusColor}
               statusLabel={statusLabel}
               onMovimentar={() => setShowAjustar(true)}
+              onVenderAgora={() => {
+                onClose()
+                router.push(`/admin/produtos/vender?prefill=${product.id}`)
+              }}
+              onAddComanda={() => setShowAddComanda(true)}
             />
           )}
           {tab === 'editar' && (
@@ -194,6 +203,26 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
           onClose={() => setShowAjustar(false)}
           onSuccess={() => {
             setShowAjustar(false)
+            onChanged()
+          }}
+        />
+      )}
+
+      {/* Sub-modal: adicionar produto a comanda aberta */}
+      {showAddComanda && (
+        <AdicionarComandaAbertaModal
+          product={{
+            id: product.id,
+            name: product.name,
+            variant: product.variant ?? null,
+            price: product.price ?? null,
+            unit: product.unit,
+            track_stock: product.track_stock !== false,
+            quantity: product.quantity,
+          }}
+          onClose={() => setShowAddComanda(false)}
+          onAdded={() => {
+            setShowAddComanda(false)
             onChanged()
           }}
         />
@@ -221,13 +250,15 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
  * TAB · Resumo
  * ============================================================ */
 function ResumoTab({
-  product, status, statusColor, statusLabel, onMovimentar,
+  product, status, statusColor, statusLabel, onMovimentar, onVenderAgora, onAddComanda,
 }: {
   product: Product
   status: 'ok' | 'low' | 'out'
   statusColor: string
   statusLabel: string
   onMovimentar: () => void
+  onVenderAgora: () => void
+  onAddComanda: () => void
 }) {
   const valor = (Number(product.cost ?? product.price ?? 0) * Number(product.quantity))
   return (
@@ -280,11 +311,39 @@ function ResumoTab({
         )}
       </div>
 
-      {/* Botão grande · movimentar */}
+      {/* Ações rápidas · Vender + Adicionar à comanda + Movimentar */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={onVenderAgora}
+          className="py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-1.5 transition-transform hover:-translate-y-px"
+          style={{
+            background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+            color: '#fff',
+            borderTop: '1px solid rgba(255,255,255,0.25)',
+            boxShadow: '0 8px 22px -8px rgba(5,150,105,0.55)',
+          }}
+        >
+          <IconDollar size={14} /> Vender agora
+        </button>
+        <button
+          type="button"
+          onClick={onAddComanda}
+          className="py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-1.5 transition-transform hover:-translate-y-px"
+          style={{
+            background: 'var(--admin-surface)',
+            color: 'var(--admin-text)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          <IconPlus size={12} /> Add à comanda
+        </button>
+      </div>
+
       <button
         type="button"
         onClick={onMovimentar}
-        className="w-full py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-transform hover:-translate-y-px"
+        className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-transform hover:-translate-y-px"
         style={{
           background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
           color: '#fff',

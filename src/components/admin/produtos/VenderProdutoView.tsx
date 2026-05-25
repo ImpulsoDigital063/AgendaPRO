@@ -58,9 +58,11 @@ type Props = {
   products: Product[]
   professionals: Professional[]
   defaultProfId: string | null
+  /** Quando vem do drawer do produto via ?prefill=ID · já abre com aquela linha pronta */
+  prefillProductId?: string | null
 }
 
-export default function VenderProdutoView({ businessId, products, professionals, defaultProfId }: Props) {
+export default function VenderProdutoView({ businessId, products, professionals, defaultProfId, prefillProductId }: Props) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
@@ -73,7 +75,21 @@ export default function VenderProdutoView({ businessId, products, professionals,
   const [profId, setProfId] = useState<string>(defaultProfId ?? '')
   const [saleDate, setSaleDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState('')
-  const [lines, setLines] = useState<Line[]>(() => [newLine()])
+  const [lines, setLines] = useState<Line[]>(() => {
+    if (prefillProductId) {
+      const p = products.find((x) => x.id === prefillProductId)
+      if (p) {
+        return [{
+          uid: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
+          productId: p.id,
+          quantity: '1',
+          unitPrice: p.price != null ? String(p.price) : '',
+          discount: '',
+        }]
+      }
+    }
+    return [newLine()]
+  })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<{ total: number; itens: number } | null>(null)
