@@ -25,6 +25,8 @@ import {
   IconWallet,
   IconUsers,
   IconFile,
+  IconInbox,
+  IconStar,
 } from '@/components/ui/Icon'
 
 type Brand = {
@@ -46,6 +48,8 @@ const ITEMS: SidebarItem[] = [
   { label: 'Comandas', href: '/recepcao/comandas', Icon: IconFile },
   { label: 'Consultas', href: '/recepcao/consultas', Icon: IconSearch },
   { label: 'Clientes', href: '/recepcao/clientes', Icon: IconUsers },
+  { label: 'Produtos', href: '/recepcao/produtos', Icon: IconInbox },
+  { label: 'Pacotes', href: '/recepcao/pacotes', Icon: IconStar },
   { label: 'Cupons', href: '/recepcao/cupons', Icon: IconGift },
   { label: 'Caixa', href: '/recepcao/caixa', Icon: IconWallet },
 ]

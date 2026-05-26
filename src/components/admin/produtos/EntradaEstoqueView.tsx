@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { IconArrowLeft, IconPlus, IconClose, IconCheck, IconInbox } from '@/components/ui/Icon'
+import { getAreaPrefix } from '@/lib/area-prefix'
 
 type Product = {
   id: string
@@ -53,6 +54,10 @@ type Props = {
 export default function EntradaEstoqueView({ businessId, products }: Props) {
   void businessId
   const router = useRouter()
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
+  const produtosHref = `${areaPrefix}/produtos`
+  const despesasHref = `${areaPrefix}/financeiro/despesas`
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierId, setSupplierId] = useState<string>('')
   const [newSupplier, setNewSupplier] = useState<string>('')
@@ -180,7 +185,7 @@ export default function EntradaEstoqueView({ businessId, products }: Props) {
             Nova entrada
           </button>
           <Link
-            href="/admin/produtos"
+            href={produtosHref}
             className="px-5 py-3 rounded-xl text-sm font-bold"
             style={{
               background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
@@ -191,7 +196,7 @@ export default function EntradaEstoqueView({ businessId, products }: Props) {
             Ver produtos
           </Link>
           <Link
-            href="/admin/financeiro/despesas"
+            href={despesasHref}
             className="px-5 py-3 rounded-xl text-sm font-bold"
             style={{
               background: 'transparent',
@@ -210,7 +215,7 @@ export default function EntradaEstoqueView({ businessId, products }: Props) {
     <div className="max-w-3xl mx-auto px-4 lg:px-8 py-6 space-y-5">
       <header className="flex items-center gap-3">
         <Link
-          href="/admin/produtos"
+          href={produtosHref}
           aria-label="Voltar"
           className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[var(--admin-surface-hi)]"
           style={{ color: 'var(--admin-text-mute)' }}
@@ -380,7 +385,7 @@ export default function EntradaEstoqueView({ businessId, products }: Props) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/admin/produtos" className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'transparent', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}>
+            <Link href={produtosHref} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'transparent', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}>
               Cancelar
             </Link>
             <button

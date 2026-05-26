@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconPencil, IconClock, IconTrash, IconAlert, IconPlus, IconCheck, IconDollar } from '@/components/ui/Icon'
+import { getAreaPrefix } from '@/lib/area-prefix'
 import AjustarEstoqueModal from './AjustarEstoqueModal'
 import ProductImageUpload from './ProductImageUpload'
 import AdicionarComandaAbertaModal from './AdicionarComandaAbertaModal'
@@ -80,6 +81,8 @@ const TYPE_META: Record<Movement['type'], { label: string; color: string; sign: 
 
 export default function ProdutoDrawer({ product, businessId, onClose, onChanged }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
   const [tab, setTab] = useState<Tab>('resumo')
   const [showAjustar, setShowAjustar] = useState(false)
   const [showAddComanda, setShowAddComanda] = useState(false)
@@ -179,7 +182,7 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
               onMovimentar={() => setShowAjustar(true)}
               onVenderAgora={() => {
                 onClose()
-                router.push(`/admin/produtos/vender?prefill=${product.id}`)
+                router.push(`${areaPrefix}/produtos/vender?prefill=${product.id}`)
               }}
               onAddComanda={() => setShowAddComanda(true)}
             />

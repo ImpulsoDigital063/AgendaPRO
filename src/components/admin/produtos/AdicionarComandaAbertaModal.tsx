@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconPlus } from '@/components/ui/Icon'
+import { getAreaPrefix } from '@/lib/area-prefix'
 
 type Product = {
   id: string
@@ -35,6 +36,8 @@ function brl(n: number) {
 
 export default function AdicionarComandaAbertaModal({ product, onClose, onAdded }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
   const [portalReady, setPortalReady] = useState(false)
   const [invoices, setInvoices] = useState<OpenInvoice[]>([])
   const [loading, setLoading] = useState(true)
@@ -105,7 +108,7 @@ export default function AdicionarComandaAbertaModal({ product, onClose, onAdded 
       return
     }
     onAdded()
-    router.push(`/admin/comandas/${invoiceId}`)
+    router.push(`${areaPrefix}/comandas/${invoiceId}`)
   }
 
   if (!portalReady) return null

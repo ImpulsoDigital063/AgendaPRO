@@ -1,0 +1,69 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import ProdutosView from '@/components/admin/produtos/ProdutosView'
+
+export const dynamic = 'force-dynamic'
+
+type ProductRow = {
+  id: string
+  name: string
+  description: string | null
+  unit: string
+  price: number | null
+  cost: number | null
+  quantity: number
+  min_quantity: number
+  active: boolean
+  created_at: string
+  updated_at: string
+  brand_id: string | null
+  category_id: string | null
+  variant: string | null
+  expires_at: string | null
+  pack_quantity: number | null
+  barcode: string | null
+  sku: string | null
+  track_stock: boolean
+  sale_active: boolean
+  commission_type: 'percent' | 'fixed' | null
+  commission_value: number | null
+  image_url: string | null
+  brand?: { id: string; name: string } | { id: string; name: string }[] | null
+  category?: { id: string; name: string } | { id: string; name: string }[] | null
+}
+
+export default async function RecepcaoProdutosPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/profissional/login')
+
+  const { data: recep } = await supabase
+    .from('professionals')
+    .select('business_id')
+    .eq('auth_user_id', user.id)
+    .eq('is_receptionist', true)
+    .single()
+  if (!recep || !recep.business_id) redirect('/profissional/login')
+
+  const { data: products } = await supabase
+    .from('products')
+    .select(`
+      id, name, description, unit, price, cost, quantity, min_quantity, active, created_at, updated_at,
+      brand_id, category_id, variant, expires_at, pack_quantity, barcode, sku, image_url,
+      track_stock, sale_active, commission_type, commission_value,
+      brand:product_brands(id, name),
+      category:product_categories(id, name)
+    `)
+    .eq('business_id', recep.business_id)
+    .eq('active', true)
+    .order('name')
+
+  return (
+    <main className="relative" style={{ minHeight: '100svh' }}>
+      <ProdutosView
+        businessId={recep.business_id}
+        initialProducts={(products ?? []) as ProductRow[]}
+      />
+    </main>
+  )
+}

@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { IconPlus, IconAlert, IconInbox, IconDollar } from '@/components/ui/Icon'
+import { getAreaPrefix } from '@/lib/area-prefix'
 import NovoProdutoModal from './NovoProdutoModal'
 import ProdutoDrawer from './ProdutoDrawer'
 
@@ -75,6 +76,8 @@ const STATUS_COLOR: Record<StockStatus, { bg: string; border: string; text: stri
 
 export default function ProdutosView({ businessId, initialProducts }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
   // Antes: useState(initialProducts) · congelava no snapshot inicial.
   // Após router.refresh() o server passava lista nova mas state ignorava.
   // Eduardo reportou 22/05: "só atualiza quando aperto F5".
@@ -174,7 +177,7 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
         />
         <div className="flex gap-2">
           <Link
-            href="/admin/produtos/entrada"
+            href={`${areaPrefix}/produtos/entrada`}
             className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
             style={{
               background: 'var(--admin-input-bg)',
@@ -186,7 +189,7 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
             <IconInbox size={14} /> Entrada
           </Link>
           <Link
-            href="/admin/produtos/vender"
+            href={`${areaPrefix}/produtos/vender`}
             className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
             style={{
               background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',

@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { IconArrowLeft, IconPlus, IconClose, IconCheck, IconDollar, IconSearch, IconUser } from '@/components/ui/Icon'
+import { getAreaPrefix } from '@/lib/area-prefix'
 
 type Product = {
   id: string
@@ -64,6 +65,9 @@ type Props = {
 
 export default function VenderProdutoView({ businessId, products, professionals, defaultProfId, prefillProductId }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
+  const produtosHref = `${areaPrefix}/produtos`
   const supabase = useMemo(() => createClient(), [])
 
   const [cliente, setCliente] = useState<Customer | null>(null)
@@ -219,7 +223,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
           <button type="button" onClick={novaVenda} className="px-5 py-3 rounded-xl text-sm font-bold" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
             Nova venda
           </button>
-          <Link href="/admin/produtos" className="px-5 py-3 rounded-xl text-sm font-bold" style={{
+          <Link href={produtosHref} className="px-5 py-3 rounded-xl text-sm font-bold" style={{
             background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
             color: '#fff',
             boxShadow: '0 8px 22px -8px color-mix(in srgb, var(--brand-primary, #1AA9A8) 55%, transparent)',
@@ -234,7 +238,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
   return (
     <div className="max-w-3xl mx-auto px-4 lg:px-8 py-6 space-y-5">
       <header className="flex items-center gap-3">
-        <Link href="/admin/produtos" aria-label="Voltar" className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[var(--admin-surface-hi)]" style={{ color: 'var(--admin-text-mute)' }}>
+        <Link href={produtosHref} aria-label="Voltar" className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[var(--admin-surface-hi)]" style={{ color: 'var(--admin-text-mute)' }}>
           <IconArrowLeft size={18} />
         </Link>
         <div>
@@ -384,7 +388,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
             {totalDiscount > 0 && <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>Desconto: {formatBRL(totalDiscount)}</p>}
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/admin/produtos" className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'transparent', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}>
+            <Link href={produtosHref} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'transparent', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}>
               Cancelar
             </Link>
             <button type="button" onClick={save} disabled={saving || validLines.length === 0 || !cliente} className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40" style={{
