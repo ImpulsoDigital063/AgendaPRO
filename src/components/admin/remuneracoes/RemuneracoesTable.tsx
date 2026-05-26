@@ -101,11 +101,12 @@ export default function RemuneracoesTable({ rows, monthIso, periodStart, periodE
               {rows.map((r, idx) => (
                 <tr
                   key={r.id}
+                  onClick={() => setMenuFor(r.id)}
                   onDoubleClick={() => setMenuFor(r.id)}
-                  className="cursor-pointer"
+                  className="cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--admin-accent)_4%,transparent)]"
                   style={{
                     borderBottom: idx < rows.length - 1 ? '1px solid var(--admin-divider)' : 'none',
-                    background: menuFor === r.id ? 'color-mix(in srgb, var(--admin-accent) 6%, transparent)' : 'transparent',
+                    background: menuFor === r.id ? 'color-mix(in srgb, var(--admin-accent) 8%, transparent)' : undefined,
                   }}
                 >
                   <td className="px-4 py-3 align-middle">

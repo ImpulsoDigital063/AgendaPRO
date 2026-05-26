@@ -263,7 +263,7 @@ export default async function RemuneracoesPage({
 
           {/* Hint */}
           <p className="text-[11px] mt-1 text-center" style={{ color: 'var(--admin-text-faded)' }}>
-            Comissão calculada no faturamento (% configurável por profissional) · Duplo-click na linha pra ações (próxima etapa)
+            Comissão calculada no faturamento (% configurável por profissional) · Clique na linha pra abrir ações
           </p>
         </div>
       </div>
