@@ -127,11 +127,42 @@ async function KPIsRow({ business }: { business: Business }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {cards.map((c) => {
-        const tones: Record<string, { bg: string; fg: string }> = {
-          success: { bg: 'rgba(16,185,129,0.15)', fg: 'var(--admin-success)' },
-          accent: { bg: 'var(--admin-accent-bg)', fg: 'var(--admin-accent)' },
-          warn: { bg: 'rgba(245,158,11,0.15)', fg: 'var(--admin-warn)' },
-          neutral: { bg: 'color-mix(in srgb, var(--admin-text-faded) 12%, transparent)', fg: 'var(--admin-text)' },
+        // Tons 3D · gradient + glow + ícone destacado
+        const tones: Record<string, {
+          gradient: string
+          iconBg: string
+          iconFg: string
+          glow: string
+          accentLine: string
+        }> = {
+          success: {
+            gradient: 'linear-gradient(135deg, rgba(16,185,129,0.10) 0%, var(--admin-surface) 60%)',
+            iconBg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+            iconFg: '#fff',
+            glow: 'rgba(16,185,129,0.35)',
+            accentLine: 'linear-gradient(90deg, #10B981, transparent)',
+          },
+          accent: {
+            gradient: 'linear-gradient(135deg, color-mix(in srgb, var(--admin-accent) 10%, transparent) 0%, var(--admin-surface) 60%)',
+            iconBg: 'linear-gradient(135deg, var(--brand-primary, var(--admin-accent)) 0%, var(--brand-secondary, var(--admin-accent)) 100%)',
+            iconFg: '#fff',
+            glow: 'color-mix(in srgb, var(--admin-accent) 35%, transparent)',
+            accentLine: 'linear-gradient(90deg, var(--admin-accent), transparent)',
+          },
+          warn: {
+            gradient: 'linear-gradient(135deg, rgba(245,158,11,0.10) 0%, var(--admin-surface) 60%)',
+            iconBg: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+            iconFg: '#fff',
+            glow: 'rgba(245,158,11,0.35)',
+            accentLine: 'linear-gradient(90deg, #F59E0B, transparent)',
+          },
+          neutral: {
+            gradient: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, var(--admin-surface) 60%)',
+            iconBg: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+            iconFg: '#fff',
+            glow: 'rgba(99,102,241,0.30)',
+            accentLine: 'linear-gradient(90deg, #6366F1, transparent)',
+          },
         }
         const toneStyle = tones[c.tone] ?? tones.neutral
 
@@ -139,13 +170,27 @@ async function KPIsRow({ business }: { business: Business }) {
           <Link
             key={c.label}
             href={c.href}
-            className="rounded-2xl p-4 transition-all hover:translate-y-[-1px]"
+            className="group relative rounded-2xl p-4 overflow-hidden transition-all hover:translate-y-[-2px] hover:shadow-lg"
             style={{
-              background: 'var(--admin-surface)',
+              background: toneStyle.gradient,
               border: '1px solid var(--admin-border)',
+              boxShadow: '0 1px 0 0 rgba(255,255,255,0.04) inset',
             }}
           >
-            <div className="flex items-start justify-between gap-2">
+            {/* Glow orb · canto superior direito */}
+            <span
+              className="pointer-events-none absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-50 group-hover:opacity-70 transition-opacity"
+              style={{ background: toneStyle.glow }}
+              aria-hidden
+            />
+            {/* Linha de destaque no topo */}
+            <span
+              className="pointer-events-none absolute top-0 left-0 right-0 h-[2px]"
+              style={{ background: toneStyle.accentLine }}
+              aria-hidden
+            />
+
+            <div className="relative flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
                   {c.label}
@@ -162,8 +207,12 @@ async function KPIsRow({ business }: { business: Business }) {
                 </p>
               </div>
               <span
-                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: toneStyle.bg, color: toneStyle.fg }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105"
+                style={{
+                  background: toneStyle.iconBg,
+                  color: toneStyle.iconFg,
+                  boxShadow: '0 4px 12px -2px rgba(0,0,0,0.25), inset 0 1px 0 0 rgba(255,255,255,0.20)',
+                }}
               >
                 <c.Icon size={18} />
               </span>
@@ -252,10 +301,34 @@ async function ProximosDoDia({ business }: { business: Business }) {
 
 function AtalhosRapidos() {
   const atalhos = [
-    { label: 'Novo agendamento', href: '/admin', Icon: IconCalendar, bg: 'var(--admin-accent-bg)', fg: 'var(--admin-accent)' },
-    { label: 'Nova venda', href: '/admin/financeiro/vendas', Icon: IconReceipt, bg: 'rgba(16,185,129,0.15)', fg: 'var(--admin-success)' },
-    { label: 'Novo cliente', href: '/admin/clientes', Icon: IconUser, bg: 'rgba(99,102,241,0.15)', fg: '#818CF8' },
-    { label: 'Lançar despesa', href: '/admin/financeiro/despesas', Icon: IconWallet, bg: 'rgba(245,158,11,0.15)', fg: 'var(--admin-warn)' },
+    {
+      label: 'Novo agendamento',
+      href: '/admin',
+      Icon: IconCalendar,
+      iconBg: 'linear-gradient(135deg, var(--brand-primary, var(--admin-accent)) 0%, var(--brand-secondary, var(--admin-accent)) 100%)',
+      glow: 'color-mix(in srgb, var(--admin-accent) 30%, transparent)',
+    },
+    {
+      label: 'Nova venda',
+      href: '/admin/financeiro/vendas',
+      Icon: IconReceipt,
+      iconBg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+      glow: 'rgba(16,185,129,0.28)',
+    },
+    {
+      label: 'Novo cliente',
+      href: '/admin/clientes',
+      Icon: IconUser,
+      iconBg: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+      glow: 'rgba(99,102,241,0.28)',
+    },
+    {
+      label: 'Lançar despesa',
+      href: '/admin/financeiro/despesas',
+      Icon: IconWallet,
+      iconBg: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+      glow: 'rgba(245,158,11,0.28)',
+    },
   ]
 
   return (
@@ -264,16 +337,29 @@ function AtalhosRapidos() {
         <Link
           key={a.label}
           href={a.href}
-          className="rounded-xl px-3 py-3 flex items-center gap-2.5 transition-all hover:translate-y-[-1px]"
-          style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+          className="group relative rounded-xl px-3 py-3 flex items-center gap-2.5 overflow-hidden transition-all hover:translate-y-[-1px] hover:shadow-md"
+          style={{
+            background: 'var(--admin-surface)',
+            border: '1px solid var(--admin-border)',
+            boxShadow: '0 1px 0 0 rgba(255,255,255,0.04) inset',
+          }}
         >
           <span
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: a.bg, color: a.fg }}
+            className="pointer-events-none absolute -top-6 -right-6 w-16 h-16 rounded-full blur-xl opacity-40 group-hover:opacity-60 transition-opacity"
+            style={{ background: a.glow }}
+            aria-hidden
+          />
+          <span
+            className="relative w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105"
+            style={{
+              background: a.iconBg,
+              color: '#fff',
+              boxShadow: '0 3px 8px -2px rgba(0,0,0,0.25), inset 0 1px 0 0 rgba(255,255,255,0.20)',
+            }}
           >
             <a.Icon size={16} />
           </span>
-          <span className="text-xs font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+          <span className="relative text-xs font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
             {a.label}
           </span>
         </Link>
