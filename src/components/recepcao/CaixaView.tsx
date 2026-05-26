@@ -166,7 +166,7 @@ export default function CaixaView({
   }
 
   return (
-    <div className="relative max-w-lg mx-auto px-4 pb-32 space-y-4">
+    <div className="relative max-w-lg md:max-w-7xl mx-auto px-4 md:px-6 pb-32 space-y-4">
       {/* Resumo de hoje */}
       <div className="admin-card p-4 space-y-3">
         <div className="flex items-center justify-between">

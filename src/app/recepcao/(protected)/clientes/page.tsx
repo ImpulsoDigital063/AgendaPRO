@@ -31,7 +31,7 @@ export default async function RecepcaoClientesPage() {
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
-      <header className="relative max-w-lg mx-auto px-4 pt-7 pb-4">
+      <header className="relative max-w-lg md:max-w-7xl mx-auto px-4 md:px-6 pt-7 pb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--admin-text-faded)' }}>
           Recepção
         </p>

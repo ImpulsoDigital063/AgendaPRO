@@ -38,7 +38,7 @@ export default function RecepClientesList({ businessId, initial }: Props) {
   }, [customers, query])
 
   return (
-    <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-4">
+    <div className="relative max-w-lg md:max-w-7xl mx-auto px-4 md:px-6 pb-10 space-y-4">
       {/* Busca + botão criar */}
       <div className="flex gap-2">
         <div

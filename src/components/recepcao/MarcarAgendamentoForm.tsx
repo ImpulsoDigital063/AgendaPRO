@@ -282,7 +282,7 @@ export default function MarcarAgendamentoForm({
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
-      <header className="relative max-w-lg mx-auto px-4 pt-7 pb-4">
+      <header className="relative max-w-lg md:max-w-2xl mx-auto px-4 md:px-6 pt-7 pb-4">
         <div className="flex items-center gap-2">
           {step !== 'cliente' && (
             <button
@@ -332,7 +332,7 @@ export default function MarcarAgendamentoForm({
         </div>
       </header>
 
-      <div className="relative max-w-lg mx-auto px-4 pb-32 space-y-3">
+      <div className="relative max-w-lg md:max-w-2xl mx-auto px-4 md:px-6 pb-32 space-y-3">
         {error && (
           <div
             className="text-xs px-3 py-2 rounded-lg"

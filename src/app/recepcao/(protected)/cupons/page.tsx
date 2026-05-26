@@ -117,7 +117,7 @@ export default async function RecepCuponsPage() {
 
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
-      <div className="max-w-lg lg:max-w-3xl mx-auto px-4 lg:px-6 py-5">
+      <div className="max-w-lg md:max-w-7xl mx-auto px-4 md:px-6 py-5">
         <RecepCuponsView
           businessSlug={business.slug}
           businessName={business.name}

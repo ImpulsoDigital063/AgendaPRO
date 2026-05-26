@@ -87,7 +87,7 @@ export default function ConsultasView({ businessId, professionals }: Props) {
   const totalPago = results.filter((a) => a.paid_at).reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   return (
-    <div className="relative max-w-lg mx-auto px-4 pb-32 space-y-4">
+    <div className="relative max-w-lg md:max-w-7xl mx-auto px-4 md:px-6 pb-32 space-y-4">
       <div className="admin-card p-4 space-y-3">
         <div className="grid grid-cols-2 gap-2">
           <div>
