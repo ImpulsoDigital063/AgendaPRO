@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { IconStar, IconUser, IconWhatsapp } from '@/components/ui/Icon'
+import { IconStar, IconWhatsapp } from '@/components/ui/Icon'
 
 /**
  * Widget "Oportunidades" da Home · ativa cliente parado + lembra de aniversariantes.
@@ -52,7 +52,7 @@ function birthdayLabel(birthday: string | null): string | null {
   const dd = parts[2]
   const today = new Date()
   const isToday = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}` === `${mm}-${dd}`
-  if (isToday) return 'Hoje 🎂'
+  if (isToday) return 'Hoje'
   // calcula distância em dias
   const thisYear = today.getFullYear()
   const target = new Date(`${thisYear}-${mm}-${dd}`)
@@ -181,107 +181,106 @@ export default async function OportunidadesCard({ businessId, businessName }: Pr
         </h3>
       </header>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {aniversariantes.length > 0 && (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-2 inline-flex items-center gap-1" style={{ color: 'var(--admin-text-faded)' }}>
-              <IconStar size={11} /> Aniversariantes da semana · {aniversariantes.length}
-            </p>
-            <ul className="space-y-1.5">
-              {aniversariantes.map((c) => {
-                const when = birthdayLabel(c.birthday) ?? ''
-                const msg = `Oi ${c.name}! 🎂 ${when === 'Hoje 🎂' ? 'Hoje é seu dia!' : 'Tá chegando seu aniversário!'} A ${businessName} quer te dar um mimo. Vem comemorar com a gente?`
-                const waUrl = whatsappUrl(c.phone, msg)
-                return (
-                  <li key={c.id} className="flex items-center gap-2">
-                    <Link
-                      href={`/admin/clientes?customer=${c.id}`}
-                      className="flex-1 min-w-0 flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[var(--admin-input-bg)]"
-                    >
-                      <span className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                        style={{ background: 'color-mix(in srgb, #EC4899 18%, transparent)', color: '#EC4899' }}
-                      >
-                        {c.name.slice(0, 1).toUpperCase()}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
-                          {c.name}
-                        </p>
-                        <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
-                          {when}
-                        </p>
-                      </div>
-                    </Link>
-                    {waUrl && (
-                      <a
-                        href={waUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: '#25D366', color: '#fff' }}
-                        title="Mandar mensagem"
-                      >
-                        <IconWhatsapp size={12} />
-                      </a>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
+          <OportunidadeSubsection
+            label="Aniversariantes da semana"
+            count={aniversariantes.length}
+            items={aniversariantes.map((c) => ({
+              id: c.id,
+              name: c.name,
+              sublabel: birthdayLabel(c.birthday) ?? '',
+              waUrl: whatsappUrl(
+                c.phone,
+                `Oi ${c.name}! ${birthdayLabel(c.birthday) === 'Hoje' ? 'Hoje é seu dia!' : 'Tá chegando seu aniversário!'} A ${businessName} quer te dar um mimo. Vem comemorar com a gente?`,
+              ),
+            }))}
+          />
         )}
 
         {sumidos.length > 0 && (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-2 inline-flex items-center gap-1" style={{ color: 'var(--admin-text-faded)' }}>
-              <IconUser size={11} /> Clientes sumidos · {sumidos.length}
-            </p>
-            <ul className="space-y-1.5">
-              {sumidos.map((c) => {
-                const dias = c.last_visit_at
-                  ? Math.floor((Date.now() - new Date(c.last_visit_at).getTime()) / (1000 * 60 * 60 * 24))
-                  : 0
-                const msg = `Oi ${c.name}, tudo bem? Vimos que faz um tempinho que não te encontramos por aqui na ${businessName} 💕 Bora marcar um horário?`
-                const waUrl = whatsappUrl(c.phone, msg)
-                return (
-                  <li key={c.id} className="flex items-center gap-2">
-                    <Link
-                      href={`/admin/clientes?customer=${c.id}`}
-                      className="flex-1 min-w-0 flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[var(--admin-input-bg)]"
-                    >
-                      <span className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                        style={{ background: 'color-mix(in srgb, var(--admin-warn,#F59E0B) 18%, transparent)', color: 'var(--admin-warn,#F59E0B)' }}
-                      >
-                        {c.name.slice(0, 1).toUpperCase()}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
-                          {c.name}
-                        </p>
-                        <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
-                          Última visita há {dias} dias
-                        </p>
-                      </div>
-                    </Link>
-                    {waUrl && (
-                      <a
-                        href={waUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: '#25D366', color: '#fff' }}
-                        title="Mandar mensagem"
-                      >
-                        <IconWhatsapp size={12} />
-                      </a>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
+          <OportunidadeSubsection
+            label="Clientes sumidos"
+            count={sumidos.length}
+            items={sumidos.map((c) => {
+              const dias = c.last_visit_at
+                ? Math.floor((Date.now() - new Date(c.last_visit_at).getTime()) / (1000 * 60 * 60 * 24))
+                : 0
+              return {
+                id: c.id,
+                name: c.name,
+                sublabel: `Última visita há ${dias} dias`,
+                waUrl: whatsappUrl(
+                  c.phone,
+                  `Oi ${c.name}, tudo bem? Vimos que faz um tempinho que não te encontramos por aqui na ${businessName}. Bora marcar um horário?`,
+                ),
+              }
+            })}
+          />
         )}
       </div>
     </section>
+  )
+}
+
+// Sub-bloco genérico · garante visual idêntico entre Aniversariantes e Sumidos.
+function OportunidadeSubsection({
+  label,
+  count,
+  items,
+}: {
+  label: string
+  count: number
+  items: { id: string; name: string; sublabel: string; waUrl: string | null }[]
+}) {
+  return (
+    <div>
+      <p
+        className="text-[10px] font-bold uppercase tracking-widest mb-2 inline-flex items-center gap-1.5"
+        style={{ color: 'var(--admin-text-faded)' }}
+      >
+        <IconStar size={11} /> {label} · {count}
+      </p>
+      <ul className="space-y-1.5">
+        {items.map((c) => (
+          <li key={c.id} className="flex items-center gap-2">
+            <Link
+              href={`/admin/clientes?customer=${c.id}`}
+              className="flex-1 min-w-0 flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[var(--admin-input-bg)]"
+            >
+              <span
+                className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-accent) 18%, transparent)',
+                  color: 'var(--admin-accent)',
+                }}
+              >
+                {c.name.slice(0, 1).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                  {c.name}
+                </p>
+                <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                  {c.sublabel}
+                </p>
+              </div>
+            </Link>
+            {c.waUrl && (
+              <a
+                href={c.waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: '#25D366', color: '#fff' }}
+                title="Mandar mensagem"
+              >
+                <IconWhatsapp size={12} />
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

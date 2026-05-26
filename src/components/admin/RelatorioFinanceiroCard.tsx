@@ -70,6 +70,9 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
   const endPrev = startCurr
   const todayStr = now.toISOString().slice(0, 10)
   const firstDayMonthStr = startCurr.toISOString().slice(0, 10)
+  // Recebido HOJE · pra 1º BigKpi do relatório (substitui o KPI deslocado do topo)
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const endToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
 
   const [
     // Invoice payments do mês atual (source of truth do breakdown quando há comanda)
@@ -84,6 +87,10 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
     // Despesas
     { data: expensesCurr },
     { data: expensesPrev },
+    // Recebido HOJE · 3 fontes (mesmo padrão · só do dia)
+    { data: invPaymentsToday },
+    { data: apptsDirectToday },
+    { data: salesDirectToday },
   ] = await Promise.all([
     // invoice_payments do mês atual com filtro pelo business_id via join
     sb
@@ -151,6 +158,33 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('business_id', businessId)
       .gte('occurred_at', startPrev.toISOString().slice(0, 10))
       .lt('occurred_at', firstDayMonthStr),
+    // ─── Recebido HOJE · invoice_payments + appts diretos + sales diretas
+    sb
+      .from('invoice_payments')
+      .select('amount, payment_method, invoices!inner(business_id)')
+      .eq('invoices.business_id', businessId)
+      .gte('paid_at', startToday.toISOString())
+      .lt('paid_at', endToday.toISOString()),
+    sb
+      .from('appointments')
+      .select('total_price')
+      .eq('business_id', businessId)
+      .is('invoice_item_id', null)
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('paid_at', startToday.toISOString())
+      .lt('paid_at', endToday.toISOString())
+      .not('paid_at', 'is', null),
+    sb
+      .from('sales')
+      .select('total')
+      .eq('business_id', businessId)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .is('invoice_id', null)
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('paid_at', startToday.toISOString())
+      .lt('paid_at', endToday.toISOString())
+      .not('paid_at', 'is', null),
   ])
 
   // ─── Breakdown por método ────────────────────────────────────────
@@ -202,6 +236,17 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
   const lucroCurr = receitaCurr - despesaCurr
   const lucroPrev = receitaPrev - despesaPrev
 
+  // Recebido HOJE (3 fontes · igual ao mês mas só do dia)
+  const recebidoHoje =
+    (invPaymentsToday ?? [])
+      .filter((p) => {
+        const m = (p.payment_method as string | null) ?? 'other'
+        return m !== 'courtesy' && m !== 'credit'
+      })
+      .reduce((s, p) => s + Number(p.amount ?? 0), 0)
+    + (apptsDirectToday ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+    + (salesDirectToday ?? []).reduce((s, p) => s + Number(p.total ?? 0), 0)
+
   // Ordena breakdown decrescente
   const methodEntries = Object.entries(byMethod)
     .filter(([, v]) => v > 0)
@@ -235,8 +280,15 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
         </Link>
       </div>
 
-      {/* 3 cards grandes */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* 4 cards grandes · Recebido hoje virou parte do relatório (antes ficava
+          deslocado lá em cima no KPIsRow) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <BigKpi
+          label="Recebido hoje"
+          value={recebidoHoje}
+          color="#10B981"
+          help={`Recebido em ${now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} (todos os métodos · sem cortesia/crédito)`}
+        />
         <BigKpi
           label="Valor recebido"
           value={receitaCurr}
@@ -257,12 +309,7 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
           value={lucroCurr}
           prev={lucroPrev}
           color="var(--admin-accent)"
-          help="Receita − Despesas"
-          breakdown={[
-            { label: 'Valor recebido', value: receitaCurr },
-            { label: 'Despesas pagas', value: despesaCurr },
-            { label: 'Lucro líquido', value: lucroCurr, strong: true },
-          ]}
+          help="Receita − Despesas (do mês)"
         />
       </div>
 
@@ -341,13 +388,14 @@ function BigKpi({
 }: {
   label: string
   value: number
-  prev: number
+  /** Quando ausente, não renderiza badge nem % comparativo (ex: Recebido hoje) */
+  prev?: number
   color: string
   help: string
   inverted?: boolean
   breakdown?: { label: string; value: number; strong?: boolean }[]
 }) {
-  const delta = prev !== 0 ? ((value - prev) / Math.abs(prev)) * 100 : null
+  const delta = prev != null && prev !== 0 ? ((value - prev) / Math.abs(prev)) * 100 : null
   const arrow = delta == null ? null : delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat'
   const isGoodChange = arrow === 'flat' ? null : inverted ? arrow === 'down' : arrow === 'up'
   const badgeColor = isGoodChange == null ? null : isGoodChange ? '#10B981' : '#EF4444'

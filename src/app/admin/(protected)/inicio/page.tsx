@@ -19,7 +19,6 @@ import RelatorioFinanceiroCard from '@/components/admin/RelatorioFinanceiroCard'
 import CountUp from '@/components/admin/CountUp'
 import {
   IconCalendar,
-  IconDollar,
   IconCheck,
   IconClock,
   IconUser,
@@ -86,16 +85,9 @@ async function KPIsRow({ business }: { business: Business }) {
   const aReceberTotal = aReceber.reduce((s, a) => s + (a.total_price || 0), 0)
   const totalAgendados = list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show').length
 
+  // "Recebido hoje" foi movido pro RelatorioFinanceiroCard (1º BigKpi)
+  // — ficava deslocado aqui isolado dos outros números de receita.
   const cards = [
-    {
-      label: 'Recebido hoje',
-      value: recebidoTotal,
-      format: 'brl' as const,
-      subtitle: `${recebidoCount} pago${recebidoCount === 1 ? '' : 's'}`,
-      Icon: IconDollar,
-      tone: 'success',
-      href: '/admin/financeiro',
-    },
     {
       label: 'A receber',
       value: aReceberTotal,
@@ -126,7 +118,7 @@ async function KPIsRow({ business }: { business: Business }) {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-3 gap-3">
       {cards.map((c) => {
         // Tons 3D · gradient + glow + ícone destacado
         const tones: Record<string, {
@@ -227,8 +219,8 @@ async function KPIsRow({ business }: { business: Business }) {
 
 function KPIsSkeleton() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {[1, 2, 3, 4].map((i) => (
+    <div className="grid grid-cols-3 gap-3">
+      {[1, 2, 3].map((i) => (
         <div
           key={i}
           className="rounded-2xl h-[110px] skel-pulse"
