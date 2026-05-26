@@ -8,6 +8,7 @@ import AdicionarServicoComandaModal from './AdicionarServicoComandaModal'
 import SplitPaymentModal from './SplitPaymentModal'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import { downloadComandaPdf, shareComandaPdf } from './useComandaPdf'
+import PdfReciboTemplate from './PdfReciboTemplate'
 
 export type InvoiceFull = {
   id: string
@@ -99,8 +100,10 @@ export default function ComandaDetalhe({
   const [courtesyLoading, setCourtesyLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [sharingWa, setSharingWa] = useState(false)
-  // Ref pro card do recibo · alvo do html2pdf
+  // Ref pro card do recibo (tela · usado pelo window.print)
   const reciboRef = useRef<HTMLDivElement | null>(null)
+  // Ref pro template offscreen do PDF (estilo Salão99 · separado da tela)
+  const pdfTemplateRef = useRef<HTMLDivElement | null>(null)
   // Confirm modal genérico · troca window.confirm nativo (feio) por modal estilizado
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean
@@ -176,7 +179,8 @@ export default function ComandaDetalhe({
     setPdfLoading(true)
     setError(null)
     try {
-      await downloadComandaPdf({ element: reciboRef.current, filename: pdfFilename() })
+      // Usa template offscreen (estilo Salão99) · não o card da tela
+      await downloadComandaPdf({ element: pdfTemplateRef.current, filename: pdfFilename() })
     } catch (e) {
       setError(`Erro ao gerar PDF: ${e instanceof Error ? e.message : 'falha desconhecida'}`)
     } finally {
@@ -192,7 +196,7 @@ export default function ComandaDetalhe({
       const phone = invoice.customer?.phone ?? null
       const text = `Olá ${customerName}! Segue o recibo da comanda #${invoice.invoice_number} · Total ${brl(invoice.total)}.`
       const r = await shareComandaPdf({
-        element: reciboRef.current,
+        element: pdfTemplateRef.current,
         filename: pdfFilename(),
         customerPhone: phone,
         text,
@@ -714,6 +718,8 @@ export default function ComandaDetalhe({
         />
       )}
 
+      {/* Template offscreen do PDF (estilo Salão99 · capturado por html2pdf) */}
+      <PdfReciboTemplate ref={pdfTemplateRef} invoice={invoice} />
     </div>
   )
 }
