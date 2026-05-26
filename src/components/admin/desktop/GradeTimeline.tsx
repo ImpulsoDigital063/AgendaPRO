@@ -5,6 +5,9 @@ import TimelineGridInteractive from './TimelineGridInteractive'
 type Props = {
   businessId: string
   date: string
+  /** Esconde mini-KPIs do header (Recebido/A receber/Pendentes). Útil quando
+   *  o componente é embedado em página que já tem KPIs (ex: Início) */
+  hideKpis?: boolean
 }
 
 type ApptRow = {
@@ -23,7 +26,7 @@ type ApptRow = {
 const HOUR_START = 7 // 07:00 começa a grade (ajuste futuro: business_hours)
 const HOUR_END = 22 // 22:00 termina
 
-export default async function GradeTimeline({ businessId, date }: Props) {
+export default async function GradeTimeline({ businessId, date, hideKpis = false }: Props) {
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -91,6 +94,7 @@ export default async function GradeTimeline({ businessId, date }: Props) {
         recebidoHoje={recebidoHoje}
         aReceberHoje={aReceberHoje}
         pendentesHoje={pendentesHoje}
+        hideKpis={hideKpis}
       />
 
       <TimelineGridInteractive

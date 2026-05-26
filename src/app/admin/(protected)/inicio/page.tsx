@@ -8,7 +8,7 @@ import {
   getAppointmentsToday,
   getFocoDoDia,
 } from '@/lib/admin-data'
-import AppointmentCard from '@/components/AppointmentCard'
+import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import Greeting from '@/components/admin/Greeting'
 import FocoDoDia from '@/components/admin/FocoDoDia'
 import TopProfsCard from '@/components/admin/TopProfsCard'
@@ -240,58 +240,27 @@ function KPIsSkeleton() {
 }
 
 // ============================================================
-// Próximos do dia · até 3 cards lado-a-lado (apenas dia atual)
+// Agenda do dia · embeda a GradeTimeline (grade nova por profissional)
+// substituindo o card "Próximos do dia" mobile-style (AppointmentCard).
 // ============================================================
 
-async function ProximosDoDia({ business }: { business: Business }) {
+async function AgendaDoDia({ business }: { business: Business }) {
   const today = new Date().toISOString().split('T')[0]
-  const list = await getAppointmentsToday(business.id, today)
-  const now = new Date()
-  const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
-
-  const futuros = list
-    .filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')
-    .filter((a) => a.start_time >= nowStr)
-    .slice(0, 5)
-
   return (
     <section
-      className="rounded-2xl p-5"
+      className="rounded-2xl p-4 lg:p-5"
       style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-          Próximos do dia
+          Agenda do dia
         </h3>
         <Link href="/admin" className="text-xs font-semibold" style={{ color: 'var(--admin-accent)' }}>
-          Ver agenda →
+          Abrir agenda →
         </Link>
       </div>
-
-      {futuros.length === 0 ? (
-        <div className="py-8 text-center">
-          <p className="text-sm" style={{ color: 'var(--admin-text-faded)' }}>
-            Sem atendimentos restantes hoje
-          </p>
-          <Link
-            href="/admin"
-            className="inline-block mt-3 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider"
-            style={{ background: 'var(--admin-accent)', color: '#fff' }}
-          >
-            + Novo agendamento
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {futuros.map((a) => (
-            <AppointmentCard
-              key={a.id}
-              appointment={a}
-              punctualityBonus={business.punctuality_bonus_points ?? 10}
-            />
-          ))}
-        </div>
-      )}
+      {/* hideKpis: Recebido/A receber/Pendentes já estão no KPIsRow acima */}
+      <GradeTimeline businessId={business.id} date={today} hideKpis />
     </section>
   )
 }
@@ -463,7 +432,7 @@ export default async function AdminInicioPage() {
           {/* Coluna esquerda (2/3) */}
           <div className="lg:col-span-2 space-y-4">
             <Suspense fallback={null}>
-              <ProximosDoDia business={business} />
+              <AgendaDoDia business={business} />
             </Suspense>
             <Suspense fallback={null}>
               <RelatorioFinanceiroCard businessId={business.id} />

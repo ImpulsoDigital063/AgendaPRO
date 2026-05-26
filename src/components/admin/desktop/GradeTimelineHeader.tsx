@@ -13,6 +13,10 @@ type Props = {
   aReceberHoje?: number
   /** Pendentes hoje (count) · status = pending */
   pendentesHoje?: number
+  /** Quando true, oculta a linha de mini-KPIs (Recebido/A receber/Pendentes).
+   *  Usado no Início, onde os mesmos KPIs já são renderizados pelo KPIsRow
+   *  com 4 cards horizontais — duplicar polui visualmente. */
+  hideKpis?: boolean
 }
 
 function formatBRL(v: number) {
@@ -44,6 +48,7 @@ export default function GradeTimelineHeader({
   recebidoHoje = 0,
   aReceberHoje = 0,
   pendentesHoje = 0,
+  hideKpis = false,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -56,8 +61,9 @@ export default function GradeTimelineHeader({
 
   return (
     <div className="mb-4 space-y-3">
-      {/* Mini KPIs do dia · padrão 3D premium · só renderiza se for HOJE */}
-      {isToday(date) && (
+      {/* Mini KPIs do dia · padrão 3D premium · só renderiza se for HOJE
+          E não estiver com hideKpis (caso da Home, que já tem KPIsRow em cima) */}
+      {!hideKpis && isToday(date) && (
         <div className="grid grid-cols-3 gap-2">
           <MiniKPI
             label="Recebido"
