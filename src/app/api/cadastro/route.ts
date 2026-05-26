@@ -22,7 +22,10 @@ export async function POST(req: NextRequest) {
     businessName, category, phone, address, slug, email, password, professionalName, plan,
     // v67 · mapeamento de canal e dor (insight pós-Studio Mood/Izanara via ChatGPT)
     acquisitionChannel, primaryNeed,
+    // v79 · dono atende clientes ou só administra (default true · cobre 70% dos cadastros)
+    ownerAtende,
   } = await req.json()
+  const ownerAtendeBool = ownerAtende !== false
 
   if (!businessName || !slug || !email || !password) {
     return NextResponse.json({ error: 'Campos obrigatórios faltando.' }, { status: 400 })
@@ -138,6 +141,9 @@ export async function POST(req: NextRequest) {
   // corretos sem suporte ("por que aparece o nome da minha barbearia
   // como profissional?"), sem login duplicado.
   const emailNorm = email.trim().toLowerCase()
+  // v79 · setar cargos + atribuições conforme escolha "Você atende?"
+  //   ownerAtende=true:  is_owner + is_professional · aparece na agenda
+  //   ownerAtende=false: is_owner + is_manager · não atende · só administra (ex: Luana Palace)
   const { error: profError } = await supabase
     .from('professionals')
     .insert({
@@ -147,6 +153,15 @@ export async function POST(req: NextRequest) {
       auth_user_id: ownerId,
       role: 'owner',
       active: true,
+      is_owner: true,
+      is_manager: !ownerAtendeBool,
+      is_professional: ownerAtendeBool,
+      is_attendant: false,
+      is_receptionist: false,
+      does_appointments: ownerAtendeBool,
+      sells_products: true,
+      sells_packages: true,
+      employment_type: ownerAtendeBool ? 'commissioned' : 'employed',
     })
 
   if (profError) {

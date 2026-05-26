@@ -66,6 +66,10 @@ export default function CadastroPage() {
   const [slugStatus, setSlugStatus] = useState<SlugStatus>({ state: 'idle' })
 
   const [ownerName, setOwnerName] = useState('')
+  // v79 · Toggle "Você atende clientes?" cravado 26/05.
+  // Default true (cobre Solo · dono que atende sozinho · ex: Olímpio · 70% dos cadastros).
+  // false = só administra · não vai pra agenda (ex: Luana Palace).
+  const [ownerAtende, setOwnerAtende] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -169,6 +173,9 @@ export default function CadastroPage() {
         // Cliente final escolhe esse nome ao agendar (ex: "Olímpio" em vez
         // do nome da barbearia toda).
         professionalName: ownerName.trim(),
+        // v79 · se dono também atende, vai pra agenda como profissional.
+        // false = é admin/gerente puro · não aparece na agenda.
+        ownerAtende,
         // v67 · canal de aquisição + dor primária (insight pós-Studio Mood)
         acquisitionChannel: acquisitionChannel || null,
         primaryNeed: primaryNeed || null,
@@ -532,6 +539,43 @@ export default function CadastroPage() {
               <p className="text-[11px] text-slate-500 mt-1.5">
                 Vira o profissional da sua agenda. Você adiciona outros profissionais depois nas Configurações.
               </p>
+            </div>
+
+            {/* v79 · Toggle "Você atende?" · cravado 26/05 (gap do caso Marko/Palace) */}
+            <div>
+              <label className="block text-sm font-medium text-slate-200 mb-1.5">
+                Você atende clientes?
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: true, label: 'Sim, eu atendo', desc: 'Apareço na agenda + recebo comissão' },
+                  { value: false, label: 'Só administro', desc: 'Equipe atende, eu gerencio' },
+                ] as const).map((opt) => {
+                  const isActive = ownerAtende === opt.value
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => setOwnerAtende(opt.value)}
+                      className="rounded-xl p-3 text-left transition-all"
+                      style={isActive ? {
+                        background: 'rgba(16,185,129,0.14)',
+                        border: '1px solid rgba(16,185,129,0.5)',
+                      } : {
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                      }}
+                    >
+                      <p className="text-sm font-semibold" style={{ color: isActive ? '#10B981' : '#fff' }}>
+                        {opt.label}
+                      </p>
+                      <p className="text-[11px] mt-0.5 leading-tight text-slate-400">
+                        {opt.desc}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <div>
