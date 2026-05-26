@@ -298,24 +298,26 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         ))}
       </nav>
 
-      {/* Footer · Plano */}
-      <div
-        className="px-3 py-3 flex-shrink-0"
-        style={{ borderTop: '1px solid var(--admin-divider)' }}
-      >
-        <Link
-          href="/admin/configuracoes?tab=plano"
-          prefetch={false}
-          className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-xs"
-          style={{ color: 'var(--admin-text-mute)' }}
+      {/* Footer · Plano · escondido pro Palace (sistema próprio R$2.997 · sem mensalidade) */}
+      {brand.business_slug !== 'palace-nail-spa' && (
+        <div
+          className="px-3 py-3 flex-shrink-0"
+          style={{ borderTop: '1px solid var(--admin-divider)' }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-            <rect x="2" y="5" width="20" height="14" rx="2" />
-            <line x1="2" y1="10" x2="22" y2="10" />
-          </svg>
-          {!collapsed && <span className="truncate">Plano e Pagamento</span>}
-        </Link>
-      </div>
+          <Link
+            href="/admin/configuracoes?tab=plano"
+            prefetch={false}
+            className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-xs"
+            style={{ color: 'var(--admin-text-mute)' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+              <rect x="2" y="5" width="20" height="14" rx="2" />
+              <line x1="2" y1="10" x2="22" y2="10" />
+            </svg>
+            {!collapsed && <span className="truncate">Plano e Pagamento</span>}
+          </Link>
+        </div>
+      )}
     </aside>
   )
 }

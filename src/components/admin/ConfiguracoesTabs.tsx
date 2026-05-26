@@ -48,13 +48,18 @@ export default function ConfiguracoesTabs({
   subscriptionPlan,
   extraProfessionalSlots = 0,
 }: Props) {
+  // Palace tem sistema próprio (R$2.997 one-shot · sem mensalidade).
+  // Tab Plano esconde e tentativa de acesso direto via ?tab=plano cai em Negócio.
+  const hidePlanoForBusiness = business.slug === 'palace-nail-spa'
+
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
   const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo']
   // Resolve alias antes de validar (ex: ?tab=whatsapp → 'qr-code')
   const resolvedTab = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null
+  const safeResolvedTab = resolvedTab === 'plano' && hidePlanoForBusiness ? 'negocio' : resolvedTab
   const [activeTab, setActiveTab] = useState<Tab>(
-    resolvedTab && validTabs.includes(resolvedTab as Tab) ? (resolvedTab as Tab) : 'negocio'
+    safeResolvedTab && validTabs.includes(safeResolvedTab as Tab) ? (safeResolvedTab as Tab) : 'negocio'
   )
   const [professionals, setProfessionals] = useState(initialProfessionals)
   // Rewards lifted pro parent: FidelidadeTab desmonta ao trocar de
@@ -96,7 +101,7 @@ export default function ConfiguracoesTabs({
     { id: 'aparencia', label: 'Aparência' },
     { id: 'qr-code', label: 'QR Code' },
     { id: 'divulgacao', label: 'Divulgação' },
-    { id: 'plano', label: 'Plano' },
+    ...(hidePlanoForBusiness ? [] : [{ id: 'plano' as Tab, label: 'Plano' }]),
     { id: 'importar', label: 'Importar' },
   ]
 
@@ -220,7 +225,7 @@ export default function ConfiguracoesTabs({
 
       {activeTab === 'divulgacao' && <DivulgacaoTab business={business} />}
 
-      {activeTab === 'plano' && <PlanoCard />}
+      {activeTab === 'plano' && !hidePlanoForBusiness && <PlanoCard />}
 
       {activeTab === 'importar' && (
         <ImportarView businessId={business.id} businessName={business.name} />
