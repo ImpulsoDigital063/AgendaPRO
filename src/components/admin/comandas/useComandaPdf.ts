@@ -25,10 +25,12 @@ export async function generateComandaPdf({ element, filename }: GeneratePdfArgs)
   const html2pdf = (mod as { default: unknown }).default ?? mod
 
   const opt = {
-    margin: [10, 10, 10, 10],
+    margin: [8, 8, 8, 8],
     filename,
     image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#FFFFFF' },
+    // windowWidth: 900px força renderizacao consistente independente da viewport
+    // do usuario (laptop pequeno vs monitor wide) · evita quebra estranha de texto
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#FFFFFF', windowWidth: 900 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
   }
 

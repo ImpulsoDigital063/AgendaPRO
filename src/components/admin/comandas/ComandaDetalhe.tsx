@@ -502,8 +502,8 @@ export default function ComandaDetalhe({
               {invoice.items.map((it) => (
                 <tr key={it.id} style={{ borderTop: '1px solid var(--admin-divider)' }}>
                   <td className="py-2 text-xs" style={{ color: 'var(--admin-text-mute)' }}>{TYPE_LABEL[it.item_type]}</td>
-                  <td className="py-2">
-                    <div style={{ color: 'var(--admin-text)' }}>{it.description}</div>
+                  <td className="py-2 pr-3" style={{ minWidth: 240 }}>
+                    <div style={{ color: 'var(--admin-text)', textWrap: 'balance' as 'wrap' }}>{it.description}</div>
                     {it.professional_name && <div className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>com {it.professional_name}</div>}
                   </td>
                   <td className="py-2 text-right tabular-nums" style={{ color: 'var(--admin-text)' }}>
