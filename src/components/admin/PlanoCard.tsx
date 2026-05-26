@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import { IconAlert, IconCheck, IconExternalLink } from '@/components/ui/Icon'
+import { PRICING } from '@/config/pricing'
 
 type PlanModalidade = 'mensal_cartao' | 'mensal_pix' | 'semestral_pix' | 'anual_pix'
 
@@ -30,11 +31,33 @@ type Subscription = {
   pago_ate?: string | null
 }
 
-const MODALIDADE_INFO: Record<PlanModalidade, { suffix: string; canal: string }> = {
-  mensal_cartao: { suffix: '/mês', canal: 'cartão' },
-  mensal_pix: { suffix: '/mês', canal: 'PIX' },
-  semestral_pix: { suffix: '/semestre', canal: 'PIX' },
-  anual_pix: { suffix: '/ano', canal: 'PIX' },
+/**
+ * Periodicidade derivada do valor real, NÃO só da modalidade.
+ *
+ * Por que: o schema só tem `anual_pix` (não tem `anual_cartao`), mas Marko
+ * (Palace) é cobrado anualmente no cartão — ficou gravado como
+ * `mensal_cartao` + price=97000 (R$ 970 = valor anual Equipe), o que
+ * faria a UI mostrar "R$ 970/mês" se confiássemos só na modalidade.
+ *
+ * Cruzando price_cents com PRICING.modalidades resolve sem migration:
+ * se bater no valor anual, é /ano; semestral, /semestre; senão, /mês.
+ */
+function derivePeriodicidade(
+  plan: 'solo' | 'equipe',
+  priceCents: number,
+): '/mês' | '/semestre' | '/ano' {
+  const monthlyCents = PRICING[plan].mensalidadeCentavos
+  const semestralCents =
+    monthlyCents * 6 - PRICING.modalidades.semestral_pix.descontoReais[plan] * 100
+  const anualCents =
+    monthlyCents * 12 - PRICING.modalidades.anual_pix.descontoReais[plan] * 100
+  if (priceCents === anualCents) return '/ano'
+  if (priceCents === semestralCents) return '/semestre'
+  return '/mês'
+}
+
+function deriveCanal(modalidade: PlanModalidade): 'cartão' | 'PIX' {
+  return modalidade === 'mensal_cartao' ? 'cartão' : 'PIX'
 }
 
 const STATUS_LABEL: Record<Subscription['status'], { label: string; color: string }> = {
@@ -154,9 +177,9 @@ export default function PlanoCard() {
   const isCancelled = sub.status === 'cancelled'
   const planName = sub.plan === 'equipe' ? 'Equipe' : 'Solo'
   const valor = (sub.price_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-  // Modalidade null = legado mensal_cartao (vide backfill v27)
   const modalidade = sub.plan_modalidade ?? 'mensal_cartao'
-  const modInfo = MODALIDADE_INFO[modalidade]
+  const periodicidade = derivePeriodicidade(sub.plan, sub.price_cents)
+  const canal = deriveCanal(modalidade)
 
   return (
     <div className="admin-card p-4 space-y-4">
@@ -166,7 +189,7 @@ export default function PlanoCard() {
             Plano {planName}
           </p>
           <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-            {valor}{modInfo.suffix} · {modInfo.canal}
+            {valor}{periodicidade} · {canal}
           </p>
         </div>
         <span
@@ -181,16 +204,18 @@ export default function PlanoCard() {
         </span>
       </div>
 
-      {/* Datas relevantes · PIX usa pago_ate (data do PIX vigente) · cartão usa current_period_end */}
+      {/* Datas relevantes · label muda conforme periodicidade real (não só modalidade) */}
       <div className="space-y-1.5 text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
         {(() => {
           if (isCancelled) return null
-          const isPix = modalidade !== 'mensal_cartao'
+          const isPix = canal === 'PIX'
           const date = isPix ? (sub.pago_ate ?? sub.current_period_end) : sub.current_period_end
           if (!date) return null
-          const label = isPix
-            ? (modalidade === 'anual_pix' ? 'Renovação do plano' : modalidade === 'semestral_pix' ? 'Renovação do plano' : 'Próximo PIX')
-            : 'Próxima cobrança'
+          // Anual/semestral usa "Renovação" · mensal cartão usa "Próxima cobrança" · mensal PIX usa "Próximo PIX"
+          const label =
+            periodicidade === '/mês'
+              ? (isPix ? 'Próximo PIX' : 'Próxima cobrança')
+              : 'Renovação do plano'
           return (
             <div className="flex justify-between">
               <span>{label}</span>
