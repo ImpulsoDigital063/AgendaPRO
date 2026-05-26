@@ -97,7 +97,6 @@ export default function ComandaDetalhe({
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [paying, setPaying] = useState(false)
   const [addServiceOpen, setAddServiceOpen] = useState(false)
-  const [courtesyLoading, setCourtesyLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [sharingWa, setSharingWa] = useState(false)
   // Ref pro card do recibo (tela · usado pelo window.print)
@@ -237,34 +236,6 @@ export default function ComandaDetalhe({
     return true
   }
 
-  async function doMarcarCortesia() {
-    setCourtesyLoading(true)
-    setError(null)
-    const r = await fetch(`/api/admin/invoices/${invoice.id}/courtesy`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    setCourtesyLoading(false)
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}))
-      setError(d.error ?? 'Erro ao marcar como cortesia')
-      return
-    }
-    router.refresh()
-  }
-
-  function marcarCortesia() {
-    setConfirmModal({
-      open: true,
-      title: 'Marcar como cortesia?',
-      message: 'A comanda fecha como bonificação · sem cobrança · não conta como receita. Útil pra VIP, brinde ou amigo do salão.',
-      tone: 'neutral',
-      confirmLabel: 'Sim, é cortesia',
-      onConfirm: () => { setConfirmModal(null); doMarcarCortesia() },
-    })
-  }
-
   async function doRemoveItem(itemId: string) {
     setRemovingItemId(itemId)
     setError(null)
@@ -295,10 +266,11 @@ export default function ComandaDetalhe({
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-4xl mx-auto space-y-5 comanda-detalhe">
       {/* Top bar · não imprime · organização limpa estilo Salão99
-          - Aberta: Voltar | Receber pagamento (verde) | Cortesia | ⋯
+          - Aberta: Voltar | Receber pagamento (verde) | ⋯
           - Paga:   Voltar | Reabrir | ⋯
           - Cancel: Voltar | ⋯
-          Menu ⋯ tem: PDF · WhatsApp · Imprimir · Cancelar (destrutivo) */}
+          Menu ⋯ tem: PDF · WhatsApp · Imprimir · Cancelar (destrutivo)
+          Cortesia removida 25/05 (Eduardo · Salão99 não tem · API mantida) */}
       <div className="flex items-center justify-between gap-3 no-print">
         <Link
           href="/admin/comandas"
@@ -322,23 +294,6 @@ export default function ComandaDetalhe({
               }}
             >
               <IconCheck size={12} /> {paying ? 'Processando...' : 'Receber pagamento'}
-            </button>
-          )}
-          {canReceivePayment && (
-            <button
-              type="button"
-              disabled={courtesyLoading}
-              onClick={marcarCortesia}
-              title="Comanda fica como bonificação · sem cobrança · não conta como receita"
-              className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(180deg, #EC4899 0%, #BE185D 100%)',
-                color: '#fff',
-                borderTop: '1px solid rgba(255,255,255,0.25)',
-                boxShadow: '0 6px 14px -4px rgba(190,24,93,0.45)',
-              }}
-            >
-              ♥ {courtesyLoading ? '...' : 'Cortesia'}
             </button>
           )}
           {invoice.status === 'closed' && (
