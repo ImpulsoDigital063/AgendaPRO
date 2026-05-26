@@ -121,6 +121,16 @@ export default function TimeSlotPicker({
   const selectedMin = value ? timeToMinutes(value) : null
   const needsProfFirst = !profId
 
+  // Quando a data selecionada é HOJE, slots anteriores ao horário atual
+  // (em minutos locais) viram disabled · evita marcar pro passado.
+  const nowMinIfToday: number | null = (() => {
+    if (!date) return null
+    const now = new Date()
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    if (date !== todayStr) return null
+    return now.getHours() * 60 + now.getMinutes()
+  })()
+
   return (
     <div className="space-y-3">
       {needsProfFirst ? (
@@ -155,15 +165,17 @@ export default function TimeSlotPicker({
                   {slots.map((m) => {
                     const time = minutesToTime(m)
                     const conflict = conflictReason(m)
+                    const isPast = nowMinIfToday !== null && m < nowMinIfToday
                     const isSelected = selectedMin === m
-                    const isBusy = !!conflict
+                    const isBusy = !!conflict || isPast
+                    const reason = isPast ? 'Horário já passou' : conflict
                     return (
                       <button
                         key={m}
                         type="button"
                         onClick={() => !isBusy && onChange(time)}
                         disabled={isBusy}
-                        title={conflict ?? `${time} · livre`}
+                        title={reason ?? `${time} · livre`}
                         className="px-2 py-1.5 rounded-lg text-xs font-semibold tabular-nums transition-all disabled:cursor-not-allowed"
                         style={
                           isSelected
