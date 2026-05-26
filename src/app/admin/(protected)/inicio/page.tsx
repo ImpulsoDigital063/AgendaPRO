@@ -13,7 +13,6 @@ import Greeting from '@/components/admin/Greeting'
 import FocoDoDia from '@/components/admin/FocoDoDia'
 import TopProfsCard from '@/components/admin/TopProfsCard'
 import TopServicesCard from '@/components/admin/TopServicesCard'
-import TrendReceitaCard from '@/components/admin/TrendReceitaCard'
 import OportunidadesCard from '@/components/admin/OportunidadesCard'
 import RelatorioFinanceiroCard from '@/components/admin/RelatorioFinanceiroCard'
 import CountUp from '@/components/admin/CountUp'
@@ -438,9 +437,6 @@ export default async function AdminInicioPage() {
           <div className="space-y-4">
             <Suspense fallback={null}>
               <OportunidadesCard businessId={business.id} businessName={business.name} />
-            </Suspense>
-            <Suspense fallback={null}>
-              <TrendReceitaCard businessId={business.id} />
             </Suspense>
             <Suspense fallback={null}>
               <TopProfsCard businessId={business.id} />
