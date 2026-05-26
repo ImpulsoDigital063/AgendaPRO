@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import { IconAlert, IconCheck, IconExternalLink } from '@/components/ui/Icon'
 
+type PlanModalidade = 'mensal_cartao' | 'mensal_pix' | 'semestral_pix' | 'anual_pix'
+
 type Subscription = {
   plan: 'solo' | 'equipe'
   status: 'pending_payment' | 'trial' | 'active' | 'past_due' | 'cancelled' | 'expired'
@@ -22,6 +24,17 @@ type Subscription = {
   within_refund_window: boolean
   refund_days_left: number | null
   provider?: 'mercado_pago' | 'asaas'
+  /** v27 · como o cliente paga (4 modalidades · null = legado mensal_cartao) */
+  plan_modalidade?: PlanModalidade | null
+  /** v27 · até quando o pagamento atual cobre (data de vencimento PIX) */
+  pago_ate?: string | null
+}
+
+const MODALIDADE_INFO: Record<PlanModalidade, { suffix: string; canal: string }> = {
+  mensal_cartao: { suffix: '/mês', canal: 'cartão' },
+  mensal_pix: { suffix: '/mês', canal: 'PIX' },
+  semestral_pix: { suffix: '/semestre', canal: 'PIX' },
+  anual_pix: { suffix: '/ano', canal: 'PIX' },
 }
 
 const STATUS_LABEL: Record<Subscription['status'], { label: string; color: string }> = {
@@ -140,7 +153,10 @@ export default function PlanoCard() {
   const statusInfo = STATUS_LABEL[sub.status] ?? STATUS_LABEL.pending_payment
   const isCancelled = sub.status === 'cancelled'
   const planName = sub.plan === 'equipe' ? 'Equipe' : 'Solo'
-  const monthly = (sub.price_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const valor = (sub.price_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  // Modalidade null = legado mensal_cartao (vide backfill v27)
+  const modalidade = sub.plan_modalidade ?? 'mensal_cartao'
+  const modInfo = MODALIDADE_INFO[modalidade]
 
   return (
     <div className="admin-card p-4 space-y-4">
@@ -150,7 +166,7 @@ export default function PlanoCard() {
             Plano {planName}
           </p>
           <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-            {monthly}/mês
+            {valor}{modInfo.suffix} · {modInfo.canal}
           </p>
         </div>
         <span
@@ -165,14 +181,23 @@ export default function PlanoCard() {
         </span>
       </div>
 
-      {/* Datas relevantes */}
+      {/* Datas relevantes · PIX usa pago_ate (data do PIX vigente) · cartão usa current_period_end */}
       <div className="space-y-1.5 text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
-        {sub.current_period_end && !isCancelled && (
-          <div className="flex justify-between">
-            <span>Próxima cobrança</span>
-            <span style={{ color: 'var(--admin-text)' }}>{formatDate(sub.current_period_end)}</span>
-          </div>
-        )}
+        {(() => {
+          if (isCancelled) return null
+          const isPix = modalidade !== 'mensal_cartao'
+          const date = isPix ? (sub.pago_ate ?? sub.current_period_end) : sub.current_period_end
+          if (!date) return null
+          const label = isPix
+            ? (modalidade === 'anual_pix' ? 'Renovação do plano' : modalidade === 'semestral_pix' ? 'Renovação do plano' : 'Próximo PIX')
+            : 'Próxima cobrança'
+          return (
+            <div className="flex justify-between">
+              <span>{label}</span>
+              <span style={{ color: 'var(--admin-text)' }}>{formatDate(date)}</span>
+            </div>
+          )
+        })()}
         {sub.cancelled_at && (
           <div className="flex justify-between">
             <span>Cancelado em</span>

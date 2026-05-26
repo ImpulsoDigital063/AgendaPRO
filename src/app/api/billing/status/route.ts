@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       setup_paid_at, refund_deadline_at, refunded_at,
       current_period_start, current_period_end,
       grace_ends_at, public_blocked_at, cancelled_at,
-      provider
+      provider, plan_modalidade, pago_ate
     `)
     .eq('business_id', business.id)
     .single()
