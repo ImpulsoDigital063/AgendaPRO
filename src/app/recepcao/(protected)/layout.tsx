@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import InstallBanner from '@/components/admin/InstallBanner'
 import RecepcaoBottomNav from '@/components/recepcao/RecepcaoBottomNav'
+import RecepcaoDesktopSidebar from '@/components/recepcao/RecepcaoDesktopSidebar'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
@@ -25,7 +26,7 @@ export default async function RecepcaoLayout({
 
   const { data: professional, error: profError } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, is_receptionist, business:businesses(slug, brand_primary, brand_secondary, brand_accent, brand_neutral)')
+    .select('id, business_id, password_changed, is_receptionist, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -52,7 +53,9 @@ export default async function RecepcaoLayout({
   const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as 'dark' | 'light'
 
   const business = (professional.business ?? {}) as {
+    name?: string | null
     slug?: string | null
+    brand_logo_url?: string | null
     brand_primary?: string | null
     brand_secondary?: string | null
     brand_accent?: string | null
@@ -73,10 +76,28 @@ export default async function RecepcaoLayout({
           </div>
         )}
         <InstallBanner area="profissional" />
-        <div className="relative z-10" style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
+
+        {/* Sidebar desktop · fixa em ≥lg · hidden em mobile/tablet (volta pra tabbar) */}
+        <RecepcaoDesktopSidebar
+          brand={{
+            business_name: business.name ?? null,
+            business_slug: business.slug ?? null,
+            brand_logo_url: business.brand_logo_url ?? null,
+          }}
+        />
+
+        {/* Main area · padding-bottom pra tabbar mobile · padding-left pra sidebar desktop */}
+        <div
+          className="relative z-10 lg:pl-[240px]"
+          style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}
+        >
           {children}
         </div>
-        <RecepcaoBottomNav />
+
+        {/* Tab bar mobile · escondida em ≥lg (sidebar substitui) */}
+        <div className="lg:hidden">
+          <RecepcaoBottomNav />
+        </div>
       </div>
     </AdminThemeProvider>
   )
