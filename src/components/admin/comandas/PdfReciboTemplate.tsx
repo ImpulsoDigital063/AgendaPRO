@@ -69,10 +69,17 @@ const PdfReciboTemplate = forwardRef<HTMLDivElement, Props>(function PdfReciboTe
   return (
     <div
       ref={ref}
+      aria-hidden="true"
       style={{
-        position: 'absolute',
-        left: -9999,
+        // Visível em coordenadas válidas pro html2canvas capturar, mas
+        // invisível pro usuário (opacity 0 + pointer-events none + z-index baixo).
+        // left:-9999px NÃO funciona porque html2canvas usa getBoundingClientRect.
+        position: 'fixed',
         top: 0,
+        left: 0,
+        opacity: 0,
+        pointerEvents: 'none',
+        zIndex: -1,
         width: 800,
         padding: 32,
         background: '#FFFFFF',
