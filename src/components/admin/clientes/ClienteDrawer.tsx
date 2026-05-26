@@ -11,6 +11,7 @@ import AddCreditoModal from './AddCreditoModal'
 import ConfigClienteTab from './ConfigClienteTab'
 import GaleriaTab from './GaleriaTab'
 import FichasTab from './FichasTab'
+import PacotesClienteTab from './PacotesClienteTab'
 
 type Customer = {
   id: string
@@ -380,25 +381,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
               {tab === 'galeria' && <GaleriaTab customerId={customer.id} />}
               {tab === 'fichas' && <FichasTab customerId={customer.id} />}
               {tab === 'pacotes' && (
-                <div
-                  className="rounded-2xl p-8 text-center"
-                  style={{
-                    background: 'var(--admin-surface)',
-                    border: '1px dashed var(--admin-border)',
-                  }}
-                >
-                  <p className="text-sm font-bold mb-2" style={{ color: 'var(--admin-text)' }}>
-                    Módulo Pacotes · em desenvolvimento
-                  </p>
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-                    Aqui vai aparecer cada pacote que o cliente comprou — com saldo de sessões restantes, validade e histórico de uso.
-                    <br /><br />
-                    Pacote = combo de serviços vendido antecipadamente (ex: 5 manicures por R$ 175 com validade de 90 dias).
-                    O cliente paga uma vez e vai consumindo a cada atendimento.
-                    <br /><br />
-                    <b>Quando vamos cravar:</b> próxima fase, depois que o painel principal estiver 100% no ar e o Marko estiver operando confortável.
-                  </p>
-                </div>
+                <PacotesClienteTab customerId={customer.id} customerName={customer.name} />
               )}
               {tab === 'saldo' && (
                 <SaldoTab
