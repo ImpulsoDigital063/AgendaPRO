@@ -36,7 +36,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
   const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: salesPaidDay }] = await Promise.all([
     sb
       .from('professionals')
-      .select('id, name, photo_url, is_receptionist')
+      .select('id, name, photo_url, is_receptionist, does_appointments')
       .eq('business_id', businessId)
       .eq('active', true)
       .order('name'),
@@ -66,11 +66,20 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .lt('paid_at', `${date}T23:59:59`),
   ])
 
-  const profs = (profsData ?? []).filter((p) => !p.is_receptionist).map((p) => ({
-    id: p.id,
-    name: p.name,
-    photo_url: p.photo_url ?? null,
-  }))
+  // Grade só mostra QUEM ATENDE.
+  // Filtros (defensivos, em ordem):
+  //   - !is_receptionist     → recep não atende
+  //   - does_appointments !== false → owner/manager puro com toggle OFF some
+  //     (usa !== false em vez de === true pra não esconder registros antigos
+  //      com null antes do backfill da v79)
+  const profs = (profsData ?? [])
+    .filter((p) => !p.is_receptionist)
+    .filter((p) => p.does_appointments !== false)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      photo_url: p.photo_url ?? null,
+    }))
   const appts = (apptsData ?? []) as ApptRow[]
   const services = (servicesData ?? []) as { id: string; name: string; price: number | null; duration_minutes: number | null }[]
 
