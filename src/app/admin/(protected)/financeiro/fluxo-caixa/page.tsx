@@ -8,6 +8,7 @@ import FluxoCaixaViewSelector from '@/components/admin/financeiro/FluxoCaixaView
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Dinheiro',
   pix: 'Pix',
+  card: 'Cartão',
   credit: 'Cartão de Crédito',
   credit_card: 'Cartão de Crédito',
   debit: 'Cartão de Débito',
@@ -179,7 +180,7 @@ export default async function FluxoCaixaPage({
   ] = await Promise.all([
     sb
       .from('appointments')
-      .select('paid_at, total_price, payment_method, payment_fee_percent')
+      .select('paid_at, total_price, payment_method, payment_card_type, payment_fee_percent')
       .eq('business_id', business.id)
       .not('payment_method', 'in', '(courtesy,credit)')
       .gte('paid_at', range.from.toISOString())
@@ -247,13 +248,21 @@ export default async function FluxoCaixaPage({
     const d = new Date(a.paid_at)
     const key = keyForDate(view, d, cols)
     if (!key || !data[key]) continue
-    const method = (a.payment_method as string | null) ?? 'other'
+    const rawMethod = (a.payment_method as string | null) ?? 'other'
+    // Desambigua cartão crédito/débito (Salão99-style)
+    let methodKey = rawMethod
+    if (rawMethod === 'card') {
+      const cardType = a.payment_card_type as string | null
+      if (cardType === 'credit') methodKey = 'credit_card'
+      else if (cardType === 'debit') methodKey = 'debit_card'
+      else methodKey = 'card' // legacy/sem distinção
+    }
     const amt = Number(a.total_price ?? 0)
-    data[key].receitasByMethod[method] = (data[key].receitasByMethod[method] ?? 0) + amt
+    data[key].receitasByMethod[methodKey] = (data[key].receitasByMethod[methodKey] ?? 0) + amt
     data[key].receitasTotal += amt
     // Taxa de maquininha automática como despesa
     const fee = Number(a.payment_fee_percent ?? 0)
-    if (method === 'card' && fee > 0) {
+    if (rawMethod === 'card' && fee > 0) {
       const feeAmt = (amt * fee) / 100
       data[key].despesasByCategory.payment_fee = (data[key].despesasByCategory.payment_fee ?? 0) + feeAmt
       data[key].despesasTotal += feeAmt
