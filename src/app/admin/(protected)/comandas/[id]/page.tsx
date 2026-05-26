@@ -28,7 +28,7 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
   const { data: invoice } = await admin
     .from('invoices')
     .select(`
-      id, invoice_number, status, subtotal, discount, total, notes,
+      id, invoice_number, status, subtotal, discount, manual_discount, total, notes,
       created_at, closed_at, cancelled_at, business_id, customer_id,
       customer:customers(id, name, phone)
     `)
@@ -85,6 +85,7 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
     status: invoice.status as 'open' | 'closed' | 'cancelled',
     subtotal: Number(invoice.subtotal ?? 0),
     discount: Number(invoice.discount ?? 0),
+    manual_discount: Number(invoice.manual_discount ?? 0),
     total: Number(invoice.total ?? 0),
     notes: invoice.notes as string | null,
     created_at: invoice.created_at as string,

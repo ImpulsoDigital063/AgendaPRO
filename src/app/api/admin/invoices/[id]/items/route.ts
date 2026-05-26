@@ -247,17 +247,25 @@ export async function POST(
     await admin.from('appointments').update({ invoice_item_id: newItem.id }).eq('id', appt.id)
   }
 
-  // 4. Recalcular invoice total
-  const { data: allItems } = await admin
-    .from('invoice_items')
-    .select('total, discount')
-    .eq('invoice_id', invoiceId)
-  const subtotal = (allItems ?? []).reduce((s, r) => s + Number(r.total ?? 0), 0)
+  // 4. Recalcular invoice (considera manual_discount geral pra não sobrescrever)
+  const [{ data: allItems }, { data: invForRecalc }] = await Promise.all([
+    admin.from('invoice_items').select('total, discount').eq('invoice_id', invoiceId),
+    admin.from('invoices').select('manual_discount').eq('id', invoiceId).maybeSingle(),
+  ])
+  const itemsTotal = (allItems ?? []).reduce((s, r) => s + Number(r.total ?? 0), 0)
   const itemsDiscount = (allItems ?? []).reduce((s, r) => s + Number(r.discount ?? 0), 0)
+  let manualDiscount = Number(invForRecalc?.manual_discount ?? 0)
+  if (manualDiscount > itemsTotal) manualDiscount = itemsTotal
+  const total = Math.max(0, itemsTotal - manualDiscount)
   await admin
     .from('invoices')
-    .update({ subtotal: subtotal + itemsDiscount, discount: itemsDiscount, total: subtotal })
+    .update({
+      subtotal: itemsTotal + itemsDiscount,
+      discount: itemsDiscount + manualDiscount,
+      manual_discount: manualDiscount,
+      total,
+    })
     .eq('id', invoiceId)
 
-  return NextResponse.json({ ok: true, new_total: subtotal })
+  return NextResponse.json({ ok: true, new_total: total })
 }

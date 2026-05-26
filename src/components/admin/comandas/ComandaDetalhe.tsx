@@ -14,6 +14,7 @@ export type InvoiceFull = {
   status: 'open' | 'closed' | 'cancelled'
   subtotal: number
   discount: number
+  manual_discount: number
   total: number
   notes: string | null
   created_at: string
@@ -156,6 +157,22 @@ export default function ComandaDetalhe({
       confirmLabel: action === 'reopen' ? 'Sim, reabrir' : 'Sim, cancelar tudo',
       onConfirm: () => { setConfirmModal(null); doAct(action) },
     })
+  }
+
+  async function saveManualDiscount(value: number) {
+    setError(null)
+    const r = await fetch(`/api/admin/invoices/${invoice.id}/discount`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ manual_discount: value }),
+    })
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}))
+      setError(d.detail ?? d.error ?? 'Erro ao salvar desconto geral')
+      return false
+    }
+    router.refresh()
+    return true
   }
 
   async function patchItem(itemId: string, body: { quantity?: number; unit_price?: number; discount?: number }) {
@@ -476,7 +493,38 @@ export default function ComandaDetalhe({
         <section className="px-6 py-4" style={{ borderBottom: '1px solid var(--admin-divider)' }}>
           <div className="ml-auto max-w-xs space-y-1 text-sm">
             <Row label="Subtotal" value={brl(invoice.subtotal)} />
-            {invoice.discount > 0 && <Row label="Desconto" value={`- ${brl(invoice.discount)}`} />}
+            {/* Desconto vindo dos itens (somatório dos descontos por linha) */}
+            {invoice.discount - invoice.manual_discount > 0 && (
+              <Row
+                label="Desconto itens"
+                value={`- ${brl(invoice.discount - invoice.manual_discount)}`}
+              />
+            )}
+            {/* Desconto geral editável · só em comanda aberta */}
+            {invoice.status === 'open' ? (
+              <div
+                className="flex justify-between gap-3 items-center"
+                style={{ color: 'var(--admin-text-mute)' }}
+              >
+                <span>Desconto geral</span>
+                <span className="inline-flex items-center gap-1 no-print">
+                  <span style={{ color: invoice.manual_discount > 0 ? '#DC2626' : 'var(--admin-text-faded)' }}>
+                    {invoice.manual_discount > 0 ? '−' : ''} R$
+                  </span>
+                  <EditableNumber
+                    value={invoice.manual_discount}
+                    step={0.01}
+                    min={0}
+                    onSave={(v) => saveManualDiscount(v)}
+                    align="right"
+                  />
+                </span>
+              </div>
+            ) : (
+              invoice.manual_discount > 0 && (
+                <Row label="Desconto geral" value={`- ${brl(invoice.manual_discount)}`} />
+              )
+            )}
             <Row label="Total" value={brl(invoice.total)} strong />
           </div>
         </section>

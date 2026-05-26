@@ -44,16 +44,31 @@ async function validateAccess(invoiceId: string, businessId: string) {
   return { admin, invoice: inv }
 }
 
+// Recalcula subtotal/discount/total da invoice considerando manual_discount
+// invoice.discount = soma dos descontos por item + desconto manual geral
+// invoice.total = sum(items.total) − manual_discount (nunca negativo)
 async function recalculateInvoice(invoiceId: string) {
   const admin = getAdmin()
-  const { data } = await admin.from('invoice_items').select('total, discount').eq('invoice_id', invoiceId)
-  const rows = (data ?? []) as Array<{ total: number | string; discount: number | string }>
+  const [{ data: itemsData }, { data: inv }] = await Promise.all([
+    admin.from('invoice_items').select('total, discount').eq('invoice_id', invoiceId),
+    admin.from('invoices').select('manual_discount').eq('id', invoiceId).maybeSingle(),
+  ])
+  const rows = (itemsData ?? []) as Array<{ total: number | string; discount: number | string }>
   const itemsDiscount = rows.reduce((s, it) => s + Number(it.discount ?? 0), 0)
-  const total = rows.reduce((s, it) => s + Number(it.total ?? 0), 0)
-  const subtotal = total + itemsDiscount
+  const itemsTotal = rows.reduce((s, it) => s + Number(it.total ?? 0), 0)
+  let manualDiscount = Number(inv?.manual_discount ?? 0)
+  // Defesa: se manual > items total, clampa pra não gerar total negativo
+  if (manualDiscount > itemsTotal) manualDiscount = itemsTotal
+  const subtotal = itemsTotal + itemsDiscount
+  const total = Math.max(0, itemsTotal - manualDiscount)
   await admin
     .from('invoices')
-    .update({ subtotal, discount: itemsDiscount, total })
+    .update({
+      subtotal,
+      discount: itemsDiscount + manualDiscount,
+      manual_discount: manualDiscount,
+      total,
+    })
     .eq('id', invoiceId)
 }
 
