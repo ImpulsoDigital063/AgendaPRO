@@ -13,6 +13,8 @@ import RecepProximoAtendimento from '@/components/recepcao/RecepProximoAtendimen
 import RecepCaixaQuick from '@/components/recepcao/RecepCaixaQuick'
 import RecepAniversariantesCard from '@/components/recepcao/RecepAniversariantesCard'
 import RecepQRCodeCard from '@/components/recepcao/RecepQRCodeCard'
+import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
+import { Suspense } from 'react'
 import {
   IconCalendar,
   IconClock,
@@ -34,7 +36,13 @@ function SectionHeader({ label, tone = 'mute' }: { label: string; tone?: 'mute' 
   )
 }
 
-export default async function RecepcaoAgendaPage() {
+export default async function RecepcaoAgendaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>
+}) {
+  const sp = await searchParams
+  const gradeDate = sp.date ?? new Date().toISOString().slice(0, 10)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/profissional/login')
@@ -137,9 +145,20 @@ export default async function RecepcaoAgendaPage() {
         />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 lg:px-8 pt-7 pb-32">
-        {/* Layout responsivo · mobile: 1 coluna empilhada · lg: 2 colunas */}
-        <div className="lg:grid lg:grid-cols-[360px_1fr] lg:gap-8">
+      {/* ════════════════════════════════════════════════════
+          DESKTOP (≥lg) · Grade Timeline · padrão visual /admin
+          ════════════════════════════════════════════════════ */}
+      <div className="hidden lg:block relative px-6 pt-6 pb-8">
+        <Suspense fallback={<div className="h-96 rounded-2xl" style={{ background: 'var(--admin-surface)' }} />}>
+          <GradeTimeline businessId={business.id} date={gradeDate} />
+        </Suspense>
+      </div>
+
+      {/* ════════════════════════════════════════════════════
+          MOBILE/TABLET (<lg) · dashboard atual da recep
+          ════════════════════════════════════════════════════ */}
+      <div className="lg:hidden relative max-w-7xl mx-auto px-4 pt-7 pb-32">
+        <div className="space-y-5">
           {/* ════════════════════════════════════════════════════
               COLUNA ESQUERDA (sidebar) · mobile = topo
               ════════════════════════════════════════════════════ */}
