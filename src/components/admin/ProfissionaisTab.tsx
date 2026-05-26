@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
+import ColaboradorFormDrawer from '@/components/admin/colaboradores/ColaboradorFormDrawer'
 
 type Props = {
   businessId: string
@@ -95,6 +96,9 @@ export default function ProfissionaisTab({
   const [confirmRemovePhoto, setConfirmRemovePhoto] = useState<Professional | null>(null)
   const [confirmReset, setConfirmReset] = useState<Professional | null>(null)
   const [confirmToggle, setConfirmToggle] = useState<Professional | null>(null)
+  // v79 · drawer com form completo Salão99-style (editar OU criar novo)
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false)
+  const [detailDrawerProf, setDetailDrawerProf] = useState<Professional | null>(null)
 
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({})
   const addFormRef = useRef<HTMLDivElement | null>(null)
@@ -424,17 +428,38 @@ export default function ProfissionaisTab({
             <span style={{ color: 'var(--admin-success)' }}>{activeCount} ativo{activeCount === 1 ? '' : 's'}</span>
             {inactiveCount > 0 && <> · {inactiveCount} desativado{inactiveCount === 1 ? '' : 's'}</>}
           </p>
-          {/* Badge plano — destaca o tier que limita */}
-          <span
-            className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
-            style={{
-              background: 'color-mix(in srgb, var(--brand-primary, #3B82F6) 12%, transparent)',
-              color: 'var(--admin-accent)',
-              border: '1px solid color-mix(in srgb, var(--brand-primary, #3B82F6) 30%, transparent)',
-            }}
-          >
-            Plano {subscriptionPlan === 'solo' ? 'Solo' : 'Equipe'}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Badge plano — destaca o tier que limita */}
+            <span
+              className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
+              style={{
+                background: 'color-mix(in srgb, var(--brand-primary, #3B82F6) 12%, transparent)',
+                color: 'var(--admin-accent)',
+                border: '1px solid color-mix(in srgb, var(--brand-primary, #3B82F6) 30%, transparent)',
+              }}
+            >
+              Plano {subscriptionPlan === 'solo' ? 'Solo' : 'Equipe'}
+            </span>
+            {/* v79 · botão pra criar novo prof com form completo Salão99-style */}
+            {!limitReached && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailDrawerProf(null)
+                  setDetailDrawerOpen(true)
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all hover:-translate-y-px"
+                style={{
+                  background: 'var(--admin-surface)',
+                  color: 'var(--admin-text)',
+                  border: '1px solid var(--admin-border)',
+                }}
+                title="Cadastro completo com pessoais, bancárias e endereço"
+              >
+                <IconPlus size={12} /> Cadastro completo
+              </button>
+            )}
+          </div>
         </div>
 
         {total > 2 && (
@@ -569,6 +594,10 @@ export default function ProfissionaisTab({
             handleUploadPhoto={handleUploadPhoto}
             handleInvite={handleInvite}
             copyToClipboard={copyToClipboard}
+            openDetails={(p) => {
+              setDetailDrawerProf(p)
+              setDetailDrawerOpen(true)
+            }}
           />
         ))
       )}
@@ -869,6 +898,28 @@ export default function ProfissionaisTab({
         }}
         onClose={() => setConfirmToggle(null)}
       />
+
+      {/* v79 · Drawer com form completo Salão99-style (editar ou criar novo) */}
+      <ColaboradorFormDrawer
+        open={detailDrawerOpen}
+        onClose={() => {
+          setDetailDrawerOpen(false)
+          setDetailDrawerProf(null)
+        }}
+        businessId={businessId}
+        professional={detailDrawerProf}
+        onSaved={(saved) => {
+          if (detailDrawerProf) {
+            // edit · substitui na lista
+            onChange(professionals.map((x) => (x.id === saved.id ? saved : x)))
+          } else {
+            // criar · adiciona
+            onChange([...professionals, saved])
+          }
+          setDetailDrawerOpen(false)
+          setDetailDrawerProf(null)
+        }}
+      />
     </div>
   )
 }
@@ -917,6 +968,8 @@ type ProfCardProps = {
   handleUploadPhoto: (prof: Professional, file: File) => Promise<void>
   handleInvite: (prof: Professional) => Promise<void>
   copyToClipboard: (text: string, field: string) => void
+  /** v79 · abre drawer com form completo Salão99-style pra editar */
+  openDetails: (prof: Professional) => void
 }
 
 function ProfCard(p: ProfCardProps) {
@@ -927,6 +980,12 @@ function ProfCard(p: ProfCardProps) {
   const isUploading = p.uploadingId === prof.id
 
   const actions: MoreAction[] = []
+
+  actions.push({
+    label: 'Cadastro completo',
+    icon: <IconPencil size={15} />,
+    onClick: () => p.openDetails(prof),
+  })
 
   actions.push({
     label: 'Editar nome',
