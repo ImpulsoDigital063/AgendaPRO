@@ -8,7 +8,6 @@ import AdicionarServicoComandaModal from './AdicionarServicoComandaModal'
 import SplitPaymentModal from './SplitPaymentModal'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import { downloadComandaPdf, shareComandaPdf } from './useComandaPdf'
-import PdfReciboTemplate from './PdfReciboTemplate'
 
 export type InvoiceFull = {
   id: string
@@ -102,8 +101,6 @@ export default function ComandaDetalhe({
   const [sharingWa, setSharingWa] = useState(false)
   // Ref pro card do recibo (tela · usado pelo window.print)
   const reciboRef = useRef<HTMLDivElement | null>(null)
-  // Ref pro template offscreen do PDF (estilo Salão99 · separado da tela)
-  const pdfTemplateRef = useRef<HTMLDivElement | null>(null)
   // Confirm modal genérico · troca window.confirm nativo (feio) por modal estilizado
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean
@@ -179,19 +176,8 @@ export default function ComandaDetalhe({
     setPdfLoading(true)
     setError(null)
     try {
-      // Usa template offscreen (estilo Salão99) · não o card da tela
-      const el = pdfTemplateRef.current
-      if (!el) {
-        setError('Template PDF não montou no DOM (ref null)')
-        return
-      }
-      // Diagnóstico: verifica se o template tem dimensões reais antes de gerar
-      const rect = el.getBoundingClientRect()
-      if (rect.width === 0 || rect.height === 0) {
-        setError(`Template PDF com dimensão zero (${rect.width}x${rect.height}) · não dá pra capturar`)
-        return
-      }
-      await downloadComandaPdf({ element: el, filename: pdfFilename() })
+      // jsPDF + autoTable desenha PDF direto dos dados (sem DOM/html2canvas)
+      await downloadComandaPdf({ invoice })
     } catch (e) {
       setError(`Erro ao gerar PDF: ${e instanceof Error ? e.message : 'falha desconhecida'}`)
     } finally {
@@ -207,8 +193,7 @@ export default function ComandaDetalhe({
       const phone = invoice.customer?.phone ?? null
       const text = `Olá ${customerName}! Segue o recibo da comanda #${invoice.invoice_number} · Total ${brl(invoice.total)}.`
       const r = await shareComandaPdf({
-        element: pdfTemplateRef.current,
-        filename: pdfFilename(),
+        invoice,
         customerPhone: phone,
         text,
       })
@@ -729,8 +714,6 @@ export default function ComandaDetalhe({
         />
       )}
 
-      {/* Template offscreen do PDF (estilo Salão99 · capturado por html2pdf) */}
-      <PdfReciboTemplate ref={pdfTemplateRef} invoice={invoice} />
     </div>
   )
 }
