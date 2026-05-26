@@ -100,16 +100,41 @@ export default function ColaboradorTabs({ prof, initialVouchers, initialSalaries
           {prof.name.slice(0, 1).toUpperCase()}
         </span>
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold" style={{ color: 'var(--admin-text)' }}>
-            {prof.name}
-          </h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-bold" style={{ color: 'var(--admin-text)' }}>
+              {prof.name}
+            </h2>
+            {prof.is_receptionist && (
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-accent) 14%, transparent)',
+                  color: 'var(--admin-accent)',
+                  border: '1px solid color-mix(in srgb, var(--admin-accent) 30%, transparent)',
+                }}
+              >
+                Contratada
+              </span>
+            )}
+            {!prof.active && (
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-text-faded) 14%, transparent)',
+                  color: 'var(--admin-text-faded)',
+                }}
+              >
+                Inativo
+              </span>
+            )}
+          </div>
           <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
             {prof.email ?? 'Sem email'} {prof.phone ? `· ${prof.phone}` : ''}
-            {prof.is_receptionist && ' · Recepção'}
-            {!prof.active && ' · Inativo'}
           </p>
           <p className="text-xs mt-1" style={{ color: 'var(--admin-accent)' }}>
-            Comissão {prof.default_commission_percent}%
+            {prof.is_receptionist
+              ? 'Sem comissão · controle por salário fixo (aba Salários)'
+              : `Comissão ${prof.default_commission_percent}%`}
           </p>
         </div>
       </div>
@@ -186,12 +211,26 @@ export default function ColaboradorTabs({ prof, initialVouchers, initialSalaries
             border: '1px solid var(--admin-border)',
           }}
         >
-          <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
-            Comissão padrão: <b style={{ color: 'var(--admin-accent)' }}>{prof.default_commission_percent}%</b>
-          </p>
-          <p className="text-xs mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-            Edição de regras de comissão (taxa de forma de pagamento · desconto · gorjetas) vem na próxima rodada.
-          </p>
+          {prof.is_receptionist ? (
+            <>
+              <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                Contratada · sem comissão
+              </p>
+              <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                Recepção/contratado recebe por <b>salário fixo</b> cadastrado mensalmente (aba Salários).
+                Vales/adiantamentos vão na aba Vales · descontam do próximo pagamento.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                Comissão padrão: <b style={{ color: 'var(--admin-accent)' }}>{prof.default_commission_percent}%</b>
+              </p>
+              <p className="text-xs mt-2" style={{ color: 'var(--admin-text-mute)' }}>
+                Edição de regras de comissão (taxa de forma de pagamento · desconto · gorjetas) vem na próxima rodada.
+              </p>
+            </>
+          )}
         </div>
       )}
 
