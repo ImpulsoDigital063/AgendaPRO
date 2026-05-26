@@ -7,6 +7,7 @@ import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar, IconFile, Ic
 import AdicionarServicoComandaModal from './AdicionarServicoComandaModal'
 import SplitPaymentModal from './SplitPaymentModal'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
+import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
 import { downloadComandaPdf, shareComandaPdf } from './useComandaPdf'
 
 export type InvoiceFull = {
@@ -293,7 +294,11 @@ export default function ComandaDetalhe({
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-4xl mx-auto space-y-5 comanda-detalhe">
-      {/* Top bar · não imprime */}
+      {/* Top bar · não imprime · organização limpa estilo Salão99
+          - Aberta: Voltar | Receber pagamento (verde) | Cortesia | ⋯
+          - Paga:   Voltar | Reabrir | ⋯
+          - Cancel: Voltar | ⋯
+          Menu ⋯ tem: PDF · WhatsApp · Imprimir · Cancelar (destrutivo) */}
       <div className="flex items-center justify-between gap-3 no-print">
         <Link
           href="/admin/comandas"
@@ -302,7 +307,7 @@ export default function ComandaDetalhe({
         >
           <IconChevronLeft size={14} /> Voltar
         </Link>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 items-center">
           {canReceivePayment && (
             <button
               type="button"
@@ -336,55 +341,6 @@ export default function ComandaDetalhe({
               ♥ {courtesyLoading ? '...' : 'Cortesia'}
             </button>
           )}
-          {/* PDF · em mobile só ícone (economiza linha) · em sm+ icone+texto */}
-          <button
-            type="button"
-            disabled={pdfLoading}
-            onClick={baixarPdf}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold border disabled:opacity-50 inline-flex items-center gap-1.5"
-            style={{ background: 'var(--admin-surface)', color: 'var(--admin-text)', borderColor: 'var(--admin-border)' }}
-            title="Baixar recibo como PDF"
-            aria-label="Baixar PDF"
-          >
-            {pdfLoading ? '...' : (
-              <>
-                <IconFile size={12} />
-                <span className="hidden sm:inline">PDF</span>
-              </>
-            )}
-          </button>
-          {invoice.customer?.phone && (
-            <button
-              type="button"
-              disabled={sharingWa}
-              onClick={enviarWhatsApp}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(180deg, #25D366 0%, #128C7E 100%)',
-                color: '#fff',
-                borderTop: '1px solid rgba(255,255,255,0.25)',
-                boxShadow: '0 6px 14px -4px rgba(18,140,126,0.45)',
-              }}
-              title="Compartilhar recibo via WhatsApp"
-              aria-label="Compartilhar via WhatsApp"
-            >
-              {sharingWa ? '...' : (
-                <>
-                  <IconWhatsapp size={12} />
-                  <span className="hidden sm:inline">WhatsApp</span>
-                </>
-              )}
-            </button>
-          )}
-          {/* Imprimir · faz menos sentido em mobile (sem impressora) · oculta em mobile */}
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="hidden sm:inline-block px-3 py-1.5 rounded-lg text-xs font-bold border"
-            style={{ background: 'var(--admin-surface)', color: 'var(--admin-text)', borderColor: 'var(--admin-border)' }}
-          >
-            Imprimir
-          </button>
           {invoice.status === 'closed' && (
             <button
               type="button"
@@ -396,17 +352,43 @@ export default function ComandaDetalhe({
               {acting === 'reopen' ? '...' : 'Reabrir'}
             </button>
           )}
-          {invoice.status !== 'cancelled' && (
-            <button
-              type="button"
-              disabled={acting !== null}
-              onClick={() => act('cancel')}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
-              style={{ background: '#FEE2E2', color: '#991B1B' }}
-            >
-              {acting === 'cancel' ? '...' : 'Cancelar'}
-            </button>
-          )}
+          <MoreActionsMenu
+            ariaLabel="Mais ações da comanda"
+            size="md"
+            actions={(() => {
+              const items: MoreAction[] = [
+                {
+                  label: pdfLoading ? 'Gerando PDF...' : 'Baixar PDF',
+                  icon: <IconFile size={15} />,
+                  onClick: baixarPdf,
+                  disabled: pdfLoading,
+                },
+              ]
+              if (invoice.customer?.phone) {
+                items.push({
+                  label: sharingWa ? 'Compartilhando...' : 'Enviar por WhatsApp',
+                  icon: <IconWhatsapp size={15} />,
+                  onClick: enviarWhatsApp,
+                  disabled: sharingWa,
+                })
+              }
+              items.push({
+                label: 'Imprimir',
+                onClick: () => window.print(),
+              })
+              if (invoice.status !== 'cancelled') {
+                items.push({
+                  label: acting === 'cancel' ? 'Cancelando...' : 'Cancelar comanda',
+                  icon: <IconTrash size={15} />,
+                  onClick: () => act('cancel'),
+                  destructive: true,
+                  separatorAbove: true,
+                  disabled: acting !== null,
+                })
+              }
+              return items
+            })()}
+          />
         </div>
       </div>
 
