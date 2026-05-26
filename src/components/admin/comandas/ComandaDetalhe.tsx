@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar, IconFile, IconWhatsapp } from '@/components/ui/Icon'
+import { getAreaPrefix } from '@/lib/area-prefix'
 import AdicionarServicoComandaModal from './AdicionarServicoComandaModal'
 import SplitPaymentModal from './SplitPaymentModal'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
@@ -92,6 +93,8 @@ export default function ComandaDetalhe({
   customerPoints?: number
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
   const [acting, setActing] = useState<null | 'reopen' | 'cancel'>(null)
   const [removingItemId, setRemovingItemId] = useState<string | null>(null)
   const [paymentOpen, setPaymentOpen] = useState(false)
@@ -273,7 +276,7 @@ export default function ComandaDetalhe({
           Cortesia removida 25/05 (Eduardo · Salão99 não tem · API mantida) */}
       <div className="flex items-center justify-between gap-3 no-print">
         <Link
-          href="/admin/comandas"
+          href={`${areaPrefix}/comandas`}
           className="inline-flex items-center gap-1 text-xs font-semibold"
           style={{ color: 'var(--admin-text-mute)' }}
         >

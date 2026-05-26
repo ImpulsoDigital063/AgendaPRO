@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import { getAreaPrefix } from '@/lib/area-prefix'
 import { createClient } from '@/lib/supabase/client'
 import { logActivity } from '@/lib/activity-log'
 import {
@@ -117,6 +118,8 @@ export default function AgendarModal({
   onClose,
 }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
   const supabase = useMemo(() => createClient(), [])
 
   // Form state · multi-serviços (V2)
@@ -390,8 +393,8 @@ export default function AgendarModal({
     }
     // Fecha primeiro · senão o desmontar do modal pode cancelar o push
     onClose()
-    // ClientesView lê ?customer=ID e abre o drawer automaticamente
-    router.push(`/admin/clientes?customer=${customerId}`)
+    // ClientesView (admin) e RecepClientesList (recep) leem ?customer=ID
+    router.push(`${areaPrefix}/clientes?customer=${customerId}`)
   }
 
   function irParaAgenda() {

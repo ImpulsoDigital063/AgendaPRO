@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconPlus, IconTrash, IconSearch } from '@/components/ui/Icon'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
+import { getAreaPrefix } from '@/lib/area-prefix'
 
 /**
  * FaturarComandaModal · cria uma comanda incluindo:
@@ -71,6 +72,8 @@ export default function FaturarComandaModal({
   customerName, businessId, onClose,
 }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
 
@@ -199,7 +202,7 @@ export default function FaturarComandaModal({
     const d = await r.json()
     const invoiceId = d?.invoice?.id
     onClose()
-    if (invoiceId) router.push(`/admin/comandas/${invoiceId}`)
+    if (invoiceId) router.push(`${areaPrefix}/comandas/${invoiceId}`)
     else router.refresh()
   }
 

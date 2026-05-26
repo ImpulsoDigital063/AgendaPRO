@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { logActivity } from '@/lib/activity-log'
 import { IconSearch, IconPlus, IconClose, IconStar, IconGift } from '@/components/ui/Icon'
@@ -26,6 +27,25 @@ export default function RecepClientesList({ businessId, initial }: Props) {
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<Customer | null>(null)
   const [creating, setCreating] = useState(false)
+
+  // Deep-link: abre drawer quando /recepcao/clientes?customer=<id> · usado
+  // pelo botão "Visualizar Cliente" do AgendarModal pós-save. Limpa a query
+  // depois pra URL não ficar suja.
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const id = searchParams.get('customer')
+    if (!id || editing?.id === id) return
+    const target = customers.find((c) => c.id === id)
+    if (target) {
+      setEditing(target)
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('customer')
+        window.history.replaceState({}, '', url.toString())
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, customers])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { IconSearch } from '@/components/ui/Icon'
+import { getAreaPrefix } from '@/lib/area-prefix'
 
 export type InvoiceListItem = {
   id: string
@@ -45,6 +47,8 @@ function isToday(iso: string) {
 }
 
 export default function ComandasView({ initialInvoices }: { initialInvoices: InvoiceListItem[] }) {
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
   const [statusFilter, setStatusFilter] = useState<'all' | InvoiceListItem['status']>('all')
   const [search, setSearch] = useState('')
 
@@ -168,7 +172,7 @@ export default function ComandasView({ initialInvoices }: { initialInvoices: Inv
               return (
                 <li key={inv.id} style={{ borderColor: 'var(--admin-divider)' }}>
                   <Link
-                    href={`/admin/comandas/${inv.id}`}
+                    href={`${areaPrefix}/comandas/${inv.id}`}
                     className="grid sm:grid-cols-[80px_1fr_100px_120px_1fr_110px_110px] grid-cols-1 items-center gap-3 px-4 py-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_4%,transparent)] transition-colors"
                   >
                     <span className="font-bold tabular-nums text-sm" style={{ color: 'var(--admin-text)' }}>
