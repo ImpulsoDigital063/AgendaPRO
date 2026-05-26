@@ -22,8 +22,17 @@ type Professional = {
 type Props = {
   invoiceId: string
   businessId: string
+  customerId: string | null
   onClose: () => void
   onAdded: () => void
+}
+
+type PackageOption = {
+  balance_id: string
+  customer_package_id: string
+  package_name: string
+  sessions_remaining: number
+  expires_at: string | null
 }
 
 function brl(n: number) {
@@ -39,7 +48,7 @@ const selectStyle: React.CSSProperties = {
   MozAppearance: 'none',
 }
 
-export default function AdicionarServicoComandaModal({ invoiceId, businessId, onClose, onAdded }: Props) {
+export default function AdicionarServicoComandaModal({ invoiceId, businessId, customerId, onClose, onAdded }: Props) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const [portalReady, setPortalReady] = useState(false)
@@ -53,6 +62,9 @@ export default function AdicionarServicoComandaModal({ invoiceId, businessId, on
   const [search, setSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Pacotes ativos do cliente que cobrem o serviço selecionado
+  const [packageOptions, setPackageOptions] = useState<PackageOption[]>([])
+  const [selectedPackageBalanceId, setSelectedPackageBalanceId] = useState<string | null>(null)
 
   useEffect(() => { setPortalReady(true) }, [])
   useEffect(() => {
@@ -78,6 +90,42 @@ export default function AdicionarServicoComandaModal({ invoiceId, businessId, on
   }, [supabase, businessId])
 
   const selectedService = services.find((s) => s.id === serviceId)
+
+  // Quando seleciona serviço · busca pacotes ativos do cliente que cobrem
+  useEffect(() => {
+    if (!serviceId || !customerId) {
+      setPackageOptions([])
+      setSelectedPackageBalanceId(null)
+      return
+    }
+    const url = `/api/admin/packages/consume?customer_id=${customerId}&service_id=${serviceId}`
+    fetch(url)
+      .then((r) => r.ok ? r.json() : { options: [] })
+      .then((d) => {
+        const opts = (d.options ?? []) as PackageOption[]
+        setPackageOptions(opts)
+        // Se tem só 1 opção · pré-seleciona automaticamente
+        if (opts.length === 1) {
+          setSelectedPackageBalanceId(opts[0].balance_id)
+          setPriceStr('0')
+        } else {
+          setSelectedPackageBalanceId(null)
+        }
+      })
+      .catch(() => setPackageOptions([]))
+  }, [serviceId, customerId])
+
+  function togglePackageConsumption(balanceId: string) {
+    if (selectedPackageBalanceId === balanceId) {
+      setSelectedPackageBalanceId(null)
+      // restaura preço padrão
+      setPriceStr(selectedService?.price != null ? String(selectedService.price) : '')
+    } else {
+      setSelectedPackageBalanceId(balanceId)
+      setPriceStr('0')
+    }
+  }
+
   const filteredServices = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return services
@@ -113,12 +161,33 @@ export default function AdicionarServicoComandaModal({ invoiceId, businessId, on
         professional_id: professionalId || null,
       }),
     })
-    setSubmitting(false)
     if (!r.ok) {
+      setSubmitting(false)
       const d = await r.json().catch(() => ({}))
       setError(d.error ?? 'Erro ao adicionar serviço')
       return
     }
+    // Se selecionou pacote, registra consumo (1 sessão por unidade adicionada)
+    if (selectedPackageBalanceId) {
+      const qtyN = Math.max(1, Number(qty))
+      for (let i = 0; i < qtyN; i++) {
+        const cr = await fetch('/api/admin/packages/consume', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            balance_id: selectedPackageBalanceId,
+            professional_id: professionalId || null,
+          }),
+        })
+        if (!cr.ok) {
+          const cd = await cr.json().catch(() => ({}))
+          setSubmitting(false)
+          setError(`Item adicionado mas falha ao consumir sessão: ${cd.error ?? 'erro'}`)
+          return
+        }
+      }
+    }
+    setSubmitting(false)
     onAdded()
     router.refresh()
   }
@@ -273,6 +342,55 @@ export default function AdicionarServicoComandaModal({ invoiceId, businessId, on
                   ))}
                 </select>
               </div>
+
+              {/* Pacote ativo · oferece consumir sessão */}
+              {packageOptions.length > 0 && (
+                <div
+                  className="rounded-xl p-3 space-y-2"
+                  style={{
+                    background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--admin-accent) 30%, transparent)',
+                  }}
+                >
+                  <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-accent)' }}>
+                    {packageOptions.length === 1 ? '★ Cliente tem pacote ativo' : `★ Cliente tem ${packageOptions.length} pacotes ativos`}
+                  </p>
+                  <div className="space-y-1.5">
+                    {packageOptions.map((opt) => {
+                      const isSelected = selectedPackageBalanceId === opt.balance_id
+                      return (
+                        <button
+                          key={opt.balance_id}
+                          type="button"
+                          onClick={() => togglePackageConsumption(opt.balance_id)}
+                          className="w-full text-left rounded-lg px-3 py-2 flex items-center justify-between gap-2 transition-colors"
+                          style={{
+                            background: isSelected ? 'var(--admin-accent)' : 'var(--admin-surface)',
+                            color: isSelected ? '#fff' : 'var(--admin-text)',
+                            border: `1px solid ${isSelected ? 'var(--admin-accent)' : 'var(--admin-border)'}`,
+                          }}
+                        >
+                          <span className="min-w-0">
+                            <span className="text-sm font-semibold block truncate">{opt.package_name}</span>
+                            <span className="text-[11px] opacity-80">
+                              Restam {opt.sessions_remaining} {opt.sessions_remaining === 1 ? 'sessão' : 'sessões'}
+                              {opt.expires_at && ` · expira ${new Date(opt.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`}
+                            </span>
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
+                            {isSelected ? '✓ Consumindo' : 'Usar pacote'}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {selectedPackageBalanceId && (
+                    <p className="text-[11px] leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+                      O serviço entra com R$ 0,00 (incluso no pacote) · 1 sessão será consumida ao salvar.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {error && (
                 <div className="rounded-lg px-3 py-2 text-xs" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#DC2626' }}>

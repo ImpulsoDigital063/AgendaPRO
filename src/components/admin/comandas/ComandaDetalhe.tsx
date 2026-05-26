@@ -633,6 +633,7 @@ export default function ComandaDetalhe({
         <AdicionarServicoComandaModal
           invoiceId={invoice.id}
           businessId={businessId}
+          customerId={invoice.customer?.id ?? null}
           onClose={() => setAddServiceOpen(false)}
           onAdded={() => setAddServiceOpen(false)}
         />
