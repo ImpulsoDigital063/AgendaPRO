@@ -351,7 +351,52 @@ export default async function DetalhamentoPage({
                 border: '1px solid var(--admin-border)',
               }}
             >
-              <div className="overflow-x-auto">
+              {/* Mobile · lista de cards empilhados · evita scroll horizontal feio */}
+              <div className="sm:hidden divide-y" style={{ borderColor: 'var(--admin-divider)' }}>
+                {rows.map((r, idx) => (
+                  <div key={idx} className="px-4 py-3 space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-[11px] uppercase tracking-wider tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
+                        {formatDate(r.date)}
+                      </span>
+                      <span
+                        className="text-sm font-bold tabular-nums flex-shrink-0"
+                        style={{ color: tone }}
+                      >
+                        {type === 'despesas' ? '- ' : ''}{formatBRL(r.amount)}
+                      </span>
+                    </div>
+                    <p className="text-sm" style={{ color: 'var(--admin-text)' }}>
+                      {r.description}
+                    </p>
+                    {r.origin_label && (
+                      r.origin_href ? (
+                        <Link
+                          href={r.origin_href}
+                          className="inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                          style={{ color: 'var(--admin-accent)' }}
+                        >
+                          {r.origin_label}
+                        </Link>
+                      ) : (
+                        <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+                          {r.origin_label}
+                        </p>
+                      )
+                    )}
+                  </div>
+                ))}
+                {/* Total rodapé mobile */}
+                <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'var(--admin-surface-hi)' }}>
+                  <span className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Total</span>
+                  <span className="text-sm font-bold tabular-nums" style={{ color: tone }}>
+                    {type === 'despesas' ? '- ' : ''}{formatBRL(total)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tablet+ · tabela tradicional · ≥640px */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr
