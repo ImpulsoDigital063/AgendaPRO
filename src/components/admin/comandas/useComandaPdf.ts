@@ -33,20 +33,6 @@ export async function generateComandaPdf({ element, filename }: GeneratePdfArgs)
       useCORS: true,
       backgroundColor: '#FFFFFF',
       windowWidth: 900,
-      // onclone roda no DOM clonado · torna o template VISÍVEL apenas pra
-      // captura (no DOM real ele continua opacity 0 · sem flicker pro user).
-      // Fix do "PDF em branco" quando elemento está com opacity:0 ou z-index:-1.
-      onclone: (clonedDoc: Document) => {
-        const el = clonedDoc.querySelector('[data-pdf-template="true"]') as HTMLElement | null
-        if (el) {
-          el.style.position = 'static'
-          el.style.left = '0'
-          el.style.top = '0'
-          el.style.opacity = '1'
-          el.style.zIndex = 'auto'
-          el.style.pointerEvents = 'auto'
-        }
-      },
     },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
   }

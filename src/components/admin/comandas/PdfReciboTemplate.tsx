@@ -72,17 +72,22 @@ const PdfReciboTemplate = forwardRef<HTMLDivElement, Props>(function PdfReciboTe
       data-pdf-template="true"
       aria-hidden="true"
       style={{
-        // Invisível pro usuário mas em coordenadas válidas no DOM.
-        // O html2canvas usa `onclone` (em useComandaPdf.ts) pra tornar
-        // visível APENAS no DOM clonado durante a captura · sem flicker
-        // na tela e sem perder o conteúdo.
+        // ESTRATÉGIA: VISÍVEL em coordenadas reais positivas (não opacity 0,
+        // não z-index -1, não left negativo). Só posicionado 200vh abaixo
+        // da viewport, então o usuário não vê (página normal nunca rola
+        // até lá). html2canvas captura normalmente porque getBoundingClientRect
+        // retorna posição válida positiva.
+        //
+        // Tentativas anteriores que falharam (PDF em branco):
+        //  - left: -9999px → getBoundingClientRect fora da viewport
+        //  - opacity: 0 + z-index: -1 → engines pulam elemento invisível
+        //  - onclone do html2canvas → talvez não repassado pelo html2pdf v0.14
         position: 'fixed',
-        top: 0,
+        top: '200vh',
         left: 0,
-        opacity: 0,
-        pointerEvents: 'none',
-        zIndex: -1,
         width: 800,
+        zIndex: 0,
+        pointerEvents: 'none',
         padding: 32,
         background: '#FFFFFF',
         color: '#1F2937',

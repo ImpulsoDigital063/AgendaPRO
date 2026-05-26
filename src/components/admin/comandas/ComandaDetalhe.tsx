@@ -180,7 +180,18 @@ export default function ComandaDetalhe({
     setError(null)
     try {
       // Usa template offscreen (estilo Salão99) · não o card da tela
-      await downloadComandaPdf({ element: pdfTemplateRef.current, filename: pdfFilename() })
+      const el = pdfTemplateRef.current
+      if (!el) {
+        setError('Template PDF não montou no DOM (ref null)')
+        return
+      }
+      // Diagnóstico: verifica se o template tem dimensões reais antes de gerar
+      const rect = el.getBoundingClientRect()
+      if (rect.width === 0 || rect.height === 0) {
+        setError(`Template PDF com dimensão zero (${rect.width}x${rect.height}) · não dá pra capturar`)
+        return
+      }
+      await downloadComandaPdf({ element: el, filename: pdfFilename() })
     } catch (e) {
       setError(`Erro ao gerar PDF: ${e instanceof Error ? e.message : 'falha desconhecida'}`)
     } finally {
