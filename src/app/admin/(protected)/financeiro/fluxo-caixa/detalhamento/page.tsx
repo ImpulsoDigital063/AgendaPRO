@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
+import ExportCSVButton from '@/components/admin/financeiro/ExportCSVButton'
 
 type SearchParams = {
   month?: string // YYYY-MM (legado · ainda aceito)
@@ -71,8 +72,10 @@ type Row = {
   date: string
   description: string
   amount: number
-  invoice_number?: number | null
-  invoice_id?: string | null
+  /** Texto curto da origem (ex: "Comanda #12", "Atendimento direto", "Venda avulsa") */
+  origin_label?: string | null
+  /** Se aplicável, link pra abrir a origem (ex: /admin/comandas/[id]) */
+  origin_href?: string | null
 }
 
 function resolveMethodFilter(method: string): string[] {
@@ -164,10 +167,10 @@ export default async function DetalhamentoPage({
         : (METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method ?? '—')
       rows.push({
         date: row.paid_at,
-        description: `Comanda #${inv.invoice_number} · ${inv.customer_name ?? '—'} · ${methodLabel}`,
+        description: `${inv.customer_name ?? '—'} · ${methodLabel}`,
         amount: Number(row.amount ?? 0),
-        invoice_number: inv.invoice_number,
-        invoice_id: inv.id,
+        origin_label: `Comanda #${inv.invoice_number}`,
+        origin_href: `/admin/comandas/${inv.id}`,
       })
     }
 
@@ -211,6 +214,7 @@ export default async function DetalhamentoPage({
         date: row.paid_at,
         description: `${row.service_name ?? 'Atendimento'} · ${row.client_name ?? '—'} · ${methodLabel}`,
         amount: Number(row.total_price ?? 0),
+        origin_label: 'Atendimento direto',
       })
     }
 
@@ -236,8 +240,9 @@ export default async function DetalhamentoPage({
         const row = s as unknown as { paid_at: string; total: number | null; payment_method: string | null; customer_name: string | null }
         rows.push({
           date: row.paid_at,
-          description: `Venda de Produto · ${row.customer_name ?? '—'} · ${METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method}`,
+          description: `${row.customer_name ?? '—'} · ${METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method}`,
           amount: Number(row.total ?? 0),
+          origin_label: 'Venda avulsa',
         })
       }
     }
@@ -262,8 +267,9 @@ export default async function DetalhamentoPage({
       const row = e as unknown as { occurred_at: string; amount: number; description: string | null; category: string | null }
       return {
         date: row.occurred_at,
-        description: `${row.description ?? '—'}${row.category ? ` · ${CATEGORY_LABELS[row.category] ?? row.category}` : ''}`,
+        description: row.description ?? '—',
         amount: Number(row.amount ?? 0),
+        origin_label: row.category ? (CATEGORY_LABELS[row.category] ?? row.category) : null,
       }
     })
   }
@@ -283,9 +289,9 @@ export default async function DetalhamentoPage({
       <div className="relative">
         <SubPageHeader title="Detalhamento" subtitle={`${title}${filterLabel} · ${periodLabel}`} back="/admin/financeiro/fluxo-caixa" />
         <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-7xl lg:px-8">
-          {/* Resumo topo */}
+          {/* Resumo topo · Total · Movimentações · Exportar CSV */}
           <div
-            className="rounded-2xl p-5 mb-4 flex items-center justify-between"
+            className="rounded-2xl p-5 mb-4 flex items-center justify-between gap-3 flex-wrap"
             style={{
               background: 'var(--admin-surface)',
               border: '1px solid var(--admin-border)',
@@ -306,6 +312,18 @@ export default async function DetalhamentoPage({
               <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: 'var(--admin-text)' }}>
                 {rows.length}
               </p>
+            </div>
+            <div className="ml-auto">
+              <ExportCSVButton
+                rows={rows.map((r) => ({
+                  date: r.date,
+                  description: r.description,
+                  amount: r.amount,
+                  origin_label: r.origin_label ?? null,
+                }))}
+                filename={`fluxo-caixa-${type}-${periodLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                signedAmount={type === 'despesas' ? '-' : ''}
+              />
             </div>
           </div>
 
@@ -344,6 +362,7 @@ export default async function DetalhamentoPage({
                     >
                       <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Data</th>
                       <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Descrição</th>
+                      <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Origem</th>
                       <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Valor</th>
                     </tr>
                   </thead>
@@ -355,17 +374,20 @@ export default async function DetalhamentoPage({
                         </td>
                         <td className="px-4 py-3" style={{ color: 'var(--admin-text)' }}>
                           {r.description}
-                          {r.invoice_id && (
-                            <>
-                              {' '}
-                              <Link
-                                href={`/admin/comandas/${r.invoice_id}`}
-                                className="text-xs font-semibold ml-1"
-                                style={{ color: 'var(--admin-accent)' }}
-                              >
-                                · ver
-                              </Link>
-                            </>
+                        </td>
+                        <td className="px-4 py-3" style={{ color: 'var(--admin-text-mute)' }}>
+                          {r.origin_label && r.origin_href ? (
+                            <Link
+                              href={r.origin_href}
+                              className="text-xs font-semibold inline-flex items-center gap-1 hover:underline"
+                              style={{ color: 'var(--admin-accent)' }}
+                            >
+                              {r.origin_label}
+                            </Link>
+                          ) : r.origin_label ? (
+                            <span className="text-xs">{r.origin_label}</span>
+                          ) : (
+                            <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>—</span>
                           )}
                         </td>
                         <td
@@ -377,7 +399,7 @@ export default async function DetalhamentoPage({
                       </tr>
                     ))}
                     <tr style={{ background: 'var(--admin-surface-hi)' }}>
-                      <td colSpan={2} className="px-4 py-3 font-bold" style={{ color: 'var(--admin-text)' }}>
+                      <td colSpan={3} className="px-4 py-3 font-bold" style={{ color: 'var(--admin-text)' }}>
                         Total
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-bold" style={{ color: tone }}>
