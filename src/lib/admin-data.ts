@@ -26,12 +26,19 @@ export const getCurrentUser = cache(async () => {
 export const getCurrentBusiness = cache(async (ownerId: string) => {
   const supabase = await createClient()
 
-  // Race em pos-cadastro/pos-pagamento: webhook ou polling triggera refresh,
-  // query Supabase pode retornar null transitoriamente (replicacao, conexao
-  // pool exaurida). Sem retry, page redireciona pra /cadastro mesmo com
-  // business EXISTINDO no DB — risco de cliente criar negocio duplicado.
-  // .maybeSingle() distingue "0 rows" (sem erro) de erro real de query.
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // Race em pos-cadastro/pos-pagamento OU pos-migrations: Supabase às vezes
+  // retorna null transitoriamente (replicação, connection pool exaurida,
+  // token refresh). Sem retry, page redireciona pra /cadastro mesmo com
+  // business EXISTINDO — causa o bug recorrente do dia 26/05 (#178).
+  //
+  // 4 tentativas com backoff: 0 · 200 · 400 · 600 ms (total max ~1.2s).
+  // .maybeSingle() distingue "0 rows" (sem erro · não retenta) de erro real.
+  const delays = [0, 200, 400, 600]
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) {
+      await new Promise((r) => setTimeout(r, delays[attempt]))
+    }
+
     const { data: business, error } = await supabase
       .from('businesses')
       .select('*')
@@ -39,13 +46,15 @@ export const getCurrentBusiness = cache(async (ownerId: string) => {
       .maybeSingle()
 
     if (business) return business
-    if (!error) return null // 0 rows confirmado, nao precisa tentar de novo
+    if (!error) return null // 0 rows confirmado · cadastro real · não retenta
 
-    if (attempt === 0) {
-      await new Promise((r) => setTimeout(r, 200))
+    // Erro transitório · loga e tenta de novo
+    if (attempt < delays.length - 1) {
+      console.warn(`[getCurrentBusiness] tentativa ${attempt + 1}/${delays.length} falhou:`, error.message)
       continue
     }
-    console.error('[getCurrentBusiness] erro persistente:', error.message)
+    // Esgotou retries · loga ALTO pra capturar em Vercel logs
+    console.error(`[getCurrentBusiness] FALHA APÓS ${delays.length} TENTATIVAS · owner_id=${ownerId} · erro=${error.message}`)
   }
   return null
 })
