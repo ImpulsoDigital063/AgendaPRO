@@ -59,7 +59,7 @@ export default function RecepcaoDesktopSidebar({ brand }: { brand: Brand }) {
 
   return (
     <aside
-      className="hidden lg:flex flex-col"
+      className="hidden md:flex flex-col"
       style={{
         position: 'fixed',
         left: 0,

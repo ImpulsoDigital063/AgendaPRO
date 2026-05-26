@@ -77,7 +77,7 @@ export default async function RecepcaoLayout({
         )}
         <InstallBanner area="profissional" />
 
-        {/* Sidebar desktop · fixa em ≥lg · hidden em mobile/tablet (volta pra tabbar) */}
+        {/* Sidebar tablet+desktop · fixa em ≥md · Letícia opera em iPad */}
         <RecepcaoDesktopSidebar
           brand={{
             business_name: business.name ?? null,
@@ -86,16 +86,16 @@ export default async function RecepcaoLayout({
           }}
         />
 
-        {/* Main area · padding-bottom pra tabbar mobile · padding-left pra sidebar desktop */}
+        {/* Main area · padding-bottom pra tabbar mobile · padding-left pra sidebar tablet+ */}
         <div
-          className="relative z-10 lg:pl-[240px]"
+          className="relative z-10 md:pl-[240px]"
           style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}
         >
           {children}
         </div>
 
-        {/* Tab bar mobile · escondida em ≥lg (sidebar substitui) */}
-        <div className="lg:hidden">
+        {/* Tab bar mobile · escondida em ≥md (sidebar substitui) */}
+        <div className="md:hidden">
           <RecepcaoBottomNav />
         </div>
       </div>

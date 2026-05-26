@@ -146,18 +146,19 @@ export default async function RecepcaoAgendaPage({
       </div>
 
       {/* ════════════════════════════════════════════════════
-          DESKTOP (≥lg) · Grade Timeline · padrão visual /admin
+          TABLET + DESKTOP (≥md · Letícia opera em iPad)
+          Grade Timeline · padrão visual /admin
           ════════════════════════════════════════════════════ */}
-      <div className="hidden lg:block relative px-6 pt-6 pb-8">
+      <div className="hidden md:block relative px-4 md:px-6 pt-6 pb-8">
         <Suspense fallback={<div className="h-96 rounded-2xl" style={{ background: 'var(--admin-surface)' }} />}>
           <GradeTimeline businessId={business.id} date={gradeDate} />
         </Suspense>
       </div>
 
       {/* ════════════════════════════════════════════════════
-          MOBILE/TABLET (<lg) · dashboard atual da recep
+          MOBILE (<md) · dashboard atual da recep
           ════════════════════════════════════════════════════ */}
-      <div className="lg:hidden relative max-w-7xl mx-auto px-4 pt-7 pb-32">
+      <div className="md:hidden relative max-w-7xl mx-auto px-4 pt-7 pb-32">
         <div className="space-y-5">
           {/* ════════════════════════════════════════════════════
               COLUNA ESQUERDA (sidebar) · mobile = topo
