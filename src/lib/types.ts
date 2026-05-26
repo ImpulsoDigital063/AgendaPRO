@@ -53,6 +53,40 @@ export type Professional = {
   is_receptionist?: boolean
   password_changed: boolean
   created_at: string
+  // v79 · cargos múltiplos (não exclusivos · Luana é owner+manager)
+  is_owner?: boolean
+  is_manager?: boolean
+  is_professional?: boolean
+  is_attendant?: boolean
+  // v79 · atribuições (independentes do cargo)
+  does_appointments?: boolean
+  sells_products?: boolean
+  sells_packages?: boolean
+  // v79 · dados pessoais
+  nickname?: string | null
+  birth_date?: string | null
+  cpf?: string | null
+  rg?: string | null
+  rg_orgao?: string | null
+  extra_info?: string | null
+  instagram?: string | null
+  // v79 · dados bancários
+  bank_pix_key?: string | null
+  bank_name?: string | null
+  bank_agency?: string | null
+  bank_account?: string | null
+  bank_digit?: string | null
+  bank_account_type?: string | null
+  bank_person_type?: string | null
+  bank_holder_name?: string | null
+  // v79 · endereço
+  address_street?: string | null
+  address_number?: string | null
+  address_complement?: string | null
+  address_neighborhood?: string | null
+  address_city?: string | null
+  address_state?: string | null
+  address_cep?: string | null
 }
 
 // Maquininhas e taxas (v49)
