@@ -64,6 +64,7 @@ export default async function RemuneracoesPage({
     { data: payments },
     { data: vouchers },
     { data: paidSales },
+    { data: salaries },
   ] = await Promise.all([
     sb
       .from('professionals')
@@ -101,10 +102,16 @@ export default async function RemuneracoesPage({
       .gte('paid_at', from.toISOString())
       .lt('paid_at', to.toISOString())
       .not('paid_at', 'is', null),
+    // Salários cadastrados no mês · v76 BLOCO 3 · inclui recep contratada
+    sb
+      .from('professional_salaries')
+      .select('professional_id, amount, paid')
+      .eq('business_id', business.id)
+      .gte('date', fromDate)
+      .lt('date', toDate),
   ])
 
-  // Filtra non-recep
-  const activeProfs = (profs ?? []).filter((p) => !p.is_receptionist)
+  // BLOCO 3 · TODOS os profs aparecem · recep (contratada) sem comissão · só salário
 
   // Comissão por venda de produto · respeita snapshot do sale_item
   // commission_type:
@@ -143,23 +150,41 @@ export default async function RemuneracoesPage({
     return total
   }
 
-  // Calcula por prof
-  const rows: ProfRow[] = activeProfs.map((p) => {
+  // Calcula por prof · inclui recep como contratada (sem comissão)
+  const rows: ProfRow[] = (profs ?? []).map((p) => {
     const pct = Number(p.default_commission_percent ?? 40)
-    const sumPaidAppts = (paidAppts ?? [])
-      .filter((a) => a.professional_id === p.id)
-      .reduce((s, a) => s + Number(a.total_price ?? 0), 0)
-    const commissionFromAppts = (sumPaidAppts * pct) / 100
-    const commissionFromSales = calcProductCommission(
-      (paidSales ?? []) as { professional_id: string | null; sale_items: SaleItemAgg[] | null }[],
-      p.id,
-      pct,
-    )
-    const valorTotal = commissionFromAppts + commissionFromSales
+    const isRecep = p.is_receptionist === true
 
-    const pago = (payments ?? [])
+    // Recep não recebe comissão (contratada) · zera serviços/produtos
+    const sumPaidAppts = isRecep
+      ? 0
+      : (paidAppts ?? [])
+          .filter((a) => a.professional_id === p.id)
+          .reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+    const commissionFromAppts = isRecep ? 0 : (sumPaidAppts * pct) / 100
+    const commissionFromSales = isRecep
+      ? 0
+      : calcProductCommission(
+          (paidSales ?? []) as { professional_id: string | null; sale_items: SaleItemAgg[] | null }[],
+          p.id,
+          pct,
+        )
+
+    // Salários cadastrados no mês (recep OU prof contratado)
+    const salariosCadastrados = (salaries ?? [])
+      .filter((sa) => sa.professional_id === p.id)
+      .reduce((s, sa) => s + Number(sa.amount ?? 0), 0)
+    const salariosJaPagos = (salaries ?? [])
+      .filter((sa) => sa.professional_id === p.id && sa.paid === true)
+      .reduce((s, sa) => s + Number(sa.amount ?? 0), 0)
+
+    // Valor Total = comissões + salário cadastrado (recep só tem salário)
+    const valorTotal = commissionFromAppts + commissionFromSales + salariosCadastrados
+
+    const pagoCommissoes = (payments ?? [])
       .filter((cp) => cp.professional_id === p.id)
       .reduce((s, cp) => s + Number(cp.paid_amount ?? 0), 0)
+    const pago = pagoCommissoes + salariosJaPagos
 
     const valesPendentes = (vouchers ?? [])
       .filter((v) => v.professional_id === p.id)
@@ -169,16 +194,21 @@ export default async function RemuneracoesPage({
       id: p.id,
       name: p.name,
       default_commission_percent: pct,
+      is_receptionist: isRecep,
       valorTotal,
       commissionFromAppts,
       commissionFromSales,
+      salarios: salariosCadastrados,
       pago,
-      pendente: valorTotal - pago,
+      pendente: Math.max(0, valorTotal - pago),
       valesPendentes,
     }
   })
 
   const totalRemuneracoes = rows.reduce((s, r) => s + r.valorTotal, 0)
+  const totalComissaoServicos = rows.reduce((s, r) => s + r.commissionFromAppts, 0)
+  const totalComissaoProdutos = rows.reduce((s, r) => s + r.commissionFromSales, 0)
+  const totalSalarios = rows.reduce((s, r) => s + r.salarios, 0)
   const totalPago = rows.reduce((s, r) => s + r.pago, 0)
   const totalValesPendentes = rows.reduce((s, r) => s + r.valesPendentes, 0)
   const pendentePagamento = totalRemuneracoes - totalPago
@@ -285,7 +315,35 @@ export default async function RemuneracoesPage({
             Resumo do mês
           </p>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
+            {/* Breakdown · Comissão (serv+prod) + Salários (contratados/recep) */}
+            {totalComissaoServicos > 0 && (
+              <div className="flex justify-between text-[12px]">
+                <span style={{ color: 'var(--admin-text-mute)' }}>Comissão serviços</span>
+                <span className="tabular-nums" style={{ color: 'var(--admin-text-2)' }}>
+                  {formatBRL(totalComissaoServicos)}
+                </span>
+              </div>
+            )}
+            {totalComissaoProdutos > 0 && (
+              <div className="flex justify-between text-[12px]">
+                <span style={{ color: 'var(--admin-text-mute)' }}>Comissão produtos</span>
+                <span className="tabular-nums" style={{ color: 'var(--admin-text-2)' }}>
+                  {formatBRL(totalComissaoProdutos)}
+                </span>
+              </div>
+            )}
+            {totalSalarios > 0 && (
+              <div className="flex justify-between text-[12px]">
+                <span style={{ color: 'var(--admin-text-mute)' }}>Salários cadastrados</span>
+                <span className="tabular-nums" style={{ color: 'var(--admin-text-2)' }}>
+                  {formatBRL(totalSalarios)}
+                </span>
+              </div>
+            )}
+            <div
+              className="flex justify-between pt-2"
+              style={{ borderTop: '1px solid var(--admin-divider)' }}
+            >
               <span style={{ color: 'var(--admin-text-mute)' }}>Total Remunerações</span>
               <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>
                 {formatBRL(totalRemuneracoes)}

@@ -9,11 +9,15 @@ export type ProfRow = {
   id: string
   name: string
   default_commission_percent: number
+  /** Se true → contratado · sem comissão · só salário cadastrado. */
+  is_receptionist: boolean
   valorTotal: number
   /** Comissão originada de serviços (appointments pagos). */
   commissionFromAppts: number
   /** Comissão originada de venda de produto (sales paid). */
   commissionFromSales: number
+  /** Salários cadastrados no mês (pagos + pendentes). */
+  salarios: number
   pago: number
   pendente: number
   valesPendentes: number
@@ -118,24 +122,47 @@ export default function RemuneracoesTable({ rows, monthIso, periodStart, periodE
                         {r.name.slice(0, 1).toUpperCase()}
                       </span>
                       <div>
-                        <p className="font-semibold" style={{ color: 'var(--admin-text)' }}>
-                          {r.name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold" style={{ color: 'var(--admin-text)' }}>
+                            {r.name}
+                          </p>
+                          {r.is_receptionist && (
+                            <span
+                              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                              style={{
+                                background: 'color-mix(in srgb, var(--admin-accent) 14%, transparent)',
+                                color: 'var(--admin-accent)',
+                                border: '1px solid color-mix(in srgb, var(--admin-accent) 30%, transparent)',
+                              }}
+                              title="Profissional contratada · sem comissão · salário fixo cadastrado"
+                            >
+                              Contratada
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
-                          Comissão {r.default_commission_percent}%
+                          {r.is_receptionist
+                            ? 'Sem comissão · cadastre salário no perfil'
+                            : `Comissão ${r.default_commission_percent}%`}
                         </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums" style={{ color: 'var(--admin-text)' }}>
                     <div className="font-semibold">{formatBRL(r.valorTotal)}</div>
-                    {/* Breakdown serviço × produto (P1/9) · só aparece se tem algum valor */}
-                    {(r.commissionFromAppts > 0 || r.commissionFromSales > 0) && (
-                      <div className="text-[10px] mt-0.5 font-normal" style={{ color: 'var(--admin-text-faded)' }}>
-                        serviços {formatBRL(r.commissionFromAppts)}
-                        {r.commissionFromSales > 0 && ` · produtos ${formatBRL(r.commissionFromSales)}`}
-                      </div>
-                    )}
+                    {/* Breakdown contextual · prof normal mostra comissão · contratada mostra só salário */}
+                    {(() => {
+                      const parts: string[] = []
+                      if (r.commissionFromAppts > 0) parts.push(`serviços ${formatBRL(r.commissionFromAppts)}`)
+                      if (r.commissionFromSales > 0) parts.push(`produtos ${formatBRL(r.commissionFromSales)}`)
+                      if (r.salarios > 0) parts.push(`salário ${formatBRL(r.salarios)}`)
+                      if (parts.length === 0) return null
+                      return (
+                        <div className="text-[10px] mt-0.5 font-normal" style={{ color: 'var(--admin-text-faded)' }}>
+                          {parts.join(' · ')}
+                        </div>
+                      )
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: r.pago > 0 ? '#059669' : 'var(--admin-text-mute)' }}>
                     {formatBRL(r.pago)}
