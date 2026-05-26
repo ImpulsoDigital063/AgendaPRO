@@ -1021,6 +1021,19 @@ function ProfCard(p: ProfCardProps) {
     })
   }
 
+  if (!prof.auth_user_id && !isOwner) {
+    actions.push({
+      label: 'Dar acesso ao painel',
+      icon: <IconKey size={15} />,
+      onClick: () => {
+        p.setInvitingId(p.invitingId === prof.id ? null : prof.id)
+        p.setInviteEmail(prof.email || '')
+        p.setInviteResult(null)
+      },
+      separatorAbove: true,
+    })
+  }
+
   if (prof.auth_user_id && !isOwner) {
     actions.push({
       label: 'Resetar senha',
@@ -1046,150 +1059,175 @@ function ProfCard(p: ProfCardProps) {
     })
   }
 
+  const isEditingNameInline = p.editingNameId === prof.id
+  const isEditingCommissionInline = p.editingCommission === prof.id
+  const isInteractingInline = isEditingNameInline || isEditingCommissionInline || p.invitingId === prof.id
+  const hasInviteFeedback = !!p.inviteResult && p.inviteResult.profId === prof.id
+
   return (
     <div
-      className="admin-card-deep overflow-hidden"
+      className="admin-card overflow-hidden transition-colors"
       style={!prof.active ? { opacity: 0.7 } : undefined}
     >
-      <div className="px-4 py-3.5 space-y-3">
-        {/* Linha 1: avatar + nome + menu */}
-        <div className="flex items-start gap-3">
-          {/* Avatar */}
-          <div className="relative flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => p.fileInputs.current[prof.id]?.click()}
-              disabled={isUploading}
-              className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-base font-bold transition-all disabled:opacity-50 group"
-              style={
-                prof.active
-                  ? {
-                      background: prof.photo_url
-                        ? 'transparent'
-                        : 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
-                      color: '#FFFFFF',
-                      border: '2px solid color-mix(in srgb, var(--admin-accent) 35%, transparent)',
-                      boxShadow:
-                        '0 6px 16px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
-                    }
-                  : {
-                      background: 'var(--admin-surface-hover)',
-                      color: 'var(--admin-text-mute)',
-                      border: '2px solid var(--admin-border)',
-                    }
-              }
-              title="Trocar foto"
+      {/* Row principal · click no row (fora do menu/input inline) abre drawer.
+          Não é <button> porque conteúdo tem inputs/buttons aninhados (inválido HTML). */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          if (isInteractingInline) return
+          if ((e.target as HTMLElement).closest('[data-no-drawer]')) return
+          p.openDetails(prof)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !isInteractingInline) {
+            p.openDetails(prof)
+          }
+        }}
+        className="w-full px-4 py-3 flex items-center gap-3 text-left transition-colors hover:bg-[var(--admin-surface-hover)] cursor-pointer"
+        aria-label={`Abrir cadastro de ${prof.name}`}
+      >
+        {/* Avatar pequeno (36px) — click separado pra upload */}
+        <span
+          data-no-drawer
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation()
+            p.fileInputs.current[prof.id]?.click()
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              p.fileInputs.current[prof.id]?.click()
+            }
+          }}
+          className="relative w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold flex-shrink-0 cursor-pointer"
+          style={
+            prof.active
+              ? {
+                  background: prof.photo_url
+                    ? 'transparent'
+                    : 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+                  color: '#FFFFFF',
+                }
+              : {
+                  background: 'var(--admin-surface-hover)',
+                  color: 'var(--admin-text-mute)',
+                }
+          }
+          title="Trocar foto"
+        >
+          {prof.photo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={prof.photo_url} alt={prof.name} className="w-full h-full object-cover" />
+          ) : (
+            prof.name.charAt(0).toUpperCase()
+          )}
+          {isUploading && (
+            <span
+              className="absolute inset-0 rounded-full flex items-center justify-center"
+              style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10 }}
             >
-              {prof.photo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={prof.photo_url} alt={prof.name} className="w-full h-full object-cover" />
-              ) : (
-                prof.name.charAt(0).toUpperCase()
-              )}
-              {isUploading && (
-                <span
-                  className="absolute inset-0 rounded-full flex items-center justify-center"
-                  style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10 }}
-                >
-                  ...
+              ...
                 </span>
               )}
-            </button>
-            <input
-              ref={(el) => {
-                p.fileInputs.current[prof.id] = el
-              }}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) p.handleUploadPhoto(prof, file)
-                e.target.value = ''
-              }}
-            />
-          </div>
+        </span>
+        <input
+          ref={(el) => {
+            p.fileInputs.current[prof.id] = el
+          }}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) p.handleUploadPhoto(prof, file)
+            e.target.value = ''
+          }}
+        />
 
-          {/* Nome + badges */}
-          <div className="flex-1 min-w-0">
-            {p.editingNameId === prof.id ? (
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  value={p.nameValue}
-                  onChange={(e) => p.setNameValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') p.handleSaveName(prof)
-                    if (e.key === 'Escape') p.setEditingNameId(null)
-                  }}
-                  autoFocus
-                  className="admin-input flex-1 px-2.5 py-1.5 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => p.handleSaveName(prof)}
-                  disabled={isLoading || !p.nameValue.trim()}
-                  className="px-2.5 py-1.5 rounded-md text-xs font-bold disabled:opacity-40"
-                  style={{ background: 'var(--admin-success)', color: '#fff' }}
-                  aria-label="Salvar nome"
-                >
-                  <IconCheck size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => p.setEditingNameId(null)}
-                  className="px-2 py-1.5 rounded-md text-xs"
+        {/* Nome + email + chips de status (Salão99 row layout) */}
+        <div className="flex-1 min-w-0">
+          {isEditingNameInline ? (
+            <div data-no-drawer onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={p.nameValue}
+                onChange={(e) => p.setNameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') p.handleSaveName(prof)
+                  if (e.key === 'Escape') p.setEditingNameId(null)
+                }}
+                autoFocus
+                className="admin-input flex-1 px-2.5 py-1.5 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => p.handleSaveName(prof)}
+                disabled={isLoading || !p.nameValue.trim()}
+                className="px-2.5 py-1.5 rounded-md text-xs font-bold disabled:opacity-40"
+                style={{ background: 'var(--admin-success)', color: '#fff' }}
+                aria-label="Salvar nome"
+              >
+                <IconCheck size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => p.setEditingNameId(null)}
+                className="px-2 py-1.5 rounded-md text-xs"
+                style={{ color: 'var(--admin-text-mute)' }}
+                aria-label="Cancelar"
+              >
+                <IconClose size={14} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <p
+                className="font-semibold text-sm truncate"
+                style={{ color: prof.active ? 'var(--admin-text)' : 'var(--admin-text-mute)' }}
+              >
+                {prof.name}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span
+                  className="text-xs truncate"
                   style={{ color: 'var(--admin-text-mute)' }}
-                  aria-label="Cancelar"
                 >
-                  <IconClose size={14} />
-                </button>
+                  {prof.email ?? 'Sem email cadastrado'}
+                </span>
+                {isOwner && (
+                  <Pill
+                    label="Dono"
+                    bg="color-mix(in srgb, var(--brand-primary, #3B82F6) 18%, transparent)"
+                    color="var(--brand-primary, #3B82F6)"
+                  />
+                )}
+                {prof.is_receptionist && (
+                  <Pill
+                    label="Recepção"
+                    bg="color-mix(in srgb, var(--admin-accent) 14%, transparent)"
+                    color="var(--admin-accent)"
+                  />
+                )}
+                {!prof.active && (
+                  <Pill
+                    label="Desativado"
+                    bg="color-mix(in srgb, var(--admin-warn) 16%, transparent)"
+                    color="var(--admin-warn)"
+                  />
+                )}
+                {!isOwner && !prof.auth_user_id && (
+                  <Pill
+                    label="Sem acesso"
+                    bg="color-mix(in srgb, var(--admin-text-mute) 14%, transparent)"
+                    color="var(--admin-text-mute)"
+                  />
+                )}
               </div>
-            ) : (
-              <>
-                <p
-                  className="font-semibold text-sm truncate"
-                  style={{ color: prof.active ? 'var(--admin-text)' : 'var(--admin-text-mute)' }}
-                >
-                  {prof.name}
-                </p>
-                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                  {isOwner && (
-                    <Pill
-                      label="Você (dono)"
-                      bg="color-mix(in srgb, var(--brand-primary, #3B82F6) 18%, transparent)"
-                      color="var(--brand-primary, #3B82F6)"
-                    />
-                  )}
-                  {!prof.active && (
-                    <Pill
-                      label="Desativado"
-                      bg="color-mix(in srgb, var(--admin-warn) 16%, transparent)"
-                      color="var(--admin-warn)"
-                    />
-                  )}
-                  {isCommissioned && !isOwner && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        p.setCommissionValue(String(prof.commission_percentage ?? 0))
-                        p.setEditingCommission(prof.id)
-                      }}
-                      className="text-[11px] font-semibold px-2 py-0.5 rounded-full transition-opacity hover:opacity-80"
-                      style={{
-                        background: 'color-mix(in srgb, var(--admin-accent) 14%, transparent)',
-                        color: 'var(--admin-accent)',
-                        border: '1px solid color-mix(in srgb, var(--admin-accent) 28%, transparent)',
-                      }}
-                    >
-                      {prof.commission_percentage > 0
-                        ? `${prof.commission_percentage}% comissão`
-                        : 'Definir comissão'}
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
+            </>
+          )}
 
             {p.editingCommission === prof.id && (
               <div className="flex items-center gap-1.5 mt-2">
@@ -1225,81 +1263,11 @@ function ProfCard(p: ProfCardProps) {
                 </button>
               </div>
             )}
-          </div>
-
-          {/* Menu */}
-          {actions.length > 0 && <MoreActionsMenu actions={actions} />}
         </div>
-
-        {/* Linha 2: tipo (segmented control full width) — só pra não-owner */}
-        {!isOwner && (
-          <div
-            className="grid grid-cols-2 rounded-lg overflow-hidden"
-            style={{ border: '1px solid var(--admin-border)' }}
-          >
-            {(
-              [
-                { value: 'commissioned' as const, label: 'Comissionado' },
-                { value: 'employed' as const, label: 'Contratado' },
-              ]
-            ).map((opt) => {
-              const current = prof.employment_type ?? 'commissioned'
-              const isActive = current === opt.value
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => !isActive && p.handleChangeType(prof, opt.value)}
-                  disabled={isLoading}
-                  className="px-2 py-2 text-xs font-semibold transition-colors disabled:opacity-50"
-                  style={
-                    isActive
-                      ? { background: 'var(--admin-accent)', color: '#fff' }
-                      : { background: 'transparent', color: 'var(--admin-text-mute)' }
-                  }
-                >
-                  {opt.label}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Linha 3: acesso */}
-        {!isOwner && (
-          <div className="flex items-center gap-2">
-            {prof.auth_user_id ? (
-              <span
-                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 flex-1 justify-center"
-                style={{
-                  background: 'color-mix(in srgb, var(--admin-success) 12%, transparent)',
-                  color: 'var(--admin-success)',
-                  border: '1px solid color-mix(in srgb, var(--admin-success) 25%, transparent)',
-                }}
-              >
-                <IconCheck size={12} />
-                Tem acesso ao painel
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  p.setInvitingId(p.invitingId === prof.id ? null : prof.id)
-                  p.setInviteEmail(prof.email || '')
-                  p.setInviteResult(null)
-                }}
-                className="text-xs px-3 py-2 rounded-lg font-semibold transition-colors flex-1"
-                style={{
-                  background: 'var(--admin-accent-bg)',
-                  color: 'var(--admin-accent)',
-                  border: '1px solid var(--admin-accent-border)',
-                }}
-              >
-                Dar acesso ao painel
-              </button>
-            )}
-          </div>
-        )}
+        {/* Menu 3-dots · data-no-drawer evita disparar openDetails ao clicar */}
+        <span data-no-drawer onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+          {actions.length > 0 && <MoreActionsMenu actions={actions} />}
+        </span>
       </div>
 
       {/* Painel de convite */}
