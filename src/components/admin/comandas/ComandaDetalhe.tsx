@@ -3,17 +3,10 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar, IconGift, IconClose } from '@/components/ui/Icon'
+import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar } from '@/components/ui/Icon'
 import AdicionarServicoComandaModal from './AdicionarServicoComandaModal'
 import SplitPaymentModal from './SplitPaymentModal'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
-
-export type RewardOption = {
-  id: string
-  name: string
-  description: string | null
-  points_required: number
-}
 
 export type InvoiceFull = {
   id: string
@@ -86,7 +79,7 @@ function fmtDateTime(iso: string) {
 
 export default function ComandaDetalhe({
   businessId, businessName, invoice, availableCredit = 0,
-  loyaltyEnabled = false, customerPoints = 0, rewards = [],
+  loyaltyEnabled = false, customerPoints = 0,
 }: {
   businessId: string
   businessName: string
@@ -94,7 +87,6 @@ export default function ComandaDetalhe({
   availableCredit?: number
   loyaltyEnabled?: boolean
   customerPoints?: number
-  rewards?: RewardOption[]
 }) {
   const router = useRouter()
   const [acting, setActing] = useState<null | 'reopen' | 'cancel'>(null)
@@ -103,8 +95,6 @@ export default function ComandaDetalhe({
   const [paying, setPaying] = useState(false)
   const [addServiceOpen, setAddServiceOpen] = useState(false)
   const [courtesyLoading, setCourtesyLoading] = useState(false)
-  const [rewardModalOpen, setRewardModalOpen] = useState(false)
-  const [redeeming, setRedeeming] = useState(false)
   // Confirm modal genérico · troca window.confirm nativo (feio) por modal estilizado
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean
@@ -211,24 +201,6 @@ export default function ComandaDetalhe({
     })
   }
 
-  async function doRedeemReward(rewardId: string) {
-    setRedeeming(true)
-    setError(null)
-    const r = await fetch(`/api/admin/invoices/${invoice.id}/redeem-reward`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ reward_id: rewardId }),
-    })
-    setRedeeming(false)
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}))
-      setError(d.error ?? 'Erro ao resgatar recompensa')
-      return
-    }
-    setRewardModalOpen(false)
-    router.refresh()
-  }
-
   async function doRemoveItem(itemId: string) {
     setRemovingItemId(itemId)
     setError(null)
@@ -299,24 +271,6 @@ export default function ComandaDetalhe({
               }}
             >
               ♥ {courtesyLoading ? '...' : 'Cortesia'}
-            </button>
-          )}
-          {/* Trocar recompensa · só se fidelidade ON + cliente vinculado + comanda aberta */}
-          {canReceivePayment && loyaltyEnabled && invoice.customer && (
-            <button
-              type="button"
-              disabled={redeeming || rewards.length === 0}
-              onClick={() => setRewardModalOpen(true)}
-              title={rewards.length === 0 ? 'Nenhuma recompensa cadastrada · vá em Configurações → Fidelidade' : 'Trocar pontos por recompensa'}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(180deg, #F59E0B 0%, #B45309 100%)',
-                color: '#fff',
-                borderTop: '1px solid rgba(255,255,255,0.25)',
-                boxShadow: '0 6px 14px -4px rgba(180,83,9,0.45)',
-              }}
-            >
-              <IconStar size={11} /> {redeeming ? '...' : 'Trocar pontos'}
             </button>
           )}
           <button
@@ -621,216 +575,10 @@ export default function ComandaDetalhe({
         />
       )}
 
-      {rewardModalOpen && (
-        <RedeemRewardModal
-          customerName={customerName}
-          customerPoints={customerPoints}
-          rewards={rewards}
-          loading={redeeming}
-          onClose={() => setRewardModalOpen(false)}
-          onConfirm={(rewardId) => doRedeemReward(rewardId)}
-        />
-      )}
     </div>
   )
 }
 
-function RedeemRewardModal({
-  customerName, customerPoints, rewards, loading, onClose, onConfirm,
-}: {
-  customerName: string
-  customerPoints: number
-  rewards: RewardOption[]
-  loading: boolean
-  onClose: () => void
-  onConfirm: (rewardId: string) => void
-}) {
-  const ordered = [...rewards].sort((a, b) => a.points_required - b.points_required)
-  const affordable = ordered.filter((r) => customerPoints >= r.points_required)
-  const tooExpensive = ordered.filter((r) => customerPoints < r.points_required)
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-[320] flex items-end sm:items-center justify-center p-0 sm:p-4"
-      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
-        style={{
-          background: 'var(--admin-popover-bg, #FFFFFF)',
-          border: '1px solid var(--admin-popover-border, #E2E8F0)',
-          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
-          maxHeight: '92vh',
-        }}
-      >
-        <header
-          className="px-5 pt-5 pb-3 flex items-start justify-between gap-3 flex-shrink-0"
-          style={{ borderBottom: '1px solid var(--admin-divider)' }}
-        >
-          <div className="min-w-0">
-            <p
-              className="text-[11px] font-bold uppercase tracking-widest mb-0.5"
-              style={{ color: 'var(--admin-text-faded)' }}
-            >
-              Trocar pontos · {customerName}
-            </p>
-            <p
-              className="text-2xl font-bold tabular-nums inline-flex items-center gap-1.5"
-              style={{ color: '#B45309' }}
-            >
-              <IconStar size={20} /> {customerPoints.toLocaleString('pt-BR')} pts disponíveis
-            </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-              A recompensa entra como item da comanda com desconto do valor total.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--admin-input-bg)] disabled:opacity-50"
-            style={{ color: 'var(--admin-text-mute)' }}
-            aria-label="Fechar"
-          >
-            <IconClose size={16} />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {ordered.length === 0 && (
-            <div
-              className="rounded-xl p-4 text-sm text-center"
-              style={{
-                background: 'var(--admin-surface-hi)',
-                border: '1px dashed var(--admin-border)',
-                color: 'var(--admin-text-mute)',
-              }}
-            >
-              Nenhuma recompensa cadastrada ainda. Vá em <strong>Configurações → Fidelidade</strong> pra criar.
-            </div>
-          )}
-
-          {affordable.length > 0 && (
-            <section>
-              <p
-                className="text-[10px] font-bold uppercase tracking-widest mb-2"
-                style={{ color: 'var(--admin-text-faded)' }}
-              >
-                Pode trocar agora · {affordable.length}
-              </p>
-              <div className="space-y-2">
-                {affordable.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => onConfirm(r.id)}
-                    disabled={loading}
-                    className="w-full text-left rounded-xl p-3 flex items-start gap-3 transition-all hover:translate-y-[-1px] disabled:opacity-50"
-                    style={{
-                      background: 'color-mix(in srgb, #F59E0B 10%, var(--admin-surface-hi))',
-                      border: '1px solid color-mix(in srgb, #F59E0B 32%, transparent)',
-                    }}
-                  >
-                    <span
-                      className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
-                      style={{
-                        background: 'color-mix(in srgb, #F59E0B 24%, transparent)',
-                        color: '#B45309',
-                        border: '1px solid color-mix(in srgb, #F59E0B 40%, transparent)',
-                      }}
-                    >
-                      <IconGift size={16} />
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
-                        {r.name}
-                      </p>
-                      {r.description && (
-                        <p className="text-[12px] mt-0.5 leading-snug" style={{ color: 'var(--admin-text-mute)' }}>
-                          {r.description}
-                        </p>
-                      )}
-                      <p
-                        className="text-[11px] font-bold mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-                        style={{
-                          background: 'rgba(255,255,255,0.45)',
-                          color: '#B45309',
-                        }}
-                      >
-                        <IconStar size={10} /> {r.points_required.toLocaleString('pt-BR')} pts
-                      </p>
-                    </div>
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full self-start flex-shrink-0"
-                      style={{
-                        background: 'var(--admin-success)',
-                        color: '#fff',
-                      }}
-                    >
-                      Trocar
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {tooExpensive.length > 0 && (
-            <section>
-              <p
-                className="text-[10px] font-bold uppercase tracking-widest mb-2"
-                style={{ color: 'var(--admin-text-faded)' }}
-              >
-                Faltam pontos
-              </p>
-              <div className="space-y-2 opacity-70">
-                {tooExpensive.map((r) => {
-                  const faltam = r.points_required - customerPoints
-                  return (
-                    <div
-                      key={r.id}
-                      className="w-full rounded-xl p-3 flex items-start gap-3"
-                      style={{
-                        background: 'var(--admin-input-bg)',
-                        border: '1px solid var(--admin-border)',
-                      }}
-                    >
-                      <span
-                        className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
-                        style={{
-                          background: 'var(--admin-surface)',
-                          color: 'var(--admin-text-faded)',
-                          border: '1px solid var(--admin-border)',
-                        }}
-                      >
-                        <IconGift size={16} />
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold" style={{ color: 'var(--admin-text-mute)' }}>
-                          {r.name}
-                        </p>
-                        <p
-                          className="text-[11px] font-bold mt-1 inline-flex items-center gap-1"
-                          style={{ color: 'var(--admin-text-faded)' }}
-                        >
-                          <IconStar size={10} /> {r.points_required.toLocaleString('pt-BR')} pts · faltam {faltam.toLocaleString('pt-BR')}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (

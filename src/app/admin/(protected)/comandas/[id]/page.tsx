@@ -63,32 +63,18 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
     availableCredit = (credits ?? []).reduce((s, c) => s + Number(c.amount ?? 0), 0)
   }
 
-  // Fidelidade: saldo de pontos + recompensas ativas (v72)
-  // Só carrega se feature está ligada · evita query desnecessária
+  // Fidelidade: saldo de pontos pra exibição (v72)
+  // λ.regra-cravada-25/05 · pontos NUNCA misturam com pagamento. Saldo é
+  // só visualização — resgate de recompensa NÃO acontece dentro da comanda.
   let customerPoints = 0
-  let rewards: { id: string; name: string; description: string | null; points_required: number }[] = []
   const loyaltyEnabled = business.loyalty_enabled === true
-  if (loyaltyEnabled) {
-    if (invoice.customer_id) {
-      const { data: c } = await admin
-        .from('customers')
-        .select('total_points')
-        .eq('id', invoice.customer_id)
-        .maybeSingle()
-      customerPoints = Number(c?.total_points ?? 0)
-    }
-    const { data: rws } = await admin
-      .from('rewards')
-      .select('id, name, description, points_required')
-      .eq('business_id', business.id)
-      .eq('active', true)
-      .order('points_required', { ascending: true })
-    rewards = (rws ?? []).map((r) => ({
-      id: r.id as string,
-      name: r.name as string,
-      description: (r.description as string | null) ?? null,
-      points_required: Number(r.points_required ?? 0),
-    }))
+  if (loyaltyEnabled && invoice.customer_id) {
+    const { data: c } = await admin
+      .from('customers')
+      .select('total_points')
+      .eq('id', invoice.customer_id)
+      .maybeSingle()
+    customerPoints = Number(c?.total_points ?? 0)
   }
 
   const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer
@@ -138,7 +124,6 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
       availableCredit={availableCredit}
       loyaltyEnabled={loyaltyEnabled}
       customerPoints={customerPoints}
-      rewards={rewards}
     />
   )
 }
