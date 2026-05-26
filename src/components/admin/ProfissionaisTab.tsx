@@ -26,9 +26,11 @@ type Props = {
    * Plano da subscription — define limite de profissionais.
    *   solo:    2 (admin/dono + 1 colaborador)
    *   equipe:  5 (incluindo dono)
-   * Backend tem trigger v30 que valida no INSERT (defesa em profundidade).
+   * Backend tem trigger v30/v47/v78 que valida no INSERT (defesa em profundidade).
    */
   subscriptionPlan: 'solo' | 'equipe'
+  /** v78 · slots extras vendidos pra esse business · soma ao limite do plano */
+  extraProfessionalSlots?: number
 }
 
 const PLAN_LIMITS: Record<'solo' | 'equipe', number> = {
@@ -43,6 +45,7 @@ export default function ProfissionaisTab({
   professionals,
   onChange,
   subscriptionPlan,
+  extraProfessionalSlots = 0,
 }: Props) {
   const [filter, setFilter] = useState<Filter>('active')
   const [search, setSearch] = useState('')
@@ -54,7 +57,9 @@ export default function ProfissionaisTab({
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
 
-  const maxProfs = PLAN_LIMITS[subscriptionPlan]
+  // v78 · slots extras somam ao limite do plano (default 0 não muda nada)
+  const planBaseLimit = PLAN_LIMITS[subscriptionPlan]
+  const maxProfs = planBaseLimit + Math.max(0, extraProfessionalSlots)
   // Limite de PROFISSIONAIS é só sobre quem atende — recep não conta (v47)
   const currentCount = professionals.filter((p) => !p.is_receptionist).length
   const remaining = Math.max(0, maxProfs - currentCount)
@@ -124,8 +129,11 @@ export default function ProfissionaisTab({
     if (!newName.trim()) return
     // Limite de profissionais só importa se a pessoa atende (recep não conta)
     if (!newIsReceptionist && limitReached) {
+      const breakdown = extraProfessionalSlots > 0
+        ? ` (${planBaseLimit} do plano + ${extraProfessionalSlots} extra${extraProfessionalSlots > 1 ? 's' : ''})`
+        : ''
       setAddError(
-        `Plano ${subscriptionPlan === 'solo' ? 'Solo' : 'Equipe'} permite no máximo ${maxProfs} profissionais. Pra adicionar mais, faça upgrade entrando em contato com a Impulso.`
+        `Plano ${subscriptionPlan === 'solo' ? 'Solo' : 'Equipe'} permite no máximo ${maxProfs} profissionais${breakdown}. Pra adicionar mais, fale com a Impulso.`
       )
       return
     }
@@ -602,7 +610,9 @@ export default function ProfissionaisTab({
               <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
                 {subscriptionPlan === 'solo'
                   ? `Plano Solo permite até ${maxProfs} profissionais (você + 1 colaborador). Pra adicionar mais, faça upgrade pro plano Equipe (até 5 profissionais).`
-                  : `Plano Equipe permite até ${maxProfs} profissionais. Se precisa de mais, fale com a Impulso pra ver opções.`}
+                  : extraProfessionalSlots > 0
+                    ? `Plano Equipe permite até ${maxProfs} profissionais (${planBaseLimit} do plano + ${extraProfessionalSlots} extra${extraProfessionalSlots > 1 ? 's' : ''}). Pra mais, fale com a Impulso.`
+                    : `Plano Equipe permite até ${maxProfs} profissionais. Se precisa de mais, fale com a Impulso pra ver opções.`}
               </p>
             </div>
           </div>

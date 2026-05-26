@@ -28,12 +28,14 @@ export default async function ConfiguracoesPage() {
     supabase.from('services').select('*').eq('business_id', business.id).order('name'),
     supabase.from('rewards').select('*').eq('business_id', business.id).order('points_required'),
     supabase.from('customers').select('*').eq('business_id', business.id).order('total_points', { ascending: false }),
-    supabase.from('subscriptions').select('plan').eq('business_id', business.id).single(),
+    supabase.from('subscriptions').select('plan, extra_professional_slots').eq('business_id', business.id).single(),
   ])
 
   // Plano determina limite de profissionais (solo=2, equipe=5).
   // Default 'solo' se subscription estiver corrompida — defesa segura.
   const subscriptionPlan = (subscription?.plan === 'equipe' ? 'equipe' : 'solo') as 'solo' | 'equipe'
+  // v78 · slots extras vendidos pra negócios que precisam de mais profs além do plano
+  const extraProfessionalSlots = Math.max(0, Number(subscription?.extra_professional_slots ?? 0))
 
   const professionalIds = (professionals || []).map((p: { id: string }) => p.id)
   const { data: allWorkingHours } = professionalIds.length > 0
@@ -75,6 +77,7 @@ export default async function ConfiguracoesPage() {
             initialRewards={rewards || []}
             initialCustomers={customers || []}
             subscriptionPlan={subscriptionPlan}
+            extraProfessionalSlots={extraProfessionalSlots}
           />
         </div>
       </div>

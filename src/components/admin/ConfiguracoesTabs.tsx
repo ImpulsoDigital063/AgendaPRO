@@ -34,6 +34,8 @@ type Props = {
   initialRewards: Reward[]
   initialCustomers: Customer[]
   subscriptionPlan: 'solo' | 'equipe'
+  /** v78 · slots extras vendidos · soma ao limite do plano (default 0) */
+  extraProfessionalSlots?: number
 }
 
 export default function ConfiguracoesTabs({
@@ -44,6 +46,7 @@ export default function ConfiguracoesTabs({
   initialRewards,
   initialCustomers,
   subscriptionPlan,
+  extraProfessionalSlots = 0,
 }: Props) {
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
@@ -131,6 +134,7 @@ export default function ConfiguracoesTabs({
           professionals={professionals}
           onChange={setProfessionals}
           subscriptionPlan={subscriptionPlan}
+          extraProfessionalSlots={extraProfessionalSlots}
         />
       )}
 
