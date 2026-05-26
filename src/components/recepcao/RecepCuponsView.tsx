@@ -539,7 +539,7 @@ function PromocoesSection({
                 onClick={() => onCopy(p.share_url, p.id)}
                 disabled={isDeleting}
                 title="Copiar link"
-                className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform active:scale-95"
+                className="w-11 h-11 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform active:scale-95 flex-shrink-0"
                 style={{
                   background: isCopied ? 'rgba(16,185,129,0.15)' : 'var(--admin-surface-hi)',
                   color: isCopied ? 'var(--admin-success)' : 'var(--admin-text-mute)',
@@ -553,7 +553,7 @@ function PromocoesSection({
                 onClick={() => setLinkOpenFor(linkOpen ? null : p.id)}
                 title={linkOpen ? 'Esconder link' : 'Ver link'}
                 disabled={isDeleting}
-                className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform active:scale-95"
+                className="w-11 h-11 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform active:scale-95 flex-shrink-0"
                 style={{
                   background: linkOpen ? 'var(--admin-accent-bg)' : 'var(--admin-surface-hi)',
                   color: linkOpen ? 'var(--admin-accent)' : 'var(--admin-text-mute)',
@@ -568,7 +568,7 @@ function PromocoesSection({
                   onClick={() => onDelete(p)}
                   disabled={isDeleting}
                   title="Excluir promoção"
-                  className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform active:scale-95"
+                  className="w-11 h-11 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform active:scale-95 flex-shrink-0"
                   style={{
                     background: 'transparent',
                     color: '#DC2626',
