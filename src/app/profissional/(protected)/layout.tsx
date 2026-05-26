@@ -20,6 +20,20 @@ export default async function ProfissionalLayout({
     redirect('/profissional/login')
   }
 
+  // v177 · Owner do business sempre vai pra /admin (Salão99 pattern)
+  // Caso Luana Palace: tem espelho em professionals (pra aparecer na lista)
+  // mas o lar dela é /admin. Esse check roda ANTES do select de prof pra
+  // pegar até quem tem auth_user_id linkado a espelho de owner.
+  const { data: ownedBusiness } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+
+  if (ownedBusiness) {
+    redirect('/admin')
+  }
+
   // Verifica se e um profissional com auth_user_id · puxa brand do business
   const { data: professional } = await supabase
     .from('professionals')
