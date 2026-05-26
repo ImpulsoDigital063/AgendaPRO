@@ -1,8 +1,11 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import ThemeToggle from './ThemeToggle'
-import LogoutButton from '@/components/LogoutButton'
 import { IconArrowLeft } from '@/components/ui/Icon'
+
+// Removidos ThemeToggle (lanterna) e LogoutButton (sair) cravados Eduardo 26/05.
+// Ambos já existem no sidebar/menu principal · duplicar no header de cada subpage
+// poluía a interface (igual à observação no Salão99). Se precisar voltar pra
+// alguma página específica, passa via `right` prop.
 
 export default function SubPageHeader({
   title,
@@ -48,11 +51,11 @@ export default function SubPageHeader({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {right}
-          <ThemeToggle compact />
-          <LogoutButton />
-        </div>
+        {right && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {right}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -263,7 +263,25 @@ export default async function VendasPage({
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
       <div className="relative">
-        <SubPageHeader title="Vendas" subtitle={business.name} back="/admin/financeiro" />
+        <SubPageHeader
+          title="Vendas"
+          subtitle={business.name}
+          back="/admin/financeiro"
+          right={
+            <a
+              href="/admin/produtos/vender"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:-translate-y-px"
+              style={{
+                background: 'linear-gradient(180deg, var(--brand-primary, #3B82F6) 0%, color-mix(in srgb, var(--brand-primary, #3B82F6) 70%, black) 100%)',
+                color: '#fff',
+                borderTop: '1px solid rgba(255,255,255,0.25)',
+                boxShadow: '0 4px 12px -4px color-mix(in srgb, var(--brand-primary, #3B82F6) 50%, transparent)',
+              }}
+            >
+              + Nova venda
+            </a>
+          }
+        />
         <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-7xl lg:px-8">
           <VendasFilters professionals={professionals ?? []} />
 
