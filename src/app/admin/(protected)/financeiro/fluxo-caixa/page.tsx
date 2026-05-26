@@ -5,6 +5,13 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import FluxoCaixaTable, { type CashMonth, type MonthCol } from '@/components/admin/financeiro/FluxoCaixaTable'
 import FluxoCaixaViewSelector from '@/components/admin/financeiro/FluxoCaixaViewSelector'
 
+// Source of truth do breakdown:
+// - invoice_payments cobre split + comanda (cada linha = 1 método com amount próprio)
+// - appointments DIRETOS (invoice_item_id IS NULL) cobrem pagamento direto da timeline
+// - sales DIRETAS (invoice_id IS NULL) cobrem venda avulsa de produto
+// Antes a query usava só appointments.payment_method, que perdia o cartão em split
+// (a rota /invoices/[id]/pay propaga só o MAIOR método pro appointment).
+
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Dinheiro',
   pix: 'Pix',
@@ -34,13 +41,6 @@ function isViewKind(v: string | undefined | null): v is ViewKind {
   return v === 'daily' || v === 'weekly' || v === 'monthly' || v === 'yearly'
 }
 
-/**
- * Constrói N colunas de período conforme a view escolhida.
- * - daily:    últimos 14 dias (1 coluna por dia)
- * - weekly:   últimas 12 semanas (1 coluna por semana, segunda como início)
- * - monthly:  últimos 4 meses
- * - yearly:   últimos 4 anos
- */
 function buildColumns(view: ViewKind, now: Date): MonthCol[] {
   const cols: MonthCol[] = []
   if (view === 'daily') {
@@ -100,7 +100,6 @@ function buildColumns(view: ViewKind, now: Date): MonthCol[] {
   return cols
 }
 
-/** Calcula o range total (início inclusivo · fim exclusivo) coberto pelas colunas. */
 function buildRange(view: ViewKind, cols: MonthCol[], now: Date): { from: Date; to: Date } {
   if (view === 'daily') {
     const first = new Date(cols[0].year, cols[0].month0, parseInt(cols[0].key.split('-')[2]!, 10))
@@ -127,12 +126,10 @@ function buildRange(view: ViewKind, cols: MonthCol[], now: Date): { from: Date; 
   return { from, to }
 }
 
-/** Determina a key (do MonthCol) pra uma data segundo a view atual. */
 function keyForDate(view: ViewKind, d: Date, cols: MonthCol[]): string | null {
   if (view === 'daily') return `d:${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
   if (view === 'monthly') return `m:${d.getFullYear()}-${d.getMonth()}`
   if (view === 'yearly') return `y:${d.getFullYear()}`
-  // weekly · encontra a semana que contém d
   for (const c of cols) {
     const parts = c.key.split(':')[1]!.split('-').map(Number)
     const start = new Date(parts[0], parts[1], parts[2])
@@ -141,6 +138,16 @@ function keyForDate(view: ViewKind, d: Date, cols: MonthCol[]): string | null {
     if (d >= start && d < end) return c.key
   }
   return null
+}
+
+function resolveMethodKey(raw: string | null, cardType: string | null): string {
+  const method = raw ?? 'other'
+  if (method === 'card') {
+    if (cardType === 'credit') return 'credit_card'
+    if (cardType === 'debit') return 'debit_card'
+    return 'card'
+  }
+  return method
 }
 
 export default async function FluxoCaixaPage({
@@ -171,17 +178,38 @@ export default async function FluxoCaixaPage({
   const fullRangeToDate = range.to.toISOString().slice(0, 10)
 
   const [
-    { data: paidAppts },
+    { data: invPayments },
+    { data: apptsDirect },
+    { data: salesDirect },
     { data: expensesData },
-    { data: priorR },
-    { data: priorD },
-    { data: paidSales },
-    { data: priorRSales },
+    // priors (totais só · pra saldo inicial)
+    { data: priorInvPay },
+    { data: priorApptsDirect },
+    { data: priorSalesDirect },
+    { data: priorExpenses },
   ] = await Promise.all([
+    sb
+      .from('invoice_payments')
+      .select('payment_method, card_type, amount, fee_percent, paid_at, invoices!inner(business_id)')
+      .eq('invoices.business_id', business.id)
+      .gte('paid_at', range.from.toISOString())
+      .lt('paid_at', range.to.toISOString()),
     sb
       .from('appointments')
       .select('paid_at, total_price, payment_method, payment_card_type, payment_fee_percent')
       .eq('business_id', business.id)
+      .is('invoice_item_id', null)
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('paid_at', range.from.toISOString())
+      .lt('paid_at', range.to.toISOString())
+      .not('paid_at', 'is', null),
+    sb
+      .from('sales')
+      .select('paid_at, total, payment_method')
+      .eq('business_id', business.id)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .is('invoice_id', null)
       .not('payment_method', 'in', '(courtesy,credit)')
       .gte('paid_at', range.from.toISOString())
       .lt('paid_at', range.to.toISOString())
@@ -192,10 +220,27 @@ export default async function FluxoCaixaPage({
       .eq('business_id', business.id)
       .gte('occurred_at', fullRangeFromDate)
       .lt('occurred_at', fullRangeToDate),
+    // priors
+    sb
+      .from('invoice_payments')
+      .select('amount, payment_method, invoices!inner(business_id)')
+      .eq('invoices.business_id', business.id)
+      .lt('paid_at', startOfPeriod),
     sb
       .from('appointments')
       .select('total_price')
       .eq('business_id', business.id)
+      .is('invoice_item_id', null)
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .lt('paid_at', startOfPeriod)
+      .not('paid_at', 'is', null),
+    sb
+      .from('sales')
+      .select('total')
+      .eq('business_id', business.id)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .is('invoice_id', null)
       .not('payment_method', 'in', '(courtesy,credit)')
       .lt('paid_at', startOfPeriod)
       .not('paid_at', 'is', null),
@@ -204,30 +249,19 @@ export default async function FluxoCaixaPage({
       .select('amount')
       .eq('business_id', business.id)
       .lt('occurred_at', fullRangeFromDate),
-    sb
-      .from('sales')
-      .select('paid_at, total, payment_method')
-      .eq('business_id', business.id)
-      .eq('type', 'product_sale')
-      .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', range.from.toISOString())
-      .lt('paid_at', range.to.toISOString())
-      .not('paid_at', 'is', null),
-    sb
-      .from('sales')
-      .select('total')
-      .eq('business_id', business.id)
-      .eq('type', 'product_sale')
-      .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit)')
-      .lt('paid_at', startOfPeriod)
-      .not('paid_at', 'is', null),
   ])
 
-  const priorReceitas = (priorR ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)
-    + (priorRSales ?? []).reduce((s, p) => s + Number(p.total ?? 0), 0)
-  const priorDespesas = (priorD ?? []).reduce((s, e) => s + Number(e.amount ?? 0), 0)
+  // Prior receitas: invoice_payments (exclui courtesy/credit) + appointments diretos + sales diretas
+  const priorInvReceita = (priorInvPay ?? [])
+    .filter((p) => {
+      const m = (p.payment_method as string | null) ?? 'other'
+      return m !== 'courtesy' && m !== 'credit'
+    })
+    .reduce((s, p) => s + Number(p.amount ?? 0), 0)
+  const priorApptReceita = (priorApptsDirect ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  const priorSalesReceita = (priorSalesDirect ?? []).reduce((s, p) => s + Number(p.total ?? 0), 0)
+  const priorReceitas = priorInvReceita + priorApptReceita + priorSalesReceita
+  const priorDespesas = (priorExpenses ?? []).reduce((s, e) => s + Number(e.amount ?? 0), 0)
   const saldoAcumulado = priorReceitas - priorDespesas
 
   const data: Record<string, CashMonth> = {}
@@ -243,32 +277,52 @@ export default async function FluxoCaixaPage({
     }
   }
 
-  for (const a of paidAppts ?? []) {
+  // 1. Invoice payments (split + comanda · source of truth pra breakdown)
+  for (const p of invPayments ?? []) {
+    if (!p.paid_at) continue
+    const raw = (p.payment_method as string | null) ?? 'other'
+    if (raw === 'courtesy' || raw === 'credit') continue // não é receita real
+    const d = new Date(p.paid_at as string)
+    const key = keyForDate(view, d, cols)
+    if (!key || !data[key]) continue
+    const methodKey = resolveMethodKey(raw, p.card_type as string | null)
+    const amt = Number(p.amount ?? 0)
+    data[key].receitasByMethod[methodKey] = (data[key].receitasByMethod[methodKey] ?? 0) + amt
+    data[key].receitasTotal += amt
+    // Taxa de maquininha · fee_percent direto do pagamento
+    if (raw === 'card') {
+      const fee = Number(p.fee_percent ?? 0)
+      if (fee > 0) {
+        const feeAmt = (amt * fee) / 100
+        data[key].despesasByCategory.payment_fee = (data[key].despesasByCategory.payment_fee ?? 0) + feeAmt
+        data[key].despesasTotal += feeAmt
+      }
+    }
+  }
+
+  // 2. Appointments DIRETOS (sem invoice · pago via PaymentMethodModal direto)
+  for (const a of apptsDirect ?? []) {
     if (!a.paid_at) continue
     const d = new Date(a.paid_at)
     const key = keyForDate(view, d, cols)
     if (!key || !data[key]) continue
-    const rawMethod = (a.payment_method as string | null) ?? 'other'
-    // Desambigua cartão crédito/débito (Salão99-style)
-    let methodKey = rawMethod
-    if (rawMethod === 'card') {
-      const cardType = a.payment_card_type as string | null
-      if (cardType === 'credit') methodKey = 'credit_card'
-      else if (cardType === 'debit') methodKey = 'debit_card'
-      else methodKey = 'card' // legacy/sem distinção
-    }
+    const raw = (a.payment_method as string | null) ?? 'other'
+    const methodKey = resolveMethodKey(raw, a.payment_card_type as string | null)
     const amt = Number(a.total_price ?? 0)
     data[key].receitasByMethod[methodKey] = (data[key].receitasByMethod[methodKey] ?? 0) + amt
     data[key].receitasTotal += amt
-    // Taxa de maquininha automática como despesa
-    const fee = Number(a.payment_fee_percent ?? 0)
-    if (rawMethod === 'card' && fee > 0) {
-      const feeAmt = (amt * fee) / 100
-      data[key].despesasByCategory.payment_fee = (data[key].despesasByCategory.payment_fee ?? 0) + feeAmt
-      data[key].despesasTotal += feeAmt
+    if (raw === 'card') {
+      const fee = Number(a.payment_fee_percent ?? 0)
+      if (fee > 0) {
+        const feeAmt = (amt * fee) / 100
+        data[key].despesasByCategory.payment_fee = (data[key].despesasByCategory.payment_fee ?? 0) + feeAmt
+        data[key].despesasTotal += feeAmt
+      }
     }
   }
-  for (const s of paidSales ?? []) {
+
+  // 3. Sales DIRETAS (sem invoice · venda avulsa)
+  for (const s of salesDirect ?? []) {
     if (!s.paid_at) continue
     const d = new Date(s.paid_at as string)
     const key = keyForDate(view, d, cols)

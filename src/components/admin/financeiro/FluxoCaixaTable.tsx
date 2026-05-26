@@ -32,11 +32,51 @@ function formatBRL(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+function ymd(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+// Drill-down range derivado da key da coluna. Funciona pras 4 visões.
+// `to` é exclusivo (start do próximo período).
+function keyToRange(key: string): { from: string; to: string; label: string } {
+  if (key.startsWith('d:')) {
+    const [y, m, d] = key.slice(2).split('-').map(Number)
+    const start = new Date(y, m, d)
+    const end = new Date(y, m, d + 1)
+    return { from: ymd(start), to: ymd(end), label: ymd(start) }
+  }
+  if (key.startsWith('w:')) {
+    const [y, m, d] = key.slice(2).split('-').map(Number)
+    const start = new Date(y, m, d)
+    const end = new Date(y, m, d + 7)
+    return { from: ymd(start), to: ymd(end), label: `${ymd(start)} → ${ymd(new Date(y, m, d + 6))}` }
+  }
+  if (key.startsWith('y:')) {
+    const y = parseInt(key.slice(2), 10)
+    return { from: `${y}-01-01`, to: `${y + 1}-01-01`, label: String(y) }
+  }
+  // m:YYYY-M
+  const [y, m] = key.slice(2).split('-').map(Number)
+  const start = new Date(y, m, 1)
+  const end = new Date(y, m + 1, 1)
+  return { from: ymd(start), to: ymd(end), label: ymd(start).slice(0, 7) }
+}
+
+function drillHref(key: string, type: 'receitas' | 'despesas', extra?: { method?: string; category?: string }) {
+  const r = keyToRange(key)
+  const params = new URLSearchParams({ from: r.from, to: r.to, type })
+  if (extra?.method) params.set('method', extra.method)
+  if (extra?.category) params.set('category', extra.category)
+  return `/admin/financeiro/fluxo-caixa/detalhamento?${params.toString()}`
+}
+
 export default function FluxoCaixaTable({ months, data, methodLabels, categoryLabels }: Props) {
   const [receitasOpen, setReceitasOpen] = useState(false)
   const [despesasOpen, setDespesasOpen] = useState(false)
 
-  // Métodos presentes em algum mês (ignora os 0 em tudo)
   const methodKeys = Array.from(
     new Set(
       months.flatMap((m) => Object.keys(data[m.key]?.receitasByMethod ?? {})),
@@ -120,17 +160,15 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
               </td>
               {months.map((m) => {
                 const r = data[m.key]
-                const isMonthly = m.key.startsWith('m:')
-                const monthParam = `${m.year}-${String(m.month0 + 1).padStart(2, '0')}`
                 return (
                   <td
                     key={`r-${m.key}`}
                     className="px-4 py-3 text-right tabular-nums font-bold"
                     style={{ color: '#059669' }}
                   >
-                    {r.receitasTotal > 0 && isMonthly ? (
+                    {r.receitasTotal > 0 ? (
                       <Link
-                        href={`/admin/financeiro/fluxo-caixa/detalhamento?month=${monthParam}&type=receitas`}
+                        href={drillHref(m.key, 'receitas')}
                         className="inline-flex items-center gap-1 hover:underline"
                         title="Ver movimentações"
                       >
@@ -138,7 +176,7 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                         <IconExternalLink size={10} />
                       </Link>
                     ) : (
-                      <span style={{ opacity: r.receitasTotal > 0 ? 1 : 0.5 }}>{formatBRL(r.receitasTotal)}</span>
+                      <span style={{ opacity: 0.5 }}>{formatBRL(r.receitasTotal)}</span>
                     )}
                   </td>
                 )
@@ -159,16 +197,14 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                 </td>
                 {months.map((m) => {
                   const v = data[m.key]?.receitasByMethod[key] ?? 0
-                  const isMonthly = m.key.startsWith('m:')
-                  const monthParam = `${m.year}-${String(m.month0 + 1).padStart(2, '0')}`
                   return (
                     <td
                       key={`r-sub-${key}-${m.key}`}
                       className="px-4 py-2 text-right tabular-nums text-xs"
                     >
-                      {v > 0 && isMonthly ? (
+                      {v > 0 ? (
                         <Link
-                          href={`/admin/financeiro/fluxo-caixa/detalhamento?month=${monthParam}&type=receitas&method=${key}`}
+                          href={drillHref(m.key, 'receitas', { method: key })}
                           className="inline-flex items-center gap-1 hover:underline"
                           style={{ color: 'var(--admin-text)' }}
                         >
@@ -176,7 +212,7 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                           <IconExternalLink size={9} />
                         </Link>
                       ) : (
-                        <span style={{ color: v > 0 ? 'var(--admin-text)' : 'var(--admin-text-faded)' }}>{formatBRL(v)}</span>
+                        <span style={{ color: 'var(--admin-text-faded)' }}>{formatBRL(v)}</span>
                       )}
                     </td>
                   )
@@ -215,17 +251,15 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
               </td>
               {months.map((m) => {
                 const r = data[m.key]
-                const isMonthly = m.key.startsWith('m:')
-                const monthParam = `${m.year}-${String(m.month0 + 1).padStart(2, '0')}`
                 return (
                   <td
                     key={`d-${m.key}`}
                     className="px-4 py-3 text-right tabular-nums font-bold"
                     style={{ color: 'var(--admin-danger,#EF4444)' }}
                   >
-                    {r.despesasTotal > 0 && isMonthly ? (
+                    {r.despesasTotal > 0 ? (
                       <Link
-                        href={`/admin/financeiro/fluxo-caixa/detalhamento?month=${monthParam}&type=despesas`}
+                        href={drillHref(m.key, 'despesas')}
                         className="inline-flex items-center gap-1 hover:underline"
                         title="Ver movimentações"
                       >
@@ -233,7 +267,7 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                         <IconExternalLink size={10} />
                       </Link>
                     ) : (
-                      <span style={{ opacity: r.despesasTotal > 0 ? 1 : 0.5 }}>{formatBRL(r.despesasTotal)}</span>
+                      <span style={{ opacity: 0.5 }}>{formatBRL(r.despesasTotal)}</span>
                     )}
                   </td>
                 )
@@ -254,16 +288,14 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                 </td>
                 {months.map((m) => {
                   const v = data[m.key]?.despesasByCategory[key] ?? 0
-                  const isMonthly = m.key.startsWith('m:')
-                  const monthParam = `${m.year}-${String(m.month0 + 1).padStart(2, '0')}`
                   return (
                     <td
                       key={`d-sub-${key}-${m.key}`}
                       className="px-4 py-2 text-right tabular-nums text-xs"
                     >
-                      {v > 0 && isMonthly ? (
+                      {v > 0 ? (
                         <Link
-                          href={`/admin/financeiro/fluxo-caixa/detalhamento?month=${monthParam}&type=despesas&category=${key}`}
+                          href={drillHref(m.key, 'despesas', { category: key })}
                           className="inline-flex items-center gap-1 hover:underline"
                           style={{ color: 'var(--admin-text)' }}
                         >
@@ -271,7 +303,7 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                           <IconExternalLink size={9} />
                         </Link>
                       ) : (
-                        <span style={{ color: v > 0 ? 'var(--admin-text)' : 'var(--admin-text-faded)' }}>{formatBRL(v)}</span>
+                        <span style={{ color: 'var(--admin-text-faded)' }}>{formatBRL(v)}</span>
                       )}
                     </td>
                   )

@@ -5,7 +5,9 @@ import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 
 type SearchParams = {
-  month?: string // YYYY-MM
+  month?: string // YYYY-MM (legado · ainda aceito)
+  from?: string  // YYYY-MM-DD
+  to?: string    // YYYY-MM-DD (exclusivo)
   type?: 'receitas' | 'despesas'
   method?: string
   category?: string
@@ -14,6 +16,7 @@ type SearchParams = {
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Dinheiro',
   pix: 'Pix',
+  card: 'Cartão',
   credit: 'Cartão de Crédito',
   credit_card: 'Cartão de Crédito',
   debit: 'Cartão de Débito',
@@ -30,6 +33,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   marketing: 'Marketing',
   taxes: 'Impostos',
   other: 'Outros',
+  payment_fee: 'Taxa de Maquininha',
 }
 
 function formatBRL(v: number): string {
@@ -40,9 +44,29 @@ function formatDate(d: string): string {
   return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })
 }
 
-function monthLabel(year: number, month0: number): string {
-  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-  return `${months[month0]}/${year}`
+function rangeLabel(from: Date, to: Date): string {
+  const diffMs = to.getTime() - from.getTime()
+  const days = Math.round(diffMs / 86400000)
+  // 1 dia
+  if (days === 1) return from.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+  // 7 dias = semana
+  if (days === 7) {
+    const last = new Date(to)
+    last.setDate(last.getDate() - 1)
+    return `${from.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} → ${last.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`
+  }
+  // mês exato (do dia 1 ao primeiro do próximo)
+  if (from.getDate() === 1 && to.getDate() === 1 && to.getMonth() === from.getMonth() + 1 && to.getFullYear() === from.getFullYear()) {
+    return from.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  }
+  // ano exato (Jan 1 → Jan 1 do próximo)
+  if (from.getMonth() === 0 && from.getDate() === 1 && to.getMonth() === 0 && to.getDate() === 1 && to.getFullYear() === from.getFullYear() + 1) {
+    return String(from.getFullYear())
+  }
+  // genérico
+  const last = new Date(to)
+  last.setDate(last.getDate() - 1)
+  return `${from.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })} → ${last.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`
 }
 
 type Row = {
@@ -51,6 +75,22 @@ type Row = {
   amount: number
   invoice_number?: number | null
   invoice_id?: string | null
+}
+
+function resolveMethodFilter(method: string): string[] {
+  // O filtro do usuário usa as chaves do METHOD_LABELS; mapeia pra valores reais
+  // que aparecem no DB (appointments.payment_method é sempre 'cash'/'pix'/'card'/'credit'/...).
+  // Pra credit_card/debit_card, a discriminação real fica em card_type='credit'|'debit'.
+  if (method === 'credit_card' || method === 'credit' || method === 'debit_card' || method === 'debit') {
+    return ['card']
+  }
+  return [method]
+}
+
+function cardTypeForFilter(method: string): 'credit' | 'debit' | null {
+  if (method === 'credit_card' || method === 'credit') return 'credit'
+  if (method === 'debit_card' || method === 'debit') return 'debit'
+  return null
 }
 
 export default async function DetalhamentoPage({
@@ -65,14 +105,22 @@ export default async function DetalhamentoPage({
   if (!business) redirect('/cadastro')
 
   const sp = await searchParams
-  const monthStr = sp.month ?? new Date().toISOString().slice(0, 7)
   const type = sp.type ?? 'receitas'
 
-  const [yStr, mStr] = monthStr.split('-')
-  const year = parseInt(yStr, 10)
-  const month0 = parseInt(mStr, 10) - 1
-  const from = new Date(Date.UTC(year, month0, 1))
-  const to = new Date(Date.UTC(year, month0 + 1, 1))
+  // Resolve range: from/to tem prioridade · senão deriva do month
+  let from: Date
+  let to: Date
+  if (sp.from && sp.to) {
+    from = new Date(sp.from + 'T00:00:00')
+    to = new Date(sp.to + 'T00:00:00')
+  } else {
+    const monthStr = sp.month ?? new Date().toISOString().slice(0, 7)
+    const [yStr, mStr] = monthStr.split('-')
+    const year = parseInt(yStr, 10)
+    const month0 = parseInt(mStr, 10) - 1
+    from = new Date(year, month0, 1)
+    to = new Date(year, month0 + 1, 1)
+  }
 
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -83,7 +131,54 @@ export default async function DetalhamentoPage({
   let rows: Row[] = []
 
   if (type === 'receitas') {
-    let q = sb
+    const methodFilter = sp.method ?? null
+    const dbMethods = methodFilter ? resolveMethodFilter(methodFilter) : null
+    const cardTypeFilter = methodFilter ? cardTypeForFilter(methodFilter) : null
+
+    // 1. Invoice payments (split + comanda · source of truth)
+    let qInv = sb
+      .from('invoice_payments')
+      .select(`
+        paid_at,
+        amount,
+        payment_method,
+        card_type,
+        invoice:invoices!inner(id, invoice_number, business_id, customer_name)
+      `)
+      .eq('invoice.business_id', business.id)
+      .gte('paid_at', from.toISOString())
+      .lt('paid_at', to.toISOString())
+      .not('payment_method', 'in', '(courtesy,credit)')
+
+    if (dbMethods) qInv = qInv.in('payment_method', dbMethods)
+    if (cardTypeFilter) qInv = qInv.eq('card_type', cardTypeFilter)
+
+    const { data: invData } = await qInv
+
+    for (const p of invData ?? []) {
+      const row = p as unknown as {
+        paid_at: string
+        amount: number | null
+        payment_method: string | null
+        card_type: string | null
+        invoice: { id: string; invoice_number: number; customer_name: string | null } | { id: string; invoice_number: number; customer_name: string | null }[] | null
+      }
+      const inv = Array.isArray(row.invoice) ? row.invoice[0] : row.invoice
+      if (!inv) continue
+      const methodLabel = row.payment_method === 'card'
+        ? (row.card_type === 'credit' ? 'Cartão de Crédito' : row.card_type === 'debit' ? 'Cartão de Débito' : 'Cartão')
+        : (METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method ?? '—')
+      rows.push({
+        date: row.paid_at,
+        description: `Comanda #${inv.invoice_number} · ${inv.customer_name ?? '—'} · ${methodLabel}`,
+        amount: Number(row.amount ?? 0),
+        invoice_number: inv.invoice_number,
+        invoice_id: inv.id,
+      })
+    }
+
+    // 2. Appointments DIRETOS (sem invoice_item_id · pago direto pela timeline)
+    let qAppt = sb
       .from('appointments')
       .select(`
         id,
@@ -92,40 +187,68 @@ export default async function DetalhamentoPage({
         service_name,
         client_name,
         payment_method,
-        invoice_item:invoice_items(invoice:invoices(id, invoice_number))
+        payment_card_type
       `)
       .eq('business_id', business.id)
+      .is('invoice_item_id', null)
       .gte('paid_at', from.toISOString())
       .lt('paid_at', to.toISOString())
       .not('paid_at', 'is', null)
-      .order('paid_at', { ascending: false })
+      .not('payment_method', 'in', '(courtesy,credit)')
 
-    if (sp.method) {
-      q = q.eq('payment_method', sp.method)
-    }
+    if (dbMethods) qAppt = qAppt.in('payment_method', dbMethods)
+    if (cardTypeFilter) qAppt = qAppt.eq('payment_card_type', cardTypeFilter)
 
-    const { data } = await q
+    const { data: apptData } = await qAppt
 
-    rows = (data ?? []).map((a) => {
+    for (const a of apptData ?? []) {
       const row = a as unknown as {
         paid_at: string
         total_price: number | null
         service_name: string | null
         client_name: string | null
         payment_method: string | null
-        invoice_item: { invoice: { id: string; invoice_number: number } | null } | { invoice: { id: string; invoice_number: number } | null }[] | null
+        payment_card_type: string | null
       }
-      const invItem = Array.isArray(row.invoice_item) ? row.invoice_item[0] : row.invoice_item
-      const inv = invItem?.invoice
-      const invObj = Array.isArray(inv) ? inv[0] : inv
-      return {
+      const methodLabel = row.payment_method === 'card'
+        ? (row.payment_card_type === 'credit' ? 'Cartão de Crédito' : row.payment_card_type === 'debit' ? 'Cartão de Débito' : 'Cartão')
+        : (METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method ?? '—')
+      rows.push({
         date: row.paid_at,
-        description: `${row.service_name ?? 'Atendimento'} · ${row.client_name ?? '—'}${row.payment_method ? ` · ${METHOD_LABELS[row.payment_method] ?? row.payment_method}` : ''}`,
+        description: `${row.service_name ?? 'Atendimento'} · ${row.client_name ?? '—'} · ${methodLabel}`,
         amount: Number(row.total_price ?? 0),
-        invoice_number: invObj?.invoice_number ?? null,
-        invoice_id: invObj?.id ?? null,
+      })
+    }
+
+    // 3. Sales DIRETAS (sem invoice_id · venda avulsa de produto)
+    if (!cardTypeFilter) { // sales não tem card_type · só roda se filtro não for de cartão específico
+      let qSale = sb
+        .from('sales')
+        .select('paid_at, total, payment_method, customer_name, type')
+        .eq('business_id', business.id)
+        .eq('type', 'product_sale')
+        .eq('status', 'paid')
+        .is('invoice_id', null)
+        .gte('paid_at', from.toISOString())
+        .lt('paid_at', to.toISOString())
+        .not('paid_at', 'is', null)
+        .not('payment_method', 'in', '(courtesy,credit)')
+
+      if (dbMethods) qSale = qSale.in('payment_method', dbMethods)
+
+      const { data: saleData } = await qSale
+
+      for (const s of saleData ?? []) {
+        const row = s as unknown as { paid_at: string; total: number | null; payment_method: string | null; customer_name: string | null }
+        rows.push({
+          date: row.paid_at,
+          description: `Venda de Produto · ${row.customer_name ?? '—'} · ${METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method}`,
+          amount: Number(row.total ?? 0),
+        })
       }
-    })
+    }
+
+    rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   } else {
     let q = sb
       .from('expenses')
@@ -159,11 +282,12 @@ export default async function DetalhamentoPage({
     : sp.category
       ? ` · ${CATEGORY_LABELS[sp.category] ?? sp.category}`
       : ''
+  const periodLabel = rangeLabel(from, to)
 
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
       <div className="relative">
-        <SubPageHeader title="Detalhamento" subtitle={`${title}${filterLabel} · ${monthLabel(year, month0)}`} back="/admin/financeiro/fluxo-caixa" />
+        <SubPageHeader title="Detalhamento" subtitle={`${title}${filterLabel} · ${periodLabel}`} back="/admin/financeiro/fluxo-caixa" />
         <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-7xl lg:px-8">
           {/* Resumo topo */}
           <div
@@ -204,7 +328,7 @@ export default async function DetalhamentoPage({
                 Nenhuma movimentação encontrada
               </p>
               <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-                Sem {title.toLowerCase()} registradas em {monthLabel(year, month0)}{filterLabel}.
+                Sem {title.toLowerCase()} registradas em {periodLabel}{filterLabel}.
               </p>
             </div>
           ) : (
@@ -237,15 +361,15 @@ export default async function DetalhamentoPage({
                         </td>
                         <td className="px-4 py-3" style={{ color: 'var(--admin-text)' }}>
                           {r.description}
-                          {r.invoice_number && (
+                          {r.invoice_id && (
                             <>
                               {' '}
                               <Link
-                                href={`/admin/financeiro/vendas?status=invoiced`}
+                                href={`/admin/comandas/${r.invoice_id}`}
                                 className="text-xs font-semibold ml-1"
                                 style={{ color: 'var(--admin-accent)' }}
                               >
-                                · Comanda #{r.invoice_number}
+                                · ver
                               </Link>
                             </>
                           )}
