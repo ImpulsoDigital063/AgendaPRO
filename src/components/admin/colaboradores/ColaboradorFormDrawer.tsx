@@ -44,6 +44,9 @@ type FormState = {
   does_appointments: boolean
   sells_products: boolean
   sells_packages: boolean
+  // Trabalho (cravado Eduardo · 26/05 · faltava no drawer original)
+  employment_type: 'commissioned' | 'employed'
+  commission_percentage: string // string pra suportar input vazio · convertido no save
   instagram: string
   // Pessoais
   birth_date: string
@@ -81,6 +84,8 @@ const EMPTY: FormState = {
   does_appointments: true,
   sells_products: true,
   sells_packages: true,
+  employment_type: 'commissioned',
+  commission_percentage: '',
   instagram: '',
   birth_date: '',
   cpf: '',
@@ -116,6 +121,8 @@ function fromProfessional(p: Professional): FormState {
     does_appointments: p.does_appointments !== false,
     sells_products: p.sells_products !== false,
     sells_packages: p.sells_packages !== false,
+    employment_type: (p.employment_type ?? 'commissioned') as 'commissioned' | 'employed',
+    commission_percentage: p.commission_percentage != null ? String(p.commission_percentage) : '',
     instagram: p.instagram ?? '',
     birth_date: p.birth_date ?? '',
     cpf: p.cpf ?? '',
@@ -192,6 +199,12 @@ export default function ColaboradorFormDrawer({
       does_appointments: form.does_appointments,
       sells_products: form.sells_products,
       sells_packages: form.sells_packages,
+      employment_type: form.employment_type,
+      commission_percentage: (() => {
+        const n = parseFloat(form.commission_percentage.replace(',', '.'))
+        if (Number.isNaN(n) || n < 0) return 0
+        return Math.min(100, n)
+      })(),
       instagram: nz(form.instagram),
       birth_date: nz(form.birth_date),
       cpf: nz(form.cpf),
@@ -215,6 +228,11 @@ export default function ColaboradorFormDrawer({
       address_cep: nz(form.address_cep),
     }
 
+    // Garantia: contratado não tem comissão · força 0
+    if (payload.employment_type === 'employed') {
+      payload.commission_percentage = 0
+    }
+
     if (isEdit && professional) {
       const { data, error: e } = await supabase
         .from('professionals')
@@ -234,7 +252,6 @@ export default function ColaboradorFormDrawer({
         .insert({
           business_id: businessId,
           active: true,
-          commission_percentage: 0,
           role: form.is_owner ? 'owner' : 'professional',
           ...payload,
         })
@@ -338,7 +355,68 @@ export default function ColaboradorFormDrawer({
             </div>
           </Section>
 
-          {/* 3. Atribuições */}
+          {/* 3. Trabalho · tipo de contrato + comissão (só se Comissionado) */}
+          <Section title="Trabalho" defaultOpen>
+            <p className="text-[11px] mb-2" style={{ color: 'var(--admin-text-mute)' }}>
+              Como esse colaborador é remunerado.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { value: 'commissioned' as const, label: 'Comissionado', desc: 'Controla a própria agenda · ganha por %' },
+                { value: 'employed' as const, label: 'Contratado', desc: 'Você define a agenda · salário fixo' },
+              ]).map((opt) => {
+                const isActive = form.employment_type === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => update('employment_type', opt.value)}
+                    className="rounded-xl p-3 text-left transition-all"
+                    style={isActive ? {
+                      background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--admin-accent) 45%, transparent)',
+                    } : {
+                      background: 'var(--admin-surface)',
+                      border: '1px solid var(--admin-border)',
+                    }}
+                  >
+                    <p className="text-sm font-semibold" style={{ color: isActive ? 'var(--admin-accent)' : 'var(--admin-text)' }}>
+                      {opt.label}
+                    </p>
+                    <p className="text-[10px] mt-0.5 leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
+                      {opt.desc}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+            {form.employment_type === 'commissioned' && (
+              <div className="mt-3">
+                <Field label="% de comissão" hint="Quanto o colaborador ganha por cada atendimento (0 a 100).">
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={form.commission_percentage}
+                      onChange={(e) => update('commission_percentage', e.target.value)}
+                      className="admin-input w-full px-3 py-2 pr-8"
+                      placeholder="0"
+                    />
+                    <span
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
+                      style={{ color: 'var(--admin-text-faded)' }}
+                    >
+                      %
+                    </span>
+                  </div>
+                </Field>
+              </div>
+            )}
+          </Section>
+
+          {/* 4. Atribuições */}
           <Section title="Atribuições" defaultOpen>
             <CheckOption
               checked={form.does_appointments}

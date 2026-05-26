@@ -51,13 +51,6 @@ export default function ProfissionaisTab({
   const [filter, setFilter] = useState<Filter>('active')
   const [search, setSearch] = useState('')
 
-  const [newName, setNewName] = useState('')
-  const [newType, setNewType] = useState<'commissioned' | 'employed'>('commissioned')
-  // Recepcionista vive em professionals mas não atende — só Equipe permite (trigger v47)
-  const [newIsReceptionist, setNewIsReceptionist] = useState(false)
-  const [adding, setAdding] = useState(false)
-  const [addError, setAddError] = useState<string | null>(null)
-
   // v78 · slots extras somam ao limite do plano (default 0 não muda nada)
   const planBaseLimit = PLAN_LIMITS[subscriptionPlan]
   const maxProfs = planBaseLimit + Math.max(0, extraProfessionalSlots)
@@ -101,7 +94,6 @@ export default function ProfissionaisTab({
   const [detailDrawerProf, setDetailDrawerProf] = useState<Professional | null>(null)
 
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({})
-  const addFormRef = useRef<HTMLDivElement | null>(null)
   const supabase = createClient()
 
   const total = professionals.length
@@ -123,53 +115,6 @@ export default function ProfissionaisTab({
     navigator.clipboard.writeText(text)
     setCopiedField(field)
     setTimeout(() => setCopiedField(null), 2000)
-  }
-
-  function scrollToAddForm() {
-    addFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-
-  async function handleAdd() {
-    if (!newName.trim()) return
-    // Limite de profissionais só importa se a pessoa atende (recep não conta)
-    if (!newIsReceptionist && limitReached) {
-      const breakdown = extraProfessionalSlots > 0
-        ? ` (${planBaseLimit} do plano + ${extraProfessionalSlots} extra${extraProfessionalSlots > 1 ? 's' : ''})`
-        : ''
-      setAddError(
-        `Plano ${subscriptionPlan === 'solo' ? 'Solo' : 'Equipe'} permite no máximo ${maxProfs} profissionais${breakdown}. Pra adicionar mais, fale com a Impulso.`
-      )
-      return
-    }
-    setAdding(true)
-    setAddError(null)
-
-    const { data, error } = await supabase
-      .from('professionals')
-      .insert({
-        business_id: businessId,
-        name: newName.trim(),
-        active: true,
-        commission_percentage: 0,
-        role: 'professional',
-        // Recep não tem comissão/tipo — força commissioned por compat mas não usa
-        employment_type: newIsReceptionist ? 'employed' : newType,
-        is_receptionist: newIsReceptionist,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      // Trigger v30 retorna RAISE EXCEPTION com mensagem em portugues —
-      // mostrar direto pro user.
-      setAddError(error.message || 'Erro ao adicionar profissional. Tente novamente.')
-    } else if (data) {
-      onChange([...professionals, data])
-      setNewName('')
-      setNewType('commissioned')
-      setNewIsReceptionist(false)
-    }
-    setAdding(false)
   }
 
   async function handleSaveName(prof: Professional) {
@@ -537,7 +482,10 @@ export default function ProfissionaisTab({
               </p>
               <button
                 type="button"
-                onClick={scrollToAddForm}
+                onClick={() => {
+                  setDetailDrawerProf(null)
+                  setDetailDrawerOpen(true)
+                }}
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg mt-2 inline-flex items-center gap-1"
                 style={{
                   background: 'var(--admin-accent-bg)',
@@ -603,13 +551,13 @@ export default function ProfissionaisTab({
       )}
 
       {/*
-        Adicionar profissional — quando limite atingido, troca o form por
-        um card de upsell. Backend tem trigger v30 que blinda no INSERT
-        mesmo se UI for bypassada (defesa em profundidade).
+        Adicionar profissional · removido form inline em 26/05 (Eduardo
+        cravou paridade Salão99). Único ponto de criação agora é o
+        botão "+ Cadastro completo" no topo da toolbar. Quando limite
+        atingido, mostra card de upsell.
       */}
-      {limitReached ? (
+      {limitReached && (
         <div
-          ref={addFormRef}
           className="rounded-2xl p-5 space-y-3"
           style={{
             background:
@@ -672,165 +620,8 @@ export default function ProfissionaisTab({
             Você também pode <strong>remover</strong> profissionais não usados pra liberar vaga.
           </p>
         </div>
-      ) : (
-        <div
-          ref={addFormRef}
-          className="rounded-2xl p-4 space-y-3"
-          style={{
-            background: 'var(--admin-surface)',
-            border: '1px dashed var(--admin-border-hi)',
-          }}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <p className="admin-label flex items-center gap-1.5">
-              <IconPlus size={14} />
-              Adicionar profissional
-            </p>
-            <span className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
-              {remaining} {remaining === 1 ? 'vaga restante' : 'vagas restantes'}
-            </span>
-          </div>
-
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => {
-              setNewName(e.target.value)
-              if (addError) setAddError(null)
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            placeholder={newIsReceptionist ? 'Nome da recepcionista' : 'Nome do profissional'}
-            className="admin-input w-full px-3 py-2.5 text-sm"
-          />
-
-          {/* Toggle "Recepção" — só disponível no Equipe (v47) · 1 max */}
-          {subscriptionPlan === 'equipe' && !hasReceptionist && (
-            <label
-              className="flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all"
-              style={{
-                background: newIsReceptionist
-                  ? 'color-mix(in srgb, var(--admin-accent) 12%, transparent)'
-                  : 'var(--admin-surface)',
-                border: `1px solid ${newIsReceptionist ? 'color-mix(in srgb, var(--admin-accent) 45%, transparent)' : 'var(--admin-border)'}`,
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={newIsReceptionist}
-                onChange={(e) => setNewIsReceptionist(e.target.checked)}
-                style={{ marginTop: 2 }}
-              />
-              <div className="flex-1">
-                <p
-                  className="text-sm font-semibold"
-                  style={{ color: newIsReceptionist ? 'var(--admin-accent)' : 'var(--admin-text)' }}
-                >
-                  Esta pessoa é da recepção
-                </p>
-                <p className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
-                  Não atende clientes. Vê todas as agendas, marca/cancela e cadastra clientes. Não conta no limite de profissionais.
-                </p>
-              </div>
-            </label>
-          )}
-
-          {!newIsReceptionist && (
-          <div>
-            <p
-              className="text-[11px] font-medium uppercase tracking-wider mb-1.5"
-              style={{ color: 'var(--admin-text-mute)' }}
-            >
-              Tipo
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: 'commissioned' as const, label: 'Comissionado', desc: 'Controla a própria agenda · ganha por %' },
-                { value: 'employed' as const, label: 'Contratado', desc: 'Você define a agenda · salário fixo' },
-              ].map((opt) => {
-                const isActive = newType === opt.value
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setNewType(opt.value)}
-                    className="rounded-xl p-3 text-left transition-all"
-                    style={
-                      isActive
-                        ? {
-                            background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)',
-                            border: '1px solid color-mix(in srgb, var(--admin-accent) 45%, transparent)',
-                            boxShadow:
-                              '0 4px 14px -6px color-mix(in srgb, var(--admin-accent) 35%, transparent)',
-                          }
-                        : {
-                            background: 'var(--admin-surface)',
-                            border: '1px solid var(--admin-border)',
-                          }
-                    }
-                  >
-                    <p
-                      className="text-sm font-semibold"
-                      style={{ color: isActive ? 'var(--admin-accent)' : 'var(--admin-text)' }}
-                    >
-                      {opt.label}
-                    </p>
-                    <p className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
-                      {opt.desc}
-                    </p>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-          )}
-
-          {addError && (
-            <p
-              className="text-xs px-3 py-2 rounded-lg"
-              style={{
-                background: 'color-mix(in srgb, var(--admin-danger, #EF4444) 10%, transparent)',
-                color: 'var(--admin-danger, #EF4444)',
-                border: '1px solid color-mix(in srgb, var(--admin-danger, #EF4444) 30%, transparent)',
-              }}
-            >
-              {addError}
-            </p>
-          )}
-
-          <button
-            onClick={handleAdd}
-            disabled={adding || !newName.trim()}
-            className="w-full px-4 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
-            style={{
-              background:
-                'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
-              color: '#FFFFFF',
-              boxShadow: '0 8px 20px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
-            }}
-          >
-            {adding ? '...' : 'Adicionar'}
-          </button>
-        </div>
       )}
 
-      {/* Floating + button (apenas se já tem >= 2 profissionais — ajuda a alcançar o form rapido) */}
-      {total >= 2 && (
-        <button
-          type="button"
-          onClick={scrollToAddForm}
-          aria-label="Adicionar profissional"
-          className="fixed right-4 z-30 w-12 h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-          style={{
-            bottom: 'calc(80px + env(safe-area-inset-bottom))',
-            background:
-              'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
-            color: '#fff',
-            boxShadow: '0 12px 28px -8px color-mix(in srgb, var(--admin-accent) 60%, transparent)',
-          }}
-        >
-          <IconPlus size={22} strokeWidth={2.5} />
-        </button>
-      )}
 
       {/* Modais */}
       <ConfirmActionModal
