@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar } from '@/components/ui/Icon'
+import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar, IconFile, IconWhatsapp } from '@/components/ui/Icon'
 import AdicionarServicoComandaModal from './AdicionarServicoComandaModal'
 import SplitPaymentModal from './SplitPaymentModal'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
@@ -336,15 +336,22 @@ export default function ComandaDetalhe({
               ♥ {courtesyLoading ? '...' : 'Cortesia'}
             </button>
           )}
+          {/* PDF · em mobile só ícone (economiza linha) · em sm+ icone+texto */}
           <button
             type="button"
             disabled={pdfLoading}
             onClick={baixarPdf}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold border disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold border disabled:opacity-50 inline-flex items-center gap-1.5"
             style={{ background: 'var(--admin-surface)', color: 'var(--admin-text)', borderColor: 'var(--admin-border)' }}
             title="Baixar recibo como PDF"
+            aria-label="Baixar PDF"
           >
-            {pdfLoading ? '...' : 'PDF'}
+            {pdfLoading ? '...' : (
+              <>
+                <IconFile size={12} />
+                <span className="hidden sm:inline">PDF</span>
+              </>
+            )}
           </button>
           {invoice.customer?.phone && (
             <button
@@ -359,14 +366,21 @@ export default function ComandaDetalhe({
                 boxShadow: '0 6px 14px -4px rgba(18,140,126,0.45)',
               }}
               title="Compartilhar recibo via WhatsApp"
+              aria-label="Compartilhar via WhatsApp"
             >
-              {sharingWa ? '...' : 'WhatsApp'}
+              {sharingWa ? '...' : (
+                <>
+                  <IconWhatsapp size={12} />
+                  <span className="hidden sm:inline">WhatsApp</span>
+                </>
+              )}
             </button>
           )}
+          {/* Imprimir · faz menos sentido em mobile (sem impressora) · oculta em mobile */}
           <button
             type="button"
             onClick={() => window.print()}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold border"
+            className="hidden sm:inline-block px-3 py-1.5 rounded-lg text-xs font-bold border"
             style={{ background: 'var(--admin-surface)', color: 'var(--admin-text)', borderColor: 'var(--admin-border)' }}
           >
             Imprimir
@@ -482,7 +496,9 @@ export default function ComandaDetalhe({
               </button>
             )}
           </div>
-          <table className="w-full text-sm">
+          {/* Wrapper · em mobile permite scroll horizontal sem cortar Total · em sm+ tabela cabe normal */}
+          <div className="-mx-6 px-6 overflow-x-auto sm:mx-0 sm:px-0 sm:overflow-visible">
+          <table className="w-full text-sm" style={{ minWidth: 520 }}>
             <thead>
               <tr style={{ color: 'var(--admin-text-faded)' }}>
                 <th className="text-left text-[10px] font-bold uppercase tracking-wider pb-1">Tipo</th>
@@ -561,6 +577,7 @@ export default function ComandaDetalhe({
               ))}
             </tbody>
           </table>
+          </div>
         </section>
 
         {/* Totais */}
