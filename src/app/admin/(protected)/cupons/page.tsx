@@ -102,6 +102,7 @@ export default async function AdminCuponsPage() {
             customer: { id: string; name: string; phone: string }
           }>}
           promocoes={promocoesList}
+          canManage
         />
       </div>
     </main>
