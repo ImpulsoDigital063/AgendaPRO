@@ -12,13 +12,12 @@ import FluxoCaixaViewSelector from '@/components/admin/financeiro/FluxoCaixaView
 // Antes a query usava só appointments.payment_method, que perdia o cartão em split
 // (a rota /invoices/[id]/pay propaga só o MAIOR método pro appointment).
 
+// Cartão SEMPRE vira credit_card ou debit_card (Salão99 pattern · nunca "Cartão" genérico)
+// quando card_type vier null, default = credit_card (caso mais comum).
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Dinheiro',
   pix: 'Pix',
-  card: 'Cartão',
-  credit: 'Cartão de Crédito',
   credit_card: 'Cartão de Crédito',
-  debit: 'Cartão de Débito',
   debit_card: 'Cartão de Débito',
   transfer: 'Transferência Bancária',
   other: 'Outro',
@@ -41,10 +40,13 @@ function isViewKind(v: string | undefined | null): v is ViewKind {
   return v === 'daily' || v === 'weekly' || v === 'monthly' || v === 'yearly'
 }
 
+// Salão99 pattern: sempre 4 colunas em qualquer visão (Diário/Semanal/Mensal/Anual)
+const COL_COUNT = 4
+
 function buildColumns(view: ViewKind, now: Date): MonthCol[] {
   const cols: MonthCol[] = []
   if (view === 'daily') {
-    for (let i = 13; i >= 0; i--) {
+    for (let i = COL_COUNT - 1; i >= 0; i--) {
       const d = new Date(now)
       d.setDate(d.getDate() - i)
       d.setHours(0, 0, 0, 0)
@@ -64,7 +66,7 @@ function buildColumns(view: ViewKind, now: Date): MonthCol[] {
     const diff = day === 0 ? -6 : 1 - day
     monday.setDate(monday.getDate() + diff)
     monday.setHours(0, 0, 0, 0)
-    for (let i = 11; i >= 0; i--) {
+    for (let i = COL_COUNT - 1; i >= 0; i--) {
       const start = new Date(monday)
       start.setDate(start.getDate() - i * 7)
       const end = new Date(start)
@@ -80,7 +82,7 @@ function buildColumns(view: ViewKind, now: Date): MonthCol[] {
     return cols
   }
   if (view === 'yearly') {
-    for (let i = 3; i >= 0; i--) {
+    for (let i = COL_COUNT - 1; i >= 0; i--) {
       const y = now.getFullYear() - i
       cols.push({ year: y, month0: 0, label: String(y), key: `y:${y}` })
     }
@@ -88,7 +90,7 @@ function buildColumns(view: ViewKind, now: Date): MonthCol[] {
   }
   // monthly
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-  for (let i = 3; i >= 0; i--) {
+  for (let i = COL_COUNT - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     cols.push({
       year: d.getFullYear(),
@@ -142,10 +144,10 @@ function keyForDate(view: ViewKind, d: Date, cols: MonthCol[]): string | null {
 
 function resolveMethodKey(raw: string | null, cardType: string | null): string {
   const method = raw ?? 'other'
+  // 'card' SEMPRE vira credit_card ou debit_card · nunca "Cartão" genérico.
+  // Default credit_card quando card_type vier null (caso mais comum + cobre legado/sales).
   if (method === 'card') {
-    if (cardType === 'credit') return 'credit_card'
-    if (cardType === 'debit') return 'debit_card'
-    return 'card'
+    return cardType === 'debit' ? 'debit_card' : 'credit_card'
   }
   return method
 }

@@ -20,12 +20,10 @@ type Props = {
   businessId: string
 }
 
+// Cartão SEMPRE vira credit_card ou debit_card (Salão99 pattern · nunca "Cartão" genérico)
 const METHOD_COLORS: Record<string, string> = {
-  card: '#3B82F6',
   credit_card: '#3B82F6',
-  credit: '#3B82F6',
   debit_card: '#EC4899',
-  debit: '#EC4899',
   pix: '#F59E0B',
   cash: '#10B981',
   transfer: '#8B5CF6',
@@ -35,11 +33,8 @@ const METHOD_COLORS: Record<string, string> = {
 }
 
 const METHOD_LABELS: Record<string, string> = {
-  card: 'Cartão',
   credit_card: 'Cartão de Crédito',
-  credit: 'Cartão de Crédito',
   debit_card: 'Cartão de Débito',
-  debit: 'Cartão de Débito',
   pix: 'Pix',
   cash: 'Dinheiro',
   transfer: 'Transferência',
@@ -190,35 +185,32 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
   // ─── Breakdown por método ────────────────────────────────────────
   const byMethod: Record<string, number> = {}
 
+  // 'card' SEMPRE vira credit_card ou debit_card (default credit quando card_type null)
+  function resolveKey(raw: string, cardType: string | null): string {
+    if (raw === 'card') return cardType === 'debit' ? 'debit_card' : 'credit_card'
+    return raw
+  }
+
   // 1. Invoice payments (cobre split + cortesia + crédito do cliente)
   for (const p of invPaymentsCurr ?? []) {
     const raw = (p.payment_method as string | null) ?? 'other'
     // cortesia + credit_cliente não contam como receita
     if (raw === 'courtesy' || raw === 'credit') continue
-    let key = raw
-    if (raw === 'card') {
-      const ct = p.card_type as string | null
-      if (ct === 'credit') key = 'credit_card'
-      else if (ct === 'debit') key = 'debit_card'
-    }
+    const key = resolveKey(raw, p.card_type as string | null)
     byMethod[key] = (byMethod[key] ?? 0) + Number(p.amount ?? 0)
   }
 
   // 2. Appointments DIRETOS (sem invoice · pagamento direto via PaymentMethodModal mobile)
   for (const a of apptsDirectCurr ?? []) {
     const raw = (a.payment_method as string | null) ?? 'other'
-    let key = raw
-    if (raw === 'card') {
-      const ct = a.payment_card_type as string | null
-      if (ct === 'credit') key = 'credit_card'
-      else if (ct === 'debit') key = 'debit_card'
-    }
+    const key = resolveKey(raw, a.payment_card_type as string | null)
     byMethod[key] = (byMethod[key] ?? 0) + Number(a.total_price ?? 0)
   }
 
-  // 3. Sales DIRETAS (sem invoice)
+  // 3. Sales DIRETAS (sem invoice · sales não tem card_type · default credit_card)
   for (const s of salesDirectCurr ?? []) {
-    const key = (s.payment_method as string | null) ?? 'other'
+    const raw = (s.payment_method as string | null) ?? 'other'
+    const key = resolveKey(raw, null)
     byMethod[key] = (byMethod[key] ?? 0) + Number(s.total ?? 0)
   }
 

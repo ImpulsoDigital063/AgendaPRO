@@ -13,13 +13,11 @@ type SearchParams = {
   category?: string
 }
 
+// Cartão SEMPRE Crédito/Débito · sem "Cartão" genérico (Salão99 pattern)
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Dinheiro',
   pix: 'Pix',
-  card: 'Cartão',
-  credit: 'Cartão de Crédito',
   credit_card: 'Cartão de Crédito',
-  debit: 'Cartão de Débito',
   debit_card: 'Cartão de Débito',
   transfer: 'Transferência Bancária',
   other: 'Outro',
@@ -78,18 +76,14 @@ type Row = {
 }
 
 function resolveMethodFilter(method: string): string[] {
-  // O filtro do usuário usa as chaves do METHOD_LABELS; mapeia pra valores reais
-  // que aparecem no DB (appointments.payment_method é sempre 'cash'/'pix'/'card'/'credit'/...).
-  // Pra credit_card/debit_card, a discriminação real fica em card_type='credit'|'debit'.
-  if (method === 'credit_card' || method === 'credit' || method === 'debit_card' || method === 'debit') {
-    return ['card']
-  }
+  // O filtro do usuário usa credit_card/debit_card mas no DB é 'card' + card_type
+  if (method === 'credit_card' || method === 'debit_card') return ['card']
   return [method]
 }
 
 function cardTypeForFilter(method: string): 'credit' | 'debit' | null {
-  if (method === 'credit_card' || method === 'credit') return 'credit'
-  if (method === 'debit_card' || method === 'debit') return 'debit'
+  if (method === 'credit_card') return 'credit'
+  if (method === 'debit_card') return 'debit'
   return null
 }
 
