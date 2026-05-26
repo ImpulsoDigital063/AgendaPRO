@@ -81,7 +81,7 @@ export default function AdicionarServicoComandaModal({ invoiceId, businessId, cu
     setLoading(true)
     Promise.all([
       supabase.from('services').select('id, name, price, duration_minutes').eq('business_id', businessId).eq('active', true).order('name'),
-      supabase.from('professionals').select('id, name, is_receptionist').eq('business_id', businessId).eq('active', true).order('name'),
+      supabase.from('professionals').select('id, name, is_receptionist').eq('business_id', businessId).eq('active', true).eq('does_appointments', true).order('name'),
     ]).then(([sRes, pRes]) => {
       setServices((sRes.data ?? []) as Service[])
       setProfessionals((pRes.data ?? []) as Professional[])

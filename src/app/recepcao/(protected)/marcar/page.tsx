@@ -28,6 +28,7 @@ export default async function RecepcaoMarcarPage() {
       .eq('business_id', business.id)
       .eq('active', true)
       .eq('is_receptionist', false)
+      .eq('does_appointments', true)
       .order('name'),
     supabase
       .from('services')

@@ -104,6 +104,7 @@ export default async function BusinessPage({
       .select('id, name, photo_url, active, created_at')
       .eq('business_id', business.id)
       .eq('active', true)
+      .eq('does_appointments', true)
       .order('created_at', { ascending: true }),
     supabase
       .from('rewards')
