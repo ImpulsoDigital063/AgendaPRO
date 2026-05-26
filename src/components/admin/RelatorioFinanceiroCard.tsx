@@ -1,18 +1,19 @@
 import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { IconArrowLeft, IconArrowRight } from '@/components/ui/Icon'
+import { IconTrendingUp, IconInfo, IconExternalLink } from '@/components/ui/Icon'
 
 /**
- * Card de Relatório Financeiro · Home (coluna esquerda).
- * Inspirado no Salão99 mas com nosso visual + breakdown completo.
+ * Relatório Financeiro · Home (largura total da coluna esquerda).
+ * Layout inspirado no Salão99: 3 cards grandes + card "Formas de Pagamento"
+ * com barras horizontais coloridas grandes.
  *
- * Conteúdo:
- * - 3 KPIs (Valor recebido / Despesas pagas / Lucro líquido) com comparativo
- *   % vs mês anterior + seta direcional
- * - Breakdown "Formas de Pagamento" em barras horizontais coloridas
- *
- * Filtro: mês corrente · período padrão (sem seletor inline pra MVP · usa
- * /admin/financeiro/fluxo-caixa pra detalhes).
+ * IMPORTANTE · source of truth do breakdown:
+ *  - Quando comanda foi paga via split, appointment.payment_method recebeu
+ *    só o MAIOR método (perde o outro). Pra não perder o breakdown, lemos
+ *    invoice_payments direto (cada linha = 1 método + 1 amount + paid_at).
+ *  - Appointments/Sales SEM invoice_item_id (pagamento direto, não via
+ *    comanda) entram do payment_method próprio.
+ *  - Soma das fontes = receita total · breakdown vem de cada fonte.
  */
 
 type Props = {
@@ -20,33 +21,35 @@ type Props = {
 }
 
 const METHOD_COLORS: Record<string, string> = {
-  card: '#3B82F6',        // azul (cartão genérico)
-  credit_card: '#3B82F6', // azul (crédito)
-  debit_card: '#EC4899',  // rosa (débito)
-  pix: '#F59E0B',         // laranja
-  cash: '#10B981',        // verde
-  transfer: '#8B5CF6',    // roxo
-  other: '#94A3B8',       // cinza
+  card: '#3B82F6',
+  credit_card: '#3B82F6',
+  credit: '#3B82F6',
+  debit_card: '#EC4899',
+  debit: '#EC4899',
+  pix: '#F59E0B',
+  cash: '#10B981',
+  transfer: '#8B5CF6',
+  courtesy: '#94A3B8',
+  points: '#A855F7',
+  other: '#94A3B8',
 }
 
 const METHOD_LABELS: Record<string, string> = {
   card: 'Cartão',
   credit_card: 'Cartão de Crédito',
+  credit: 'Cartão de Crédito',
   debit_card: 'Cartão de Débito',
+  debit: 'Cartão de Débito',
   pix: 'Pix',
   cash: 'Dinheiro',
   transfer: 'Transferência',
+  courtesy: 'Cortesia',
+  points: 'Pontos',
   other: 'Outros',
 }
 
 function brl(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function brlShort(n: number) {
-  if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 10_000) return `R$ ${(n / 1000).toFixed(1)}k`
-  return brl(n)
 }
 
 function monthLabel(d: Date): string {
@@ -65,31 +68,38 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
   const endCurr = new Date(now.getFullYear(), now.getMonth() + 1, 1)
   const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const endPrev = startCurr
+  const todayStr = now.toISOString().slice(0, 10)
+  const firstDayMonthStr = startCurr.toISOString().slice(0, 10)
 
-  // Mês atual + mês anterior em paralelo
   const [
-    { data: apptsCurr },
+    // Invoice payments do mês atual (source of truth do breakdown quando há comanda)
+    { data: invPaymentsCurr },
+    // Appointments do mês atual SEM comanda (pagamento direto · entram no breakdown)
+    { data: apptsDirectCurr },
+    { data: salesDirectCurr },
+    // Mês anterior · só preciso dos totais pra comparativo
     { data: apptsPrev },
-    { data: salesCurr },
     { data: salesPrev },
+    { data: invPaymentsPrev },
+    // Despesas
     { data: expensesCurr },
     { data: expensesPrev },
   ] = await Promise.all([
+    // invoice_payments do mês atual com filtro pelo business_id via join
+    sb
+      .from('invoice_payments')
+      .select('payment_method, card_type, amount, paid_at, invoices!inner(business_id)')
+      .eq('invoices.business_id', businessId)
+      .gte('paid_at', startCurr.toISOString())
+      .lt('paid_at', endCurr.toISOString()),
     sb
       .from('appointments')
       .select('total_price, payment_method, payment_card_type')
       .eq('business_id', businessId)
+      .is('invoice_item_id', null) // não veio de comanda
       .not('payment_method', 'in', '(courtesy,credit)')
       .gte('paid_at', startCurr.toISOString())
       .lt('paid_at', endCurr.toISOString())
-      .not('paid_at', 'is', null),
-    sb
-      .from('appointments')
-      .select('total_price')
-      .eq('business_id', businessId)
-      .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', startPrev.toISOString())
-      .lt('paid_at', endPrev.toISOString())
       .not('paid_at', 'is', null),
     sb
       .from('sales')
@@ -97,9 +107,20 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('business_id', businessId)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
+      .is('invoice_id', null) // não veio de comanda
       .not('payment_method', 'in', '(courtesy,credit)')
       .gte('paid_at', startCurr.toISOString())
       .lt('paid_at', endCurr.toISOString())
+      .not('paid_at', 'is', null),
+    // Mês anterior (totais só)
+    sb
+      .from('appointments')
+      .select('total_price')
+      .eq('business_id', businessId)
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .is('invoice_item_id', null)
+      .gte('paid_at', startPrev.toISOString())
+      .lt('paid_at', endPrev.toISOString())
       .not('paid_at', 'is', null),
     sb
       .from('sales')
@@ -107,41 +128,50 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('business_id', businessId)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
+      .is('invoice_id', null)
       .not('payment_method', 'in', '(courtesy,credit)')
       .gte('paid_at', startPrev.toISOString())
       .lt('paid_at', endPrev.toISOString())
       .not('paid_at', 'is', null),
     sb
+      .from('invoice_payments')
+      .select('amount, invoices!inner(business_id)')
+      .eq('invoices.business_id', businessId)
+      .gte('paid_at', startPrev.toISOString())
+      .lt('paid_at', endPrev.toISOString()),
+    sb
       .from('expenses')
       .select('amount')
       .eq('business_id', businessId)
-      .gte('occurred_at', startCurr.toISOString().slice(0, 10))
-      .lt('occurred_at', endCurr.toISOString().slice(0, 10)),
+      .gte('occurred_at', firstDayMonthStr)
+      .lte('occurred_at', todayStr),
     sb
       .from('expenses')
       .select('amount')
       .eq('business_id', businessId)
       .gte('occurred_at', startPrev.toISOString().slice(0, 10))
-      .lt('occurred_at', endPrev.toISOString().slice(0, 10)),
+      .lt('occurred_at', firstDayMonthStr),
   ])
 
-  // Totais
-  const receitaApptsCurr = (apptsCurr ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)
-  const receitaSalesCurr = (salesCurr ?? []).reduce((s, a) => s + Number(a.total ?? 0), 0)
-  const receitaCurr = receitaApptsCurr + receitaSalesCurr
-
-  const receitaPrev = (apptsPrev ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)
-    + (salesPrev ?? []).reduce((s, a) => s + Number(a.total ?? 0), 0)
-
-  const despesaCurr = (expensesCurr ?? []).reduce((s, e) => s + Number(e.amount ?? 0), 0)
-  const despesaPrev = (expensesPrev ?? []).reduce((s, e) => s + Number(e.amount ?? 0), 0)
-
-  const lucroCurr = receitaCurr - despesaCurr
-  const lucroPrev = receitaPrev - despesaPrev
-
-  // Breakdown receitas por método (mês atual)
+  // ─── Breakdown por método ────────────────────────────────────────
   const byMethod: Record<string, number> = {}
-  for (const a of apptsCurr ?? []) {
+
+  // 1. Invoice payments (cobre split + cortesia + crédito do cliente)
+  for (const p of invPaymentsCurr ?? []) {
+    const raw = (p.payment_method as string | null) ?? 'other'
+    // cortesia + credit_cliente não contam como receita
+    if (raw === 'courtesy' || raw === 'credit') continue
+    let key = raw
+    if (raw === 'card') {
+      const ct = p.card_type as string | null
+      if (ct === 'credit') key = 'credit_card'
+      else if (ct === 'debit') key = 'debit_card'
+    }
+    byMethod[key] = (byMethod[key] ?? 0) + Number(p.amount ?? 0)
+  }
+
+  // 2. Appointments DIRETOS (sem invoice · pagamento direto via PaymentMethodModal mobile)
+  for (const a of apptsDirectCurr ?? []) {
     const raw = (a.payment_method as string | null) ?? 'other'
     let key = raw
     if (raw === 'card') {
@@ -151,70 +181,123 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
     }
     byMethod[key] = (byMethod[key] ?? 0) + Number(a.total_price ?? 0)
   }
-  for (const s of salesCurr ?? []) {
+
+  // 3. Sales DIRETAS (sem invoice)
+  for (const s of salesDirectCurr ?? []) {
     const key = (s.payment_method as string | null) ?? 'other'
     byMethod[key] = (byMethod[key] ?? 0) + Number(s.total ?? 0)
   }
 
-  // Ordena por valor desc · top 5
+  const receitaCurr = Object.values(byMethod).reduce((s, v) => s + v, 0)
+
+  // Mês anterior · só total (sem breakdown · só compara)
+  const receitaPrev = (apptsPrev ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+    + (salesPrev ?? []).reduce((s, p) => s + Number(p.total ?? 0), 0)
+    + (invPaymentsPrev ?? [])
+        .reduce((s, p) => s + Number(p.amount ?? 0), 0)
+
+  const despesaCurr = (expensesCurr ?? []).reduce((s, e) => s + Number(e.amount ?? 0), 0)
+  const despesaPrev = (expensesPrev ?? []).reduce((s, e) => s + Number(e.amount ?? 0), 0)
+
+  const lucroCurr = receitaCurr - despesaCurr
+  const lucroPrev = receitaPrev - despesaPrev
+
+  // Ordena breakdown decrescente
   const methodEntries = Object.entries(byMethod)
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
 
   const maxValue = methodEntries.length > 0 ? methodEntries[0][1] : 0
-  const isEmpty = receitaCurr === 0 && despesaCurr === 0 && methodEntries.length === 0
+  const isEmpty = receitaCurr === 0 && despesaCurr === 0
 
   if (isEmpty) return null
 
+  const periodLabel = `01 ${now.toLocaleDateString('pt-BR', { month: 'short' })} ${now.getFullYear()} · ${String(now.getDate()).padStart(2, '0')} ${now.toLocaleDateString('pt-BR', { month: 'short' })} ${now.getFullYear()}`
+
   return (
-    <section
-      className="rounded-2xl p-5"
-      style={{
-        background: 'var(--admin-surface)',
-        border: '1px solid var(--admin-border)',
-      }}
-    >
-      <header className="flex items-center justify-between mb-4">
+    <section className="space-y-3">
+      {/* Header */}
+      <div className="flex items-end justify-between">
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+          <h3 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
             Relatório Financeiro
           </h3>
-          <p className="text-[11px] capitalize mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
-            {monthLabel(now)}
+          <p className="text-[11px] capitalize" style={{ color: 'var(--admin-text-mute)' }}>
+            {monthLabel(now)} · {periodLabel}
           </p>
         </div>
         <Link
           href="/admin/financeiro"
-          className="text-xs font-semibold"
+          className="text-xs font-semibold inline-flex items-center gap-1"
           style={{ color: 'var(--admin-accent)' }}
         >
-          Ver tudo →
+          Ver tudo <IconExternalLink size={10} />
         </Link>
-      </header>
-
-      {/* 3 KPIs */}
-      <div className="grid grid-cols-3 gap-2 mb-5">
-        <KpiBox label="Recebido" value={receitaCurr} prev={receitaPrev} color="#10B981" />
-        <KpiBox label="Despesas" value={despesaCurr} prev={despesaPrev} color="#EF4444" inverted />
-        <KpiBox label="Lucro líquido" value={lucroCurr} prev={lucroPrev} color="var(--admin-accent)" highlight />
       </div>
 
-      {/* Formas de Pagamento */}
+      {/* 3 cards grandes */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <BigKpi
+          label="Valor recebido"
+          value={receitaCurr}
+          prev={receitaPrev}
+          color="#10B981"
+          help="Total recebido no mês (todos os métodos)"
+        />
+        <BigKpi
+          label="Despesas pagas"
+          value={despesaCurr}
+          prev={despesaPrev}
+          color="#EF4444"
+          inverted
+          help="Soma das despesas no mês"
+        />
+        <BigKpi
+          label="Lucro líquido"
+          value={lucroCurr}
+          prev={lucroPrev}
+          color="var(--admin-accent)"
+          help="Receita − Despesas"
+          breakdown={[
+            { label: 'Valor recebido', value: receitaCurr },
+            { label: 'Despesas pagas', value: despesaCurr },
+            { label: 'Lucro líquido', value: lucroCurr, strong: true },
+          ]}
+        />
+      </div>
+
+      {/* Card grande · Formas de Pagamento */}
       {methodEntries.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+        <div
+          className="rounded-2xl p-5"
+          style={{
+            background: 'var(--admin-surface)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-bold inline-flex items-center gap-1.5" style={{ color: 'var(--admin-text)' }}>
               Formas de Pagamento
-            </p>
+              <span style={{ color: 'var(--admin-text-faded)' }} title="Breakdown do que foi recebido por método">
+                <IconInfo size={11} />
+              </span>
+            </h4>
             <Link
               href="/admin/financeiro/fluxo-caixa"
-              className="text-[11px] font-semibold"
-              style={{ color: 'var(--admin-accent)' }}
+              className="text-xs font-semibold inline-flex items-center gap-1 px-3 py-1 rounded-lg"
+              style={{ color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}
             >
-              Detalhes →
+              Detalhes <IconExternalLink size={10} />
             </Link>
           </div>
+
+          <p className="text-[11px] font-semibold mb-1" style={{ color: 'var(--admin-text-mute)' }}>
+            Valor recebido
+          </p>
+          <p className="text-2xl font-bold tabular-nums mb-4" style={{ color: 'var(--admin-text)' }}>
+            {brl(receitaCurr)}
+          </p>
+
           <div className="space-y-3">
             {methodEntries.map(([key, value]) => {
               const pct = maxValue > 0 ? (value / maxValue) * 100 : 0
@@ -222,14 +305,14 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
               const label = METHOD_LABELS[key] ?? key
               return (
                 <div key={key}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span style={{ color: 'var(--admin-text)' }}>{label}</span>
-                    <span className="font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span style={{ color: 'var(--admin-text-2)' }}>{label}</span>
+                    <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>
                       {brl(value)}
                     </span>
                   </div>
                   <div
-                    className="rounded-full h-1.5 overflow-hidden"
+                    className="rounded-full h-2 overflow-hidden"
                     style={{ background: 'var(--admin-input-bg)' }}
                   >
                     <div
@@ -247,49 +330,84 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
   )
 }
 
-function KpiBox({
+function BigKpi({
   label,
   value,
   prev,
   color,
-  highlight,
+  help,
   inverted,
+  breakdown,
 }: {
   label: string
   value: number
   prev: number
   color: string
-  highlight?: boolean
-  /** Pra despesas: aumentar é RUIM · inverte cor da seta. */
+  help: string
   inverted?: boolean
+  breakdown?: { label: string; value: number; strong?: boolean }[]
 }) {
   const delta = prev !== 0 ? ((value - prev) / Math.abs(prev)) * 100 : null
   const arrow = delta == null ? null : delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat'
   const isGoodChange = arrow === 'flat' ? null : inverted ? arrow === 'down' : arrow === 'up'
-  const arrowColor = isGoodChange == null ? 'var(--admin-text-faded)' : isGoodChange ? '#10B981' : '#EF4444'
+  const badgeColor = isGoodChange == null ? null : isGoodChange ? '#10B981' : '#EF4444'
 
   return (
     <div
-      className="rounded-xl p-2.5"
+      className="rounded-2xl p-4"
       style={{
-        background: highlight
-          ? `linear-gradient(135deg, color-mix(in srgb, ${color} 12%, var(--admin-surface)) 0%, var(--admin-surface) 80%)`
-          : 'var(--admin-surface-hi)',
-        border: `1px solid ${highlight ? `color-mix(in srgb, ${color} 30%, transparent)` : 'var(--admin-border)'}`,
+        background: 'var(--admin-surface)',
+        border: '1px solid var(--admin-border)',
       }}
     >
-      <p className="text-[9px] font-bold uppercase tracking-widest truncate" style={{ color: 'var(--admin-text-faded)' }}>
-        {label}
-      </p>
-      <p className="text-base font-bold tabular-nums mt-1 truncate" style={{ color }}>
-        {brlShort(value)}
-      </p>
-      {delta != null && (
-        <p className="text-[10px] mt-1 inline-flex items-center gap-1 tabular-nums" style={{ color: arrowColor }}>
-          {arrow === 'up' && <IconArrowRight size={9} />}
-          {arrow === 'down' && <IconArrowLeft size={9} />}
-          {Math.abs(delta).toFixed(1)}% mês ant.
+      <div className="flex items-center gap-1.5 mb-2">
+        <p className="text-xs font-semibold" style={{ color: 'var(--admin-text)' }}>
+          {label}
         </p>
+        <span style={{ color: 'var(--admin-text-faded)' }} title={help}>
+          <IconInfo size={11} />
+        </span>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+        <p className="text-xl lg:text-2xl font-bold tabular-nums" style={{ color }}>
+          {brl(value)}
+        </p>
+        {badgeColor && delta != null && Math.abs(delta) >= 1 && (
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-white"
+            style={{ background: badgeColor }}
+          >
+            {(inverted ? !isGoodChange : isGoodChange) ? 'Alta' : 'Baixa'}
+          </span>
+        )}
+      </div>
+      {delta != null && Math.abs(delta) >= 0.5 && (
+        <p className="text-[11px] inline-flex items-center gap-1 tabular-nums" style={{ color: badgeColor ?? 'var(--admin-text-faded)' }}>
+          {arrow === 'up' && (
+            <span style={{ display: 'inline-block', transform: 'rotate(0deg)' }}>
+              <IconTrendingUp size={10} />
+            </span>
+          )}
+          {arrow === 'down' && (
+            <span style={{ display: 'inline-block', transform: 'rotate(180deg)' }}>
+              <IconTrendingUp size={10} />
+            </span>
+          )}
+          {Math.abs(delta).toFixed(1)}% último mês
+        </p>
+      )}
+      {breakdown && (
+        <div className="mt-3 pt-3 space-y-1 text-xs" style={{ borderTop: '1px solid var(--admin-divider)' }}>
+          {breakdown.map((b, i) => (
+            <div key={i} className="flex justify-between" style={{
+              color: b.strong ? 'var(--admin-text)' : 'var(--admin-text-mute)',
+              fontWeight: b.strong ? 700 : 400,
+            }}>
+              <span>{b.label}</span>
+              <span className="tabular-nums">{brl(b.value)}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
