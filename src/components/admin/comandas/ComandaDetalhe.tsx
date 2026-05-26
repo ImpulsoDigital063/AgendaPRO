@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar } from '@/components/ui/Icon'
 import AdicionarServicoComandaModal from './AdicionarServicoComandaModal'
 import SplitPaymentModal from './SplitPaymentModal'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
+import { downloadComandaPdf, shareComandaPdf } from './useComandaPdf'
 
 export type InvoiceFull = {
   id: string
@@ -96,6 +97,10 @@ export default function ComandaDetalhe({
   const [paying, setPaying] = useState(false)
   const [addServiceOpen, setAddServiceOpen] = useState(false)
   const [courtesyLoading, setCourtesyLoading] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [sharingWa, setSharingWa] = useState(false)
+  // Ref pro card do recibo · alvo do html2pdf
+  const reciboRef = useRef<HTMLDivElement | null>(null)
   // Confirm modal genérico · troca window.confirm nativo (feio) por modal estilizado
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean
@@ -157,6 +162,47 @@ export default function ComandaDetalhe({
       confirmLabel: action === 'reopen' ? 'Sim, reabrir' : 'Sim, cancelar tudo',
       onConfirm: () => { setConfirmModal(null); doAct(action) },
     })
+  }
+
+  function pdfFilename() {
+    const cliente = (invoice.customer?.name ?? 'sem-cliente')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase().slice(0, 30)
+    return `comanda-${invoice.invoice_number}-${cliente}.pdf`
+  }
+
+  async function baixarPdf() {
+    if (pdfLoading) return
+    setPdfLoading(true)
+    setError(null)
+    try {
+      await downloadComandaPdf({ element: reciboRef.current, filename: pdfFilename() })
+    } catch (e) {
+      setError(`Erro ao gerar PDF: ${e instanceof Error ? e.message : 'falha desconhecida'}`)
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
+  async function enviarWhatsApp() {
+    if (sharingWa) return
+    setSharingWa(true)
+    setError(null)
+    try {
+      const phone = invoice.customer?.phone ?? null
+      const text = `Olá ${customerName}! Segue o recibo da comanda #${invoice.invoice_number} · Total ${brl(invoice.total)}.`
+      const r = await shareComandaPdf({
+        element: reciboRef.current,
+        filename: pdfFilename(),
+        customerPhone: phone,
+        text,
+      })
+      if (!r.shared) setError('Não foi possível compartilhar')
+    } catch (e) {
+      setError(`Erro ao compartilhar: ${e instanceof Error ? e.message : 'falha'}`)
+    } finally {
+      setSharingWa(false)
+    }
   }
 
   async function saveManualDiscount(value: number) {
@@ -292,6 +338,33 @@ export default function ComandaDetalhe({
           )}
           <button
             type="button"
+            disabled={pdfLoading}
+            onClick={baixarPdf}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold border disabled:opacity-50"
+            style={{ background: 'var(--admin-surface)', color: 'var(--admin-text)', borderColor: 'var(--admin-border)' }}
+            title="Baixar recibo como PDF"
+          >
+            {pdfLoading ? '...' : 'PDF'}
+          </button>
+          {invoice.customer?.phone && (
+            <button
+              type="button"
+              disabled={sharingWa}
+              onClick={enviarWhatsApp}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
+              style={{
+                background: 'linear-gradient(180deg, #25D366 0%, #128C7E 100%)',
+                color: '#fff',
+                borderTop: '1px solid rgba(255,255,255,0.25)',
+                boxShadow: '0 6px 14px -4px rgba(18,140,126,0.45)',
+              }}
+              title="Compartilhar recibo via WhatsApp"
+            >
+              {sharingWa ? '...' : 'WhatsApp'}
+            </button>
+          )}
+          <button
+            type="button"
             onClick={() => window.print()}
             className="px-3 py-1.5 rounded-lg text-xs font-bold border"
             style={{ background: 'var(--admin-surface)', color: 'var(--admin-text)', borderColor: 'var(--admin-border)' }}
@@ -329,8 +402,9 @@ export default function ComandaDetalhe({
         </div>
       )}
 
-      {/* Recibo · imprimível */}
+      {/* Recibo · imprimível · ref usada pelo html2pdf */}
       <div
+        ref={reciboRef}
         className="rounded-2xl overflow-hidden print-card"
         style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
       >
