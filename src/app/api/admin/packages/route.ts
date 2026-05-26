@@ -1,0 +1,144 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+
+async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data: owner } = await supabase.from('businesses').select('id').eq('owner_id', user.id).maybeSingle()
+  if (owner) return owner.id
+  const { data: prof } = await supabase
+    .from('professionals')
+    .select('business_id')
+    .eq('auth_user_id', user.id)
+    .eq('active', true)
+    .eq('is_receptionist', true)
+    .maybeSingle()
+  return prof?.business_id ?? null
+}
+
+function getAdmin() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+}
+
+type ItemInput = {
+  service_id: string
+  quantity: number
+  unit_price?: number | null
+}
+
+function validateItems(raw: unknown): ItemInput[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  const out: ItemInput[] = []
+  for (const it of raw) {
+    if (!it || typeof it !== 'object') return null
+    const obj = it as Record<string, unknown>
+    if (typeof obj.service_id !== 'string' || !obj.service_id) return null
+    const qty = Number(obj.quantity)
+    if (!Number.isFinite(qty) || qty <= 0) return null
+    let unit: number | null = null
+    if (obj.unit_price != null) {
+      const u = Number(obj.unit_price)
+      if (!Number.isFinite(u) || u < 0) return null
+      unit = u
+    }
+    out.push({ service_id: obj.service_id, quantity: qty, unit_price: unit })
+  }
+  return out
+}
+
+// GET /api/admin/packages · lista pacotes do business (com items)
+export async function GET() {
+  const supabase = await createClient()
+  const businessId = await getBusinessId(supabase)
+  if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const admin = getAdmin()
+  const { data: packages, error } = await admin
+    .from('packages')
+    .select(`
+      id, name, price, validity_kind, validity_value, active, description, created_at,
+      package_items (id, service_id, quantity, unit_price, services(name, price))
+    `)
+    .eq('business_id', businessId)
+    .order('created_at', { ascending: false })
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ packages: packages ?? [] })
+}
+
+// POST /api/admin/packages · cria pacote + itens
+// Body: { name, price, validity_kind, validity_value?, description?, items: [{service_id, quantity, unit_price?}] }
+export async function POST(request: Request) {
+  const supabase = await createClient()
+  const businessId = await getBusinessId(supabase)
+  if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const body = await request.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'invalid_body' }, { status: 400 })
+
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  const price = Number(body.price)
+  const validityKind = typeof body.validity_kind === 'string' ? body.validity_kind : 'none'
+  const validityValue = body.validity_value != null ? Number(body.validity_value) : null
+  const description = typeof body.description === 'string' ? body.description.trim() : null
+  const items = validateItems(body.items)
+
+  if (!name) return NextResponse.json({ error: 'name_required' }, { status: 400 })
+  if (!Number.isFinite(price) || price < 0) return NextResponse.json({ error: 'price_invalid' }, { status: 400 })
+  if (!['none', 'days', 'weeks', 'months', 'years'].includes(validityKind)) {
+    return NextResponse.json({ error: 'validity_kind_invalid' }, { status: 400 })
+  }
+  if (validityKind !== 'none' && (!validityValue || validityValue <= 0)) {
+    return NextResponse.json({ error: 'validity_value_required' }, { status: 400 })
+  }
+  if (!items) return NextResponse.json({ error: 'items_invalid', detail: 'Adicione ao menos 1 serviço com quantidade > 0' }, { status: 400 })
+
+  const admin = getAdmin()
+
+  // Valida que todos os serviços pertencem ao business
+  const { data: services } = await admin
+    .from('services')
+    .select('id')
+    .in('id', items.map((i) => i.service_id))
+    .eq('business_id', businessId)
+  if (!services || services.length !== new Set(items.map((i) => i.service_id)).size) {
+    return NextResponse.json({ error: 'service_not_found' }, { status: 400 })
+  }
+
+  // Cria pacote
+  const { data: pkg, error: pkgErr } = await admin
+    .from('packages')
+    .insert({
+      business_id: businessId,
+      name,
+      price,
+      validity_kind: validityKind,
+      validity_value: validityKind === 'none' ? null : validityValue,
+      description,
+      active: true,
+    })
+    .select()
+    .single()
+
+  if (pkgErr || !pkg) return NextResponse.json({ error: pkgErr?.message ?? 'insert_failed' }, { status: 500 })
+
+  // Cria itens
+  const itemsToInsert = items.map((it) => ({
+    package_id: pkg.id,
+    service_id: it.service_id,
+    quantity: it.quantity,
+    unit_price: it.unit_price,
+  }))
+  const { error: itemsErr } = await admin.from('package_items').insert(itemsToInsert)
+  if (itemsErr) {
+    await admin.from('packages').delete().eq('id', pkg.id) // rollback manual
+    return NextResponse.json({ error: itemsErr.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true, package: pkg })
+}
