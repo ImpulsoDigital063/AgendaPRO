@@ -24,6 +24,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   marketing: 'Marketing',
   taxes: 'Impostos',
   other: 'Outros',
+  payment_fee: 'Taxa de Maquininha',
 }
 
 type ViewKind = 'daily' | 'weekly' | 'monthly' | 'yearly'
@@ -178,7 +179,7 @@ export default async function FluxoCaixaPage({
   ] = await Promise.all([
     sb
       .from('appointments')
-      .select('paid_at, total_price, payment_method')
+      .select('paid_at, total_price, payment_method, payment_fee_percent')
       .eq('business_id', business.id)
       .not('payment_method', 'in', '(courtesy,credit)')
       .gte('paid_at', range.from.toISOString())
@@ -250,6 +251,13 @@ export default async function FluxoCaixaPage({
     const amt = Number(a.total_price ?? 0)
     data[key].receitasByMethod[method] = (data[key].receitasByMethod[method] ?? 0) + amt
     data[key].receitasTotal += amt
+    // Taxa de maquininha automática como despesa
+    const fee = Number(a.payment_fee_percent ?? 0)
+    if (method === 'card' && fee > 0) {
+      const feeAmt = (amt * fee) / 100
+      data[key].despesasByCategory.payment_fee = (data[key].despesasByCategory.payment_fee ?? 0) + feeAmt
+      data[key].despesasTotal += feeAmt
+    }
   }
   for (const s of paidSales ?? []) {
     if (!s.paid_at) continue
