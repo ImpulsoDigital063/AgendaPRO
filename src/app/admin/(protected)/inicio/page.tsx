@@ -117,7 +117,7 @@ async function KPIsRow({ business }: { business: Business }) {
   ]
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {cards.map((c) => {
         // Tons 3D · gradient + glow + ícone destacado
         const tones: Record<string, {
@@ -218,7 +218,7 @@ async function KPIsRow({ business }: { business: Business }) {
 
 function KPIsSkeleton() {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       {[1, 2, 3].map((i) => (
         <div
           key={i}
@@ -422,8 +422,13 @@ export default async function AdminInicioPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Coluna esquerda (2/3) */}
           <div className="lg:col-span-2 space-y-4">
+            {/* AgendaDoDia (GradeTimeline) só aparece em desktop (≥lg).
+                Mobile já tem /admin própria com a timeline em layout mobile.
+                Sem isso a grade larga horizontal estoura em 360px. */}
             <Suspense fallback={null}>
-              <AgendaDoDia business={business} />
+              <div className="hidden lg:block">
+                <AgendaDoDia business={business} />
+              </div>
             </Suspense>
             <Suspense fallback={null}>
               <RelatorioFinanceiroCard businessId={business.id} />
