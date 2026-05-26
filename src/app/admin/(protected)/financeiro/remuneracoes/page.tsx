@@ -107,7 +107,11 @@ export default async function RemuneracoesPage({
   const activeProfs = (profs ?? []).filter((p) => !p.is_receptionist)
 
   // Comissão por venda de produto · respeita snapshot do sale_item
-  // (commission_type pode ser 'percent', 'fixed' ou null·=fallback no pct do prof)
+  // commission_type:
+  //  - 'percent' + value → % sobre o bruto
+  //  - 'fixed'   + value → R$ fixo por unidade
+  //  - 'none'           → SEM comissão (v75 · explícito)
+  //  - null             → fallback no pct padrão do prof (retrocompat)
   type SaleItemAgg = { quantity: number; unit_price: number; commission_type: string | null; commission_value: number | null }
   function calcProductCommission(
     sales: { professional_id: string | null; sale_items: SaleItemAgg[] | null }[],
@@ -122,11 +126,16 @@ export default async function RemuneracoesPage({
         const qty = Number(it.quantity ?? 0)
         const unit = Number(it.unit_price ?? 0)
         const lineGross = qty * unit
+        if (it.commission_type === 'none') {
+          // sem comissão explícita · não soma nada
+          continue
+        }
         if (it.commission_type === 'percent' && it.commission_value != null) {
           total += (lineGross * Number(it.commission_value)) / 100
         } else if (it.commission_type === 'fixed' && it.commission_value != null) {
           total += qty * Number(it.commission_value)
         } else {
+          // null = fallback no pct do prof
           total += (lineGross * defaultPct) / 100
         }
       }
@@ -161,6 +170,8 @@ export default async function RemuneracoesPage({
       name: p.name,
       default_commission_percent: pct,
       valorTotal,
+      commissionFromAppts,
+      commissionFromSales,
       pago,
       pendente: valorTotal - pago,
       valesPendentes,

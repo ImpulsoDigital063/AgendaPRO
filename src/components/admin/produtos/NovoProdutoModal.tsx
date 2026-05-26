@@ -53,7 +53,7 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
   const [saleActive, setSaleActive] = useState(true)
   const [price, setPrice] = useState<string>('')
   const [cost, setCost] = useState<string>('')
-  const [commissionType, setCommissionType] = useState<'percent' | 'fixed' | ''>('')
+  const [commissionType, setCommissionType] = useState<'percent' | 'fixed' | 'none' | ''>('none')
   const [commissionValue, setCommissionValue] = useState<string>('')
 
   const [saving, setSaving] = useState(false)
@@ -135,7 +135,7 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
         price: saleActive && price ? Number(price) : null,
         cost: cost ? Number(cost) : null,
         commission_type: saleActive && commissionType ? commissionType : null,
-        commission_value: saleActive && commissionValue ? Number(commissionValue) : null,
+        commission_value: saleActive && commissionType !== 'none' && commissionValue ? Number(commissionValue) : null,
       }),
     })
     setSaving(false)
@@ -343,28 +343,41 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
                     <input type="number" min={0} step={0.01} value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Opcional" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
                   </div>
                 </div>
-                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
-                  <div>
-                    <FieldLabel>Comissão</FieldLabel>
-                    <input type="number" min={0} step={0.01} value={commissionValue} onChange={(e) => setCommissionValue(e.target.value)} placeholder="0" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
-                  </div>
-                  <div className="flex gap-1">
-                    {(['percent', 'fixed'] as const).map((t) => (
+                <div className="space-y-2">
+                  <FieldLabel>Comissão</FieldLabel>
+                  {/* v75 · Eduardo cravou 25/05: default 'Sem comissão' pois a maior parte das vendas não comissiona */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {([
+                      { id: 'none' as const, label: 'Sem comissão' },
+                      { id: 'percent' as const, label: '% Percentual' },
+                      { id: 'fixed' as const, label: 'R$ Fixo' },
+                    ]).map((opt) => (
                       <button
-                        key={t}
+                        key={opt.id}
                         type="button"
-                        onClick={() => setCommissionType(commissionType === t ? '' : t)}
-                        className="flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors"
+                        onClick={() => setCommissionType(commissionType === opt.id ? '' : opt.id)}
+                        className="py-2 px-2 rounded-lg text-[11px] font-bold transition-colors"
                         style={
-                          commissionType === t
+                          commissionType === opt.id
                             ? { background: 'var(--admin-accent)', color: '#fff' }
                             : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
                         }
                       >
-                        {t === 'percent' ? '%' : 'R$'}
+                        {opt.label}
                       </button>
                     ))}
                   </div>
+                  {(commissionType === 'percent' || commissionType === 'fixed') && (
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={commissionValue}
+                      onChange={(e) => setCommissionValue(e.target.value)}
+                      placeholder={commissionType === 'percent' ? 'ex: 10 (= 10%)' : 'ex: 5 (= R$ 5 por unidade)'}
+                      className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums"
+                    />
+                  )}
                 </div>
               </>
             )}

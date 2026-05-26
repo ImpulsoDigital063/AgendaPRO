@@ -29,7 +29,7 @@ type Product = {
   sku: string | null
   track_stock: boolean
   sale_active: boolean
-  commission_type: 'percent' | 'fixed' | null
+  commission_type: 'percent' | 'fixed' | 'none' | null
   commission_value: number | null
   image_url: string | null
   brand?: { id: string; name: string } | { id: string; name: string }[] | null

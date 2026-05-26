@@ -10,6 +10,10 @@ export type ProfRow = {
   name: string
   default_commission_percent: number
   valorTotal: number
+  /** Comissão originada de serviços (appointments pagos). */
+  commissionFromAppts: number
+  /** Comissão originada de venda de produto (sales paid). */
+  commissionFromSales: number
   pago: number
   pendente: number
   valesPendentes: number
@@ -122,8 +126,15 @@ export default function RemuneracoesTable({ rows, monthIso, periodStart, periodE
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: 'var(--admin-text)' }}>
-                    {formatBRL(r.valorTotal)}
+                  <td className="px-4 py-3 text-right tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                    <div className="font-semibold">{formatBRL(r.valorTotal)}</div>
+                    {/* Breakdown serviço × produto (P1/9) · só aparece se tem algum valor */}
+                    {(r.commissionFromAppts > 0 || r.commissionFromSales > 0) && (
+                      <div className="text-[10px] mt-0.5 font-normal" style={{ color: 'var(--admin-text-faded)' }}>
+                        serviços {formatBRL(r.commissionFromAppts)}
+                        {r.commissionFromSales > 0 && ` · produtos ${formatBRL(r.commissionFromSales)}`}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: r.pago > 0 ? '#059669' : 'var(--admin-text-mute)' }}>
                     {formatBRL(r.pago)}
