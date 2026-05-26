@@ -15,6 +15,7 @@ import TopProfsCard from '@/components/admin/TopProfsCard'
 import TopServicesCard from '@/components/admin/TopServicesCard'
 import TrendReceitaCard from '@/components/admin/TrendReceitaCard'
 import OportunidadesCard from '@/components/admin/OportunidadesCard'
+import RelatorioFinanceiroCard from '@/components/admin/RelatorioFinanceiroCard'
 import CountUp from '@/components/admin/CountUp'
 import {
   IconCalendar,
@@ -463,6 +464,9 @@ export default async function AdminInicioPage() {
           <div className="lg:col-span-2 space-y-4">
             <Suspense fallback={null}>
               <ProximosDoDia business={business} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <RelatorioFinanceiroCard businessId={business.id} />
             </Suspense>
             <Suspense fallback={null}>
               <FocoDoDiaSection businessId={business.id} />
