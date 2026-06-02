@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
-import { createClient } from '@/lib/supabase/client'
 import { maskPhoneInput } from '@/lib/client-display'
 import {
   IconClock,
@@ -490,7 +489,6 @@ export default function BookingFlow({
     setSelectedTime(null)
     setLoadingSlots(true)
 
-    const supabase = createClient()
     const dayOfWeek = date.getDay()
     // V31: dia pode ter MULTIPLOS periodos (manha + tarde com pausa
     // de almoco). Pega todos e itera abaixo. Ordenacao por start_time
@@ -517,20 +515,21 @@ export default function BookingFlow({
     // Inclui bloqueios do prof + bloqueios do business inteiro
     // (professional_id IS NULL).
     const dateStr = formatDate(date)
-    const [{ data: existing }, { data: blocks }] = await Promise.all([
-      supabase
-        .from('appointments')
-        .select('start_time, end_time')
-        .eq('professional_id', professional.id)
-        .eq('appointment_date', dateStr)
-        .in('status', ['pending', 'confirmed', 'completed']),
-      supabase
-        .from('business_blocks')
-        .select('start_time, end_time, block_type, day_of_week, block_date')
-        .eq('business_id', business.id)
-        .eq('active', true)
-        .or(`professional_id.eq.${professional.id},professional_id.is.null`),
-    ])
+    // Leitura via rota server (service_role) — appointments e business_blocks
+    // têm RLS travado (fix de segurança Fase 1). Slots seguem gerados no client.
+    const avail = await fetch(
+      `/api/booking/availability?business=${business.id}&professional=${professional.id}&date=${dateStr}`
+    )
+      .then((r) => r.json())
+      .catch(() => ({ appointments: [], blocks: [] }))
+    const existing = (avail.appointments ?? []) as { start_time: string; end_time: string }[]
+    const blocks = (avail.blocks ?? []) as {
+      start_time: string
+      end_time: string
+      block_type: string
+      day_of_week: number | null
+      block_date: string | null
+    }[]
 
     const blockedRanges = (blocks ?? [])
       .filter((b) =>
@@ -592,24 +591,13 @@ export default function BookingFlow({
     if (phoneDigits.length < 10) return
 
     setLookingUpClient(true)
-    const supabase = createClient()
 
-    // Match digit-only direto (caso comum quando seed/cadastro normaliza)
-    let { data } = await supabase
-      .from('clients')
-      .select('id, name, phone, email, created_at')
-      .eq('phone', phoneDigits)
-      .maybeSingle()
-
-    // Fallback: tenta com formato original (legacy ou mascarado)
-    if (!data && rawPhone !== phoneDigits) {
-      const r = await supabase
-        .from('clients')
-        .select('id, name, phone, email, created_at')
-        .eq('phone', rawPhone)
-        .maybeSingle()
-      data = r.data
-    }
+    // Lookup via rota server — clients tem RLS travado. Retorna só a linha
+    // do telefone consultado (match digit/fallback feito no server).
+    const data = await fetch(`/api/booking/lookup-client?phone=${encodeURIComponent(rawPhone)}`)
+      .then((r) => r.json())
+      .then((j) => j.client as Client | null)
+      .catch(() => null)
 
     if (data) {
       setReturningClient(data as Client)
@@ -649,17 +637,20 @@ export default function BookingFlow({
     if (!selectedDate || !waitlistSlot || !waitlistName.trim() || !waitlistPhone.trim()) return
     setWaitlistSubmitting(true)
 
-    const supabase = createClient()
-    await supabase.from('waitlist').insert({
-      business_id: business.id,
-      professional_id: professional.id,
-      appointment_date: formatDate(selectedDate),
-      start_time: waitlistSlot,
-      client_name: waitlistName.trim(),
-      client_phone: waitlistPhone.trim(),
-      client_email: waitlistEmail.trim() || null,
-      service_ids: selectedServices.length > 0 ? selectedServices.map((s) => s.id) : null,
-    })
+    await fetch('/api/booking/waitlist', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        businessId: business.id,
+        professionalId: professional.id,
+        date: formatDate(selectedDate),
+        startTime: waitlistSlot,
+        clientName: waitlistName.trim(),
+        clientPhone: waitlistPhone.trim(),
+        clientEmail: waitlistEmail.trim() || null,
+        serviceIds: selectedServices.length > 0 ? selectedServices.map((s) => s.id) : null,
+      }),
+    }).catch(() => {})
 
     setWaitlistSubmitting(false)
     setWaitlistDone(true)
@@ -692,172 +683,55 @@ export default function BookingFlow({
     const endM = (endMinutes % 60).toString().padStart(2, '0')
     const endTime = `${endH}:${endM}`
 
-    const supabase = createClient()
+    // Toda a escrita (clients, customers, appointments, appointment_services
+    // + birthday + referral + checagem de conflito) acontece no server via
+    // service_role — essas tabelas têm RLS travado (fix de segurança Fase 1).
+    const res = await fetch('/api/booking/submit', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        businessId: business.id,
+        professionalId: professional.id,
+        clientId: returningClient?.id ?? null,
+        clientName: clientName.trim(),
+        clientPhone: clientPhone.trim(),
+        clientEmail: clientEmail.trim() || null,
+        clientBirthday: clientBirthday.trim(),
+        services: selectedServices.map((s) => ({
+          id: s.id,
+          name: s.name,
+          price: s.price,
+          duration_minutes: s.duration_minutes,
+          points: s.points ?? 0,
+        })),
+        date: formatDate(selectedDate),
+        startTime: selectedTime,
+        endTime,
+        referralCode: referralCode ?? null,
+        hasPrice,
+        totalPrice: hasPrice ? totalPrice : null,
+      }),
+    })
+      .then((r) => r.json())
+      .catch(() => null)
 
-    // 1. Criar ou recuperar cliente global (clients)
-    let clientId: string | null = returningClient?.id ?? null
-
-    if (!clientId) {
-      const { data: existing } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('phone', clientPhone.trim())
-        .maybeSingle()
-
-      if (existing) {
-        clientId = existing.id
-        await supabase
-          .from('clients')
-          .update({ name: clientName.trim(), email: clientEmail.trim() || null })
-          .eq('id', clientId)
-      } else {
-        const { data: created } = await supabase
-          .from('clients')
-          .insert({
-            name: clientName.trim(),
-            phone: clientPhone.trim(),
-            email: clientEmail.trim() || null,
-          })
-          .select('id')
-          .single()
-        clientId = created?.id ?? null
-      }
-    }
-
-    // 1b. Criar ou recuperar customer do negócio (para pontos)
-    const { data: existingCustomer } = await supabase
-      .from('customers')
-      .select('id, total_points, birthday')
-      .eq('business_id', business.id)
-      .eq('phone', clientPhone.trim())
-      .maybeSingle()
-
-    let customerId: string | null = existingCustomer?.id ?? null
-
-    // v42 · birthday é opcional · só preenche se cliente forneceu.
-    // Cliente input type=date entrega 'YYYY-MM-DD' ou string vazia.
-    // Round-trip pra validar data REAL (rejeita 30/02 e similares que
-    // passam no regex mas Date corrige silenciosamente).
-    const birthdayInput = clientBirthday.trim()
-    let validBirthday: string | null = null
-    if (/^\d{4}-\d{2}-\d{2}$/.test(birthdayInput)) {
-      const [by, bm, bd] = birthdayInput.split('-').map(Number)
-      const bDate = new Date(`${birthdayInput}T00:00:00Z`)
-      const isReal =
-        bDate.getUTCFullYear() === by &&
-        bDate.getUTCMonth() + 1 === bm &&
-        bDate.getUTCDate() === bd
-      const isPastOrToday = bDate.getTime() <= Date.now()
-      if (isReal && isPastOrToday) validBirthday = birthdayInput
-    }
-
-    if (!customerId) {
-      const insertData: Record<string, unknown> = {
-        business_id: business.id,
-        name: clientName.trim(),
-        phone: clientPhone.trim(),
-        email: clientEmail.trim() || null,
-      }
-      if (validBirthday) insertData.birthday = validBirthday
-      const { data: newCustomer } = await supabase
-        .from('customers')
-        .insert(insertData)
-        .select('id, referral_code')
-        .single()
-      customerId = newCustomer?.id ?? null
-      if (newCustomer?.referral_code) {
-        setMyReferralLink(`${window.location.origin}/${business.slug}?ref=${newCustomer.referral_code}`)
-      }
-    } else {
-      // Cliente existente — busca o referral_code dele
-      const { data: existingFull } = await supabase
-        .from('customers')
-        .select('referral_code')
-        .eq('id', customerId)
-        .single()
-      if (existingFull?.referral_code) {
-        setMyReferralLink(`${window.location.origin}/${business.slug}?ref=${existingFull.referral_code}`)
-      }
-
-      // v42 · "preenche se faltar" — se cliente já existe SEM birthday e
-      // agora forneceu, atualiza. Se já tinha, não sobrescreve (respeita
-      // dado prévio do import ou edição manual do dono).
-      if (validBirthday && !existingCustomer?.birthday) {
-        await supabase
-          .from('customers')
-          .update({ birthday: validBirthday })
-          .eq('id', customerId)
-      }
-    }
-
-    // 2. Verificação de conflito antes de inserir (proteção client-side)
-    const { data: conflict } = await supabase
-      .from('appointments')
-      .select('id')
-      .eq('professional_id', professional.id)
-      .eq('appointment_date', formatDate(selectedDate))
-      .in('status', ['pending', 'confirmed'])
-      .lt('start_time', endTime)
-      .gt('end_time', selectedTime)
-      .limit(1)
-      .maybeSingle()
-
-    if (conflict) {
-      setError('Esse horário acabou de ser reservado. Escolha outro.')
-      setSubmitting(false)
-      return
-    }
-
-    // 3. Criar agendamento
-    const firstService = selectedServices[0] ?? null
-    const { data: appointment, error: apptErr } = await supabase
-      .from('appointments')
-      .insert({
-        business_id: business.id,
-        professional_id: professional.id,
-        client_id: clientId,
-        client_name: clientName.trim(),
-        client_phone: clientPhone.trim(),
-        client_email: clientEmail.trim() || null,
-        service_id: firstService?.id ?? null,
-        service_name: firstService?.name ?? null,
-        total_price: hasPrice ? totalPrice : null,
-        appointment_date: formatDate(selectedDate),
-        start_time: selectedTime,
-        end_time: endTime,
-        status: 'confirmed',
-      })
-      .select('id')
-      .single()
-
-    if (apptErr || !appointment) {
-      // 23P01 = exclusion_violation (constraint no_overlap_appointments
-      // do migration v40). Postgres bloqueou overbooking atomicamente.
-      // Mensagem fala "horario" pra cliente entender e re-escolher.
-      const code = (apptErr as { code?: string } | null)?.code
-      const isOverlap =
-        code === '23P01' ||
-        apptErr?.message?.includes('horário') ||
-        apptErr?.message?.includes('no_overlap')
-      const msg = isOverlap
-        ? 'Esse horário acabou de ser reservado. Escolha outro.'
-        : 'Erro ao agendar. Tente novamente.'
+    if (!res || !res.ok) {
+      // overlap = constraint v40 (23P01) ou pré-checagem de conflito no server
+      const msg =
+        res?.error === 'overlap'
+          ? 'Esse horário acabou de ser reservado. Escolha outro.'
+          : 'Erro ao agendar. Tente novamente.'
       setError(msg)
       setSubmitting(false)
       return
     }
 
-    // 3. Inserir serviços do agendamento
-    if (selectedServices.length > 0) {
-      await supabase.from('appointment_services').insert(
-        selectedServices.map((s) => ({
-          appointment_id: appointment.id,
-          service_id: s.id,
-          service_name: s.name,
-          price: s.price,
-          duration_minutes: s.duration_minutes,
-        }))
-      )
+    // appointmentId alimenta cupom/notify abaixo.
+    const appointment = { id: res.appointmentId as string }
+
+    // Link de indicação — referral_code vem do server, origin do browser.
+    if (res.referralCode) {
+      setMyReferralLink(`${window.location.origin}/${business.slug}?ref=${res.referralCode}`)
     }
 
     // Marca cupom como usado (via API server-side com service-role —
@@ -886,27 +760,7 @@ export default function BookingFlow({
       setPointsEarned(totalPoints)
     }
 
-    // 5. Marcar referred_by quando é cliente NOVO vindo por link de indicação.
-    // Os pontos do indicador são creditados pelo trigger SQL quando o agendamento
-    // vira 'completed' (ver migration V15). Se o agendamento for cancelado ou
-    // marcado como no_show, o indicador nunca ganha pontos.
-    if (referralCode && customerId && !existingCustomer) {
-      const { data: referrer } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('referral_code', referralCode)
-        .eq('business_id', business.id)
-        .maybeSingle()
-
-      if (referrer && referrer.id !== customerId) {
-        await supabase
-          .from('customers')
-          .update({ referred_by: referrer.id })
-          .eq('id', customerId)
-      }
-    }
-
-    // 6. Notificar profissional + cliente + capturar cancelUrl
+    // 5. Notificar profissional + cliente + capturar cancelUrl
     fetch('/api/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

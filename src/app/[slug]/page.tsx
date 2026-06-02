@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -78,7 +79,14 @@ export default async function BusinessPage({
   // indicado E confirma pro indicador que o link "vale".
   let referrer: { name: string; pointsForReferral: number } | null = null
   if (ref) {
-    const { data: refCustomer } = await supabase
+    // customers tem RLS travado (fix Fase 1) — lookup de indicador via
+    // service_role (página pública = role anon, não enxergaria a row).
+    const svc = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    )
+    const { data: refCustomer } = await svc
       .from('customers')
       .select('name, business_id')
       .eq('referral_code', ref)
