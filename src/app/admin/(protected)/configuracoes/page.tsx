@@ -3,7 +3,31 @@ import { redirect } from 'next/navigation'
 import ConfiguracoesTabs from '@/components/admin/ConfiguracoesTabs'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 
-export default async function ConfiguracoesPage() {
+// Rótulo de cada seção pro título dinâmico do header (segue o ?tab= do drawer).
+const CONFIG_TAB_LABELS: Record<string, string> = {
+  negocio: 'Negócio',
+  profissionais: 'Profissionais',
+  servicos: 'Serviços',
+  horarios: 'Horários',
+  fidelidade: 'Fidelidade',
+  maquininhas: 'Maquininhas',
+  bloqueios: 'Bloqueios',
+  'fichas-modelo': 'Fichas Modelo',
+  aparencia: 'Aparência',
+  'qr-code': 'QR Code',
+  whatsapp: 'QR Code',
+  divulgacao: 'Divulgação',
+  plano: 'Plano',
+  importar: 'Importar',
+}
+
+export default async function ConfiguracoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const { tab } = await searchParams
+  const sectionTitle = (tab && CONFIG_TAB_LABELS[tab]) || 'Configurações'
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -67,7 +91,7 @@ export default async function ConfiguracoesPage() {
       />
 
       <div className="relative">
-        <SubPageHeader title="Configurações" subtitle={business.name} />
+        <SubPageHeader title={sectionTitle} subtitle={`Configurações · ${business.name}`} />
         <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-6xl lg:px-8">
           <ConfiguracoesTabs
             business={business}

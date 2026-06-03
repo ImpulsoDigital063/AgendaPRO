@@ -9,7 +9,7 @@ import {
   getUpcomingAppointments,
 } from '@/lib/admin-data'
 import AppointmentCard from '@/components/AppointmentCard'
-import TodayList from '@/components/admin/TodayList'
+import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import CountUp from '@/components/admin/CountUp'
@@ -18,7 +18,6 @@ import {
   IconCheck,
   IconClock,
   IconDollar,
-  IconInbox,
 } from '@/components/ui/Icon'
 import OwnerPhotoCard from '@/components/admin/eu/OwnerPhotoCard'
 
@@ -192,56 +191,13 @@ async function PersonalTodaySection({
   owner: OwnerProf
 }) {
   const today = new Date().toISOString().split('T')[0]
-  const list = await getAppointmentsToday(business.id, today)
-  const meus = list.filter((a) => a.professional_id === owner.id)
-  const ativos = meus.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')
-  const arquivados = meus.filter((a) => a.status === 'cancelled' || a.status === 'no_show')
-
   return (
     <section>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-          Seus atendimentos hoje
-        </p>
-        {meus.length > 0 && (
-          <span
-            className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
-            style={{
-              background: 'var(--admin-accent-bg)',
-              color: 'var(--admin-accent)',
-              border: '1px solid var(--admin-accent-border)',
-            }}
-          >
-            {meus.length} agendamento{meus.length === 1 ? '' : 's'}
-          </span>
-        )}
-      </div>
-
-      {meus.length === 0 ? (
-        <div className="admin-card p-6 text-center">
-          <div
-            className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center mb-3"
-            style={{
-              background: 'var(--admin-accent-bg)',
-              color: 'var(--admin-accent)',
-            }}
-          >
-            <IconInbox size={22} />
-          </div>
-          <p className="text-sm font-medium" style={{ color: 'var(--admin-text-2)' }}>
-            Nenhum atendimento seu hoje
-          </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-            Quando um cliente agendar com você, aparece aqui.
-          </p>
-        </div>
-      ) : (
-        <TodayList
-          active={ativos}
-          archived={arquivados}
-          punctualityBonus={business.punctuality_bonus_points ?? 10}
-        />
-      )}
+      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+        Seus atendimentos hoje
+      </p>
+      {/* Grid premium · só a coluna do dono (onlyProfessionalId); KPIs próprios já acima */}
+      <GradeTimeline businessId={business.id} date={today} onlyProfessionalId={owner.id} hideKpis />
     </section>
   )
 }

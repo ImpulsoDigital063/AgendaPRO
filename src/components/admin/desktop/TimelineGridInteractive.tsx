@@ -42,6 +42,8 @@ type Props = {
   recebidoHoje?: number
   aReceberHoje?: number
   pendentesHoje?: number
+  /** Esconde os MiniKPI internos (aba "Eu" tem KPIs próprios do dono acima) */
+  hideKpis?: boolean
 }
 
 type PopoverState = {
@@ -179,6 +181,7 @@ export default function TimelineGridInteractive({
   recebidoHoje = 0,
   aReceberHoje = 0,
   pendentesHoje = 0,
+  hideKpis = false,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -581,8 +584,9 @@ export default function TimelineGridInteractive({
       {/* Wrapper da área principal (KPIs + GRADE)
           KPIs ficam SEPARADOS do card da grade (cravado 28/05 Eduardo) */}
       <div className="w-full lg:flex-1 min-w-0 space-y-3">
-        {/* KPIs do dia · só se date === HOJE · cards próprios fora da grade */}
-        {isToday && (
+        {/* KPIs do dia · só se date === HOJE · cards próprios fora da grade.
+            hideKpis: aba "Eu" suprime (tem KPIs próprios do dono acima). */}
+        {isToday && !hideKpis && (
           <div className="grid grid-cols-3 gap-2">
             <MiniKPI
               label="Recebido"

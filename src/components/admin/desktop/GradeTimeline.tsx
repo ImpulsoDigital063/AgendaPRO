@@ -7,8 +7,11 @@ type Props = {
   businessId: string
   date: string
   /** Esconde mini-KPIs do header (Recebido/A receber/Pendentes). Útil quando
-   *  o componente é embedado em página que já tem KPIs (ex: Início) */
+   *  o componente é embedado em página que já tem KPIs (ex: Início, Eu) */
   hideKpis?: boolean
+  /** Quando setado, mostra só a coluna desse profissional (ex: aba "Eu" do
+   *  dono que atende). Default: todos os profs ativos do negócio. */
+  onlyProfessionalId?: string
 }
 
 type ApptRow = {
@@ -27,7 +30,7 @@ type ApptRow = {
 const HOUR_START = 7 // 07:00 começa a grade (ajuste futuro: business_hours)
 const HOUR_END = 22 // 22:00 termina
 
-export default async function GradeTimeline({ businessId, date, hideKpis = false }: Props) {
+export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId }: Props) {
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -85,12 +88,17 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
   const profs = (profsData ?? [])
     .filter((p) => !p.is_receptionist)
     .filter((p) => p.does_appointments !== false)
+    // Aba "Eu" do dono: só a coluna dele
+    .filter((p) => !onlyProfessionalId || p.id === onlyProfessionalId)
     .map((p) => ({
       id: p.id,
       name: p.name,
       photo_url: p.photo_url ?? null,
     }))
-  const appts = (apptsData ?? []) as ApptRow[]
+  // Quando filtrado pra um profissional (aba "Eu"), contagem/KPIs/grade
+  // refletem só os appts dele.
+  const appts = ((apptsData ?? []) as ApptRow[])
+    .filter((a) => !onlyProfessionalId || a.professional_id === onlyProfessionalId)
   const services = (servicesData ?? []) as { id: string; name: string; price: number | null; duration_minutes: number | null }[]
   const blocks = (blocksData ?? []) as BlockRow[]
 
@@ -129,6 +137,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
         recebidoHoje={recebidoHoje}
         aReceberHoje={aReceberHoje}
         pendentesHoje={pendentesHoje}
+        hideKpis={hideKpis}
       />
     </div>
   )
