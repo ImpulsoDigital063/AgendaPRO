@@ -32,7 +32,7 @@ const DAYS = [
   { id: 6, label: 'Sáb', full: 'Sábado', short: 'S' },
 ]
 
-const DURATIONS = [15, 20, 30, 40, 45, 60, 75, 90, 120]
+const DURATIONS = [5, 10, 15, 20, 30, 40, 45, 60, 75, 90, 120]
 const COMMERCIAL_DAYS = [1, 2, 3, 4, 5]
 const COMMERCIAL_PLUS_SAT_DAYS = [1, 2, 3, 4, 5, 6]
 // Default 04/05/2026: abrir 08:00 / fechar 18:00 com pausa 12-13.
@@ -187,6 +187,7 @@ export default function HorariosTab({
   initialWorkingHours,
   isAdmin = false,
 }: Props) {
+  // Profissionais ativos (agendapro não tem attends_clients · filtro simples).
   const activeProfessionals = professionals.filter((p) => p.active)
   const [selectedProfId, setSelectedProfId] = useState(activeProfessionals[0]?.id ?? '')
   const [workingHours, setWorkingHours] = useState(initialWorkingHours)
@@ -891,7 +892,7 @@ export default function HorariosTab({
           Pausa de almoço:
         </span>
         <input
-          type="time"
+          type="time" lang="pt-BR"
           value={lunchStart}
           onChange={(e) => setLunchStart(e.target.value)}
           className="admin-input text-xs px-2 py-1 tabular-nums"
@@ -900,7 +901,7 @@ export default function HorariosTab({
         />
         <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>—</span>
         <input
-          type="time"
+          type="time" lang="pt-BR"
           value={lunchEnd}
           onChange={(e) => setLunchEnd(e.target.value)}
           className="admin-input text-xs px-2 py-1 tabular-nums"
@@ -1054,7 +1055,7 @@ export default function HorariosTab({
                           Abertura
                         </label>
                         <input
-                          type="time"
+                          type="time" lang="pt-BR"
                           value={period.start_time}
                           onChange={(e) => updatePeriod(day.id, idx, 'start_time', e.target.value)}
                           className="admin-input w-full px-3 py-2 text-sm"
@@ -1068,7 +1069,7 @@ export default function HorariosTab({
                           Fechamento
                         </label>
                         <input
-                          type="time"
+                          type="time" lang="pt-BR"
                           value={period.end_time}
                           onChange={(e) => updatePeriod(day.id, idx, 'end_time', e.target.value)}
                           className="admin-input w-full px-3 py-2 text-sm"
@@ -1670,6 +1671,13 @@ function CopyToDaysModal({
   onApply: () => void
   onClose: () => void
 }) {
+  // CRITICAL fix Marko 28/05: hooks devem vir ANTES de qualquer early return.
+  // Antes tinha `if (!open || !sourceDay || !sourceConfig) return null` aqui
+  // e `useState(portalReady)` depois — quando modal abria/fechava a ordem
+  // dos hooks mudava → React lançava erro fatal → tela "couldn't load".
+  const [portalReady, setPortalReady] = useState(false)
+  useEffect(() => { setPortalReady(true) }, [])
+
   useEffect(() => {
     if (!open) return
     function handler(e: KeyboardEvent) {
@@ -1683,15 +1691,11 @@ function CopyToDaysModal({
     }
   }, [open, onClose])
 
-  if (!open || !sourceDay || !sourceConfig) return null
+  if (!open || !sourceDay || !sourceConfig || !portalReady) return null
 
   const summary = sourceConfig.periods
     .map((p) => `${p.start_time}–${p.end_time}`)
     .join(' · ')
-
-  const [portalReady, setPortalReady] = useState(false)
-  useEffect(() => { setPortalReady(true) }, [])
-  if (!portalReady) return null
 
   return createPortal(
     <div

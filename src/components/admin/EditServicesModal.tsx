@@ -16,8 +16,9 @@ type Service = {
 type Props = {
   appointmentId: string
   startTime: string
-  /** Status atual — modal mostra aviso especial se já completed. */
-  currentStatus: string
+  /** Status atual · mantido por compat com chamadores · o bloqueio de comanda
+   *  paga vem do backend (locked) via GET, não mais do status. */
+  currentStatus?: string
   onClose: () => void
 }
 
@@ -40,7 +41,6 @@ function calcEndTime(startTime: string, durationMin: number): string {
 export default function EditServicesModal({
   appointmentId,
   startTime,
-  currentStatus,
   onClose,
 }: Props) {
   const router = useRouter()
@@ -49,6 +49,9 @@ export default function EditServicesModal({
   const [services, setServices] = useState<Service[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
+  // locked = comanda já paga (invoice fechada). Editar serviço aqui descasaria
+  // o financeiro · backend bloqueia 409 e a UI mostra o caminho (reabrir).
+  const [locked, setLocked] = useState(false)
   // Conflict state: quando API retorna 409 com canForce=true, mostra warning
   // amarelo + botao "Salvar mesmo assim" · profissional decide.
   const [conflict, setConflict] = useState<string | null>(null)
@@ -81,6 +84,7 @@ export default function EditServicesModal({
         if (cancelled) return
         setServices(data.services || [])
         setSelectedIds(new Set(data.currentServiceIds || []))
+        setLocked(data.appointment?.locked === true)
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Erro')
       } finally {
@@ -150,7 +154,7 @@ export default function EditServicesModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
       onClick={onClose}
     >
@@ -186,22 +190,36 @@ export default function EditServicesModal({
           </button>
         </div>
 
-        {/* Aviso pra status completed/no_show */}
-        {(currentStatus === 'completed' || currentStatus === 'no_show') && (
-          <div
-            className="mx-4 mt-3 rounded-xl p-3 text-xs"
-            style={{
-              background: 'rgba(245,158,11,0.10)',
-              border: '1px solid rgba(245,158,11,0.30)',
-              color: 'var(--admin-text)',
-            }}
-          >
-            Atendimento já fechado · Editar aqui ajusta apenas o registro do financeiro.
-            Pontos do cliente continuam como estão · ajuste no perfil dele se precisar.
+        {/* Comanda paga · serviços travados. Editar aqui descasaria o
+            financeiro (a cliente já pagou o valor antigo). Caminho: reabrir. */}
+        {locked && !loading && (
+          <div className="flex-1 min-h-0 overflow-y-auto p-4">
+            <div
+              className="rounded-xl p-4 text-sm space-y-2"
+              style={{
+                background: 'rgba(245,158,11,0.10)',
+                border: '1px solid rgba(245,158,11,0.35)',
+                color: 'var(--admin-text)',
+              }}
+            >
+              <p className="font-bold" style={{ color: '#D97706' }}>
+                Comanda já paga
+              </p>
+              <p>
+                Não dá pra mudar os serviços de uma comanda que já foi paga — os
+                valores não bateriam com o que a cliente pagou.
+              </p>
+              <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                Pra ajustar: abra a comanda em <strong>Comandas</strong> e toque em{' '}
+                <strong>Reabrir</strong>, edite e fature de novo. Ou lance um novo
+                atendimento pro serviço extra.
+              </p>
+            </div>
           </div>
         )}
 
         {/* Conteúdo */}
+        {!locked && (
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
           {loading ? (
             <div className="space-y-2 animate-pulse">
@@ -261,9 +279,27 @@ export default function EditServicesModal({
             })
           )}
         </div>
+        )}
+
+        {/* Footer travado · comanda paga · só fechar */}
+        {locked && !loading && (
+          <div
+            className="p-4"
+            style={{ borderTop: '1px solid var(--admin-divider)' }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2.5 rounded-xl text-sm font-bold"
+              style={{ background: 'var(--admin-accent)', color: '#fff' }}
+            >
+              Entendi
+            </button>
+          </div>
+        )}
 
         {/* Footer com preview e ações */}
-        {!loading && services.length > 0 && (
+        {!locked && !loading && services.length > 0 && (
           <div
             className="p-4 space-y-3"
             style={{ borderTop: '1px solid var(--admin-divider)' }}

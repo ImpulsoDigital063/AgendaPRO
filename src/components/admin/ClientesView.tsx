@@ -148,6 +148,19 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
   const [showAddModal, setShowAddModal] = useState(false)
   const [detailCustomerId, setDetailCustomerId] = useState<string | null>(null)
 
+  // CIC Onda 5B P0 #1 (27/05): wrap com `lg:hidden`/`hidden lg:block`
+  // não funciona porque os drawers usam createPortal direto pro body,
+  // saindo da DOM tree onde a classe responsive aplicaria. Resultado:
+  // ambos abriam em desktop. Fix: matchMedia listener + render só 1.
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    setIsDesktop(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
   // Deep-link: abre drawer quando /admin/clientes?customer=<id> · usado pelo
   // botão Visualizar Cliente do AgendarModal pós-save. Limpa a query depois
   // de abrir pra URL não ficar suja se o usuário fechar e abrir outro.
@@ -617,24 +630,19 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
         />
       )}
 
-      {/* Mobile/tablet · modal antigo (mais compacto) */}
-      {detailCustomerId && (
-        <div className="lg:hidden">
-          <ClienteDetailModal
-            customerId={detailCustomerId}
-            onClose={() => setDetailCustomerId(null)}
-          />
-        </div>
+      {/* Render APENAS UM baseado em viewport · matchMedia (não Tailwind)
+          porque createPortal escapa do wrapper responsive. */}
+      {detailCustomerId && isDesktop && (
+        <ClienteDrawer
+          customerId={detailCustomerId}
+          onClose={() => setDetailCustomerId(null)}
+        />
       )}
-
-      {/* Desktop (lg+) · drawer estilo Salão99 */}
-      {detailCustomerId && (
-        <div className="hidden lg:block">
-          <ClienteDrawer
-            customerId={detailCustomerId}
-            onClose={() => setDetailCustomerId(null)}
-          />
-        </div>
+      {detailCustomerId && !isDesktop && (
+        <ClienteDetailModal
+          customerId={detailCustomerId}
+          onClose={() => setDetailCustomerId(null)}
+        />
       )}
     </div>
   )
