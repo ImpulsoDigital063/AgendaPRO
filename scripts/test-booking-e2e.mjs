@@ -10,7 +10,7 @@ const env = Object.fromEntries(
     .map((l) => { const i = l.indexOf('='); let v = l.slice(i + 1).trim(); if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1); return [l.slice(0, i).trim(), v] })
 )
 const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
-const BASE = 'http://localhost:3002'
+const BASE = process.env.AUDIT_BASE || 'http://localhost:3002'
 
 const businessId = '5feaa3dd-5cb1-41d8-9880-c2ca7fd3d3e9'
 const professionalId = '4011d0f8-67cd-4d1f-ae7d-383cb91a6c10'

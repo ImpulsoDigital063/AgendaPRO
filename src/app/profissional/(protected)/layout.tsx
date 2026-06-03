@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import ProfissionalBottomNav from '@/components/profissional/ProfissionalBottomNav'
+import ProfissionalMobileTopBar from '@/components/profissional/ProfissionalMobileTopBar'
 import InstallBanner from '@/components/admin/InstallBanner'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
@@ -37,7 +38,7 @@ export default async function ProfissionalLayout({
   // Verifica se e um profissional com auth_user_id · puxa brand do business
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, employment_type, is_receptionist, business:businesses(slug, brand_primary, brand_secondary, brand_accent, brand_neutral)')
+    .select('id, business_id, password_changed, employment_type, is_receptionist, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -76,7 +77,9 @@ export default async function ProfissionalLayout({
     .gte('appointment_date', todayStr)
 
   const business = (professional.business ?? {}) as {
+    name?: string | null
     slug?: string | null
+    brand_logo_url?: string | null
     brand_primary?: string | null
     brand_secondary?: string | null
     brand_accent?: string | null
@@ -96,6 +99,12 @@ export default async function ProfissionalLayout({
           </div>
         )}
         <InstallBanner area="profissional" />
+        {/* Topbar mobile (header + drawer) · só <lg · coexiste com BottomNav */}
+        <ProfissionalMobileTopBar
+          businessName={business.name ?? null}
+          brandLogoUrl={business.brand_logo_url ?? null}
+          employmentType={employmentType}
+        />
         <div className="relative z-10" style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
           {children}
         </div>
