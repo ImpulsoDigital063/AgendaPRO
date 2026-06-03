@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import ThemeToggle from './ThemeToggle'
 import {
   IconHome,
@@ -53,6 +53,8 @@ export default function AdminMobileTopBar({
   showOwnerTab = false,
 }: Props) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const currentTab = searchParams.get('tab')
   const [open, setOpen] = useState(false)
   const [portalReady, setPortalReady] = useState(false)
 
@@ -109,16 +111,35 @@ export default function AdminMobileTopBar({
       ],
     },
     {
+      label: 'Configurações',
+      items: [
+        { label: 'Negócio', href: '/admin/configuracoes?tab=negocio', Icon: IconSettings },
+        { label: 'Fidelidade', href: '/admin/configuracoes?tab=fidelidade', Icon: IconGift },
+        { label: 'Maquininhas', href: '/admin/configuracoes?tab=maquininhas', Icon: IconWallet },
+        { label: 'Bloqueios', href: '/admin/configuracoes?tab=bloqueios', Icon: IconClock },
+        { label: 'Fichas Modelo', href: '/admin/configuracoes?tab=fichas-modelo', Icon: IconSearch },
+        { label: 'Aparência', href: '/admin/configuracoes?tab=aparencia', Icon: IconSparkles },
+        { label: 'QR Code', href: '/admin/configuracoes?tab=qr-code', Icon: IconSettings },
+        { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', Icon: IconTrendingUp },
+        { label: 'Plano', href: '/admin/configuracoes?tab=plano', Icon: IconDollar },
+        { label: 'Importar', href: '/admin/configuracoes?tab=importar', Icon: IconUser },
+      ],
+    },
+    {
       label: 'Outros',
       items: [
         { label: 'Atividades', href: '/admin/atividades', Icon: IconClock },
-        { label: 'Configurações', href: '/admin/configuracoes', Icon: IconSettings },
       ],
     },
   ]
 
   function isActive(item: NavItem): boolean {
-    const [path] = item.href.split('?')
+    const [path, query] = item.href.split('?')
+    // Itens de Configurações compartilham /admin/configuracoes — distingue pela tab
+    if (query?.includes('tab=')) {
+      const tab = new URLSearchParams(query).get('tab')
+      return pathname.startsWith('/admin/configuracoes') && currentTab === tab
+    }
     if (item.exact) return pathname === path
     return pathname.startsWith(path)
   }

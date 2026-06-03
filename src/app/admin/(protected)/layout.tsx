@@ -1,6 +1,5 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import BottomNav from '@/components/admin/BottomNav'
 import AdminMobileTopBar from '@/components/admin/AdminMobileTopBar'
 import InstallBanner from '@/components/admin/InstallBanner'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
@@ -137,13 +136,6 @@ export default async function AdminLayout({
             showOwnerTab={showOwnerTab}
           />
           {children}
-        </div>
-        <div className="lg:hidden">
-          <BottomNav
-            pendingAppointments={pendingAppointments}
-            pendingClaims={pendingClaims}
-            showOwnerTab={showOwnerTab}
-          />
         </div>
       </div>
     </AdminThemeProvider>

@@ -89,44 +89,21 @@ export default function ConfiguracoesTabs({
     setPunctualityPoints(business.punctuality_bonus_points ?? 10)
   }, [business.punctuality_bonus_points])
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'negocio', label: 'Negócio' },
-    { id: 'profissionais', label: 'Profissionais' },
-    { id: 'servicos', label: 'Serviços' },
-    { id: 'horarios', label: 'Horários' },
-    { id: 'fidelidade', label: 'Fidelidade' },
-    { id: 'maquininhas', label: 'Maquininhas' },
-    { id: 'bloqueios', label: 'Bloqueios' },
-    { id: 'fichas-modelo', label: 'Fichas Modelo' },
-    { id: 'aparencia', label: 'Aparência' },
-    { id: 'qr-code', label: 'QR Code' },
-    { id: 'divulgacao', label: 'Divulgação' },
-    ...(hidePlanoForBusiness ? [] : [{ id: 'plano' as Tab, label: 'Plano' }]),
-    { id: 'importar', label: 'Importar' },
-  ]
+  // Navegação das seções agora vem do drawer hambúrguer (Link pra ?tab=X).
+  // Re-sincroniza a aba ativa quando o ?tab= muda em client-nav (sem isso
+  // o useState inicial não atualizava e a seção não trocava).
+  useEffect(() => {
+    if (safeResolvedTab && validTabs.includes(safeResolvedTab as Tab)) {
+      setActiveTab(safeResolvedTab as Tab)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeResolvedTab])
+
 
   return (
     <div>
-      {/* Tab bar — só em mobile/tablet. Em desktop (lg+), navegação
-          pelas tabs vem direto da sidebar lateral · evita duplicar UX. */}
-      <div
-        className="lg:hidden flex flex-wrap rounded-2xl p-1.5 mb-6 gap-1"
-        style={{
-          background: 'var(--admin-surface)',
-          border: '1px solid var(--admin-border)',
-          boxShadow: '0 1px 0 0 color-mix(in srgb, white 5%, transparent) inset',
-        }}
-      >
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`admin-tab flex-shrink-0 ${activeTab === tab.id ? 'admin-tab-active' : ''}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Navegação das seções (mobile/tablet) vem do drawer hambúrguer;
+          desktop usa a sidebar. A barra de abas foi removida daqui (03/06). */}
 
       {/* Tab content */}
       {activeTab === 'negocio' && (
