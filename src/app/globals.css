@@ -227,6 +227,14 @@ html.admin-theme-switching *::after {
   padding-bottom: calc(120px + env(safe-area-inset-bottom));
 }
 
+/* Admin (--with-sidebar) perdeu o BottomNav (R1 · 03/06) — no mobile/tablet
+   corta o padding-bottom do dock pra a agenda usar a altura. Desktop já tem
+   regra própria (32px) na media query abaixo; recepção/profissional (sem
+   --with-sidebar) mantêm os 120px porque ainda têm dock. */
+.admin-shell--with-sidebar main {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
 /* Desktop shell · sidebar fixa esquerda + conteúdo à direita.
    Breakpoint xl (≥1280px). Mobile/tablet mantêm o BottomNav e
    conteúdo full-width sem deslocamento. */

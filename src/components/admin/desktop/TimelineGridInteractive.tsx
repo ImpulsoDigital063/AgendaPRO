@@ -639,7 +639,9 @@ export default function TimelineGridInteractive({
             <div
               className="relative overflow-auto"
               style={{
-                maxHeight: 'calc(100svh - 280px)',
+                // 03/06: dock removido (R1) liberou espaço vertical no mobile/tablet.
+                // Tela dedicada a atendimento → grade mais alta. Offset menor = mais linhas.
+                maxHeight: 'calc(100svh - 188px)',
               }}
             >
               {/* Header de profs · sticky no topo (vertical) · move com scroll horizontal */}
