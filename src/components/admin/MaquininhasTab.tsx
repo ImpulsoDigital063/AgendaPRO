@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   CARD_BRANDS,
@@ -10,11 +10,115 @@ import {
   type MerchantDevice,
   type MerchantDeviceFee,
 } from '@/lib/types'
-import { IconPlus, IconTrash, IconChevronRight, IconClose } from '@/components/ui/Icon'
+import {
+  IconPlus,
+  IconTrash,
+  IconChevronRight,
+  IconCheck,
+  IconSparkles,
+  IconTrendingUp,
+} from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 
 type Props = {
   businessId: string
+}
+
+// v91 (29/05/2026) · Presets BR com taxas reais aproximadas pra acelerar
+// onboarding. Marko/Letícia ajustam depois cada taxa específica do contrato.
+// Cada preset gera 1 device + 6 fees em batch.
+type PresetFee = {
+  brand: CardBrand
+  card_type: CardType
+  rate_percent: number
+  allows_installments?: boolean
+  installments_max?: number
+  installment_rate_percent?: number
+}
+type Preset = {
+  name: string
+  fees: PresetFee[]
+}
+const PRESETS: Preset[] = [
+  {
+    name: 'InfinitePay',
+    fees: [
+      { brand: 'visa', card_type: 'debit', rate_percent: 1.95 },
+      { brand: 'mastercard', card_type: 'debit', rate_percent: 1.95 },
+      { brand: 'elo', card_type: 'debit', rate_percent: 2.10 },
+      { brand: 'visa', card_type: 'credit', rate_percent: 3.15, allows_installments: true, installments_max: 12, installment_rate_percent: 3.50 },
+      { brand: 'mastercard', card_type: 'credit', rate_percent: 3.15, allows_installments: true, installments_max: 12, installment_rate_percent: 3.50 },
+      { brand: 'elo', card_type: 'credit', rate_percent: 3.35, allows_installments: true, installments_max: 12, installment_rate_percent: 3.75 },
+    ],
+  },
+  {
+    name: 'Stone',
+    fees: [
+      { brand: 'visa', card_type: 'debit', rate_percent: 1.99 },
+      { brand: 'mastercard', card_type: 'debit', rate_percent: 1.99 },
+      { brand: 'elo', card_type: 'debit', rate_percent: 2.15 },
+      { brand: 'visa', card_type: 'credit', rate_percent: 3.49, allows_installments: true, installments_max: 12, installment_rate_percent: 3.89 },
+      { brand: 'mastercard', card_type: 'credit', rate_percent: 3.49, allows_installments: true, installments_max: 12, installment_rate_percent: 3.89 },
+      { brand: 'elo', card_type: 'credit', rate_percent: 3.69, allows_installments: true, installments_max: 12, installment_rate_percent: 4.10 },
+    ],
+  },
+  {
+    name: 'Cielo Lio',
+    fees: [
+      { brand: 'visa', card_type: 'debit', rate_percent: 1.89 },
+      { brand: 'mastercard', card_type: 'debit', rate_percent: 1.89 },
+      { brand: 'elo', card_type: 'debit', rate_percent: 2.05 },
+      { brand: 'visa', card_type: 'credit', rate_percent: 3.12, allows_installments: true, installments_max: 12, installment_rate_percent: 3.51 },
+      { brand: 'mastercard', card_type: 'credit', rate_percent: 3.12, allows_installments: true, installments_max: 12, installment_rate_percent: 3.51 },
+      { brand: 'elo', card_type: 'credit', rate_percent: 3.30, allows_installments: true, installments_max: 12, installment_rate_percent: 3.69 },
+    ],
+  },
+  {
+    name: 'PagSeguro',
+    fees: [
+      { brand: 'visa', card_type: 'debit', rate_percent: 1.89 },
+      { brand: 'mastercard', card_type: 'debit', rate_percent: 1.89 },
+      { brand: 'elo', card_type: 'debit', rate_percent: 2.10 },
+      { brand: 'visa', card_type: 'credit', rate_percent: 3.19, allows_installments: true, installments_max: 12, installment_rate_percent: 3.69 },
+      { brand: 'mastercard', card_type: 'credit', rate_percent: 3.19, allows_installments: true, installments_max: 12, installment_rate_percent: 3.69 },
+      { brand: 'elo', card_type: 'credit', rate_percent: 3.39, allows_installments: true, installments_max: 12, installment_rate_percent: 3.89 },
+    ],
+  },
+  {
+    name: 'Mercado Pago',
+    fees: [
+      { brand: 'visa', card_type: 'debit', rate_percent: 1.99 },
+      { brand: 'mastercard', card_type: 'debit', rate_percent: 1.99 },
+      { brand: 'elo', card_type: 'debit', rate_percent: 2.15 },
+      { brand: 'visa', card_type: 'credit', rate_percent: 3.49, allows_installments: true, installments_max: 12, installment_rate_percent: 3.89 },
+      { brand: 'mastercard', card_type: 'credit', rate_percent: 3.49, allows_installments: true, installments_max: 12, installment_rate_percent: 3.89 },
+      { brand: 'elo', card_type: 'credit', rate_percent: 3.69, allows_installments: true, installments_max: 12, installment_rate_percent: 4.10 },
+    ],
+  },
+  {
+    name: 'Sumup',
+    fees: [
+      { brand: 'visa', card_type: 'debit', rate_percent: 1.90 },
+      { brand: 'mastercard', card_type: 'debit', rate_percent: 1.90 },
+      { brand: 'elo', card_type: 'debit', rate_percent: 2.05 },
+      { brand: 'visa', card_type: 'credit', rate_percent: 2.90, allows_installments: true, installments_max: 12, installment_rate_percent: 3.80 },
+      { brand: 'mastercard', card_type: 'credit', rate_percent: 2.90, allows_installments: true, installments_max: 12, installment_rate_percent: 3.80 },
+      { brand: 'elo', card_type: 'credit', rate_percent: 3.10, allows_installments: true, installments_max: 12, installment_rate_percent: 3.95 },
+    ],
+  },
+]
+
+// Cobertura mínima esperada · 4 essenciais. Sem essas, sistema cai pra taxa 0
+// em pagamentos cartão silenciosamente (regra λ.diagnostico-nivel-certo).
+const COVERAGE_MIN: Array<{ brand: CardBrand; card_type: CardType }> = [
+  { brand: 'visa', card_type: 'debit' },
+  { brand: 'visa', card_type: 'credit' },
+  { brand: 'mastercard', card_type: 'debit' },
+  { brand: 'mastercard', card_type: 'credit' },
+]
+
+function formatBRL(cents: number) {
+  return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 export default function MaquininhasTab({ businessId }: Props) {
@@ -24,9 +128,18 @@ export default function MaquininhasTab({ businessId }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // v91 · KPI de impacto no mês corrente
+  const [monthStats, setMonthStats] = useState<{
+    feesCents: number
+    grossCents: number
+    payments: number
+  }>({ feesCents: 0, grossCents: 0, payments: 0 })
+
   // Form de novo device
   const [newDeviceName, setNewDeviceName] = useState('')
   const [addingDevice, setAddingDevice] = useState(false)
+  const [showPresets, setShowPresets] = useState(false)
+  const [installingPreset, setInstallingPreset] = useState<string | null>(null)
 
   // Expanded state (qual device tá aberto)
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null)
@@ -87,6 +200,33 @@ export default function MaquininhasTab({ businessId }: Props) {
         setFeesByDevice(grouped)
       }
     }
+
+    // KPI · taxas pagas neste mês (cartão)
+    const now = new Date()
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+    const { data: paid } = await supabase
+      .from('appointments')
+      .select('total_price, payment_fee_percent')
+      .eq('business_id', businessId)
+      .eq('payment_method', 'card')
+      .gte('paid_at', firstDay)
+      .not('paid_at', 'is', null)
+
+    if (paid) {
+      let feesCents = 0
+      let grossCents = 0
+      let payments = 0
+      for (const a of paid as Array<{ total_price: number | null; payment_fee_percent: number | null }>) {
+        const price = a.total_price ?? 0
+        if (price <= 0) continue
+        const rate = a.payment_fee_percent ?? 0
+        feesCents += Math.round(price * rate)
+        grossCents += Math.round(price * 100)
+        payments += 1
+      }
+      setMonthStats({ feesCents, grossCents, payments })
+    }
+
     setLoading(false)
   }
 
@@ -115,6 +255,60 @@ export default function MaquininhasTab({ businessId }: Props) {
     setDevices((prev) => [...prev, data as MerchantDevice])
     setNewDeviceName('')
     setExpandedDevice(data.id)
+  }
+
+  async function handleInstallPreset(preset: Preset) {
+    setError(null)
+    // Evita duplicar · se já existe device com mesmo nome, só expande
+    const existing = devices.find((d) => d.name.toLowerCase() === preset.name.toLowerCase())
+    if (existing) {
+      setExpandedDevice(existing.id)
+      setShowPresets(false)
+      return
+    }
+    setInstallingPreset(preset.name)
+    const { data: dev, error: e } = await supabase
+      .from('merchant_devices')
+      .insert({ business_id: businessId, name: preset.name, active: true })
+      .select()
+      .single()
+    if (e || !dev) {
+      setInstallingPreset(null)
+      setError(`Erro ao criar ${preset.name}: ${e?.message ?? 'desconhecido'}`)
+      return
+    }
+
+    const feeRows = preset.fees.map((f) => ({
+      device_id: dev.id,
+      brand: f.brand,
+      card_type: f.card_type,
+      rate_percent: f.rate_percent,
+      allows_installments: f.allows_installments ?? false,
+      installments_max: f.installments_max ?? 1,
+      installment_rate_percent: f.installment_rate_percent ?? null,
+      active: true,
+    }))
+    const { data: insertedFees, error: e2 } = await supabase
+      .from('merchant_device_fees')
+      .insert(feeRows)
+      .select()
+
+    setInstallingPreset(null)
+    if (e2) {
+      setError(`Maquininha criada mas falhou cadastrar taxas: ${e2.message}`)
+      // Mantém o device criado · usuário cadastra taxas manualmente
+      setDevices((prev) => [...prev, dev as MerchantDevice])
+      setExpandedDevice(dev.id)
+      setShowPresets(false)
+      return
+    }
+    setDevices((prev) => [...prev, dev as MerchantDevice])
+    setFeesByDevice((prev) => ({
+      ...prev,
+      [dev.id]: (insertedFees ?? []) as MerchantDeviceFee[],
+    }))
+    setExpandedDevice(dev.id)
+    setShowPresets(false)
   }
 
   async function handleDeleteDevice(device: MerchantDevice) {
@@ -211,6 +405,11 @@ export default function MaquininhasTab({ businessId }: Props) {
     }))
   }
 
+  const effectiveRate = useMemo(() => {
+    if (monthStats.grossCents === 0) return 0
+    return (monthStats.feesCents / monthStats.grossCents) * 100
+  }, [monthStats])
+
   if (loading) {
     return (
       <div className="admin-card p-8 text-center">
@@ -223,6 +422,55 @@ export default function MaquininhasTab({ businessId }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* v91 (A) · KPI custo de taxas no mês */}
+      <div
+        className="admin-card p-4"
+        style={{
+          background: 'linear-gradient(135deg, color-mix(in srgb, var(--admin-accent) 8%, var(--admin-surface)), var(--admin-surface))',
+        }}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <span style={{ color: 'var(--admin-accent)' }}>
+            <IconTrendingUp size={16} />
+          </span>
+          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+            Impacto das taxas neste mês
+          </p>
+        </div>
+        {monthStats.payments === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--admin-text-mute)' }}>
+            Sem pagamentos em cartão este mês ainda.
+          </p>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                Pagou em taxas
+              </p>
+              <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--admin-danger,#EF4444)' }}>
+                {formatBRL(monthStats.feesCents)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                Taxa efetiva
+              </p>
+              <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                {effectiveRate.toFixed(2).replace('.', ',')}%
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                Pagamentos cartão
+              </p>
+              <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                {monthStats.payments}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="admin-card p-4 space-y-3">
         <div>
           <h3 className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
@@ -270,6 +518,60 @@ export default function MaquininhasTab({ businessId }: Props) {
             </span>
           </button>
         </div>
+
+        {/* v91 (B) · Presets BR */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setShowPresets((v) => !v)}
+            className="text-xs font-semibold inline-flex items-center gap-1.5"
+            style={{ color: 'var(--admin-accent)' }}
+          >
+            <IconSparkles size={12} />
+            {showPresets ? 'Ocultar sugeridas' : 'Cadastrar rápido · escolher do catálogo BR'}
+          </button>
+          {showPresets && (
+            <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {PRESETS.map((p) => {
+                const already = devices.some((d) => d.name.toLowerCase() === p.name.toLowerCase())
+                const isInstalling = installingPreset === p.name
+                return (
+                  <button
+                    key={p.name}
+                    type="button"
+                    disabled={isInstalling || already}
+                    onClick={() => handleInstallPreset(p)}
+                    className="text-left px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
+                    style={{
+                      background: already
+                        ? 'color-mix(in srgb, var(--admin-success,#10B981) 12%, transparent)'
+                        : 'var(--admin-surface-hi)',
+                      border: '1px solid var(--admin-border)',
+                      color: 'var(--admin-text)',
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{p.name}</span>
+                      {already && (
+                        <span style={{ color: 'var(--admin-success,#10B981)' }}>
+                          <IconCheck size={12} />
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                      {isInstalling ? 'Instalando…' : already ? 'Já cadastrada' : `${p.fees.length} taxas prontas`}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {showPresets && (
+            <p className="text-[10px] mt-2" style={{ color: 'var(--admin-text-faded)' }}>
+              Taxas aproximadas de mercado · ajuste depois com os valores do seu contrato.
+            </p>
+          )}
+        </div>
       </div>
 
       {devices.length === 0 ? (
@@ -278,7 +580,7 @@ export default function MaquininhasTab({ businessId }: Props) {
             Nenhuma maquininha cadastrada ainda.
           </p>
           <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-            Adicione acima pra começar a controlar taxas de cartão.
+            Use o catálogo BR acima ou adicione manualmente pra controlar as taxas.
           </p>
         </div>
       ) : (
@@ -286,6 +588,13 @@ export default function MaquininhasTab({ businessId }: Props) {
           {devices.map((d) => {
             const isOpen = expandedDevice === d.id
             const fees = feesByDevice[d.id] ?? []
+
+            // v91 (C) · Checklist de cobertura
+            const coveredKeys = new Set(fees.map((f) => `${f.brand}-${f.card_type}`))
+            const missing = COVERAGE_MIN.filter(
+              (c) => !coveredKeys.has(`${c.brand}-${c.card_type}`),
+            )
+
             return (
               <div
                 key={d.id}
@@ -299,11 +608,36 @@ export default function MaquininhasTab({ businessId }: Props) {
                     <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
                       {d.name}
                     </p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                      {fees.length === 0
-                        ? 'Sem taxas cadastradas'
-                        : `${fees.length} taxa${fees.length > 1 ? 's' : ''} cadastrada${fees.length > 1 ? 's' : ''}`}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+                        {fees.length === 0
+                          ? 'Sem taxas cadastradas'
+                          : `${fees.length} taxa${fees.length > 1 ? 's' : ''} cadastrada${fees.length > 1 ? 's' : ''}`}
+                      </p>
+                      {fees.length > 0 && missing.length === 0 && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: 'color-mix(in srgb, var(--admin-success,#10B981) 18%, transparent)',
+                            color: 'var(--admin-success,#10B981)',
+                          }}
+                        >
+                          <IconCheck size={10} />
+                          Cobertura OK
+                        </span>
+                      )}
+                      {fees.length > 0 && missing.length > 0 && (
+                        <span
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: 'color-mix(in srgb, var(--admin-warning,#F59E0B) 18%, transparent)',
+                            color: 'var(--admin-warning,#F59E0B)',
+                          }}
+                        >
+                          {missing.length} faltando
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', color: 'var(--admin-text-faded)' }}>
                     <IconChevronRight size={18} />
@@ -315,6 +649,29 @@ export default function MaquininhasTab({ businessId }: Props) {
                     className="border-t p-4 space-y-3"
                     style={{ borderColor: 'var(--admin-divider)' }}
                   >
+                    {/* v91 (C) · Avisa cobertura incompleta */}
+                    {missing.length > 0 && (
+                      <div
+                        className="text-xs px-3 py-2 rounded-lg"
+                        style={{
+                          background: 'color-mix(in srgb, var(--admin-warning,#F59E0B) 10%, transparent)',
+                          color: 'var(--admin-text)',
+                          border: '1px solid color-mix(in srgb, var(--admin-warning,#F59E0B) 25%, transparent)',
+                        }}
+                      >
+                        <p className="font-semibold mb-1" style={{ color: 'var(--admin-warning,#F59E0B)' }}>
+                          Sem essas taxas, pagamento entra com taxa zero:
+                        </p>
+                        <ul className="space-y-0.5">
+                          {missing.map((m) => (
+                            <li key={`${m.brand}-${m.card_type}`} style={{ color: 'var(--admin-text-mute)' }}>
+                              · {CARD_BRAND_LABEL[m.brand]} {m.card_type === 'credit' ? 'Crédito' : 'Débito'}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     {fees.length > 0 && (
                       <div className="space-y-1.5">
                         {fees.map((f) => (
@@ -328,6 +685,11 @@ export default function MaquininhasTab({ businessId }: Props) {
                               <span style={{ color: 'var(--admin-text-mute)' }}>
                                 {' '} · {f.card_type === 'credit' ? 'Crédito' : 'Débito'}
                               </span>
+                              {f.allows_installments && f.installment_rate_percent != null && (
+                                <span className="ml-2 text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                                  parcelado até {f.installments_max}x ({f.installment_rate_percent.toString().replace('.', ',')}%)
+                                </span>
+                              )}
                             </span>
                             <div className="flex items-center gap-3">
                               <span className="tabular-nums font-bold" style={{ color: 'var(--admin-accent)' }}>
