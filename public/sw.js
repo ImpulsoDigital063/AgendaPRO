@@ -6,7 +6,11 @@
 // Atualizacao: incrementar STATIC_CACHE_VERSION pra invalidar cache
 // antigo. install() limpa caches de versoes anteriores automaticamente.
 
-const STATIC_CACHE_VERSION = 'agendapro-static-v1'
+// v2 (03/06): bump força os SWs instalados a limpar o cache estático e
+// rebaixar os chunks novos pós-deploy da nova UI. Sem isso, app instalado
+// (ex: Olímpio) servia chunk JS antigo + HTML novo → hidratação quebrava
+// e botões (ex: +Agendar) não respondiam. Bumpar SEMPRE que mudar UI/chunks.
+const STATIC_CACHE_VERSION = 'agendapro-static-v2'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
