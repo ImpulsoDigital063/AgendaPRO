@@ -276,6 +276,7 @@ export default async function FluxoCaixaPage({
       despesasTotal: 0,
       resultado: 0,
       saldoFinal: 0,
+      descontosTotal: 0,
     }
   }
 
@@ -346,6 +347,25 @@ export default async function FluxoCaixaPage({
     data[key].despesasTotal += amt
   }
 
+  // Descontos concedidos (cupom + manual) · invoices fechadas no período.
+  // INFORMATIVO: o desconto já está embutido na receita líquida (cliente pagou
+  // o valor já abatido) · NÃO somar no resultado pra não contar 2x.
+  const { data: invDiscounts } = await sb
+    .from('invoices')
+    .select('discount, closed_at')
+    .eq('business_id', business.id)
+    .eq('status', 'closed')
+    .gt('discount', 0)
+    .gte('closed_at', range.from.toISOString())
+    .lt('closed_at', range.to.toISOString())
+  for (const inv of invDiscounts ?? []) {
+    if (!inv.closed_at) continue
+    const d = new Date(inv.closed_at as string)
+    const key = keyForDate(view, d, cols)
+    if (!key || !data[key]) continue
+    data[key].descontosTotal = (data[key].descontosTotal ?? 0) + Number(inv.discount ?? 0)
+  }
+
   let acc = saldoAcumulado
   for (const c of cols) {
     const row = data[c.key]
@@ -359,7 +379,8 @@ export default async function FluxoCaixaPage({
     <main className="relative" style={{ minHeight: '100svh' }}>
       <div className="relative">
         <SubPageHeader title="Fluxo de Caixa" subtitle={business.name} back="/admin/financeiro" />
-        <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-7xl lg:px-8">
+        {/* Container responsivo · sm: cobre landscape do celular + tablet */}
+        <div className="max-w-lg mx-auto px-4 py-6 sm:max-w-5xl sm:px-6 lg:max-w-7xl lg:px-8">
           <FluxoCaixaViewSelector current={view} />
 
           <FluxoCaixaTable

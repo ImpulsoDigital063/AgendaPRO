@@ -19,6 +19,9 @@ export type CashMonth = {
   despesasTotal: number
   resultado: number
   saldoFinal: number
+  /** Descontos concedidos (cupom + manual) no período · INFORMATIVO · já
+   *  embutido na receita líquida · NÃO entra no cálculo do resultado. */
+  descontosTotal?: number
 }
 
 type Props = {
@@ -366,6 +369,29 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                 )
               })}
             </tr>
+
+            {/* Descontos concedidos · INFORMATIVO · só aparece se houver.
+                Já embutido na receita líquida · não entra no resultado. */}
+            {months.some((m) => (data[m.key]?.descontosTotal ?? 0) > 0) && (
+              <tr style={{ borderTop: '1px solid var(--admin-divider)' }}>
+                <td className="px-4 py-2 text-xs italic" style={{ color: 'var(--admin-text-mute)' }}>
+                  Descontos concedidos
+                  <span className="not-italic" title="Cupons + descontos manuais. Já abatidos da receita acima — informativo."> ⓘ</span>
+                </td>
+                {months.map((m) => {
+                  const v = data[m.key]?.descontosTotal ?? 0
+                  return (
+                    <td
+                      key={`desc-${m.key}`}
+                      className="px-4 py-2 text-right tabular-nums text-xs"
+                      style={{ color: v > 0 ? 'var(--admin-accent)' : 'var(--admin-text-faded)' }}
+                    >
+                      {v > 0 ? `− ${formatBRL(v)}` : formatBRL(0)}
+                    </td>
+                  )
+                })}
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
