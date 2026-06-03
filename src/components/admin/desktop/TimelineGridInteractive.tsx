@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus, IconInfo } from '@/components/ui/Icon'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus, IconInfo, IconSettings, IconCheck, IconClock } from '@/components/ui/Icon'
 import AppointmentDrawer from '@/components/admin/atendimentos/AppointmentDrawer'
 import AgendarModal from '@/components/admin/desktop/atendimentos/AgendarModal'
+import { MiniKPI } from './GradeTimelineHeader'
+import { blockAppliesTo, blockTimeToMinutes, type BlockRow } from '@/lib/blocks'
 
 type Prof = { id: string; name: string; photo_url: string | null }
 type Appt = {
@@ -29,10 +31,17 @@ type Props = {
   profs: Prof[]
   appts: Appt[]
   services: Service[]
+  /** Bloqueios ativos do negócio · desenhados como faixa e barram agendamento */
+  blocks?: BlockRow[]
   hourStart: number
   hourEnd: number
   /** Data da timeline (YYYY-MM-DD) · usado nos links do popover */
   date: string
+  /** KPIs do dia · renderizados acima da legenda só se date === HOJE
+   *  (cravado 28/05: Eduardo pediu KPIs em cima da tabela, não no header) */
+  recebidoHoje?: number
+  aReceberHoje?: number
+  pendentesHoje?: number
 }
 
 type PopoverState = {
@@ -49,6 +58,65 @@ const SERVICE_COLORS = ['#01A197', '#C9A961', '#8B5CF6', '#EC4899', '#3B82F6', '
 function timeToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number)
   return h * 60 + m
+}
+
+function minutesToTime(min: number): string {
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+/**
+ * Calcula "lanes" (colunas lado-a-lado) pra agendamentos que se sobrepõem no
+ * tempo, evitando que um esconda o outro. Cancelados ficam SEMPRE na lane 0
+ * (fundo, fininhos) porque são só histórico — os ativos ocupam as lanes da
+ * frente. Retorna por id do appt: { lane, lanes } (índice e total no grupo).
+ */
+function computeLanes(appts: Appt[]): Record<string, { lane: number; lanes: number }> {
+  const out: Record<string, { lane: number; lanes: number }> = {}
+  // Só os ATIVOS disputam lanes (cancelado não entra na divisão de largura)
+  const active = appts
+    .filter((a) => a.status !== 'cancelled')
+    .map((a) => ({ id: a.id, s: timeToMinutes(a.start_time), e: timeToMinutes(a.end_time) }))
+    .sort((a, b) => a.s - b.s || a.e - b.e)
+
+  // Agrupa em clusters que se tocam (qualquer cadeia de sobreposição)
+  let i = 0
+  while (i < active.length) {
+    const cluster = [active[i]]
+    let maxEnd = active[i].e
+    let j = i + 1
+    while (j < active.length && active[j].s < maxEnd) {
+      cluster.push(active[j])
+      if (active[j].e > maxEnd) maxEnd = active[j].e
+      j++
+    }
+    // Atribui lane greedy dentro do cluster (primeira lane livre)
+    const laneEnds: number[] = []
+    for (const item of cluster) {
+      let placed = -1
+      for (let k = 0; k < laneEnds.length; k++) {
+        if (item.s >= laneEnds[k]) { placed = k; break }
+      }
+      if (placed === -1) { placed = laneEnds.length; laneEnds.push(item.e) }
+      else laneEnds[placed] = item.e
+      out[item.id] = { lane: placed, lanes: 0 }
+    }
+    const total = laneEnds.length
+    for (const item of cluster) out[item.id].lanes = total
+    i = j
+  }
+  return out
+}
+
+// Ícone ⊘ (proibido) · usado nos blocos de bloqueio · padrão Salão99
+function IconBlocked({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" />
+    </svg>
+  )
 }
 
 function colorForService(a: Appt): string {
@@ -95,12 +163,31 @@ function buildSlots(hourStart: number, hourEnd: number, interval: Interval): str
   return out
 }
 
-export default function TimelineGridInteractive({ businessId, profs, appts, services, hourStart, hourEnd, date }: Props) {
+function formatBRL(v: number) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+export default function TimelineGridInteractive({
+  businessId,
+  profs,
+  appts,
+  services,
+  blocks = [],
+  hourStart,
+  hourEnd,
+  date,
+  recebidoHoje = 0,
+  aReceberHoje = 0,
+  pendentesHoje = 0,
+}: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const [popover, setPopover] = useState<PopoverState>(null)
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null) // `${profId}-${time}`
   const [portalReady, setPortalReady] = useState(false)
+  // Drawer de Configurações em tablet/mobile (<lg) · cravado 28/05 estratégia tri-modal
+  const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
   // Drawer inline do agendamento clicado · Salão99-style · sem trocar de rota
   const [selectedApptId, setSelectedApptId] = useState<string | null>(null)
   useEffect(() => { setPortalReady(true) }, [])
@@ -140,6 +227,31 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
     })
   }
 
+  // ── Bloqueios da data · faixa visual + barra clique de agendar ──────────
+  // Lê business_blocks injetado pelo server (GradeTimeline). Antes a grade
+  // ignorava bloqueio: não mostrava E deixava agendar por cima (bug 30/05).
+  function blockReasonForSlot(profId: string, slotTime: string): string | null {
+    const m = timeToMinutes(slotTime)
+    for (const b of blocks) {
+      if (!blockAppliesTo(b, profId, date)) continue
+      const bs = blockTimeToMinutes(b.start_time)
+      const be = blockTimeToMinutes(b.end_time)
+      if (m >= bs && m < be) return b.reason?.trim() || 'Bloqueado'
+    }
+    return null
+  }
+
+  function blocksForProf(profId: string) {
+    return blocks
+      .filter((b) => blockAppliesTo(b, profId, date))
+      .map((b) => ({
+        id: b.id,
+        startMin: blockTimeToMinutes(b.start_time),
+        endMin: blockTimeToMinutes(b.end_time),
+        reason: b.reason?.trim() || 'Bloqueado',
+      }))
+  }
+
   function novoAtendimento() {
     if (!popover) return
     const params = new URLSearchParams({
@@ -171,6 +283,11 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
   const [collapsed, setCollapsed] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+
+  // isToday só preenche após hidratação · evita mismatch SSR (CIC Onda 5C P0 #1)
+  const [todayClient, setTodayClient] = useState<string | null>(null)
+  useEffect(() => { setTodayClient(new Date().toISOString().slice(0, 10)) }, [])
+  const isToday = todayClient !== null && date === todayClient
 
   useEffect(() => {
     try {
@@ -225,32 +342,12 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
     return colorForService(a) // default
   }
 
-  return (
-    <div className="flex gap-3 items-start">
-      {/* PAINEL LATERAL CONFIGURAÇÕES · recolhível */}
-      <aside
-        className="flex-shrink-0 rounded-2xl overflow-hidden transition-all"
-        style={{
-          width: collapsed ? 44 : 220,
-          background: 'var(--admin-surface)',
-          border: '1px solid var(--admin-border)',
-          borderTopColor: 'rgba(255,255,255,0.4)',
-          boxShadow: '0 4px 14px -4px rgba(0,0,0,0.06)',
-        }}
-      >
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={() => setCollapsed(false)}
-            aria-label="Abrir configurações"
-            className="w-full h-12 flex items-center justify-center"
-            style={{ color: 'var(--admin-text-mute)' }}
-            title="Configurações"
-          >
-            <IconChevronRight size={18} />
-          </button>
-        ) : (
-          <div className="p-3 space-y-3">
+  // Body do painel Configurações · reusado em 2 contextos:
+  // 1) Inline desktop (≥lg): aside fixa à esquerda da grade
+  // 2) Drawer mobile/tablet (<lg): overlay slide-out via portal
+  // Cravado 28/05 · estratégia tri-modal Eduardo
+  const configBody = (
+    <div className="p-3 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
                 Configurações
@@ -383,12 +480,138 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
               </div>
             </div>
           </div>
+  )
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-start">
+      {/* Botão Configurações · só <lg · abre drawer
+          Tablet/Mobile usa drawer pra liberar a largura inteira pra grade */}
+      <button
+        type="button"
+        onClick={() => setMobileConfigOpen(true)}
+        className="lg:hidden self-start inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
+        style={{
+          background: 'var(--admin-surface)',
+          color: 'var(--admin-text-2)',
+          border: '1px solid var(--admin-border)',
+          minHeight: 44, // iOS HIG touch target
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+        aria-label="Abrir configurações"
+      >
+        <IconSettings size={16} />
+        <span>Configurações</span>
+        <span
+          className="ml-1 text-[11px] font-bold tabular-nums px-2 py-0.5 rounded-full"
+          style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}
+        >
+          {visibleProfs.length}/{profs.length}
+        </span>
+      </button>
+
+      {/* PAINEL LATERAL CONFIGURAÇÕES · só ≥lg (desktop wide)
+          recolhível via botão chevron */}
+      <aside
+        className="hidden lg:flex flex-col flex-shrink-0 rounded-2xl overflow-hidden transition-all"
+        style={{
+          width: collapsed ? 44 : 220,
+          background: 'var(--admin-surface)',
+          border: '1px solid var(--admin-border)',
+          borderTopColor: 'rgba(255,255,255,0.4)',
+          boxShadow: '0 4px 14px -4px rgba(0,0,0,0.06)',
+        }}
+      >
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={() => setCollapsed(false)}
+            aria-label="Abrir configurações"
+            className="w-full h-12 flex items-center justify-center"
+            style={{ color: 'var(--admin-text-mute)' }}
+            title="Configurações"
+          >
+            <IconChevronRight size={18} />
+          </button>
+        ) : (
+          configBody
         )}
       </aside>
 
-      {/* GRADE */}
+      {/* DRAWER mobile/tablet · <lg · slide-out à esquerda */}
+      {mobileConfigOpen && portalReady && createPortal(
+        <div className="fixed inset-0 z-[180] lg:hidden" role="dialog" aria-modal="true">
+          <div
+            className="absolute inset-0"
+            style={{ background: 'rgba(10,36,36,0.55)', backdropFilter: 'blur(2px)' }}
+            onClick={() => setMobileConfigOpen(false)}
+          />
+          <aside
+            className="absolute left-0 top-0 bottom-0 overflow-y-auto"
+            style={{
+              width: 'min(320px, 88vw)',
+              background: 'var(--admin-surface)',
+              borderRight: '1px solid var(--admin-border)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+              boxShadow: '4px 0 20px rgba(0,0,0,0.18)',
+            }}
+          >
+            <div
+              className="flex items-center justify-between px-3 py-3 sticky top-0"
+              style={{ background: 'var(--admin-surface)', borderBottom: '1px solid var(--admin-divider)', zIndex: 1 }}
+            >
+              <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+                Configurações da agenda
+              </p>
+              <button
+                type="button"
+                onClick={() => setMobileConfigOpen(false)}
+                aria-label="Fechar"
+                className="w-9 h-9 rounded-lg flex items-center justify-center"
+                style={{ color: 'var(--admin-text-mute)' }}
+              >
+                <IconClose size={18} />
+              </button>
+            </div>
+            {configBody}
+          </aside>
+        </div>,
+        document.body,
+      )}
+
+      {/* Wrapper da área principal (KPIs + GRADE)
+          KPIs ficam SEPARADOS do card da grade (cravado 28/05 Eduardo) */}
+      <div className="w-full lg:flex-1 min-w-0 space-y-3">
+        {/* KPIs do dia · só se date === HOJE · cards próprios fora da grade */}
+        {isToday && (
+          <div className="grid grid-cols-3 gap-2">
+            <MiniKPI
+              label="Recebido"
+              value={formatBRL(recebidoHoje)}
+              color="#10B981"
+              colorDark="#059669"
+              Icon={IconDollar}
+            />
+            <MiniKPI
+              label="A receber"
+              value={formatBRL(aReceberHoje)}
+              color="#1AA9A8"
+              colorDark="#0E7C7B"
+              Icon={IconCheck}
+            />
+            <MiniKPI
+              label="Pendentes"
+              value={pendentesHoje.toString()}
+              color="#F59E0B"
+              colorDark="#D97706"
+              Icon={IconClock}
+              pulse={pendentesHoje > 0}
+            />
+          </div>
+        )}
+
+      {/* GRADE · card branco com legenda + scroll horizontal */}
       <div
-        className="flex-1 rounded-2xl overflow-hidden min-w-0"
+        className="rounded-2xl overflow-hidden"
         style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
       >
         {visibleProfs.length === 0 ? (
@@ -408,47 +631,57 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
               appts={appts.filter((a) => visibleProfIds.has(a.professional_id))}
             />
 
-            {/* Header de profs */}
+            {/* Container scrollable (horizontal + vertical) que envolve header
+                + grade. Cravado 28/05 por Eduardo: em tablet, ao swipe horizontal
+                pra ver mais profs, os NOMES das profs (header) tinham que
+                mover JUNTO com as marcações · antes eram 2 grids separados,
+                só o body scrollava · header ficava preso. */}
             <div
-              className="grid"
+              className="relative overflow-auto"
               style={{
-                gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(140px, 1fr))`,
-                background: 'var(--admin-surface-hi)',
-                borderBottom: '1px solid var(--admin-border)',
-                position: 'sticky',
-                top: 0,
-                zIndex: 5,
-              }}
-            >
-              <div />
-              {visibleProfs.map((p) => (
-                <div key={p.id} className="px-3 py-3 flex items-center gap-2 min-w-0">
-                  <span
-                    className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
-                    style={{ background: colorForProf(p.id), color: '#fff' }}
-                  >
-                    {p.photo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.photo_url} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      p.name.slice(0, 1).toUpperCase()
-                    )}
-                  </span>
-                  <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }} title={p.name}>
-                    {p.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Grade scroll */}
-            <div
-              className="grid relative overflow-auto"
-              style={{
-                gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(140px, 1fr))`,
                 maxHeight: 'calc(100svh - 280px)',
               }}
             >
+              {/* Header de profs · sticky no topo (vertical) · move com scroll horizontal */}
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(140px, 1fr))`,
+                  background: 'var(--admin-surface-hi)',
+                  borderBottom: '1px solid var(--admin-border)',
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 5,
+                }}
+              >
+                <div />
+                {visibleProfs.map((p) => (
+                  <div key={p.id} className="px-3 py-3 flex items-center gap-2 min-w-0">
+                    <span
+                      className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
+                      style={{ background: colorForProf(p.id), color: '#fff' }}
+                    >
+                      {p.photo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.photo_url} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        p.name.slice(0, 1).toUpperCase()
+                      )}
+                    </span>
+                    <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }} title={p.name}>
+                      {p.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Grade · mesmo gridTemplateColumns que o header (alinhamento perfeito) */}
+              <div
+                className="grid relative"
+                style={{
+                  gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(140px, 1fr))`,
+                }}
+              >
               {/* Coluna de horas */}
               <div className="relative" style={{ height: gridHeight }}>
                 {slots.map((s, i) => {
@@ -477,6 +710,12 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
               {/* Colunas por prof visível */}
               {visibleProfs.map((p) => {
                 const profAppts = appts.filter((a) => a.professional_id === p.id)
+                // Lanes p/ sobreposição · quando 2+ agendamentos ATIVOS colidem
+                // no horário, dividem a largura lado-a-lado (Google Calendar
+                // style) pra nenhum esconder o outro (bug 01/06: Gilmara
+                // confirmed sumia atrás da Luana cancelada). Cancelados ficam
+                // sempre na lane 0, fininhos, atrás — são só histórico.
+                const laneInfo = computeLanes(profAppts)
                 return (
                   <div
                     key={p.id}
@@ -486,15 +725,21 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                     {/* Slots clicáveis · hover-to-schedule · click abre popover */}
                     {slots.map((s, i) => {
                       const slotKey = `${p.id}-${s}`
-                      const isHovered = hoveredSlot === slotKey
+                      const blockReason = blockReasonForSlot(p.id, s)
+                      const isBlk = !!blockReason
+                      const isHovered = !isBlk && hoveredSlot === slotKey
                       return (
                         <button
                           key={i}
                           type="button"
                           data-slot-trigger
-                          onMouseEnter={() => setHoveredSlot(slotKey)}
+                          onMouseEnter={() => { if (!isBlk) setHoveredSlot(slotKey) }}
                           onMouseLeave={() => setHoveredSlot((cur) => (cur === slotKey ? null : cur))}
-                          onClick={(e) => openSlotPopover(e, p.id, p.name, s)}
+                          onClick={(e) => {
+                            // Slot bloqueado: não abre o popover de agendar (bug 30/05).
+                            if (isBlk) { e.stopPropagation(); return }
+                            openSlotPopover(e, p.id, p.name, s)
+                          }}
                           className="absolute left-0 right-0 transition-colors group flex items-center justify-center text-left"
                           style={{
                             top: i * SLOT_HEIGHT,
@@ -503,11 +748,11 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                               ? '1px solid var(--admin-divider)'
                               : '1px dashed color-mix(in srgb, var(--admin-divider) 50%, transparent)',
                             background: isHovered ? 'color-mix(in srgb, var(--brand-primary, #1AA9A8) 8%, transparent)' : 'transparent',
-                            cursor: 'pointer',
+                            cursor: isBlk ? 'not-allowed' : 'pointer',
                             zIndex: 1,
                           }}
-                          aria-label={`Agendar ${p.name} às ${s}`}
-                          title={`+ Agendar ${p.name} às ${s}`}
+                          aria-label={isBlk ? `Bloqueado às ${s} · ${blockReason}` : `Agendar ${p.name} às ${s}`}
+                          title={isBlk ? `Horário bloqueado · ${blockReason}` : `+ Agendar ${p.name} às ${s}`}
                         >
                           {isHovered && (
                             <span
@@ -525,6 +770,53 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                       )
                     })}
 
+                    {/* Faixa de BLOQUEIO · visual sobre a coluna · pointer-events
+                        none deixa o clique chegar no slot (que está guardado).
+                        zIndex 1 (acima do fundo do slot, abaixo dos cards z2). */}
+                    {blocksForProf(p.id).map((blk) => {
+                      const top = ((blk.startMin - dayStartMin) / interval) * SLOT_HEIGHT
+                      const height = ((blk.endMin - blk.startMin) / interval) * SLOT_HEIGHT
+                      const blkH = Math.max(height - 2, 18)
+                      // Cinza CHAPADO sólido · padrão Salão99 que Marko/Luana já
+                      // conhecem. Cobre o slot (pointer-events auto · cursor
+                      // not-allowed) pra deixar claro que é indisponível; o gate
+                      // no submit é a trava real. Tiny (<30px) = só motivo inline.
+                      const isTinyBlk = blkH < 30
+                      return (
+                        <div
+                          key={blk.id}
+                          className={`absolute left-1 right-1 rounded-lg overflow-hidden flex flex-col ${isTinyBlk ? 'justify-center px-1.5' : 'px-2 py-1'}`}
+                          style={{
+                            top,
+                            height: blkH,
+                            zIndex: 2,
+                            cursor: 'not-allowed',
+                            background: '#E9ECF1',
+                            borderLeft: '3px solid #94A3B8',
+                            borderTop: '1px solid rgba(255,255,255,0.6)',
+                            boxShadow: 'inset 0 0 0 1px rgba(148,163,184,0.25)',
+                          }}
+                          title={`Horário bloqueado · ${blk.reason}`}
+                        >
+                          {isTinyBlk ? (
+                            <span className="text-[10px] font-semibold uppercase tracking-wider truncate flex items-center gap-1" style={{ color: '#64748B' }}>
+                              <IconBlocked size={10} /> {blk.reason}
+                            </span>
+                          ) : (
+                            <>
+                              <span className="text-[10px] font-bold tabular-nums leading-tight flex items-center gap-1" style={{ color: '#64748B' }}>
+                                <IconBlocked size={11} />
+                                {minutesToTime(blk.startMin)}–{minutesToTime(blk.endMin)}
+                              </span>
+                              <span className="text-[11px] font-semibold leading-tight truncate" style={{ color: '#475569' }}>
+                                {blk.reason}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+
                     {/* Cards de agendamento · padrão 3D premium · layout adaptativo por duração */}
                     {profAppts.map((a) => {
                       const startMin = timeToMinutes(a.start_time)
@@ -539,6 +831,18 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                       // Tamanhos por duração (em minutos, previsível independente do interval)
                       const isTiny = durationMin < 25 // 1 linha inline
                       const isCompact = !isTiny && durationMin < 45 // 2 linhas
+                      // Posição horizontal por lane (sobreposição lado-a-lado).
+                      // Cancelado: faixa fininha à esquerda (z atrás) · ativo:
+                      // sua fatia da largura conforme nº de lanes do cluster.
+                      const li = laneInfo[a.id]
+                      const lanes = li?.lanes ?? 1
+                      const lane = li?.lane ?? 0
+                      const leftStyle = isCancelled
+                        ? { left: 4, width: 10 } // só um "talinho" cinza de histórico
+                        : {
+                            left: `calc(${(lane / lanes) * 100}% + 4px)`,
+                            width: `calc(${(1 / lanes) * 100}% - 6px)`,
+                          }
                       return (
                         <button
                           key={a.id}
@@ -548,8 +852,9 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                             e.stopPropagation()
                             setSelectedApptId(a.id)
                           }}
-                          className={`absolute left-1 right-1 rounded-lg flex flex-col overflow-hidden text-left transition-all hover:-translate-y-px ${isTiny ? 'px-1.5 py-0.5' : isCompact ? 'px-2 py-1' : 'p-2'}`}
+                          className={`absolute rounded-lg flex flex-col overflow-hidden text-left transition-all hover:-translate-y-px ${isTiny ? 'px-1.5 py-0.5' : isCompact ? 'px-2 py-1' : 'p-2'}`}
                           style={{
+                            ...leftStyle,
                             top,
                             height: Math.max(height - 2, 22),
                             background: `linear-gradient(180deg, color-mix(in srgb, ${color} 14%, var(--admin-surface)) 0%, color-mix(in srgb, ${color} 22%, var(--admin-surface)) 100%)`,
@@ -629,6 +934,30 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                               Pago
                             </span>
                           )}
+                          {/* Card pequeno (tiny/compact · ex. 30min ou sobreposto) não
+                              cabe o selo grande → mostra ponto de status no canto pra o
+                              "Pago"/"A confirmar" NÃO sumir. Cravado 02/06/2026 (Luana:
+                              importados de 30min apareciam sem selo apesar de pagos). */}
+                          {(isTiny || isCompact) && !isCancelled && (isPaid || isPending) && (
+                            <span
+                              className="absolute flex items-center justify-center rounded-full"
+                              style={{
+                                top: 3,
+                                right: 3,
+                                width: 14,
+                                height: 14,
+                                background: isPaid ? '#10B981' : '#F59E0B',
+                                boxShadow: '0 0 0 1.5px var(--admin-surface)',
+                              }}
+                              title={isPaid ? 'Pago' : 'A confirmar'}
+                            >
+                              {isPaid && (
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              )}
+                            </span>
+                          )}
                         </button>
                       )
                     })}
@@ -645,10 +974,14 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
                   </div>
                 )
               })}
+              </div>
+              {/* fim do grid body · fechamento do wrapper scrollable a seguir */}
             </div>
           </>
         )}
       </div>
+      </div>
+      {/* ↑ fim do wrapper externo (KPIs + GRADE separados) */}
 
       {/* POPOVER · 3 opções ao clicar em slot vazio · via portal pra fugir do overflow */}
       {popover && portalReady && createPortal(
@@ -762,7 +1095,9 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
       {/* MODAL · Como interpretar as cores · explicação completa dos 4 modos */}
       <ColorHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 
-      {/* MODAL de agendamento Salão99-style · abre via ?agendar=1 */}
+      {/* MODAL de agendamento Salão99-style · abre via ?agendar=1.
+          CIC Onda 5B #10: onClose ia hardcoded pra /admin, perdia rota se
+          aberto de /admin/inicio. Agora usa pathname dinâmico. */}
       <AgendarModal
         open={searchParams.get('agendar') === '1'}
         businessId={businessId}
@@ -772,8 +1107,7 @@ export default function TimelineGridInteractive({ businessId, profs, appts, serv
         defaultDate={searchParams.get('date') ?? date}
         defaultTime={searchParams.get('time')}
         onClose={() => {
-          // limpa query params · mantém data se diferente da default
-          router.replace('/admin')
+          router.replace(pathname)
           router.refresh()
         }}
       />

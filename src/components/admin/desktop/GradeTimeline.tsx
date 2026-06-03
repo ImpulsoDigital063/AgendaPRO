@@ -1,6 +1,7 @@
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import GradeTimelineHeader from './GradeTimelineHeader'
 import TimelineGridInteractive from './TimelineGridInteractive'
+import type { BlockRow } from '@/lib/blocks'
 
 type Props = {
   businessId: string
@@ -33,7 +34,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     { auth: { persistSession: false } },
   )
 
-  const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: salesPaidDay }] = await Promise.all([
+  const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: blocksData }, { data: salesPaidDay }] = await Promise.all([
     sb
       .from('professionals')
       .select('id, name, photo_url, is_receptionist, does_appointments')
@@ -54,7 +55,16 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .eq('business_id', businessId)
       .eq('active', true)
       .order('name'),
-    // Vendas de produto pagas no dia · entram no "Recebido" (exclui cortesia)
+    // Bloqueios ativos (almoço · folga · feriado) · a grade decide quais
+    // aplicam nesta data via blockAppliesTo. Sem esta query a timeline
+    // recebia blocks=undefined e nunca mostrava bloqueio.
+    sb
+      .from('business_blocks')
+      .select('id, professional_id, block_type, day_of_week, block_date, start_time, end_time, reason')
+      .eq('business_id', businessId)
+      .eq('active', true),
+    // Vendas de produto pagas no dia · entram no "Recebido" (exclui cortesia).
+    // (Sem cutoff Palace — agendapro é multi-tenant, conta o dia inteiro.)
     sb
       .from('sales')
       .select('total, paid_at')
@@ -82,6 +92,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     }))
   const appts = (apptsData ?? []) as ApptRow[]
   const services = (servicesData ?? []) as { id: string; name: string; price: number | null; duration_minutes: number | null }[]
+  const blocks = (blocksData ?? []) as BlockRow[]
 
   // KPIs do dia · só renderizam quando date === HOJE (header gateia internamente)
   // Cortesia NÃO conta como receita real (bonificação)
@@ -103,17 +114,21 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
         recebidoHoje={recebidoHoje}
         aReceberHoje={aReceberHoje}
         pendentesHoje={pendentesHoje}
-        hideKpis={hideKpis}
+        hideKpis={true /* 28/05: KPIs migraram pra dentro da tabela */}
       />
 
       <TimelineGridInteractive
         businessId={businessId}
         profs={profs}
         appts={appts}
+        blocks={blocks}
         services={services}
         hourStart={HOUR_START}
         hourEnd={HOUR_END}
         date={date}
+        recebidoHoje={recebidoHoje}
+        aReceberHoje={aReceberHoje}
+        pendentesHoje={pendentesHoje}
       />
     </div>
   )

@@ -1,7 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight, IconPlus, IconDollar, IconCheck, IconClock } from '@/components/ui/Icon'
 
 type Props = {
@@ -38,9 +39,10 @@ function formatDate(date: string): string {
   })
 }
 
-function isToday(date: string): boolean {
-  return date === new Date().toISOString().slice(0, 10)
-}
+// CIC Onda 5C P0 #1: chamar `new Date()` direto no render causava
+// React #418 (hydration mismatch) quando servidor (UTC) e browser (BR)
+// estavam em dias diferentes na virada da meia-noite. Agora usa state
+// + useEffect — server renderiza false, client hidrata e atualiza.
 
 export default function GradeTimelineHeader({
   date,
@@ -52,18 +54,29 @@ export default function GradeTimelineHeader({
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+
+  // todayClient só preenche após hidratação · evita mismatch SSR
+  const [todayClient, setTodayClient] = useState<string | null>(null)
+  useEffect(() => {
+    setTodayClient(new Date().toISOString().slice(0, 10))
+  }, [])
+  const isCurrentDay = todayClient !== null && date === todayClient
 
   function navigateTo(newDate: string) {
     const params = new URLSearchParams(searchParams)
     params.set('date', newDate)
-    router.push(`/admin?${params.toString()}`)
+    // GradeTimeline agora é usado em /admin E /recepcao · respeita pathname atual
+    // pra não jogar recep pra rota da Adm
+    const basePath = pathname.startsWith('/recepcao') ? '/recepcao' : '/admin'
+    router.push(`${basePath}?${params.toString()}`)
   }
 
   return (
     <div className="mb-4 space-y-3">
       {/* Mini KPIs do dia · padrão 3D premium · só renderiza se for HOJE
           E não estiver com hideKpis (caso da Home, que já tem KPIsRow em cima) */}
-      {!hideKpis && isToday(date) && (
+      {!hideKpis && isCurrentDay && (
         <div className="grid grid-cols-3 gap-2">
           <MiniKPI
             label="Recebido"
@@ -90,14 +103,33 @@ export default function GradeTimelineHeader({
         </div>
       )}
 
-      {/* Linha de controles · navegação + título + botão Agendar */}
-      <div className="flex flex-wrap items-center gap-3 px-1">
+      {/* Data como título · acima da linha de navegação
+          Cravado 28/05 Eduardo: "a data reposiciona em cima" pra tablet
+          ler bem antes dos controles */}
+      <div className="px-1">
+        <p
+          className="text-base sm:text-lg font-bold capitalize leading-tight"
+          style={{ color: 'var(--admin-text)' }}
+        >
+          {formatDate(date)}
+        </p>
+        <p
+          className="text-xs font-medium tabular-nums mt-0.5"
+          style={{ color: 'var(--admin-text-mute)' }}
+        >
+          {totalAppts} {totalAppts === 1 ? 'agendamento' : 'agendamentos'}
+        </p>
+      </div>
+
+      {/* Linha de controles · navegação + botão Agendar (data agora vive acima) */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-1">
         <div className="flex items-center gap-1">
           <button
             onClick={() => navigateTo(new Date().toISOString().slice(0, 10))}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all hover:-translate-y-px"
-            style={
-              isToday(date)
+            className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all hover:-translate-y-px"
+            style={{
+              minHeight: 36,
+              ...(isCurrentDay
                 ? {
                     background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 75%, black) 100%)',
                     color: '#fff',
@@ -108,15 +140,15 @@ export default function GradeTimelineHeader({
                     background: 'var(--admin-surface)',
                     color: 'var(--admin-text-mute)',
                     border: '1px solid var(--admin-border)',
-                  }
-            }
+                  }),
+            }}
           >
             Hoje
           </button>
           <button
             onClick={() => navigateTo(shiftDate(date, -1))}
             aria-label="Dia anterior"
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            className="w-9 h-9 rounded-lg flex items-center justify-center"
             style={{
               background: 'var(--admin-surface)',
               color: 'var(--admin-text-mute)',
@@ -128,7 +160,7 @@ export default function GradeTimelineHeader({
           <button
             onClick={() => navigateTo(shiftDate(date, 1))}
             aria-label="Próximo dia"
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            className="w-9 h-9 rounded-lg flex items-center justify-center"
             style={{
               background: 'var(--admin-surface)',
               color: 'var(--admin-text-mute)',
@@ -139,18 +171,13 @@ export default function GradeTimelineHeader({
           </button>
         </div>
 
-        <p className="text-sm font-semibold capitalize flex-1 min-w-[200px]" style={{ color: 'var(--admin-text)' }}>
-          {formatDate(date)}
-          <span className="ml-2 text-xs font-normal" style={{ color: 'var(--admin-text-mute)' }}>
-            {totalAppts} {totalAppts === 1 ? 'agendamento' : 'agendamentos'}
-          </span>
-        </p>
-
-        {/* Botão Agendar · abre modal inline na timeline (Salão99-style) via ?agendar=1 */}
+        {/* Botão Agendar · abre modal inline na timeline (Salão99-style) via ?agendar=1
+            Cresce em flex-1 em <sm pra ficar large no mobile, fica auto em desktop */}
         <Link
           href={`?agendar=1&date=${date}`}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px ml-auto"
           style={{
+            minHeight: 44,
             background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
             color: '#fff',
             borderTop: '1px solid rgba(255,255,255,0.25)',
@@ -167,8 +194,11 @@ export default function GradeTimelineHeader({
 /**
  * Mini KPI card · padrão B-híbrido premium 3D.
  * Gradient sutil interno + border-top highlight + shadow longa colorida + hover lift.
+ *
+ * Exportado pra reuso em TimelineGridInteractive (cravado 28/05: Eduardo
+ * pediu KPIs em cima da tabela de agendamento, não no header geral)
  */
-function MiniKPI({
+export function MiniKPI({
   label,
   value,
   color,
@@ -185,7 +215,7 @@ function MiniKPI({
 }) {
   return (
     <div
-      className="rounded-2xl px-3 py-2.5 flex items-center gap-2.5 transition-all hover:-translate-y-px"
+      className="rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-2.5 transition-all hover:-translate-y-px min-w-0"
       style={{
         background: `linear-gradient(180deg, color-mix(in srgb, ${color} 8%, var(--admin-surface)) 0%, color-mix(in srgb, ${color} 14%, var(--admin-surface)) 100%)`,
         border: `1px solid color-mix(in srgb, ${color} 25%, var(--admin-border))`,
@@ -194,20 +224,20 @@ function MiniKPI({
       }}
     >
       <span
-        className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${pulse ? 'admin-pulse-warn' : ''}`}
+        className={`w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 ${pulse ? 'admin-pulse-warn' : ''}`}
         style={{
           background: `linear-gradient(135deg, ${color} 0%, ${colorDark} 100%)`,
           color: '#fff',
           boxShadow: `0 4px 8px -2px color-mix(in srgb, ${colorDark} 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.3)`,
         }}
       >
-        <Icon size={16} />
+        <Icon size={14} />
       </span>
-      <div className="min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wider leading-none" style={{ color: 'var(--admin-text-mute)' }}>
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider leading-none truncate" style={{ color: 'var(--admin-text-mute)' }}>
           {label}
         </p>
-        <p className="text-base font-extrabold tabular-nums leading-tight mt-0.5" style={{ color: 'var(--admin-text)' }}>
+        <p className="text-sm sm:text-base font-extrabold tabular-nums leading-tight mt-0.5 truncate" style={{ color: 'var(--admin-text)' }}>
           {value}
         </p>
       </div>

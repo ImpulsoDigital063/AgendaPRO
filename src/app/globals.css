@@ -125,7 +125,9 @@ body {
    Usado no /admin pra permitir toggle sol/lua pelo dono.
 ═══════════════════════════════════════════════════════════ */
 
-[data-admin-theme="dark"] { color-scheme: dark; }
+/* Light-only (03/06): tema dark aposentado. Qualquer data-admin-theme
+   renderiza claro — o bloco light abaixo cobre os dois seletores. */
+[data-admin-theme="dark"] { color-scheme: light; }
 [data-admin-theme="light"] { color-scheme: light; }
 
 [data-admin-theme="dark"] {
@@ -159,7 +161,10 @@ body {
   --admin-bottomnav-bg: rgba(5, 7, 19, 0.85);
 }
 
-[data-admin-theme="light"] {
+/* Vale pros DOIS seletores · vem depois do bloco dark → ganha no cascade
+   (light-only · dark aposentado 03/06). */
+[data-admin-theme="light"],
+[data-admin-theme="dark"] {
   --admin-bg:           #E6EBF3;
   --admin-bg-deep:      #D8DFEA;
   --admin-bg-orb-1:     rgba(59, 130, 246, 0.12);
