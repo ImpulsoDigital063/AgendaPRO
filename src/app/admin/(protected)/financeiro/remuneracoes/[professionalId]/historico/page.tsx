@@ -44,7 +44,7 @@ export default async function HistoricoPagamentosPage({
 
   const { data: prof, error: profErr } = await sb
     .from('professionals')
-    .select('id, name, business_id, default_commission_percent')
+    .select('id, name, business_id, default_commission_percent:commission_percentage')
     .eq('id', professionalId)
     .maybeSingle()
 

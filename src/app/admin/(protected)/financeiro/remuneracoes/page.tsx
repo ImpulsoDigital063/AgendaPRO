@@ -68,7 +68,11 @@ export default async function RemuneracoesPage({
   ] = await Promise.all([
     sb
       .from('professionals')
-      .select('id, name, default_commission_percent, is_receptionist, active')
+      // Fonte única do % = commission_percentage (coluna que o cadastro grava).
+      // Alias mantém o resto do código usando p.default_commission_percent, mas
+      // com o valor REAL. Antes lia default_commission_percent (default fixo 40,
+      // nunca atualizado) → pagava comissão errada (espelha fix Palace 3e069be).
+      .select('id, name, default_commission_percent:commission_percentage, is_receptionist, active')
       .eq('business_id', business.id)
       .eq('active', true)
       .order('name'),

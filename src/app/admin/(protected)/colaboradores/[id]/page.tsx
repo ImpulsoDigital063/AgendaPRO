@@ -29,7 +29,7 @@ export default async function ColaboradorPage({
   const { data: prof, error: profErr } = await sb
     .from('professionals')
     .select(`
-      id, name, email, default_commission_percent, is_receptionist, active, business_id,
+      id, name, email, default_commission_percent:commission_percentage, is_receptionist, active, business_id,
       is_owner, is_manager, is_professional, is_attendant,
       does_appointments, sells_products, sells_packages,
       nickname, birth_date, cpf, instagram

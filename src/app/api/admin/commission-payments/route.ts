@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   // Valida prof
   const { data: prof } = await admin
     .from('professionals')
-    .select('id, business_id, default_commission_percent')
+    .select('id, business_id, default_commission_percent:commission_percentage')
     .eq('id', body.professionalId)
     .maybeSingle()
   if (!prof || prof.business_id !== businessId) {

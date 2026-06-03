@@ -68,7 +68,7 @@ export default async function RemuneracaoDetalhePage({
   // Profissional
   const { data: prof } = await sb
     .from('professionals')
-    .select('id, name, default_commission_percent, business_id')
+    .select('id, name, default_commission_percent:commission_percentage, business_id')
     .eq('id', professionalId)
     .maybeSingle()
 
