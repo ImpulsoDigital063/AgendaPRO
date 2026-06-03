@@ -31,22 +31,9 @@ function readInitialPhase(): Phase {
   return isStandalone && !alreadyShown ? 'visible' : 'gone'
 }
 
-function readCachedSlug(): string | null {
-  if (typeof window === 'undefined') return null
-  try {
-    return localStorage.getItem('agendapro-last-slug')
-  } catch {
-    return null
-  }
-}
 
 export default function AppSplash() {
   const [phase, setPhase] = useState<Phase>(readInitialPhase)
-  const [slug, setSlug] = useState<string | null>(null)
-
-  useEffect(() => {
-    setSlug(readCachedSlug())
-  }, [])
 
   useEffect(() => {
     if (phase !== 'visible') return
@@ -63,44 +50,6 @@ export default function AppSplash() {
 
   if (phase === 'gone') return null
 
-  // Splash customizada Palace · cache de slug em localStorage decide qual mostrar
-  if (slug === 'palace-nail-spa') {
-    return (
-      <div
-        className="fixed inset-0 z-[200] flex items-center justify-center"
-        style={{
-          background: '#1AA9A8', // turquesa Palace
-          opacity: phase === 'fading' ? 0 : 1,
-          transition: 'opacity 200ms ease-out',
-          pointerEvents: phase === 'fading' ? 'none' : 'auto',
-        }}
-      >
-        <div
-          style={{
-            width: 220,
-            height: 220,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            animation: 'agendaproSplashPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-          }}
-        >
-          <img
-            src="/brand/palace/logo-on-teal.png"
-            alt="Palace Nail Spa"
-            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-          />
-        </div>
-        <style>{`
-          @keyframes agendaproSplashPop {
-            0% { transform: scale(0.6); opacity: 0; }
-            60% { transform: scale(1.08); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-          }
-        `}</style>
-      </div>
-    )
-  }
 
   // Splash padrão AgendaPRO (mobile produção · Olímpio/Leticia/Erlane)
   return (

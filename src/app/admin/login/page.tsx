@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { IconEye, IconEyeOff, IconArrowLeft, IconCheck } from '@/components/ui/Icon'
 
 export default function LoginPage() {
@@ -19,24 +19,6 @@ export default function LoginPage() {
   const [forgotSent, setForgotSent] = useState(false)
   const [forgotError, setForgotError] = useState<string | null>(null)
   const router = useRouter()
-  const searchParams = useSearchParams()
-
-  // Branding por business · prioridade: URL param > localStorage cache.
-  // Link de convite do Marko/Luana: /admin/login?biz=palace-nail-spa
-  // Logins subsequentes: cache do SlugCacher (último business logado).
-  const [bizSlug, setBizSlug] = useState<string | null>(null)
-  useEffect(() => {
-    const fromParam = searchParams.get('biz')
-    if (fromParam) {
-      setBizSlug(fromParam)
-      return
-    }
-    try {
-      setBizSlug(localStorage.getItem('agendapro-last-slug'))
-    } catch { /* ignore */ }
-  }, [searchParams])
-
-  const isPalace = bizSlug === 'palace-nail-spa'
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -95,16 +77,11 @@ export default function LoginPage() {
     }, 250)
   }
 
-  // Estilos condicionais Palace vs AgendaPRO default
-  const bgStyle = isPalace
-    ? {
-        background:
-          'radial-gradient(ellipse 80% 60% at 20% 20%, rgba(26,169,168,0.45) 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 80%, rgba(201,168,124,0.30) 0%, transparent 55%), radial-gradient(ellipse 60% 40% at 50% 100%, rgba(217,181,167,0.22) 0%, transparent 60%), #0A2424',
-      }
-    : {
-        background:
-          'radial-gradient(ellipse 80% 60% at 20% 20%, rgba(30,64,175,0.35) 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 80%, rgba(6,182,212,0.22) 0%, transparent 55%), radial-gradient(ellipse 60% 40% at 50% 100%, rgba(139,92,246,0.18) 0%, transparent 60%), #050713',
-      }
+  // Fundo AgendaPRO (Palace virou sistema independente · co-marca removida 03/06)
+  const bgStyle = {
+    background:
+      'radial-gradient(ellipse 80% 60% at 20% 20%, rgba(30,64,175,0.35) 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 85% 80%, rgba(6,182,212,0.22) 0%, transparent 55%), radial-gradient(ellipse 60% 40% at 50% 100%, rgba(139,92,246,0.18) 0%, transparent 60%), #050713',
+  }
 
   return (
     <main
@@ -134,23 +111,11 @@ export default function LoginPage() {
 
       <div className="w-full max-w-sm relative">
         <div className="text-center mb-8">
-          {isPalace ? (
-            <div className="inline-block mb-4">
-              <img
-                src="/brand/palace/logo-on-teal.png"
-                alt="Palace Nail Spa"
-                width={180}
-                height={180}
-                style={{ width: 160, height: 160, objectFit: 'contain', borderRadius: 20, boxShadow: '0 30px 80px -20px rgba(26,169,168,0.55)' }}
-              />
-            </div>
-          ) : (
-            <Link href="/" className="inline-block mb-4">
-              <Image src="/logo-agendapro-dark-signed.svg" alt="AgendaPRO by Impulso Digital" width={200} height={58} priority />
-            </Link>
-          )}
-          <p className="text-sm font-medium" style={{ color: isPalace ? '#5EE0DE' : '#60A5FA' }}>
-            {isPalace ? 'Painel · Palace Nail Spa' : 'Painel do dono'}
+          <Link href="/" className="inline-block mb-4">
+            <Image src="/logo-agendapro-dark-signed.svg" alt="AgendaPRO by Impulso Digital" width={200} height={58} priority />
+          </Link>
+          <p className="text-sm font-medium" style={{ color: '#60A5FA' }}>
+            Painel do dono
           </p>
         </div>
 
