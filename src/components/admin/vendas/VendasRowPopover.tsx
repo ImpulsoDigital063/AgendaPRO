@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { IconClose, IconWhatsapp, IconPencil, IconTrash, IconUser, IconExternalLink } from '@/components/ui/Icon'
+import { IconClose, IconExternalLink } from '@/components/ui/Icon'
 import FaturarModal from './FaturarModal'
 import ComandaModal from './ComandaModal'
 
@@ -49,18 +49,6 @@ function formatBRL(v: number | null): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'pending', label: 'Horário Marcado' },
-  { value: 'confirmed', label: 'Confirmado' },
-  { value: 'completed', label: 'Concluído' },
-  { value: 'no_show', label: 'Faltou' },
-  { value: 'cancelled', label: 'Cancelado' },
-]
-
-function statusLabel(value: string): string {
-  return STATUS_OPTIONS.find((o) => o.value === value)?.label ?? value
-}
-
 export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
   const [showFaturar, setShowFaturar] = useState(false)
   const [showComanda, setShowComanda] = useState(false)
@@ -101,52 +89,13 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
           boxShadow: '-8px 0 24px rgba(0,0,0,0.25)',
         }}
       >
-        {/* Top: ações + close */}
+        {/* Top: close. (Ações editar/excluir/lembrete/status ainda não existem
+            no backend · removidas pra não mostrar botão morto · vêm quando o
+            backend de Vendas for feito · cravado Eduardo 01/06/2026.) */}
         <div
-          className="flex items-center gap-1 px-3 py-3 flex-shrink-0"
+          className="flex items-center justify-end px-3 py-3 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--admin-divider)' }}
         >
-          <button
-            type="button"
-            aria-label="Enviar lembrete"
-            title="Enviar lembrete"
-            disabled
-            className="p-2 rounded-lg disabled:opacity-30"
-            style={{ color: 'var(--admin-text-mute)' }}
-          >
-            <IconWhatsapp size={16} />
-          </button>
-          <button
-            type="button"
-            aria-label="Editar"
-            title="Editar atendimento"
-            disabled
-            className="p-2 rounded-lg disabled:opacity-30"
-            style={{ color: 'var(--admin-text-mute)' }}
-          >
-            <IconPencil size={16} />
-          </button>
-          <button
-            type="button"
-            aria-label="Excluir"
-            title="Excluir"
-            disabled
-            className="p-2 rounded-lg disabled:opacity-30"
-            style={{ color: 'var(--admin-text-mute)' }}
-          >
-            <IconTrash size={16} />
-          </button>
-          <button
-            type="button"
-            aria-label="Ver cliente"
-            title="Ver cliente"
-            disabled
-            className="p-2 rounded-lg disabled:opacity-30"
-            style={{ color: 'var(--admin-text-mute)' }}
-          >
-            <IconUser size={16} />
-          </button>
-          <div className="flex-1" />
           <button
             type="button"
             onClick={onClose}
@@ -197,28 +146,6 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
 
           {/* Divisor */}
           <div style={{ borderTop: '1px solid var(--admin-divider)' }} />
-
-          {/* Status do atendimento */}
-          <div>
-            <p
-              className="text-[10px] font-bold uppercase tracking-widest mb-1.5"
-              style={{ color: 'var(--admin-text-faded)' }}
-            >
-              Status do atendimento
-            </p>
-            <select
-              defaultValue={sale.status}
-              disabled
-              className="admin-input w-full py-2 px-3 text-sm disabled:opacity-60"
-              title="Mudança de status vem na próxima etapa"
-            >
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  ✓ {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
 
           {/* Linha Comanda · clicável quando faturada */}
           {isInvoiced ? (

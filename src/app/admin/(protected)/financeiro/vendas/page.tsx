@@ -282,7 +282,8 @@ export default async function VendasPage({
             </a>
           }
         />
-        <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-7xl lg:px-8">
+        {/* Container responsivo · sm: cobre landscape do celular + tablet */}
+        <div className="max-w-lg mx-auto px-4 py-6 sm:max-w-5xl sm:px-6 lg:max-w-7xl lg:px-8">
           <VendasFilters professionals={professionals ?? []} />
 
           {/* Contador */}

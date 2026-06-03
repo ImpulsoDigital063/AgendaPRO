@@ -14,12 +14,11 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'cancelled', label: 'Canceladas' },
 ]
 
+// Tipos "Em breve" (produto/pacote/crédito) removidos · não mostrar opção morta
+// no select · voltam quando o filtro por tipo for implementado de fato.
 const TYPE_OPTIONS = [
   { value: 'all', label: 'Exibir Todos', disabled: false },
   { value: 'appointment', label: 'Atendimento', disabled: false },
-  { value: 'product', label: 'Venda de Produto · Em breve', disabled: true },
-  { value: 'package', label: 'Venda de Pacote · Em breve', disabled: true },
-  { value: 'credit', label: 'Crédito Avulso · Em breve', disabled: true },
 ]
 
 type Prof = { id: string; name: string }
@@ -195,7 +194,7 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
         {label}
       </span>
       <input
-        type="date"
+        type="date" lang="pt-BR"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="bg-transparent border-none outline-none text-sm py-1.5"
