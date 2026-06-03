@@ -121,50 +121,15 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Admin theme — dark (default) e light via data-admin-theme
-   Usado no /admin pra permitir toggle sol/lua pelo dono.
+   Admin theme — LIGHT-ONLY (tema dark removido em 03/06 · era glass
+   translúcido, dava manutenção). Tokens no .admin-shell · sem toggle.
 ═══════════════════════════════════════════════════════════ */
 
-/* Light-only (03/06): tema dark aposentado. Qualquer data-admin-theme
-   renderiza claro — o bloco light abaixo cobre os dois seletores. */
-[data-admin-theme="dark"] { color-scheme: light; }
-[data-admin-theme="light"] { color-scheme: light; }
-
-[data-admin-theme="dark"] {
-  --admin-bg:           #030510;
-  --admin-bg-deep:      #01020A;
-  --admin-bg-orb-1:     rgba(59, 130, 246, 0.20);
-  --admin-bg-orb-2:     rgba(59, 130, 246, 0.10);
-  --admin-bg-orb-3:     rgba(139, 92, 246, 0.10);
-  --admin-surface:      rgba(255, 255, 255, 0.05);
-  --admin-surface-hi:   rgba(255, 255, 255, 0.08);
-  /* Popover sólido — translúcido fica ilegível sobre cards e orbs animados */
-  --admin-popover-bg:   #0F172A;
-  --admin-popover-border: rgba(255, 255, 255, 0.14);
-  --admin-surface-hover: rgba(255, 255, 255, 0.09);
-  --admin-border:       rgba(255, 255, 255, 0.08);
-  --admin-border-hi:    rgba(255, 255, 255, 0.14);
-  --admin-text:         #F8FAFC;
-  --admin-text-2:       #CBD5E1;
-  --admin-text-mute:    #94A3B8;
-  --admin-text-faded:   #64748B;
-  --admin-divider:      rgba(255, 255, 255, 0.06);
-  --admin-input-bg:     rgba(255, 255, 255, 0.04);
-  --admin-logo-filter:  none;
-  --admin-shadow:       0 20px 60px rgba(0, 0, 0, 0.6);
-  --admin-accent:       #60A5FA;
-  --admin-accent-bg:    rgba(59, 130, 246, 0.10);
-  --admin-accent-border: rgba(59, 130, 246, 0.25);
-  --admin-success:      #34D399;
-  --admin-warn:         #FBBF24;
-  --admin-danger:       #F87171;
-  --admin-bottomnav-bg: rgba(5, 7, 19, 0.85);
-}
-
-/* Vale pros DOIS seletores · vem depois do bloco dark → ganha no cascade
-   (light-only · dark aposentado 03/06). */
-[data-admin-theme="light"],
-[data-admin-theme="dark"] {
+/* Tokens CLAROS no shell (e em [data-admin-theme] legado por segurança,
+   caso o atributo persista em cache antigo). Sem bloco dark. */
+.admin-shell,
+[data-admin-theme] {
+  color-scheme: light;
   --admin-bg:           #E6EBF3;
   --admin-bg-deep:      #D8DFEA;
   --admin-bg-orb-1:     rgba(59, 130, 246, 0.12);
