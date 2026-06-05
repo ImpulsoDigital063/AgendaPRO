@@ -1701,33 +1701,16 @@ export default function BookingFlow({
                 </button>
               </div>
             )}
-            {!waitlistDone && !waitlistSlot && slots.length > 0 && (
+            {!waitlistDone && !waitlistSlot && slots.some((s) => !s.available) && (
               <div
-                className="mb-3 rounded-xl px-3 py-2.5 text-xs space-y-1.5"
+                className="mb-3 rounded-xl px-3 py-2.5 text-xs leading-relaxed"
                 style={{
-                  background: isDark ? 'rgba(148,163,184,0.10)' : 'rgb(248,250,252)',
-                  border: `1px solid ${isDark ? 'rgba(148,163,184,0.25)' : 'rgb(226,232,240)'}`,
-                  color: C.mute,
+                  background: isDark ? 'rgba(245,158,11,0.10)' : '#FFFBEB',
+                  border: `1px solid ${isDark ? 'rgba(245,158,11,0.30)' : '#FDE68A'}`,
+                  color: isDark ? '#FCD34D' : '#92400E',
                 }}
               >
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-3.5 h-3.5 rounded-md shrink-0"
-                    style={{ background: isDark ? 'rgba(34,197,94,0.25)' : '#DCFCE7', border: '1px solid #86EFAC' }}
-                  />
-                  <span>
-                    <strong style={{ color: isDark ? '#86EFAC' : '#15803D' }}>Verde</strong> = horário livre — toque pra agendar.
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-3.5 h-3.5 rounded-md shrink-0"
-                    style={{ background: isDark ? 'rgba(239,68,68,0.25)' : '#FEE2E2', border: '1px solid #FCA5A5' }}
-                  />
-                  <span>
-                    <strong style={{ color: isDark ? '#FCA5A5' : '#DC2626' }}>Vermelho</strong> = ocupado — toque que a gente te avisa se vagar.
-                  </span>
-                </div>
+                <strong>Horário ocupado?</strong> Toque nele pra entrar na lista de espera. Se quem agendou desistir, a gente te avisa — e o horário fica pra você.
               </div>
             )}
             <div className="grid grid-cols-4 gap-2">
