@@ -41,8 +41,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Programa de pontos por avaliação não está ativo.' }, { status: 400 })
   }
 
-  // Busca o customer
-  const { data: customer } = await adminClient
+  // Busca o customer; se não existir, CRIA (avaliação é vantagem pro negócio
+  // mesmo de quem nunca agendou — Eduardo 05/06). Quem avalia já começa com
+  // saldo; se agendar depois, o mesmo telefone reaproveita o cadastro.
+  let { data: customer } = await adminClient
     .from('customers')
     .select('id, name, phone')
     .eq('business_id', businessId)
@@ -50,7 +52,15 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   if (!customer) {
-    return NextResponse.json({ error: 'Telefone não encontrado. Faça um agendamento primeiro.' }, { status: 404 })
+    const { data: created, error: createErr } = await adminClient
+      .from('customers')
+      .insert({ business_id: businessId, phone: phone.trim(), name: reviewName || 'Cliente (avaliação)' })
+      .select('id, name, phone')
+      .single()
+    if (createErr || !created) {
+      return NextResponse.json({ error: 'Erro ao registrar. Tente novamente.' }, { status: 500 })
+    }
+    customer = created
   }
 
   // Já tem claim approved? Não pode pedir de novo.
