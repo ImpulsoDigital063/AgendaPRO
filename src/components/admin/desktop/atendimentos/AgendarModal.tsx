@@ -318,7 +318,7 @@ export default function AgendarModal({
       professional_id: profId,
       customer_id: avulso ? null : cliente!.id,
       client_name: avulso ? (avulsoName.trim() || 'Cliente avulso') : cliente!.name,
-      client_phone: avulso ? null : cliente!.phone,
+      client_phone: avulso ? '' : cliente!.phone, // client_phone é NOT NULL — avulso usa vazio
       appointment_date: d,
       start_time: `${time}:00`,
       end_time: `${endTime}:00`,
