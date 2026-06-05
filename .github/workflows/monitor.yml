@@ -1,0 +1,24 @@
+name: monitor
+
+# Blindagem: chama /api/cron/monitor de hora em hora.
+# (Vercel Hobby so permite cron 1x/dia, por isso o agendador vive aqui.)
+# O proprio monitor so dispara alerta de "operacao parada" depois das 12h BRT.
+on:
+  schedule:
+    - cron: '0 * * * *' # toda hora cheia (UTC; o GitHub pode atrasar alguns min)
+  workflow_dispatch: {} # permite rodar na mao pelo botao "Run workflow"
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: chamar o monitor
+        run: |
+          code=$(curl -s -o /tmp/out -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://www.agendapro.net.br/api/cron/monitor")
+          echo "HTTP $code"
+          cat /tmp/out
+          echo
+          # falha o job (= GitHub te avisa por email) se o monitor nao responder 200
+          test "$code" = "200"
