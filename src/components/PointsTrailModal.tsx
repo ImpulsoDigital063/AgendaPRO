@@ -6,6 +6,7 @@ import { IconCalendar, IconSparkles, IconGift, IconStar, IconArrowRight, IconClo
 
 type Props = {
   agendarHref: string
+  meusPontosHref: string
   primary: string
   cheapestReward: { name: string; pointsRequired: number } | null
   pointsForReview: number
@@ -13,24 +14,21 @@ type Props = {
 }
 
 /**
- * Popup "Como funciona os pontos" — abre TODA vez que o cliente acessa a
- * página pública (pedido Eduardo 05/06: a trilha inline ficou imperceptível).
- * Card claro/legível independente do tema do negócio. Fecha no X, no backdrop
- * ou no "Entendi". (Sem localStorage de propósito — é pra aparecer sempre.)
+ * Popup "Programa de Pontos" — abre TODA vez que o cliente acessa a página
+ * pública (pedido Eduardo 05/06). EXPLICA o programa: o que é, como ganhar
+ * (cada via + quantos pts) e como trocar. Card claro/legível, fechar bem
+ * visível (X grande + botão Fechar). Sem localStorage de propósito.
  */
-export default function PointsTrailModal({ agendarHref, primary, cheapestReward, pointsForReview, pointsForReferral }: Props) {
+export default function PointsTrailModal({
+  agendarHref,
+  meusPontosHref,
+  primary,
+  cheapestReward,
+  pointsForReview,
+  pointsForReferral,
+}: Props) {
   const [open, setOpen] = useState(true)
   if (!open) return null
-
-  const steps = [
-    { Icon: IconCalendar, t: 'Agende', d: 'Ganhe pontos a cada serviço' },
-    { Icon: IconSparkles, t: 'Acumule', d: 'Seus pontos somam a cada visita' },
-    {
-      Icon: IconGift,
-      t: 'Troque',
-      d: cheapestReward ? `Por ${cheapestReward.name} · ${cheapestReward.pointsRequired} pts` : 'Por serviços grátis',
-    },
-  ]
 
   return (
     <div
@@ -39,7 +37,7 @@ export default function PointsTrailModal({ agendarHref, primary, cheapestReward,
       onClick={() => setOpen(false)}
     >
       <div
-        className="relative w-full max-w-sm rounded-3xl p-5 sm:p-6"
+        className="relative w-full max-w-sm rounded-3xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto"
         style={{ background: '#FFFFFF', boxShadow: '0 30px 80px -20px rgba(2,6,23,0.5)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -52,7 +50,8 @@ export default function PointsTrailModal({ agendarHref, primary, cheapestReward,
           <IconClose size={20} />
         </button>
 
-        <div className="text-center mb-4">
+        {/* Cabeçalho — o que é */}
+        <div className="text-center mb-5 pr-8">
           <span
             className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2"
             style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}
@@ -60,45 +59,45 @@ export default function PointsTrailModal({ agendarHref, primary, cheapestReward,
             <IconGift size={24} />
           </span>
           <h3 className="text-lg font-extrabold" style={{ color: '#0F172A' }}>
-            Você ganha pontos aqui!
+            Programa de Pontos
           </h3>
-          <p className="text-xs mt-1" style={{ color: '#64748B' }}>
-            Cada visita vale pontos que viram serviços grátis.
+          <p className="text-xs mt-1 leading-relaxed" style={{ color: '#64748B' }}>
+            Aqui cada visita vira ponto — e ponto vira serviço grátis. Veja como funciona:
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {steps.map((s, i) => (
-            <div key={i} className="rounded-2xl p-3 text-center" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-              <span
-                className="inline-flex items-center justify-center w-9 h-9 rounded-xl mb-2"
-                style={{ background: hexToRgba(primary, 0.1), color: primary }}
-              >
-                <s.Icon size={18} />
-              </span>
-              <p className="font-bold text-sm" style={{ color: '#0F172A' }}>{s.t}</p>
-              <p className="text-[11px] leading-snug mt-0.5" style={{ color: '#64748B' }}>{s.d}</p>
-            </div>
-          ))}
+        {/* COMO GANHAR */}
+        <p className="text-[11px] font-bold uppercase tracking-[0.15em] mb-2" style={{ color: '#16A34A' }}>
+          1 · Como ganhar pontos
+        </p>
+        <div className="space-y-2 mb-4">
+          <Row primary={primary} Icon={IconCalendar} title="Agende um serviço" desc="Cada serviço dá pontos (veja na lista)" />
+          {pointsForReview > 0 && (
+            <Row primary={primary} Icon={IconStar} title="Avalie no Google" desc="Leva 30 segundos" value={`+${pointsForReview} pts`} />
+          )}
+          {pointsForReferral > 0 && (
+            <Row primary={primary} Icon={IconSparkles} title="Indique um amigo" desc="Quando ele agendar o 1º horário" value={`+${pointsForReferral} pts`} />
+          )}
         </div>
 
-        {(pointsForReview > 0 || pointsForReferral > 0) && (
-          <div className="flex flex-col gap-1.5 mb-4">
-            {pointsForReview > 0 && (
-              <p className="flex items-center gap-2 text-xs" style={{ color: '#64748B' }}>
-                <IconStar size={13} style={{ color: '#F59E0B' }} />
-                Avalie no Google e ganhe <strong style={{ color: '#0F172A' }}>+{pointsForReview} pts</strong>
-              </p>
-            )}
-            {pointsForReferral > 0 && (
-              <p className="flex items-center gap-2 text-xs" style={{ color: '#64748B' }}>
-                <IconSparkles size={13} style={{ color: '#F59E0B' }} />
-                Indique um amigo e ganhe <strong style={{ color: '#0F172A' }}>+{pointsForReferral} pts</strong>
-              </p>
-            )}
-          </div>
-        )}
+        {/* COMO TROCAR */}
+        <p className="text-[11px] font-bold uppercase tracking-[0.15em] mb-2" style={{ color: '#16A34A' }}>
+          2 · Como trocar
+        </p>
+        <div className="space-y-2 mb-2">
+          <Row
+            primary={primary}
+            Icon={IconGift}
+            title="Troque por serviços grátis"
+            desc={cheapestReward ? `Ex.: ${cheapestReward.name}` : 'Junte pontos e resgate prêmios'}
+            value={cheapestReward ? `${cheapestReward.pointsRequired} pts` : undefined}
+          />
+        </div>
+        <p className="text-[11px] leading-relaxed mb-5" style={{ color: '#94A3B8' }}>
+          Acompanhe seu saldo e resgate em <strong style={{ color: '#64748B' }}>Meus pontos</strong>. Os pontos entram quando o atendimento é concluído.
+        </p>
 
+        {/* Ações */}
         <Link
           href={agendarHref}
           className="cta-pulse-green group w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -107,14 +106,55 @@ export default function PointsTrailModal({ agendarHref, primary, cheapestReward,
           Agendar horário
           <span className="transition-transform group-hover:translate-x-1"><IconArrowRight size={18} /></span>
         </Link>
+        <Link
+          href={meusPontosHref}
+          className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm mt-2 transition-colors hover:brightness-95"
+          style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}
+        >
+          <IconSparkles size={15} /> Ver meus pontos
+        </Link>
         <button
           onClick={() => setOpen(false)}
-          className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm mt-3 transition-colors hover:brightness-95"
+          className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm mt-2 transition-colors hover:brightness-95"
           style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', color: '#334155' }}
         >
           <IconClose size={16} /> Fechar
         </button>
       </div>
+    </div>
+  )
+}
+
+function Row({
+  Icon,
+  title,
+  desc,
+  value,
+  primary,
+}: {
+  Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>
+  title: string
+  desc: string
+  value?: string
+  primary: string
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl p-3" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+      <span
+        className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
+        style={{ background: hexToRgba(primary, 0.1), color: primary }}
+      >
+        <Icon size={18} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-bold text-sm leading-tight" style={{ color: '#0F172A' }}>{title}</p>
+        <p className="text-[11px] leading-snug mt-0.5" style={{ color: '#64748B' }}>{desc}</p>
+      </div>
+      {value && (
+        <span className="text-sm font-extrabold tabular-nums flex-shrink-0" style={{ color: '#16A34A' }}>
+          {value}
+        </span>
+      )}
     </div>
   )
 }

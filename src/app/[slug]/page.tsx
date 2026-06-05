@@ -478,6 +478,7 @@ export default async function BusinessPage({
           (b.points_for_referral ?? 0) > 0) && (
           <PointsTrailModal
             agendarHref={agendarHref}
+            meusPontosHref={`/${slug}/meus-pontos`}
             primary={primary}
             cheapestReward={
               cheapestReward
