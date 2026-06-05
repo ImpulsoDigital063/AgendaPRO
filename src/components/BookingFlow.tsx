@@ -1770,7 +1770,11 @@ export default function BookingFlow({
                     }
                   >
                     {slot.time}
-                    {!slot.available && <span className="block text-xs opacity-80">ocupado</span>}
+                    {!slot.available ? (
+                      <span className="block text-xs opacity-80">ocupado</span>
+                    ) : (
+                      !isSelected && <span className="block text-xs opacity-80">livre</span>
+                    )}
                   </button>
                 )
               })}
