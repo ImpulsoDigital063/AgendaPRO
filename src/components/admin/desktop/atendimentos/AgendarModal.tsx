@@ -16,6 +16,7 @@ import {
   IconCheck,
 } from '@/components/ui/Icon'
 import TimeSlotPicker from './TimeSlotPicker'
+import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 import dynamic from 'next/dynamic'
 
 // Lazy: o cadastro full-form é grande (form com 20+ campos). Só baixa
@@ -134,6 +135,10 @@ export default function AgendarModal({
   const [avulso, setAvulso] = useState(false)
   const [avulsoName, setAvulsoName] = useState('')
   const [manualTime, setManualTime] = useState(false)
+  // "Atendimento já concluído?" → ao salvar, abre o modal de pagamento (como
+  // foi pago). Não → cria normal (paga depois). Eduardo 05/06.
+  const [jaConcluido, setJaConcluido] = useState(false)
+  const [payAppt, setPayAppt] = useState<{ id: string; name: string; total: number | null } | null>(null)
 
   // V3: Repetir atendimento (recorrência)
   const [recurring, setRecurring] = useState<boolean>(false)
@@ -169,6 +174,8 @@ export default function AgendarModal({
     setAvulso(false)
     setAvulsoName('')
     setManualTime(false)
+    setJaConcluido(false)
+    setPayAppt(null)
     setRecurring(false)
     setRecurFreq('weekly')
     setRecurCount(4)
@@ -298,7 +305,7 @@ export default function AgendarModal({
     const displayName = linesWithMeta.length === 1 ? first.name : `${first.name} +${linesWithMeta.length - 1}`
 
     // V3 · Repetir: gera N datas (ou 1 se sem recorrência)
-    const allDates = recurring && recurCount >= 1
+    const allDates = recurring && !jaConcluido && recurCount >= 1
       ? buildRecurringDates(date, recurFreq, Math.max(1, Math.min(recurCount, 52)))
       : [date]
     const recurringGroupId = recurring && allDates.length > 1
@@ -375,8 +382,53 @@ export default function AgendarModal({
       })
     }
 
+    // "Já concluído?" → abre o modal de pagamento (como foi pago) em vez da
+    // tela de sucesso. Senão, fluxo normal (paga depois).
+    if (jaConcluido) {
+      setPayAppt({
+        id: inserted.id,
+        name: avulso ? (avulsoName.trim() || 'Cliente avulso') : cliente!.name,
+        total: valorTotal,
+      })
+      return
+    }
+
     setCreatedId(inserted.id)
     setCreatedCustomerId(avulso ? null : cliente!.id)
+  }
+
+  // Reusa o PaymentMethodModal (pix/dinheiro/cartão+maquininha/pontos). Espelha
+  // o completeWithPayment do AppointmentCard: status=completed + paid + snapshot
+  // de cartão. method=null = "Pagar depois" (concluído, sem pagamento).
+  async function concludeWithPayment(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) {
+    if (!payAppt) return
+    setSaving(true)
+    const updates: Record<string, unknown> = { status: 'completed' }
+    if (method != null) {
+      updates.paid_at = new Date().toISOString()
+      updates.payment_method = method
+      if (method === 'card' && cardDetails) {
+        updates.payment_device_id = cardDetails.device_id
+        updates.payment_card_brand = cardDetails.card_brand
+        updates.payment_card_type = cardDetails.card_type
+        updates.payment_fee_percent = cardDetails.fee_percent
+        updates.payment_installments = cardDetails.installments ?? 1
+      }
+    }
+    const { error: payErr } = await supabase.from('appointments').update(updates).eq('id', payAppt.id)
+    setSaving(false)
+    if (payErr) {
+      setError(`Erro ao registrar pagamento: ${payErr.message}`)
+      return
+    }
+    fetch('/api/notify-client', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointmentId: payAppt.id, status: 'completed' }),
+    }).catch(() => {})
+    setCreatedId(payAppt.id)
+    setCreatedCustomerId(avulso ? null : cliente?.id ?? null)
+    setPayAppt(null)
   }
 
   function novoAtendimento() {
@@ -685,16 +737,55 @@ export default function AgendarModal({
             )}
           </Field>
 
-          {/* V3: Repetir atendimento (recorrência) */}
-          <RecurringBlock
-            enabled={recurring}
-            onToggle={setRecurring}
-            freq={recurFreq}
-            onChangeFreq={setRecurFreq}
-            count={recurCount}
-            onChangeCount={setRecurCount}
-            startDate={date}
-          />
+          {/* V3: Repetir atendimento (recorrência) · não faz sentido se já concluído */}
+          {!jaConcluido && (
+            <RecurringBlock
+              enabled={recurring}
+              onToggle={setRecurring}
+              freq={recurFreq}
+              onChangeFreq={setRecurFreq}
+              count={recurCount}
+              onChangeCount={setRecurCount}
+              startDate={date}
+            />
+          )}
+
+          {/* Atendimento já concluído? → ao salvar abre "como foi pago" */}
+          <Field label="Atendimento já concluído?">
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { v: false, l: 'Não' },
+                { v: true, l: 'Sim, já atendi' },
+              ] as const).map((opt) => (
+                <button
+                  key={String(opt.v)}
+                  type="button"
+                  onClick={() => setJaConcluido(opt.v)}
+                  className="py-2.5 rounded-xl text-sm font-bold transition-all"
+                  style={
+                    jaConcluido === opt.v
+                      ? {
+                          background: 'color-mix(in srgb, var(--admin-accent) 14%, transparent)',
+                          border: '1.5px solid color-mix(in srgb, var(--admin-accent) 45%, transparent)',
+                          color: 'var(--admin-accent)',
+                        }
+                      : {
+                          background: 'var(--admin-input-bg)',
+                          border: '1px solid var(--admin-border)',
+                          color: 'var(--admin-text-mute)',
+                        }
+                  }
+                >
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+            {jaConcluido && (
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+                Ao salvar, você escolhe <strong>como foi pago</strong> (ou “pagar depois”).
+              </p>
+            )}
+          </Field>
 
           {/* Observação */}
           <Field label="Observação (opcional)">
@@ -870,6 +961,26 @@ export default function AgendarModal({
           onSuccess={handleFullClientCreated}
         />
       )}
+
+      {/* "Já concluído?" → como foi pago · reusa o PaymentMethodModal existente
+          (pix/dinheiro/cartão+maquininha/pontos · taxa correta no cartão) */}
+      <PaymentMethodModal
+        open={!!payAppt}
+        clientName={payAppt?.name ?? ''}
+        totalPrice={payAppt?.total}
+        businessId={businessId}
+        loading={saving}
+        onChoose={(method, cardDetails) => concludeWithPayment(method, cardDetails)}
+        onClose={() => {
+          // Fecha sem escolher: o agendamento já existe (confirmado). Mostra
+          // a tela de sucesso pra não perder o registro.
+          if (payAppt) {
+            setCreatedId(payAppt.id)
+            setCreatedCustomerId(avulso ? null : cliente?.id ?? null)
+          }
+          setPayAppt(null)
+        }}
+      />
     </div>,
     document.body,
   )
