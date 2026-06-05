@@ -1687,7 +1687,7 @@ export default function BookingFlow({
                 }}
               >
                 <span>
-                  Você está na fila das <strong>{waitlistSlot}</strong> — se vagar, te avisamos por email. Pode agendar outro horário também: a fila continua valendo.
+                  Pronto! Vamos te avisar se vagar o horário das <strong>{waitlistSlot}</strong>. Você também pode agendar outro horário agora — o aviso continua valendo.
                 </span>
                 <button
                   onClick={() => {
@@ -1718,10 +1718,10 @@ export default function BookingFlow({
                     border: `1px solid ${C.border}`,
                   }}
                 >
-                  fila
+                  ocupado
                 </span>
                 <span>
-                  Se o horário que você quer estiver ocupado, é só entrar na <strong>fila</strong> — avisamos por email se abrir vaga.
+                  Horário <strong>ocupado</strong>? Toque nele e a gente te avisa se vagar.
                 </span>
               </div>
             )}
@@ -1765,7 +1765,7 @@ export default function BookingFlow({
                     }
                   >
                     {slot.time}
-                    {!slot.available && <span className="block text-xs opacity-80">fila</span>}
+                    {!slot.available && <span className="block text-xs opacity-80">ocupado</span>}
                   </button>
                 )
               })}
@@ -1785,7 +1785,7 @@ export default function BookingFlow({
                     Horário {waitlistSlot} ocupado
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: isDark ? '#FBBF24' : '#B45309' }}>
-                    Quer entrar na fila? Avisamos se a vaga abrir.
+                    Quer que a gente te avise se esse horário vagar?
                   </p>
                 </div>
                 {([
@@ -1813,7 +1813,7 @@ export default function BookingFlow({
                     disabled={waitlistSubmitting || !waitlistName.trim() || !waitlistPhone.trim()}
                     className="flex-1 bg-amber-500 hover:bg-amber-400 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40"
                   >
-                    {waitlistSubmitting ? 'Entrando...' : 'Entrar na fila'}
+                    {waitlistSubmitting ? 'Salvando...' : 'Quero ser avisado'}
                   </button>
                   <button
                     onClick={() => setWaitlistSlot(null)}
