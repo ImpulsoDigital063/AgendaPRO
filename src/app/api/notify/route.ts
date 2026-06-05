@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
   const { data: appointment } = await admin
     .from('appointments')
-    .select(`*, business:businesses(name, slug, owner_id), professional:professionals(name), service:services(name), appointment_services(service_name, price)`)
+    .select(`*, business:businesses(name, slug, owner_id), professional:professionals(name, email, auth_user_id), service:services(name), appointment_services(service_name, price)`)
     .eq('id', appointmentId)
     .single()
 
@@ -47,12 +47,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'agendamento antigo', cancelUrl })
   }
 
-  // Busca o email do dono
-  const { data: userData } = await admin.auth.admin.getUserById(appointment.business.owner_id)
+  // Notificação vai pro PROFISSIONAL designado (pedido Olímpio 05/06 — antes
+  // ia sempre pro dono). Resolve o email: coluna professionals.email →
+  // email do auth user do profissional → (fallback) dono, pra notificação
+  // nunca se perder caso o profissional não tenha email cadastrado.
+  const prof = appointment.professional as { name?: string; email?: string | null; auth_user_id?: string | null } | null
+  let recipientEmail: string | null = prof?.email ?? null
+  if (!recipientEmail && prof?.auth_user_id) {
+    const { data: profUser } = await admin.auth.admin.getUserById(prof.auth_user_id)
+    recipientEmail = profUser?.user?.email ?? null
+  }
+  if (!recipientEmail) {
+    const { data: ownerData } = await admin.auth.admin.getUserById(appointment.business.owner_id)
+    recipientEmail = ownerData?.user?.email ?? null // fallback: dono
+  }
   const barberEmail =
     process.env.NODE_ENV === 'development'
       ? process.env.TEST_EMAIL
-      : userData?.user?.email
+      : recipientEmail
 
   const apptServices: { service_name: string; price: number | null }[] = appointment.appointment_services || []
   const serviceNames = apptServices.length > 0
