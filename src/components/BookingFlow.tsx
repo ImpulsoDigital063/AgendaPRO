@@ -1745,9 +1745,10 @@ export default function BookingFlow({
                     style={
                       !slot.available
                         ? {
-                            background: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC',
-                            color: C.faded,
-                            borderColor: C.border,
+                            // OCUPADO = vermelho (pedido Olímpio 05/06)
+                            background: isDark ? 'rgba(239,68,68,0.12)' : '#FEF2F2',
+                            color: isDark ? '#FCA5A5' : '#DC2626',
+                            borderColor: isDark ? 'rgba(239,68,68,0.35)' : '#FECACA',
                           }
                         : isSelected
                         ? {
@@ -1756,14 +1757,15 @@ export default function BookingFlow({
                             borderColor: 'var(--brand-primary, #111827)',
                           }
                         : {
-                            background: C.surface,
-                            color: C.text,
-                            borderColor: C.border,
+                            // LIVRE = verde
+                            background: isDark ? 'rgba(34,197,94,0.12)' : '#F0FDF4',
+                            color: isDark ? '#86EFAC' : '#15803D',
+                            borderColor: isDark ? 'rgba(34,197,94,0.35)' : '#BBF7D0',
                           }
                     }
                   >
                     {slot.time}
-                    {!slot.available && <span className="block text-xs" style={{ color: C.faded }}>fila</span>}
+                    {!slot.available && <span className="block text-xs opacity-80">fila</span>}
                   </button>
                 )
               })}
