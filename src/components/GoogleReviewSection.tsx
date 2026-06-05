@@ -51,7 +51,6 @@ export default function GoogleReviewSection({
   rating,
   reviewsCount,
   pointsForReview,
-  brandMode = 'dark',
   slug,
   cheapestReward,
 }: Props) {
@@ -60,7 +59,9 @@ export default function GoogleReviewSection({
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [claimed, setClaimed] = useState(false)
 
-  const isDark = brandMode === 'dark'
+  // Card de avaliações SEMPRE claro/Google — ignora o tema (escuro) da marca,
+  // pra parecer com o card real do Google (pedido Eduardo 05/06).
+  const isDark = false
   const hasProgram = pointsForReview > 0
   const phoneDigits = phone.replace(/\D/g, '').length
   const isReady = phoneDigits >= 10
@@ -77,8 +78,8 @@ export default function GoogleReviewSection({
     flowChip: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.25)',
   }
 
-  const brandGradient =
-    'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)'
+  // Azul do Google (não a cor da marca) — pra o card parecer nativo do Google.
+  const brandGradient = 'linear-gradient(135deg, #4285F4 0%, #1A73E8 100%)'
 
   function renderStars(r: number) {
     return (

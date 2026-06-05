@@ -17,6 +17,7 @@ import {
   IconGift,
   IconStar,
 } from '@/components/ui/Icon'
+import PointsTrailModal from '@/components/PointsTrailModal'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -467,6 +468,25 @@ export default async function BusinessPage({
               </p>
             </div>
           </div>
+        )}
+
+        {/* Popup "Como funciona os pontos" — abre toda vez (Eduardo 05/06).
+            Mesmo gate da trilha inline: só se o negócio usa pontos. */}
+        {(((services as Service[]) ?? []).some((s) => (s.points ?? 0) > 0) ||
+          cheapestReward ||
+          (b.points_for_review ?? 0) > 0 ||
+          (b.points_for_referral ?? 0) > 0) && (
+          <PointsTrailModal
+            agendarHref={agendarHref}
+            primary={primary}
+            cheapestReward={
+              cheapestReward
+                ? { name: cheapestReward.name, pointsRequired: cheapestReward.points_required }
+                : null
+            }
+            pointsForReview={b.points_for_review ?? 0}
+            pointsForReferral={b.points_for_referral ?? 0}
+          />
         )}
 
         {/* CTA Agendar — SEMPRE verde + pulsando (padrão global, sobrepõe a cor
