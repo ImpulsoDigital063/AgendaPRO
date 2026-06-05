@@ -129,6 +129,11 @@ export default function AgendarModal({
   const [time, setTime] = useState<string>('')
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(() => [newLine()])
   const [notes, setNotes] = useState<string>('')
+  // Walk-in / avulso (sem cadastro) + horário fora do grid (Eduardo 05/06).
+  // Universais — valem pro sistema todo, não só um negócio.
+  const [avulso, setAvulso] = useState(false)
+  const [avulsoName, setAvulsoName] = useState('')
+  const [manualTime, setManualTime] = useState(false)
 
   // V3: Repetir atendimento (recorrência)
   const [recurring, setRecurring] = useState<boolean>(false)
@@ -161,6 +166,9 @@ export default function AgendarModal({
     setDate(defaultDate ?? todayISO())
     setTime(defaultTime ?? '')
     setNotes('')
+    setAvulso(false)
+    setAvulsoName('')
+    setManualTime(false)
     setRecurring(false)
     setRecurFreq('weekly')
     setRecurCount(4)
@@ -271,10 +279,10 @@ export default function AgendarModal({
     0,
   )
   const totalDuration = validLines.reduce((sum, l) => sum + Number(l.duration || 0), 0)
-  const canSave = !!cliente && !!profId && validLines.length >= 1 && !!date && !!time && totalDuration > 0
+  const canSave = (!!cliente || avulso) && !!profId && validLines.length >= 1 && !!date && !!time && totalDuration > 0
 
   async function handleSave() {
-    if (!canSave || !cliente) return
+    if (!canSave || (!cliente && !avulso)) return
     setError(null)
     setSaving(true)
     const endTime = addMinutesToTime(time, totalDuration)
@@ -301,9 +309,9 @@ export default function AgendarModal({
     const appointmentRows = allDates.map((d, idx) => ({
       business_id: businessId,
       professional_id: profId,
-      customer_id: cliente.id,
-      client_name: cliente.name,
-      client_phone: cliente.phone,
+      customer_id: avulso ? null : cliente!.id,
+      client_name: avulso ? (avulsoName.trim() || 'Cliente avulso') : cliente!.name,
+      client_phone: avulso ? null : cliente!.phone,
       appointment_date: d,
       start_time: `${time}:00`,
       end_time: `${endTime}:00`,
@@ -363,12 +371,12 @@ export default function AgendarModal({
         action: 'create_appointment',
         target_type: 'appointment',
         target_id: inserted.id,
-        description: `${cliente.name} · ${displayName} · ${date} ${time} · com ${prof?.name ?? '—'} · ${formatBRL(valorTotal)}${serieInfo}`,
+        description: `${avulso ? (avulsoName.trim() || 'Cliente avulso') : cliente!.name} · ${displayName} · ${date} ${time} · com ${prof?.name ?? '—'} · ${formatBRL(valorTotal)}${serieInfo}`,
       })
     }
 
     setCreatedId(inserted.id)
-    setCreatedCustomerId(cliente.id)
+    setCreatedCustomerId(avulso ? null : cliente!.id)
   }
 
   function novoAtendimento() {
@@ -440,7 +448,7 @@ export default function AgendarModal({
           </div>
           <div className="px-3 pb-3 space-y-1">
             <ActionRow label="Novo atendimento" onClick={novoAtendimento} />
-            <ActionRow label="Visualizar cliente" onClick={verCliente} />
+            {createdCustomerId && <ActionRow label="Visualizar cliente" onClick={verCliente} />}
           </div>
           <div className="p-4 pt-1">
             <button
@@ -510,9 +518,27 @@ export default function AgendarModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* Cliente */}
+          {/* Cliente · ou avulso (sem cadastro) */}
           <Field icon={<IconUser size={14} />} label="Cliente">
-            {cliente ? (
+            {avulso ? (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={avulsoName}
+                  onChange={(e) => setAvulsoName(e.target.value)}
+                  placeholder="Nome (opcional) — ex: cliente passante"
+                  className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAvulso(false)}
+                  className="text-xs underline"
+                  style={{ color: 'var(--admin-accent)' }}
+                >
+                  usar cliente cadastrado
+                </button>
+              </div>
+            ) : cliente ? (
               <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{cliente.name}</p>
@@ -528,18 +554,28 @@ export default function AgendarModal({
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setShowClientPicker(true)}
-                className="w-full px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-[var(--admin-input-bg)]"
-                style={{
-                  background: 'var(--admin-input-bg)',
-                  border: '1px dashed var(--admin-border)',
-                  color: 'var(--admin-text-mute)',
-                }}
-              >
-                Selecionar cliente
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowClientPicker(true)}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-[var(--admin-input-bg)]"
+                  style={{
+                    background: 'var(--admin-input-bg)',
+                    border: '1px dashed var(--admin-border)',
+                    color: 'var(--admin-text-mute)',
+                  }}
+                >
+                  Selecionar cliente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAvulso(true); setCliente(null) }}
+                  className="text-xs underline"
+                  style={{ color: 'var(--admin-accent)' }}
+                >
+                  Sem cadastro (cliente avulso)
+                </button>
+              </div>
             )}
           </Field>
 
@@ -610,14 +646,43 @@ export default function AgendarModal({
           {/* Horário (início) · vem DEPOIS do serviço · grid de chips agora sabe
               a duração total e calcula sobreposição corretamente */}
           <Field icon={<IconClock size={14} />} label="Horário (início)">
-            <TimeSlotPicker
-              businessId={businessId}
-              profId={profId}
-              date={date}
-              totalDuration={totalDuration}
-              value={time}
-              onChange={setTime}
-            />
+            {manualTime ? (
+              <div className="space-y-2">
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setManualTime(false)}
+                  className="text-xs underline"
+                  style={{ color: 'var(--admin-accent)' }}
+                >
+                  voltar pros horários da agenda
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <TimeSlotPicker
+                  businessId={businessId}
+                  profId={profId}
+                  date={date}
+                  totalDuration={totalDuration}
+                  value={time}
+                  onChange={setTime}
+                />
+                <button
+                  type="button"
+                  onClick={() => { setManualTime(true); setTime('') }}
+                  className="text-xs underline"
+                  style={{ color: 'var(--admin-accent)' }}
+                >
+                  Outro horário (fora da agenda)
+                </button>
+              </div>
+            )}
           </Field>
 
           {/* V3: Repetir atendimento (recorrência) */}
