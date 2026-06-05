@@ -13,6 +13,9 @@ import {
   IconArrowRight,
   IconInstagram,
   IconPhone,
+  IconCalendar,
+  IconGift,
+  IconStar,
 } from '@/components/ui/Icon'
 
 export const dynamic = 'force-dynamic'
@@ -612,6 +615,67 @@ export default async function BusinessPage({
           </section>
         )}
 
+        {/* Trilha de pontos — "Como funciona" (3 passos) · pedido Eduardo 05/06.
+            Só aparece se o negócio realmente usa pontos (serviço com pts, prêmio,
+            avaliação ou indicação) — não polui quem tem fidelidade desligada. */}
+        {(((services as Service[]) ?? []).some((s) => (s.points ?? 0) > 0) ||
+          cheapestReward ||
+          (b.points_for_review ?? 0) > 0 ||
+          (b.points_for_referral ?? 0) > 0) && (
+          <section className="mb-6">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: subtle }}>
+              Como funciona os pontos
+            </h2>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {([
+                { Icon: IconCalendar, t: 'Agende', d: 'Ganhe pontos a cada serviço' },
+                { Icon: IconSparkles, t: 'Acumule', d: 'Seus pontos somam a cada visita' },
+                {
+                  Icon: IconGift,
+                  t: 'Troque',
+                  d: cheapestReward
+                    ? `Por ${cheapestReward.name} · ${cheapestReward.points_required} pts`
+                    : 'Por serviços grátis',
+                },
+              ] as const).map((s, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl p-3 text-center"
+                  style={{
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : '#E2E8F0'}`,
+                  }}
+                >
+                  <span
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-xl mb-2"
+                    style={{ background: hexToRgba(primary, isDark ? 0.18 : 0.1), color: primary }}
+                  >
+                    <s.Icon size={18} />
+                  </span>
+                  <p className="font-bold text-sm" style={{ color: text }}>{s.t}</p>
+                  <p className="text-[11px] leading-snug mt-0.5" style={{ color: muted }}>{s.d}</p>
+                </div>
+              ))}
+            </div>
+            {((b.points_for_review ?? 0) > 0 || (b.points_for_referral ?? 0) > 0) && (
+              <div className="flex flex-col gap-1.5">
+                {(b.points_for_review ?? 0) > 0 && (
+                  <p className="flex items-center gap-2 text-xs" style={{ color: muted }}>
+                    <IconStar size={13} style={{ color: '#F59E0B' }} />
+                    Avalie no Google e ganhe <strong style={{ color: text }}>+{b.points_for_review} pts</strong>
+                  </p>
+                )}
+                {(b.points_for_referral ?? 0) > 0 && (
+                  <p className="flex items-center gap-2 text-xs" style={{ color: muted }}>
+                    <IconSparkles size={13} style={{ color: '#F59E0B' }} />
+                    Indique um amigo e ganhe <strong style={{ color: text }}>+{b.points_for_referral} pts</strong>
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Google Reviews */}
         {b.google_place_id && (
           <section className="mb-6">
@@ -632,14 +696,13 @@ export default async function BusinessPage({
           </section>
         )}
 
-        {/* CTA repetida no fim */}
+        {/* CTA repetida no fim — também verde + pulse (consistência · Eduardo 05/06) */}
         <Link
           href={agendarHref}
-          className="group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] mb-6"
+          className="cta-pulse-green group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] mb-6"
           style={{
-            background: cover,
+            background: 'linear-gradient(180deg, #22C55E 0%, #16A34A 100%)',
             color: 'white',
-            boxShadow: `0 14px 40px -14px ${hexToRgba(primary, 0.7)}`,
           }}
         >
           Agendar agora
