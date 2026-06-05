@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight, IconPlus, IconDollar, IconCheck, IconClock } from '@/components/ui/Icon'
+import { todayBR } from '@/lib/date-br'
 
 type Props = {
   date: string // YYYY-MM-DD
@@ -59,7 +60,7 @@ export default function GradeTimelineHeader({
   // todayClient só preenche após hidratação · evita mismatch SSR
   const [todayClient, setTodayClient] = useState<string | null>(null)
   useEffect(() => {
-    setTodayClient(new Date().toISOString().slice(0, 10))
+    setTodayClient(todayBR())
   }, [])
   const isCurrentDay = todayClient !== null && date === todayClient
 
@@ -125,7 +126,7 @@ export default function GradeTimelineHeader({
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-1">
         <div className="flex items-center gap-1">
           <button
-            onClick={() => navigateTo(new Date().toISOString().slice(0, 10))}
+            onClick={() => navigateTo(todayBR())}
             className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all hover:-translate-y-px"
             style={{
               minHeight: 36,

@@ -8,6 +8,7 @@ import AppointmentDrawer from '@/components/admin/atendimentos/AppointmentDrawer
 import AgendarModal from '@/components/admin/desktop/atendimentos/AgendarModal'
 import { MiniKPI } from './GradeTimelineHeader'
 import { blockAppliesTo, blockTimeToMinutes, type BlockRow } from '@/lib/blocks'
+import { todayBR } from '@/lib/date-br'
 
 type Prof = { id: string; name: string; photo_url: string | null }
 type Appt = {
@@ -289,7 +290,7 @@ export default function TimelineGridInteractive({
 
   // isToday só preenche após hidratação · evita mismatch SSR (CIC Onda 5C P0 #1)
   const [todayClient, setTodayClient] = useState<string | null>(null)
-  useEffect(() => { setTodayClient(new Date().toISOString().slice(0, 10)) }, [])
+  useEffect(() => { setTodayClient(todayBR()) }, [])
   const isToday = todayClient !== null && date === todayClient
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import {
 import WelcomeModal from '@/components/admin/onboarding/WelcomeModal'
 import OnboardingChecklist from '@/components/admin/onboarding/OnboardingChecklist'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
+import { todayBR } from '@/lib/date-br'
 
 // Garante revalidação imediata após mutações (router.refresh tras cancel/payment).
 // Sem isso o RSC cache de Next 16 pode devolver lista antiga.
@@ -35,9 +36,11 @@ export default async function AdminPage({
 
   const onboarding = await getOnboardingState(business.id, user.id, business)
 
-  // Data selecionada pra grade (?date=YYYY-MM-DD · default = hoje)
+  // Data selecionada pra grade (?date=YYYY-MM-DD · default = hoje em Brasília).
+  // NÃO usar toISOString() aqui: o server roda em UTC e, após 21h BRT, a grade
+  // pulava pro dia seguinte (bug Olímpio 04/06). todayBR() fixa o fuso.
   const sp = await searchParams
-  const gradeDate = sp.date ?? new Date().toISOString().slice(0, 10)
+  const gradeDate = sp.date ?? todayBR()
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>

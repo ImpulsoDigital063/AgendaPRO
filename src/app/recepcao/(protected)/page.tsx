@@ -14,6 +14,7 @@ import RecepCaixaQuick from '@/components/recepcao/RecepCaixaQuick'
 import RecepAniversariantesCard from '@/components/recepcao/RecepAniversariantesCard'
 import RecepQRCodeCard from '@/components/recepcao/RecepQRCodeCard'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
+import { todayBR } from '@/lib/date-br'
 import { Suspense } from 'react'
 import {
   IconCalendar,
@@ -42,7 +43,7 @@ export default async function RecepcaoAgendaPage({
   searchParams: Promise<{ date?: string }>
 }) {
   const sp = await searchParams
-  const gradeDate = sp.date ?? new Date().toISOString().slice(0, 10)
+  const gradeDate = sp.date ?? todayBR() // fuso BR — server roda em UTC (bug Olímpio)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/profissional/login')
@@ -60,10 +61,10 @@ export default async function RecepcaoAgendaPage({
   const recepName = (recep.name as string) || 'Recepção'
   const firstName = recepName.split(' ')[0]
 
-  const today = new Date().toISOString().split('T')[0]
-  const nextWeek = new Date()
+  const today = todayBR()
+  const nextWeek = new Date(today + 'T12:00:00') // meio-dia evita pulada de DST
   nextWeek.setDate(nextWeek.getDate() + 7)
-  const nextWeekStr = nextWeek.toISOString().split('T')[0]
+  const nextWeekStr = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, '0')}-${String(nextWeek.getDate()).padStart(2, '0')}`
 
   const { data: todayAppts } = await supabase
     .from('appointments')
