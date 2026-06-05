@@ -1701,28 +1701,33 @@ export default function BookingFlow({
                 </button>
               </div>
             )}
-            {!waitlistDone && !waitlistSlot && slots.some((s) => !s.available) && (
+            {!waitlistDone && !waitlistSlot && slots.length > 0 && (
               <div
-                className="mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
+                className="mb-3 rounded-xl px-3 py-2.5 text-xs space-y-1.5"
                 style={{
                   background: isDark ? 'rgba(148,163,184,0.10)' : 'rgb(248,250,252)',
                   border: `1px solid ${isDark ? 'rgba(148,163,184,0.25)' : 'rgb(226,232,240)'}`,
                   color: C.mute,
                 }}
               >
-                <span
-                  className="inline-flex items-center justify-center text-[10px] font-bold rounded-md px-1.5 py-0.5 shrink-0"
-                  style={{
-                    background: isDark ? 'rgba(255,255,255,0.10)' : '#F1F5F9',
-                    color: C.mute,
-                    border: `1px solid ${C.border}`,
-                  }}
-                >
-                  ocupado
-                </span>
-                <span>
-                  Horário <strong>ocupado</strong>? Toque nele e a gente te avisa se vagar.
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="w-3.5 h-3.5 rounded-md shrink-0"
+                    style={{ background: isDark ? 'rgba(34,197,94,0.25)' : '#DCFCE7', border: '1px solid #86EFAC' }}
+                  />
+                  <span>
+                    <strong style={{ color: isDark ? '#86EFAC' : '#15803D' }}>Verde</strong> = horário livre — toque pra agendar.
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="w-3.5 h-3.5 rounded-md shrink-0"
+                    style={{ background: isDark ? 'rgba(239,68,68,0.25)' : '#FEE2E2', border: '1px solid #FCA5A5' }}
+                  />
+                  <span>
+                    <strong style={{ color: isDark ? '#FCA5A5' : '#DC2626' }}>Vermelho</strong> = ocupado — toque que a gente te avisa se vagar.
+                  </span>
+                </div>
               </div>
             )}
             <div className="grid grid-cols-4 gap-2">
@@ -2050,7 +2055,8 @@ export default function BookingFlow({
             <button
               onClick={handleSubmit}
               disabled={submitting || !clientName.trim() || !clientPhone.trim()}
-              className="w-full bg-[var(--brand-primary,#111827)] text-white py-4 rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full text-white py-4 rounded-xl font-semibold text-base transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(180deg, #22C55E 0%, #16A34A 100%)' }}
             >
               {submitting ? 'Agendando...' : 'Confirmar agendamento'}
             </button>
@@ -2121,8 +2127,8 @@ export default function BookingFlow({
               onClick={handleProceedFromServices}
               className="flex-shrink-0 px-5 py-3 rounded-xl font-semibold text-sm text-white inline-flex items-center gap-1.5 transition-transform active:scale-[0.97]"
               style={{
-                background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
-                boxShadow: '0 8px 20px -8px rgba(59,130,246,0.5)',
+                background: 'linear-gradient(180deg, #22C55E 0%, #16A34A 100%)',
+                boxShadow: '0 8px 20px -8px rgba(22,163,74,0.5)',
               }}
             >
               Continuar
