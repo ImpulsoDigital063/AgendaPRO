@@ -466,14 +466,14 @@ export default async function BusinessPage({
           </div>
         )}
 
-        {/* CTA Agendar */}
+        {/* CTA Agendar — SEMPRE verde + pulsando (padrão global, sobrepõe a cor
+            da marca neste botão pra conversão · pedido Eduardo 05/06) */}
         <Link
           href={agendarHref}
-          className="group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-[0.98] mb-3"
+          className="cta-pulse-green group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-[0.98] mb-3"
           style={{
-            background: cover,
+            background: 'linear-gradient(180deg, #22C55E 0%, #16A34A 100%)',
             color: 'white',
-            boxShadow: `0 14px 40px -14px ${hexToRgba(primary, 0.7)}`,
           }}
         >
           {appliedCoupon ? 'Agendar e usar cupom' : 'Agendar horário'}
@@ -482,17 +482,23 @@ export default async function BusinessPage({
           </span>
         </Link>
 
-        {/* Secundário: meus pontos + agendamentos ativos */}
+        {/* Secundário com mais destaque: meus pontos + agendamentos (acento
+            âmbar = pontos, elevado, ícone + seta · pedido Eduardo 05/06) */}
         <Link
           href={`/${slug}/meus-pontos`}
-          className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-sm transition-all hover:opacity-90 mb-6"
+          className="group w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm transition-all hover:scale-[1.01] active:scale-[0.99] mb-6"
           style={{
-            background: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9',
+            background: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
             color: isDark ? '#F8FAFC' : '#0F172A',
-            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0',
+            border: isDark ? '1px solid rgba(245,158,11,0.35)' : '1px solid #FDE68A',
+            boxShadow: '0 8px 24px -12px rgba(245,158,11,0.45)',
           }}
         >
+          <IconSparkles size={16} style={{ color: '#F59E0B' }} />
           Meus pontos e agendamentos
+          <span className="transition-transform group-hover:translate-x-0.5">
+            <IconArrowRight size={16} />
+          </span>
         </Link>
 
         {/* Profissionais (se múltiplos) */}
