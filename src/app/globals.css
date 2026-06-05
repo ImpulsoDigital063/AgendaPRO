@@ -126,7 +126,13 @@ body {
 ═══════════════════════════════════════════════════════════ */
 
 /* Tokens CLAROS no shell (e em [data-admin-theme] legado por segurança,
-   caso o atributo persista em cache antigo). Sem bloco dark. */
+   caso o atributo persista em cache antigo). Sem bloco dark.
+   :root TAMBÉM define os tokens — senão os modais portados via createPortal
+   (que montam em document.body, FORA do .admin-shell) perdem var(--admin-text)
+   e o texto fica branco no branco / ilegível (bug AgendarModal Olímpio 05/06).
+   Light-only: não há tema pra conflitar; telas de login escuras não usam
+   esses tokens, então definir no :root é inócuo pra elas. */
+:root,
 .admin-shell,
 [data-admin-theme] {
   color-scheme: light;
