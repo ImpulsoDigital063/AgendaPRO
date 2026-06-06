@@ -996,13 +996,22 @@ export default function HorariosTab({
                 <button
                   type="button"
                   onClick={() => toggleDay(day.id)}
-                  className="flex-1 min-w-0 text-left text-sm font-semibold truncate"
+                  className="flex-1 min-w-0 text-left"
                   style={{ color: 'var(--admin-text)' }}
                 >
-                  {day.full}
+                  <span className="block text-sm font-semibold truncate">{day.full}</span>
+                  {/* Mobile: resumo do horário embaixo do nome — no mobile o chip
+                      à direita era largo demais e truncava o nome do dia (bug
+                      Olímpio 06/06). No desktop (sm+) o resumo segue no chip. */}
+                  <span
+                    className="sm:hidden block text-[11px] font-medium tabular-nums truncate"
+                    style={{ color: 'var(--admin-text-mute)' }}
+                  >
+                    {summary}
+                  </span>
                 </button>
                 <span
-                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg flex-shrink-0 tabular-nums"
+                  className="hidden sm:inline-flex text-[11px] font-medium px-2.5 py-1 rounded-lg flex-shrink-0 tabular-nums"
                   style={{
                     background: 'var(--admin-accent-bg)',
                     color: 'var(--admin-accent)',
