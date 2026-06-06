@@ -55,7 +55,16 @@ export async function POST(request: Request) {
       )
     : []
 
-  if (appointmentIds.length === 0 && productSales.length === 0) {
+  // Serviços EXTRA adicionados no faturamento (cliente fez serviço a mais na
+  // hora · Olímpio 06/06). Replica a cascata proven do /[id]/items modo
+  // serviço: cria appointment completed no horário ATUAL (sem overlap com o
+  // corte original) + invoice_item. Comissão flui (appointment pago).
+  type ExtraServiceIn = { service_id: string; quantity?: number; unit_price?: number; professional_id?: string | null }
+  const extraServices: ExtraServiceIn[] = Array.isArray(body.extraServices)
+    ? body.extraServices.filter((s: ExtraServiceIn) => typeof s?.service_id === 'string' && Number(s?.unit_price ?? 0) >= 0)
+    : []
+
+  if (appointmentIds.length === 0 && productSales.length === 0 && extraServices.length === 0) {
     return NextResponse.json({ error: 'no_items' }, { status: 400 })
   }
 
@@ -112,10 +121,26 @@ export async function POST(request: Request) {
     prodMap = Object.fromEntries(prods.map((p) => [p.id, p]))
   }
 
+  // 2b. Valida serviços extra · todos do mesmo business + snapshot nome/duração
+  let svcMap: Record<string, { id: string; business_id: string; name: string; price: number | null; duration_minutes: number | null }> = {}
+  if (extraServices.length > 0) {
+    const sids = Array.from(new Set(extraServices.map((s) => s.service_id)))
+    const { data: svcs, error: svcErr } = await admin
+      .from('services')
+      .select('id, business_id, name, price, duration_minutes')
+      .in('id', sids)
+    if (svcErr) return NextResponse.json({ error: svcErr.message }, { status: 500 })
+    if (!svcs || svcs.length !== sids.length) return NextResponse.json({ error: 'service_not_found' }, { status: 404 })
+    const wrongSvc = svcs.find((s) => s.business_id !== businessId)
+    if (wrongSvc) return NextResponse.json({ error: 'service_wrong_business', service_id: wrongSvc.id }, { status: 403 })
+    svcMap = Object.fromEntries(svcs.map((s) => [s.id, s]))
+  }
+
   // 3. Totais
   const subtotalAppts = appts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
   const subtotalProds = productSales.reduce((s, p) => s + p.quantity * p.unit_price, 0)
-  const subtotal = subtotalAppts + subtotalProds
+  const subtotalExtraSvcs = extraServices.reduce((s, e) => s + Math.max(1, Number(e.quantity ?? 1)) * Number(e.unit_price ?? svcMap[e.service_id]?.price ?? 0), 0)
+  const subtotal = subtotalAppts + subtotalProds + subtotalExtraSvcs
   const total = subtotal
   const customerId = body.customerId ?? appts[0]?.customer_id ?? null
 
@@ -279,6 +304,63 @@ export async function POST(request: Request) {
     if (iiErr) { await rollback(); return NextResponse.json({ error: iiErr.message }, { status: 500 }) }
   }
 
+  // 7b. Serviços EXTRA · cria appointment completed (horário ATUAL, sem overlap)
+  // + invoice_item type appointment. Pago se a comanda fechar (entra na comissão).
+  for (const es of extraServices) {
+    const svc = svcMap[es.service_id]
+    const qty = Math.max(1, Number(es.quantity ?? 1))
+    const unitPrice = Number(es.unit_price ?? svc.price ?? 0)
+    const lineTotal = qty * unitPrice
+    const now = new Date()
+    const sH = String(now.getHours()).padStart(2, '0')
+    const sM = String(now.getMinutes()).padStart(2, '0')
+    const dur = Number(svc.duration_minutes ?? 30)
+    const end = new Date(now.getTime() + dur * 60000)
+    const eH = String(end.getHours()).padStart(2, '0')
+    const eM = String(end.getMinutes()).padStart(2, '0')
+    const svcProfId = es.professional_id ?? appts[0]?.professional_id ?? null
+
+    const { data: exAppt, error: exErr } = await admin
+      .from('appointments')
+      .insert({
+        business_id: businessId,
+        customer_id: customerId,
+        client_name: appts[0]?.client_name ?? 'Cliente',
+        client_phone: '', // NOT NULL
+        professional_id: svcProfId,
+        service_id: svc.id,
+        service_name: svc.name,
+        appointment_date: nowIso.slice(0, 10),
+        start_time: `${sH}:${sM}:00`,
+        end_time: `${eH}:${eM}:00`,
+        status: 'completed',
+        total_price: lineTotal,
+        paid_at: willClose ? nowIso : null,
+        payment_method: willClose ? payment!.method : null,
+      })
+      .select('id')
+      .single()
+    if (exErr || !exAppt) { await rollback(); return NextResponse.json({ error: `extra_service_failed: ${exErr?.message}` }, { status: 500 }) }
+
+    const { data: exItem, error: exItemErr } = await admin
+      .from('invoice_items')
+      .insert({
+        invoice_id: invoice.id,
+        item_type: 'appointment',
+        reference_id: exAppt.id,
+        description: svc.name,
+        professional_id: svcProfId,
+        quantity: qty,
+        unit_price: unitPrice,
+        discount: 0,
+        total: lineTotal,
+      })
+      .select('id')
+      .single()
+    if (exItemErr || !exItem) { await rollback(); return NextResponse.json({ error: `extra_service_item_failed: ${exItemErr?.message}` }, { status: 500 }) }
+    await admin.from('appointments').update({ invoice_item_id: exItem.id }).eq('id', exAppt.id)
+  }
+
   // 8. Atualiza appointments (status=completed + paid_at se fechou)
   // No caminho A (invoice existente), invoice_item_id já está setado.
   // No caminho B (legado), precisamos setar agora.
@@ -315,7 +397,7 @@ export async function POST(request: Request) {
   }
 
   // 9b. Recalcula subtotal/total da invoice (caminho A: pode ter mudado · caminho B: criou já com valor)
-  if (isExistingInvoice || productSales.length > 0) {
+  if (isExistingInvoice || productSales.length > 0 || extraServices.length > 0) {
     const { data: allItems } = await admin
       .from('invoice_items')
       .select('total, discount')
@@ -360,7 +442,7 @@ export async function POST(request: Request) {
       invoice_number: confirm.invoice_number,
       status: confirm.status,
       total: confirm.total,
-      items_count: insertedApptItems.length + productSales.length,
+      items_count: insertedApptItems.length + productSales.length + extraServices.length,
     },
   })
 }

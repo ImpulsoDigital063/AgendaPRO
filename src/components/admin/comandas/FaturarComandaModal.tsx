@@ -6,6 +6,10 @@ import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconPlus, IconTrash, IconSearch } from '@/components/ui/Icon'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 import { getAreaPrefix } from '@/lib/area-prefix'
+import { createClient } from '@/lib/supabase/client'
+
+type ServiceLite = { id: string; name: string; price: number | null; duration_minutes: number | null }
+type ServiceCartLine = { service_id: string; service_name: string; unit_price: number; professional_id: string | null }
 
 /**
  * FaturarComandaModal · cria uma comanda incluindo:
@@ -85,6 +89,12 @@ export default function FaturarComandaModal({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
+  // Serviços extra (cliente fez serviço a mais na hora · Olímpio 06/06)
+  const supabase = useMemo(() => createClient(), [])
+  const [services, setServices] = useState<ServiceLite[]>([])
+  const [serviceCart, setServiceCart] = useState<ServiceCartLine[]>([])
+  const [svcPickerOpen, setSvcPickerOpen] = useState(false)
+  const [svcSearch, setSvcSearch] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -115,8 +125,44 @@ export default function FaturarComandaModal({
       .finally(() => setLoadingProducts(false))
   }, [open])
 
+  // Carrega serviços do negócio (pro picker de serviço extra)
+  useEffect(() => {
+    if (!open) return
+    supabase
+      .from('services')
+      .select('id, name, price, duration_minutes')
+      .eq('business_id', businessId)
+      .eq('active', true)
+      .order('name')
+      .then(({ data }) => setServices((data ?? []) as ServiceLite[]))
+  }, [open, businessId, supabase])
+
   const subtotalProds = useMemo(() => cart.reduce((s, l) => s + l.quantity * l.unit_price, 0), [cart])
-  const total = appointmentTotal + subtotalProds
+  const subtotalServices = useMemo(() => serviceCart.reduce((s, l) => s + l.unit_price, 0), [serviceCart])
+  const total = appointmentTotal + subtotalProds + subtotalServices
+
+  const svcDisponiveis = useMemo(() => {
+    const q = svcSearch.trim().toLowerCase()
+    const list = q ? services.filter((s) => s.name.toLowerCase().includes(q)) : services
+    return list.slice(0, 30)
+  }, [services, svcSearch])
+
+  function addService(s: ServiceLite) {
+    setServiceCart((prev) => [...prev, {
+      service_id: s.id,
+      service_name: s.name,
+      unit_price: s.price ?? 0,
+      professional_id: appointmentProfessionalId,
+    }])
+    setSvcSearch('')
+    setSvcPickerOpen(false)
+  }
+  function updateSvcLine(idx: number, patch: Partial<ServiceCartLine>) {
+    setServiceCart((prev) => prev.map((l, i) => i === idx ? { ...l, ...patch } : l))
+  }
+  function removeSvcLine(idx: number) {
+    setServiceCart((prev) => prev.filter((_, i) => i !== idx))
+  }
 
   const disponiveis = useMemo(() => {
     const usedIds = new Set(cart.map((l) => l.product_id))
@@ -172,6 +218,12 @@ export default function FaturarComandaModal({
         product_name: l.product_name,
         quantity: l.quantity,
         unit_price: l.unit_price,
+        professional_id: l.professional_id,
+      })),
+      extraServices: serviceCart.map((l) => ({
+        service_id: l.service_id,
+        unit_price: l.unit_price,
+        quantity: 1,
         professional_id: l.professional_id,
       })),
     }
@@ -244,7 +296,7 @@ export default function FaturarComandaModal({
                 Comanda · {customerName}
               </h3>
               <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-                Adicione produtos vendidos junto antes de finalizar
+                Adicione produtos ou serviços feitos na hora antes de finalizar
               </p>
             </div>
             <button
@@ -400,6 +452,106 @@ export default function FaturarComandaModal({
               )}
             </div>
 
+            {/* Serviços extra no carrinho */}
+            {serviceCart.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+                  Serviços extra
+                </p>
+                {serviceCart.map((line, idx) => (
+                  <div
+                    key={`${line.service_id}-${idx}`}
+                    className="rounded-xl p-3 grid grid-cols-[1fr_100px_32px] gap-2 items-center"
+                    style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
+                  >
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{line.service_name}</p>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={line.unit_price}
+                      onChange={(e) => updateSvcLine(idx, { unit_price: Number(e.target.value) })}
+                      className="admin-input px-2 py-1.5 rounded-lg text-sm text-right tabular-nums"
+                      aria-label={`Preço ${line.service_name}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeSvcLine(idx)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center mx-auto"
+                      style={{ color: '#DC2626' }}
+                      aria-label={`Remover ${line.service_name}`}
+                    >
+                      <IconTrash size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Picker de serviço extra */}
+            <div
+              className="rounded-2xl p-3 space-y-2"
+              style={{ background: 'color-mix(in srgb, var(--admin-accent) 6%, transparent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 40%, transparent)' }}
+            >
+              {!svcPickerOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setSvcPickerOpen(true)}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
+                  style={{ background: 'var(--admin-surface)', color: 'var(--admin-accent)', border: '1px solid var(--admin-accent-border)' }}
+                >
+                  <IconPlus size={14} /> Adicionar serviço
+                </button>
+              ) : (
+                <>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--admin-text-faded)' }}>
+                      <IconSearch size={14} />
+                    </span>
+                    <input
+                      autoFocus
+                      type="search"
+                      value={svcSearch}
+                      onChange={(e) => setSvcSearch(e.target.value)}
+                      placeholder="Buscar serviço por nome..."
+                      className="admin-input w-full pl-9 pr-3 py-2 rounded-xl text-sm"
+                    />
+                  </div>
+                  {svcDisponiveis.length === 0 ? (
+                    <p className="text-xs text-center py-3" style={{ color: 'var(--admin-text-mute)' }}>
+                      {svcSearch ? 'Nenhum serviço bate com a busca' : 'Sem serviços cadastrados'}
+                    </p>
+                  ) : (
+                    <ul className="space-y-1 max-h-56 overflow-y-auto">
+                      {svcDisponiveis.map((s) => (
+                        <li key={s.id}>
+                          <button
+                            type="button"
+                            onClick={() => addService(s)}
+                            className="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]"
+                            style={{ background: 'var(--admin-surface)' }}
+                          >
+                            <span className="text-sm font-semibold block truncate" style={{ color: 'var(--admin-text)' }}>{s.name}</span>
+                            <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
+                              {s.price != null ? brl(s.price) : '—'}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSvcPickerOpen(false)}
+                    className="text-xs underline"
+                    style={{ color: 'var(--admin-text-mute)' }}
+                  >
+                    fechar busca
+                  </button>
+                </>
+              )}
+            </div>
+
             {error && (
               <div className="rounded-lg px-3 py-2 text-xs" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#DC2626' }}>
                 {error}
@@ -414,9 +566,11 @@ export default function FaturarComandaModal({
                 <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>Total</p>
                 <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>{brl(total)}</p>
               </div>
-              {cart.length > 0 && (
-                <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-                  Serviço {brl(appointmentTotal)} + Produtos {brl(subtotalProds)}
+              {(cart.length > 0 || serviceCart.length > 0) && (
+                <p className="text-xs text-right" style={{ color: 'var(--admin-text-mute)' }}>
+                  Serviço {brl(appointmentTotal)}
+                  {serviceCart.length > 0 && ` + Extra ${brl(subtotalServices)}`}
+                  {cart.length > 0 && ` + Produtos ${brl(subtotalProds)}`}
                 </p>
               )}
             </div>
