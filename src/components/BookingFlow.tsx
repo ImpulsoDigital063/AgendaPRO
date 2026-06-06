@@ -88,7 +88,10 @@ function isSameLocalDay(a: Date, b: Date): boolean {
 }
 
 function formatDate(date: Date): string {
-  return date.toISOString().split('T')[0]
+  // Data LOCAL (não UTC). toISOString() devolvia o dia seguinte à noite (após
+  // ~21h BRT) → a disponibilidade era consultada pro dia errado → vinha vazia
+  // → todos os horários apareciam "livres" mesmo ocupados (bug Olímpio 06/06).
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 function addDays(date: Date, days: number): Date {
