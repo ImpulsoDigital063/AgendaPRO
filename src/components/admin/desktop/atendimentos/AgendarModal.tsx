@@ -139,6 +139,14 @@ export default function AgendarModal({
   // foi pago). Não → cria normal (paga depois). Eduardo 05/06.
   const [jaConcluido, setJaConcluido] = useState(false)
   const [payAppt, setPayAppt] = useState<{ id: string; name: string; total: number | null } | null>(null)
+  // Produtos vendidos JUNTO com o atendimento (balcão: atende + vende · Eduardo
+  // 07/06). Viram uma venda (sales+sale_items → baixa estoque), ligada ao
+  // appointment. Paga junto se "já concluído". Universal (todo o sistema).
+  const [products, setProducts] = useState<{ id: string; name: string; price: number | null; commission_type: string | null; commission_value: number | null }[]>([])
+  const [prodCart, setProdCart] = useState<{ product_id: string; product_name: string; unit_price: number; commission_type: string | null; commission_value: number | null }[]>([])
+  const [prodPickerOpen, setProdPickerOpen] = useState(false)
+  const [prodSearch, setProdSearch] = useState('')
+  const [createdSaleId, setCreatedSaleId] = useState<string | null>(null)
 
   // V3: Repetir atendimento (recorrência)
   const [recurring, setRecurring] = useState<boolean>(false)
@@ -186,7 +194,25 @@ export default function AgendarModal({
     setShowFullClientForm(false)
     setSearch('')
     setResults([])
+    setProdCart([])
+    setProdPickerOpen(false)
+    setProdSearch('')
+    setCreatedSaleId(null)
   }, [open, defaultProfId, defaultDate, defaultTime])
+
+  // Carrega produtos do negócio (pro picker de "vender junto")
+  useEffect(() => {
+    if (!open) return
+    supabase
+      .from('products')
+      .select('id, name, price, commission_type, commission_value')
+      .eq('business_id', businessId)
+      .eq('active', true)
+      .eq('sale_active', true)
+      .order('name')
+      .then(({ data }) => setProducts((data ?? []) as typeof products))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, businessId])
 
   // Lock scroll + ESC
   useEffect(() => {
@@ -286,7 +312,69 @@ export default function AgendarModal({
     0,
   )
   const totalDuration = validLines.reduce((sum, l) => sum + Number(l.duration || 0), 0)
+  const subtotalProds = prodCart.reduce((sum, p) => sum + Number(p.unit_price || 0), 0)
+  const totalGeral = valorTotal + subtotalProds // serviços + produtos (o que o cliente paga)
   const canSave = (!!cliente || avulso) && !!profId && validLines.length >= 1 && !!date && !!time && totalDuration > 0
+
+  const prodDisponiveis = (() => {
+    const q = prodSearch.trim().toLowerCase()
+    const list = q ? products.filter((p) => p.name.toLowerCase().includes(q)) : products
+    return list.slice(0, 30)
+  })()
+  function addProduct(p: { id: string; name: string; price: number | null; commission_type: string | null; commission_value: number | null }) {
+    setProdCart((prev) => [...prev, { product_id: p.id, product_name: p.name, unit_price: p.price ?? 0, commission_type: p.commission_type, commission_value: p.commission_value }])
+    setProdSearch('')
+    setProdPickerOpen(false)
+  }
+  function updateProdLine(idx: number, patch: Partial<{ unit_price: number }>) {
+    setProdCart((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)))
+  }
+  function removeProdLine(idx: number) {
+    setProdCart((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  // Cria a venda dos produtos (sales + sale_items → trigger baixa estoque),
+  // ligada ao appointment. paid=true marca pago já (caso "já concluído").
+  async function createProductSale(appointmentId: string, paid: boolean, method: PaymentMethodChoice = null): Promise<void> {
+    if (prodCart.length === 0) return
+    const nowIso = new Date().toISOString()
+    const total = prodCart.reduce((s, l) => s + Number(l.unit_price || 0), 0)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: sale, error: sErr } = await supabase
+      .from('sales')
+      .insert({
+        business_id: businessId,
+        type: 'product_sale',
+        customer_id: avulso ? null : cliente?.id ?? null,
+        client_name: avulso ? (avulsoName.trim() || 'Cliente avulso') : cliente?.name ?? 'Cliente',
+        client_phone: avulso ? '' : cliente?.phone ?? '',
+        professional_id: profId || null,
+        sale_date: nowIso.slice(0, 10),
+        total,
+        discount: 0,
+        status: paid ? 'paid' : 'pending',
+        paid_at: paid ? nowIso : null,
+        payment_method: paid && method ? method : null,
+        appointment_id: appointmentId,
+        created_by: user?.id ?? null,
+      })
+      .select('id')
+      .single()
+    if (sErr || !sale) { console.error('venda de produto falhou:', sErr?.message); return }
+    setCreatedSaleId(sale.id)
+    const itemRows = prodCart.map((l) => ({
+      sale_id: sale.id,
+      product_id: l.product_id,
+      product_name: l.product_name,
+      quantity: 1,
+      unit_price: l.unit_price,
+      discount: 0,
+      commission_type: l.commission_type,
+      commission_value: l.commission_value,
+    }))
+    const { error: siErr } = await supabase.from('sale_items').insert(itemRows)
+    if (siErr) console.error('sale_items falhou:', siErr.message)
+  }
 
   async function handleSave() {
     if (!canSave || (!cliente && !avulso)) return
@@ -385,13 +473,17 @@ export default function AgendarModal({
     // "Já concluído?" → abre o modal de pagamento (como foi pago) em vez da
     // tela de sucesso. Senão, fluxo normal (paga depois).
     if (jaConcluido) {
+      // a venda dos produtos é criada (paga) no concludeWithPayment, com o método
       setPayAppt({
         id: inserted.id,
         name: avulso ? (avulsoName.trim() || 'Cliente avulso') : cliente!.name,
-        total: valorTotal,
+        total: totalGeral, // serviços + produtos
       })
       return
     }
+
+    // Não concluído: produtos viram venda PENDENTE (paga depois no faturar/financeiro)
+    await createProductSale(inserted.id, false)
 
     setCreatedId(inserted.id)
     setCreatedCustomerId(avulso ? null : cliente!.id)
@@ -421,6 +513,8 @@ export default function AgendarModal({
       setError(`Erro ao registrar pagamento: ${payErr.message}`)
       return
     }
+    // Produtos vendidos junto · venda paga com o mesmo método (ou pendente se "pagar depois")
+    await createProductSale(payAppt.id, method != null, method)
     fetch('/api/notify-client', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -695,6 +789,101 @@ export default function AgendarModal({
             <IconPlus size={14} /> Adicionar mais serviços
           </button>
 
+          {/* Produtos vendidos JUNTO com o atendimento (balcão) · Eduardo 07/06 */}
+          {prodCart.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Produtos vendidos junto</p>
+              {prodCart.map((line, idx) => (
+                <div
+                  key={`${line.product_id}-${idx}`}
+                  className="rounded-xl p-2.5 grid grid-cols-[1fr_90px_28px] gap-2 items-center"
+                  style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}
+                >
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{line.product_name}</p>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={line.unit_price}
+                    onChange={(e) => updateProdLine(idx, { unit_price: Number(e.target.value) })}
+                    className="admin-input px-2 py-1.5 rounded-lg text-sm text-right tabular-nums"
+                    aria-label={`Preço ${line.product_name}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeProdLine(idx)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center mx-auto"
+                    style={{ color: '#DC2626' }}
+                    aria-label={`Remover ${line.product_name}`}
+                  >
+                    <IconClose size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Picker de produto · só aparece se o negócio tem produtos cadastrados */}
+          {products.length > 0 && (
+            <div
+              className="rounded-xl p-2.5 space-y-2"
+              style={{ background: 'color-mix(in srgb, var(--admin-accent) 6%, transparent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 40%, transparent)' }}
+            >
+              {!prodPickerOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setProdPickerOpen(true)}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
+                  style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}
+                >
+                  <IconPlus size={14} /> Adicionar produto
+                </button>
+              ) : (
+                <>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--admin-text-faded)' }}>
+                      <IconSearch size={14} />
+                    </span>
+                    <input
+                      autoFocus
+                      type="search"
+                      value={prodSearch}
+                      onChange={(e) => setProdSearch(e.target.value)}
+                      placeholder="Buscar produto..."
+                      className="admin-input w-full pl-9 pr-3 py-2 rounded-xl text-sm"
+                    />
+                  </div>
+                  {prodDisponiveis.length === 0 ? (
+                    <p className="text-xs text-center py-2" style={{ color: 'var(--admin-text-mute)' }}>
+                      {prodSearch ? 'Nenhum produto bate com a busca' : 'Sem produtos'}
+                    </p>
+                  ) : (
+                    <ul className="space-y-1 max-h-48 overflow-y-auto">
+                      {prodDisponiveis.map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            onClick={() => addProduct(p)}
+                            className="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]"
+                            style={{ background: 'var(--admin-surface)' }}
+                          >
+                            <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{p.name}</span>
+                            <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
+                              {p.price != null ? formatBRL(p.price) : '—'}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button type="button" onClick={() => setProdPickerOpen(false)} className="text-xs underline" style={{ color: 'var(--admin-text-mute)' }}>
+                    fechar
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Horário (início) · vem DEPOIS do serviço · grid de chips agora sabe
               a duração total e calcula sobreposição corretamente */}
           <Field icon={<IconClock size={14} />} label="Horário (início)">
@@ -825,8 +1014,13 @@ export default function AgendarModal({
                 Total
               </p>
               <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
-                {formatBRL(valorTotal)}
+                {formatBRL(totalGeral)}
               </p>
+              {subtotalProds > 0 && (
+                <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+                  Serviço {formatBRL(valorTotal)} + Produtos {formatBRL(subtotalProds)}
+                </p>
+              )}
             </div>
           <div className="flex items-center gap-2">
             <button
