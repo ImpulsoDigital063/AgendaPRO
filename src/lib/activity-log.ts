@@ -17,7 +17,10 @@ export type ActivityAction =
   | 'create_customer'
   | 'update_customer'
   | 'redeem_points'
+  | 'open_cash'
   | 'close_cash'
+  | 'cash_sangria'
+  | 'cash_suprimento'
   | 'login'
 
 export async function logActivity(params: {

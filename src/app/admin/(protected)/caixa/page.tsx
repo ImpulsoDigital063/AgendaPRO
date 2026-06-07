@@ -1,9 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import CaixaView from '@/components/recepcao/CaixaView'
 import { IconWallet } from '@/components/ui/Icon'
 import { getOwnerProfessional } from '@/lib/admin-data'
+import { getApptDiscountMap } from '@/lib/commission-discount'
+import { todayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +18,7 @@ type AppointmentForCash = {
   payment_card_type: string | null
   payment_fee_percent: number | null
   client_name: string
+  discount_cents?: number
 }
 
 type ClosingRow = {
@@ -28,12 +32,8 @@ type ClosingRow = {
 
 /**
  * Versão Adm de caixa (mesma lógica de /recepcao/caixa).
- * Eduardo cravou: Adm tem permissão total.
- *
- * Caso especial: CaixaView precisa de professional_id pra registrar quem
- * fechou. Adm usa o owner_professional se existir (criado no cadastro do
- * negócio quando dono também atende). Se Adm não tem registro de prof,
- * mostra mensagem amigável pra cadastrar.
+ * Eduardo cravou: Adm tem permissão total. Dono opera o caixa completo
+ * (abre/fecha, sangria/suprimento, conferência) e vê o histórico.
  */
 export default async function AdminCaixaPage() {
   const supabase = await createClient()
@@ -47,19 +47,19 @@ export default async function AdminCaixaPage() {
     .single()
   if (!business) redirect('/cadastro')
 
-  // Tenta pegar o owner como professional · necessário pra fechar caixa
   const ownerProf = await getOwnerProfessional(user.id, business.id)
 
-  const today = new Date().toISOString().split('T')[0]
-  const tomorrow = new Date()
+  // Dia do caixa em fuso de Brasília (não UTC)
+  const today = todayBR()
+  const tomorrow = new Date(today + 'T12:00:00')
   tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowISO = tomorrow.toISOString().split('T')[0]
+  const tomorrowISO = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
 
-  // Recebimentos do dia · soma appointments pagos + vendas de produto pagas
-  const [paidApptsRes, paidSalesRes] = await Promise.all([
+  // Recebimentos do dia · appointments pagos + vendas de produto pagas
+  const [paidApptsRes, paidSalesRes, allTodayRes] = await Promise.all([
     supabase
       .from('appointments')
-      .select('id, total_price, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name')
+      .select('id, total_price, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name, invoice_item_id')
       .eq('business_id', business.id)
       .not('paid_at', 'is', null)
       .gte('paid_at', today + 'T00:00:00')
@@ -74,9 +74,25 @@ export default async function AdminCaixaPage() {
       .not('paid_at', 'is', null)
       .gte('paid_at', today + 'T00:00:00')
       .lt('paid_at', tomorrowISO + 'T00:00:00'),
+    supabase
+      .from('appointments')
+      .select('id, total_price, paid_at, status')
+      .eq('business_id', business.id)
+      .eq('appointment_date', today)
+      .not('status', 'in', '(cancelled,no_show)'),
   ])
 
-  const apptsToday = (paidApptsRes.data ?? []) as AppointmentForCash[]
+  // Caixa soma o LÍQUIDO (− desconto rateado da comanda) nos atendimentos
+  const sbAdmin = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+  const apptDisc = await getApptDiscountMap(sbAdmin, (paidApptsRes.data ?? []).map((a) => a.invoice_item_id))
+  const apptsToday: AppointmentForCash[] = (paidApptsRes.data ?? []).map((a) => ({
+    ...a,
+    discount_cents: Math.round((apptDisc[a.id as string] ?? 0) * 100),
+  }))
   const salesToday: AppointmentForCash[] = (paidSalesRes.data ?? []).map((s) => ({
     id: s.id as string,
     total_price: Number(s.total ?? 0),
@@ -87,6 +103,12 @@ export default async function AdminCaixaPage() {
     client_name: (s.client_name as string | null) ?? 'Venda de produto',
   }))
   const todayAppts = [...apptsToday, ...salesToday]
+
+  // Resumo do dia (atendimentos + a receber)
+  const allTodayAppts = allTodayRes.data ?? []
+  const todayCount = allTodayAppts.length
+  const pendingValueCents = allTodayAppts.filter((a) => !a.paid_at).reduce((s, a) => s + Math.round((Number(a.total_price) || 0) * 100), 0)
+  const pendingCount = allTodayAppts.filter((a) => !a.paid_at).length
 
   const { data: closings } = await supabase
     .from('cash_closings')
@@ -102,6 +124,21 @@ export default async function AdminCaixaPage() {
     .eq('closing_date', today)
     .maybeSingle()
 
+  // Abertura de caixa de hoje (fundo de troco) + movimentos do dia
+  const { data: openingToday } = await supabase
+    .from('cash_openings')
+    .select('opening_amount_cents, opened_at')
+    .eq('business_id', business.id)
+    .eq('opening_date', today)
+    .maybeSingle()
+
+  const { data: movementsToday } = await supabase
+    .from('cash_movements')
+    .select('id, type, amount_cents, reason, created_at')
+    .eq('business_id', business.id)
+    .eq('movement_date', today)
+    .order('created_at', { ascending: false })
+
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <header className="relative max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 pt-7 pb-4">
@@ -112,7 +149,7 @@ export default async function AdminCaixaPage() {
           <IconWallet size={22} /> Caixa
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-          Resumo do dia + fechamento + histórico
+          Abertura (fundo de troco) + sangria/suprimento + fechamento + histórico
         </p>
       </header>
 
@@ -153,6 +190,11 @@ export default async function AdminCaixaPage() {
             todayAppts={todayAppts}
             closings={(closings ?? []) as ClosingRow[]}
             alreadyClosedToday={!!closingToday}
+            todayCount={todayCount}
+            pendingCount={pendingCount}
+            pendingValueCents={pendingValueCents}
+            opening={(openingToday ?? null) as { opening_amount_cents: number; opened_at: string } | null}
+            movements={(movementsToday ?? []) as { id: string; type: 'sangria' | 'suprimento'; amount_cents: number; reason: string | null; created_at: string }[]}
           />
         )}
       </div>
