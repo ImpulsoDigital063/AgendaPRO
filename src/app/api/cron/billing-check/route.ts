@@ -190,13 +190,54 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  console.log(`[Cron Billing] processed=${processed} alertsSent=${alertsSent} blocked=${blocked} errors=${errors.length}`)
+  // ── Passo 2: expiração de TRIAL / CORTESIA ────────────────────────
+  // Trial e cortesia não-permanente (sem renovação automática) não passam
+  // pelo fluxo PIX acima. Quando pago_ate vence, ninguém vira o status →
+  // acesso grátis vitalício (bug cravado 07/06). Aqui fechamos: status vira
+  // pending_payment, e no próximo acesso o dono cai no paywall (/admin/bloqueado).
+  //
+  // Critério (espelha o que NÃO tem renovação automática):
+  //   status=active · plan_modalidade NULL (não é ciclo PIX) ·
+  //   asaas_subscription_id NULL e mp_subscription_id NULL (sem assinatura
+  //   recorrente) · pago_ate vencido · permanent_courtesy=false (Palace isento).
+  let trialsBlocked = 0
+  const nowIso = new Date().toISOString()
+  const { data: expiredTrials, error: trialErr } = await admin
+    .from('subscriptions')
+    .select('id, business_id, businesses!inner ( name )')
+    .eq('status', 'active')
+    .eq('permanent_courtesy', false)
+    .is('plan_modalidade', null)
+    .is('asaas_subscription_id', null)
+    .is('mp_subscription_id', null)
+    .lt('pago_ate', nowIso)
+
+  if (trialErr) {
+    console.error('[Cron Billing] Erro ao buscar trials vencidos:', trialErr)
+  } else {
+    for (const t of expiredTrials ?? []) {
+      const { error: upErr } = await admin
+        .from('subscriptions')
+        .update({ status: 'pending_payment' })
+        .eq('id', t.id)
+      if (upErr) {
+        errors.push({ id: t.id, error: `trial_block_failed: ${upErr.message}` })
+        continue
+      }
+      const biz = (t.businesses as unknown) as { name: string } | null
+      console.log(`[Cron Billing] trial expirado → paywall: ${biz?.name ?? t.business_id}`)
+      trialsBlocked++
+    }
+  }
+
+  console.log(`[Cron Billing] processed=${processed} alertsSent=${alertsSent} blocked=${blocked} trialsBlocked=${trialsBlocked} errors=${errors.length}`)
 
   return NextResponse.json({
     ok: true,
     processed,
     alerts_sent: alertsSent,
     blocked,
+    trials_blocked: trialsBlocked,
     errors: errors.length,
     errors_detail: errors.slice(0, 10),
     _APP_URL: APP_URL,
