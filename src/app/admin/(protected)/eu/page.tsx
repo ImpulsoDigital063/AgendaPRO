@@ -318,12 +318,16 @@ export default async function AdminEuPage() {
         </p>
       </header>
 
-      <OwnerPhotoCard
-        professionalId={owner.id}
-        businessId={business.id}
-        name={owner.name}
-        initialPhotoUrl={owner.photo_url ?? null}
-      />
+      {/* Foto pública só faz sentido pra quem ATENDE (aparece pros clientes no
+          agendamento). Admin/gestora que não atende não precisa. (Eduardo 07/06) */}
+      {owner.does_appointments !== false && (
+        <OwnerPhotoCard
+          professionalId={owner.id}
+          businessId={business.id}
+          name={owner.name}
+          initialPhotoUrl={owner.photo_url ?? null}
+        />
+      )}
 
       <Suspense fallback={null}>
         <PersonalKPIs business={business} owner={owner} />
