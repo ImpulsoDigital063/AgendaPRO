@@ -227,7 +227,9 @@ export default function TimelineGridInteractive({
       profName,
       time,
       x: rect.left + rect.width / 2,
-      y: rect.top + window.scrollY,
+      // popover usa position:fixed (viewport) — NÃO somar scrollY (era coord de
+      // documento → popover caía "muito abaixo" no desktop com a agenda rolada).
+      y: rect.top,
     })
   }
 
@@ -996,8 +998,9 @@ export default function TimelineGridInteractive({
           data-slot-popover
           className="fixed z-[200] rounded-2xl overflow-hidden"
           style={{
-            top: popover.y + 8,
-            left: Math.min(popover.x - 130, window.innerWidth - 280),
+            // clampa pra não estourar a borda de baixo (slot perto do fim da tela)
+            top: Math.min(popover.y + 8, window.innerHeight - 230),
+            left: Math.max(8, Math.min(popover.x - 130, window.innerWidth - 280)),
             width: 260,
             background: 'var(--admin-popover-bg, #FFFFFF)',
             border: '1px solid var(--admin-popover-border, #E2E8F0)',
