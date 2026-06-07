@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     .from('packages')
     .select(`
       id, business_id, name, price, validity_kind, validity_value, active,
-      package_items (id, service_id, quantity, unit_price, services(id, name, price))
+      package_items (id, service_id, product_id, quantity, unit_price, services(id, name, price), products(id, name, price))
     `)
     .eq('id', packageId)
     .maybeSingle()
@@ -122,22 +122,49 @@ export async function POST(request: Request) {
     .single()
   if (cpErr || !cp) return NextResponse.json({ error: cpErr?.message ?? 'cp_failed' }, { status: 500 })
 
-  // 5. Cria balances (1 por item do pacote · saldo inicial = quantity)
-  const balancesToInsert = items.map((it) => {
-    const svc = Array.isArray(it.services) ? it.services[0] : it.services
-    return {
-      customer_package_id: cp.id,
-      service_id: it.service_id,
-      service_name: svc?.name ?? 'Serviço',
-      sessions_total: Number(it.quantity ?? 0),
-      sessions_used: 0,
-      unit_price_snapshot: Number(it.unit_price ?? svc?.price ?? 0),
+  // 5. Cria balances · SÓ pros itens de SERVIÇO (viram saldo de sessão).
+  //    Produtos não têm saldo: são entregues na hora (baixa de estoque no passo 5b).
+  const serviceItems = items.filter((it) => it.service_id)
+  const productItems = items.filter((it) => it.product_id)
+
+  if (serviceItems.length > 0) {
+    const balancesToInsert = serviceItems.map((it) => {
+      const svc = Array.isArray(it.services) ? it.services[0] : it.services
+      return {
+        customer_package_id: cp.id,
+        service_id: it.service_id,
+        service_name: svc?.name ?? 'Serviço',
+        sessions_total: Number(it.quantity ?? 0),
+        sessions_used: 0,
+        unit_price_snapshot: Number(it.unit_price ?? svc?.price ?? 0),
+      }
+    })
+    const { error: balErr } = await admin.from('customer_package_balances').insert(balancesToInsert)
+    if (balErr) {
+      await admin.from('customer_packages').delete().eq('id', cp.id) // rollback
+      return NextResponse.json({ error: `balances_failed: ${balErr.message}` }, { status: 500 })
     }
-  })
-  const { error: balErr } = await admin.from('customer_package_balances').insert(balancesToInsert)
-  if (balErr) {
-    await admin.from('customer_packages').delete().eq('id', cp.id) // rollback
-    return NextResponse.json({ error: `balances_failed: ${balErr.message}` }, { status: 500 })
+  }
+
+  // 5b. Produtos do combo → entrega na venda · baixa estoque via stock_movement (exit).
+  //     NÃO vira venda separada: a receita já é o preço do pacote (não duplica).
+  //     O trigger v63 (trg_apply_stock_movement) abate products.quantity sozinho.
+  let stockWarning: string | null = null
+  if (productItems.length > 0) {
+    const movements = productItems.map((it) => ({
+      business_id: businessId,
+      product_id: it.product_id,
+      type: 'exit',
+      quantity: -Math.abs(Number(it.quantity ?? 0)), // delta negativo = saída
+      reason: `Pacote: ${pkg.name}`,
+      created_by: user.id,
+    }))
+    const { error: mvErr } = await admin.from('stock_movements').insert(movements)
+    if (mvErr) {
+      // Produto já foi entregue fisicamente · não desfaz a venda por falha de estoque.
+      // Sinaliza pro dono ajustar manualmente.
+      stockWarning = mvErr.message
+    }
   }
 
   // 6. Resolve invoice (existente OU cria nova só pro pacote)
@@ -180,8 +207,12 @@ export async function POST(request: Request) {
   }
 
   // 7. Cria invoice_item type='package'
-  const totalSessions = items.reduce((s, it) => s + Number(it.quantity ?? 0), 0)
-  const description = `Pacote: ${pkg.name} (${totalSessions} ${totalSessions === 1 ? 'sessão' : 'sessões'})`
+  const totalSessions = serviceItems.reduce((s, it) => s + Number(it.quantity ?? 0), 0)
+  const totalProdUnits = productItems.reduce((s, it) => s + Number(it.quantity ?? 0), 0)
+  const parts: string[] = []
+  if (totalSessions > 0) parts.push(`${totalSessions} ${totalSessions === 1 ? 'sessão' : 'sessões'}`)
+  if (totalProdUnits > 0) parts.push(`${totalProdUnits} ${totalProdUnits === 1 ? 'produto' : 'produtos'}`)
+  const description = `Pacote: ${pkg.name}${parts.length ? ` (${parts.join(' + ')})` : ''}`
 
   const { data: invItem, error: iiErr } = await admin
     .from('invoice_items')
@@ -241,5 +272,6 @@ export async function POST(request: Request) {
     invoice_id: invoiceId,
     invoice_item_id: invItem.id,
     expires_at: expiresAt,
+    ...(stockWarning ? { stock_warning: stockWarning } : {}),
   })
 }

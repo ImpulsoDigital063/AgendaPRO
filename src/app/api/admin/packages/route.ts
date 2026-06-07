@@ -26,18 +26,22 @@ function getAdmin() {
 }
 
 type ItemInput = {
-  service_id: string
+  service_id: string | null
+  product_id: string | null
   quantity: number
   unit_price?: number | null
 }
 
+// Cada item é serviço OU produto (exatamente um · XOR · espelha o CHECK do banco v84).
 function validateItems(raw: unknown): ItemInput[] | null {
   if (!Array.isArray(raw) || raw.length === 0) return null
   const out: ItemInput[] = []
   for (const it of raw) {
     if (!it || typeof it !== 'object') return null
     const obj = it as Record<string, unknown>
-    if (typeof obj.service_id !== 'string' || !obj.service_id) return null
+    const svc = typeof obj.service_id === 'string' && obj.service_id ? obj.service_id : null
+    const prod = typeof obj.product_id === 'string' && obj.product_id ? obj.product_id : null
+    if ((svc && prod) || (!svc && !prod)) return null // XOR
     const qty = Number(obj.quantity)
     if (!Number.isFinite(qty) || qty <= 0) return null
     let unit: number | null = null
@@ -46,7 +50,7 @@ function validateItems(raw: unknown): ItemInput[] | null {
       if (!Number.isFinite(u) || u < 0) return null
       unit = u
     }
-    out.push({ service_id: obj.service_id, quantity: qty, unit_price: unit })
+    out.push({ service_id: svc, product_id: prod, quantity: qty, unit_price: unit })
   }
   return out
 }
@@ -62,7 +66,7 @@ export async function GET() {
     .from('packages')
     .select(`
       id, name, price, validity_kind, validity_value, active, description, created_at,
-      package_items (id, service_id, quantity, unit_price, services(name, price))
+      package_items (id, service_id, product_id, quantity, unit_price, services(name, price), products(name, price))
     `)
     .eq('business_id', businessId)
     .order('created_at', { ascending: false })
@@ -96,18 +100,32 @@ export async function POST(request: Request) {
   if (validityKind !== 'none' && (!validityValue || validityValue <= 0)) {
     return NextResponse.json({ error: 'validity_value_required' }, { status: 400 })
   }
-  if (!items) return NextResponse.json({ error: 'items_invalid', detail: 'Adicione ao menos 1 serviço com quantidade > 0' }, { status: 400 })
+  if (!items) return NextResponse.json({ error: 'items_invalid', detail: 'Adicione ao menos 1 item (serviço ou produto) com quantidade > 0' }, { status: 400 })
 
   const admin = getAdmin()
 
-  // Valida que todos os serviços pertencem ao business
-  const { data: services } = await admin
-    .from('services')
-    .select('id')
-    .in('id', items.map((i) => i.service_id))
-    .eq('business_id', businessId)
-  if (!services || services.length !== new Set(items.map((i) => i.service_id)).size) {
-    return NextResponse.json({ error: 'service_not_found' }, { status: 400 })
+  // Valida que todos os serviços/produtos pertencem ao business
+  const serviceIds = [...new Set(items.map((i) => i.service_id).filter((x): x is string => !!x))]
+  const productIds = [...new Set(items.map((i) => i.product_id).filter((x): x is string => !!x))]
+  if (serviceIds.length) {
+    const { data: services } = await admin
+      .from('services')
+      .select('id')
+      .in('id', serviceIds)
+      .eq('business_id', businessId)
+    if (!services || services.length !== serviceIds.length) {
+      return NextResponse.json({ error: 'service_not_found' }, { status: 400 })
+    }
+  }
+  if (productIds.length) {
+    const { data: products } = await admin
+      .from('products')
+      .select('id')
+      .in('id', productIds)
+      .eq('business_id', businessId)
+    if (!products || products.length !== productIds.length) {
+      return NextResponse.json({ error: 'product_not_found' }, { status: 400 })
+    }
   }
 
   // Cria pacote
@@ -131,6 +149,7 @@ export async function POST(request: Request) {
   const itemsToInsert = items.map((it) => ({
     package_id: pkg.id,
     service_id: it.service_id,
+    product_id: it.product_id,
     quantity: it.quantity,
     unit_price: it.unit_price,
   }))

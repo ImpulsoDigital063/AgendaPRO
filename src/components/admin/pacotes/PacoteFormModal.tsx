@@ -6,10 +6,12 @@ import { IconClose, IconPlus, IconTrash } from '@/components/ui/Icon'
 import type { PackageRow } from './PacotesView'
 
 type Service = { id: string; name: string; price: number | null; active: boolean }
+type Product = { id: string; name: string; price: number | null }
 
 type ItemForm = {
   uid: string
-  service_id: string
+  kind: 'service' | 'product'
+  entity_id: string // service_id OU product_id conforme kind
   quantity: string
   unit_price: string // vazio = usa preço padrão
 }
@@ -20,12 +22,13 @@ export type PackageFormValue = {
   validity_kind: 'none' | 'days' | 'weeks' | 'months' | 'years'
   validity_value: number | null
   description: string | null
-  items: { service_id: string; quantity: number; unit_price: number | null }[]
+  items: { service_id: string | null; product_id: string | null; quantity: number; unit_price: number | null }[]
 }
 
 type Props = {
   initial: PackageRow | null
   services: Service[]
+  products: Product[]
   loading: boolean
   onClose: () => void
   onSubmit: (value: PackageFormValue) => void
@@ -45,7 +48,7 @@ function newUid() {
     : `${Date.now()}${Math.random()}`
 }
 
-export default function PacoteFormModal({ initial, services, loading, onClose, onSubmit }: Props) {
+export default function PacoteFormModal({ initial, services, products, loading, onClose, onSubmit }: Props) {
   const [portalReady, setPortalReady] = useState(false)
   const [name, setName] = useState(initial?.name ?? '')
   const [price, setPrice] = useState(initial?.price?.toString() ?? '')
@@ -56,12 +59,13 @@ export default function PacoteFormModal({ initial, services, loading, onClose, o
     if (initial?.package_items?.length) {
       return initial.package_items.map((it) => ({
         uid: newUid(),
-        service_id: it.service_id,
+        kind: it.product_id ? 'product' : 'service',
+        entity_id: it.product_id ?? it.service_id ?? '',
         quantity: String(it.quantity),
         unit_price: it.unit_price?.toString() ?? '',
       }))
     }
-    return [{ uid: newUid(), service_id: '', quantity: '1', unit_price: '' }]
+    return [{ uid: newUid(), kind: 'service', entity_id: '', quantity: '1', unit_price: '' }]
   })
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -74,8 +78,8 @@ export default function PacoteFormModal({ initial, services, loading, onClose, o
 
   if (!portalReady) return null
 
-  function addItem() {
-    setItems((prev) => [...prev, { uid: newUid(), service_id: '', quantity: '1', unit_price: '' }])
+  function addItem(kind: 'service' | 'product') {
+    setItems((prev) => [...prev, { uid: newUid(), kind, entity_id: '', quantity: '1', unit_price: '' }])
   }
   function removeItem(uid: string) {
     setItems((prev) => prev.length > 1 ? prev.filter((i) => i.uid !== uid) : prev)
@@ -94,10 +98,10 @@ export default function PacoteFormModal({ initial, services, loading, onClose, o
       const v = Number(validityValue)
       if (!Number.isFinite(v) || v <= 0) { setLocalError('Informe a duração da validade'); return }
     }
-    if (items.length === 0) { setLocalError('Adicione ao menos 1 serviço'); return }
+    if (items.length === 0) { setLocalError('Adicione ao menos 1 item'); return }
     const cleaned: PackageFormValue['items'] = []
     for (const it of items) {
-      if (!it.service_id) { setLocalError('Selecione o serviço em todos os itens'); return }
+      if (!it.entity_id) { setLocalError(`Selecione o ${it.kind === 'product' ? 'produto' : 'serviço'} em todos os itens`); return }
       const q = Number(it.quantity)
       if (!Number.isFinite(q) || q <= 0) { setLocalError('Quantidade deve ser > 0'); return }
       let unit: number | null = null
@@ -106,7 +110,12 @@ export default function PacoteFormModal({ initial, services, loading, onClose, o
         if (!Number.isFinite(u) || u < 0) { setLocalError('Valor unitário inválido'); return }
         unit = u
       }
-      cleaned.push({ service_id: it.service_id, quantity: q, unit_price: unit })
+      cleaned.push({
+        service_id: it.kind === 'service' ? it.entity_id : null,
+        product_id: it.kind === 'product' ? it.entity_id : null,
+        quantity: q,
+        unit_price: unit,
+      })
     }
 
     onSubmit({
@@ -119,11 +128,13 @@ export default function PacoteFormModal({ initial, services, loading, onClose, o
     })
   }
 
-  // Resumo: soma do valor cheio (unit override OR service default)
+  // Resumo: soma do valor cheio (unit override OR preço padrão do serviço/produto)
   const itemsTotal = items.reduce((sum, it) => {
-    if (!it.service_id) return sum
-    const svc = services.find((s) => s.id === it.service_id)
-    const unit = it.unit_price.trim() !== '' ? Number(it.unit_price) : Number(svc?.price ?? 0)
+    if (!it.entity_id) return sum
+    const ent = it.kind === 'product'
+      ? products.find((p) => p.id === it.entity_id)
+      : services.find((s) => s.id === it.entity_id)
+    const unit = it.unit_price.trim() !== '' ? Number(it.unit_price) : Number(ent?.price ?? 0)
     const q = Number(it.quantity) || 0
     return sum + (Number.isFinite(unit) ? unit : 0) * q
   }, 0)
@@ -155,7 +166,7 @@ export default function PacoteFormModal({ initial, services, loading, onClose, o
               {initial ? 'Editar pacote' : 'Novo pacote'}
             </p>
             <p className="text-lg font-bold" style={{ color: 'var(--admin-text)' }}>
-              Combo de serviços
+              Combo de serviços e produtos
             </p>
           </div>
           <button
@@ -245,34 +256,57 @@ export default function PacoteFormModal({ initial, services, loading, onClose, o
 
           {/* Itens do pacote */}
           <div>
-            <label className="admin-label flex items-center justify-between">
+            <label className="admin-label flex items-center justify-between gap-2">
               <span>Itens do pacote</span>
-              <button
-                type="button"
-                onClick={addItem}
-                className="text-[11px] font-bold inline-flex items-center gap-1"
-                style={{ color: 'var(--admin-accent)' }}
-              >
-                <IconPlus size={11} /> Adicionar serviço
-              </button>
+              <span className="inline-flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => addItem('service')}
+                  className="text-[11px] font-bold inline-flex items-center gap-1"
+                  style={{ color: 'var(--admin-accent)' }}
+                >
+                  <IconPlus size={11} /> Serviço
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addItem('product')}
+                  disabled={products.length === 0}
+                  className="text-[11px] font-bold inline-flex items-center gap-1 disabled:opacity-40"
+                  style={{ color: '#9333EA' }}
+                  title={products.length === 0 ? 'Cadastre produtos primeiro' : undefined}
+                >
+                  <IconPlus size={11} /> Produto
+                </button>
+              </span>
             </label>
 
             <div className="space-y-2 mt-1">
-              {items.map((it, idx) => (
+              {items.map((it, idx) => {
+                const isProduct = it.kind === 'product'
+                const options = isProduct ? products : services
+                return (
                 <div key={it.uid}
                   className="rounded-xl p-3 grid grid-cols-[1fr_70px_100px_auto] gap-2 items-end"
                   style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
                 >
                   <div>
-                    {idx === 0 && <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>Serviço</span>}
+                    <span
+                      className="inline-block text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded mb-1"
+                      style={{
+                        color: isProduct ? '#9333EA' : 'var(--admin-accent)',
+                        background: isProduct ? 'rgba(147,51,234,0.10)' : 'var(--admin-accent-bg)',
+                      }}
+                    >
+                      {isProduct ? 'Produto' : 'Serviço'}
+                    </span>
                     <select
-                      value={it.service_id}
-                      onChange={(e) => updateItem(it.uid, { service_id: e.target.value })}
-                      className="admin-input w-full px-2 py-1.5 rounded-lg text-sm mt-1"
+                      value={it.entity_id}
+                      onChange={(e) => updateItem(it.uid, { entity_id: e.target.value })}
+                      className="admin-input w-full px-2 py-1.5 rounded-lg text-sm"
                     >
                       <option value="">Selecione...</option>
-                      {services.map((s) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
+                      {options.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
                       ))}
                     </select>
                   </div>
@@ -309,11 +343,12 @@ export default function PacoteFormModal({ initial, services, loading, onClose, o
                     <IconTrash size={12} />
                   </button>
                 </div>
-              ))}
+                )
+              })}
             </div>
 
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-              R$/un em branco = usa o preço padrão do serviço no momento da venda.
+              R$/un em branco = usa o preço padrão do item na venda. Produto do combo baixa do estoque na hora da venda.
             </p>
           </div>
 

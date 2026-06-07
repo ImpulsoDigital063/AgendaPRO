@@ -27,18 +27,24 @@ export default async function RecepcaoPacotesPage() {
     { auth: { persistSession: false } },
   )
 
-  const [{ data: packages }, { data: services }] = await Promise.all([
+  const [{ data: packages }, { data: services }, { data: products }] = await Promise.all([
     admin
       .from('packages')
       .select(`
         id, name, price, validity_kind, validity_value, active, description, created_at,
-        package_items (id, service_id, quantity, unit_price, services(name, price))
+        package_items (id, service_id, product_id, quantity, unit_price, services(name, price), products(name, price))
       `)
       .eq('business_id', business.id)
       .order('created_at', { ascending: false }),
     admin
       .from('services')
       .select('id, name, price, active')
+      .eq('business_id', business.id)
+      .eq('active', true)
+      .order('name'),
+    admin
+      .from('products')
+      .select('id, name, price')
       .eq('business_id', business.id)
       .eq('active', true)
       .order('name'),
@@ -51,6 +57,7 @@ export default async function RecepcaoPacotesPage() {
         <PacotesView
           initialPackages={(packages ?? []) as unknown as Parameters<typeof PacotesView>[0]['initialPackages']}
           services={(services ?? []) as Parameters<typeof PacotesView>[0]['services']}
+          products={(products ?? []) as Parameters<typeof PacotesView>[0]['products']}
         />
       </div>
     </main>

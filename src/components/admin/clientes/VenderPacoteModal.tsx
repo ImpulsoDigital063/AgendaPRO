@@ -11,7 +11,12 @@ type PackageOption = {
   price: number
   validity_kind: 'none' | 'days' | 'weeks' | 'months' | 'years'
   validity_value: number | null
-  package_items: { quantity: number; services: { name: string } | { name: string }[] | null }[] | null
+  package_items: {
+    quantity: number
+    product_id: string | null
+    services: { name: string } | { name: string }[] | null
+    products: { name: string } | { name: string }[] | null
+  }[] | null
 }
 
 type Professional = {
@@ -65,7 +70,7 @@ export default function VenderPacoteModal({ customerId, customerName, onClose, o
       const [{ data: pks }, { data: profs }] = await Promise.all([
         sb
           .from('packages')
-          .select('id, name, price, validity_kind, validity_value, package_items(quantity, services(name))')
+          .select('id, name, price, validity_kind, validity_value, package_items(quantity, product_id, services(name), products(name))')
           .eq('active', true)
           .order('name'),
         sb
@@ -85,8 +90,15 @@ export default function VenderPacoteModal({ customerId, customerName, onClose, o
 
   const selected = packages.find((p) => p.id === packageId)
   const sessoesTotal = selected
-    ? (selected.package_items ?? []).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
+    ? (selected.package_items ?? []).filter((it) => !it.product_id).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
     : 0
+  const produtosTotal = selected
+    ? (selected.package_items ?? []).filter((it) => it.product_id).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
+    : 0
+  const resumoLinha = [
+    sessoesTotal > 0 ? `${sessoesTotal} ${sessoesTotal === 1 ? 'sessão' : 'sessões'}` : null,
+    produtosTotal > 0 ? `${produtosTotal} ${produtosTotal === 1 ? 'produto' : 'produtos'}` : null,
+  ].filter(Boolean).join(' · ')
 
   async function submit() {
     setError(null)
@@ -192,14 +204,27 @@ export default function VenderPacoteModal({ customerId, customerName, onClose, o
                     <span className="tabular-nums">{brl(selected.price)}</span>
                   </div>
                   <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
-                    {validityLabel(selected.validity_kind, selected.validity_value)} · {sessoesTotal} {sessoesTotal === 1 ? 'sessão' : 'sessões'}
+                    {validityLabel(selected.validity_kind, selected.validity_value)}{resumoLinha ? ` · ${resumoLinha}` : ''}
                   </p>
                   <ul className="text-[12px] space-y-0.5 mt-2 pt-2" style={{ borderTop: '1px solid var(--admin-divider)' }}>
                     {(selected.package_items ?? []).map((it, i) => {
-                      const svc = Array.isArray(it.services) ? it.services[0] : it.services
+                      const isProduct = !!it.product_id
+                      const ent = isProduct
+                        ? (Array.isArray(it.products) ? it.products[0] : it.products)
+                        : (Array.isArray(it.services) ? it.services[0] : it.services)
                       return (
-                        <li key={i} className="flex justify-between" style={{ color: 'var(--admin-text-2)' }}>
-                          <span><b>{it.quantity}x</b> {svc?.name ?? 'Serviço'}</span>
+                        <li key={i} className="flex justify-between items-center gap-2" style={{ color: 'var(--admin-text-2)' }}>
+                          <span className="inline-flex items-center gap-1.5">
+                            <b>{it.quantity}x</b> {ent?.name ?? (isProduct ? 'Produto' : 'Serviço')}
+                            {isProduct && (
+                              <span
+                                className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded"
+                                style={{ color: '#9333EA', background: 'rgba(147,51,234,0.10)' }}
+                              >
+                                Produto
+                              </span>
+                            )}
+                          </span>
                         </li>
                       )
                     })}
@@ -224,7 +249,7 @@ export default function VenderPacoteModal({ customerId, customerName, onClose, o
               <div className="rounded-xl p-3 text-xs leading-relaxed"
                 style={{ background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', color: 'var(--admin-text-2)' }}
               >
-                <b style={{ color: 'var(--admin-accent)' }}>O que vai acontecer:</b> uma comanda nova será aberta com este pacote · você fecha ela com o pagamento normal (Pix/Cartão/Dinheiro) na tela de Comandas. O cliente já fica com saldo de sessões disponível pra consumir.
+                <b style={{ color: 'var(--admin-accent)' }}>O que vai acontecer:</b> uma comanda nova será aberta com este pacote · você fecha ela com o pagamento normal (Pix/Cartão/Dinheiro) na tela de Comandas. O cliente já fica com saldo de sessões disponível pra consumir.{produtosTotal > 0 ? ' Os produtos do combo já saem do estoque na venda (entregues na hora).' : ''}
               </div>
             </>
           )}

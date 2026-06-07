@@ -78,17 +78,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
   }
 
-  // Itens: substitui se vier
+  // Itens: substitui se vier · cada item é serviço OU produto (XOR · v84)
   if (Array.isArray(body.items)) {
-    type Item = { service_id: string; quantity: number; unit_price?: number | null }
-    const items = body.items as Item[]
+    type Item = { service_id: string | null; product_id: string | null; quantity: number; unit_price?: number | null }
+    const items = body.items as Array<Record<string, unknown>>
     if (items.length === 0) {
       return NextResponse.json({ error: 'items_empty', detail: 'Pacote precisa de ao menos 1 item' }, { status: 400 })
     }
-    // Valida e mapeia
     const validated: Item[] = []
     for (const it of items) {
-      if (!it.service_id || !(it.quantity > 0)) {
+      const svc = typeof it.service_id === 'string' && it.service_id ? it.service_id : null
+      const prod = typeof it.product_id === 'string' && it.product_id ? it.product_id : null
+      const qty = Number(it.quantity)
+      if ((svc && prod) || (!svc && !prod) || !(qty > 0)) {
         return NextResponse.json({ error: 'item_invalid' }, { status: 400 })
       }
       let unit: number | null = null
@@ -97,13 +99,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         if (!Number.isFinite(u) || u < 0) return NextResponse.json({ error: 'unit_price_invalid' }, { status: 400 })
         unit = u
       }
-      validated.push({ service_id: it.service_id, quantity: Number(it.quantity), unit_price: unit })
+      validated.push({ service_id: svc, product_id: prod, quantity: qty, unit_price: unit })
     }
-    // Valida services do business
-    const { data: svcs } = await admin
-      .from('services').select('id').in('id', validated.map((i) => i.service_id)).eq('business_id', businessId)
-    if (!svcs || svcs.length !== new Set(validated.map((i) => i.service_id)).size) {
-      return NextResponse.json({ error: 'service_not_found' }, { status: 400 })
+    // Valida services + products do business
+    const svcIds = [...new Set(validated.map((i) => i.service_id).filter((x): x is string => !!x))]
+    const prodIds = [...new Set(validated.map((i) => i.product_id).filter((x): x is string => !!x))]
+    if (svcIds.length) {
+      const { data: svcs } = await admin
+        .from('services').select('id').in('id', svcIds).eq('business_id', businessId)
+      if (!svcs || svcs.length !== svcIds.length) {
+        return NextResponse.json({ error: 'service_not_found' }, { status: 400 })
+      }
+    }
+    if (prodIds.length) {
+      const { data: prods } = await admin
+        .from('products').select('id').in('id', prodIds).eq('business_id', businessId)
+      if (!prods || prods.length !== prodIds.length) {
+        return NextResponse.json({ error: 'product_not_found' }, { status: 400 })
+      }
     }
     // Delete + insert (mais simples que diff)
     await admin.from('package_items').delete().eq('package_id', id)

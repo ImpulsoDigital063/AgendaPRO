@@ -7,13 +7,16 @@ import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import PacoteFormModal, { type PackageFormValue } from './PacoteFormModal'
 
 type Service = { id: string; name: string; price: number | null; active: boolean }
+type Product = { id: string; name: string; price: number | null }
 
 type PackageItemRow = {
   id: string
-  service_id: string
+  service_id: string | null
+  product_id: string | null
   quantity: number
   unit_price: number | null
   services: { name: string; price: number | null } | null
+  products: { name: string; price: number | null } | null
 }
 
 export type PackageRow = {
@@ -31,6 +34,7 @@ export type PackageRow = {
 type Props = {
   initialPackages: PackageRow[]
   services: Service[]
+  products: Product[]
 }
 
 function brl(n: number) {
@@ -49,18 +53,23 @@ function validityLabel(kind: PackageRow['validity_kind'], value: number | null):
   return `Válido por ${map[kind]}`
 }
 
+// Só serviços contam como "sessões" (produto é entregue, não tem sessão)
 function totalSessions(items: PackageItemRow[] | null): number {
-  return (items ?? []).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
+  return (items ?? []).filter((it) => it.service_id).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
+}
+
+function totalProducts(items: PackageItemRow[] | null): number {
+  return (items ?? []).filter((it) => it.product_id).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
 }
 
 function sumItems(items: PackageItemRow[] | null): number {
   return (items ?? []).reduce((s, it) => {
-    const unit = it.unit_price ?? it.services?.price ?? 0
+    const unit = it.unit_price ?? it.products?.price ?? it.services?.price ?? 0
     return s + Number(unit) * Number(it.quantity ?? 0)
   }, 0)
 }
 
-export default function PacotesView({ initialPackages, services }: Props) {
+export default function PacotesView({ initialPackages, services, products }: Props) {
   const router = useRouter()
   const [packages, setPackages] = useState(initialPackages)
   const [search, setSearch] = useState('')
@@ -187,6 +196,7 @@ export default function PacotesView({ initialPackages, services }: Props) {
             const itemsTotal = sumItems(pkg.package_items)
             const desconto = Math.max(0, itemsTotal - pkg.price)
             const sessoes = totalSessions(pkg.package_items)
+            const produtos = totalProducts(pkg.package_items)
             return (
               <article
                 key={pkg.id}
@@ -230,16 +240,30 @@ export default function PacotesView({ initialPackages, services }: Props) {
 
                 {/* Itens do pacote */}
                 <ul className="text-sm space-y-1 mt-3 mb-3">
-                  {(pkg.package_items ?? []).map((it) => (
-                    <li key={it.id} className="flex justify-between gap-2" style={{ color: 'var(--admin-text-2)' }}>
-                      <span>
-                        <b>{it.quantity}x</b> {it.services?.name ?? 'Serviço'}
-                      </span>
-                      <span className="tabular-nums text-[12px]" style={{ color: 'var(--admin-text-mute)' }}>
-                        {brl(Number(it.unit_price ?? it.services?.price ?? 0))} ea
-                      </span>
-                    </li>
-                  ))}
+                  {(pkg.package_items ?? []).map((it) => {
+                    const isProduct = !!it.product_id
+                    const nome = isProduct ? (it.products?.name ?? 'Produto') : (it.services?.name ?? 'Serviço')
+                    const preco = it.unit_price ?? (isProduct ? it.products?.price : it.services?.price) ?? 0
+                    return (
+                      <li key={it.id} className="flex justify-between gap-2 items-center" style={{ color: 'var(--admin-text-2)' }}>
+                        <span className="inline-flex items-center gap-1.5 min-w-0">
+                          <b>{it.quantity}x</b>
+                          <span className="truncate">{nome}</span>
+                          {isProduct && (
+                            <span
+                              className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded flex-shrink-0"
+                              style={{ color: '#9333EA', background: 'rgba(147,51,234,0.10)' }}
+                            >
+                              Produto
+                            </span>
+                          )}
+                        </span>
+                        <span className="tabular-nums text-[12px] flex-shrink-0" style={{ color: 'var(--admin-text-mute)' }}>
+                          {brl(Number(preco))} ea
+                        </span>
+                      </li>
+                    )
+                  })}
                 </ul>
 
                 <div className="rounded-xl p-3 mt-3" style={{ background: 'var(--admin-surface-hi)' }}>
@@ -258,7 +282,10 @@ export default function PacotesView({ initialPackages, services }: Props) {
                     <span className="tabular-nums">{brl(pkg.price)}</span>
                   </div>
                   <p className="text-[10px] mt-1.5 text-right" style={{ color: 'var(--admin-text-faded)' }}>
-                    {sessoes} {sessoes === 1 ? 'sessão' : 'sessões'} no total
+                    {[
+                      sessoes > 0 ? `${sessoes} ${sessoes === 1 ? 'sessão' : 'sessões'}` : null,
+                      produtos > 0 ? `${produtos} ${produtos === 1 ? 'produto' : 'produtos'}` : null,
+                    ].filter(Boolean).join(' + ')} no total
                   </p>
                 </div>
 
@@ -281,6 +308,7 @@ export default function PacotesView({ initialPackages, services }: Props) {
         <PacoteFormModal
           initial={editing}
           services={services}
+          products={products}
           loading={loading}
           onClose={() => { setShowForm(false); setEditing(null); setError(null) }}
           onSubmit={handleSave}
