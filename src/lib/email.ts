@@ -549,6 +549,67 @@ export async function sendBillingBlocked({
   })
 }
 
+// ── Trial / cortesia (expiração automática · cron billing-check passo 2) ──
+
+/** D-1 · avisa que o teste grátis acaba amanhã (antes de bloquear). */
+export async function sendTrialEndingSoon({
+  ownerEmail,
+  businessName,
+  actionUrl,
+}: {
+  ownerEmail: string
+  businessName: string
+  actionUrl: string
+}) {
+  const body = `
+    Oi!<br><br>
+    Seu período de teste grátis do AgendaPRO da <strong>${esc(businessName)}</strong> <strong>termina amanhã</strong>.<br><br>
+    Pra não perder o acesso à agenda, clientes e tudo que você já configurou, é só ativar seu plano — leva 1 minuto, no cartão ou PIX.<br><br>
+    Sem fidelidade, cancela quando quiser.
+  `
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: ownerEmail,
+    subject: `Seu teste do AgendaPRO acaba amanhã — ${esc(businessName)}`,
+    html: emailTemplate({
+      title: 'Seu teste acaba amanhã',
+      body,
+      actionUrl,
+      actionLabel: 'Ativar meu plano',
+    }),
+  })
+}
+
+/** D-0 · teste grátis acabou · painel caiu no paywall. */
+export async function sendTrialEnded({
+  ownerEmail,
+  businessName,
+  actionUrl,
+}: {
+  ownerEmail: string
+  businessName: string
+  actionUrl: string
+}) {
+  const body = `
+    Oi!<br><br>
+    Seu período de teste grátis do AgendaPRO da <strong>${esc(businessName)}</strong> <strong>chegou ao fim</strong>.<br><br>
+    Seus dados continuam guardados. Pra voltar a usar a agenda e tudo que você configurou, é só ativar o plano — cartão ou PIX, sem fidelidade.
+  `
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: ownerEmail,
+    subject: `Seu teste do AgendaPRO acabou — ${esc(businessName)}`,
+    html: emailTemplate({
+      title: 'Período de teste encerrado',
+      body,
+      actionUrl,
+      actionLabel: 'Ativar meu plano',
+    }),
+  })
+}
+
 // ── Pos-pagamento (substitui emails do Asaas pra esconder o CNPJ do recebedor) ──
 
 /**

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { diasAteVencer } from '@/lib/billing'
 import { createPayment, getNextDueDate } from '@/lib/asaas'
-import { sendBillingReminderD3, sendBillingOverdue, sendBillingBlocked } from '@/lib/email'
+import { sendBillingReminderD3, sendBillingOverdue, sendBillingBlocked, sendTrialEndingSoon, sendTrialEnded } from '@/lib/email'
 import { calcularPreco, type ModalidadeKey, type PlanoTipo } from '@/config/pricing'
 
 export const maxDuration = 60
@@ -201,17 +201,48 @@ export async function GET(req: NextRequest) {
   //   asaas_subscription_id NULL e mp_subscription_id NULL (sem assinatura
   //   recorrente) · pago_ate vencido · permanent_courtesy=false (Palace isento).
   let trialsBlocked = 0
+  let trialsWarned = 0
   const nowIso = new Date().toISOString()
-  const { data: expiredTrials, error: trialErr } = await admin
-    .from('subscriptions')
-    .select('id, business_id, businesses!inner ( name )')
-    .eq('status', 'active')
-    .eq('permanent_courtesy', false)
-    .is('plan_modalidade', null)
-    .is('asaas_subscription_id', null)
-    .is('mp_subscription_id', null)
-    .lt('pago_ate', nowIso)
+  const in24hIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  const loginUrl = `${APP_URL}/admin/login`
 
+  // Critério comum de "trial/cortesia sem renovação automática"
+  const trialBase = () =>
+    admin
+      .from('subscriptions')
+      .select('id, business_id, businesses!inner ( name, owner_id )')
+      .eq('status', 'active')
+      .eq('permanent_courtesy', false)
+      .is('plan_modalidade', null)
+      .is('asaas_subscription_id', null)
+      .is('mp_subscription_id', null)
+
+  async function ownerEmail(ownerId: string): Promise<string | null> {
+    try {
+      const { data: { user } } = await admin.auth.admin.getUserById(ownerId)
+      return user?.email ?? null
+    } catch {
+      return null
+    }
+  }
+
+  // 2a · D-1: avisa quem vence nas próximas 24h (uma vez · cron roda 1x/dia)
+  const { data: soonTrials } = await trialBase().gt('pago_ate', nowIso).lt('pago_ate', in24hIso)
+  for (const t of soonTrials ?? []) {
+    const biz = (t.businesses as unknown) as { name: string; owner_id: string } | null
+    if (!biz) continue
+    const email = await ownerEmail(biz.owner_id)
+    if (!email) continue
+    try {
+      await sendTrialEndingSoon({ ownerEmail: email, businessName: biz.name, actionUrl: loginUrl })
+      trialsWarned++
+    } catch (e) {
+      errors.push({ id: t.id, error: `trial_warn_email: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  }
+
+  // 2b · D-0: vence/venceu → bloqueia (paywall) + email "acabou"
+  const { data: expiredTrials, error: trialErr } = await trialBase().lt('pago_ate', nowIso)
   if (trialErr) {
     console.error('[Cron Billing] Erro ao buscar trials vencidos:', trialErr)
   } else {
@@ -224,19 +255,30 @@ export async function GET(req: NextRequest) {
         errors.push({ id: t.id, error: `trial_block_failed: ${upErr.message}` })
         continue
       }
-      const biz = (t.businesses as unknown) as { name: string } | null
-      console.log(`[Cron Billing] trial expirado → paywall: ${biz?.name ?? t.business_id}`)
       trialsBlocked++
+      const biz = (t.businesses as unknown) as { name: string; owner_id: string } | null
+      console.log(`[Cron Billing] trial expirado → paywall: ${biz?.name ?? t.business_id}`)
+      if (biz) {
+        const email = await ownerEmail(biz.owner_id)
+        if (email) {
+          try {
+            await sendTrialEnded({ ownerEmail: email, businessName: biz.name, actionUrl: loginUrl })
+          } catch (e) {
+            errors.push({ id: t.id, error: `trial_ended_email: ${e instanceof Error ? e.message : String(e)}` })
+          }
+        }
+      }
     }
   }
 
-  console.log(`[Cron Billing] processed=${processed} alertsSent=${alertsSent} blocked=${blocked} trialsBlocked=${trialsBlocked} errors=${errors.length}`)
+  console.log(`[Cron Billing] processed=${processed} alertsSent=${alertsSent} blocked=${blocked} trialsWarned=${trialsWarned} trialsBlocked=${trialsBlocked} errors=${errors.length}`)
 
   return NextResponse.json({
     ok: true,
     processed,
     alerts_sent: alertsSent,
     blocked,
+    trials_warned: trialsWarned,
     trials_blocked: trialsBlocked,
     errors: errors.length,
     errors_detail: errors.slice(0, 10),
