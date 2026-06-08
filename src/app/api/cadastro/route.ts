@@ -11,6 +11,33 @@ function getAdminClient() {
   )
 }
 
+/**
+ * Verifica o token do Cloudflare Turnstile (CAPTCHA grátis).
+ * Rollout seguro: se TURNSTILE_SECRET_KEY não estiver setada, pula a
+ * verificação (retorna true) — assim o cadastro funciona antes das chaves
+ * existirem. Com a key setada, exige token válido.
+ */
+async function verifyTurnstile(token: string | null, ip: string): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY
+  if (!secret) return true // CAPTCHA desativado até a key existir
+  if (!token) return false
+  try {
+    const form = new URLSearchParams()
+    form.append('secret', secret)
+    form.append('response', token)
+    if (ip && ip !== 'unknown') form.append('remoteip', ip)
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: form,
+    })
+    const d = await r.json()
+    return !!d?.success
+  } catch (e) {
+    console.error('[cadastro] Turnstile verify error:', e)
+    return false
+  }
+}
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
   const { success } = rateLimit({ key: `cadastro:${ip}`, limit: 5, windowSeconds: 3600 })
@@ -24,6 +51,8 @@ export async function POST(req: NextRequest) {
     acquisitionChannel, primaryNeed,
     // v79 · dono atende clientes ou só administra (default true · cobre 70% dos cadastros)
     ownerAtende,
+    // CAPTCHA anti-bot (Turnstile)
+    captchaToken,
   } = await req.json()
   const ownerAtendeBool = ownerAtende !== false
 
@@ -51,6 +80,33 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = getAdminClient()
+
+  // Rate-limit PERSISTENTE (Postgres · funciona entre instâncias serverless,
+  // ao contrário do in-memory acima que reseta a cada cold start). 5/h por IP.
+  // Se a tabela não existir ainda (migration v86 não aplicada), não bloqueia
+  // cadastro legítimo — cai no rate-limit em memória que já rodou.
+  try {
+    const oneHourAgo = new Date(Date.now() - 3600_000).toISOString()
+    const { count, error: rlErr } = await supabase
+      .from('signup_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('ip', ip)
+      .gt('created_at', oneHourAgo)
+    if (!rlErr) {
+      if ((count ?? 0) >= 5) {
+        return NextResponse.json({ error: 'Muitas tentativas de cadastro. Tente novamente em 1 hora.' }, { status: 429 })
+      }
+      await supabase.from('signup_attempts').insert({ ip })
+    }
+  } catch (e) {
+    console.warn('[cadastro] rate-limit Postgres indisponível, usando fallback em memória:', e)
+  }
+
+  // CAPTCHA anti-bot — bloqueia robô antes de criar qualquer coisa
+  const captchaOk = await verifyTurnstile(typeof captchaToken === 'string' ? captchaToken : null, ip)
+  if (!captchaOk) {
+    return NextResponse.json({ error: 'Verificação anti-robô falhou. Recarregue a página e tente de novo.' }, { status: 400 })
+  }
 
   // 1. Verifica se o slug já está em uso
   const { data: existing } = await supabase

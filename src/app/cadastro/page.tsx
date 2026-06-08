@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Turnstile from '@/components/Turnstile'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -81,6 +82,9 @@ export default function CadastroPage() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // CAPTCHA · só ativo quando a site key existe (rollout seguro)
+  const captchaEnabled = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   const slugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -156,6 +160,10 @@ export default function CadastroPage() {
 
   async function handleSubmit() {
     setError(null)
+    if (captchaEnabled && !captchaToken) {
+      setError('Confirme que você não é um robô (aguarde a verificação).')
+      return
+    }
     setLoading(true)
 
     const res = await fetch('/api/cadastro', {
@@ -169,6 +177,7 @@ export default function CadastroPage() {
         slug,
         email: email.trim().toLowerCase(),
         password,
+        captchaToken,
         // Nome do dono — aparece como profissional default na agenda.
         // Cliente final escolhe esse nome ao agendar (ex: "Olímpio" em vez
         // do nome da barbearia toda).
@@ -186,6 +195,11 @@ export default function CadastroPage() {
 
     if (!res.ok || !data.ok) {
       setError(data.error || 'Erro ao cadastrar. Tente novamente.')
+      // Token Turnstile é single-use · reseta pra próxima tentativa
+      if (captchaEnabled) {
+        setCaptchaToken(null)
+        window.turnstile?.reset()
+      }
       setLoading(false)
       return
     }
@@ -642,6 +656,9 @@ export default function CadastroPage() {
                 style={inputStyle}
               />
             </div>
+
+            {/* CAPTCHA · invisível/automático (Turnstile) · só aparece se a key existir */}
+            <Turnstile onToken={setCaptchaToken} />
 
             {error && <p className="text-red-400 text-sm">{error}</p>}
 
