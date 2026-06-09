@@ -8,6 +8,7 @@ import {
   getAppointmentsToday,
   getUpcomingAppointments,
 } from '@/lib/admin-data'
+import { createClient } from '@/lib/supabase/server'
 import AppointmentCard from '@/components/AppointmentCard'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import LogoutButton from '@/components/LogoutButton'
@@ -58,9 +59,20 @@ async function PersonalKPIs({
   const list = await getAppointmentsToday(business.id, today)
   const meus = list.filter((a) => a.professional_id === owner.id)
 
-  // Mesma semântica das KPIs do admin/page.tsx, agora restritas a este
-  // profissional. paid_at != null = entrou no caixa pessoal.
-  const recebidos = meus.filter((a) => a.paid_at != null && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
+  // Recebido = dinheiro que ENTROU hoje (por paid_at), não por data do
+  // atendimento — igual ao Fluxo de Caixa e à grade desktop. Atendimento dele
+  // feito ontem e pago hoje entra no recebido de hoje. (Alinhado 09/06.)
+  const sbEu = await createClient()
+  const { data: paidTodayEu } = await sbEu
+    .from('appointments')
+    .select('total_price')
+    .eq('business_id', business.id)
+    .eq('professional_id', owner.id)
+    .not('payment_method', 'in', '(courtesy,credit)')
+    .gte('paid_at', `${today}T00:00:00`)
+    .lt('paid_at', `${today}T23:59:59`)
+    .not('paid_at', 'is', null)
+  const recebidosCount = (paidTodayEu ?? []).length
   const aReceber = meus.filter(
     (a) =>
       a.paid_at == null &&
@@ -69,7 +81,7 @@ async function PersonalKPIs({
   )
   const pendentes = meus.filter((a) => a.status === 'pending')
   const atendidos = meus.filter((a) => a.status === 'completed')
-  const recebidoTotal = recebidos.reduce((sum, a) => sum + (a.total_price || 0), 0)
+  const recebidoTotal = (paidTodayEu ?? []).reduce((sum, a) => sum + Number(a.total_price || 0), 0)
   const aReceberTotal = aReceber.reduce((sum, a) => sum + (a.total_price || 0), 0)
 
   return (
@@ -101,7 +113,7 @@ async function PersonalKPIs({
               <CountUp value={recebidoTotal} prefix="R$ " localized />
             </p>
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-              {recebidos.length} atendimento{recebidos.length === 1 ? '' : 's'} pago{recebidos.length === 1 ? '' : 's'}
+              {recebidosCount} atendimento{recebidosCount === 1 ? '' : 's'} pago{recebidosCount === 1 ? '' : 's'}
             </p>
           </div>
           <span
