@@ -7,7 +7,6 @@ import InstallBanner from '@/components/admin/InstallBanner'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
-import { cookies } from 'next/headers'
 
 export default async function ProfissionalLayout({
   children,
@@ -57,8 +56,8 @@ export default async function ProfissionalLayout({
     redirect('/recepcao')
   }
 
-  const cookieStore = await cookies()
-  const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as 'dark' | 'light'
+  // Sistema light-only (tema dark removido 03/06). Sem leitura de cookie de tema.
+  const initialTheme = 'light' as const
 
   const employmentType = (professional.employment_type ?? 'commissioned') as 'commissioned' | 'employed'
 

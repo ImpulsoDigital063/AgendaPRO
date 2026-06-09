@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import InstallBanner from '@/components/admin/InstallBanner'
 import RecepcaoBottomNav from '@/components/recepcao/RecepcaoBottomNav'
@@ -49,8 +48,8 @@ export default async function RecepcaoLayout({
 
   console.log('[RECEPCAO-LAYOUT] renderizando · OK')
 
-  const cookieStore = await cookies()
-  const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as 'dark' | 'light'
+  // Sistema light-only (tema dark removido 03/06). Sem leitura de cookie de tema.
+  const initialTheme = 'light' as const
 
   const business = (professional.business ?? {}) as {
     name?: string | null

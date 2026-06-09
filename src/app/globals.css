@@ -617,13 +617,10 @@ select.admin-input:focus {
   border-color: var(--admin-accent);
   outline: none;
 }
-/* Dropdown nativo (<option>) — garante fundo tematizado em navegadores
-   que respeitam background explícito (Firefox/Chrome modernos) */
-[data-admin-theme="dark"] .admin-shell select option {
-  background-color: #0F1938;
-  color: #F8FAFC;
-}
-[data-admin-theme="light"] .admin-shell select option {
+/* Dropdown nativo (<option>) — light-only (tema dark removido 03/06 · era o
+   último resíduo dark, ainda disparado por data-admin-theme="dark" em cache/
+   layout antigo). Incondicional pra nunca mais renderizar escuro. */
+.admin-shell select option {
   background-color: #FFFFFF;
   color: #0F172A;
 }

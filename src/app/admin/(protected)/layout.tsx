@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import AdminMobileTopBar from '@/components/admin/AdminMobileTopBar'
 import InstallBanner from '@/components/admin/InstallBanner'
@@ -23,8 +22,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Auth + theme em paralelo — independentes (cookies nao precisa esperar user)
-  const [user, cookieStore] = await Promise.all([getCurrentUser(), cookies()])
+  const user = await getCurrentUser()
 
   if (!user) {
     redirect('/admin/login')
@@ -99,9 +97,8 @@ export default async function AdminLayout({
     showOwnerTab = !!ownerProf
   }
 
-  const initialTheme = (cookieStore.get('admin_theme')?.value === 'light' ? 'light' : 'dark') as
-    | 'dark'
-    | 'light'
+  // Sistema light-only (tema dark removido 03/06). Sem leitura de cookie de tema.
+  const initialTheme = 'light' as const
 
   return (
     <AdminThemeProvider initial={initialTheme}>
