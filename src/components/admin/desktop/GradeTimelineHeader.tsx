@@ -191,16 +191,16 @@ export default function GradeTimelineHeader({
         </Link>
 
         {/* Botão Agendar · abre modal inline na timeline (Salão99-style) via ?agendar=1.
-            Verde (mais fundo/teal) pra par coeso com Registrar venda · Eduardo 09/06. */}
+            Mantém a cor da marca (brand-primary) · Eduardo: só o Registrar venda é verde. */}
         <Link
           href={`?agendar=1&date=${date}`}
           className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
           style={{
             minHeight: 44,
-            background: 'linear-gradient(180deg, #0D9488 0%, #0F5F57 100%)',
+            background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
             color: '#fff',
             borderTop: '1px solid rgba(255,255,255,0.25)',
-            boxShadow: '0 8px 22px -8px rgba(13,148,136,0.55), 0 2px 4px rgba(0,0,0,0.08)',
+            boxShadow: '0 8px 22px -8px color-mix(in srgb, var(--brand-primary, #1AA9A8) 55%, transparent), 0 2px 4px rgba(0,0,0,0.08)',
           }}
         >
           <IconPlus size={14} /> Agendar
