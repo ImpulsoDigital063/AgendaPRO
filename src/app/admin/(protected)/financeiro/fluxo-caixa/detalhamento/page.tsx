@@ -222,10 +222,11 @@ export default async function DetalhamentoPage({
     }
 
     // 3. Sales DIRETAS (sem invoice_id · venda avulsa de produto)
-    if (!cardTypeFilter) { // sales não tem card_type · só roda se filtro não for de cartão específico
+    // v87: sales agora tem payment_card_type → entra no drilldown de crédito/débito.
+    {
       let qSale = sb
         .from('sales')
-        .select('paid_at, total, payment_method, type, customer:customers(name)')
+        .select('paid_at, total, payment_method, payment_card_type, type, customer:customers(name)')
         .eq('business_id', business.id)
         .eq('type', 'product_sale')
         .eq('status', 'paid')
@@ -236,15 +237,19 @@ export default async function DetalhamentoPage({
         .not('payment_method', 'in', '(courtesy,credit)')
 
       if (dbMethods) qSale = qSale.in('payment_method', dbMethods)
+      if (cardTypeFilter) qSale = qSale.eq('payment_card_type', cardTypeFilter)
 
       const { data: saleData } = await qSale
 
       for (const s of saleData ?? []) {
-        const row = s as unknown as { paid_at: string; total: number | null; payment_method: string | null; customer: { name: string | null } | { name: string | null }[] | null }
+        const row = s as unknown as { paid_at: string; total: number | null; payment_method: string | null; payment_card_type: string | null; customer: { name: string | null } | { name: string | null }[] | null }
         const sCust = Array.isArray(row.customer) ? row.customer[0] : row.customer
+        const methodLabel = row.payment_method === 'card'
+          ? (row.payment_card_type === 'credit' ? 'Cartão de Crédito' : row.payment_card_type === 'debit' ? 'Cartão de Débito' : 'Cartão')
+          : (METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method)
         rows.push({
           date: row.paid_at,
-          description: `${sCust?.name ?? '—'} · ${METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method}`,
+          description: `${sCust?.name ?? '—'} · ${methodLabel}`,
           amount: Number(row.total ?? 0),
           origin_label: 'Venda avulsa',
         })

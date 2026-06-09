@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { IconArrowLeft, IconPlus, IconClose, IconCheck, IconDollar, IconSearch, IconUser } from '@/components/ui/Icon'
 import { getAreaPrefix } from '@/lib/area-prefix'
 import { todayBR } from '@/lib/date-br'
-import PaymentMethodModal, { type PaymentMethodChoice } from '@/components/admin/PaymentMethodModal'
+import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 
 type Product = {
   id: string
@@ -179,7 +179,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
     setShowPayModal(true)
   }
 
-  async function save(method: PaymentMethodChoice) {
+  async function save(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) {
     setShowPayModal(false)
     setSaving(true)
     const res = await fetch('/api/admin/sales', {
@@ -192,6 +192,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
         sale_date: saleDate,
         notes: notes.trim() || null,
         payment_method: method, // null = pagar depois (venda pendente)
+        card: cardDetails ?? null, // taxa/maquininha quando cartão (flui pro líquido)
         items: validLines.map((l) => ({
           product_id: l.productId,
           quantity: Number(l.quantity),
@@ -457,7 +458,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
         totalPrice={total}
         businessId={businessId}
         loading={saving}
-        onChoose={(method) => save(method)}
+        onChoose={(method, cardDetails) => save(method, cardDetails)}
         onClose={() => setShowPayModal(false)}
       />
 

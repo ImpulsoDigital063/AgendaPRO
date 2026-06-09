@@ -119,6 +119,10 @@ export async function POST(req: NextRequest) {
     ? body.payment_method : null
   const nowIso = new Date().toISOString()
 
+  // Snapshot do cartão (maquininha/bandeira/taxa/parcelas) — só quando paga em
+  // cartão. A taxa flui pro líquido no fluxo de caixa (v87 · plena comunicação).
+  const card = payMethod === 'card' && body.card && typeof body.card === 'object' ? body.card : null
+
   // 1. Cria venda
   const { data: sale, error: saleErr } = await supabase
     .from('sales')
@@ -135,6 +139,11 @@ export async function POST(req: NextRequest) {
       status: payMethod ? 'paid' : 'pending',
       paid_at: payMethod ? nowIso : null,
       payment_method: payMethod,
+      payment_device_id: card?.device_id ?? null,
+      payment_card_brand: card?.card_brand ?? null,
+      payment_card_type: card?.card_type ?? null,
+      payment_fee_percent: card != null ? Number(card.fee_percent ?? 0) : null,
+      payment_installments: card?.installments ?? null,
       notes: typeof body.notes === 'string' ? body.notes.trim() || null : null,
       created_by: user.id,
     })

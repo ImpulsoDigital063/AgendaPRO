@@ -66,7 +66,7 @@ export default async function AdminCaixaPage() {
       .lt('paid_at', tomorrowISO + 'T00:00:00'),
     supabase
       .from('sales')
-      .select('id, total, paid_at, payment_method, client_name')
+      .select('id, total, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name')
       .eq('business_id', business.id)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
@@ -98,8 +98,8 @@ export default async function AdminCaixaPage() {
     total_price: Number(s.total ?? 0),
     paid_at: s.paid_at as string | null,
     payment_method: s.payment_method as string | null,
-    payment_card_type: null,
-    payment_fee_percent: null,
+    payment_card_type: (s.payment_card_type as string | null) ?? null,
+    payment_fee_percent: (s.payment_fee_percent as number | null) ?? null,
     client_name: (s.client_name as string | null) ?? 'Venda de produto',
   }))
   const todayAppts = [...apptsToday, ...salesToday]

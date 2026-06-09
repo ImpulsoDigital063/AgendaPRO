@@ -207,7 +207,7 @@ export default async function FluxoCaixaPage({
       .not('paid_at', 'is', null),
     sb
       .from('sales')
-      .select('paid_at, total, payment_method')
+      .select('paid_at, total, payment_method, payment_card_type, payment_fee_percent')
       .eq('business_id', business.id)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
@@ -324,16 +324,26 @@ export default async function FluxoCaixaPage({
     }
   }
 
-  // 3. Sales DIRETAS (sem invoice · venda avulsa)
+  // 3. Sales DIRETAS (sem invoice · venda avulsa de produto)
   for (const s of salesDirect ?? []) {
     if (!s.paid_at) continue
     const d = new Date(s.paid_at as string)
     const key = keyForDate(view, d, cols)
     if (!key || !data[key]) continue
-    const method = (s.payment_method as string | null) ?? 'other'
+    const raw = (s.payment_method as string | null) ?? 'other'
+    const methodKey = resolveMethodKey(raw, s.payment_card_type as string | null)
     const amt = Number(s.total ?? 0)
-    data[key].receitasByMethod[method] = (data[key].receitasByMethod[method] ?? 0) + amt
+    data[key].receitasByMethod[methodKey] = (data[key].receitasByMethod[methodKey] ?? 0) + amt
     data[key].receitasTotal += amt
+    // Taxa de maquininha · desconta do líquido igual comanda/appointment (v87)
+    if (raw === 'card') {
+      const fee = Number(s.payment_fee_percent ?? 0)
+      if (fee > 0) {
+        const feeAmt = (amt * fee) / 100
+        data[key].despesasByCategory.payment_fee = (data[key].despesasByCategory.payment_fee ?? 0) + feeAmt
+        data[key].despesasTotal += feeAmt
+      }
+    }
   }
 
   for (const e of expensesData ?? []) {

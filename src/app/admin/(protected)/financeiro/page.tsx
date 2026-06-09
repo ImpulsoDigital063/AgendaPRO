@@ -153,7 +153,7 @@ export default async function FinanceiroPage({
     supabase
       .from('sales')
       .select(`
-        id, sale_date, total, paid_at, payment_method, professional_id,
+        id, sale_date, total, paid_at, payment_method, payment_card_type, payment_fee_percent, professional_id,
         professional:professionals(id, name),
         sale_items(product_name, quantity, unit_price)
       `)
@@ -215,12 +215,18 @@ export default async function FinanceiroPage({
   const lucroLiquido = valorRecebido - despesasPagas
   const prevLucroLiquido = prevValorRecebido - prevDespesasPagas
 
-  // Taxas (cartão crédito/débito · fee_percent)
-  const totalTaxas = paidAppts.reduce((s, a) => {
+  // Taxas (cartão crédito/débito · fee_percent) · appointments + vendas de produto (v87)
+  const totalTaxasAppts = paidAppts.reduce((s, a) => {
     const pct = Number(a.payment_fee_percent ?? 0)
     const price = Number(a.total_price ?? 0)
     return s + (price * pct) / 100
   }, 0)
+  const totalTaxasSales = productSales.reduce((s, p) => {
+    const pct = Number((p as { payment_fee_percent?: number | null }).payment_fee_percent ?? 0)
+    const price = Number(p.total ?? 0)
+    return s + (price * pct) / 100
+  }, 0)
+  const totalTaxas = totalTaxasAppts + totalTaxasSales
   const lucroPosTaxas = lucroLiquido - totalTaxas
 
   const creditosTotal = credits
