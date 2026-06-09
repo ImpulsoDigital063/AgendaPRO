@@ -60,6 +60,19 @@ export default async function VendasPage({
     .eq('active', true)
     .order('name')
 
+  // Mapa auth_user_id → nome pra mostrar QUEM REGISTROU a venda de produto.
+  // Produto sem comissão não tem "quem executa" — mostra quem lançou (created_by).
+  // (Eduardo 09/06.) O dono costuma ser também um professional com auth_user_id.
+  const { data: profAuth } = await sb
+    .from('professionals')
+    .select('auth_user_id, name')
+    .eq('business_id', business.id)
+    .not('auth_user_id', 'is', null)
+  const registrantName = new Map<string, string>()
+  for (const p of profAuth ?? []) {
+    if (p.auth_user_id) registrantName.set(p.auth_user_id as string, p.name as string)
+  }
+
   // Query base · só vendas realizadas (passado + hoje · respeitando range)
   let listQuery = sb
     .from('appointments')
@@ -140,10 +153,10 @@ export default async function VendasPage({
       id, business_id, sale_date, created_at,
       client_name, client_phone, customer_id,
       total, status, paid_at, payment_method, invoice_id, professional_id,
-      appointment_id,
+      appointment_id, created_by,
       professional:professionals(name),
       appointment:appointments(start_time),
-      sale_items(product_name, quantity)
+      sale_items(product_name, quantity, commission_type, commission_value)
     `)
     .eq('business_id', business.id)
     .eq('type', 'product_sale')
@@ -180,9 +193,10 @@ export default async function VendasPage({
     invoice_id: string | null
     professional_id: string | null
     appointment_id: string | null
+    created_by: string | null
     professional: { name: string } | { name: string }[] | null
     appointment: { start_time: string } | { start_time: string }[] | null
-    sale_items: { product_name: string; quantity: number }[] | null
+    sale_items: { product_name: string; quantity: number; commission_type: string | null; commission_value: number | null }[] | null
   }
 
   const productRows: SaleRow[] = ((rawProductSales ?? []) as ProductSaleRow[]).map((s) => {
@@ -192,6 +206,13 @@ export default async function VendasPage({
     const desc = items.length === 0
       ? 'Venda de produto'
       : items.map((it) => `${it.product_name}${Number(it.quantity) > 1 ? ` (${it.quantity})` : ''}`).join(' + ')
+    // Produto COM comissão → mostra o profissional (quem ganha). SEM comissão →
+    // mostra quem REGISTROU a venda (created_by), não quem executa. (Eduardo 09/06.)
+    const hasCommission = items.some((it) => Number(it.commission_value ?? 0) > 0)
+    const registrant = s.created_by ? registrantName.get(s.created_by) : undefined
+    const whoToShow = hasCommission
+      ? (prof ?? null)
+      : (registrant ? { name: registrant } : null)
     // Horário: prioriza start_time do appointment vinculado (faz a linha
     // do produto ficar grudada na linha do serviço na mesma comanda).
     // Fallback: created_at da sale.
@@ -215,7 +236,7 @@ export default async function VendasPage({
       // sales não tem invoice_item_id; mas tem invoice_id · pra a tabela
       // mostrar chip de "#NN" precisamos resolver o invoice abaixo
       invoice_item_id: s.invoice_id, // reaproveita o slot pra lookup
-      professional: prof ?? null,
+      professional: whoToShow,
       kind: 'product' as const,
     }
   })
