@@ -180,25 +180,27 @@ export default function GradeTimelineHeader({
           className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px ml-auto"
           style={{
             minHeight: 44,
-            background: 'color-mix(in srgb, var(--admin-success, #10B981) 14%, transparent)',
-            color: 'var(--admin-success, #10B981)',
-            border: '1.5px solid color-mix(in srgb, var(--admin-success, #10B981) 45%, transparent)',
+            background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+            color: '#fff',
+            borderTop: '1px solid rgba(255,255,255,0.30)',
+            boxShadow: '0 8px 22px -8px rgba(16,185,129,0.55), 0 2px 4px rgba(0,0,0,0.08)',
           }}
           title="Registrar venda de balcão · atende e registra agora, sem agendar"
         >
           <IconPlus size={14} /> Registrar venda
         </Link>
 
-        {/* Botão Agendar · abre modal inline na timeline (Salão99-style) via ?agendar=1 */}
+        {/* Botão Agendar · abre modal inline na timeline (Salão99-style) via ?agendar=1.
+            Verde (mais fundo/teal) pra par coeso com Registrar venda · Eduardo 09/06. */}
         <Link
           href={`?agendar=1&date=${date}`}
           className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
           style={{
             minHeight: 44,
-            background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
+            background: 'linear-gradient(180deg, #0D9488 0%, #0F5F57 100%)',
             color: '#fff',
             borderTop: '1px solid rgba(255,255,255,0.25)',
-            boxShadow: '0 8px 22px -8px color-mix(in srgb, var(--brand-primary, #1AA9A8) 55%, transparent), 0 2px 4px rgba(0,0,0,0.08)',
+            boxShadow: '0 8px 22px -8px rgba(13,148,136,0.55), 0 2px 4px rgba(0,0,0,0.08)',
           }}
         >
           <IconPlus size={14} /> Agendar

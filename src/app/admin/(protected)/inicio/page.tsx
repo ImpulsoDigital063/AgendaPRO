@@ -270,8 +270,10 @@ function AtalhosRapidos() {
       glow: 'color-mix(in srgb, var(--admin-accent) 30%, transparent)',
     },
     {
-      label: 'Nova venda',
-      href: '/admin/financeiro/vendas',
+      // Balcão: atende e registra na hora (abre o modal em modo balcão).
+      // Antes apontava só pro relatório de vendas (label enganoso). Eduardo 09/06.
+      label: 'Registrar venda',
+      href: '/admin/inicio?balcao=1',
       Icon: IconReceipt,
       iconBg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
       glow: 'rgba(16,185,129,0.28)',
