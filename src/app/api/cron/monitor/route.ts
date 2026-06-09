@@ -31,6 +31,13 @@ function hourBRT(): number {
   return Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }).format(new Date()))
 }
 
+// Auditoria financeira roda 1x/semana (segunda de manhã BRT) · drift lento, não
+// precisa rodar a cada 15min. Se não achar nada, fica silenciosa.
+function isWeeklyAuditWindow(): boolean {
+  const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' }).format(new Date())
+  return wd === 'Mon' && hourBRT() === 8
+}
+
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
@@ -44,6 +51,9 @@ export async function GET(req: NextRequest) {
   const since14 = `${new Date(Date.parse(today + 'T12:00:00-03:00') - 14 * 864e5).toISOString().slice(0, 10)}T00:00:00-03:00`
   const problems: string[] = []
 
+  const { data: bizRows } = await db.from('businesses').select('id, name')
+  const nameOf = new Map((bizRows ?? []).map((b) => [b.id, b.name]))
+
   // ── 1. OPERAÇÃO PARADA ──────────────────────────────────────────
   const { data: recent, error: recErr } = await db
     .from('appointments')
@@ -52,9 +62,6 @@ export async function GET(req: NextRequest) {
   if (recErr) {
     problems.push(`⚠️ monitor: erro lendo appointments — ${recErr.message}`)
   } else {
-    const { data: bizRows } = await db.from('businesses').select('id, name')
-    const nameOf = new Map((bizRows ?? []).map((b) => [b.id, b.name]))
-
     // agrega por negócio: dias ativos distintos, total, count de hoje
     type Agg = { total: number; days: Set<string>; today: number }
     const byBiz = new Map<string, Agg>()
@@ -93,6 +100,44 @@ export async function GET(req: NextRequest) {
     }
   } catch (e) {
     problems.push(`🔴 health-check: caminho de disponibilidade caiu — ${String(e)}`)
+  }
+
+  // ── 3. CONSISTÊNCIA FINANCEIRA (semanal · seg manhã) ────────────
+  // Comanda ABERTA com atendimento PAGO e sem pagamento registrado = dinheiro
+  // some do "Recebido" (bug Olímpio 09/06). O fix de fluxo previne novos; isto
+  // é a rede de segurança que avisa se algum caminho voltar a criar o limbo.
+  if (isWeeklyAuditWindow()) {
+    try {
+      const { data: openInvs } = await db
+        .from('invoices').select('id, business_id, total').eq('status', 'open')
+      const openIds = (openInvs ?? []).map((i) => i.id)
+      if (openIds.length > 0) {
+        const [{ data: items }, { data: openPays }] = await Promise.all([
+          db.from('invoice_items').select('invoice_id, reference_id').eq('item_type', 'appointment').in('invoice_id', openIds),
+          db.from('invoice_payments').select('invoice_id').in('invoice_id', openIds),
+        ])
+        const apptIds = [...new Set((items ?? []).map((i) => i.reference_id).filter(Boolean))] as string[]
+        const paidAppt = new Set<string>()
+        for (let i = 0; i < apptIds.length; i += 200) {
+          const { data: appts } = await db.from('appointments').select('id, paid_at').in('id', apptIds.slice(i, i + 200))
+          ;(appts ?? []).forEach((a) => { if (a.paid_at) paidAppt.add(a.id as string) })
+        }
+        const hasPay = new Set((openPays ?? []).map((p) => p.invoice_id))
+        const invBiz = new Map((openInvs ?? []).map((i) => [i.id, i.business_id]))
+        const limboByBiz: Record<string, number> = {}
+        for (const it of items ?? []) {
+          if (it.reference_id && paidAppt.has(it.reference_id as string) && !hasPay.has(it.invoice_id)) {
+            const biz = invBiz.get(it.invoice_id) as string
+            limboByBiz[biz] = (limboByBiz[biz] ?? 0) + 1
+          }
+        }
+        for (const [biz, n] of Object.entries(limboByBiz)) {
+          problems.push(`🟠 <b>${nameOf.get(biz) ?? biz}</b>: ${n} comanda(s) paga(s) sem fechar — valor pode estar sumindo do Recebido. Rodar reconciliação.`)
+        }
+      }
+    } catch (e) {
+      problems.push(`⚠️ monitor financeiro: ${String(e)}`)
+    }
   }
 
   // ── aviso ───────────────────────────────────────────────────────
