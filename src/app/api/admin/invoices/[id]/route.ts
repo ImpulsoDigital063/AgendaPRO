@@ -192,10 +192,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (movErr) return NextResponse.json({ error: `stock_revert_failed: ${movErr.message}` }, { status: 500 })
     }
 
-    // Marca sales como cancelled (não delete · histórico)
+    // Marca sales como cancelled (não delete · histórico). Limpa payment_method
+    // junto (igual o appointment) pra não sobrar método num registro cancelado.
     const { error: salesErr } = await admin
       .from('sales')
-      .update({ status: 'cancelled', paid_at: null })
+      .update({ status: 'cancelled', paid_at: null, payment_method: null })
       .in('id', saleIds)
     if (salesErr) return NextResponse.json({ error: `sales_cancel_failed: ${salesErr.message}` }, { status: 500 })
   }
