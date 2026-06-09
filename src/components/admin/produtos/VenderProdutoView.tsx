@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { IconArrowLeft, IconPlus, IconClose, IconCheck, IconDollar, IconSearch, IconUser } from '@/components/ui/Icon'
 import { getAreaPrefix } from '@/lib/area-prefix'
+import { todayBR } from '@/lib/date-br'
+import PaymentMethodModal, { type PaymentMethodChoice } from '@/components/admin/PaymentMethodModal'
 
 type Product = {
   id: string
@@ -71,13 +73,16 @@ export default function VenderProdutoView({ businessId, products, professionals,
   const supabase = useMemo(() => createClient(), [])
 
   const [cliente, setCliente] = useState<Customer | null>(null)
+  const [avulso, setAvulso] = useState(false)
+  const [avulsoName, setAvulsoName] = useState('')
   const [showClientPicker, setShowClientPicker] = useState(false)
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<Customer[]>([])
   const [searching, setSearching] = useState(false)
+  const [showPayModal, setShowPayModal] = useState(false)
 
   const [profId, setProfId] = useState<string>(defaultProfId ?? '')
-  const [saleDate, setSaleDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [saleDate, setSaleDate] = useState(() => todayBR())
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<Line[]>(() => {
     if (prefillProductId) {
@@ -96,7 +101,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [created, setCreated] = useState<{ total: number; itens: number } | null>(null)
+  const [created, setCreated] = useState<{ total: number; itens: number; method: PaymentMethodChoice } | null>(null)
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
 
@@ -145,6 +150,13 @@ export default function VenderProdutoView({ businessId, products, professionals,
   const totalDiscount = validLines.reduce((sum, l) => sum + Number(l.discount || 0), 0)
   const total = Math.max(0, totalGross - totalDiscount)
 
+  // Comissão-aware: só faz sentido dizer "recebe comissão" se algum produto da
+  // venda tem comissão configurada. Senão o campo profissional é só opcional.
+  const anyCommission = validLines.some((l) => {
+    const p = productById.get(l.productId)
+    return p != null && Number(p.commissionValue ?? 0) > 0
+  })
+
   // Validação de estoque suficiente (avisos visuais)
   const stockWarnings = validLines.map((l) => {
     const p = productById.get(l.productId)
@@ -154,23 +166,32 @@ export default function VenderProdutoView({ businessId, products, professionals,
     return null
   }).filter(Boolean) as Array<{ uid: string; name: string; atual: number; pedido: number }>
 
-  async function save() {
+  // Valida e abre o modal de pagamento. O modal traz "Pagar depois" embutido
+  // (onChoose(null)) → venda pendente, como era antes.
+  function handleRegister() {
     setError(null)
-    if (!cliente) { setError('Selecione um cliente'); return }
+    if (!cliente && !avulso) { setError('Selecione um cliente ou marque venda avulsa'); return }
     if (validLines.length === 0) { setError('Adicione pelo menos 1 produto'); return }
     if (stockWarnings.length > 0) {
       setError(`Estoque insuficiente: ${stockWarnings.map((w) => `${w.name} (atual ${w.atual}, pedido ${w.pedido})`).join('; ')}`)
       return
     }
+    setShowPayModal(true)
+  }
+
+  async function save(method: PaymentMethodChoice) {
+    setShowPayModal(false)
     setSaving(true)
     const res = await fetch('/api/admin/sales', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        customer_id: cliente.id,
+        customer_id: avulso ? null : cliente?.id ?? null,
+        client_name: avulso ? (avulsoName.trim() || 'Cliente avulso') : undefined,
         professional_id: profId || null,
         sale_date: saleDate,
         notes: notes.trim() || null,
+        payment_method: method, // null = pagar depois (venda pendente)
         items: validLines.map((l) => ({
           product_id: l.productId,
           quantity: Number(l.quantity),
@@ -186,13 +207,19 @@ export default function VenderProdutoView({ businessId, products, professionals,
       return
     }
     const d = await res.json()
-    setCreated({ total: d.total, itens: d.items_count })
+    setCreated({ total: d.total, itens: d.items_count, method })
+  }
+
+  const METHOD_LABEL: Record<NonNullable<PaymentMethodChoice>, string> = {
+    pix: 'Pix', cash: 'Dinheiro', card: 'Cartão', points: 'Pontos',
   }
 
   function novaVenda() {
     setCliente(null)
+    setAvulso(false)
+    setAvulsoName('')
     setProfId(defaultProfId ?? '')
-    setSaleDate(new Date().toISOString().slice(0, 10))
+    setSaleDate(todayBR())
     setNotes('')
     setLines([newLine()])
     setError(null)
@@ -217,7 +244,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
           Venda registrada!
         </h2>
         <p className="text-sm mb-6" style={{ color: 'var(--admin-text-mute)' }}>
-          {created.itens} produto{created.itens === 1 ? '' : 's'} · Total <span className="font-bold tabular-nums">{formatBRL(created.total)}</span> · Estoque atualizado automaticamente
+          {created.itens} produto{created.itens === 1 ? '' : 's'} · Total <span className="font-bold tabular-nums">{formatBRL(created.total)}</span> · {created.method ? `Recebido via ${METHOD_LABEL[created.method]}` : 'Pendente (pagar depois)'} · Estoque atualizado
         </p>
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
           <button type="button" onClick={novaVenda} className="px-5 py-3 rounded-xl text-sm font-bold" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}>
@@ -249,7 +276,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
             <IconDollar size={22} /> Vender Produto
           </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-            Registra venda · baixa o estoque automaticamente · pagamento depois
+            Registra venda · baixa o estoque · recebe na hora ou deixa pra depois
           </p>
         </div>
       </header>
@@ -267,21 +294,41 @@ export default function VenderProdutoView({ businessId, products, professionals,
             </div>
             <button type="button" onClick={() => { setCliente(null); setShowClientPicker(true) }} className="text-xs underline" style={{ color: 'var(--admin-accent)' }}>trocar</button>
           </div>
+        ) : avulso ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={avulsoName}
+              onChange={(e) => setAvulsoName(e.target.value)}
+              placeholder="Nome do cliente (opcional)"
+              className="admin-input flex-1 px-3 py-2.5 rounded-xl text-sm"
+            />
+            <button type="button" onClick={() => { setAvulso(false); setAvulsoName('') }} className="text-xs underline whitespace-nowrap" style={{ color: 'var(--admin-accent)' }}>usar cadastro</button>
+          </div>
         ) : (
-          <button type="button" onClick={() => setShowClientPicker(true)} className="w-full px-3 py-2.5 rounded-xl text-sm text-left" style={{
-            background: 'var(--admin-input-bg)',
-            border: '1px dashed var(--admin-border)',
-            color: 'var(--admin-text-mute)',
-          }}>
-            Selecionar cliente
-          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button type="button" onClick={() => setShowClientPicker(true)} className="w-full px-3 py-2.5 rounded-xl text-sm text-left" style={{
+              background: 'var(--admin-input-bg)',
+              border: '1px dashed var(--admin-border)',
+              color: 'var(--admin-text-mute)',
+            }}>
+              Selecionar cliente
+            </button>
+            <button type="button" onClick={() => setAvulso(true)} className="w-full px-3 py-2.5 rounded-xl text-sm text-left" style={{
+              background: 'var(--admin-input-bg)',
+              border: '1px dashed var(--admin-border)',
+              color: 'var(--admin-text-mute)',
+            }}>
+              Cliente avulso (balcão)
+            </button>
+          </div>
         )}
       </section>
 
       {/* Profissional + Data */}
       <section className="rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
         <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>Profissional (recebe comissão)</label>
+          <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>{anyCommission ? 'Profissional (recebe comissão)' : 'Profissional (opcional)'}</label>
           <select value={profId} onChange={(e) => setProfId(e.target.value)} className="w-full px-3 py-2.5 pr-9 rounded-xl text-sm" style={selectStyle}>
             <option value="">Sem profissional</option>
             {professionals.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -391,7 +438,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
             <Link href={produtosHref} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'transparent', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}>
               Cancelar
             </Link>
-            <button type="button" onClick={save} disabled={saving || validLines.length === 0 || !cliente} className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40" style={{
+            <button type="button" onClick={handleRegister} disabled={saving || validLines.length === 0 || (!cliente && !avulso)} className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40" style={{
               background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
               color: '#fff',
               borderTop: '1px solid rgba(255,255,255,0.25)',
@@ -402,6 +449,17 @@ export default function VenderProdutoView({ businessId, products, professionals,
           </div>
         </div>
       </section>
+
+      {/* Pagamento · recebe na hora (pix/dinheiro/cartão/pontos) ou "pagar depois" */}
+      <PaymentMethodModal
+        open={showPayModal}
+        clientName={cliente?.name ?? (avulso ? (avulsoName.trim() || 'Cliente avulso') : 'Cliente')}
+        totalPrice={total}
+        businessId={businessId}
+        loading={saving}
+        onChoose={(method) => save(method)}
+        onClose={() => setShowPayModal(false)}
+      />
 
       {/* Popup picker de cliente */}
       {showClientPicker && (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { todayBR } from '@/lib/date-br'
 
 async function resolveBusinessId(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -38,19 +39,27 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const customerId = typeof body.customer_id === 'string' && body.customer_id ? body.customer_id : null
-  if (!customerId) return NextResponse.json({ error: 'Cliente obrigatório' }, { status: 400 })
 
   const items = Array.isArray(body.items) ? body.items : []
   if (items.length === 0) return NextResponse.json({ error: 'Adicione pelo menos 1 produto' }, { status: 400 })
 
-  // Resolve cliente (pra denormalizar nome/telefone na sale)
-  const { data: cliente } = await supabase
-    .from('customers')
-    .select('id, name, phone, business_id')
-    .eq('id', customerId)
-    .single()
-  if (!cliente || cliente.business_id !== businessId) {
-    return NextResponse.json({ error: 'Cliente não pertence ao seu negócio' }, { status: 400 })
+  // Cliente: registrado (customer_id) OU avulso (venda de balcão sem cadastro).
+  // Avulso usa o nome digitado (ou "Cliente avulso") · client_phone é NOT NULL → vazio.
+  let clientName = 'Cliente avulso'
+  let clientPhone = ''
+  if (customerId) {
+    const { data: cliente } = await supabase
+      .from('customers')
+      .select('id, name, phone, business_id')
+      .eq('id', customerId)
+      .single()
+    if (!cliente || cliente.business_id !== businessId) {
+      return NextResponse.json({ error: 'Cliente não pertence ao seu negócio' }, { status: 400 })
+    }
+    clientName = cliente.name
+    clientPhone = cliente.phone ?? ''
+  } else if (typeof body.client_name === 'string' && body.client_name.trim()) {
+    clientName = body.client_name.trim()
   }
 
   // Resolve profissional (default = usuário logado se for prof)
@@ -99,7 +108,16 @@ export async function POST(req: NextRequest) {
   }
   total = Math.max(0, total - totalDiscount)
 
-  const saleDate = typeof body.sale_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.sale_date) ? body.sale_date : new Date().toISOString().slice(0, 10)
+  // todayBR() (não toISOString) — fuso de Brasília, senão pega o dia errado à noite.
+  const saleDate = typeof body.sale_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.sale_date) ? body.sale_date : todayBR()
+
+  // Pagamento na hora (opcional). Sem método válido → venda fica pendente (paga
+  // depois, como era). Card detail (taxa/maquininha) não é guardado aqui: a tabela
+  // sales não tem colunas de cartão (só payment_method) — só o método é persistido.
+  const ALLOWED_METHODS = ['cash', 'pix', 'card', 'points']
+  const payMethod = typeof body.payment_method === 'string' && ALLOWED_METHODS.includes(body.payment_method)
+    ? body.payment_method : null
+  const nowIso = new Date().toISOString()
 
   // 1. Cria venda
   const { data: sale, error: saleErr } = await supabase
@@ -107,14 +125,16 @@ export async function POST(req: NextRequest) {
     .insert({
       business_id: businessId,
       type: 'product_sale',
-      customer_id: cliente.id,
-      client_name: cliente.name,
-      client_phone: cliente.phone,
+      customer_id: customerId,
+      client_name: clientName,
+      client_phone: clientPhone,
       professional_id: professionalId,
       sale_date: saleDate,
       total,
       discount: totalDiscount,
-      status: 'pending',
+      status: payMethod ? 'paid' : 'pending',
+      paid_at: payMethod ? nowIso : null,
+      payment_method: payMethod,
       notes: typeof body.notes === 'string' ? body.notes.trim() || null : null,
       created_by: user.id,
     })
