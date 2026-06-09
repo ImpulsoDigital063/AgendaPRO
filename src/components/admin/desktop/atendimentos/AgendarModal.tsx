@@ -156,7 +156,6 @@ export default function AgendarModal({
   const [prodCart, setProdCart] = useState<{ product_id: string; product_name: string; unit_price: number; commission_type: string | null; commission_value: number | null }[]>([])
   const [prodPickerOpen, setProdPickerOpen] = useState(false)
   const [prodSearch, setProdSearch] = useState('')
-  const [createdSaleId, setCreatedSaleId] = useState<string | null>(null)
 
   // V3: Repetir atendimento (recorrência)
   const [recurring, setRecurring] = useState<boolean>(false)
@@ -209,7 +208,6 @@ export default function AgendarModal({
     setProdCart([])
     setProdPickerOpen(false)
     setProdSearch('')
-    setCreatedSaleId(null)
   }, [open, defaultProfId, defaultDate, defaultTime, balcao])
 
   // Carrega produtos do negócio (pro picker de "vender junto")
@@ -345,47 +343,41 @@ export default function AgendarModal({
     setProdCart((prev) => prev.filter((_, i) => i !== idx))
   }
 
-  // Cria a venda dos produtos (sales + sale_items → trigger baixa estoque),
-  // ligada ao appointment. paid=true marca pago já (caso "já concluído").
-  async function createProductSale(appointmentId: string, paid: boolean, method: PaymentMethodChoice = null): Promise<void> {
-    if (prodCart.length === 0) return
-    const nowIso = new Date().toISOString()
-    const total = prodCart.reduce((s, l) => s + Number(l.unit_price || 0), 0)
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data: sale, error: sErr } = await supabase
-      .from('sales')
-      .insert({
-        business_id: businessId,
-        type: 'product_sale',
-        customer_id: avulso ? null : cliente?.id ?? null,
-        client_name: avulso ? (avulsoName.trim() || 'Cliente avulso') : cliente?.name ?? 'Cliente',
-        client_phone: avulso ? '' : cliente?.phone ?? '',
-        professional_id: profId || null,
-        sale_date: nowIso.slice(0, 10),
-        total,
-        discount: 0,
-        status: paid ? 'paid' : 'pending',
-        paid_at: paid ? nowIso : null,
-        payment_method: paid && method ? method : null,
-        appointment_id: appointmentId,
-        created_by: user?.id ?? null,
+  // Pega a comanda (invoice) ABERTA que o trigger v77 auto-criou pro atendimento.
+  async function getComandaId(appointmentId: string): Promise<string | null> {
+    const { data: it } = await supabase
+      .from('invoice_items')
+      .select('invoice_id')
+      .eq('reference_id', appointmentId)
+      .eq('item_type', 'appointment')
+      .maybeSingle()
+    return (it?.invoice_id as string) ?? null
+  }
+
+  // Lança os produtos "vendidos junto" DENTRO da comanda do atendimento, via a
+  // rota canônica /items (cria sale com invoice_id + sale_item p/ baixar estoque +
+  // invoice_item + recalcula o total da comanda). É o MESMO caminho usado ao
+  // adicionar produto por dentro da comanda → serviço + produto na MESMA conta
+  // (antes o balcão gravava venda avulsa fora da comanda · Eduardo 09/06).
+  // Retorna mensagem de erro legível na 1ª falha, ou null se lançou tudo ok.
+  async function addProductsToComanda(invoiceId: string): Promise<string | null> {
+    for (const line of prodCart) {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_id: line.product_id,
+          quantity: 1,
+          unit_price: line.unit_price,
+          professional_id: profId || null,
+        }),
       })
-      .select('id')
-      .single()
-    if (sErr || !sale) { console.error('venda de produto falhou:', sErr?.message); return }
-    setCreatedSaleId(sale.id)
-    const itemRows = prodCart.map((l) => ({
-      sale_id: sale.id,
-      product_id: l.product_id,
-      product_name: l.product_name,
-      quantity: 1,
-      unit_price: l.unit_price,
-      discount: 0,
-      commission_type: l.commission_type,
-      commission_value: l.commission_value,
-    }))
-    const { error: siErr } = await supabase.from('sale_items').insert(itemRows)
-    if (siErr) console.error('sale_items falhou:', siErr.message)
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({} as { error?: string }))
+        return `${line.product_name}: ${j.error ?? `HTTP ${res.status}`}`
+      }
+    }
+    return null
   }
 
   async function handleSave() {
@@ -494,8 +486,17 @@ export default function AgendarModal({
       return
     }
 
-    // Não concluído: produtos viram venda PENDENTE (paga depois no faturar/financeiro)
-    await createProductSale(inserted.id, false)
+    // Não concluído: produtos entram como itens da comanda ABERTA do atendimento
+    // (faturado/pago depois). Mesma comanda do serviço — não vira venda solta.
+    if (prodCart.length > 0) {
+      const invoiceId = await getComandaId(inserted.id)
+      if (invoiceId) {
+        const prodErr = await addProductsToComanda(invoiceId)
+        if (prodErr) setError(`Atendimento salvo, mas falhou lançar produto na comanda · ${prodErr}`)
+      } else {
+        setError('Atendimento salvo, mas não achei a comanda pra lançar o produto.')
+      }
+    }
 
     setCreatedId(inserted.id)
     setCreatedCustomerId(avulso ? null : cliente!.id)
@@ -507,64 +508,78 @@ export default function AgendarModal({
   async function concludeWithPayment(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) {
     if (!payAppt) return
     setSaving(true)
-    const updates: Record<string, unknown> = { status: 'completed' }
-    if (method != null) {
-      updates.paid_at = new Date().toISOString()
-      updates.payment_method = method
-      if (method === 'card' && cardDetails) {
-        updates.payment_device_id = cardDetails.device_id
-        updates.payment_card_brand = cardDetails.card_brand
-        updates.payment_card_type = cardDetails.card_type
-        updates.payment_fee_percent = cardDetails.fee_percent
-        updates.payment_installments = cardDetails.installments ?? 1
+
+    // A comanda (invoice) ABERTA já foi auto-criada pelo trigger v77 quando o
+    // atendimento entrou (serviço como item). Aqui:
+    //  1. lançamos os produtos vendidos junto NA MESMA comanda (rota /items)
+    //  2. fechamos a comanda inteira (serviço + produtos) pela rota /pay — que
+    //     registra o invoice_payment com o total recalculado, marca o
+    //     atendimento e as vendas como pagos e faz read-after-write (λ.prova-na-fonte).
+    // Substitui o fluxo antigo (pagamento direto no appointment + venda avulsa
+    // solta), que deixava o produto FORA da comanda e gerava limbo (Eduardo 09/06).
+    const invoiceId = await getComandaId(payAppt.id)
+
+    if (invoiceId && prodCart.length > 0) {
+      const prodErr = await addProductsToComanda(invoiceId)
+      if (prodErr) {
+        setSaving(false)
+        setError(`Não consegui lançar o produto na comanda · ${prodErr}`)
+        return
       }
     }
-    const { error: payErr } = await supabase.from('appointments').update(updates).eq('id', payAppt.id)
-    if (payErr) {
-      setSaving(false)
-      setError(`Erro ao registrar pagamento: ${payErr.message}`)
-      return
-    }
 
-    // O trigger v70/v77 auto-cria uma comanda (invoice) ABERTA quando o
-    // atendimento entra. O pagamento direto acima NÃO fecha ela → vira limbo
-    // (some do Recebido · bug confirmado no balcão 09/06). Aqui fechamos a
-    // comanda do atendimento + registramos o pagamento. Não-fatal.
     if (method != null) {
-      try {
-        const { data: it } = await supabase
-          .from('invoice_items')
-          .select('invoice_id')
-          .eq('reference_id', payAppt.id)
-          .eq('item_type', 'appointment')
-          .maybeSingle()
-        if (it?.invoice_id) {
-          const { data: inv } = await supabase
-            .from('invoices').select('id, status, total').eq('id', it.invoice_id).maybeSingle()
-          if (inv?.status === 'open') {
-            const { count } = await supabase
-              .from('invoice_payments').select('id', { count: 'exact', head: true }).eq('invoice_id', inv.id)
-            const nowIso = new Date().toISOString()
-            if (!count) {
-              await supabase.from('invoice_payments').insert({
-                invoice_id: inv.id,
-                payment_method: method,
-                amount: Number(inv.total ?? payAppt.total ?? 0),
-                paid_at: nowIso,
-                installments: cardDetails?.installments ?? 1,
-                fee_percent: cardDetails?.fee_percent ?? 0,
-              })
-            }
-            await supabase.from('invoices').update({ status: 'closed', closed_at: nowIso }).eq('id', inv.id)
-          }
+      if (invoiceId) {
+        const res = await fetch(`/api/admin/invoices/${invoiceId}/pay`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            method,
+            device_id: cardDetails?.device_id ?? null,
+            card_brand: cardDetails?.card_brand ?? null,
+            card_type: cardDetails?.card_type ?? null,
+            installments: cardDetails?.installments ?? 1,
+            fee_percent: cardDetails?.fee_percent ?? 0,
+          }),
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({} as { error?: string }))
+          setSaving(false)
+          setError(`Erro ao receber pagamento da comanda · ${j.error ?? `HTTP ${res.status}`}`)
+          return
         }
-      } catch (e) {
-        console.error('balcão · fechar comanda auto-criada (não-fatal):', e)
+      } else {
+        // Defensivo: trigger não criou comanda → marca o atendimento pago direto.
+        const updates: Record<string, unknown> = {
+          status: 'completed',
+          paid_at: new Date().toISOString(),
+          payment_method: method,
+        }
+        if (method === 'card' && cardDetails) {
+          updates.payment_device_id = cardDetails.device_id
+          updates.payment_card_brand = cardDetails.card_brand
+          updates.payment_card_type = cardDetails.card_type
+          updates.payment_fee_percent = cardDetails.fee_percent
+          updates.payment_installments = cardDetails.installments ?? 1
+        }
+        const { error: payErr } = await supabase.from('appointments').update(updates).eq('id', payAppt.id)
+        if (payErr) {
+          setSaving(false)
+          setError(`Erro ao registrar pagamento: ${payErr.message}`)
+          return
+        }
+      }
+    } else {
+      // "Pagar depois": conclui o atendimento, comanda fica ABERTA pra faturar.
+      const { error: doneErr } = await supabase
+        .from('appointments').update({ status: 'completed' }).eq('id', payAppt.id)
+      if (doneErr) {
+        setSaving(false)
+        setError(`Erro ao concluir atendimento: ${doneErr.message}`)
+        return
       }
     }
     setSaving(false)
-    // Produtos vendidos junto · venda paga com o mesmo método (ou pendente se "pagar depois")
-    await createProductSale(payAppt.id, method != null, method)
     fetch('/api/notify-client', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
