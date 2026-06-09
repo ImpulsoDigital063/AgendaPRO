@@ -458,6 +458,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
         totalPrice={total}
         businessId={businessId}
         loading={saving}
+        deferLabel="Pagar depois"
         onChoose={(method, cardDetails) => save(method, cardDetails)}
         onClose={() => setShowPayModal(false)}
       />

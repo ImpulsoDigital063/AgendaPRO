@@ -1251,6 +1251,7 @@ export default function AgendarModal({
         totalPrice={payAppt?.total}
         businessId={businessId}
         loading={saving}
+        deferLabel="Manter comanda aberta"
         onChoose={(method, cardDetails) => concludeWithPayment(method, cardDetails)}
         onClose={() => {
           // Fecha sem escolher: o agendamento já existe (confirmado). Mostra

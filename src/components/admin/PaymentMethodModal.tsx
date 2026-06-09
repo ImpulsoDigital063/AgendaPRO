@@ -33,6 +33,10 @@ type Props = {
   withPunctualityBonus?: boolean
   punctualityPoints?: number
   loading?: boolean
+  /** Quando fornecido, mostra um botão explícito que dispara onChoose(null) com
+   *  esse texto (ex: "Manter comanda aberta" / "Pagar depois"). Sem ele, o modal
+   *  só oferece os métodos + fechar (X) — comportamento legado preservado. */
+  deferLabel?: string
   /** null = "Pagar depois". Pra cartão, vem segundo argumento com detalhes da taxa. */
   onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) => void
   onClose: () => void
@@ -66,6 +70,7 @@ export default function PaymentMethodModal({
   withPunctualityBonus = false,
   punctualityPoints = 0,
   loading = false,
+  deferLabel,
   onChoose,
   onClose,
 }: Props) {
@@ -209,6 +214,26 @@ export default function PaymentMethodModal({
                 </button>
               ))}
             </div>
+
+            {/* Opção explícita de NÃO receber agora (opt-in via deferLabel).
+                Ex: "Manter comanda aberta" (balcão) · "Pagar depois" (venda). */}
+            {deferLabel && (
+              <div className="px-5 pb-4">
+                <button
+                  type="button"
+                  onClick={() => onChoose(null)}
+                  disabled={loading}
+                  className="w-full py-3 rounded-xl text-sm font-bold transition-colors disabled:opacity-40"
+                  style={{
+                    background: 'var(--admin-surface-hi, #F1F5F9)',
+                    border: '1px dashed var(--admin-border, #CBD5E1)',
+                    color: 'var(--admin-text-2, #475569)',
+                  }}
+                >
+                  {deferLabel}
+                </button>
+              </div>
+            )}
 
             {loading && (
               <div className="px-5 pb-4">
