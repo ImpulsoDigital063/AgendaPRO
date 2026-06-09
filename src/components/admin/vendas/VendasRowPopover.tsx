@@ -22,6 +22,8 @@ export type SaleRow = {
   payment_method: string | null
   invoice_item_id: string | null
   professional: { name: string } | null
+  /** serviço (atendimento) ou produto (venda avulsa) · pro selo visual */
+  kind?: 'service' | 'product'
 }
 
 export type InvoiceItemRef = {
@@ -109,7 +111,18 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
 
         {/* Conteúdo principal */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-          {/* Serviço (título) */}
+          {/* Tipo · serviço ou produto (bater o olho) */}
+          {sale.kind && (
+            <span
+              className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+              style={sale.kind === 'product'
+                ? { color: '#9333EA', background: 'rgba(147,51,234,0.10)' }
+                : { color: 'var(--admin-accent)', background: 'var(--admin-accent-bg)' }}
+            >
+              {sale.kind === 'product' ? 'Produto' : 'Serviço'}
+            </span>
+          )}
+          {/* Título (nome do serviço ou produto) */}
           <h2 className="text-lg font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
             {sale.service_name ?? 'Atendimento'}
           </h2>
@@ -132,9 +145,12 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
             )}
           </p>
 
-          {/* Profissional */}
+          {/* Profissional · "Profissional" pro serviço, "Vendido por" pro produto */}
           {sale.professional?.name && (
             <p className="text-sm" style={{ color: 'var(--admin-text-2)' }}>
+              <span style={{ color: 'var(--admin-text-mute)' }}>
+                {sale.kind === 'product' ? 'Vendido por: ' : 'Profissional: '}
+              </span>
               {sale.professional.name}
             </p>
           )}

@@ -129,7 +129,7 @@ export default async function VendasPage({
     .range(offset, offset + PAGE_SIZE - 1)
 
   const [{ data: appts }, { count: totalCount }] = await Promise.all([listQuery, countQuery])
-  const apptSales = (appts ?? []) as unknown as SaleRow[]
+  const apptSales = ((appts ?? []) as unknown as SaleRow[]).map((a) => ({ ...a, kind: 'service' as const }))
 
   // ── Vendas avulsas de produto (sales type=product_sale) ───────────────
   // Unifica na mesma listagem · cada sale vira uma "row" com descrição dos
@@ -216,6 +216,7 @@ export default async function VendasPage({
       // mostrar chip de "#NN" precisamos resolver o invoice abaixo
       invoice_item_id: s.invoice_id, // reaproveita o slot pra lookup
       professional: prof ?? null,
+      kind: 'product' as const,
     }
   })
 

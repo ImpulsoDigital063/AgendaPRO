@@ -22,27 +22,18 @@ function describeStatus(a: SaleRow, invoicesById: Record<string, InvoiceItemRef>
   label: string
   tone: 'pending' | 'paid' | 'invoiced' | 'cancelled' | 'courtesy'
 } {
+  // Vocabulário UNIFICADO (Eduardo 09/06): serviço (vira comanda) e produto
+  // (venda direta) liam diferente ("Fatura Fechada" vs "Pago"). Agora os dois
+  // falam a mesma língua — Pago / A receber — e o nº da comanda vira só detalhe.
   if (a.status === 'cancelled') return { label: 'Cancelada', tone: 'cancelled' }
-  // Cortesia (bonificação · não conta receita) tem chip próprio rosa
-  if (a.payment_method === 'courtesy') {
-    return { label: 'CORTESIA', tone: 'courtesy' }
-  }
-  if (a.invoice_item_id) {
-    const inv = invoicesById[a.invoice_item_id]
-    if (inv?.invoice) {
-      if (inv.invoice.status === 'closed') {
-        return { label: `#${inv.invoice.invoice_number} · Fatura Fechada`, tone: 'invoiced' }
-      }
-      if (inv.invoice.status === 'open') {
-        return { label: `#${inv.invoice.invoice_number} · Aberta`, tone: 'invoiced' }
-      }
-      if (inv.invoice.status === 'cancelled') {
-        return { label: `#${inv.invoice.invoice_number} · Cancelada`, tone: 'cancelled' }
-      }
-    }
-  }
-  if (a.paid_at) return { label: 'Pago', tone: 'paid' }
-  return { label: 'Sem Fatura · Pendente', tone: 'pending' }
+  if (a.payment_method === 'courtesy') return { label: 'Cortesia', tone: 'courtesy' }
+  const inv = a.invoice_item_id ? invoicesById[a.invoice_item_id]?.invoice : null
+  const num = inv ? ` · #${inv.invoice_number}` : ''
+  if (inv?.status === 'cancelled') return { label: `Cancelada${num}`, tone: 'cancelled' }
+  // Pago = comanda fechada OU pagamento direto registrado.
+  if (inv?.status === 'closed' || a.paid_at) return { label: `Pago${num}`, tone: 'paid' }
+  // A receber = comanda aberta (aguardando) ou sem pagamento ainda.
+  return { label: `A receber${num}`, tone: 'pending' }
 }
 
 export default function VendasTable({ sales, invoicesById }: Props) {
@@ -116,7 +107,19 @@ export default function VendasTable({ sales, invoicesById }: Props) {
                       {s.client_name ?? '—'}
                     </td>
                     <td className="px-4 py-3 align-top" style={{ color: 'var(--admin-text-2)' }}>
-                      {s.service_name ?? '—'}
+                      <span className="inline-flex items-center gap-2">
+                        {s.kind && (
+                          <span
+                            className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex-shrink-0"
+                            style={s.kind === 'product'
+                              ? { color: '#9333EA', background: 'rgba(147,51,234,0.10)' }
+                              : { color: 'var(--admin-accent)', background: 'var(--admin-accent-bg)' }}
+                          >
+                            {s.kind === 'product' ? 'Produto' : 'Serviço'}
+                          </span>
+                        )}
+                        <span>{s.service_name ?? '—'}</span>
+                      </span>
                     </td>
                     <td className="px-4 py-3 align-top" style={{ color: 'var(--admin-text-2)' }}>
                       {s.professional?.name ?? '—'}
