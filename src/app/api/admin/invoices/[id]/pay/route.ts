@@ -142,6 +142,15 @@ export async function POST(
   }
 
   // 1b. invoice_payments · 1 row por pagamento
+  //
+  // Idempotência (caso #819): uma comanda pode ter sido REABERTA depois de um
+  // pagamento anterior (action 'reopen' mantém os payments antigos). Cada
+  // fechamento aqui é uma quitação COMPLETA (single=total OU split somando o
+  // total), então limpamos os pagamentos antigos antes de registrar os novos.
+  // Sem isso, reabrir+pagar de novo empilhava pagamentos duplicados (ex: comanda
+  // de R$195 com R$754 registrado). Studio Mood/Izanara 09/06.
+  await admin.from('invoice_payments').delete().eq('invoice_id', invoiceId)
+
   const rows = normalized.map((p) => ({
     invoice_id: invoiceId,
     payment_method: p.method,
