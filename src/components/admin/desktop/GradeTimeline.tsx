@@ -37,7 +37,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     { auth: { persistSession: false } },
   )
 
-  const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: blocksData }, { data: salesPaidDay }] = await Promise.all([
+  const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: blocksData }, { data: salesPaidDay }, { data: apptsPaidDay }] = await Promise.all([
     sb
       .from('professionals')
       .select('id, name, photo_url, is_receptionist, does_appointments')
@@ -77,6 +77,18 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .not('payment_method', 'in', '(courtesy,credit)')
       .gte('paid_at', `${date}T00:00:00`)
       .lt('paid_at', `${date}T23:59:59`),
+    // Atendimentos PAGOS no dia (por paid_at · não por appointment_date) ·
+    // pro "Recebido" refletir o dinheiro que entrou HOJE, igual ao Fluxo de
+    // Caixa. Serviço de ontem pago hoje entra no recebido de hoje. (Studio
+    // Mood 09/06: trança de 08/06 paga em 09/06 estava sumindo do recebido.)
+    sb
+      .from('appointments')
+      .select('total_price, professional_id')
+      .eq('business_id', businessId)
+      .not('payment_method', 'in', '(courtesy,credit)')
+      .gte('paid_at', `${date}T00:00:00`)
+      .lt('paid_at', `${date}T23:59:59`)
+      .not('paid_at', 'is', null),
   ])
 
   // Grade só mostra QUEM ATENDE.
@@ -103,9 +115,12 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
   const blocks = (blocksData ?? []) as BlockRow[]
 
   // KPIs do dia · só renderizam quando date === HOJE (header gateia internamente)
-  // Cortesia NÃO conta como receita real (bonificação)
-  const recebidoApptsHoje = appts
-    .filter((a) => a.paid_at && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
+  // Recebido = dinheiro que ENTROU no dia (por data de pagamento), igual ao
+  // Fluxo de Caixa. Conta atendimentos pagos hoje (apptsPaidDay · por paid_at,
+  // não por appointment_date) + vendas pagas hoje. Cortesia/crédito já
+  // excluídos na query. Respeita o filtro da aba "Eu" (onlyProfessionalId).
+  const recebidoApptsHoje = ((apptsPaidDay ?? []) as { total_price: number | null; professional_id: string | null }[])
+    .filter((a) => !onlyProfessionalId || a.professional_id === onlyProfessionalId)
     .reduce((s, a) => s + (Number(a.total_price) || 0), 0)
   const recebidoSalesHoje = (salesPaidDay ?? []).reduce((s, p) => s + Number(p.total ?? 0), 0)
   const recebidoHoje = recebidoApptsHoje + recebidoSalesHoje
