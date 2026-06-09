@@ -242,7 +242,7 @@ export default async function RecepcaoAgendaPage({
               ════════════════════════════════════════════════════ */}
           <div className="space-y-7 mt-6 lg:mt-0">
             {/* Próximo atendimento */}
-            <RecepProximoAtendimento todayAppts={list} />
+            <RecepProximoAtendimento todayAppts={list} businessName={business.name} />
 
             {/* Pendentes em destaque */}
             {pending.length > 0 && (

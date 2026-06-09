@@ -19,7 +19,7 @@ type Appointment = {
  * Card de destaque · próximo atendimento do dia com countdown.
  * Atualiza a cada minuto. Não conta atendimentos já concluídos/cancelados.
  */
-export default function RecepProximoAtendimento({ todayAppts }: { todayAppts: Appointment[] }) {
+export default function RecepProximoAtendimento({ todayAppts, businessName }: { todayAppts: Appointment[]; businessName: string }) {
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function RecepProximoAtendimento({ todayAppts }: { todayAppts: Ap
 
   const whatsappLink = next.client_phone
     ? `https://wa.me/${next.client_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-        `Olá ${next.client_name}! Confirmando seu atendimento hoje às ${next.start_time.slice(0, 5)} no Palace Nail Spa.`,
+        `Olá ${next.client_name}! Confirmando seu atendimento hoje às ${next.start_time.slice(0, 5)} no ${businessName}.`,
       )}`
     : null
 
