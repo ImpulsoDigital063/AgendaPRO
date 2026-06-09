@@ -1,11 +1,14 @@
 name: monitor
 
-# Blindagem: chama /api/cron/monitor de hora em hora.
+# Blindagem: chama /api/cron/monitor 4x/dia (nao precisa mais que isso · evita
+# inflar invocacoes Vercel + minutos do Actions · Eduardo 09/06).
 # (Vercel Hobby so permite cron 1x/dia, por isso o agendador vive aqui.)
-# O proprio monitor so dispara alerta de "operacao parada" depois das 12h BRT.
+# Horarios UTC = BRT-3:
+#   11 UTC = 08 BRT → health-check + auditoria financeira (so segunda · gate no route)
+#   16/20/23 UTC = 13/17/20 BRT → operacao parada (so alerta apos 12h BRT) + health
 on:
   schedule:
-    - cron: '0 * * * *' # toda hora cheia (UTC; o GitHub pode atrasar alguns min)
+    - cron: '0 11,16,20,23 * * *' # 4x/dia (UTC; o GitHub pode atrasar alguns min)
   workflow_dispatch: {} # permite rodar na mao pelo botao "Run workflow"
 
 jobs:

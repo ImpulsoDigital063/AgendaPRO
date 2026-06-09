@@ -6,8 +6,9 @@ import { todayBR } from '@/lib/date-br'
 /**
  * /api/cron/monitor — BLINDAGEM (detecção, não prevenção).
  *
- * Roda via agendador EXTERNO (cron-job.org / GitHub Action) a cada 15-30min,
- * porque Vercel Hobby só permite cron 1x/dia. Auth = Bearer CRON_SECRET.
+ * Roda via agendador EXTERNO (GitHub Action) 4x/dia (08/13/17/20 BRT · ver
+ * monitor.yml), porque Vercel Hobby só permite cron 1x/dia. Auth = Bearer
+ * CRON_SECRET. Cadência enxuta de propósito — não precisa mais (Eduardo 09/06).
  *
  * Faz duas coisas e avisa no Telegram (sendAlert) se achar problema:
  *  1. OPERAÇÃO PARADA: negócio que normalmente movimenta e hoje zerou.
