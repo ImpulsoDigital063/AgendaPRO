@@ -241,13 +241,6 @@ export default async function VendasPage({
     }
   })
 
-  // Merge ordenado por (data desc, hora desc) · slice no PAGE_SIZE
-  const merged = [...apptSales, ...productRows].sort((a, b) => {
-    if (a.appointment_date !== b.appointment_date) return a.appointment_date > b.appointment_date ? -1 : 1
-    return a.start_time > b.start_time ? -1 : 1
-  })
-  const sales = merged.slice(0, PAGE_SIZE)
-
   // Carrega invoices vinculadas (pra status #NNNN) · agora aceita 2 fontes:
   // - appointments.invoice_item_id (slot original)
   // - sales.invoice_id (reaproveitado · busca invoice direto por id)
@@ -281,6 +274,34 @@ export default async function VendasPage({
       }
     }
   }
+
+  // Ordenação POR COMANDA (Eduardo 09/06): serviço e produto da mesma comanda
+  // têm que ficar JUNTOS e ordenados pelo horário do SERVIÇO. O produto não tem
+  // appointment_id, então sozinho ordenava pelo created_at da venda e se separava
+  // do serviço (lista "confusa"). Aqui o produto herda a data/hora da comanda.
+  const invoiceIdOf = (row: SaleRow): string | null =>
+    row.kind === 'product'
+      ? (row.invoice_item_id ?? null) // slot reaproveitado = invoice.id direto
+      : (row.invoice_item_id ? invoicesById[row.invoice_item_id]?.invoice?.id ?? null : null)
+  // Tempo de referência da comanda = data/hora do serviço dela.
+  const comandaTime: Record<string, { date: string; time: string }> = {}
+  for (const s of apptSales) {
+    const invId = invoiceIdOf(s)
+    if (invId) comandaTime[invId] = { date: s.appointment_date, time: s.start_time }
+  }
+  const merged = [...apptSales, ...productRows].sort((a, b) => {
+    const ia = invoiceIdOf(a), ib = invoiceIdOf(b)
+    const ta = (ia && comandaTime[ia]) || { date: a.appointment_date, time: a.start_time }
+    const tb = (ib && comandaTime[ib]) || { date: b.appointment_date, time: b.start_time }
+    if (ta.date !== tb.date) return ta.date > tb.date ? -1 : 1
+    if (ta.time !== tb.time) return ta.time > tb.time ? -1 : 1
+    // Mesma data/hora: agrupa pela comanda e põe serviço antes do produto.
+    const ga = ia ?? a.id, gb = ib ?? b.id
+    if (ga !== gb) return ga > gb ? -1 : 1
+    const rank = (r: SaleRow) => (r.kind === 'product' ? 1 : 0)
+    return rank(a) - rank(b)
+  })
+  const sales = merged.slice(0, PAGE_SIZE)
 
   // totalCount agora soma appointments + sales · aproximação suficiente p/ paginação V1
   const totalCountUnified = (totalCount ?? 0) + productRows.length
