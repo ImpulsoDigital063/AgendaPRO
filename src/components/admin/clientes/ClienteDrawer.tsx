@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { formatDateBR } from '@/lib/date-br'
 import { IconClose, IconArrowLeft, IconPlus } from '@/components/ui/Icon'
 import ClienteAtividadesTab from './ClienteAtividadesTab'
 import SaldoTab from './SaldoTab'
@@ -511,7 +512,7 @@ function PerfilTab({ customer, onSaved }: { customer: Customer; onSaved: () => v
       { label: 'CPF', value: customer.cpf },
       { label: 'RG', value: customer.rg },
       { label: 'Profissão', value: customer.profession },
-      { label: 'Aniversário', value: customer.birthday },
+      { label: 'Aniversário', value: formatDateBR(customer.birthday) },
       {
         label: 'Endereço',
         value: customer.address

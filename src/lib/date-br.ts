@@ -22,3 +22,16 @@ export function todayBR(): string {
   // en-CA já emite YYYY-MM-DD; timeZone fixo garante BRT em server e client.
   return YMD_BR.format(new Date())
 }
+
+/**
+ * Formata uma data YYYY-MM-DD (ou ISO) como DD/MM/AAAA (formato brasileiro),
+ * SEM criar um Date — evita pular 1 dia por fuso (ex: aniversário 1994-09-18
+ * com `new Date()` em BRT vira 17/09). Manipula a string direto.
+ * Retorna '' se vazio.
+ */
+export function formatDateBR(value?: string | null): string {
+  if (!value) return ''
+  const ymd = value.slice(0, 10) // pega YYYY-MM-DD mesmo se vier "...T00:00:00"
+  const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : value
+}

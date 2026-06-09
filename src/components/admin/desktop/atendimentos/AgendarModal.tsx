@@ -520,11 +520,49 @@ export default function AgendarModal({
       }
     }
     const { error: payErr } = await supabase.from('appointments').update(updates).eq('id', payAppt.id)
-    setSaving(false)
     if (payErr) {
+      setSaving(false)
       setError(`Erro ao registrar pagamento: ${payErr.message}`)
       return
     }
+
+    // O trigger v70/v77 auto-cria uma comanda (invoice) ABERTA quando o
+    // atendimento entra. O pagamento direto acima NÃO fecha ela → vira limbo
+    // (some do Recebido · bug confirmado no balcão 09/06). Aqui fechamos a
+    // comanda do atendimento + registramos o pagamento. Não-fatal.
+    if (method != null) {
+      try {
+        const { data: it } = await supabase
+          .from('invoice_items')
+          .select('invoice_id')
+          .eq('reference_id', payAppt.id)
+          .eq('item_type', 'appointment')
+          .maybeSingle()
+        if (it?.invoice_id) {
+          const { data: inv } = await supabase
+            .from('invoices').select('id, status, total').eq('id', it.invoice_id).maybeSingle()
+          if (inv?.status === 'open') {
+            const { count } = await supabase
+              .from('invoice_payments').select('id', { count: 'exact', head: true }).eq('invoice_id', inv.id)
+            const nowIso = new Date().toISOString()
+            if (!count) {
+              await supabase.from('invoice_payments').insert({
+                invoice_id: inv.id,
+                payment_method: method,
+                amount: Number(inv.total ?? payAppt.total ?? 0),
+                paid_at: nowIso,
+                installments: cardDetails?.installments ?? 1,
+                fee_percent: cardDetails?.fee_percent ?? 0,
+              })
+            }
+            await supabase.from('invoices').update({ status: 'closed', closed_at: nowIso }).eq('id', inv.id)
+          }
+        }
+      } catch (e) {
+        console.error('balcão · fechar comanda auto-criada (não-fatal):', e)
+      }
+    }
+    setSaving(false)
     // Produtos vendidos junto · venda paga com o mesmo método (ou pendente se "pagar depois")
     await createProductSale(payAppt.id, method != null, method)
     fetch('/api/notify-client', {

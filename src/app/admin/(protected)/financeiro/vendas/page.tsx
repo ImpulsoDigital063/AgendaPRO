@@ -9,6 +9,11 @@ import type { SaleRow, InvoiceItemRef } from '@/components/admin/vendas/VendasRo
 
 const PAGE_SIZE = 100
 
+// Sempre fresco: a situação da comanda (aberta/fechada/paga) muda fora desta
+// tela (fluxo de balcão, faturar). Sem isso a lista mostrava "Aberta" enquanto
+// o detalhe já dizia "Fechada" (stale RSC · Eduardo 09/06).
+export const dynamic = 'force-dynamic'
+
 export default async function VendasPage({
   searchParams,
 }: {
