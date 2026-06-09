@@ -111,13 +111,33 @@ export async function POST(
 
     lineTotal = quantity * unit_price
 
+    // Nome do cliente pra denormalizar na venda (é o que a lista de Vendas mostra
+    // na coluna CLIENTE). Antes cravava 'Comanda aberta' — virava placeholder
+    // confuso numa comanda já paga (Eduardo 09/06). Resolve o cliente da comanda;
+    // se for avulso (sem customer_id), pega o nome do atendimento da própria comanda.
+    let clientName = 'Cliente'
+    if (invoice.customer_id) {
+      const { data: cust } = await admin
+        .from('customers').select('name').eq('id', invoice.customer_id).maybeSingle()
+      if (cust?.name) clientName = cust.name
+    } else {
+      const { data: apptItem } = await admin
+        .from('invoice_items').select('reference_id')
+        .eq('invoice_id', invoiceId).eq('item_type', 'appointment').limit(1).maybeSingle()
+      if (apptItem?.reference_id) {
+        const { data: appt } = await admin
+          .from('appointments').select('client_name').eq('id', apptItem.reference_id).maybeSingle()
+        if (appt?.client_name) clientName = appt.client_name
+      }
+    }
+
     const { data: sale, error: saleErr } = await admin
       .from('sales')
       .insert({
         business_id: businessId,
         type: 'product_sale',
         customer_id: invoice.customer_id,
-        client_name: 'Comanda aberta',
+        client_name: clientName,
         professional_id,
         sale_date: nowIso.slice(0, 10),
         total: lineTotal,
