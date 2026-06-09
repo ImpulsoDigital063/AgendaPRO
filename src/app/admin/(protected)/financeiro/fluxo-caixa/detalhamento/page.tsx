@@ -225,7 +225,7 @@ export default async function DetalhamentoPage({
     if (!cardTypeFilter) { // sales não tem card_type · só roda se filtro não for de cartão específico
       let qSale = sb
         .from('sales')
-        .select('paid_at, total, payment_method, customer_name, type')
+        .select('paid_at, total, payment_method, type, customer:customers(name)')
         .eq('business_id', business.id)
         .eq('type', 'product_sale')
         .eq('status', 'paid')
@@ -240,10 +240,11 @@ export default async function DetalhamentoPage({
       const { data: saleData } = await qSale
 
       for (const s of saleData ?? []) {
-        const row = s as unknown as { paid_at: string; total: number | null; payment_method: string | null; customer_name: string | null }
+        const row = s as unknown as { paid_at: string; total: number | null; payment_method: string | null; customer: { name: string | null } | { name: string | null }[] | null }
+        const sCust = Array.isArray(row.customer) ? row.customer[0] : row.customer
         rows.push({
           date: row.paid_at,
-          description: `${row.customer_name ?? '—'} · ${METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method}`,
+          description: `${sCust?.name ?? '—'} · ${METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method}`,
           amount: Number(row.total ?? 0),
           origin_label: 'Venda avulsa',
         })
