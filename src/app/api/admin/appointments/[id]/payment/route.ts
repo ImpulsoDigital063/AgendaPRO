@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 
@@ -146,6 +147,63 @@ export async function POST(
   if (updateErr) {
     console.error('payment update error:', updateErr)
     return NextResponse.json({ error: 'update_failed' }, { status: 500 })
+  }
+
+  // Reconcilia comanda ABERTA (bug Olímpio 09/06): se o atendimento já pertence
+  // a uma comanda (faturada "pagar depois") e agora é pago DIRETO aqui, a comanda
+  // ficava aberta e o valor sumia do "Recebido" (a régua exclui appt com
+  // invoice_item_id, assumindo que conta via pagamento da comanda — que nunca
+  // veio). Aqui fechamos a comanda + registramos o pagamento. Não-fatal: se
+  // falhar, o atendimento segue marcado pago.
+  if (updates.paid_at) {
+    try {
+      const admin = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { persistSession: false } },
+      )
+      const { data: full } = await admin
+        .from('appointments')
+        .select('invoice_item_id, total_price')
+        .eq('id', id)
+        .maybeSingle()
+      if (full?.invoice_item_id) {
+        const { data: item } = await admin
+          .from('invoice_items')
+          .select('invoice_id')
+          .eq('id', full.invoice_item_id)
+          .maybeSingle()
+        if (item?.invoice_id) {
+          const { data: inv } = await admin
+            .from('invoices')
+            .select('id, status, total')
+            .eq('id', item.invoice_id)
+            .maybeSingle()
+          if (inv && inv.status === 'open') {
+            const { count } = await admin
+              .from('invoice_payments')
+              .select('id', { count: 'exact', head: true })
+              .eq('invoice_id', inv.id)
+            if ((count ?? 0) === 0) {
+              await admin.from('invoice_payments').insert({
+                invoice_id: inv.id,
+                payment_method: updates.payment_method,
+                amount: Number(inv.total ?? full.total_price ?? 0),
+                paid_at: updates.paid_at,
+                installments: updates.payment_installments ?? 1,
+                fee_percent: updates.payment_fee_percent ?? 0,
+              })
+            }
+            await admin
+              .from('invoices')
+              .update({ status: 'closed', closed_at: updates.paid_at })
+              .eq('id', inv.id)
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[payment] reconcile comanda aberta (não-fatal):', e)
+    }
   }
 
   revalidatePath('/admin/financeiro')
