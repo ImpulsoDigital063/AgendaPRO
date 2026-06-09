@@ -77,7 +77,15 @@ function nowHHMM(): string {
 function addMinutesToTime(time: string, minutes: number): string {
   const [h, m] = time.split(':').map(Number)
   const total = h * 60 + m + minutes
-  const eh = Math.floor(total / 60) % 24
+  // NÃO deixar o horário "dar a volta" no dia (% 24). A coluna gerada
+  // appointment_range monta tstzrange(data+início, data+fim) usando a MESMA
+  // appointment_date nos dois lados — se o fim passar da meia-noite ele vira
+  // um horário MENOR que o início e o Postgres rejeita com "range lower bound
+  // must be less than or equal to range upper bound" (ex: serviço de 300min
+  // começando 19:07 → fim 00:07). Trava em 23:59 do mesmo dia: range válido,
+  // sem crash. Atendimento que atravessa meia-noite não é representável aqui.
+  if (total >= 24 * 60) return '23:59'
+  const eh = Math.floor(total / 60)
   const em = total % 60
   return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`
 }
