@@ -140,7 +140,7 @@ export default async function DetalhamentoPage({
         amount,
         payment_method,
         card_type,
-        invoice:invoices!inner(id, invoice_number, business_id, customer_name)
+        invoice:invoices!inner(id, invoice_number, business_id, customer:customers(name))
       `)
       .eq('invoice.business_id', business.id)
       .gte('paid_at', from.toISOString())
@@ -153,21 +153,24 @@ export default async function DetalhamentoPage({
     const { data: invData } = await qInv
 
     for (const p of invData ?? []) {
+      type InvShape = { id: string; invoice_number: number; customer: { name: string | null } | { name: string | null }[] | null }
       const row = p as unknown as {
         paid_at: string
         amount: number | null
         payment_method: string | null
         card_type: string | null
-        invoice: { id: string; invoice_number: number; customer_name: string | null } | { id: string; invoice_number: number; customer_name: string | null }[] | null
+        invoice: InvShape | InvShape[] | null
       }
       const inv = Array.isArray(row.invoice) ? row.invoice[0] : row.invoice
       if (!inv) continue
+      const cust = Array.isArray(inv.customer) ? inv.customer[0] : inv.customer
+      const customerName = cust?.name ?? '—'
       const methodLabel = row.payment_method === 'card'
         ? (row.card_type === 'credit' ? 'Cartão de Crédito' : row.card_type === 'debit' ? 'Cartão de Débito' : 'Cartão')
         : (METHOD_LABELS[row.payment_method ?? 'other'] ?? row.payment_method ?? '—')
       rows.push({
         date: row.paid_at,
-        description: `${inv.customer_name ?? '—'} · ${methodLabel}`,
+        description: `${customerName} · ${methodLabel}`,
         amount: Number(row.amount ?? 0),
         origin_label: `Comanda #${inv.invoice_number}`,
         origin_href: `/admin/comandas/${inv.id}`,
