@@ -172,39 +172,40 @@ export default function GradeTimelineHeader({
           </button>
         </div>
 
-        {/* Registrar venda (balcão) · atende e registra na hora, sem agendar.
-            Abre o mesmo modal em modo balcão via ?balcao=1. Convive com o Agendar
-            (Eduardo 09/06: negócio balcão tipo Izanara/Palace). */}
-        <Link
-          href={`?balcao=1&date=${date}`}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px ml-auto"
-          style={{
-            minHeight: 44,
-            background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
-            color: '#fff',
-            borderTop: '1px solid rgba(255,255,255,0.30)',
-            boxShadow: '0 8px 22px -8px rgba(16,185,129,0.55), 0 2px 4px rgba(0,0,0,0.08)',
-          }}
-          title="Registrar venda de balcão · atende e registra agora, sem agendar"
-        >
-          <IconPlus size={14} /> Registrar venda
-        </Link>
+        {/* Botões de ação · no MOBILE dividem a linha (flex-1 cada · não estoura
+            num cel de 390px); no sm+ voltam a auto-width alinhados à direita.
+            Registrar venda (balcão · verde) + Agendar (marca). Eduardo 09/06. */}
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+          <Link
+            href={`?balcao=1&date=${date}`}
+            className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+            style={{
+              minHeight: 44,
+              background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+              color: '#fff',
+              borderTop: '1px solid rgba(255,255,255,0.30)',
+              boxShadow: '0 8px 22px -8px rgba(16,185,129,0.55), 0 2px 4px rgba(0,0,0,0.08)',
+            }}
+            title="Registrar venda de balcão · atende e registra agora, sem agendar"
+          >
+            <IconPlus size={14} /> Registrar venda
+          </Link>
 
-        {/* Botão Agendar · abre modal inline na timeline (Salão99-style) via ?agendar=1.
-            Mantém a cor da marca (brand-primary) · Eduardo: só o Registrar venda é verde. */}
-        <Link
-          href={`?agendar=1&date=${date}`}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
-          style={{
-            minHeight: 44,
-            background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
-            color: '#fff',
-            borderTop: '1px solid rgba(255,255,255,0.25)',
-            boxShadow: '0 8px 22px -8px color-mix(in srgb, var(--brand-primary, #1AA9A8) 55%, transparent), 0 2px 4px rgba(0,0,0,0.08)',
-          }}
-        >
-          <IconPlus size={14} /> Agendar
-        </Link>
+          {/* Agendar · mantém a cor da marca (brand-primary) · só Registrar venda é verde. */}
+          <Link
+            href={`?agendar=1&date=${date}`}
+            className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+            style={{
+              minHeight: 44,
+              background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
+              color: '#fff',
+              borderTop: '1px solid rgba(255,255,255,0.25)',
+              boxShadow: '0 8px 22px -8px color-mix(in srgb, var(--brand-primary, #1AA9A8) 55%, transparent), 0 2px 4px rgba(0,0,0,0.08)',
+            }}
+          >
+            <IconPlus size={14} /> Agendar
+          </Link>
+        </div>
       </div>
     </div>
   )
