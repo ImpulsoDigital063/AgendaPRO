@@ -57,12 +57,21 @@ type Props = {
   defaultProfId?: string | null
   defaultDate?: string | null
   defaultTime?: string | null
+  /** Modo balcão (Eduardo 09/06): negócio que atende e registra na hora, sem
+   *  agendar. Abre com "já concluído" ON, hora=agora, data=hoje, sem grade nem
+   *  recorrência. Fluxo: cliente/avulso → serviço + produto → pagar → fim. */
+  balcao?: boolean
   onClose: () => void
 }
 
 function todayISO(): string {
   const t = new Date()
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+}
+
+function nowHHMM(): string {
+  const t = new Date()
+  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`
 }
 
 function addMinutesToTime(time: string, minutes: number): string {
@@ -116,6 +125,7 @@ export default function AgendarModal({
   defaultProfId = null,
   defaultDate = null,
   defaultTime = null,
+  balcao = false,
   onClose,
 }: Props) {
   const router = useRouter()
@@ -177,12 +187,14 @@ export default function AgendarModal({
     setProfId(defaultProfId ?? '')
     setServiceLines([newLine()])
     setDate(defaultDate ?? todayISO())
-    setTime(defaultTime ?? '')
+    // Balcão: hora = agora (timestamp do registro · sem grade de horário).
+    setTime(defaultTime ?? (balcao ? nowHHMM() : ''))
     setNotes('')
     setAvulso(false)
     setAvulsoName('')
-    setManualTime(false)
-    setJaConcluido(false)
+    // Balcão lança hora livre (não slot da grade) e já entra como concluído.
+    setManualTime(balcao)
+    setJaConcluido(balcao)
     setPayAppt(null)
     setRecurring(false)
     setRecurFreq('weekly')
@@ -198,7 +210,7 @@ export default function AgendarModal({
     setProdPickerOpen(false)
     setProdSearch('')
     setCreatedSaleId(null)
-  }, [open, defaultProfId, defaultDate, defaultTime])
+  }, [open, defaultProfId, defaultDate, defaultTime, balcao])
 
   // Carrega produtos do negócio (pro picker de "vender junto")
   useEffect(() => {
@@ -644,10 +656,10 @@ export default function AgendarModal({
         >
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: 'var(--admin-text-faded)' }}>
-              Novo
+              {balcao ? 'Balcão' : 'Novo'}
             </p>
             <h3 id="agendar-title" className="text-lg font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
-              Agendamento
+              {balcao ? 'Registrar venda' : 'Agendamento'}
             </h3>
           </div>
           <button
@@ -886,7 +898,7 @@ export default function AgendarModal({
 
           {/* Horário (início) · vem DEPOIS do serviço · grid de chips agora sabe
               a duração total e calcula sobreposição corretamente */}
-          <Field icon={<IconClock size={14} />} label="Horário (início)">
+          <Field icon={<IconClock size={14} />} label={balcao ? 'Hora (registro)' : 'Horário (início)'}>
             {manualTime ? (
               <div className="space-y-2">
                 <input
@@ -895,14 +907,17 @@ export default function AgendarModal({
                   onChange={(e) => setTime(e.target.value)}
                   className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={() => setManualTime(false)}
-                  className="text-xs underline"
-                  style={{ color: 'var(--admin-accent)' }}
-                >
-                  voltar pros horários da agenda
-                </button>
+                {/* No balcão não existe "agenda" pra voltar · esconde o link */}
+                {!balcao && (
+                  <button
+                    type="button"
+                    onClick={() => setManualTime(false)}
+                    className="text-xs underline"
+                    style={{ color: 'var(--admin-accent)' }}
+                  >
+                    voltar pros horários da agenda
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -939,7 +954,9 @@ export default function AgendarModal({
             />
           )}
 
-          {/* Atendimento já concluído? → ao salvar abre "como foi pago" */}
+          {/* Atendimento já concluído? → ao salvar abre "como foi pago".
+              No balcão é sempre "sim" (atende e registra na hora) · escondido. */}
+          {!balcao && (
           <Field label="Atendimento já concluído?">
             <div className="grid grid-cols-2 gap-2">
               {([
@@ -975,6 +992,7 @@ export default function AgendarModal({
               </p>
             )}
           </Field>
+          )}
 
           {/* Observação */}
           <Field label="Observação (opcional)">

@@ -1121,6 +1121,23 @@ export default function TimelineGridInteractive({
           router.refresh()
         }}
       />
+
+      {/* MODAL de VENDA DE BALCÃO · abre via ?balcao=1 · mesmo motor do Agendar,
+          modo balcão (já concluído + hoje + agora, sem agenda). Pra negócio que
+          atende e registra na hora sem marcar (Izanara/Palace · Eduardo 09/06). */}
+      <AgendarModal
+        open={searchParams.get('balcao') === '1'}
+        balcao
+        businessId={businessId}
+        professionals={profs}
+        services={services}
+        defaultProfId={searchParams.get('prof')}
+        defaultDate={date}
+        onClose={() => {
+          router.replace(pathname)
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

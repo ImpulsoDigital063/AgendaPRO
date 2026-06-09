@@ -172,11 +172,27 @@ export default function GradeTimelineHeader({
           </button>
         </div>
 
-        {/* Botão Agendar · abre modal inline na timeline (Salão99-style) via ?agendar=1
-            Cresce em flex-1 em <sm pra ficar large no mobile, fica auto em desktop */}
+        {/* Registrar venda (balcão) · atende e registra na hora, sem agendar.
+            Abre o mesmo modal em modo balcão via ?balcao=1. Convive com o Agendar
+            (Eduardo 09/06: negócio balcão tipo Izanara/Palace). */}
+        <Link
+          href={`?balcao=1&date=${date}`}
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px ml-auto"
+          style={{
+            minHeight: 44,
+            background: 'color-mix(in srgb, var(--admin-success, #10B981) 14%, transparent)',
+            color: 'var(--admin-success, #10B981)',
+            border: '1.5px solid color-mix(in srgb, var(--admin-success, #10B981) 45%, transparent)',
+          }}
+          title="Registrar venda de balcão · atende e registra agora, sem agendar"
+        >
+          <IconPlus size={14} /> Registrar venda
+        </Link>
+
+        {/* Botão Agendar · abre modal inline na timeline (Salão99-style) via ?agendar=1 */}
         <Link
           href={`?agendar=1&date=${date}`}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px ml-auto"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
           style={{
             minHeight: 44,
             background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
