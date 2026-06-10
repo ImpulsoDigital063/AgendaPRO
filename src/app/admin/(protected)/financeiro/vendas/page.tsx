@@ -241,23 +241,37 @@ export default async function VendasPage({
     }
   })
 
-  // Carrega invoices vinculadas (pra status #NNNN) · agora aceita 2 fontes:
-  // - appointments.invoice_item_id (slot original)
-  // - sales.invoice_id (reaproveitado · busca invoice direto por id)
-  const apptInvoiceItemIds = apptSales.map((s) => s.invoice_item_id).filter(Boolean) as string[]
-  const productInvoiceIds = productRows.map((s) => s.invoice_item_id).filter(Boolean) as string[]
-  const invoiceItemIds = apptInvoiceItemIds
+  // Resolve a COMANDA de cada linha (pra agrupar serviço+produto, ordenar e
+  // mostrar o #NN). ROBUSTO A CANCELAMENTO: o cancelamento zera
+  // appointments.invoice_item_id, mas a linha em invoice_items (reference_id =
+  // appointment.id) PERSISTE. Por isso resolvo o atendimento→comanda por
+  // reference_id (não pela coluna do appointment, que some no cancelamento) ·
+  // antes a comanda cancelada virava 2 linhas soltas e desagrupadas (Eduardo 09/06).
   const invoicesById: Record<string, InvoiceItemRef> = {}
-  if (invoiceItemIds.length > 0) {
+
+  const apptIds = apptSales.map((s) => s.id)
+  if (apptIds.length > 0) {
     const { data: items } = await sb
       .from('invoice_items')
-      .select(`id, invoice:invoices(id, invoice_number, status)`)
-      .in('id', invoiceItemIds)
-    for (const item of (items ?? []) as unknown as InvoiceItemRef[]) {
-      invoicesById[item.id] = item
+      .select(`id, reference_id, invoice:invoices(id, invoice_number, status)`)
+      .eq('item_type', 'appointment')
+      .in('reference_id', apptIds)
+    const itemByApptId: Record<string, InvoiceItemRef> = {}
+    for (const it of (items ?? []) as unknown as (InvoiceItemRef & { reference_id: string })[]) {
+      itemByApptId[it.reference_id] = it
+      invoicesById[it.id] = { id: it.id, invoice: it.invoice }
+    }
+    // Reatribui o slot invoice_item_id ao item REAL (a coluna do appointment
+    // pode estar null se a comanda foi cancelada). Assim grupo, ordem e #NN
+    // funcionam igual pra comanda paga e cancelada.
+    for (const s of apptSales) {
+      const it = itemByApptId[s.id]
+      if (it) s.invoice_item_id = it.id
     }
   }
-  // Pra sales (produto avulso), o slot invoice_item_id contém invoice.id direto
+
+  // Sales (produto): o slot invoice_item_id contém invoice.id direto
+  const productInvoiceIds = productRows.map((s) => s.invoice_item_id).filter(Boolean) as string[]
   if (productInvoiceIds.length > 0) {
     const { data: invs } = await sb
       .from('invoices')
