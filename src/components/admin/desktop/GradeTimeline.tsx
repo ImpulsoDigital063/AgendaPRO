@@ -37,7 +37,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     { auth: { persistSession: false } },
   )
 
-  const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: blocksData }, { data: salesPaidDay }, { data: apptsPaidDay }] = await Promise.all([
+  const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: blocksData }, { data: salesPaidDay }, { data: apptsPaidDay }, { data: salesPendingDay }] = await Promise.all([
     sb
       .from('professionals')
       .select('id, name, photo_url, is_receptionist, does_appointments')
@@ -89,6 +89,16 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .gte('paid_at', `${date}T00:00:00`)
       .lt('paid_at', `${date}T23:59:59`)
       .not('paid_at', 'is', null),
+    // Vendas de produto PENDENTES do dia · entram no "A receber" junto com os
+    // serviços não pagos. Comanda aberta = serviço + produto a receber, por
+    // inteiro (Eduardo 10/06). status=pending exclui pagas e canceladas.
+    sb
+      .from('sales')
+      .select('total, professional_id')
+      .eq('business_id', businessId)
+      .eq('type', 'product_sale')
+      .eq('status', 'pending')
+      .eq('sale_date', date),
   ])
 
   // Grade só mostra QUEM ATENDE.
@@ -124,9 +134,16 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     .reduce((s, a) => s + (Number(a.total_price) || 0), 0)
   const recebidoSalesHoje = (salesPaidDay ?? []).reduce((s, p) => s + Number(p.total ?? 0), 0)
   const recebidoHoje = recebidoApptsHoje + recebidoSalesHoje
-  const aReceberHoje = appts
+  // A receber = serviços não pagos do dia + produtos pendentes do dia (comanda
+  // aberta conta serviço E produto · Eduardo 10/06). Serviço e produto são linhas
+  // distintas, sem risco de dupla contagem.
+  const aReceberApptsHoje = appts
     .filter((a) => !a.paid_at && (a.status === 'confirmed' || a.status === 'completed') && (a.total_price ?? 0) > 0)
     .reduce((s, a) => s + (Number(a.total_price) || 0), 0)
+  const aReceberSalesHoje = ((salesPendingDay ?? []) as { total: number | null; professional_id: string | null }[])
+    .filter((p) => !onlyProfessionalId || p.professional_id === onlyProfessionalId)
+    .reduce((s, p) => s + Number(p.total ?? 0), 0)
+  const aReceberHoje = aReceberApptsHoje + aReceberSalesHoje
   const pendentesHoje = appts.filter((a) => a.status === 'pending').length
 
   return (
