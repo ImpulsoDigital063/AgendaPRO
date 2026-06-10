@@ -223,11 +223,12 @@ export default function PaymentMethodModal({
                   type="button"
                   onClick={() => onChoose(null)}
                   disabled={loading}
-                  className="w-full py-3 rounded-xl text-sm font-bold transition-colors disabled:opacity-40"
+                  className="w-full py-3 rounded-xl text-sm font-bold transition-transform hover:translate-y-[-1px] disabled:opacity-40 disabled:translate-y-0"
                   style={{
-                    background: 'var(--admin-surface-hi, #F1F5F9)',
-                    border: '1px dashed var(--admin-border, #CBD5E1)',
-                    color: 'var(--admin-text-2, #475569)',
+                    background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+                    borderTop: '1px solid rgba(255,255,255,0.25)',
+                    color: '#fff',
+                    boxShadow: '0 8px 22px -8px rgba(16,185,129,0.45)',
                   }}
                 >
                   {deferLabel}
