@@ -67,6 +67,14 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
   const isInvoiced = !!sale.invoice_item_id && invoiceRef?.invoice
   const isPaid = !!sale.paid_at
   const isPending = !isInvoiced && !isPaid && sale.status !== 'cancelled'
+  // Label da comanda pelo STATUS REAL (antes cravava "Fechada" pra qualquer
+  // comanda · aberta aparecia "Fechada" no popover · Eduardo 11/06).
+  const invStatus = invoiceRef?.invoice?.status ?? null
+  const comandaLabel = invStatus === 'closed'
+    ? '✓ Comanda Fechada'
+    : invStatus === 'cancelled'
+      ? '✕ Comanda Cancelada'
+      : 'Comanda Aberta'
 
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
@@ -175,7 +183,7 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
               }}
             >
               <span className="text-left flex-1 text-sm font-bold" style={{ color: 'var(--admin-accent)' }}>
-                ✓ Comanda Fechada: #{invoiceRef!.invoice!.invoice_number}
+                {comandaLabel}: #{invoiceRef!.invoice!.invoice_number}
                 <span className="block text-[10px] font-medium mt-0.5" style={{ opacity: 0.75 }}>
                   Clique pra ver detalhes
                 </span>
