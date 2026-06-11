@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconExternalLink } from '@/components/ui/Icon'
+import { getAreaPrefix } from '@/lib/area-prefix'
 import FaturarModal from './FaturarModal'
-import ComandaModal from './ComandaModal'
 
 export type SaleRow = {
   id: string
@@ -52,17 +53,19 @@ function formatBRL(v: number | null): string {
 }
 
 export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const areaPrefix = getAreaPrefix(pathname)
   const [showFaturar, setShowFaturar] = useState(false)
-  const [showComanda, setShowComanda] = useState(false)
 
   // Esc fecha (só quando nenhum modal interno tá aberto)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !showFaturar && !showComanda) onClose()
+      if (e.key === 'Escape' && !showFaturar) onClose()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose, showFaturar, showComanda])
+  }, [onClose, showFaturar])
 
   const isInvoiced = !!sale.invoice_item_id && invoiceRef?.invoice
   const isPaid = !!sale.paid_at
@@ -175,7 +178,7 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
           {isInvoiced ? (
             <button
               type="button"
-              onClick={() => setShowComanda(true)}
+              onClick={() => router.push(`${areaPrefix}/comandas/${invoiceRef!.invoice!.id}`)}
               className="w-full flex items-center gap-2 px-3 py-3 rounded-lg transition hover:opacity-90"
               style={{
                 background: 'color-mix(in srgb, var(--admin-accent) 14%, transparent)',
@@ -185,7 +188,7 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
               <span className="text-left flex-1 text-sm font-bold" style={{ color: 'var(--admin-accent)' }}>
                 {comandaLabel}: #{invoiceRef!.invoice!.invoice_number}
                 <span className="block text-[10px] font-medium mt-0.5" style={{ opacity: 0.75 }}>
-                  Clique pra ver detalhes
+                  Abrir comanda completa (todos os itens · receber pagamento)
                 </span>
               </span>
               <IconExternalLink size={16} />
@@ -235,13 +238,6 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
         />
       )}
 
-      {/* Modal Comanda */}
-      {showComanda && invoiceRef?.invoice?.id && (
-        <ComandaModal
-          invoiceId={invoiceRef.invoice.id}
-          onClose={() => setShowComanda(false)}
-        />
-      )}
     </div>,
     document.body
   )
