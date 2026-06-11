@@ -174,8 +174,24 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
           {/* Divisor */}
           <div style={{ borderTop: '1px solid var(--admin-divider)' }} />
 
-          {/* Linha Comanda · clicável quando faturada */}
-          {isInvoiced ? (
+          {/* Comanda ABERTA · botão PAGAR explícito (verde) que leva pra comanda
+              onde recebe e fecha. Comanda fechada/cancelada · só link de detalhe. */}
+          {isInvoiced && invStatus === 'open' ? (
+            <button
+              type="button"
+              onClick={() => router.push(`${areaPrefix}/comandas/${invoiceRef!.invoice!.id}`)}
+              className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-bold transition-transform hover:translate-y-[-1px]"
+              style={{
+                background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+                borderTop: '1px solid rgba(255,255,255,0.25)',
+                color: '#fff',
+                boxShadow: '0 8px 22px -8px rgba(16,185,129,0.45)',
+              }}
+            >
+              Pagar comanda #{invoiceRef!.invoice!.invoice_number}
+              <IconExternalLink size={16} />
+            </button>
+          ) : isInvoiced ? (
             <button
               type="button"
               onClick={() => router.push(`${areaPrefix}/comandas/${invoiceRef!.invoice!.id}`)}
@@ -188,7 +204,7 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
               <span className="text-left flex-1 text-sm font-bold" style={{ color: 'var(--admin-accent)' }}>
                 {comandaLabel}: #{invoiceRef!.invoice!.invoice_number}
                 <span className="block text-[10px] font-medium mt-0.5" style={{ opacity: 0.75 }}>
-                  Abrir comanda completa (todos os itens · receber pagamento)
+                  Ver comanda completa
                 </span>
               </span>
               <IconExternalLink size={16} />
