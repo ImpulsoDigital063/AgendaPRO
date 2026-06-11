@@ -428,22 +428,30 @@ export default function ComandaDetalhe({
               Itens
             </p>
             {canEditItems && invoice.status === 'open' && (
-              <div className="no-print flex items-center gap-1">
+              <div className="no-print flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setAddServiceOpen(true)}
-                  className="text-[11px] font-bold inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]"
-                  style={{ color: 'var(--admin-accent)' }}
+                  className="text-xs font-bold inline-flex items-center gap-1.5 px-3 py-2 rounded-xl transition-transform hover:translate-y-[-1px]"
+                  style={{
+                    color: 'var(--admin-accent)',
+                    background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--admin-accent) 35%, transparent)',
+                  }}
                 >
-                  <IconPlus size={11} /> Adicionar serviço
+                  <IconPlus size={13} /> Serviço
                 </button>
                 <button
                   type="button"
                   onClick={() => setAddProductOpen(true)}
-                  className="text-[11px] font-bold inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,#9333EA_10%,transparent)]"
-                  style={{ color: '#9333EA' }}
+                  className="text-xs font-bold inline-flex items-center gap-1.5 px-3 py-2 rounded-xl transition-transform hover:translate-y-[-1px]"
+                  style={{
+                    color: '#9333EA',
+                    background: 'color-mix(in srgb, #9333EA 12%, transparent)',
+                    border: '1px solid color-mix(in srgb, #9333EA 35%, transparent)',
+                  }}
                 >
-                  <IconPlus size={11} /> Adicionar produto
+                  <IconPlus size={13} /> Produto
                 </button>
               </div>
             )}
