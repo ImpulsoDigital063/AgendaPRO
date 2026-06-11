@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar, IconFile, IconWhatsapp } from '@/components/ui/Icon'
 import { getAreaPrefix } from '@/lib/area-prefix'
 import AdicionarServicoComandaModal from './AdicionarServicoComandaModal'
+import AdicionarProdutoComandaModal from './AdicionarProdutoComandaModal'
 import SplitPaymentModal from './SplitPaymentModal'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
@@ -100,6 +101,7 @@ export default function ComandaDetalhe({
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [paying, setPaying] = useState(false)
   const [addServiceOpen, setAddServiceOpen] = useState(false)
+  const [addProductOpen, setAddProductOpen] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [sharingWa, setSharingWa] = useState(false)
   // Ref pro card do recibo (tela · usado pelo window.print)
@@ -426,14 +428,24 @@ export default function ComandaDetalhe({
               Itens
             </p>
             {canEditItems && invoice.status === 'open' && (
-              <button
-                type="button"
-                onClick={() => setAddServiceOpen(true)}
-                className="no-print text-[11px] font-bold inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]"
-                style={{ color: 'var(--admin-accent)' }}
-              >
-                <IconPlus size={11} /> Adicionar serviço
-              </button>
+              <div className="no-print flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setAddServiceOpen(true)}
+                  className="text-[11px] font-bold inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]"
+                  style={{ color: 'var(--admin-accent)' }}
+                >
+                  <IconPlus size={11} /> Adicionar serviço
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddProductOpen(true)}
+                  className="text-[11px] font-bold inline-flex items-center gap-1 px-2 py-1 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,#9333EA_10%,transparent)]"
+                  style={{ color: '#9333EA' }}
+                >
+                  <IconPlus size={11} /> Adicionar produto
+                </button>
+              </div>
             )}
           </div>
           {/* Wrapper · em mobile permite scroll horizontal sem cortar Total · em sm+ tabela cabe normal */}
@@ -639,6 +651,15 @@ export default function ComandaDetalhe({
           customerId={invoice.customer?.id ?? null}
           onClose={() => setAddServiceOpen(false)}
           onAdded={() => setAddServiceOpen(false)}
+        />
+      )}
+
+      {addProductOpen && (
+        <AdicionarProdutoComandaModal
+          invoiceId={invoice.id}
+          businessId={businessId}
+          onClose={() => setAddProductOpen(false)}
+          onAdded={() => setAddProductOpen(false)}
         />
       )}
 

@@ -127,7 +127,6 @@ export default async function RemuneracoesPage({
   function calcProductCommission(
     sales: { professional_id: string | null; sale_items: SaleItemAgg[] | null }[],
     professionalId: string,
-    defaultPct: number,
   ): number {
     let total = 0
     for (const s of sales) {
@@ -145,10 +144,11 @@ export default async function RemuneracoesPage({
           total += (lineGross * Number(it.commission_value)) / 100
         } else if (it.commission_type === 'fixed' && it.commission_value != null) {
           total += qty * Number(it.commission_value)
-        } else {
-          // null = fallback no pct do prof
-          total += (lineGross * defaultPct) / 100
         }
+        // null / sem regra = SEM comissão. Produto é valor do ESTÚDIO, não do
+        // profissional (Izanara 10/06). Comissão de produto é opt-in: só paga se
+        // tiver regra explícita (percent/fixed). Antes caía na % de serviço do
+        // prof — pagava comissão indevida sobre produto.
       }
     }
     return total
@@ -171,7 +171,6 @@ export default async function RemuneracoesPage({
       : calcProductCommission(
           (paidSales ?? []) as { professional_id: string | null; sale_items: SaleItemAgg[] | null }[],
           p.id,
-          pct,
         )
 
     // Salários cadastrados no mês (recep OU prof contratado)
