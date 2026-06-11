@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import ComandaDetalhe, { type InvoiceFull } from '@/components/admin/comandas/ComandaDetalhe'
+import { resolveProductItemSellers } from '@/lib/queries/product-item-sellers'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,6 +84,13 @@ export default async function RecepcaoComandaDetalhePage({ params }: { params: P
 
   const customer = Array.isArray(invoice.customer) ? invoice.customer[0] : invoice.customer
 
+  // Produto = venda → mostra QUEM VENDEU (created_by), não o profissional (a não
+  // ser que o produto comissione). Eduardo 10/06.
+  const productSaleIds = (items ?? [])
+    .filter((it) => it.item_type === 'product' && it.reference_id)
+    .map((it) => it.reference_id as string)
+  const sellers = await resolveProductItemSellers(admin, invoice.business_id as string, productSaleIds)
+
   const full: InvoiceFull = {
     id: invoice.id as string,
     invoice_number: invoice.invoice_number as number,
@@ -98,6 +106,11 @@ export default async function RecepcaoComandaDetalhePage({ params }: { params: P
     customer: customer ?? null,
     items: (items ?? []).map((it) => {
       const prof = Array.isArray(it.professional) ? it.professional[0] : it.professional
+      let professionalName = prof?.name ?? null
+      if (it.item_type === 'product' && it.reference_id) {
+        const seller = sellers[it.reference_id as string]
+        if (seller && !seller.hasCommission) professionalName = seller.sellerName
+      }
       return {
         id: it.id as string,
         item_type: it.item_type as 'appointment' | 'product' | 'package' | 'credit',
@@ -106,7 +119,7 @@ export default async function RecepcaoComandaDetalhePage({ params }: { params: P
         unit_price: Number(it.unit_price ?? 0),
         discount: Number(it.discount ?? 0),
         total: Number(it.total ?? 0),
-        professional_name: prof?.name ?? null,
+        professional_name: professionalName,
       }
     }),
     payments: (payments ?? []).map((p) => ({

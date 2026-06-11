@@ -472,7 +472,7 @@ export default function ComandaDetalhe({
                   <td className="py-2 text-xs" style={{ color: 'var(--admin-text-mute)' }}>{TYPE_LABEL[it.item_type]}</td>
                   <td className="py-2 pr-3" style={{ minWidth: 240 }}>
                     <div style={{ color: 'var(--admin-text)', textWrap: 'balance' as 'wrap' }}>{it.description}</div>
-                    {it.professional_name && <div className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>com {it.professional_name}</div>}
+                    {it.professional_name && <div className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>{it.item_type === 'product' ? 'vendido por' : 'com'} {it.professional_name}</div>}
                   </td>
                   <td className="py-2 text-right tabular-nums" style={{ color: 'var(--admin-text)' }}>
                     {canEditItems && invoice.status === 'open' ? (
