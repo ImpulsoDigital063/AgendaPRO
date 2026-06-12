@@ -63,6 +63,67 @@ export async function POST(req: NextRequest) {
   const commissionType = typeof body.commission_type === 'string' && ['percent', 'fixed'].includes(body.commission_type) ? body.commission_type : null
   const commissionValue = typeof body.commission_value === 'number' && body.commission_value >= 0 ? body.commission_value : null
 
+  // ── VARIANTES (v88 · Caminho A) ────────────────────────────────────────
+  // Cada variante é uma LINHA de products, com variant/preço/estoque/sku
+  // próprios, compartilhando variant_group_id + name. Reusa o motor de
+  // estoque/venda/comissão (só product_id). Sem variantes → cria 1 produto.
+  const variantsIn = Array.isArray(body.variants) ? body.variants : []
+  if (variantsIn.length > 0) {
+    const groupId = crypto.randomUUID()
+    const shared = {
+      business_id: businessId,
+      name,
+      description: typeof body.description === 'string' ? body.description.trim() || null : null,
+      unit: typeof body.unit === 'string' && body.unit.trim() ? body.unit.trim() : 'un',
+      cost: typeof body.cost === 'number' && body.cost >= 0 ? body.cost : null,
+      min_quantity: typeof body.min_quantity === 'number' && body.min_quantity >= 0 ? body.min_quantity : 0,
+      brand_id: typeof body.brand_id === 'string' && body.brand_id ? body.brand_id : null,
+      category_id: typeof body.category_id === 'string' && body.category_id ? body.category_id : null,
+      expires_at: typeof body.expires_at === 'string' && body.expires_at ? body.expires_at : null,
+      pack_quantity: typeof body.pack_quantity === 'number' && body.pack_quantity > 0 ? body.pack_quantity : null,
+      track_stock: typeof body.track_stock === 'boolean' ? body.track_stock : true,
+      sale_active: typeof body.sale_active === 'boolean' ? body.sale_active : true,
+      commission_type: commissionType,
+      commission_value: commissionValue,
+      image_url: typeof body.image_url === 'string' && body.image_url.trim() ? body.image_url.trim() : null,
+      variant_group_id: groupId,
+      quantity: 0,
+    }
+    const createdIds: string[] = []
+    for (const v of variantsIn) {
+      const vLabel = typeof v?.variant === 'string' ? v.variant.trim() : ''
+      if (!vLabel) continue
+      const { data: created, error } = await supabase
+        .from('products')
+        .insert({
+          ...shared,
+          variant: vLabel,
+          price: typeof v.price === 'number' && v.price >= 0 ? v.price : null,
+          sku: typeof v.sku === 'string' ? v.sku.trim() || null : null,
+        })
+        .select('id')
+        .single()
+      if (error || !created) {
+        // rollback do que já criou pra não deixar grupo pela metade
+        if (createdIds.length > 0) await supabase.from('products').delete().in('id', createdIds)
+        return NextResponse.json({ error: error?.message ?? 'erro ao criar variante' }, { status: 500 })
+      }
+      createdIds.push(created.id as string)
+      const vQty = typeof v.quantity === 'number' && v.quantity >= 0 ? v.quantity : 0
+      if (shared.track_stock && vQty > 0) {
+        await supabase.from('stock_movements').insert({
+          business_id: businessId, product_id: created.id, type: 'entry',
+          quantity: vQty, reason: 'Estoque inicial', created_by: user.id,
+        })
+      }
+    }
+    if (createdIds.length === 0) {
+      return NextResponse.json({ error: 'Adicione pelo menos 1 variante com rótulo' }, { status: 400 })
+    }
+    revalidatePath('/admin/produtos')
+    return NextResponse.json({ ok: true, group_id: groupId, count: createdIds.length })
+  }
+
   const { data: created, error: insErr } = await supabase
     .from('products')
     .insert({

@@ -56,6 +56,24 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
   const [commissionType, setCommissionType] = useState<'percent' | 'fixed' | 'none' | ''>('none')
   const [commissionValue, setCommissionValue] = useState<string>('')
 
+  // Variantes (v88) · cor/tamanho/sabor · cada uma com preço + estoque + sku.
+  // Quando ON, o produto vira N linhas agrupadas; os campos únicos de
+  // variante/preço/estoque saem (viram por-variante).
+  const [showVariantes, setShowVariantes] = useState(false)
+  const [hasVariants, setHasVariants] = useState(false)
+  const [variants, setVariants] = useState<{ key: string; variant: string; price: string; qty: string; sku: string }[]>([
+    { key: 'v1', variant: '', price: '', qty: '0', sku: '' },
+  ])
+  function addVariant() {
+    setVariants((p) => [...p, { key: `v${Date.now()}${p.length}`, variant: '', price: '', qty: '0', sku: '' }])
+  }
+  function updateVariant(key: string, patch: Partial<{ variant: string; price: string; qty: string; sku: string }>) {
+    setVariants((p) => p.map((v) => (v.key === key ? { ...v, ...patch } : v)))
+  }
+  function removeVariant(key: string) {
+    setVariants((p) => (p.length <= 1 ? p : p.filter((v) => v.key !== key)))
+  }
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -112,31 +130,49 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
   async function submit() {
     setError(null)
     if (!name.trim()) { setError('Nome obrigatório'); return }
+    const validVariants = variants.filter((v) => v.variant.trim())
+    if (hasVariants && validVariants.length === 0) { setError('Adicione pelo menos 1 variante com rótulo'); return }
     setSaving(true)
+    const base = {
+      name: name.trim(),
+      description: description.trim() || null,
+      unit,
+      image_url: imageUrl,
+      brand_id: brandId || null,
+      category_id: categoryId || null,
+      min_quantity: trackStock && minQuantity ? Number(minQuantity) : 0,
+      pack_quantity: packQuantity ? Number(packQuantity) : null,
+      expires_at: expiresAt || null,
+      barcode: barcode.trim() || null,
+      track_stock: trackStock,
+      sale_active: saleActive,
+      cost: cost ? Number(cost) : null,
+      commission_type: saleActive && commissionType ? commissionType : null,
+      commission_value: saleActive && commissionType !== 'none' && commissionValue ? Number(commissionValue) : null,
+    }
+    const payload = hasVariants
+      ? {
+          ...base,
+          // Variantes: preço/estoque/sku por variante. API cria N linhas agrupadas.
+          variants: validVariants.map((v) => ({
+            variant: v.variant.trim(),
+            price: saleActive && v.price ? Number(v.price) : null,
+            quantity: trackStock && v.qty ? Number(v.qty) : 0,
+            sku: v.sku.trim() || null,
+          })),
+        }
+      : {
+          ...base,
+          // Produto único (sem variantes) · campos únicos
+          variant: variant.trim() || null,
+          quantity: trackStock && quantity ? Number(quantity) : 0,
+          sku: sku.trim() || null,
+          price: saleActive && price ? Number(price) : null,
+        }
     const res = await fetch('/api/admin/products', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        name: name.trim(),
-        description: description.trim() || null,
-        unit,
-        image_url: imageUrl,
-        brand_id: brandId || null,
-        category_id: categoryId || null,
-        variant: variant.trim() || null,
-        track_stock: trackStock,
-        quantity: trackStock && quantity ? Number(quantity) : 0,
-        min_quantity: trackStock && minQuantity ? Number(minQuantity) : 0,
-        pack_quantity: packQuantity ? Number(packQuantity) : null,
-        expires_at: expiresAt || null,
-        sku: sku.trim() || null,
-        barcode: barcode.trim() || null,
-        sale_active: saleActive,
-        price: saleActive && price ? Number(price) : null,
-        cost: cost ? Number(cost) : null,
-        commission_type: saleActive && commissionType ? commissionType : null,
-        commission_value: saleActive && commissionType !== 'none' && commissionValue ? Number(commissionValue) : null,
-      }),
+      body: JSON.stringify(payload),
     })
     setSaving(false)
     if (!res.ok) {
@@ -263,16 +299,80 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
                 />
               </div>
             </div>
-            <div>
-              <FieldLabel>Variante (cor / tom / tamanho)</FieldLabel>
-              <input
-                type="text"
-                value={variant}
-                onChange={(e) => setVariant(e.target.value)}
-                placeholder="Ex: #T1B/27 · Preto · Marsala"
-                className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
-              />
-            </div>
+            {!hasVariants && (
+              <div>
+                <FieldLabel>Variante (cor / tom / tamanho)</FieldLabel>
+                <input
+                  type="text"
+                  value={variant}
+                  onChange={(e) => setVariant(e.target.value)}
+                  placeholder="Ex: #T1B/27 · Preto · Marsala"
+                  className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
+                />
+                <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                  Várias cores/tamanhos? Use a seção <strong>Variantes</strong> abaixo.
+                </p>
+              </div>
+            )}
+          </Section>
+
+          {/* Variantes (v88) · cor/tamanho/sabor com preço + estoque próprios */}
+          <Section
+            title="Variantes"
+            subtitle={hasVariants ? 'Preço e estoque por variante' : 'Produto único (sem variantes)'}
+            open={showVariantes}
+            onToggle={() => setShowVariantes((v) => !v)}
+            toggle={{ value: hasVariants, onChange: (v) => { setHasVariants(v); if (v) setShowVariantes(true) } }}
+          >
+            {hasVariants && (
+              <div className="space-y-2">
+                {variants.map((v, i) => (
+                  <div key={v.key} className="rounded-xl p-3 space-y-2" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Variante {i + 1}</span>
+                      {variants.length > 1 && (
+                        <button type="button" onClick={() => removeVariant(v.key)} aria-label="Remover variante" className="w-6 h-6 rounded-full flex items-center justify-center" style={{ color: '#DC2626' }}>
+                          <IconClose size={12} />
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={v.variant}
+                      onChange={(e) => updateVariant(v.key, { variant: e.target.value })}
+                      placeholder="Rótulo (ex: Vermelho · P · Morango)"
+                      className="admin-input w-full px-3 py-2 rounded-xl text-sm"
+                    />
+                    <div className={`grid gap-2 ${trackStock ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                      {saleActive && (
+                        <div>
+                          <FieldLabel>Preço (R$)</FieldLabel>
+                          <input type="number" min={0} step={0.01} value={v.price} onChange={(e) => updateVariant(v.key, { price: e.target.value })} className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums" />
+                        </div>
+                      )}
+                      {trackStock && (
+                        <div>
+                          <FieldLabel>Estoque</FieldLabel>
+                          <input type="number" min={0} step={0.01} value={v.qty} onChange={(e) => updateVariant(v.key, { qty: e.target.value })} className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums" />
+                        </div>
+                      )}
+                      <div>
+                        <FieldLabel>SKU</FieldLabel>
+                        <input type="text" value={v.sku} onChange={(e) => updateVariant(v.key, { sku: e.target.value })} placeholder="opcional" className="admin-input w-full px-2.5 py-2 rounded-lg text-sm" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addVariant}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
+                  style={{ background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 50%, transparent)', color: 'var(--admin-accent)' }}
+                >
+                  <IconPlus size={14} /> Adicionar variante
+                </button>
+              </div>
+            )}
           </Section>
 
           {/* Estoque */}
@@ -286,10 +386,12 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
             {trackStock && (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <FieldLabel>Quantidade inicial</FieldLabel>
-                    <input type="number" min={0} step={0.01} value={quantity} onChange={(e) => setQuantity(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
-                  </div>
+                  {!hasVariants && (
+                    <div>
+                      <FieldLabel>Quantidade inicial</FieldLabel>
+                      <input type="number" min={0} step={0.01} value={quantity} onChange={(e) => setQuantity(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+                    </div>
+                  )}
                   <div>
                     <FieldLabel>Mínimo alerta</FieldLabel>
                     <input type="number" min={0} step={0.01} value={minQuantity} onChange={(e) => setMinQuantity(e.target.value)} placeholder="0 = sem alerta" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
@@ -334,10 +436,12 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
             {saleActive && (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <FieldLabel>Preço de venda (R$)</FieldLabel>
-                    <input type="number" min={0} step={0.01} value={price} onChange={(e) => setPrice(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
-                  </div>
+                  {!hasVariants && (
+                    <div>
+                      <FieldLabel>Preço de venda (R$)</FieldLabel>
+                      <input type="number" min={0} step={0.01} value={price} onChange={(e) => setPrice(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+                    </div>
+                  )}
                   <div>
                     <FieldLabel>Custo (R$)</FieldLabel>
                     <input type="number" min={0} step={0.01} value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Opcional" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
