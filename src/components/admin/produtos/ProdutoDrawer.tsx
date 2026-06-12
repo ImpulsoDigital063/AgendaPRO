@@ -132,9 +132,16 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-                Produto
+                {product.variant ? 'Variante' : 'Produto'}
               </p>
-              <h3 className="text-base font-bold truncate" style={{ color: 'var(--admin-text)' }}>{product.name}</h3>
+              <h3 className="text-base font-bold flex items-center gap-2 flex-wrap" style={{ color: 'var(--admin-text)' }}>
+                <span className="truncate">{product.name}</span>
+                {product.variant && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: 'color-mix(in srgb, #9333EA 14%, transparent)', color: '#9333EA' }}>
+                    {product.variant}
+                  </span>
+                )}
+              </h3>
             </div>
             <button
               type="button"
