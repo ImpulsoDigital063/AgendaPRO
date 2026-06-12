@@ -103,6 +103,20 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProducts])
 
+  // Re-sincroniza o GRUPO aberto após refresh (ex: adicionou/removeu variante) ·
+  // sem isso o modal mostra a lista de variantes velha.
+  useEffect(() => {
+    if (!selectedGroup || selectedGroup.length === 0) return
+    const gid = selectedGroup[0].variant_group_id
+    if (!gid) return
+    const fresh = initialProducts
+      .filter((p) => p.variant_group_id === gid)
+      .sort((a, b) => (a.variant ?? '').localeCompare(b.variant ?? ''))
+    if (fresh.length > 0) setSelectedGroup(fresh)
+    else setSelectedGroup(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProducts])
+
   const [categoryFilter, setCategoryFilter] = useState<string>('')
 
   // Lista de categorias únicas no inventário pra filtro
@@ -343,6 +357,7 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
         <VarianteGrupoModal
           variants={selectedGroup}
           onPick={(p) => { setSelectedGroup(null); setSelectedProduct(p) }}
+          onAdded={refresh}
           onClose={() => setSelectedGroup(null)}
         />
       )}
@@ -469,9 +484,51 @@ function GroupCard({ group, status, onClick }: { group: Product[]; status: Stock
   )
 }
 
-/** Lista as variantes de um grupo · clicar abre o detalhe (ProdutoDrawer) da variante. */
-function VarianteGrupoModal({ variants, onPick, onClose }: { variants: Product[]; onPick: (p: Product) => void; onClose: () => void }) {
+/** Lista as variantes de um grupo · clicar abre o detalhe (ProdutoDrawer) da
+ *  variante · "+ Adicionar variante" cria nova linha no mesmo grupo. */
+function VarianteGrupoModal({ variants, onPick, onAdded, onClose }: { variants: Product[]; onPick: (p: Product) => void; onAdded: () => void; onClose: () => void }) {
   const base = variants[0]
+  const [adding, setAdding] = useState(false)
+  const [vLabel, setVLabel] = useState('')
+  const [vPrice, setVPrice] = useState('')
+  const [vQty, setVQty] = useState('0')
+  const [vSku, setVSku] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function addVariante() {
+    if (!vLabel.trim()) { setError('Informe o rótulo da variante'); return }
+    setError(null)
+    setSaving(true)
+    const res = await fetch('/api/admin/products', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        variant_group_id: base.variant_group_id,
+        name: base.name,
+        unit: base.unit,
+        brand_id: base.brand_id ?? null,
+        category_id: base.category_id ?? null,
+        track_stock: base.track_stock,
+        sale_active: base.sale_active,
+        commission_type: base.commission_type && base.commission_type !== 'none' ? base.commission_type : null,
+        commission_value: base.commission_value ?? null,
+        variant: vLabel.trim(),
+        price: base.sale_active && vPrice ? Number(vPrice) : null,
+        quantity: base.track_stock && vQty ? Number(vQty) : 0,
+        sku: vSku.trim() || null,
+      }),
+    })
+    setSaving(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error ?? 'Erro ao adicionar variante')
+      return
+    }
+    setVLabel(''); setVPrice(''); setVQty('0'); setVSku(''); setAdding(false)
+    onAdded() // refresh · o grupo re-sincroniza e mostra a nova variante
+  }
+
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col" style={{ background: 'var(--admin-popover-bg, #FFFFFF)', border: '1px solid var(--admin-popover-border, #E2E8F0)', maxHeight: '90vh' }}>
@@ -501,6 +558,42 @@ function VarianteGrupoModal({ variants, onPick, onClose }: { variants: Product[]
               </button>
             )
           })}
+
+          {/* Adicionar variante ao grupo */}
+          {adding ? (
+            <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}>
+              <input type="text" autoFocus value={vLabel} onChange={(e) => setVLabel(e.target.value)} placeholder="Rótulo (ex: Vermelho · P · Morango)" className="admin-input w-full px-3 py-2 rounded-lg text-sm" />
+              <div className={`grid gap-2 ${base.track_stock ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                {base.sale_active && (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>Preço</label>
+                    <input type="number" min={0} step={0.01} value={vPrice} onChange={(e) => setVPrice(e.target.value)} className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums" />
+                  </div>
+                )}
+                {base.track_stock && (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>Estoque</label>
+                    <input type="number" min={0} step={0.01} value={vQty} onChange={(e) => setVQty(e.target.value)} className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums" />
+                  </div>
+                )}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>SKU</label>
+                  <input type="text" value={vSku} onChange={(e) => setVSku(e.target.value)} placeholder="opcional" className="admin-input w-full px-2.5 py-2 rounded-lg text-sm" />
+                </div>
+              </div>
+              {error && <p className="text-xs font-semibold" style={{ color: '#DC2626' }}>{error}</p>}
+              <div className="flex items-center justify-end gap-2">
+                <button type="button" onClick={() => { setAdding(false); setError(null) }} disabled={saving} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{ color: 'var(--admin-text-mute)' }}>Cancelar</button>
+                <button type="button" onClick={addVariante} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>
+                  {saving ? 'Adicionando...' : 'Adicionar'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setAdding(true)} className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2" style={{ background: 'color-mix(in srgb, #9333EA 8%, transparent)', border: '1px dashed color-mix(in srgb, #9333EA 50%, transparent)', color: '#9333EA' }}>
+              <IconPlus size={14} /> Adicionar variante
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -139,6 +139,8 @@ export async function POST(req: NextRequest) {
       brand_id: typeof body.brand_id === 'string' && body.brand_id ? body.brand_id : null,
       category_id: typeof body.category_id === 'string' && body.category_id ? body.category_id : null,
       variant: typeof body.variant === 'string' ? body.variant.trim() || null : null,
+      // Anexar a um grupo de variantes existente (Etapa 3 · adicionar variante).
+      variant_group_id: typeof body.variant_group_id === 'string' && body.variant_group_id ? body.variant_group_id : null,
       expires_at: typeof body.expires_at === 'string' && body.expires_at ? body.expires_at : null,
       pack_quantity: typeof body.pack_quantity === 'number' && body.pack_quantity > 0 ? body.pack_quantity : null,
       barcode: typeof body.barcode === 'string' ? body.barcode.trim() || null : null,
