@@ -19,6 +19,7 @@ type ProductRow = {
   brand_id: string | null
   category_id: string | null
   variant: string | null
+  variant_group_id: string | null
   expires_at: string | null
   pack_quantity: number | null
   barcode: string | null
@@ -49,7 +50,7 @@ export default async function RecepcaoProdutosPage() {
     .from('products')
     .select(`
       id, name, description, unit, price, cost, quantity, min_quantity, active, created_at, updated_at,
-      brand_id, category_id, variant, expires_at, pack_quantity, barcode, sku, image_url,
+      brand_id, category_id, variant, variant_group_id, expires_at, pack_quantity, barcode, sku, image_url,
       track_stock, sale_active, commission_type, commission_value,
       brand:product_brands(id, name),
       category:product_categories(id, name)

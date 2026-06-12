@@ -24,6 +24,7 @@ type Product = {
   brand_id: string | null
   category_id: string | null
   variant: string | null
+  variant_group_id: string | null
   expires_at: string | null
   pack_quantity: number | null
   barcode: string | null
@@ -85,6 +86,7 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
   const products = initialProducts
   const [showNovo, setShowNovo] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedGroup, setSelectedGroup] = useState<Product[] | null>(null)
   const [search, setSearch] = useState('')
 
   // Sincroniza o produto selecionado quando a lista atualiza · sem isso o
@@ -129,6 +131,41 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
       )
     })
   }, [products, search, categoryFilter])
+
+  // Agrupa variantes do mesmo produto (variant_group_id) num só card (v88 ·
+  // Etapa 2). Produto sem grupo, ou grupo com 1 só, vira card normal.
+  type Group = { key: string; isGroup: boolean; base: Product; variants: Product[] }
+  const groups = useMemo<Group[]>(() => {
+    const byGroup = new Map<string, Product[]>()
+    const singles: Product[] = []
+    for (const p of filtered) {
+      if (p.variant_group_id) {
+        const arr = byGroup.get(p.variant_group_id) ?? []
+        arr.push(p)
+        byGroup.set(p.variant_group_id, arr)
+      } else {
+        singles.push(p)
+      }
+    }
+    const entries: Group[] = []
+    for (const [gid, vars] of byGroup.entries()) {
+      const sorted = [...vars].sort((a, b) => (a.variant ?? '').localeCompare(b.variant ?? ''))
+      entries.push({ key: gid, isGroup: sorted.length > 1, base: sorted[0], variants: sorted })
+    }
+    for (const p of singles) entries.push({ key: p.id, isGroup: false, base: p, variants: [p] })
+    return entries.sort((a, b) => a.base.name.localeCompare(b.base.name))
+  }, [filtered])
+
+  // Status agregado de um grupo: pior caso (esgotado > baixo > ok).
+  function groupStatus(vars: Product[]): StockStatus {
+    let worst: StockStatus = 'ok'
+    for (const v of vars) {
+      const s = stockStatus(v)
+      if (s === 'out') return 'out'
+      if (s === 'low') worst = 'low'
+    }
+    return worst
+  }
 
   // KPIs
   const totalProdutos = products.length
@@ -273,97 +310,13 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((p) => {
-            const status = stockStatus(p)
-            const color = STATUS_COLOR[status]
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setSelectedProduct(p)}
-                className="text-left rounded-2xl p-4 transition-all hover:-translate-y-px"
-                style={{
-                  background: `linear-gradient(180deg, var(--admin-surface) 0%, color-mix(in srgb, var(--admin-surface-hi) 70%, var(--admin-surface)) 100%)`,
-                  border: '1px solid var(--admin-border)',
-                  borderTopColor: 'rgba(255,255,255,0.4)',
-                  boxShadow: '0 8px 20px -8px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)',
-                  cursor: 'pointer',
-                }}
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  {/* Thumb · só se tem foto */}
-                  {p.image_url && (
-                    <div
-                      className="w-12 h-12 rounded-lg flex-shrink-0"
-                      style={{
-                        background: `url(${p.image_url}) center/cover`,
-                        border: '1px solid var(--admin-border)',
-                      }}
-                      aria-hidden
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
-                      {p.name}{p.variant && <span style={{ color: 'var(--admin-text-mute)', fontWeight: 500 }}> · {p.variant}</span>}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                      {pickRel(p.brand) && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)' }}>
-                          {pickRel(p.brand)!.name}
-                        </span>
-                      )}
-                      {pickRel(p.category) && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)', color: 'var(--admin-accent)' }}>
-                          {pickRel(p.category)!.name}
-                        </span>
-                      )}
-                      {!p.track_stock && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(148,163,184,0.15)', color: '#64748B' }}>
-                          Sem controle
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-1"
-                    style={{
-                      background: `linear-gradient(135deg, ${color.bg} 0%, color-mix(in srgb, ${color.bg} 75%, black) 100%)`,
-                      color: '#fff',
-                      boxShadow: `0 2px 6px -1px ${color.border}, inset 0 1px 0 rgba(255,255,255,0.3)`,
-                    }}
-                  >
-                    {status === 'low' && <IconAlert size={10} />}
-                    {color.label}
-                  </span>
-                </div>
-                <div className="flex items-end justify-between gap-3 mt-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-                      Em estoque
-                    </p>
-                    <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
-                      {formatQty(p.quantity, p.unit)}
-                    </p>
-                    {p.min_quantity > 0 && (
-                      <p className="text-[10px] mt-0.5 tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>
-                        Mínimo: {formatQty(p.min_quantity, p.unit)}
-                      </p>
-                    )}
-                  </div>
-                  {p.price != null && (
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-                        Venda
-                      </p>
-                      <p className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
-                        {formatBRL(p.price)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </button>
-            )
-          })}
+          {groups.map((g) =>
+            g.isGroup ? (
+              <GroupCard key={g.key} group={g.variants} status={groupStatus(g.variants)} onClick={() => setSelectedGroup(g.variants)} />
+            ) : (
+              <ProductCard key={g.key} p={g.base} onClick={() => setSelectedProduct(g.base)} />
+            ),
+          )}
         </div>
       )}
 
@@ -386,6 +339,170 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
           onChanged={refresh}
         />
       )}
+      {selectedGroup && (
+        <VarianteGrupoModal
+          variants={selectedGroup}
+          onPick={(p) => { setSelectedGroup(null); setSelectedProduct(p) }}
+          onClose={() => setSelectedGroup(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Card de produto único (sem variantes). */
+function ProductCard({ p, onClick }: { p: Product; onClick: () => void }) {
+  const status = stockStatus(p)
+  const color = STATUS_COLOR[status]
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left rounded-2xl p-4 transition-all hover:-translate-y-px"
+      style={{
+        background: `linear-gradient(180deg, var(--admin-surface) 0%, color-mix(in srgb, var(--admin-surface-hi) 70%, var(--admin-surface)) 100%)`,
+        border: '1px solid var(--admin-border)',
+        borderTopColor: 'rgba(255,255,255,0.4)',
+        boxShadow: '0 8px 20px -8px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)',
+        cursor: 'pointer',
+      }}
+    >
+      <div className="flex items-start justify-between gap-2 mb-2">
+        {p.image_url && (
+          <div className="w-12 h-12 rounded-lg flex-shrink-0" style={{ background: `url(${p.image_url}) center/cover`, border: '1px solid var(--admin-border)' }} aria-hidden />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
+            {p.name}{p.variant && <span style={{ color: 'var(--admin-text-mute)', fontWeight: 500 }}> · {p.variant}</span>}
+          </p>
+          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+            {pickRel(p.brand) && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)' }}>{pickRel(p.brand)!.name}</span>
+            )}
+            {pickRel(p.category) && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)', color: 'var(--admin-accent)' }}>{pickRel(p.category)!.name}</span>
+            )}
+            {!p.track_stock && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(148,163,184,0.15)', color: '#64748B' }}>Sem controle</span>
+            )}
+          </div>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-1" style={{ background: `linear-gradient(135deg, ${color.bg} 0%, color-mix(in srgb, ${color.bg} 75%, black) 100%)`, color: '#fff', boxShadow: `0 2px 6px -1px ${color.border}, inset 0 1px 0 rgba(255,255,255,0.3)` }}>
+          {status === 'low' && <IconAlert size={10} />}
+          {color.label}
+        </span>
+      </div>
+      <div className="flex items-end justify-between gap-3 mt-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>Em estoque</p>
+          <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>{formatQty(p.quantity, p.unit)}</p>
+          {p.min_quantity > 0 && (
+            <p className="text-[10px] mt-0.5 tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>Mínimo: {formatQty(p.min_quantity, p.unit)}</p>
+          )}
+        </div>
+        {p.price != null && (
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>Venda</p>
+            <p className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>{formatBRL(p.price)}</p>
+          </div>
+        )}
+      </div>
+    </button>
+  )
+}
+
+/** Card de PRODUTO COM VARIANTES · agrega estoque + faixa de preço, abre a lista. */
+function GroupCard({ group, status, onClick }: { group: Product[]; status: StockStatus; onClick: () => void }) {
+  const base = group[0]
+  const color = STATUS_COLOR[status]
+  const totalStock = group.reduce((s, v) => s + Number(v.quantity || 0), 0)
+  const prices = group.map((v) => v.price).filter((x): x is number => x != null)
+  const minP = prices.length ? Math.min(...prices) : null
+  const maxP = prices.length ? Math.max(...prices) : null
+  const priceLabel = minP == null ? null : minP === maxP ? formatBRL(minP) : `${formatBRL(minP)} – ${formatBRL(maxP)}`
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left rounded-2xl p-4 transition-all hover:-translate-y-px"
+      style={{
+        background: `linear-gradient(180deg, var(--admin-surface) 0%, color-mix(in srgb, var(--admin-surface-hi) 70%, var(--admin-surface)) 100%)`,
+        border: '1px solid var(--admin-border)',
+        borderTopColor: 'rgba(255,255,255,0.4)',
+        boxShadow: '0 8px 20px -8px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)',
+        cursor: 'pointer',
+      }}
+    >
+      <div className="flex items-start justify-between gap-2 mb-2">
+        {base.image_url && (
+          <div className="w-12 h-12 rounded-lg flex-shrink-0" style={{ background: `url(${base.image_url}) center/cover`, border: '1px solid var(--admin-border)' }} aria-hidden />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>{base.name}</p>
+          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, #9333EA 12%, transparent)', color: '#9333EA' }}>
+              {group.length} variantes
+            </span>
+            {pickRel(base.category) && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)', color: 'var(--admin-accent)' }}>{pickRel(base.category)!.name}</span>
+            )}
+          </div>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-1" style={{ background: `linear-gradient(135deg, ${color.bg} 0%, color-mix(in srgb, ${color.bg} 75%, black) 100%)`, color: '#fff', boxShadow: `0 2px 6px -1px ${color.border}, inset 0 1px 0 rgba(255,255,255,0.3)` }}>
+          {status === 'low' && <IconAlert size={10} />}
+          {color.label}
+        </span>
+      </div>
+      <div className="flex items-end justify-between gap-3 mt-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>Estoque total</p>
+          <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>{formatQty(totalStock, base.unit)}</p>
+        </div>
+        {priceLabel && (
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>Venda</p>
+            <p className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>{priceLabel}</p>
+          </div>
+        )}
+      </div>
+    </button>
+  )
+}
+
+/** Lista as variantes de um grupo · clicar abre o detalhe (ProdutoDrawer) da variante. */
+function VarianteGrupoModal({ variants, onPick, onClose }: { variants: Product[]; onPick: (p: Product) => void; onClose: () => void }) {
+  const base = variants[0]
+  return (
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col" style={{ background: 'var(--admin-popover-bg, #FFFFFF)', border: '1px solid var(--admin-popover-border, #E2E8F0)', maxHeight: '90vh' }}>
+        <header className="flex items-start justify-between p-5 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--admin-divider)' }}>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: 'var(--admin-text-faded)' }}>{variants.length} variantes</p>
+            <h3 className="text-lg font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>{base.name}</h3>
+          </div>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--admin-input-bg)]" style={{ color: 'var(--admin-text-mute)' }} aria-label="Fechar">×</button>
+        </header>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {variants.map((v) => {
+            const st = stockStatus(v)
+            const c = STATUS_COLOR[st]
+            return (
+              <button key={v.id} type="button" onClick={() => onPick(v)} className="w-full text-left rounded-xl p-3 flex items-center justify-between gap-3 transition-colors hover:bg-[var(--admin-surface-hi)]" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>{v.variant || '—'}</p>
+                  <p className="text-[11px] tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>
+                    {v.track_stock ? formatQty(v.quantity, v.unit) + ' em estoque' : 'sem controle'}{v.sku ? ` · ${v.sku}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {v.price != null && <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>{formatBRL(v.price)}</span>}
+                  <span className="w-2 h-2 rounded-full" style={{ background: c.bg }} aria-label={c.label} />
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
