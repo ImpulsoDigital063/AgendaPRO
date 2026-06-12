@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { IconPlus, IconAlert, IconInbox, IconDollar } from '@/components/ui/Icon'
+import { IconPlus, IconAlert, IconInbox, IconDollar, IconChevronRight } from '@/components/ui/Icon'
 import { getAreaPrefix } from '@/lib/area-prefix'
 import NovoProdutoModal from './NovoProdutoModal'
 import ProdutoDrawer from './ProdutoDrawer'
@@ -533,11 +533,12 @@ function VarianteGrupoModal({ variants, onPick, onAdded, onClose }: { variants: 
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col" style={{ background: 'var(--admin-popover-bg, #FFFFFF)', border: '1px solid var(--admin-popover-border, #E2E8F0)', maxHeight: '90vh' }}>
         <header className="flex items-start justify-between p-5 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--admin-divider)' }}>
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: 'var(--admin-text-faded)' }}>{variants.length} variantes</p>
             <h3 className="text-lg font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>{base.name}</h3>
+            <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>Toque numa variante pra ver, editar, vender ou movimentar estoque.</p>
           </div>
-          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--admin-input-bg)]" style={{ color: 'var(--admin-text-mute)' }} aria-label="Fechar">×</button>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--admin-input-bg)] flex-shrink-0" style={{ color: 'var(--admin-text-mute)' }} aria-label="Fechar">×</button>
         </header>
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {variants.map((v) => {
@@ -554,6 +555,7 @@ function VarianteGrupoModal({ variants, onPick, onAdded, onClose }: { variants: 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {v.price != null && <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>{formatBRL(v.price)}</span>}
                   <span className="w-2 h-2 rounded-full" style={{ background: c.bg }} aria-label={c.label} />
+                  <IconChevronRight size={16} style={{ color: 'var(--admin-text-faded)' }} />
                 </div>
               </button>
             )
