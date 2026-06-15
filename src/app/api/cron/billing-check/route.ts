@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { diasAteVencer } from '@/lib/billing'
 import { createPayment, getNextDueDate } from '@/lib/asaas'
-import { sendBillingReminderD3, sendBillingOverdue, sendBillingBlocked, sendTrialEndingSoon, sendTrialEnded } from '@/lib/email'
+import { sendBillingReminderD3, sendBillingOverdue, sendTrialEndingSoon, sendTrialEnded } from '@/lib/email'
 import { calcularPreco, type ModalidadeKey, type PlanoTipo } from '@/config/pricing'
 
 export const maxDuration = 60
@@ -25,7 +25,9 @@ function getAdminClient() {
  *   D-1:  email lembrete intensificado
  *   D+0:  email "vence hoje"
  *   D+3:  email "atrasada"
- *   D+6+: marca status=past_due (bloqueia painel) + email "bloqueado"
+ *   D+1+ (venceu e ainda 'active'): FALLBACK — se o webhook PAYMENT_OVERDUE do
+ *         Asaas não moveu pra past_due, o cron garante past_due + grace_ends_at
+ *         (3 dias), mesmo modelo do webhook. O gate bloqueia quando a carência vence.
  *
  * mensal_cartao não passa por aqui — Asaas Subscription renova automático
  * via API e dispara webhook PAYMENT_CONFIRMED.
@@ -164,23 +166,20 @@ export async function GET(req: NextRequest) {
           alertsSent++
         }
       }
-      // D+6+: bloqueia
-      else if (dias <= -6 && sub.status === 'active') {
+      // FALLBACK de bloqueio (rede de segurança · venceu e ainda 'active'):
+      // o normal é o webhook PAYMENT_OVERDUE do Asaas mover pra past_due +
+      // grace_ends_at (3 dias). Se o webhook falhar/atrasar, ninguém vira o
+      // status → acesso grátis indefinido (era o bug do trial). Aqui o cron
+      // garante a MESMA transição do webhook: past_due + grace de 3 dias. O gate
+      // (layout admin) bloqueia quando a carência vence. Os avisos por e-mail já
+      // saem nas branches por dia acima — aqui só asseguramos o status.
+      else if (dias < 0 && sub.status === 'active') {
+        const graceEnds = new Date()
+        graceEnds.setDate(graceEnds.getDate() + 3)
         await admin
           .from('subscriptions')
-          .update({ status: 'past_due' })
+          .update({ status: 'past_due', grace_ends_at: graceEnds.toISOString() })
           .eq('id', sub.id)
-
-        if (sub.pix_link_atual) {
-          await sendBillingBlocked({
-            ownerEmail: ownerUser.email,
-            ownerName: business.name,
-            businessName: business.name,
-            pixUrl: sub.pix_link_atual,
-            valor,
-          })
-        }
-
         blocked++
       }
     } catch (err) {
