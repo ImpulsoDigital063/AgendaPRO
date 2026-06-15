@@ -26,7 +26,7 @@ export default async function RecepcaoVenderProdutoPage({
   const [{ data: products }, { data: professionals }] = await Promise.all([
     supabase
       .from('products')
-      .select('id, name, variant, unit, price, quantity, track_stock, commission_type, commission_value')
+      .select('id, name, variant, variant_group_id, unit, price, quantity, track_stock, commission_type, commission_value')
       .eq('business_id', recep.business_id)
       .eq('active', true)
       .eq('sale_active', true)
@@ -52,6 +52,7 @@ export default async function RecepcaoVenderProdutoPage({
           id: p.id,
           name: p.name,
           variant: p.variant ?? null,
+          variantGroupId: p.variant_group_id ?? null,
           unit: p.unit,
           price: p.price ?? null,
           quantity: Number(p.quantity ?? 0),

@@ -13,6 +13,7 @@ type Product = {
   id: string
   name: string
   variant: string | null
+  variantGroupId: string | null
   unit: string
   price: number | null
   quantity: number
@@ -104,6 +105,24 @@ export default function VenderProdutoView({ businessId, products, professionals,
   const [created, setCreated] = useState<{ total: number; itens: number; method: PaymentMethodChoice } | null>(null)
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
+
+  // Agrupa pro select: singles soltos, variantes sob optgroup do nome base.
+  const productGroups = useMemo(() => {
+    const byGroup = new Map<string, Product[]>()
+    const singles: Product[] = []
+    for (const p of products) {
+      if (p.variantGroupId) {
+        const arr = byGroup.get(p.variantGroupId) ?? []
+        arr.push(p)
+        byGroup.set(p.variantGroupId, arr)
+      } else singles.push(p)
+    }
+    const groups = Array.from(byGroup.values()).map((vars) => ({
+      base: vars[0],
+      vars: [...vars].sort((a, b) => (a.variant ?? '').localeCompare(b.variant ?? '')),
+    }))
+    return { singles, groups }
+  }, [products])
 
   // Busca cliente · debounced
   useEffect(() => {
@@ -371,10 +390,19 @@ export default function VenderProdutoView({ businessId, products, professionals,
               </div>
               <select value={line.productId} onChange={(e) => pickProduct(line.uid, e.target.value)} className="w-full px-3 py-2.5 pr-9 rounded-xl text-sm" style={selectStyle}>
                 <option value="">Selecionar produto</option>
-                {products.map((p) => (
+                {productGroups.singles.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}{p.variant ? ` · ${p.variant}` : ''} · {p.trackStock ? `${p.quantity} ${p.unit} em estoque` : 'sem controle'}
                   </option>
+                ))}
+                {productGroups.groups.map((g) => (
+                  <optgroup key={g.base.variantGroupId ?? g.base.id} label={g.base.name}>
+                    {g.vars.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.variant || '—'} · {p.trackStock ? `${p.quantity} ${p.unit} em estoque` : 'sem controle'}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
               <div className="grid grid-cols-4 gap-2">

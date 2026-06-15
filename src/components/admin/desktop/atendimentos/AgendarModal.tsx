@@ -160,7 +160,9 @@ export default function AgendarModal({
   // Produtos vendidos JUNTO com o atendimento (balcão: atende + vende · Eduardo
   // 07/06). Viram uma venda (sales+sale_items → baixa estoque), ligada ao
   // appointment. Paga junto se "já concluído". Universal (todo o sistema).
-  const [products, setProducts] = useState<{ id: string; name: string; price: number | null; commission_type: string | null; commission_value: number | null }[]>([])
+  const [products, setProducts] = useState<{ id: string; name: string; variant: string | null; variant_group_id: string | null; price: number | null; commission_type: string | null; commission_value: number | null }[]>([])
+  // Drill-down do picker: quando entra num grupo de variantes, guarda o group_id.
+  const [prodPickerGroup, setProdPickerGroup] = useState<string | null>(null)
   const [prodCart, setProdCart] = useState<{ product_id: string; product_name: string; unit_price: number; commission_type: string | null; commission_value: number | null }[]>([])
   const [prodPickerOpen, setProdPickerOpen] = useState(false)
   const [prodSearch, setProdSearch] = useState('')
@@ -223,7 +225,7 @@ export default function AgendarModal({
     if (!open) return
     supabase
       .from('products')
-      .select('id, name, price, commission_type, commission_value')
+      .select('id, name, variant, variant_group_id, price, commission_type, commission_value')
       .eq('business_id', businessId)
       .eq('active', true)
       .eq('sale_active', true)
@@ -334,15 +336,38 @@ export default function AgendarModal({
   const totalGeral = valorTotal + subtotalProds // serviços + produtos (o que o cliente paga)
   const canSave = (!!cliente || avulso) && !!profId && validLines.length >= 1 && !!date && !!time && totalDuration > 0
 
-  const prodDisponiveis = (() => {
+  type ProdT = typeof products[number]
+  // Agrupa por variant_group_id pro picker (produto → variante). Singles ficam
+  // soltos; grupos viram 1 entrada que abre as variantes (drill-down).
+  const prodPicker = (() => {
     const q = prodSearch.trim().toLowerCase()
-    const list = q ? products.filter((p) => p.name.toLowerCase().includes(q)) : products
-    return list.slice(0, 30)
+    const list = q
+      ? products.filter((p) => p.name.toLowerCase().includes(q) || (p.variant ?? '').toLowerCase().includes(q))
+      : products
+    const byGroup = new Map<string, ProdT[]>()
+    const singles: ProdT[] = []
+    for (const p of list) {
+      if (p.variant_group_id) {
+        const arr = byGroup.get(p.variant_group_id) ?? []
+        arr.push(p)
+        byGroup.set(p.variant_group_id, arr)
+      } else singles.push(p)
+    }
+    const groups = Array.from(byGroup.entries()).map(([gid, vars]) => ({
+      gid,
+      base: vars[0],
+      vars: [...vars].sort((a, b) => (a.variant ?? '').localeCompare(b.variant ?? '')),
+    }))
+    return { singles, groups }
   })()
-  function addProduct(p: { id: string; name: string; price: number | null; commission_type: string | null; commission_value: number | null }) {
-    setProdCart((prev) => [...prev, { product_id: p.id, product_name: p.name, unit_price: p.price ?? 0, commission_type: p.commission_type, commission_value: p.commission_value }])
+  const prodGroupOpen = prodPickerGroup
+    ? prodPicker.groups.find((g) => g.gid === prodPickerGroup) ?? null
+    : null
+  function addProduct(p: ProdT) {
+    setProdCart((prev) => [...prev, { product_id: p.id, product_name: p.variant ? `${p.name} · ${p.variant}` : p.name, unit_price: p.price ?? 0, commission_type: p.commission_type, commission_value: p.commission_value }])
     setProdSearch('')
     setProdPickerOpen(false)
+    setProdPickerGroup(null)
   }
   function updateProdLine(idx: number, patch: Partial<{ unit_price: number }>) {
     setProdCart((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)))
@@ -934,30 +959,50 @@ export default function AgendarModal({
                       className="admin-input w-full pl-9 pr-3 py-2 rounded-xl text-sm"
                     />
                   </div>
-                  {prodDisponiveis.length === 0 ? (
+                  {prodGroupOpen ? (
+                    /* Dentro de um grupo · escolhe a variante */
+                    <>
+                      <button type="button" onClick={() => setProdPickerGroup(null)} className="text-xs font-semibold inline-flex items-center gap-1" style={{ color: 'var(--admin-accent)' }}>
+                        ← {prodGroupOpen.base.name}
+                      </button>
+                      <ul className="space-y-1 max-h-48 overflow-y-auto">
+                        {prodGroupOpen.vars.map((p) => (
+                          <li key={p.id}>
+                            <button type="button" onClick={() => addProduct(p)} className="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]" style={{ background: 'var(--admin-surface)' }}>
+                              <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{p.variant || '—'}</span>
+                              <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{p.price != null ? formatBRL(p.price) : '—'}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : prodPicker.singles.length === 0 && prodPicker.groups.length === 0 ? (
                     <p className="text-xs text-center py-2" style={{ color: 'var(--admin-text-mute)' }}>
                       {prodSearch ? 'Nenhum produto bate com a busca' : 'Sem produtos'}
                     </p>
                   ) : (
                     <ul className="space-y-1 max-h-48 overflow-y-auto">
-                      {prodDisponiveis.map((p) => (
-                        <li key={p.id}>
-                          <button
-                            type="button"
-                            onClick={() => addProduct(p)}
-                            className="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]"
-                            style={{ background: 'var(--admin-surface)' }}
-                          >
-                            <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{p.name}</span>
-                            <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
-                              {p.price != null ? formatBRL(p.price) : '—'}
+                      {prodPicker.groups.map((g) => (
+                        <li key={g.gid}>
+                          <button type="button" onClick={() => setProdPickerGroup(g.gid)} className="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]" style={{ background: 'var(--admin-surface)' }}>
+                            <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                              {g.base.name} <span style={{ color: '#9333EA' }}>· {g.vars.length} variantes</span>
                             </span>
+                            <span className="text-sm flex-shrink-0" style={{ color: 'var(--admin-text-faded)' }}>›</span>
+                          </button>
+                        </li>
+                      ))}
+                      {prodPicker.singles.map((p) => (
+                        <li key={p.id}>
+                          <button type="button" onClick={() => addProduct(p)} className="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]" style={{ background: 'var(--admin-surface)' }}>
+                            <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{p.name}</span>
+                            <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{p.price != null ? formatBRL(p.price) : '—'}</span>
                           </button>
                         </li>
                       ))}
                     </ul>
                   )}
-                  <button type="button" onClick={() => setProdPickerOpen(false)} className="text-xs underline" style={{ color: 'var(--admin-text-mute)' }}>
+                  <button type="button" onClick={() => { setProdPickerOpen(false); setProdPickerGroup(null) }} className="text-xs underline" style={{ color: 'var(--admin-text-mute)' }}>
                     fechar
                   </button>
                 </>

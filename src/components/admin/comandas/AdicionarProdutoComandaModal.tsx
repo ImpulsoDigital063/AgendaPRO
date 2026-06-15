@@ -10,6 +10,7 @@ type Product = {
   id: string
   name: string
   variant: string | null
+  variant_group_id: string | null
   unit: string
   price: number | null
   quantity: number
@@ -71,7 +72,7 @@ export default function AdicionarProdutoComandaModal({ invoiceId, businessId, on
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      supabase.from('products').select('id, name, variant, unit, price, quantity, track_stock').eq('business_id', businessId).eq('active', true).eq('sale_active', true).order('name'),
+      supabase.from('products').select('id, name, variant, variant_group_id, unit, price, quantity, track_stock').eq('business_id', businessId).eq('active', true).eq('sale_active', true).order('name'),
       supabase.from('professionals').select('id, name, is_receptionist').eq('business_id', businessId).eq('active', true).order('name'),
     ]).then(([pRes, profRes]) => {
       setProducts((pRes.data ?? []) as Product[])
@@ -81,12 +82,29 @@ export default function AdicionarProdutoComandaModal({ invoiceId, businessId, on
   }, [supabase, businessId])
 
   const selectedProduct = products.find((p) => p.id === productId)
+  const [pickerGroup, setPickerGroup] = useState<string | null>(null)
 
-  const filteredProducts = useMemo(() => {
+  // Agrupa por variant_group_id (produto → variante · drill-down).
+  const pickerData = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return products
-    return products.filter((p) => p.name.toLowerCase().includes(q))
+    const list = q
+      ? products.filter((p) => p.name.toLowerCase().includes(q) || (p.variant ?? '').toLowerCase().includes(q))
+      : products
+    const byGroup = new Map<string, Product[]>()
+    const singles: Product[] = []
+    for (const p of list) {
+      if (p.variant_group_id) {
+        const a = byGroup.get(p.variant_group_id) ?? []
+        a.push(p)
+        byGroup.set(p.variant_group_id, a)
+      } else singles.push(p)
+    }
+    const groups = Array.from(byGroup.entries()).map(([gid, vars]) => ({
+      gid, base: vars[0], vars: [...vars].sort((a, b) => (a.variant ?? '').localeCompare(b.variant ?? '')),
+    }))
+    return { singles, groups }
   }, [products, search])
+  const groupOpen = pickerGroup ? pickerData.groups.find((g) => g.gid === pickerGroup) ?? null : null
 
   function pickProduct(p: Product) {
     setProductId(p.id)
@@ -202,31 +220,50 @@ export default function AdicionarProdutoComandaModal({ invoiceId, businessId, on
               </div>
               {loading ? (
                 <p className="text-center text-sm py-6" style={{ color: 'var(--admin-text-mute)' }}>Carregando produtos...</p>
-              ) : filteredProducts.length === 0 ? (
+              ) : groupOpen ? (
+                /* Variantes do grupo escolhido */
+                <>
+                  <button type="button" onClick={() => setPickerGroup(null)} className="text-xs font-semibold inline-flex items-center gap-1 mb-1" style={{ color: 'var(--admin-accent)' }}>
+                    ← {groupOpen.base.name}
+                  </button>
+                  <ul className="space-y-1 max-h-72 overflow-y-auto">
+                    {groupOpen.vars.map((p) => (
+                      <li key={p.id}>
+                        <button type="button" onClick={() => pickProduct(p)} className="w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]" style={{ background: 'var(--admin-surface-hi)' }}>
+                          <span className="min-w-0">
+                            <span className="text-sm font-semibold block truncate" style={{ color: 'var(--admin-text)' }}>{p.variant || '—'}</span>
+                            <span className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>{p.track_stock ? `${p.quantity} ${p.unit} em estoque` : 'sem controle de estoque'}</span>
+                          </span>
+                          <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{p.price != null ? brl(p.price) : '—'}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : pickerData.singles.length === 0 && pickerData.groups.length === 0 ? (
                 <p className="text-center text-sm py-6" style={{ color: 'var(--admin-text-mute)' }}>
                   {search ? 'Nenhum produto bate com a busca' : 'Sem produtos cadastrados pra venda'}
                 </p>
               ) : (
                 <ul className="space-y-1 max-h-72 overflow-y-auto">
-                  {filteredProducts.map((p) => (
+                  {pickerData.groups.map((g) => (
+                    <li key={g.gid}>
+                      <button type="button" onClick={() => setPickerGroup(g.gid)} className="w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]" style={{ background: 'var(--admin-surface-hi)' }}>
+                        <span className="text-sm font-semibold block truncate" style={{ color: 'var(--admin-text)' }}>
+                          {g.base.name} <span style={{ color: '#9333EA' }}>· {g.vars.length} variantes</span>
+                        </span>
+                        <span className="text-sm flex-shrink-0" style={{ color: 'var(--admin-text-faded)' }}>›</span>
+                      </button>
+                    </li>
+                  ))}
+                  {pickerData.singles.map((p) => (
                     <li key={p.id}>
-                      <button
-                        type="button"
-                        onClick={() => pickProduct(p)}
-                        className="w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]"
-                        style={{ background: 'var(--admin-surface-hi)' }}
-                      >
+                      <button type="button" onClick={() => pickProduct(p)} className="w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between gap-3 hover:bg-[color-mix(in_srgb,var(--admin-accent)_10%,transparent)]" style={{ background: 'var(--admin-surface-hi)' }}>
                         <span className="min-w-0">
-                          <span className="text-sm font-semibold block truncate" style={{ color: 'var(--admin-text)' }}>
-                            {p.name}{p.variant ? ` · ${p.variant}` : ''}
-                          </span>
-                          <span className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
-                            {p.track_stock ? `${p.quantity} ${p.unit} em estoque` : 'sem controle de estoque'}
-                          </span>
+                          <span className="text-sm font-semibold block truncate" style={{ color: 'var(--admin-text)' }}>{p.name}{p.variant ? ` · ${p.variant}` : ''}</span>
+                          <span className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>{p.track_stock ? `${p.quantity} ${p.unit} em estoque` : 'sem controle de estoque'}</span>
                         </span>
-                        <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
-                          {p.price != null ? brl(p.price) : '—'}
-                        </span>
+                        <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{p.price != null ? brl(p.price) : '—'}</span>
                       </button>
                     </li>
                   ))}
