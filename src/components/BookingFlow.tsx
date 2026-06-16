@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
 import { maskPhoneInput } from '@/lib/client-display'
+import { extractGoogleReviewUrl } from '@/lib/google-review'
 import {
   IconClock,
   IconSparkles,
@@ -1033,7 +1034,7 @@ export default function BookingFlow({
         )}
 
         {/* D) REVIEW GOOGLE — brand card + GoogleGLogo */}
-        {business.points_for_review > 0 && business.google_place_id && (
+        {business.points_for_review > 0 && extractGoogleReviewUrl(business.google_place_id) && (
           <div
             className="rounded-2xl p-4"
             style={{
@@ -1059,7 +1060,7 @@ export default function BookingFlow({
             </p>
             <div className="flex flex-col gap-2">
               <a
-                href={business.google_place_id}
+                href={extractGoogleReviewUrl(business.google_place_id) ?? '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setReviewOpened(true)}

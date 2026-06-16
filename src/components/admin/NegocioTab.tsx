@@ -4,6 +4,7 @@ import { useRef, useState, useMemo } from 'react'
 import type { Business } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
+import { extractGoogleReviewUrl } from '@/lib/google-review'
 import {
   IconCheck,
   IconCamera,
@@ -164,7 +165,9 @@ export default function NegocioTab({ business }: Props) {
         phone: phoneDigits || null,
         address: address.trim() || null,
         description: description.trim() || null,
-        google_place_id: googleMapsUrl.trim() || null,
+        // Limpa o link de review (dono às vezes cola "Nome https://..." ou sem
+        // https). Guarda a URL extraída; se não achar, mantém o que digitou.
+        google_place_id: extractGoogleReviewUrl(googleMapsUrl) ?? (googleMapsUrl.trim() || null),
         google_rating: googleRating ? parseFloat(googleRating) : null,
         google_reviews_count: googleReviewsCount ? parseInt(googleReviewsCount) : null,
         points_for_review: pointsForReview ? parseInt(pointsForReview) : 0,

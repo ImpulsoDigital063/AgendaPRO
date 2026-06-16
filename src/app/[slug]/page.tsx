@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { extractGoogleReviewUrl } from '@/lib/google-review'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -698,11 +699,11 @@ export default async function BusinessPage({
         )}
 
         {/* Google Reviews */}
-        {b.google_place_id && (
+        {extractGoogleReviewUrl(b.google_place_id) && (
           <section className="mb-6">
             <GoogleReviewSection
               businessId={b.id}
-              googleMapsUrl={b.google_place_id!}
+              googleMapsUrl={extractGoogleReviewUrl(b.google_place_id)!}
               rating={b.google_rating}
               reviewsCount={b.google_reviews_count}
               pointsForReview={b.points_for_review}
