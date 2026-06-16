@@ -402,7 +402,10 @@ export default function AgendarModal({
           product_id: line.product_id,
           quantity: 1,
           unit_price: line.unit_price,
-          professional_id: profId || null,
+          // Produto NÃO é atribuído à profissional do serviço — é venda do
+          // estúdio, não entra na comissão de ninguém (Izanara/Eduardo 16/06).
+          // Quem vendeu fica registrado via created_by (mostrado em Vendas/comanda).
+          professional_id: null,
         }),
       })
       if (!res.ok) {
