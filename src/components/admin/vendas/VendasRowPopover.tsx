@@ -23,6 +23,9 @@ export type SaleRow = {
   payment_method: string | null
   invoice_item_id: string | null
   professional: { name: string } | null
+  /** Quem VENDEU o produto (registrante) · só produto · mostrado no detalhe.
+   *  Produto não tem profissional na lista (é do estúdio); o vendedor fica aqui. */
+  seller_name?: string | null
   /** serviço (atendimento) ou produto (venda avulsa) · pro selo visual */
   kind?: 'service' | 'product'
 }
@@ -156,15 +159,21 @@ export default function VendasRowPopover({ sale, invoiceRef, onClose }: Props) {
             )}
           </p>
 
-          {/* Profissional · "Profissional" pro serviço, "Vendido por" pro produto */}
-          {sale.professional?.name && (
-            <p className="text-sm" style={{ color: 'var(--admin-text-2)' }}>
-              <span style={{ color: 'var(--admin-text-mute)' }}>
-                {sale.kind === 'product' ? 'Vendido por: ' : 'Profissional: '}
-              </span>
-              {sale.professional.name}
-            </p>
-          )}
+          {/* Serviço → "Profissional"; Produto → "Vendido por" (quem registrou ·
+              produto não tem profissional, é venda do estúdio). */}
+          {sale.kind === 'product'
+            ? sale.seller_name && (
+                <p className="text-sm" style={{ color: 'var(--admin-text-2)' }}>
+                  <span style={{ color: 'var(--admin-text-mute)' }}>Vendido por: </span>
+                  {sale.seller_name}
+                </p>
+              )
+            : sale.professional?.name && (
+                <p className="text-sm" style={{ color: 'var(--admin-text-2)' }}>
+                  <span style={{ color: 'var(--admin-text-mute)' }}>Profissional: </span>
+                  {sale.professional.name}
+                </p>
+              )}
 
           {/* Valor */}
           <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>

@@ -206,13 +206,13 @@ export default async function VendasPage({
     const desc = items.length === 0
       ? 'Venda de produto'
       : items.map((it) => `${it.product_name}${Number(it.quantity) > 1 ? ` (${it.quantity})` : ''}`).join(' + ')
-    // Produto COM comissão → mostra o profissional (quem ganha). SEM comissão →
-    // mostra quem REGISTROU a venda (created_by), não quem executa. (Eduardo 09/06.)
+    // Coluna PROFISSIONAL: produto SEM comissão NÃO mostra profissional (é venda
+    // do estúdio, não atribui a ninguém → "—"). COM comissão → o profissional que
+    // ganha. Quem vendeu (registrante) vai pro popover de detalhe via seller_name.
+    // (Izanara/Eduardo 16/06.)
     const hasCommission = items.some((it) => Number(it.commission_value ?? 0) > 0)
     const registrant = s.created_by ? registrantName.get(s.created_by) : undefined
-    const whoToShow = hasCommission
-      ? (prof ?? null)
-      : (registrant ? { name: registrant } : null)
+    const whoToShow = hasCommission ? (prof ?? null) : null
     // Horário: prioriza start_time do appointment vinculado (faz a linha
     // do produto ficar grudada na linha do serviço na mesma comanda).
     // Fallback: created_at da sale.
@@ -237,6 +237,7 @@ export default async function VendasPage({
       // mostrar chip de "#NN" precisamos resolver o invoice abaixo
       invoice_item_id: s.invoice_id, // reaproveita o slot pra lookup
       professional: whoToShow,
+      seller_name: registrant ?? null, // quem vendeu (registrante) · popover
       kind: 'product' as const,
     }
   })
