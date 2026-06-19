@@ -27,6 +27,7 @@ type ApptDetail = {
   client_phone: string | null
   customer_id: string | null
   service_name: string | null
+  appointment_services: { service_name: string | null; price: number | null }[] | null
   professional: { id: string; name: string } | { id: string; name: string }[] | null
   customer: { id: string; name: string; phone: string; email: string | null } | { id: string; name: string; phone: string; email: string | null }[] | null
 }
@@ -78,6 +79,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
         payment_method, total_price, notes,
         client_name, client_phone, customer_id,
         service_name,
+        appointment_services(service_name, price),
         professional:professionals(id, name),
         customer:customers(id, name, phone, email)
       `)
@@ -213,6 +215,25 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
                 <Row icon={<IconCalendar size={16} />} label="Quando" value={<span className="capitalize">{formatDateLong(data.appointment_date)}</span>} sub={`${data.start_time.slice(0, 5)} até ${data.end_time.slice(0, 5)}`} />
                 <Row icon={<IconClock size={16} />} label="Profissional" value={prof?.name ?? '—'} />
                 <Row icon={<IconDollar size={16} />} label="Valor" value={<span className="font-bold text-lg" style={{ color: 'var(--admin-text)' }}>{formatBRL(data.total_price)}</span>} sub={data.payment_method ?? undefined} />
+                {(() => {
+                  const svcs = (data.appointment_services ?? []).filter((s) => s.service_name)
+                  if (svcs.length < 2) return null
+                  return (
+                    <div className="pt-3 border-t" style={{ borderColor: 'var(--admin-divider)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
+                        Serviços
+                      </p>
+                      <div className="space-y-1.5">
+                        {svcs.map((s, i) => (
+                          <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                            <span className="truncate" style={{ color: 'var(--admin-text-2)' }}>{s.service_name}</span>
+                            <span className="font-semibold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{formatBRL(s.price)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
                 {data.notes && (
                   <div className="pt-3 border-t" style={{ borderColor: 'var(--admin-divider)' }}>
                     <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--admin-text-faded)' }}>

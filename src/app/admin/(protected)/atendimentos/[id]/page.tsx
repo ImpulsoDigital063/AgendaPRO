@@ -57,6 +57,7 @@ export default async function AppointmentDetailPage({
       payment_method, total_price, notes,
       client_name, client_phone, customer_id,
       service_name, service_id,
+      appointment_services(service_name, price),
       professional_id,
       professional:professionals(id, name),
       customer:customers(id, name, phone, email)
@@ -149,6 +150,25 @@ export default async function AppointmentDetailPage({
             <Row icon={<IconCalendar size={16} />} label="Quando" value={<span className="capitalize">{formatDateLong(appt.appointment_date)}</span>} sub={`${appt.start_time.slice(0, 5)} até ${appt.end_time.slice(0, 5)}`} />
             <Row icon={<IconClock size={16} />} label="Profissional" value={prof?.name ?? '—'} />
             <Row icon={<IconDollar size={16} />} label="Valor" value={<span className="font-bold text-lg" style={{ color: 'var(--admin-text)' }}>{formatBRL(appt.total_price)}</span>} sub={appt.payment_method ?? undefined} />
+            {(() => {
+              const svcs = ((appt.appointment_services ?? []) as { service_name: string | null; price: number | null }[]).filter((s) => s.service_name)
+              if (svcs.length < 2) return null
+              return (
+                <div className="pt-3 border-t" style={{ borderColor: 'var(--admin-divider)' }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
+                    Serviços
+                  </p>
+                  <div className="space-y-1.5">
+                    {svcs.map((s, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="truncate" style={{ color: 'var(--admin-text-2)' }}>{s.service_name}</span>
+                        <span className="font-semibold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{formatBRL(s.price)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
             {appt.notes && (
               <div className="pt-3 border-t" style={{ borderColor: 'var(--admin-divider)' }}>
                 <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--admin-text-faded)' }}>
