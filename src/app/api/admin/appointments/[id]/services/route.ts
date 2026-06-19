@@ -336,6 +336,58 @@ export async function PATCH(
     return NextResponse.json({ error: 'Erro ao atualizar agendamento.' }, { status: 500 })
   }
 
+  // Sincroniza a(s) comanda(s) ABERTA(S) com os novos serviços. O invoice_item
+  // do tipo appointment representa o atendimento inteiro · sem isso a comanda
+  // fatura o valor antigo (bug pego 19/06: editou pra R$310 mas a comanda
+  // seguia R$160 / só 1 serviço). Comanda já paga é bloqueada antes (lock no
+  // GET) · aqui filtramos status=open por segurança.
+  const newServiceName = updatePayload.service_name as string
+  const { data: apptInvItems } = await admin
+    .from('invoice_items')
+    .select('id, invoice_id')
+    .eq('reference_id', appointmentId)
+    .eq('item_type', 'appointment')
+
+  for (const it of apptInvItems ?? []) {
+    const { data: inv } = await admin
+      .from('invoices')
+      .select('id, status, manual_discount')
+      .eq('id', it.invoice_id)
+      .maybeSingle()
+    if (!inv || inv.status !== 'open') continue
+
+    // Atualiza a linha do atendimento pro novo total/descrição
+    await admin
+      .from('invoice_items')
+      .update({
+        description: newServiceName,
+        unit_price: totalPrice,
+        quantity: 1,
+        total: totalPrice,
+        discount: 0,
+      })
+      .eq('id', it.id)
+
+    // Recomputa a comanda (mesmo padrão do items route · respeita manual_discount)
+    const { data: allItems } = await admin
+      .from('invoice_items')
+      .select('total, discount')
+      .eq('invoice_id', inv.id)
+    const itemsTotal = (allItems ?? []).reduce((s, r) => s + Number(r.total ?? 0), 0)
+    const itemsDiscount = (allItems ?? []).reduce((s, r) => s + Number(r.discount ?? 0), 0)
+    let manualDiscount = Number(inv.manual_discount ?? 0)
+    if (manualDiscount > itemsTotal) manualDiscount = itemsTotal
+    await admin
+      .from('invoices')
+      .update({
+        subtotal: itemsTotal + itemsDiscount,
+        discount: itemsDiscount + manualDiscount,
+        manual_discount: manualDiscount,
+        total: Math.max(0, itemsTotal - manualDiscount),
+      })
+      .eq('id', inv.id)
+  }
+
   // Activity log (rastreio · usa professional_id existente do appointment)
   await admin.from('activity_log').insert({
     business_id: appointment.business_id,
