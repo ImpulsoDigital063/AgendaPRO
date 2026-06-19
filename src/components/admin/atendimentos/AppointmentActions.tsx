@@ -47,6 +47,10 @@ export default function AppointmentActions({
   const [faturarOpen, setFaturarOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Mensagens de WhatsApp (modelos editáveis) · carregadas sob demanda e
+  // cacheadas. Envio é manual: abre o wa.me com o texto pronto.
+  const [waMsgs, setWaMsgs] = useState<{ confirmation: string; reminder: string; phone: string; hasPhone: boolean } | null>(null)
+  const [waLoading, setWaLoading] = useState<null | 'confirmation' | 'reminder'>(null)
 
   async function postPayment(body: Record<string, unknown>): Promise<boolean> {
     setLoading(true)
@@ -119,14 +123,35 @@ export default function AppointmentActions({
     }
   }
 
-  function enviarWhatsApp() {
-    if (!customerPhone) {
+  async function openWhatsApp(kind: 'confirmation' | 'reminder') {
+    setError(null)
+    let msgs = waMsgs
+    if (!msgs) {
+      setWaLoading(kind)
+      try {
+        const res = await fetch(`/api/admin/appointments/${appointmentId}/whatsapp-messages`)
+        const d = await res.json()
+        if (!res.ok) {
+          setError(d.error || 'Erro ao montar a mensagem')
+          setWaLoading(null)
+          return
+        }
+        msgs = d
+        setWaMsgs(d)
+      } catch {
+        setError('Erro de conexão')
+        setWaLoading(null)
+        return
+      }
+      setWaLoading(null)
+    }
+    if (!msgs || !msgs.hasPhone || !msgs.phone) {
       setError('Cliente sem telefone cadastrado')
       return
     }
-    const phoneDigits = customerPhone.replace(/\D/g, '')
-    const msg = `Oi ${customerName}! Confirmando seu atendimento.`
-    window.open(`https://wa.me/55${phoneDigits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer')
+    const phone = msgs.phone.startsWith('55') ? msgs.phone : `55${msgs.phone}`
+    const text = kind === 'confirmation' ? msgs.confirmation : msgs.reminder
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -165,12 +190,12 @@ export default function AppointmentActions({
           <IconCheck size={16} /> {isPaid ? 'Desmarcar pagamento' : 'Faturar atendimento'}
         </button>
 
-        {/* WhatsApp */}
+        {/* Confirmar via WhatsApp (modelo editável · envio manual) */}
         <button
           type="button"
-          onClick={enviarWhatsApp}
-          disabled={!customerPhone}
-          className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98] disabled:opacity-40"
+          onClick={() => openWhatsApp('confirmation')}
+          disabled={waLoading !== null}
+          className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98] disabled:opacity-50"
           style={{
             background: 'linear-gradient(180deg, #22C55E 0%, #1A8C45 100%)',
             color: '#fff',
@@ -178,9 +203,24 @@ export default function AppointmentActions({
             boxShadow: '0 10px 24px -8px rgba(26,140,69,0.55), 0 2px 4px rgba(0,0,0,0.08)',
           }}
         >
-          <IconWhatsapp size={16} /> Enviar WhatsApp
+          <IconWhatsapp size={16} /> {waLoading === 'confirmation' ? 'Abrindo…' : 'Confirmar'}
         </button>
       </div>
+
+      {/* Lembrete via WhatsApp · envio manual com o modelo editável */}
+      <button
+        type="button"
+        onClick={() => openWhatsApp('reminder')}
+        disabled={waLoading !== null}
+        className="w-full py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+        style={{
+          background: 'rgba(37,211,102,0.10)',
+          color: '#1A8C45',
+          border: '1px solid rgba(37,211,102,0.35)',
+        }}
+      >
+        <IconWhatsapp size={16} /> {waLoading === 'reminder' ? 'Abrindo…' : 'Enviar lembrete'}
+      </button>
 
       {/* Editar atendimento · adiciona/troca serviços no MESMO agendamento
           (mesma data) · agiliza quando o dono adiciona serviço durante o

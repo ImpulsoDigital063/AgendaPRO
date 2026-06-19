@@ -20,6 +20,7 @@ import {
   IconClock,
   IconSearch,
   IconClose,
+  IconWhatsapp,
 } from '@/components/ui/Icon'
 
 type Props = {
@@ -120,6 +121,7 @@ export default function AdminMobileTopBar({
         { label: 'Fichas Modelo', href: '/admin/configuracoes?tab=fichas-modelo', Icon: IconSearch },
         { label: 'Aparência', href: '/admin/configuracoes?tab=aparencia', Icon: IconSparkles },
         { label: 'QR Code', href: '/admin/configuracoes?tab=qr-code', Icon: IconSettings },
+        { label: 'Mensagens', href: '/admin/configuracoes?tab=mensagens', Icon: IconWhatsapp },
         { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', Icon: IconTrendingUp },
         { label: 'Plano', href: '/admin/configuracoes?tab=plano', Icon: IconDollar },
         { label: 'Importar', href: '/admin/configuracoes?tab=importar', Icon: IconUser },

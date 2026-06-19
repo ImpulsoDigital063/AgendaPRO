@@ -8,6 +8,7 @@ import ServicosTab from './ServicosTab'
 import HorariosTab from './HorariosTab'
 import WhatsAppQRTab from './WhatsAppQRTab'
 import NegocioTab from './NegocioTab'
+import MensagensTab from './MensagensTab'
 import FidelidadeTab from './FidelidadeTab'
 import FidelidadeOnboardingCard from './onboarding/FidelidadeOnboardingCard'
 import OnboardingMarker from './onboarding/OnboardingMarker'
@@ -19,7 +20,7 @@ import MaquininhasTab from './MaquininhasTab'
 import BloqueiosTab from './BloqueiosTab'
 import FichasModeloTab from './FichasModeloTab'
 
-type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas' | 'bloqueios' | 'fichas-modelo'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas' | 'bloqueios' | 'fichas-modelo' | 'mensagens'
 
 // Alias retrocompat: URLs antigas com ?tab=whatsapp continuam funcionando.
 const TAB_ALIASES: Record<string, Tab> = {
@@ -54,7 +55,7 @@ export default function ConfiguracoesTabs({
 
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo']
+  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo', 'mensagens']
   // Resolve alias antes de validar (ex: ?tab=whatsapp → 'qr-code')
   const resolvedTab = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null
   const safeResolvedTab = resolvedTab === 'plano' && hidePlanoForBusiness ? 'negocio' : resolvedTab
@@ -217,6 +218,8 @@ export default function ConfiguracoesTabs({
       )}
 
       {activeTab === 'fichas-modelo' && <FichasModeloTab />}
+
+      {activeTab === 'mensagens' && <MensagensTab businessName={business.name ?? 'Seu Negócio'} />}
     </div>
   )
 }

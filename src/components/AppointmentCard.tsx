@@ -59,6 +59,9 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
   // chip do serviço. Não toca em pontos · ajuste fica manual no perfil
   // do cliente.
   const [editServicesOpen, setEditServicesOpen] = useState(false)
+  // Lembrete rápido via WhatsApp (envio manual · modelo editável). Abre o
+  // wa.me com o texto montado pela rota — menos-cliques direto do card.
+  const [reminderLoading, setReminderLoading] = useState(false)
   // Punição por no-show (v45 · 14/05/2026) — lazy-load quando status=no_show.
   // Mostra tag "−Xpts" + botão "Reverter" se houve punição aplicada.
   const [penaltyInfo, setPenaltyInfo] = useState<{
@@ -133,6 +136,22 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
       setPenaltyInfo((prev) => (prev ? { ...prev, alreadyRelevado: true } : prev))
       router.refresh()
     }
+  }
+
+  async function enviarLembrete() {
+    if (reminderLoading) return
+    setReminderLoading(true)
+    try {
+      const res = await fetch(`/api/admin/appointments/${appointment.id}/whatsapp-messages`)
+      const d = await res.json()
+      if (res.ok && d.hasPhone && d.phone) {
+        const phone = d.phone.startsWith('55') ? d.phone : `55${d.phone}`
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(d.reminder)}`, '_blank', 'noopener,noreferrer')
+      }
+    } catch {
+      // silencioso · botão volta ao normal
+    }
+    setReminderLoading(false)
   }
 
   async function updateStatus(newStatus: 'confirmed' | 'cancelled' | 'no_show' | 'completed') {
@@ -379,8 +398,8 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
           )}
         </div>
 
-        {/* WhatsApp */}
-        <div className="pl-[64px] mb-3">
+        {/* WhatsApp · telefone + lembrete rápido (1 toque · texto pronto) */}
+        <div className="pl-[64px] mb-3 flex items-center gap-2 flex-wrap">
           <a
             href={`https://wa.me/55${appointment.client_phone.replace(/\D/g, '')}`}
             target="_blank"
@@ -391,6 +410,22 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
             <IconWhatsapp size={14} />
             {maskPhone(appointment.client_phone)}
           </a>
+          {(status === 'pending' || status === 'confirmed') && (
+            <button
+              type="button"
+              onClick={enviarLembrete}
+              disabled={reminderLoading}
+              title="Enviar lembrete pelo WhatsApp"
+              className="text-[11px] font-semibold inline-flex items-center gap-1 px-2 py-1 rounded-full transition-colors disabled:opacity-50"
+              style={{
+                background: 'rgba(37,211,102,0.10)',
+                color: '#1A8C45',
+                border: '1px solid rgba(37,211,102,0.35)',
+              }}
+            >
+              <IconWhatsapp size={12} /> {reminderLoading ? '…' : 'Lembrete'}
+            </button>
+          )}
         </div>
 
         {/* Ações */}
