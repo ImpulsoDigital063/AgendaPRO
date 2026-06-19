@@ -87,6 +87,24 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
     .map((it) => it.reference_id as string)
   const sellers = await resolveProductItemSellers(admin, business.id, productSaleIds)
 
+  // Quebra de serviços por atendimento (pra comanda mostrar "Jips Grace +
+  // Entrelace" em vez de só "Jips Grace +1"). Só relevante quando 2+ serviços.
+  const apptIds = (items ?? [])
+    .filter((it) => it.item_type === 'appointment' && it.reference_id)
+    .map((it) => it.reference_id as string)
+  const apptServices: Record<string, { name: string; price: number | null }[]> = {}
+  if (apptIds.length > 0) {
+    const { data: svcRows } = await admin
+      .from('appointment_services')
+      .select('appointment_id, service_name, price')
+      .in('appointment_id', apptIds)
+    for (const r of svcRows ?? []) {
+      const aid = r.appointment_id as string
+      if (!r.service_name) continue
+      ;(apptServices[aid] ??= []).push({ name: r.service_name as string, price: r.price as number | null })
+    }
+  }
+
   const full: InvoiceFull = {
     id: invoice.id as string,
     invoice_number: invoice.invoice_number as number,
@@ -108,6 +126,9 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
         // Produto sem comissão → nome de quem vendeu. Com comissão → mantém o profissional.
         if (seller && !seller.hasCommission) professionalName = seller.sellerName
       }
+      const svcs = it.item_type === 'appointment' && it.reference_id
+        ? (apptServices[it.reference_id as string] ?? [])
+        : []
       return {
         id: it.id as string,
         item_type: it.item_type as 'appointment' | 'product' | 'package' | 'credit',
@@ -117,6 +138,7 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
         discount: Number(it.discount ?? 0),
         total: Number(it.total ?? 0),
         professional_name: professionalName,
+        services: svcs.length >= 2 ? svcs : undefined,
       }
     }),
     payments: (payments ?? []).map((p) => ({

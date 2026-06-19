@@ -34,6 +34,8 @@ export type InvoiceFull = {
     discount: number
     total: number
     professional_name: string | null
+    /** Quebra de serviços quando o atendimento tem 2+ (mostra cada um). */
+    services?: { name: string; price: number | null }[]
   }[]
   payments: {
     id: string
@@ -480,6 +482,16 @@ export default function ComandaDetalhe({
                   <td className="py-2 text-xs" style={{ color: 'var(--admin-text-mute)' }}>{TYPE_LABEL[it.item_type]}</td>
                   <td className="py-2 pr-3" style={{ minWidth: 240 }}>
                     <div style={{ color: 'var(--admin-text)', textWrap: 'balance' as 'wrap' }}>{it.description}</div>
+                    {it.services && it.services.length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {it.services.map((s, i) => (
+                          <div key={i} className="text-[11px] flex items-center justify-between gap-3" style={{ color: 'var(--admin-text-mute)' }}>
+                            <span className="truncate">· {s.name}</span>
+                            {s.price != null && <span className="tabular-nums flex-shrink-0">{brl(s.price)}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {it.professional_name && <div className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>{it.item_type === 'product' ? 'vendido por' : 'com'} {it.professional_name}</div>}
                   </td>
                   <td className="py-2 text-right tabular-nums" style={{ color: 'var(--admin-text)' }}>
