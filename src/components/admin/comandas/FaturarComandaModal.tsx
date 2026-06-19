@@ -62,6 +62,19 @@ function brl(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+// Traduz códigos de erro da API pra linguagem do dono (nada de código cru
+// tipo "invoice_already_paid" na tela · Rosy 19/06).
+function friendlyError(d: { error?: string; detail?: string } | null | undefined): string {
+  const code = d?.error
+  const map: Record<string, string> = {
+    invoice_already_paid: 'Esse atendimento já foi pago. Pra alterar, reabra a comanda em Comandas.',
+    invoice_not_open: 'Essa comanda não está mais aberta.',
+    insufficient_stock: 'Estoque insuficiente pra um dos produtos.',
+    appointment_not_found: 'Atendimento não encontrado.',
+  }
+  return (code && map[code]) || d?.detail || d?.error || 'Erro ao faturar comanda'
+}
+
 const selectStyle: React.CSSProperties = {
   background: `var(--admin-input-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.625rem center`,
   border: '1px solid var(--admin-border)',
@@ -82,6 +95,7 @@ export default function FaturarComandaModal({
   useEffect(() => { setPortalReady(true) }, [])
 
   const [products, setProducts] = useState<ProductLite[]>([])
+  const [canSellProducts, setCanSellProducts] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [cart, setCart] = useState<CartLine[]>([])
   const [search, setSearch] = useState('')
@@ -113,6 +127,7 @@ export default function FaturarComandaModal({
     fetch('/api/admin/products')
       .then((r) => r.json())
       .then((d) => {
+        setCanSellProducts(d.canSellProducts === true)
         const list: ProductLite[] = (d.products ?? [])
           .filter((p: ProductLite) => p.sale_active !== false)
           .map((p: ProductLite) => ({
@@ -248,7 +263,7 @@ export default function FaturarComandaModal({
     setPaymentOpen(false)
     if (!r.ok) {
       const d = await r.json().catch(() => ({}))
-      setError(d.error ?? 'Erro ao faturar comanda')
+      setError(friendlyError(d))
       return
     }
     const d = await r.json()
@@ -327,8 +342,8 @@ export default function FaturarComandaModal({
               </div>
             </div>
 
-            {/* Produtos no carrinho */}
-            {cart.length > 0 && (
+            {/* Produtos no carrinho · só plano Equipe */}
+            {canSellProducts && cart.length > 0 && (
               <div className="space-y-2">
                 <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
                   Produtos vendidos
@@ -379,7 +394,8 @@ export default function FaturarComandaModal({
               </div>
             )}
 
-            {/* Picker de produto */}
+            {/* Picker de produto · exclusivo do plano Equipe */}
+            {canSellProducts && (
             <div
               className="rounded-2xl p-3 space-y-2"
               style={{ background: 'color-mix(in srgb, var(--admin-accent) 6%, transparent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 40%, transparent)' }}
@@ -451,6 +467,7 @@ export default function FaturarComandaModal({
                 </>
               )}
             </div>
+            )}
 
             {/* Serviços extra no carrinho */}
             {serviceCart.length > 0 && (

@@ -33,7 +33,17 @@ export async function GET(req: NextRequest) {
     .order('name')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ products: data ?? [] })
+
+  // Produto é exclusivo do plano Equipe (R$97). O flag deixa as telas
+  // esconderem o picker de produto pra quem é Solo (ex.: Faturar comanda).
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('plan')
+    .eq('business_id', businessId)
+    .maybeSingle()
+  const canSellProducts = sub?.plan === 'equipe'
+
+  return NextResponse.json({ products: data ?? [], canSellProducts })
 }
 
 /**

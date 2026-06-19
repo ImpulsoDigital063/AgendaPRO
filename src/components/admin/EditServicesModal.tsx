@@ -22,10 +22,6 @@ type Props = {
   onClose: () => void
 }
 
-function formatHour(time: string): string {
-  return time.slice(0, 5)
-}
-
 function formatPrice(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -48,6 +44,12 @@ export default function EditServicesModal({
   const [saving, setSaving] = useState(false)
   const [services, setServices] = useState<Service[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  // Edição completa: data, horário, profissional e observação.
+  const [professionals, setProfessionals] = useState<{ id: string; name: string }[]>([])
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState(startTime.slice(0, 5))
+  const [professionalId, setProfessionalId] = useState('')
+  const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
   // locked = comanda já paga (invoice fechada). Editar serviço aqui descasaria
   // o financeiro · backend bloqueia 409 e a UI mostra o caminho (reabrir).
@@ -84,6 +86,12 @@ export default function EditServicesModal({
         if (cancelled) return
         setServices(data.services || [])
         setSelectedIds(new Set(data.currentServiceIds || []))
+        setProfessionals(data.professionals || [])
+        const appt = data.appointment || {}
+        if (appt.appointment_date) setDate(appt.appointment_date)
+        if (appt.start_time) setTime(String(appt.start_time).slice(0, 5))
+        if (appt.professional_id) setProfessionalId(appt.professional_id)
+        setNotes(appt.notes || '')
         setLocked(data.appointment?.locked === true)
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Erro')
@@ -107,7 +115,7 @@ export default function EditServicesModal({
   const selectedServices = services.filter((s) => selectedIds.has(s.id))
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0)
   const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
-  const newEndTime = totalDuration > 0 ? calcEndTime(startTime, totalDuration) : null
+  const newEndTime = totalDuration > 0 ? calcEndTime(time || startTime, totalDuration) : null
 
   async function salvar(force = false) {
     if (selectedIds.size === 0) {
@@ -121,7 +129,14 @@ export default function EditServicesModal({
       const res = await fetch(`/api/admin/appointments/${appointmentId}/services`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ serviceIds: Array.from(selectedIds), force }),
+        body: JSON.stringify({
+          serviceIds: Array.from(selectedIds),
+          force,
+          start_time: time,
+          appointment_date: date || undefined,
+          professional_id: professionalId || undefined,
+          notes,
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -173,10 +188,10 @@ export default function EditServicesModal({
         >
           <div>
             <h3 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
-              Editar serviços
+              Editar atendimento
             </h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
-              Início {formatHour(startTime)}
+              Mude horário, data, profissional e serviços
             </p>
           </div>
           <button
@@ -220,7 +235,7 @@ export default function EditServicesModal({
 
         {/* Conteúdo */}
         {!locked && (
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
           {loading ? (
             <div className="space-y-2 animate-pulse">
               {[1, 2, 3].map((i) => (
@@ -231,52 +246,103 @@ export default function EditServicesModal({
                 />
               ))}
             </div>
-          ) : services.length === 0 ? (
-            <p
-              className="text-sm text-center py-8"
-              style={{ color: 'var(--admin-text-faded)' }}
-            >
-              Nenhum serviço ativo cadastrado.
-            </p>
           ) : (
-            services.map((s) => {
-              const checked = selectedIds.has(s.id)
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => toggle(s.id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-transform active:scale-[0.99]"
-                  style={{
-                    background: checked
-                      ? 'rgba(59,130,246,0.10)'
-                      : 'var(--admin-input-bg)',
-                    border: `1px solid ${checked ? 'rgba(59,130,246,0.40)' : 'var(--admin-border)'}`,
-                  }}
-                >
-                  <span
-                    className="w-5 h-5 rounded flex-shrink-0 flex items-center justify-center"
-                    style={{
-                      background: checked ? '#3B82F6' : 'transparent',
-                      border: `1.5px solid ${checked ? '#3B82F6' : 'var(--admin-border)'}`,
-                    }}
+            <>
+              {/* Data + Horário */}
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Data</span>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="admin-input w-full mt-1 px-3 py-2 rounded-xl text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Horário de início</span>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="admin-input w-full mt-1 px-3 py-2 rounded-xl text-sm"
+                  />
+                </label>
+              </div>
+
+              {/* Profissional */}
+              {professionals.length > 0 && (
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Profissional</span>
+                  <select
+                    value={professionalId}
+                    onChange={(e) => setProfessionalId(e.target.value)}
+                    className="admin-input w-full mt-1 px-3 py-2 rounded-xl text-sm"
                   >
-                    {checked && <IconCheck size={12} />}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="text-sm font-semibold truncate"
-                      style={{ color: 'var(--admin-text)' }}
-                    >
-                      {s.name}
-                    </p>
-                    <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
-                      {s.duration_minutes}min · {s.price != null ? formatPrice(s.price) : '—'}
-                    </p>
+                    {professionals.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {/* Serviços */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Serviços</span>
+                {services.length === 0 ? (
+                  <p className="text-sm text-center py-6" style={{ color: 'var(--admin-text-faded)' }}>
+                    Nenhum serviço ativo cadastrado.
+                  </p>
+                ) : (
+                  <div className="space-y-2 mt-1.5">
+                    {services.map((s) => {
+                      const checked = selectedIds.has(s.id)
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => toggle(s.id)}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-transform active:scale-[0.99]"
+                          style={{
+                            background: checked ? 'rgba(59,130,246,0.10)' : 'var(--admin-input-bg)',
+                            border: `1px solid ${checked ? 'rgba(59,130,246,0.40)' : 'var(--admin-border)'}`,
+                          }}
+                        >
+                          <span
+                            className="w-5 h-5 rounded flex-shrink-0 flex items-center justify-center"
+                            style={{
+                              background: checked ? '#3B82F6' : 'transparent',
+                              border: `1.5px solid ${checked ? '#3B82F6' : 'var(--admin-border)'}`,
+                            }}
+                          >
+                            {checked && <IconCheck size={12} />}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{s.name}</p>
+                            <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+                              {s.duration_minutes}min · {s.price != null ? formatPrice(s.price) : '—'}
+                            </p>
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
-                </button>
-              )
-            })
+                )}
+              </div>
+
+              {/* Observação */}
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Observação</span>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                  placeholder="Anotação interna do atendimento (opcional)"
+                  className="admin-input w-full mt-1 px-3 py-2 rounded-xl text-sm resize-y"
+                />
+              </label>
+            </>
           )}
         </div>
         )}

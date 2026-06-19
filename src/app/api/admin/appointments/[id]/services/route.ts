@@ -64,7 +64,7 @@ export async function GET(
 
   const { data: appointment } = await admin
     .from('appointments')
-    .select('id, business_id, professional_id, status, start_time, end_time')
+    .select('id, business_id, professional_id, status, appointment_date, start_time, end_time, notes')
     .eq('id', appointmentId)
     .single()
 
@@ -98,7 +98,7 @@ export async function GET(
     return NextResponse.json({ error: 'Acesso negado.' }, { status: 403 })
   }
 
-  const [{ data: allServices }, { data: currentRows }] = await Promise.all([
+  const [{ data: allServices }, { data: currentRows }, { data: profs }] = await Promise.all([
     admin
       .from('services')
       .select('id, name, price, duration_minutes, points, active')
@@ -109,6 +109,12 @@ export async function GET(
       .from('appointment_services')
       .select('service_id')
       .eq('appointment_id', appointmentId),
+    admin
+      .from('professionals')
+      .select('id, name, active')
+      .eq('business_id', appointment.business_id)
+      .eq('active', true)
+      .order('name'),
   ])
 
   const currentServiceIds = (currentRows || [])
@@ -119,11 +125,15 @@ export async function GET(
     appointment: {
       id: appointment.id,
       status: appointment.status,
+      appointment_date: appointment.appointment_date,
       start_time: appointment.start_time,
       end_time: appointment.end_time,
+      professional_id: appointment.professional_id,
+      notes: appointment.notes ?? '',
       editable: EDITABLE_STATUSES.has(appointment.status),
     },
     services: allServices ?? [],
+    professionals: profs ?? [],
     currentServiceIds,
   })
 }
@@ -160,6 +170,15 @@ export async function PATCH(
   // API pula pre-check e seta manual_overlap_accepted=true · constraint
   // v60 nao bloqueia mais o par (semantica EXCLUDE simetrica).
   const force = body.force === true
+
+  // Edição COMPLETA do atendimento (Rosy 19/06): além dos serviços, o dono
+  // pode mudar horário, data, profissional e observação. Campos ausentes no
+  // body = mantém o valor atual.
+  const newStartRaw = typeof body.start_time === 'string' && /^\d{2}:\d{2}/.test(body.start_time) ? body.start_time.slice(0, 5) : null
+  const newDateRaw = typeof body.appointment_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.appointment_date) ? body.appointment_date : null
+  const newProfIdRaw = typeof body.professional_id === 'string' && body.professional_id ? body.professional_id : null
+  const hasNotes = 'notes' in body
+  const newNotes = hasNotes ? (typeof body.notes === 'string' ? body.notes.slice(0, 2000) : null) : undefined
 
   const admin = getAdminClient()
 
@@ -242,28 +261,48 @@ export async function PATCH(
   }
   const totalPrice = services.reduce((sum, s) => sum + (s.price ?? 0), 0)
 
-  // start_time vem como 'HH:MM' ou 'HH:MM:SS'. Calcula novo end_time.
-  const [sh, sm] = appointment.start_time.split(':').map(Number)
+  // Resolve os novos valores (ausente = mantém o atual).
+  const startStr = (newStartRaw ?? appointment.start_time).slice(0, 5)
+  const newDate = newDateRaw ?? appointment.appointment_date
+
+  // Valida profissional novo (se trocou): tem que ser do mesmo negócio e ativo.
+  let newProfId = appointment.professional_id
+  if (newProfIdRaw && newProfIdRaw !== appointment.professional_id) {
+    const { data: p } = await admin
+      .from('professionals')
+      .select('id, business_id, active')
+      .eq('id', newProfIdRaw)
+      .maybeSingle()
+    if (!p || p.business_id !== appointment.business_id) {
+      return NextResponse.json({ error: 'Profissional inválido.' }, { status: 400 })
+    }
+    newProfId = newProfIdRaw
+  }
+
+  // Calcula novo end_time. Clamp em 23:59 pra nunca estourar a meia-noite
+  // (Postgres recusa intervalo inválido · "sistema antecipa", cravado 19/06).
+  const [sh, sm] = startStr.split(':').map(Number)
   const startMinutes = sh * 60 + sm
-  const endMinutes = startMinutes + totalDurationMin
+  const newStartTimeFull = `${startStr}:00`
+  const endMinutes = Math.min(startMinutes + totalDurationMin, 23 * 60 + 59)
   const eh = Math.floor(endMinutes / 60).toString().padStart(2, '0')
   const em = (endMinutes % 60).toString().padStart(2, '0')
   const newEndTime = `${eh}:${em}:00`
 
-  // Pre-check de sobreposição: outros appointments do mesmo professional
-  // no mesmo dia que entrariam em conflito com o novo intervalo.
-  // Pulado quando force=true (profissional ja confirmou no modal).
-  if (!force && newEndTime !== appointment.end_time) {
+  // Pre-check de sobreposição: outros appointments do MESMO profissional no
+  // MESMO dia (já considerando troca de profissional/data/horário) que
+  // entrariam em conflito. Pulado quando force=true.
+  if (!force) {
     const { data: conflicts } = await admin
       .from('appointments')
       .select('id, start_time, end_time, status, client_name')
       .eq('business_id', appointment.business_id)
-      .eq('professional_id', appointment.professional_id)
-      .eq('appointment_date', appointment.appointment_date)
+      .eq('professional_id', newProfId)
+      .eq('appointment_date', newDate)
       .neq('id', appointmentId)
       .not('status', 'in', '(cancelled,no_show)')
       .lt('start_time', newEndTime)
-      .gt('end_time', appointment.start_time)
+      .gt('end_time', newStartTimeFull)
       .limit(1)
 
     if (conflicts && conflicts.length > 0) {
@@ -314,7 +353,13 @@ export async function PATCH(
     service_id: first.id,
     service_name: services.length === 1 ? first.name : `${first.name} +${services.length - 1}`,
     total_price: totalPrice,
+    appointment_date: newDate,
+    start_time: newStartTimeFull,
     end_time: newEndTime,
+    professional_id: newProfId,
+  }
+  if (newNotes !== undefined) {
+    updatePayload.notes = newNotes
   }
   if (force) {
     updatePayload.manual_overlap_accepted = true
