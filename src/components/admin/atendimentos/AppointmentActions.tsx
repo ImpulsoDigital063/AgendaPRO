@@ -190,10 +190,10 @@ export default function AppointmentActions({
           <IconCheck size={16} /> {isPaid ? 'Desmarcar pagamento' : 'Faturar atendimento'}
         </button>
 
-        {/* Confirmar via WhatsApp (modelo editável · envio manual) */}
+        {/* WhatsApp · um botão só (lembrete · modelo editável · envio manual) */}
         <button
           type="button"
-          onClick={() => openWhatsApp('confirmation')}
+          onClick={() => openWhatsApp('reminder')}
           disabled={waLoading !== null}
           className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98] disabled:opacity-50"
           style={{
@@ -203,24 +203,9 @@ export default function AppointmentActions({
             boxShadow: '0 10px 24px -8px rgba(26,140,69,0.55), 0 2px 4px rgba(0,0,0,0.08)',
           }}
         >
-          <IconWhatsapp size={16} /> {waLoading === 'confirmation' ? 'Abrindo…' : 'Confirmar'}
+          <IconWhatsapp size={16} /> {waLoading === 'reminder' ? 'Abrindo…' : 'Enviar WhatsApp'}
         </button>
       </div>
-
-      {/* Lembrete via WhatsApp · envio manual com o modelo editável */}
-      <button
-        type="button"
-        onClick={() => openWhatsApp('reminder')}
-        disabled={waLoading !== null}
-        className="w-full py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-        style={{
-          background: 'rgba(37,211,102,0.10)',
-          color: '#1A8C45',
-          border: '1px solid rgba(37,211,102,0.35)',
-        }}
-      >
-        <IconWhatsapp size={16} /> {waLoading === 'reminder' ? 'Abrindo…' : 'Enviar lembrete'}
-      </button>
 
       {/* Editar atendimento · adiciona/troca serviços no MESMO agendamento
           (mesma data) · agiliza quando o dono adiciona serviço durante o

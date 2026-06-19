@@ -111,8 +111,8 @@ export default function MensagensTab({ businessName }: Props) {
       <div>
         <h2 className="text-lg font-bold" style={{ color: 'var(--admin-text)' }}>Mensagens de WhatsApp</h2>
         <p className="text-sm mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-          Escreva como você quer falar com o cliente. Quando tocar em <strong>Confirmar</strong> ou{' '}
-          <strong>Lembrete</strong> no atendimento, o WhatsApp abre com essa mensagem já pronta — é só enviar.
+          Escreva como você quer falar com o cliente. Quando tocar em <strong>Enviar WhatsApp</strong> no
+          atendimento (ou <strong>Lembrete</strong> no card), o WhatsApp abre com a mensagem já pronta — é só enviar.
         </p>
       </div>
 
@@ -136,7 +136,7 @@ export default function MensagensTab({ businessName }: Props) {
 
       <MessageEditor
         title="Mensagem de confirmação"
-        hint="Pra confirmar o horário com o cliente."
+        hint="Usada no envio automático de confirmação (quando o WhatsApp automático estiver ligado)."
         value={confirmation}
         onChange={setConfirmation}
         textareaRef={confirmRef}
@@ -147,7 +147,7 @@ export default function MensagensTab({ businessName }: Props) {
 
       <MessageEditor
         title="Mensagem de lembrete"
-        hint="Pra lembrar o cliente perto do dia do atendimento."
+        hint="A que você envia na mão pelo botão Enviar WhatsApp / Lembrete."
         value={reminder}
         onChange={setReminder}
         textareaRef={reminderRef}
