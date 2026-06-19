@@ -121,6 +121,23 @@ export async function GET(
     .map((r) => r.service_id)
     .filter(Boolean) as string[]
 
+  // Comanda ABERTA do atendimento (pro editor adicionar produto · plano Equipe).
+  // null se já paga/cancelada — nesse caso não dá pra adicionar produto aqui.
+  let openInvoiceId: string | null = null
+  const { data: apptItems } = await admin
+    .from('invoice_items')
+    .select('invoice_id')
+    .eq('reference_id', appointmentId)
+    .eq('item_type', 'appointment')
+  for (const it of apptItems ?? []) {
+    const { data: inv } = await admin
+      .from('invoices')
+      .select('id, status')
+      .eq('id', it.invoice_id)
+      .maybeSingle()
+    if (inv?.status === 'open') { openInvoiceId = inv.id as string; break }
+  }
+
   return NextResponse.json({
     appointment: {
       id: appointment.id,
@@ -135,6 +152,7 @@ export async function GET(
     services: allServices ?? [],
     professionals: profs ?? [],
     currentServiceIds,
+    invoice_id: openInvoiceId,
   })
 }
 

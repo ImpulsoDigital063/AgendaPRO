@@ -50,6 +50,14 @@ export default function EditServicesModal({
   const [time, setTime] = useState(startTime.slice(0, 5))
   const [professionalId, setProfessionalId] = useState('')
   const [notes, setNotes] = useState('')
+  // Produto na comanda · exclusivo do plano Equipe. Só aparece se houver
+  // comanda aberta (invoiceId) pra receber o produto.
+  const [invoiceId, setInvoiceId] = useState<string | null>(null)
+  const [canSellProducts, setCanSellProducts] = useState(false)
+  const [products, setProducts] = useState<{ id: string; name: string; variant: string | null; price: number | null }[]>([])
+  const [productCart, setProductCart] = useState<{ product_id: string; name: string; unit_price: number }[]>([])
+  const [prodPickerOpen, setProdPickerOpen] = useState(false)
+  const [prodSearch, setProdSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
   // locked = comanda já paga (invoice fechada). Editar serviço aqui descasaria
   // o financeiro · backend bloqueia 409 e a UI mostra o caminho (reabrir).
@@ -92,6 +100,7 @@ export default function EditServicesModal({
         if (appt.start_time) setTime(String(appt.start_time).slice(0, 5))
         if (appt.professional_id) setProfessionalId(appt.professional_id)
         setNotes(appt.notes || '')
+        setInvoiceId(data.invoice_id ?? null)
         setLocked(data.appointment?.locked === true)
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Erro')
@@ -103,6 +112,24 @@ export default function EditServicesModal({
     return () => { cancelled = true }
   }, [appointmentId])
 
+  // Carrega produtos + flag do plano (Equipe). Picker só aparece se Equipe.
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/products')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return
+        setCanSellProducts(d.canSellProducts === true)
+        setProducts((d.products ?? [])
+          .filter((p: { sale_active?: boolean }) => p.sale_active !== false)
+          .map((p: { id: string; name: string; variant: string | null; price: number | null }) => ({
+            id: p.id, name: p.name, variant: p.variant ?? null, price: p.price == null ? null : Number(p.price),
+          })))
+      })
+      .catch(() => { /* sem produtos · picker some */ })
+    return () => { cancelled = true }
+  }, [])
+
   function toggle(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -112,9 +139,29 @@ export default function EditServicesModal({
     })
   }
 
+  function addProduct(p: { id: string; name: string; variant: string | null; price: number | null }) {
+    setProductCart((prev) => [...prev, {
+      product_id: p.id,
+      name: p.variant ? `${p.name} · ${p.variant}` : p.name,
+      unit_price: p.price ?? 0,
+    }])
+    setProdSearch('')
+    setProdPickerOpen(false)
+  }
+  function removeProduct(idx: number) {
+    setProductCart((prev) => prev.filter((_, i) => i !== idx))
+  }
+  const prodResults = (() => {
+    const q = prodSearch.trim().toLowerCase()
+    const list = q ? products.filter((p) => p.name.toLowerCase().includes(q) || (p.variant ?? '').toLowerCase().includes(q)) : products
+    return list.slice(0, 30)
+  })()
+
   const selectedServices = services.filter((s) => selectedIds.has(s.id))
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0)
   const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
+  const productsSubtotal = productCart.reduce((sum, p) => sum + (p.unit_price ?? 0), 0)
+  const grandTotal = totalPrice + productsSubtotal
   const newEndTime = totalDuration > 0 ? calcEndTime(time || startTime, totalDuration) : null
 
   async function salvar(force = false) {
@@ -149,6 +196,23 @@ export default function EditServicesModal({
           }
         }
         return
+      }
+      // Produtos (Equipe): grava na comanda aberta do atendimento. Erro num
+      // produto avisa mas não desfaz a edição já salva.
+      if (productCart.length > 0 && invoiceId) {
+        for (const p of productCart) {
+          const pr = await fetch(`/api/admin/invoices/${invoiceId}/items`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ product_id: p.product_id, quantity: 1, unit_price: p.unit_price }),
+          })
+          if (!pr.ok) {
+            const pd = await pr.json().catch(() => ({}))
+            if (mountedRef.current) setError(`Atendimento salvo, mas falhou ao adicionar "${p.name}": ${pd.detail || pd.error || 'erro'}`)
+            router.refresh()
+            return
+          }
+        }
       }
       router.refresh()
       onClose()
@@ -330,6 +394,75 @@ export default function EditServicesModal({
                 )}
               </div>
 
+              {/* Produtos · só plano Equipe e comanda aberta */}
+              {canSellProducts && invoiceId && (
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Produtos (vender junto)</span>
+                  {productCart.length > 0 && (
+                    <div className="space-y-1.5 mt-1.5">
+                      {productCart.map((p, idx) => (
+                        <div key={idx} className="flex items-center justify-between gap-2 p-2.5 rounded-xl" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
+                          <span className="text-sm truncate" style={{ color: 'var(--admin-text)' }}>{p.name}</span>
+                          <span className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-sm font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>{formatPrice(p.unit_price)}</span>
+                            <button type="button" onClick={() => removeProduct(idx)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ color: '#DC2626' }} aria-label={`Remover ${p.name}`}>
+                              <IconClose size={12} />
+                            </button>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-1.5">
+                    {!prodPickerOpen ? (
+                      <button
+                        type="button"
+                        onClick={() => setProdPickerOpen(true)}
+                        className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
+                        style={{ background: 'color-mix(in srgb, var(--admin-accent) 10%, transparent)', color: 'var(--admin-accent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 45%, transparent)' }}
+                      >
+                        + Adicionar produto
+                      </button>
+                    ) : (
+                      <div className="rounded-xl p-2.5 space-y-2" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
+                        <input
+                          autoFocus
+                          type="search"
+                          value={prodSearch}
+                          onChange={(e) => setProdSearch(e.target.value)}
+                          placeholder="Buscar produto..."
+                          className="admin-input w-full px-3 py-2 rounded-lg text-sm"
+                        />
+                        {prodResults.length === 0 ? (
+                          <p className="text-xs text-center py-2" style={{ color: 'var(--admin-text-faded)' }}>
+                            {prodSearch ? 'Nenhum produto bate com a busca' : 'Cadastre produtos em Produtos'}
+                          </p>
+                        ) : (
+                          <ul className="space-y-1 max-h-48 overflow-y-auto">
+                            {prodResults.map((p) => (
+                              <li key={p.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => addProduct(p)}
+                                  className="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between gap-3"
+                                  style={{ background: 'var(--admin-surface)' }}
+                                >
+                                  <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                                    {p.name}{p.variant ? <span style={{ color: 'var(--admin-text-mute)' }}> · {p.variant}</span> : null}
+                                  </span>
+                                  <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{p.price != null ? formatPrice(p.price) : '—'}</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <button type="button" onClick={() => setProdPickerOpen(false)} className="text-xs underline" style={{ color: 'var(--admin-text-mute)' }}>fechar busca</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Observação */}
               <label className="block">
                 <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Observação</span>
@@ -393,8 +526,13 @@ export default function EditServicesModal({
               <div>
                 <p style={{ color: 'var(--admin-text-faded)' }}>Total</p>
                 <p className="font-bold mt-0.5" style={{ color: 'var(--admin-text)' }}>
-                  {totalPrice > 0 ? formatPrice(totalPrice) : '—'}
+                  {grandTotal > 0 ? formatPrice(grandTotal) : '—'}
                 </p>
+                {productsSubtotal > 0 && (
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
+                    serviços {formatPrice(totalPrice)} + produtos {formatPrice(productsSubtotal)}
+                  </p>
+                )}
               </div>
             </div>
 
