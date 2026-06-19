@@ -309,95 +309,59 @@ export default function InstallBanner({ area = 'admin' }: { area?: Area } = {}) 
 
   return (
     <>
+      {/* Compacto · uma linha só (toca e abre o guia / instala). Antes eram
+          duas linhas (cabeçalho + botão grande) e apertava a agenda no mobile. */}
       <div
-        className="mx-4 mt-3 rounded-2xl overflow-hidden"
-        style={{ border: '1px solid var(--admin-border)' }}
+        className="mx-4 mt-3 rounded-2xl overflow-hidden flex items-stretch"
+        style={{
+          border: '1px solid var(--admin-border)',
+          background:
+            'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 16%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-primary) 7%, var(--admin-surface)) 100%)',
+        }}
       >
-        <div
-          className="px-4 py-3.5 flex items-center gap-3"
-          style={{
-            background:
-              'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 18%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-primary) 8%, var(--admin-surface)) 100%)',
-          }}
+        <button
+          onClick={() => (platform === 'android' && deferredPrompt ? handleAndroidInstall() : setShowGuide(true))}
+          className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2.5 text-left active:scale-[0.99] transition-transform"
         >
-          <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          <span
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{
               background: 'var(--brand-primary)',
-              boxShadow: '0 4px 12px -2px color-mix(in srgb, var(--brand-primary) 40%, transparent)',
+              boxShadow: '0 4px 12px -3px color-mix(in srgb, var(--brand-primary) 40%, transparent)',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="text-sm font-bold block leading-tight" style={{ color: 'var(--admin-text)' }}>
               Instalar AgendaPRO
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-              1 toque pra abrir — sem precisar lembrar o site
-            </p>
-          </div>
-
-          <button
-            onClick={handleDismiss}
-            className="p-1 flex-shrink-0"
-            style={{ color: 'var(--admin-text-faded)' }}
-            aria-label="Fechar"
+            </span>
+            <span className="text-[11px] block leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
+              {platform === 'android' && deferredPrompt ? 'Toque pra instalar' : 'Toque pra ver como instalar'}
+            </span>
+          </span>
+          <span
+            className="text-[11px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
+            style={{ background: 'var(--brand-primary)', color: '#fff' }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <div
-          className="px-4 py-3 flex gap-2"
-          style={{
-            background: 'var(--admin-surface)',
-            borderTop: '1px solid var(--admin-border)',
-          }}
+            {platform === 'android' && deferredPrompt ? 'Instalar' : 'Ver'}
+          </span>
+        </button>
+        <button
+          onClick={handleDismiss}
+          className="px-2.5 flex items-center justify-center flex-shrink-0"
+          style={{ color: 'var(--admin-text-faded)', borderLeft: '1px solid var(--admin-border)' }}
+          aria-label="Fechar"
         >
-          {platform === 'android' && deferredPrompt ? (
-            <>
-              <button
-                onClick={handleAndroidInstall}
-                className="flex-1 text-white text-sm font-bold py-2.5 rounded-xl active:scale-[0.98] transition-transform"
-                style={{ background: 'var(--brand-primary)' }}
-              >
-                Instalar agora
-              </button>
-              <button
-                onClick={() => setShowGuide(true)}
-                className="text-xs font-semibold px-3 py-2.5 rounded-xl"
-                style={{
-                  color: 'var(--brand-primary)',
-                  background: 'color-mix(in srgb, var(--brand-primary) 12%, transparent)',
-                }}
-              >
-                Ajuda
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setShowGuide(true)}
-              className="flex-1 text-white text-sm font-bold py-2.5 rounded-xl active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-              style={{ background: 'var(--brand-primary)' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-              Ver como instalar
-            </button>
-          )}
-        </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
       </div>
 
       {showGuide && platform && (
