@@ -212,6 +212,27 @@ export async function POST(
     const endMM = String(end.getMinutes()).padStart(2, '0')
     const end_time = `${endHH}:${endMM}:00`
 
+    // Data do serviço extra = data do ATENDIMENTO ORIGINAL da comanda, não o dia
+    // do clique. Serviço adicionado depois (ex: lembrou de uma remoção) cai no
+    // mesmo dia do atendimento · senão some do faturamento daquele dia.
+    let comandaDate = nowIso.slice(0, 10)
+    const { data: origAppItem } = await admin
+      .from('invoice_items')
+      .select('reference_id')
+      .eq('invoice_id', invoiceId)
+      .eq('item_type', 'appointment')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (origAppItem?.reference_id) {
+      const { data: origAppt } = await admin
+        .from('appointments')
+        .select('appointment_date')
+        .eq('id', origAppItem.reference_id)
+        .maybeSingle()
+      if (origAppt?.appointment_date) comandaDate = origAppt.appointment_date
+    }
+
     // Customer_name + phone: busca do customer (client_phone é NOT NULL no schema)
     let clientName = 'Cliente'
     let clientPhone = ''
@@ -232,7 +253,7 @@ export async function POST(
         professional_id,
         service_id: service.id,
         service_name: service.name,
-        appointment_date: nowIso.slice(0, 10),
+        appointment_date: comandaDate,
         start_time,
         end_time,
         status: 'completed', // já aconteceu · trigger v71 NÃO cria nova invoice
