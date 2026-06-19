@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { IconChevronLeft, IconChevronRight, IconPlus, IconDollar, IconCheck, IconClock } from '@/components/ui/Icon'
+import { IconChevronLeft, IconChevronRight, IconPlus, IconDollar, IconCheck, IconClock, IconCalendar } from '@/components/ui/Icon'
 import { todayBR } from '@/lib/date-br'
 
 type Props = {
@@ -170,6 +170,32 @@ export default function GradeTimelineHeader({
           >
             <IconChevronRight size={16} />
           </button>
+
+          {/* Calendário · pula direto pra qualquer data (date-picker nativo ·
+              funciona no mobile e no desktop). O input transparente por cima do
+              botão abre o seletor ao tocar. */}
+          <div className="relative w-9 h-9">
+            <button
+              type="button"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="w-9 h-9 rounded-lg flex items-center justify-center pointer-events-none"
+              style={{
+                background: 'var(--admin-surface)',
+                color: 'var(--admin-text-mute)',
+                border: '1px solid var(--admin-border)',
+              }}
+            >
+              <IconCalendar size={16} />
+            </button>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => { if (e.target.value) navigateTo(e.target.value) }}
+              aria-label="Escolher data no calendário"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </div>
         </div>
 
         {/* Botões de ação · no MOBILE dividem a linha (flex-1 cada · não estoura
