@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { IconCheck, IconWhatsapp, IconClose } from '@/components/ui/Icon'
+import { IconCheck, IconWhatsapp, IconClose, IconSettings } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 import FaturarComandaModal from '@/components/admin/comandas/FaturarComandaModal'
+import EditServicesModal from '@/components/admin/EditServicesModal'
 
 type Props = {
   appointmentId: string
@@ -15,6 +16,8 @@ type Props = {
   customerPhone: string | null
   /** businessId obrigatório pra step de cartão (maquininha/bandeira/taxa). */
   businessId: string
+  /** Hora de início (HH:MM) · necessária pro modal de editar serviços recalcular fim. */
+  startTime: string
   totalPrice: number | null
   /** Nome do serviço · pré-pintado no modal FATURAR. */
   serviceName?: string | null
@@ -31,6 +34,7 @@ export default function AppointmentActions({
   customerName,
   customerPhone,
   businessId,
+  startTime,
   totalPrice,
   serviceName,
   professionalId,
@@ -41,6 +45,7 @@ export default function AppointmentActions({
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [faturarOpen, setFaturarOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function postPayment(body: Record<string, unknown>): Promise<boolean> {
@@ -177,6 +182,23 @@ export default function AppointmentActions({
         </button>
       </div>
 
+      {/* Editar atendimento · adiciona/troca serviços no MESMO agendamento
+          (mesma data) · agiliza quando o dono adiciona serviço durante o
+          atendimento sem criar venda solta. */}
+      <button
+        type="button"
+        onClick={() => setEditOpen(true)}
+        disabled={loading}
+        className="w-full py-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+        style={{
+          background: 'var(--admin-surface)',
+          color: 'var(--admin-text)',
+          border: '1px solid var(--admin-border)',
+        }}
+      >
+        <IconSettings size={15} /> Editar atendimento
+      </button>
+
       {/* Cancelar atendimento · ação destrutiva separada */}
       <button
         type="button"
@@ -213,6 +235,18 @@ export default function AppointmentActions({
         onChoose={confirmarMetodo}
         onClose={() => setPaymentOpen(false)}
       />
+
+      {editOpen && (
+        <EditServicesModal
+          appointmentId={appointmentId}
+          startTime={startTime}
+          onClose={() => {
+            setEditOpen(false)
+            if (onDone) onDone()
+            else router.refresh()
+          }}
+        />
+      )}
 
       <FaturarComandaModal
         open={faturarOpen}

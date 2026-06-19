@@ -169,6 +169,7 @@ export default async function AppointmentDetailPage({
             customerName={appt.client_name ?? customer?.name ?? 'Cliente'}
             customerPhone={appt.client_phone ?? customer?.phone ?? null}
             businessId={business.id}
+            startTime={appt.start_time as string}
             totalPrice={appt.total_price}
             serviceName={appt.service_name as string | null}
             professionalId={prof?.id ?? null}
