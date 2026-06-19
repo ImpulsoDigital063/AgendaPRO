@@ -40,8 +40,11 @@ export default function MensagensTab({ businessName }: Props) {
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return
-        setConfirmation(d.confirmation || '')
-        setReminder(d.reminder || '')
+        // Pré-preenche com o texto que está valendo (o personalizado, ou o
+        // padrão). Assim o campo nunca abre vazio · a pessoa vê e edita o
+        // texto real em vez de começar do zero.
+        setConfirmation(d.confirmation || d.defaults?.confirmation || DEFAULT_CONFIRMATION_TEMPLATE)
+        setReminder(d.reminder || d.defaults?.reminder || DEFAULT_REMINDER_TEMPLATE)
         setLoading(false)
       })
       .catch(() => {
@@ -57,13 +60,15 @@ export default function MensagensTab({ businessName }: Props) {
     const el = ref.current
     const start = el?.selectionStart ?? val.length
     const end = el?.selectionEnd ?? val.length
-    const next = val.slice(0, start) + token + val.slice(end)
+    // Garante um espaço antes do trecho inserido se o cursor cola numa palavra.
+    const needsSpace = start > 0 && !/\s$/.test(val.slice(0, start))
+    const insert = (needsSpace ? ' ' : '') + token
+    const next = val.slice(0, start) + insert + val.slice(end)
     set(next)
-    // recoloca o cursor depois do token inserido
     requestAnimationFrame(() => {
       if (el) {
         el.focus()
-        const pos = start + token.length
+        const pos = start + insert.length
         el.setSelectionRange(pos, pos)
       }
     })
@@ -81,8 +86,6 @@ export default function MensagensTab({ businessName }: Props) {
       })
       const d = await res.json()
       if (!res.ok) { setError(d.error || 'Erro ao salvar.'); return }
-      setConfirmation(d.confirmation || '')
-      setReminder(d.reminder || '')
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch {
@@ -96,7 +99,7 @@ export default function MensagensTab({ businessName }: Props) {
 
   if (loading) {
     return (
-      <div className="admin-card rounded-2xl p-6 animate-pulse">
+      <div className="admin-card rounded-2xl p-6 animate-pulse max-w-2xl">
         <div className="h-5 w-40 rounded mb-4" style={{ background: 'var(--admin-input-bg)' }} />
         <div className="h-28 rounded" style={{ background: 'var(--admin-input-bg)' }} />
       </div>
@@ -104,12 +107,24 @@ export default function MensagensTab({ businessName }: Props) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-w-2xl">
       <div>
         <h2 className="text-lg font-bold" style={{ color: 'var(--admin-text)' }}>Mensagens de WhatsApp</h2>
         <p className="text-sm mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-          Edite o texto que aparece quando você toca em <strong>Confirmar</strong> ou <strong>Lembrete</strong> no
-          atendimento. O WhatsApp abre com a mensagem pronta — você só envia.
+          Escreva como você quer falar com o cliente. Quando tocar em <strong>Confirmar</strong> ou{' '}
+          <strong>Lembrete</strong> no atendimento, o WhatsApp abre com essa mensagem já pronta — é só enviar.
+        </p>
+      </div>
+
+      {/* Explicação das "chavinhas" · em linguagem simples */}
+      <div
+        className="rounded-xl p-3 text-sm flex gap-2"
+        style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.20)', color: 'var(--admin-text-2)' }}
+      >
+        <span>💡</span>
+        <p>
+          Toque nas etiquetas pra inserir os dados do cliente no texto. O sistema troca sozinho na hora de
+          enviar — por exemplo, <strong>Nome do cliente</strong> vira o nome real de quem agendou.
         </p>
       </div>
 
@@ -121,7 +136,7 @@ export default function MensagensTab({ businessName }: Props) {
 
       <MessageEditor
         title="Mensagem de confirmação"
-        hint="Enviada quando você confirma o agendamento com o cliente."
+        hint="Pra confirmar o horário com o cliente."
         value={confirmation}
         onChange={setConfirmation}
         textareaRef={confirmRef}
@@ -132,7 +147,7 @@ export default function MensagensTab({ businessName }: Props) {
 
       <MessageEditor
         title="Mensagem de lembrete"
-        hint="Enviada pra lembrar o cliente do horário (botão de WhatsApp no card)."
+        hint="Pra lembrar o cliente perto do dia do atendimento."
         value={reminder}
         onChange={setReminder}
         textareaRef={reminderRef}
@@ -141,17 +156,17 @@ export default function MensagensTab({ businessName }: Props) {
         preview={renderTemplate(reminder || DEFAULT_REMINDER_TEMPLATE, pv)}
       />
 
-      <div className="flex items-center gap-3">
+      <div className="sticky bottom-0 py-3 -mx-1 px-1 flex items-center gap-3" style={{ background: 'linear-gradient(to top, var(--admin-bg) 60%, transparent)' }}>
         <button
           type="button"
           onClick={save}
           disabled={saving}
-          className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2 disabled:opacity-50"
+          className="px-5 py-3 rounded-xl text-sm font-bold inline-flex items-center gap-2 disabled:opacity-50"
           style={{ background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)', color: '#fff' }}
         >
           {saved ? <><IconCheck size={16} /> Salvo</> : saving ? 'Salvando…' : 'Salvar mensagens'}
         </button>
-        {saved && <span className="text-sm" style={{ color: '#059669' }}>Mensagens atualizadas.</span>}
+        {saved && <span className="text-sm font-medium" style={{ color: '#059669' }}>Tudo certo, mensagens atualizadas.</span>}
       </div>
     </div>
   )
@@ -171,9 +186,19 @@ function MessageEditor({
 }) {
   return (
     <div className="admin-card rounded-2xl p-4 sm:p-5 space-y-3">
-      <div>
-        <h3 className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{title}</h3>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>{hint}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{title}</h3>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>{hint}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onReset}
+          className="text-[11px] font-semibold px-2 py-1 rounded-lg flex-shrink-0"
+          style={{ color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
+        >
+          Voltar ao texto padrão
+        </button>
       </div>
 
       <textarea
@@ -182,41 +207,34 @@ function MessageEditor({
         onChange={(e) => onChange(e.target.value)}
         rows={3}
         maxLength={1000}
-        placeholder="Escreva a mensagem… use as variáveis abaixo."
-        className="w-full rounded-xl p-3 text-sm resize-y"
+        placeholder="Escreva a mensagem…"
+        className="w-full rounded-xl p-3 text-sm resize-y leading-relaxed"
         style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
       />
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] mr-1" style={{ color: 'var(--admin-text-faded)' }}>Inserir:</span>
-        {TEMPLATE_VARIABLES.map((v) => (
-          <button
-            key={v.token}
-            type="button"
-            onClick={() => onInsert(v.token)}
-            title={v.label}
-            className="text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors"
-            style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.30)', color: '#2563EB' }}
-          >
-            {v.token}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={onReset}
-          className="text-[11px] font-semibold px-2 py-1 rounded-lg ml-auto"
-          style={{ color: 'var(--admin-text-mute)' }}
-        >
-          Restaurar padrão
-        </button>
+      <div>
+        <p className="text-[11px] mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>Toque pra inserir no texto:</p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {TEMPLATE_VARIABLES.map((v) => (
+            <button
+              key={v.token}
+              type="button"
+              onClick={() => onInsert(v.token)}
+              className="text-[12px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors active:scale-[0.97]"
+              style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.30)', color: '#2563EB' }}
+            >
+              + {v.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Preview */}
+      {/* Preview · como o cliente recebe */}
       <div className="rounded-xl p-3" style={{ background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.25)' }}>
         <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5 inline-flex items-center gap-1" style={{ color: '#1A8C45' }}>
-          <IconWhatsapp size={12} /> Prévia
+          <IconWhatsapp size={12} /> Como o cliente recebe
         </p>
-        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--admin-text-2)' }}>{preview}</p>
+        <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>{preview}</p>
       </div>
     </div>
   )
