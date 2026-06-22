@@ -11,6 +11,7 @@ import {
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import Greeting from '@/components/admin/Greeting'
 import FocoDoDia from '@/components/admin/FocoDoDia'
+import ReviewClaimsCard from '@/components/admin/ReviewClaimsCard'
 import TopProfsCard from '@/components/admin/TopProfsCard'
 import TopServicesCard from '@/components/admin/TopServicesCard'
 import OportunidadesCard from '@/components/admin/OportunidadesCard'
@@ -340,6 +341,29 @@ async function FocoDoDiaSection({ businessId }: { businessId: string }) {
   return <FocoDoDia data={data} />
 }
 
+// Pedidos de pontos por avaliação · acionável direto na Início (aprovar/recusar
+// sem ir em Configurações). Eduardo 22/06: Olímpio tinha 5+ pendentes parados
+// porque o aprovar vivia escondido na aba Fidelidade.
+async function ReviewClaimsSection({ businessId }: { businessId: string }) {
+  const sb = await createClient()
+  const [{ data: claims }, { data: biz }] = await Promise.all([
+    sb.from('review_claims')
+      .select('id, customer_name, customer_phone, requested_at')
+      .eq('business_id', businessId)
+      .eq('status', 'pending')
+      .order('requested_at', { ascending: true }),
+    sb.from('businesses').select('google_place_id, points_for_review').eq('id', businessId).maybeSingle(),
+  ])
+  if (!claims || claims.length === 0) return null
+  return (
+    <ReviewClaimsCard
+      claims={claims}
+      googleReviewUrl={(biz?.google_place_id as string | null) ?? null}
+      pointsValue={(biz?.points_for_review as number | null) ?? 0}
+    />
+  )
+}
+
 // ============================================================
 // Page
 // ============================================================
@@ -418,6 +442,11 @@ export default async function AdminInicioPage() {
         {/* KPIs */}
         <Suspense fallback={<KPIsSkeleton />}>
           <KPIsRow business={business} />
+        </Suspense>
+
+        {/* Pedidos de pontos por avaliação · aprovar/recusar na hora */}
+        <Suspense fallback={null}>
+          <ReviewClaimsSection businessId={business.id} />
         </Suspense>
 
         {/* Grid principal · 2 colunas em desktop */}

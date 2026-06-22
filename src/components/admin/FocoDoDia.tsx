@@ -38,21 +38,9 @@ type ActionCard = {
 export default function FocoDoDia({ data }: { data: FocoDoDia }) {
   const cards: ActionCard[] = []
 
-  // 1. Claims pendentes — verde, alta prioridade
-  if (data.pendingClaims > 0) {
-    cards.push({
-      key: 'claims',
-      href: '/admin/configuracoes?tab=fidelidade',
-      bg: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))',
-      border: 'rgba(16,185,129,0.30)',
-      icon: '⭐',
-      iconBg: 'rgba(16,185,129,0.20)',
-      iconColor: '#10B981',
-      title: `${data.pendingClaims} pedido${data.pendingClaims > 1 ? 's' : ''} de pontos por avaliação`,
-      subtitle: 'Confira no Google e aprove pra liberar os pontos',
-      ctaColor: '#10B981',
-    })
-  }
+  // 1. Pedidos de pontos por avaliação: agora têm card próprio ACIONÁVEL na
+  //    Início (ReviewClaimsCard · aprovar/recusar na hora). Removido daqui pra
+  //    não duplicar. (Eduardo 22/06)
 
   // 2. Pagamentos pendentes hoje
   if (data.pendingPayments.count > 0) {
