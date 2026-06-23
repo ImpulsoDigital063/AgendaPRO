@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import { getAreaPrefix } from '@/lib/area-prefix'
 import { createClient } from '@/lib/supabase/client'
+import { resolveClientId } from '@/lib/clients'
 import { logActivity } from '@/lib/activity-log'
 import {
   IconClose,
@@ -448,11 +449,17 @@ export default function AgendarModal({
       ? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : null)
       : null
 
+    // Linka o cliente universal (clients) — sem isso o atendimento/valor gasto
+    // não aparece em /admin/clientes (que conta por client_id). Bug Rosy 23/06.
+    // Avulso (walk-in sem telefone) fica sem vínculo, ok.
+    const clientId = avulso ? null : await resolveClientId(supabase, cliente!.name, cliente!.phone)
+
     // Insert TODOS os appointments da série em batch
     const appointmentRows = allDates.map((d, idx) => ({
       business_id: businessId,
       professional_id: profId,
       customer_id: avulso ? null : cliente!.id,
+      client_id: clientId,
       client_name: avulso ? (avulsoName.trim() || 'Cliente avulso') : cliente!.name,
       client_phone: avulso ? '' : cliente!.phone, // client_phone é NOT NULL — avulso usa vazio
       appointment_date: d,

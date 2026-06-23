@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { resolveClientId } from '@/lib/clients'
 import { logActivity } from '@/lib/activity-log'
 import {
   IconArrowLeft,
@@ -227,10 +228,15 @@ export default function MarcarAgendamentoForm({
     const endDate = new Date(startDate.getTime() + duration * 60_000)
     const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
 
+    // Linka o cliente universal (clients) — sem isso o atendimento/valor gasto
+    // não aparece em /admin/clientes (que conta por client_id). Bug Rosy 23/06.
+    const clientId = await resolveClientId(supabase, cliente.name, cliente.phone)
+
     const { data: inserted, error: e } = await supabase.from('appointments').insert({
       business_id: businessId,
       professional_id: prof.id,
       customer_id: cliente.id,
+      client_id: clientId,
       client_name: cliente.name,
       client_phone: cliente.phone,
       appointment_date: date,
