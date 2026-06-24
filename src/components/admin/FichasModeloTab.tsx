@@ -23,7 +23,7 @@ import { IconPlus, IconTrash, IconPencil, IconCheck, IconClose, IconChevronDown 
 type FieldDef = {
   name: string
   label: string
-  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox'
+  type: 'text' | 'textarea' | 'freetext' | 'number' | 'date' | 'select' | 'checkbox' | 'draw'
   required?: boolean
   options?: string[]
   helper?: string
@@ -40,10 +40,12 @@ type Template = {
 const TYPE_LABELS: Record<string, string> = {
   text: 'Texto curto',
   textarea: 'Texto longo',
+  freetext: 'Folha em branco (escrever solto)',
   number: 'Número',
   date: 'Data',
   select: 'Lista (1 opção)',
   checkbox: 'Sim/Não',
+  draw: 'Mapeamento (desenho)',
 }
 
 // ═════════════════════════════════════════════════════════════════════

@@ -25,7 +25,8 @@ function getAdmin() {
   )
 }
 
-const ALLOWED_TYPES = ['text', 'textarea', 'number', 'date', 'select', 'checkbox']
+// freetext = folha em branco (escrever solto) · draw = mapeamento/desenho (canvas → PNG)
+const ALLOWED_TYPES = ['text', 'textarea', 'freetext', 'number', 'date', 'select', 'checkbox', 'draw']
 
 type FieldDef = {
   name: string
@@ -94,6 +95,39 @@ export async function POST(request: Request) {
       description: typeof body.description === 'string' ? body.description.trim().slice(0, 500) : null,
       fields,
     })
+    .select()
+    .single()
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true, template: data })
+}
+
+// PATCH ?templateId=... · edita template existente (faltava — editor chamava e dava 405)
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const businessId = await getBusinessId(supabase)
+  if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const url = new URL(request.url)
+  const templateId = url.searchParams.get('templateId')
+  if (!templateId) return NextResponse.json({ error: 'template_id_required' }, { status: 400 })
+  const body = await request.json().catch(() => null)
+  if (!body || typeof body.name !== 'string' || !body.name.trim()) {
+    return NextResponse.json({ error: 'invalid_body' }, { status: 400 })
+  }
+  const fields = validateFields(body.fields)
+  if (!fields || fields.length === 0) {
+    return NextResponse.json({ error: 'invalid_fields' }, { status: 400 })
+  }
+  const admin = getAdmin()
+  const { data: t } = await admin.from('client_form_templates').select('id, business_id').eq('id', templateId).maybeSingle()
+  if (!t || t.business_id !== businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  const { data, error } = await admin
+    .from('client_form_templates')
+    .update({
+      name: body.name.trim().slice(0, 200),
+      description: typeof body.description === 'string' ? body.description.trim().slice(0, 500) : null,
+      fields,
+    })
+    .eq('id', templateId)
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

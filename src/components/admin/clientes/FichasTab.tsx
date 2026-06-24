@@ -6,11 +6,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconPlus, IconTrash } from '@/components/ui/Icon'
+import DrawCanvas from './DrawCanvas'
 
 type FieldDef = {
   name: string
   label: string
-  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox'
+  type: 'text' | 'textarea' | 'freetext' | 'number' | 'date' | 'select' | 'checkbox' | 'draw'
   required?: boolean
   options?: string[]
 }
@@ -270,9 +271,24 @@ export default function FichasTab({ customerId }: Props) {
                       <dt className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
                         {f.label}
                       </dt>
-                      <dd className="text-sm" style={{ color: 'var(--admin-text)' }}>
-                        {typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : String(v)}
-                      </dd>
+                      {f.type === 'draw' && typeof v === 'string' && v.startsWith('data:image') ? (
+                        <dd className="mt-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={v}
+                            alt={f.label}
+                            className="w-full rounded-xl"
+                            style={{ border: '1px solid var(--admin-border)', background: '#fff' }}
+                          />
+                        </dd>
+                      ) : (
+                        <dd
+                          className="text-sm"
+                          style={{ color: 'var(--admin-text)', whiteSpace: f.type === 'freetext' ? 'pre-wrap' : 'normal' }}
+                        >
+                          {typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : String(v)}
+                        </dd>
+                      )}
                     </div>
                   )
                 })}
@@ -370,6 +386,24 @@ function FieldInput({
           disabled={disabled}
           rows={3}
           className="admin-input w-full px-3 py-2 text-sm"
+        />
+      )}
+      {field.type === 'freetext' && (
+        <textarea
+          id={id}
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          rows={8}
+          placeholder="Escreva à vontade…"
+          className="admin-input w-full px-3 py-2 text-sm"
+        />
+      )}
+      {field.type === 'draw' && (
+        <DrawCanvas
+          value={typeof value === 'string' ? value : undefined}
+          onChange={onChange}
+          disabled={disabled}
         />
       )}
       {(field.type === 'text' || field.type === 'number') && (

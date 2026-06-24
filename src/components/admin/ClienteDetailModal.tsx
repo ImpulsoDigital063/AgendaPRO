@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
 import { IconClose, IconWhatsapp, IconSparkles } from '@/components/ui/Icon'
+import FichasTab from './clientes/FichasTab'
 
 type Customer = {
   id: string
@@ -597,6 +598,15 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                   </button>
                 </div>
               )}
+
+              {/* Fichas · anamnese / mapeamento (lash design) · mesmo sistema do desktop (ClienteDrawer).
+                  Antes o mobile só tinha o campo de notas acima — a feature de fichas não chegava no celular. */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                  Fichas
+                </p>
+                <FichasTab customerId={customerId} />
+              </div>
 
               {/* Histórico */}
               <div className="space-y-2">
