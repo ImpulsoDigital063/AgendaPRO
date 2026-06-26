@@ -9,6 +9,8 @@ import type { NicheFicha } from './types'
 export const CILIOS_FICHA: NicheFicha = {
   slug: 'cilios',
   name: 'Cílios · Anamnese',
+  // Só em negócios de beleza/estética — não aparece em barbearia, tatuagem, etc.
+  segments: ['Salão de beleza', 'Clínica estética', 'Nail designer', 'Manicure'],
   sections: [
     {
       kind: 'health',

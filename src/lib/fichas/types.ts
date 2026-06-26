@@ -32,5 +32,8 @@ export type FichaSection =
 export type NicheFicha = {
   slug: string
   name: string
+  /** Categorias de negócio onde a ficha aparece (match case-insensitive contra
+   *  businesses.description). Vazio/ausente = aparece em todos. */
+  segments?: string[]
   sections: FichaSection[]
 }

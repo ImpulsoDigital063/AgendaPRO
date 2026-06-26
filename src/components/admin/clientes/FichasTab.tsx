@@ -55,6 +55,7 @@ export default function FichasTab({ customerId }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [nicheState, setNicheState] = useState<{ ficha: NicheFicha; responseId: string | null; initialValues?: FichaValues } | null>(null)
+  const [businessCategory, setBusinessCategory] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -66,9 +67,12 @@ export default function FichasTab({ customerId }: Props) {
         .select('id, template_id, data, created_at, niche_slug, template:client_form_templates(id, name, fields)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false }),
-      sb.from('customers').select('name, phone, birthday').eq('id', customerId).maybeSingle(),
+      sb.from('customers').select('name, phone, birthday, business:businesses(description)').eq('id', customerId).maybeSingle(),
     ])
-    setCustomer((custRes.data ?? null) as { name: string; phone: string | null; birthday: string | null } | null)
+    const custRow = custRes.data as { name: string; phone: string | null; birthday: string | null; business?: { description: string | null } | { description: string | null }[] | null } | null
+    setCustomer(custRow ? { name: custRow.name, phone: custRow.phone, birthday: custRow.birthday } : null)
+    const biz = Array.isArray(custRow?.business) ? custRow?.business[0] : custRow?.business
+    setBusinessCategory(biz?.description ?? null)
     setTemplates((tplRes.data ?? []) as Template[])
     setResponses(
       ((respRes.data ?? []) as unknown as Array<{
@@ -196,6 +200,11 @@ export default function FichasTab({ customerId }: Props) {
       {customer.birthday && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>· nasc. {new Date(customer.birthday + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
     </div>
   ) : null
+
+  // Fichas de nicho disponíveis pra ESTE negócio (filtra por categoria/segmento)
+  const availableNiches = Object.values(NICHE_FICHAS).filter((nf) =>
+    !nf.segments || nf.segments.length === 0 || nf.segments.some((s) => s.toLowerCase() === (businessCategory ?? '').toLowerCase()),
+  )
 
   // FORM ATIVO
   if (editingTemplate) {
@@ -395,9 +404,9 @@ export default function FichasTab({ customerId }: Props) {
             <h3 className="text-base font-bold mb-3" style={{ color: 'var(--admin-text)' }}>
               Selecione uma ficha
             </h3>
-            {Object.values(NICHE_FICHAS).length > 0 && (
+            {availableNiches.length > 0 && (
               <div className="space-y-2 mb-3">
-                {Object.values(NICHE_FICHAS).map((nf) => (
+                {availableNiches.map((nf) => (
                   <button
                     key={nf.slug}
                     type="button"
