@@ -25,8 +25,9 @@ function getAdmin() {
   )
 }
 
-// freetext = folha em branco (escrever solto) · draw = mapeamento/desenho (canvas → PNG)
-const ALLOWED_TYPES = ['text', 'textarea', 'freetext', 'number', 'date', 'select', 'checkbox', 'draw']
+// freetext = folha em branco · draw = mapeamento/assinatura (canvas → PNG)
+// checklist = bloco de vários Sim/Não numa grade (saúde) · options = itens
+const ALLOWED_TYPES = ['text', 'textarea', 'freetext', 'number', 'date', 'select', 'checkbox', 'checklist', 'draw']
 
 type FieldDef = {
   name: string

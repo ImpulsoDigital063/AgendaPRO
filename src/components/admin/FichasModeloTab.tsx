@@ -23,7 +23,7 @@ import { IconPlus, IconTrash, IconPencil, IconCheck, IconClose, IconChevronDown 
 type FieldDef = {
   name: string
   label: string
-  type: 'text' | 'textarea' | 'freetext' | 'number' | 'date' | 'select' | 'checkbox' | 'draw'
+  type: 'text' | 'textarea' | 'freetext' | 'number' | 'date' | 'select' | 'checkbox' | 'checklist' | 'draw'
   required?: boolean
   options?: string[]
   helper?: string
@@ -45,7 +45,8 @@ const TYPE_LABELS: Record<string, string> = {
   date: 'Data',
   select: 'Lista (1 opção)',
   checkbox: 'Sim/Não',
-  draw: 'Mapeamento (desenho)',
+  checklist: 'Marcar vários (grade)',
+  draw: 'Mapeamento / assinatura (desenho)',
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -62,15 +63,31 @@ type Preset = {
 const PRESETS: Preset[] = [
   {
     category: 'Design',
-    name: 'Cílios · Ficha + Mapeamento',
-    description: 'Ficha enxuta de cílios · saúde/observações + efeito + mapeamento (desenho) + espessura/curvatura + termo · adicione campos se quiser',
+    name: 'Cílios · Anamnese + Mapeamento',
+    description: 'Ficha de cílios compacta · saúde em grade (marcar) + técnica + mapeamento (desenho) + termo com assinatura · baseada na ficha de papel + padrão do segmento',
     fields: [
-      { name: 'saude', label: 'Saúde / observações', type: 'freetext', helper: 'Alergia · gestante · medicamento · problema ocular · tratamento médico · o que for relevante antes do procedimento' },
-      { name: 'efeito', label: 'Efeito', type: 'select', options: ['Fio a fio', 'Volume Russo', 'Megavolume', 'Híbrido', 'Volume Inglês', 'Volume Brasileiro', 'Volume Egípcio', 'Outros'] },
+      // Saúde · 1 campo só, grade de marcar (marque os que se aplicam)
+      { name: 'saude', label: 'Saúde — marque o que se aplica', type: 'checklist', options: [
+        'Gestante', 'Lactante / amamentando', 'Diabetes', 'Faz uso de medicamento', 'Disfunção da tireoide',
+        'Problema circulatório', 'Hipertensão', 'Distúrbio hormonal', 'Alergia a cosmético / cola / látex',
+        'Fez procedimento nos olhos recentemente', 'Glaucoma / blefarite / problema ocular',
+        'Conjuntivite / terçol / doença ocular ativa', 'Usa lentes de contato', 'Cirurgia ocular',
+        'Em tratamento médico', 'Tratamento oncológico (quimio/radio)', 'Tratamento dermatológico recente',
+        'Olhos sensíveis / ressecamento', 'Já fez extensão antes (teve reação)', 'Dorme de lado',
+      ] },
+      { name: 'saude_detalhe', label: 'Detalhar os itens marcados (qual alergia, medicamento, etc.)', type: 'freetext' },
+      // Procedimento / técnica
+      { name: 'efeito', label: 'Efeito', type: 'select', options: ['Fio a fio (clássico)', 'Volume Russo', 'Volume Brasileiro', 'Volume Egípcio', 'Híbrido', 'Megavolume', 'Wispy', 'Outros'] },
+      { name: 'curvatura', label: 'Curvatura', type: 'select', options: ['B', 'C', 'CC', 'D', 'DD', 'L', 'LU', 'M'] },
+      { name: 'espessura', label: 'Espessura (mm)', type: 'select', options: ['0.03', '0.05', '0.07', '0.10', '0.15', '0.20'] },
+      { name: 'comprimento', label: 'Comprimento / tamanho (mm)', type: 'text', helper: 'Ex: 8 a 13mm' },
       { name: 'mapeamento', label: 'Mapeamento dos cílios', type: 'draw', helper: 'Risque o mapa fio a fio · curvatura e tamanho por zona do olho' },
-      { name: 'espessura', label: 'Espessura', type: 'text', helper: 'Ex: 0.05 · 0.07 · 0.10 · 0.15' },
-      { name: 'curvatura', label: 'Curvatura', type: 'text', helper: 'Ex: C · D · L · M · CC' },
-      { name: 'termo', label: 'Cliente ciente dos cuidados pós e declara as informações verdadeiras', type: 'checkbox', required: true },
+      { name: 'cola_lote', label: 'Cola — marca, lote e validade', type: 'text', helper: 'Rastreio em caso de reação (exigível em fiscalização)' },
+      { name: 'observacoes', label: 'Observações do atendimento', type: 'freetext' },
+      // Termo + assinatura
+      { name: 'aceite', label: 'Cliente declara informações verdadeiras, ciente dos riscos e cuidados pós', type: 'checkbox', required: true },
+      { name: 'autoriza_imagem', label: 'Autoriza uso de imagem (antes/depois) para portfólio', type: 'checkbox' },
+      { name: 'assinatura', label: 'Assinatura do cliente', type: 'draw', helper: 'Cliente assina com o dedo' },
     ],
   },
   {
@@ -482,14 +499,14 @@ export default function FichasModeloTab() {
                   </label>
                 </div>
 
-                {/* Linha 3: opções (só se select) */}
-                {f.type === 'select' && (
+                {/* Linha 3: opções (select = 1 escolha · checklist = itens da grade) */}
+                {(f.type === 'select' || f.type === 'checklist') && (
                   <div className="pl-7">
                     <input
                       type="text"
                       value={(f.options ?? []).join(', ')}
                       onChange={(e) => updateField(idx, { options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                      placeholder="Opções separadas por vírgula (ex: Curto, Médio, Longo)"
+                      placeholder={f.type === 'checklist' ? 'Itens da grade, separados por vírgula (ex: Gestante, Diabetes, Alergia)' : 'Opções separadas por vírgula (ex: Curto, Médio, Longo)'}
                       className="admin-input w-full px-3 py-2 text-sm"
                       disabled={submitting}
                     />

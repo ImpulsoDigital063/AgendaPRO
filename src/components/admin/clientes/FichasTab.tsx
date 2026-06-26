@@ -5,13 +5,13 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { IconPlus, IconTrash } from '@/components/ui/Icon'
+import { IconPlus, IconTrash, IconCheck } from '@/components/ui/Icon'
 import DrawCanvas from './DrawCanvas'
 
 type FieldDef = {
   name: string
   label: string
-  type: 'text' | 'textarea' | 'freetext' | 'number' | 'date' | 'select' | 'checkbox' | 'draw'
+  type: 'text' | 'textarea' | 'freetext' | 'number' | 'date' | 'select' | 'checkbox' | 'checklist' | 'draw'
   required?: boolean
   options?: string[]
 }
@@ -43,6 +43,7 @@ export default function FichasTab({ customerId }: Props) {
   const router = useRouter()
   const [templates, setTemplates] = useState<Template[]>([])
   const [responses, setResponses] = useState<Response[]>([])
+  const [customer, setCustomer] = useState<{ name: string; phone: string | null; birthday: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
@@ -53,14 +54,16 @@ export default function FichasTab({ customerId }: Props) {
   async function load() {
     setLoading(true)
     const sb = createClient()
-    const [tplRes, respRes] = await Promise.all([
+    const [tplRes, respRes, custRes] = await Promise.all([
       sb.from('client_form_templates').select('*').eq('active', true).order('name'),
       sb
         .from('client_form_responses')
         .select('id, template_id, data, created_at, template:client_form_templates(id, name, fields)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false }),
+      sb.from('customers').select('name, phone, birthday').eq('id', customerId).maybeSingle(),
     ])
+    setCustomer((custRes.data ?? null) as { name: string; phone: string | null; birthday: string | null } | null)
     setTemplates((tplRes.data ?? []) as Template[])
     setResponses(
       ((respRes.data ?? []) as unknown as Array<{
@@ -135,10 +138,19 @@ export default function FichasTab({ customerId }: Props) {
     }
   }
 
+  const identHeader = customer ? (
+    <div className="rounded-xl px-3 py-2 flex items-center gap-2 flex-wrap" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}>
+      <span className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{customer.name}</span>
+      {customer.phone && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{customer.phone}</span>}
+      {customer.birthday && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>· nasc. {new Date(customer.birthday + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
+    </div>
+  ) : null
+
   // FORM ATIVO
   if (editingTemplate) {
     return (
       <div className="space-y-4">
+        {identHeader}
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
@@ -205,6 +217,7 @@ export default function FichasTab({ customerId }: Props) {
 
   return (
     <div className="space-y-3">
+      {identHeader}
       <div className="flex items-center justify-between">
         <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
           {responses.length} {responses.length === 1 ? 'ficha' : 'fichas'} preenchida{responses.length === 1 ? '' : 's'}
@@ -286,7 +299,9 @@ export default function FichasTab({ customerId }: Props) {
                           className="text-sm"
                           style={{ color: 'var(--admin-text)', whiteSpace: f.type === 'freetext' ? 'pre-wrap' : 'normal' }}
                         >
-                          {typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : String(v)}
+                          {f.type === 'checklist'
+                            ? String(v).split('||').filter(Boolean).join(' · ')
+                            : typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : String(v)}
                         </dd>
                       )}
                     </div>
@@ -405,6 +420,36 @@ function FieldInput({
           onChange={onChange}
           disabled={disabled}
         />
+      )}
+      {field.type === 'checklist' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          {(field.options ?? []).map((opt) => {
+            const sel = String((value as string) ?? '').split('||').filter(Boolean)
+            const on = sel.includes(opt)
+            return (
+              <button
+                key={opt}
+                type="button"
+                disabled={disabled}
+                onClick={() => onChange((on ? sel.filter((s) => s !== opt) : [...sel, opt]).join('||'))}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-xs transition-colors"
+                style={{
+                  background: on ? 'color-mix(in srgb, var(--admin-accent) 14%, transparent)' : 'var(--admin-surface)',
+                  border: `1px solid ${on ? 'var(--admin-accent)' : 'var(--admin-border)'}`,
+                  color: 'var(--admin-text)',
+                }}
+              >
+                <span
+                  className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                  style={{ border: `1.5px solid ${on ? 'var(--admin-accent)' : 'var(--admin-border)'}`, background: on ? 'var(--admin-accent)' : 'transparent', color: '#fff' }}
+                >
+                  {on && <IconCheck size={11} />}
+                </span>
+                <span className="leading-tight">{opt}</span>
+              </button>
+            )
+          })}
+        </div>
       )}
       {(field.type === 'text' || field.type === 'number') && (
         <input
