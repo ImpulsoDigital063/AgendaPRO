@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconCalendar, IconClock, IconDollar, IconUser, IconExternalLink } from '@/components/ui/Icon'
 import AppointmentActions from './AppointmentActions'
+import ClientFichaSection from '../clientes/ClientFichaSection'
 import Link from 'next/link'
 
 type Props = {
@@ -243,6 +244,11 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
                   </div>
                 )}
               </div>
+
+              {/* Ficha do cliente · abre o FichasTab aqui dentro do atendimento */}
+              {data.customer_id && (
+                <ClientFichaSection customerId={data.customer_id} />
+              )}
 
               {/* Ações · sem mostrar pra cancelados */}
               {!isCancelled && (

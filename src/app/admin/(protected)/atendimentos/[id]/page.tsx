@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { IconArrowLeft, IconCalendar, IconClock, IconDollar, IconUser } from '@/components/ui/Icon'
 import AppointmentActions from '@/components/admin/atendimentos/AppointmentActions'
+import ClientFichaSection from '@/components/admin/clientes/ClientFichaSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -179,6 +180,11 @@ export default async function AppointmentDetailPage({
             )}
           </div>
         </div>
+
+        {/* Ficha do cliente · abre o FichasTab aqui dentro do atendimento */}
+        {appt.customer_id && (
+          <ClientFichaSection customerId={appt.customer_id as string} />
+        )}
 
         {/* Ações · client component */}
         {!isCancelled && (
