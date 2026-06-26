@@ -26,6 +26,7 @@ type Props = {
   customer: { name: string; phone: string | null; birthday: string | null } | null
   initialValues?: FichaValues
   saving?: boolean
+  error?: string | null
   onSave: (values: FichaValues) => void | Promise<void>
   onCancel: () => void
 }
@@ -61,7 +62,7 @@ function ParamInput({
   )
 }
 
-export default function FichaDedicada({ ficha, customer, initialValues, saving, onSave, onCancel }: Props) {
+export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel }: Props) {
   const [values, setValues] = useState<FichaValues>(initialValues ?? {})
   const setVal = (k: string, v: FichaValues[string]) => setValues((p) => ({ ...p, [k]: v }))
   const str = (k: string) => (typeof values[k] === 'string' ? (values[k] as string) : '')
@@ -84,6 +85,10 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
           {customer.phone && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{customer.phone}</span>}
           {customer.birthday && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>· nasc. {new Date(customer.birthday + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
         </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg px-3 py-2 text-xs" style={{ background: 'color-mix(in srgb, var(--admin-danger,#EF4444) 12%, transparent)', color: 'var(--admin-danger,#EF4444)' }}>{error}</div>
       )}
 
       {/* Folha */}

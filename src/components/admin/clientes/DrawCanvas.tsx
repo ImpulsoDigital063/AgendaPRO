@@ -122,7 +122,8 @@ export default function DrawCanvas({ value, onChange, disabled, background = 'bl
     if (!drawing.current) return
     drawing.current = false
     last.current = null
-    onChange(canvasRef.current!.toDataURL('image/png'))
+    // webp comprime ~10x vs PNG (nativo do canvas) — desenho esparso fica ~5-15KB
+    onChange(canvasRef.current!.toDataURL('image/webp', 0.85))
   }
 
   function clear() {

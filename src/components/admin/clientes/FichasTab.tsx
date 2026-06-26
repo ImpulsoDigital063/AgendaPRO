@@ -7,6 +7,9 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconPlus, IconTrash, IconCheck } from '@/components/ui/Icon'
 import DrawCanvas from './DrawCanvas'
+import FichaDedicada, { type FichaValues } from './FichaDedicada'
+import { NICHE_FICHAS } from '@/lib/fichas/cilios'
+import type { NicheFicha } from '@/lib/fichas/types'
 
 type FieldDef = {
   name: string
@@ -25,9 +28,10 @@ type Template = {
 
 type Response = {
   id: string
-  template_id: string
-  data: Record<string, string | boolean | number>
+  template_id: string | null
+  data: Record<string, unknown>
   created_at: string
+  niche_slug?: string | null
   template?: Template
 }
 
@@ -50,6 +54,7 @@ export default function FichasTab({ customerId }: Props) {
   const [formData, setFormData] = useState<Record<string, string | boolean | number>>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nicheState, setNicheState] = useState<{ ficha: NicheFicha; responseId: string | null; initialValues?: FichaValues } | null>(null)
 
   async function load() {
     setLoading(true)
@@ -58,7 +63,7 @@ export default function FichasTab({ customerId }: Props) {
       sb.from('client_form_templates').select('*').eq('active', true).order('name'),
       sb
         .from('client_form_responses')
-        .select('id, template_id, data, created_at, template:client_form_templates(id, name, fields)')
+        .select('id, template_id, data, created_at, niche_slug, template:client_form_templates(id, name, fields)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false }),
       sb.from('customers').select('name, phone, birthday').eq('id', customerId).maybeSingle(),
@@ -68,9 +73,10 @@ export default function FichasTab({ customerId }: Props) {
     setResponses(
       ((respRes.data ?? []) as unknown as Array<{
         id: string
-        template_id: string
-        data: Record<string, string | boolean | number>
+        template_id: string | null
+        data: Record<string, unknown>
         created_at: string
+        niche_slug: string | null
         template: Template | Template[] | null
       }>).map((r) => ({
         ...r,
@@ -136,6 +142,51 @@ export default function FichasTab({ customerId }: Props) {
       await load()
       router.refresh()
     }
+  }
+
+  // ── Fichas de nicho (dedicadas · ex.: cílios) ──────────────────────
+  async function saveNiche(values: FichaValues) {
+    if (!nicheState) return
+    setSubmitting(true)
+    setError(null)
+    const res = await fetch(`/api/admin/customers/${customerId}/niche-ficha`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nicheSlug: nicheState.ficha.slug, values, responseId: nicheState.responseId }),
+    })
+    setSubmitting(false)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setError(j.error ?? 'falha ao salvar')
+      return
+    }
+    setNicheState(null)
+    await load()
+    router.refresh()
+  }
+
+  async function removeNiche(responseId: string) {
+    if (!confirm('Remover essa ficha preenchida?')) return
+    const res = await fetch(`/api/admin/customers/${customerId}/niche-ficha?responseId=${responseId}`, { method: 'DELETE' })
+    if (res.ok) {
+      await load()
+      router.refresh()
+    }
+  }
+
+  // Ficha de nicho aberta (preencher/editar) — tela dedicada
+  if (nicheState) {
+    return (
+      <FichaDedicada
+        ficha={nicheState.ficha}
+        customer={customer}
+        initialValues={nicheState.initialValues}
+        saving={submitting}
+        error={error}
+        onSave={saveNiche}
+        onCancel={() => { setNicheState(null); setError(null) }}
+      />
+    )
   }
 
   const identHeader = customer ? (
@@ -250,7 +301,22 @@ export default function FichasTab({ customerId }: Props) {
         </div>
       ) : (
         <div className="space-y-2">
-          {responses.map((r) => (
+          {responses.map((r) => r.niche_slug && NICHE_FICHAS[r.niche_slug] ? (
+            <div
+              key={r.id}
+              className="rounded-2xl p-4 flex items-center justify-between gap-3"
+              style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+            >
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{NICHE_FICHAS[r.niche_slug].name}</h4>
+                <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>Preenchida em {formatDate(r.created_at)}</p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button type="button" onClick={() => setNicheState({ ficha: NICHE_FICHAS[r.niche_slug!], responseId: r.id, initialValues: r.data as FichaValues })} className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}>Abrir / Editar</button>
+                <button type="button" onClick={() => removeNiche(r.id)} aria-label="Remover" className="p-1.5 rounded-lg" style={{ color: 'var(--admin-danger,#EF4444)' }}><IconTrash size={14} /></button>
+              </div>
+            </div>
+          ) : (
             <div
               key={r.id}
               className="rounded-2xl p-4"
@@ -329,6 +395,22 @@ export default function FichasTab({ customerId }: Props) {
             <h3 className="text-base font-bold mb-3" style={{ color: 'var(--admin-text)' }}>
               Selecione uma ficha
             </h3>
+            {Object.values(NICHE_FICHAS).length > 0 && (
+              <div className="space-y-2 mb-3">
+                {Object.values(NICHE_FICHAS).map((nf) => (
+                  <button
+                    key={nf.slug}
+                    type="button"
+                    onClick={() => { setNicheState({ ficha: nf, responseId: null }); setPickerOpen(false); setError(null) }}
+                    className="w-full text-left p-3 rounded-xl"
+                    style={{ background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--admin-accent) 30%, transparent)' }}
+                  >
+                    <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{nf.name}</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>Ficha dedicada · layout próprio (mapeamento + assinatura)</p>
+                  </button>
+                ))}
+              </div>
+            )}
             {templates.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--admin-text-mute)' }}>
                 Nenhuma ficha pré-cadastrada foi encontrada. Entre em <Link href="/admin/configuracoes?tab=fichas-modelo" className="underline" style={{ color: 'var(--admin-accent)' }}>Configurações → Fichas Modelo</Link> e cadastre uma.
