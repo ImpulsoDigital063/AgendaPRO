@@ -57,7 +57,3 @@ export const CILIOS_FICHA: NicheFicha = {
     { kind: 'signature', name: 'assinatura', label: 'Assinatura do cliente' },
   ],
 }
-
-export const NICHE_FICHAS: Record<string, NicheFicha> = {
-  cilios: CILIOS_FICHA,
-}

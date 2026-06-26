@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { NICHE_FICHAS } from '@/lib/fichas/cilios'
+import { NICHE_FICHAS } from '@/lib/fichas/registry'
 
 async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser()

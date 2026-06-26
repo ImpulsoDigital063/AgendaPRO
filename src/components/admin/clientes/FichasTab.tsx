@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { IconPlus, IconTrash, IconCheck } from '@/components/ui/Icon'
 import DrawCanvas from './DrawCanvas'
 import FichaDedicada, { type FichaValues } from './FichaDedicada'
-import { NICHE_FICHAS } from '@/lib/fichas/cilios'
+import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import type { NicheFicha } from '@/lib/fichas/types'
 
 type FieldDef = {
