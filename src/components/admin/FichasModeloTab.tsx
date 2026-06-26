@@ -63,35 +63,6 @@ type Preset = {
 const PRESETS: Preset[] = [
   {
     category: 'Anamnese',
-    name: 'Cílios · Anamnese + Mapeamento',
-    description: 'Ficha completa numa página (como a folha de papel) · saúde em grade + técnica + mapeamento nos olhos + termo com assinatura',
-    fields: [
-      // Saúde (grade compacta)
-      { name: 'saude', label: 'Saúde — marque o que se aplica', type: 'checklist', options: [
-        'Gestante', 'Lactante / amamentando', 'Diabetes', 'Faz uso de medicamento', 'Disfunção da tireoide',
-        'Problema circulatório', 'Hipertensão', 'Distúrbio hormonal', 'Alergia a cosmético / cola / látex',
-        'Fez procedimento nos olhos recentemente', 'Glaucoma / blefarite / problema ocular',
-        'Conjuntivite / terçol / doença ocular ativa', 'Usa lentes de contato', 'Cirurgia ocular',
-        'Em tratamento médico', 'Tratamento oncológico (quimio/radio)', 'Tratamento dermatológico recente',
-        'Olhos sensíveis / ressecamento', 'Já fez extensão antes (teve reação)', 'Dorme de lado',
-      ] },
-      { name: 'saude_detalhe', label: 'Detalhar os itens marcados (qual alergia, medicamento, etc.)', type: 'freetext' },
-      // Procedimento + mapeamento
-      { name: 'efeito', label: 'Efeito', type: 'select', options: ['Fio a fio (clássico)', 'Volume Russo', 'Volume Brasileiro', 'Volume Egípcio', 'Híbrido', 'Megavolume', 'Wispy', 'Outros'] },
-      { name: 'mapeamento', label: 'Mapeamento dos cílios', type: 'draw', helper: 'Risque o mapa nos olhos · curvatura e tamanho por zona' },
-      { name: 'curvatura', label: 'Curvatura', type: 'select', options: ['B', 'C', 'CC', 'D', 'DD', 'L', 'LU', 'M'] },
-      { name: 'espessura', label: 'Espessura (mm)', type: 'select', options: ['0.03', '0.05', '0.07', '0.10', '0.15', '0.20'] },
-      { name: 'comprimento', label: 'Comprimento / faixa (mm)', type: 'text', helper: 'Ex: 8 a 13mm' },
-      { name: 'cola_lote', label: 'Cola — marca, lote e validade', type: 'text', helper: 'Rastreio em caso de reação (exigível em fiscalização)' },
-      { name: 'observacoes', label: 'Observações do atendimento', type: 'freetext' },
-      // Termo + assinatura
-      { name: 'aceite', label: 'Cliente declara informações verdadeiras, ciente dos riscos e cuidados pós', type: 'checkbox', required: true },
-      { name: 'autoriza_imagem', label: 'Autoriza uso de imagem (antes/depois) para portfólio', type: 'checkbox' },
-      { name: 'assinatura', label: 'Assinatura do cliente', type: 'draw', helper: 'Cliente assina com o dedo' },
-    ],
-  },
-  {
-    category: 'Anamnese',
     name: 'Anamnese Completa · Esmalteria',
     description: 'Ficha de saúde inicial · primeira visita da cliente · obrigatória pra procedimentos invasivos',
     fields: [
