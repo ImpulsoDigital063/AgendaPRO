@@ -232,12 +232,29 @@ export default function FichasModeloTab() {
     setCreating(true)
   }
 
-  function loadPreset(preset: Preset) {
-    resetForm()
-    setFormName(preset.name)
-    setFormDesc(preset.description)
-    setFormFields(preset.fields.map((f) => ({ ...f })))
-    setCreating(true)
+  // Clicar num preset curado CRIA o modelo na hora (1 clique) — não joga a
+  // pessoa na tela de config de 12 campos. Se falhar, cai no editor manual.
+  async function loadPreset(preset: Preset) {
+    if (submitting) return
+    setSubmitting(true)
+    setError(null)
+    const res = await fetch('/api/admin/form-templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: preset.name, description: preset.description, fields: preset.fields }),
+    })
+    setSubmitting(false)
+    if (!res.ok) {
+      // fallback: abre o editor pré-preenchido pra salvar manual
+      resetForm()
+      setFormName(preset.name)
+      setFormDesc(preset.description)
+      setFormFields(preset.fields.map((f) => ({ ...f })))
+      setCreating(true)
+      return
+    }
+    await load()
+    router.refresh()
   }
 
   function startEdit(t: Template) {

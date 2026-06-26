@@ -423,7 +423,7 @@ function FieldInput({
         />
       )}
       {field.type === 'checklist' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           {(field.options ?? []).map((opt) => {
             const sel = String((value as string) ?? '').split('||').filter(Boolean)
             const on = sel.includes(opt)
