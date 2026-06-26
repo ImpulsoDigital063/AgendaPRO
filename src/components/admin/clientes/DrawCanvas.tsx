@@ -3,12 +3,14 @@
 /**
  * DrawCanvas · campo de desenho/mapeamento pra ficha (lash design · nail · etc).
  * Risca à mão livre com dedo (mobile · pointer/touch) ou mouse (desktop) e salva
- * como PNG (data URL) dentro da resposta da ficha. Pedido Rosy 23/06 — larga o
- * caderno de mapeamento de cílios. Serve qualquer nail/estúdio.
+ * como PNG (data URL) dentro da resposta da ficha. Pedido Rosy 23/06.
+ *
+ * background='eyes' desenha 2 contornos de olho (com guias de cílios) pra ela
+ * riscar o mapeamento em cima, igual ao "Mapping Estilo" do caderno de papel.
  *
  * Backing store fixo (W×H) escalado por CSS (width 100% + aspect-ratio) — as
- * coordenadas do ponteiro são remapeadas via getBoundingClientRect, então
- * funciona em qualquer largura. touch-action:none evita rolar a tela ao riscar.
+ * coordenadas do ponteiro são remapeadas via getBoundingClientRect. touch-action
+ * :none evita rolar a tela ao riscar.
  */
 
 import { useEffect, useRef } from 'react'
@@ -20,20 +22,64 @@ type Props = {
   value?: string
   onChange: (dataUrl: string) => void
   disabled?: boolean
+  background?: 'blank' | 'eyes'
 }
 
-export default function DrawCanvas({ value, onChange, disabled }: Props) {
+function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, h: number, label: string) {
+  const x1 = cx - w / 2
+  const x2 = cx + w / 2
+  // Amêndoa (pálpebra superior + inferior)
+  ctx.strokeStyle = '#94a3b8'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.moveTo(x1, cy)
+  ctx.quadraticCurveTo(cx, cy - h / 2, x2, cy)
+  ctx.quadraticCurveTo(cx, cy + h / 2, x1, cy)
+  ctx.stroke()
+  // Íris
+  ctx.beginPath()
+  ctx.arc(cx, cy, h * 0.26, 0, Math.PI * 2)
+  ctx.stroke()
+  // Guias de cílios ao longo da pálpebra superior
+  ctx.strokeStyle = '#cbd5e1'
+  ctx.lineWidth = 1
+  const n = 9
+  for (let i = 1; i < n; i++) {
+    const t = i / n
+    const px = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * cx + t * t * x2
+    const py = (1 - t) * (1 - t) * cy + 2 * (1 - t) * t * (cy - h / 2) + t * t * cy
+    ctx.beginPath()
+    ctx.moveTo(px, py)
+    ctx.lineTo(px, py - 14)
+    ctx.stroke()
+  }
+  // Rótulo
+  ctx.fillStyle = '#94a3b8'
+  ctx.font = '12px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(label, cx, cy + h / 2 + 28)
+}
+
+export default function DrawCanvas({ value, onChange, disabled, background = 'blank' }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawing = useRef(false)
   const last = useRef<{ x: number; y: number } | null>(null)
 
-  // Init: fundo branco (folha) + carrega desenho já salvo, se houver.
+  function paintBg(ctx: CanvasRenderingContext2D) {
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, W, H)
+    if (background === 'eyes') {
+      drawEye(ctx, 185, 150, 250, 100, 'Olho esquerdo')
+      drawEye(ctx, 515, 150, 250, 100, 'Olho direito')
+    }
+  }
+
+  // Init: fundo (branco · ou olhos) + carrega desenho já salvo, se houver.
   useEffect(() => {
     const cv = canvasRef.current
     const ctx = cv?.getContext('2d')
     if (!cv || !ctx) return
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, W, H)
+    paintBg(ctx)
     if (value) {
       const img = new Image()
       img.onload = () => ctx.drawImage(img, 0, 0, W, H)
@@ -81,8 +127,7 @@ export default function DrawCanvas({ value, onChange, disabled }: Props) {
 
   function clear() {
     const ctx = canvasRef.current!.getContext('2d')!
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, W, H)
+    paintBg(ctx)
     onChange('')
   }
 

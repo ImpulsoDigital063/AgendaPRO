@@ -419,6 +419,7 @@ function FieldInput({
           value={typeof value === 'string' ? value : undefined}
           onChange={onChange}
           disabled={disabled}
+          background={field.name === 'mapeamento' || /mapeamento/i.test(field.label) ? 'eyes' : 'blank'}
         />
       )}
       {field.type === 'checklist' && (
