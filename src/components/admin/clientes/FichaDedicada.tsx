@@ -17,7 +17,8 @@
 import { useState } from 'react'
 import type { NicheFicha, FichaParam } from '@/lib/fichas/types'
 import DrawCanvas from './DrawCanvas'
-import { IconCheck } from '@/components/ui/Icon'
+import { IconCheck, IconWhatsapp } from '@/components/ui/Icon'
+import { downloadFichaPdf, shareFichaPdf } from './useFichaPdf'
 
 export type FichaValues = Record<string, string | string[] | boolean>
 
@@ -64,8 +65,19 @@ function ParamInput({
 
 export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel }: Props) {
   const [values, setValues] = useState<FichaValues>(initialValues ?? {})
+  const [pdfBusy, setPdfBusy] = useState(false)
   const setVal = (k: string, v: FichaValues[string]) => setValues((p) => ({ ...p, [k]: v }))
   const str = (k: string) => (typeof values[k] === 'string' ? (values[k] as string) : '')
+
+  async function onExport() {
+    setPdfBusy(true)
+    try { await downloadFichaPdf({ ficha, values, customer }) } finally { setPdfBusy(false) }
+  }
+  async function onSend() {
+    setPdfBusy(true)
+    const text = `Olá ${customer?.name ?? ''}, segue a sua ficha. Qualquer dúvida, estou à disposição.`
+    try { await shareFichaPdf({ ficha, values, customer, text }) } finally { setPdfBusy(false) }
+  }
 
   return (
     <div className="space-y-4">
@@ -181,7 +193,9 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
       </div>
 
       {/* Ações no rodapé · pra não precisar rolar de volta pro topo depois de assinar */}
-      <div className="flex items-center justify-end gap-2 pb-2">
+      <div className="flex items-center justify-end gap-2 pb-2 flex-wrap">
+        <button type="button" onClick={onExport} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{pdfBusy ? '…' : 'Exportar PDF'}</button>
+        <button type="button" onClick={onSend} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 disabled:opacity-50" style={{ background: '#25D366', color: '#fff' }}><IconWhatsapp size={14} /> Enviar</button>
         <button type="button" onClick={onCancel} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Cancelar</button>
         <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>{saving ? 'Salvando…' : 'Salvar Ficha'}</button>
       </div>
