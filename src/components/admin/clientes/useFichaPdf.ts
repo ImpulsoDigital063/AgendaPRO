@@ -118,7 +118,14 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
     } else if (s.kind === 'term') {
       sectionTitle(s.title)
       para(s.text)
-      for (const c of s.consents) kv(c.label, values[c.name] === true ? 'Sim' : 'Não')
+      // Consents têm rótulo longo → linha cheia com marcador (não coluna fixa)
+      for (const c of s.consents) {
+        const yes = values[c.name] === true
+        const lines = doc.splitTextToSize(`${yes ? '[X]' : '[   ]'}  ${c.label}`, cw)
+        ensure(lines.length * 4.5 + 2)
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(31, 41, 55)
+        doc.text(lines, mX, y); y += lines.length * 4.5 + 2
+      }
       y += 2
     } else {
       sectionTitle(s.label)
