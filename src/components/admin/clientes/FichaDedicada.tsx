@@ -179,6 +179,12 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
           )
         })}
       </div>
+
+      {/* Ações no rodapé · pra não precisar rolar de volta pro topo depois de assinar */}
+      <div className="flex items-center justify-end gap-2 pb-2">
+        <button type="button" onClick={onCancel} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Cancelar</button>
+        <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>{saving ? 'Salvando…' : 'Salvar Ficha'}</button>
+      </div>
     </div>
   )
 }
