@@ -53,13 +53,29 @@ const TYPE_LABELS: Record<string, string> = {
 // Substitui os 2 simples antigos. Eduardo cravou "surpreenda".
 // ═════════════════════════════════════════════════════════════════════
 type Preset = {
-  category: 'Anamnese' | 'Spa' | 'Termo' | 'VIP' | 'Sessão' | 'Avaliação'
+  category: 'Anamnese' | 'Spa' | 'Termo' | 'VIP' | 'Sessão' | 'Avaliação' | 'Design'
   name: string
   description: string
   fields: FieldDef[]
 }
 
 const PRESETS: Preset[] = [
+  {
+    category: 'Design',
+    name: 'Lash Design · Mapeamento de Cílios',
+    description: 'Design de cílios · mapeamento fio a fio no desenho + curvatura, espessura e comprimento · larga o caderno de papel',
+    fields: [
+      { name: 'efeito', label: 'Efeito / técnica', type: 'select', options: ['Clássico (fio a fio)', 'Volume Brasileiro', 'Volume Russo', 'Egípcio / Gatinho', 'Híbrido', 'Fox Eyes', 'Outro'] },
+      { name: 'curvatura', label: 'Curvatura', type: 'text', helper: 'Ex: C · D · L · M · CC' },
+      { name: 'espessura', label: 'Espessura', type: 'text', helper: 'Ex: 0.05 · 0.07 · 0.10 · 0.15' },
+      { name: 'comprimento', label: 'Comprimento (mm)', type: 'text', helper: 'Faixa usada · ex: 8 a 12mm' },
+      { name: 'mapeamento', label: 'Mapeamento dos cílios', type: 'draw', helper: 'Risque o mapa fio a fio · curvatura e tamanho por zona do olho' },
+      { name: 'cola_lote', label: 'Cola / lote usado', type: 'text', helper: 'Marca e lote · rastreio em caso de reação' },
+      { name: 'sensibilidade', label: 'Sensibilidade / alergia / olho sensível', type: 'textarea', helper: 'Histórico de reação · usa lente de contato · etc' },
+      { name: 'observacoes', label: 'Observações livres', type: 'freetext' },
+      { name: 'termo_ciencia', label: 'Cliente ciente dos cuidados pós e possíveis reações', type: 'checkbox', required: true },
+    ],
+  },
   {
     category: 'Anamnese',
     name: 'Anamnese Completa · Esmalteria',
@@ -153,6 +169,7 @@ const PRESETS: Preset[] = [
 ]
 
 const CATEGORY_COLORS: Record<Preset['category'], string> = {
+  Design: '#06B6D4',
   Anamnese: '#3B82F6',
   Spa: '#10B981',
   Termo: '#EF4444',
