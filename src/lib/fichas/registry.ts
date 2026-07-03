@@ -1,6 +1,7 @@
 import type { NicheFicha } from './types'
 import { CILIOS_FICHA } from './cilios'
 import { ESTETICA_FACIAL_FICHA } from './estetica-facial'
+import { CAPILAR_FICHA } from './capilar'
 
 /**
  * Registro de todas as fichas de nicho. Pra adicionar um nicho novo: cria a
@@ -10,4 +11,5 @@ import { ESTETICA_FACIAL_FICHA } from './estetica-facial'
 export const NICHE_FICHAS: Record<string, NicheFicha> = {
   cilios: CILIOS_FICHA,
   'estetica-facial': ESTETICA_FACIAL_FICHA,
+  capilar: CAPILAR_FICHA,
 }
