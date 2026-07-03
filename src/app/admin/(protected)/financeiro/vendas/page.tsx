@@ -1,3 +1,4 @@
+import { todayBR } from '@/lib/date-br'
 import { redirect } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
@@ -47,7 +48,7 @@ export default async function VendasPage({
     { auth: { persistSession: false } },
   )
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayBR()
   // Se usuário definiu range, "to" prevalece sobre "today". Se só "from",
   // mantém today como upper bound (não faz sentido exportar futuro).
   const upperBound = to || today

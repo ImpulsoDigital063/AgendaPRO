@@ -6,7 +6,7 @@ import CaixaView from '@/components/recepcao/CaixaView'
 import { IconWallet } from '@/components/ui/Icon'
 import { getOwnerProfessional } from '@/lib/admin-data'
 import { getApptDiscountMap } from '@/lib/commission-discount'
-import { todayBR } from '@/lib/date-br'
+import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,8 +62,8 @@ export default async function AdminCaixaPage() {
       .select('id, total_price, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name, invoice_item_id')
       .eq('business_id', business.id)
       .not('paid_at', 'is', null)
-      .gte('paid_at', today + 'T00:00:00')
-      .lt('paid_at', tomorrowISO + 'T00:00:00'),
+      .gte('paid_at', startOfDayBR(today))
+      .lt('paid_at', startOfDayBR(tomorrowISO)),
     supabase
       .from('sales')
       .select('id, total, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name')
@@ -72,8 +72,8 @@ export default async function AdminCaixaPage() {
       .eq('status', 'paid')
       .not('payment_method', 'in', '(courtesy,credit)')
       .not('paid_at', 'is', null)
-      .gte('paid_at', today + 'T00:00:00')
-      .lt('paid_at', tomorrowISO + 'T00:00:00'),
+      .gte('paid_at', startOfDayBR(today))
+      .lt('paid_at', startOfDayBR(tomorrowISO)),
     supabase
       .from('appointments')
       .select('id, total_price, paid_at, status')

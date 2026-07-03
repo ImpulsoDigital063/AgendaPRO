@@ -9,6 +9,7 @@ import {
   getUpcomingAppointments,
 } from '@/lib/admin-data'
 import { createClient } from '@/lib/supabase/server'
+import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
 import AppointmentCard from '@/components/AppointmentCard'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import LogoutButton from '@/components/LogoutButton'
@@ -55,7 +56,7 @@ async function PersonalKPIs({
   business: Business
   owner: OwnerProf
 }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayBR()
   const list = await getAppointmentsToday(business.id, today)
   const meus = list.filter((a) => a.professional_id === owner.id)
 
@@ -69,8 +70,8 @@ async function PersonalKPIs({
     .eq('business_id', business.id)
     .eq('professional_id', owner.id)
     .not('payment_method', 'in', '(courtesy,credit)')
-    .gte('paid_at', `${today}T00:00:00`)
-    .lt('paid_at', `${today}T23:59:59`)
+    .gte('paid_at', startOfDayBR(today))
+    .lt('paid_at', startOfDayBR(addDaysBR(today, 1)))
     .not('paid_at', 'is', null)
   const recebidosCount = (paidTodayEu ?? []).length
   const aReceber = meus.filter(
@@ -202,7 +203,7 @@ async function PersonalTodaySection({
   business: Business
   owner: OwnerProf
 }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayBR()
   return (
     <section>
       <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
@@ -221,10 +222,8 @@ async function PersonalUpcomingSection({
   business: Business
   owner: OwnerProf
 }) {
-  const today = new Date().toISOString().split('T')[0]
-  const nextWeek = new Date()
-  nextWeek.setDate(nextWeek.getDate() + 7)
-  const nextWeekStr = nextWeek.toISOString().split('T')[0]
+  const today = todayBR()
+  const nextWeekStr = addDaysBR(today, 7)
 
   const upcoming = await getUpcomingAppointments(business.id, today, nextWeekStr)
   const meus = upcoming.filter((a) => a.professional_id === owner.id)
@@ -270,6 +269,7 @@ export default async function AdminEuPage() {
   if (!owner) redirect('/admin')
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     weekday: 'long',
     day: 'numeric',
     month: 'long',

@@ -1,3 +1,4 @@
+import { todayBR } from '@/lib/date-br'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
@@ -130,7 +131,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   // Agendamentos futuros (confirmed) — busca tolerante por dígitos do telefone
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayBR()
   const { data: rawAppointmentsAll } = await adminClient
     .from('appointments')
     .select('id, appointment_date, start_time, end_time, service_name, status, client_phone, professional:professionals(name)')

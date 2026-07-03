@@ -9,6 +9,7 @@ import {
   getFocoDoDia,
 } from '@/lib/admin-data'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
+import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
 import Greeting from '@/components/admin/Greeting'
 import FocoDoDia from '@/components/admin/FocoDoDia'
 import ReviewClaimsCard from '@/components/admin/ReviewClaimsCard'
@@ -53,7 +54,7 @@ type Business = {
 // ============================================================
 
 async function KPIsRow({ business }: { business: Business }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayBR()
   const list = await getAppointmentsToday(business.id, today)
 
   // Vendas de produto pagas hoje · entram no "Recebido hoje"
@@ -65,8 +66,8 @@ async function KPIsRow({ business }: { business: Business }) {
     .eq('type', 'product_sale')
     .eq('status', 'paid')
     .not('payment_method', 'in', '(courtesy,credit)')
-    .gte('paid_at', `${today}T00:00:00`)
-    .lt('paid_at', `${today}T23:59:59`)
+    .gte('paid_at', startOfDayBR(today))
+    .lt('paid_at', startOfDayBR(addDaysBR(today, 1)))
   const productSalesPaidToday = salesToday ?? []
   const recebidoSalesTotal = productSalesPaidToday.reduce((s, p) => s + Number(p.total ?? 0), 0)
   const recebidoSalesCount = productSalesPaidToday.length
@@ -237,7 +238,7 @@ function KPIsSkeleton() {
 // ============================================================
 
 async function AgendaDoDia({ business }: { business: Business }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayBR()
   return (
     <section
       className="rounded-2xl p-4 lg:p-5"
@@ -378,6 +379,7 @@ export default async function AdminInicioPage() {
   if (!business) redirect('/cadastro')
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     weekday: 'long',
     day: 'numeric',
     month: 'long',

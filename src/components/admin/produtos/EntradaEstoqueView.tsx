@@ -1,5 +1,6 @@
 'use client'
 
+import { todayBR } from '@/lib/date-br'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -63,7 +64,7 @@ export default function EntradaEstoqueView({ businessId, products }: Props) {
   const [newSupplier, setNewSupplier] = useState<string>('')
   const [showCreateSupplier, setShowCreateSupplier] = useState(false)
   const [invoiceNumber, setInvoiceNumber] = useState('')
-  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [entryDate, setEntryDate] = useState(() => todayBR())
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<Line[]>(() => [newLine()])
   const [saving, setSaving] = useState(false)
@@ -144,7 +145,7 @@ export default function EntradaEstoqueView({ businessId, products }: Props) {
   function novaEntrada() {
     setSupplierId('')
     setInvoiceNumber('')
-    setEntryDate(new Date().toISOString().slice(0, 10))
+    setEntryDate(todayBR())
     setNotes('')
     setLines([newLine()])
     setError(null)

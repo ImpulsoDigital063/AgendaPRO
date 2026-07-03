@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient } from '@/lib/client-display'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 import { statusOf, isArchived } from '@/lib/appointment-status'
 import { IconChevronRight, IconClose, IconPencil } from '@/components/ui/Icon'
 import EditServicesModal from './EditServicesModal'
@@ -376,14 +377,11 @@ const INITIAL_LIMIT = 15
  */
 function formatDateHeader(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-
-  const dKey = d.toISOString().split('T')[0]
-  const todayKey = today.toISOString().split('T')[0]
-  const yesterdayKey = yesterday.toISOString().split('T')[0]
+  // HOJE/ONTEM sempre em fuso de Brasília · sem round-trip de Date (server UTC
+  // pós-21h marcava o dia seguinte como "HOJE").
+  const dKey = dateStr.slice(0, 10)
+  const todayKey = todayBR()
+  const yesterdayKey = addDaysBR(todayKey, -1)
 
   if (dKey === todayKey) return 'HOJE'
   if (dKey === yesterdayKey) return 'ONTEM'

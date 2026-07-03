@@ -1,5 +1,6 @@
 'use client'
 
+import { todayBR } from '@/lib/date-br'
 import { useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 
@@ -410,7 +411,7 @@ export default function AnalisesView({
           <div className="flex items-end gap-0.5" style={{ height: 100 }}>
             {dailyData.map((d) => {
               const heightPx = d.value > 0 ? Math.max((d.value / maxDailyValue) * 100, 4) : 2
-              const isToday = d.date === new Date().toISOString().split('T')[0]
+              const isToday = d.date === todayBR()
               const hasValue = d.value > 0
               return (
                 <div key={d.date} className="flex-1 flex items-end justify-center" title={`${d.day}: ${formatPrice(d.value)}`}>
@@ -452,7 +453,7 @@ export default function AnalisesView({
         </div>
         <div className="flex gap-0.5 mt-1.5">
           {dailyData.map((d) => {
-            const isToday = d.date === new Date().toISOString().split('T')[0]
+            const isToday = d.date === todayBR()
             return (
               <span
                 key={d.date}

@@ -17,6 +17,7 @@
  * Schema business_blocks intacto · zero migration.
  */
 
+import { todayBR } from '@/lib/date-br'
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Professional } from '@/lib/types'
@@ -157,7 +158,7 @@ const PRESETS: Preset[] = [
 ]
 
 function todayISO(): string {
-  return new Date().toISOString().split('T')[0]
+  return todayBR()
 }
 
 function daysUntil(dateISO: string): number {

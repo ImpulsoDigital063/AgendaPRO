@@ -1,3 +1,4 @@
+import { todayBR } from '@/lib/date-br'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
     { auth: { persistSession: false } },
   )
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayBR()
 
   let query = sb
     .from('appointments')
@@ -136,7 +137,7 @@ export async function GET(req: NextRequest) {
   }
 
   const csv = '﻿' + lines.join('\r\n') // BOM pra Excel reconhecer UTF-8
-  const today_yyyymmdd = new Date().toISOString().slice(0, 10)
+  const today_yyyymmdd = todayBR()
   const filename = `vendas-${business.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${today_yyyymmdd}.csv`
 
   return new NextResponse(csv, {

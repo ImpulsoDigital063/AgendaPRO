@@ -1,5 +1,6 @@
 'use client'
 
+import { todayBR } from '@/lib/date-br'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
@@ -476,7 +477,7 @@ export default function HorariosTab({
   async function checkOrphansBeforeCopy(targetProfIds: string[]): Promise<number> {
     if (targetProfIds.length === 0) return 0
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayBR()
     const { data } = await supabase
       .from('appointments')
       .select('professional_id, appointment_date, start_time, end_time')

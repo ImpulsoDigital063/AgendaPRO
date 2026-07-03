@@ -1,3 +1,4 @@
+import { todayBR } from '@/lib/date-br'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
   const supplierId = typeof body.supplier_id === 'string' && body.supplier_id ? body.supplier_id : null
   const invoiceNumber = typeof body.invoice_number === 'string' ? body.invoice_number.trim() || null : null
   const invoiceKey = typeof body.invoice_key === 'string' ? body.invoice_key.trim() || null : null
-  const entryDate = typeof body.entry_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.entry_date) ? body.entry_date : new Date().toISOString().slice(0, 10)
+  const entryDate = typeof body.entry_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.entry_date) ? body.entry_date : todayBR()
   const notes = typeof body.notes === 'string' ? body.notes.trim() || null : null
 
   // Nome amigável da despesa (fornecedor + NF se houver, senão data)

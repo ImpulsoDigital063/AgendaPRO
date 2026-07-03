@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { todayBR } from '@/lib/date-br'
 import { logActivity } from '@/lib/activity-log'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import {
@@ -125,7 +126,7 @@ export default function CaixaView({
     }
     setError(null)
     setOpeningBusy(true)
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayBR()
     const cents = Math.round(n * 100)
     const { error: e } = await supabase.from('cash_openings').insert({
       business_id: businessId,
@@ -157,7 +158,7 @@ export default function CaixaView({
     }
     setError(null)
     setMovBusy(true)
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayBR()
     const cents = Math.round(n * 100)
     const { error: e } = await supabase.from('cash_movements').insert({
       business_id: businessId,
@@ -274,7 +275,7 @@ export default function CaixaView({
     }
     setError(null)
     setClosing(true)
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayBR()
 
     const { error: e } = await supabase.from('cash_closings').insert({
       business_id: businessId,
@@ -794,7 +795,7 @@ export default function CaixaView({
         open={confirmCloseOpen}
         title="Fechar caixa do dia?"
         message={[
-          `Vai fechar o caixa de ${dateBR(new Date().toISOString().split('T')[0])}.`,
+          `Vai fechar o caixa de ${dateBR(todayBR())}.`,
           ``,
           `Líquido: ${formatBRL(totals.net)}`,
           cashDiff != null && cashDiff !== 0

@@ -1,5 +1,6 @@
 'use client'
 
+import { todayBR } from '@/lib/date-br'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
@@ -31,7 +32,7 @@ const PAYMENT_METHODS = [
 export default function AddCreditoModal({ customerId, customerName, businessId, onClose, onSaved }: Props) {
   const [profs, setProfs] = useState<Professional[]>([])
   const [professionalId, setProfessionalId] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(todayBR())
   const [amount, setAmount] = useState('')
   const [origin, setOrigin] = useState<'advance' | 'other'>('advance')
   const [paymentMethod, setPaymentMethod] = useState('')

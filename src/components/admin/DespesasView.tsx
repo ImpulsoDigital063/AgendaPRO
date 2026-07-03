@@ -1,5 +1,6 @@
 'use client'
 
+import { todayBR } from '@/lib/date-br'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
@@ -366,7 +367,7 @@ function ExpenseFormModal({
   const [amount, setAmount] = useState(expense ? String(expense.amount) : '')
   const [category, setCategory] = useState<ExpenseCategory>(expense?.category || 'rent')
   const [occurredAt, setOccurredAt] = useState(
-    expense?.occurred_at || new Date().toISOString().split('T')[0]
+    expense?.occurred_at || todayBR()
   )
   const [recurring, setRecurring] = useState(expense?.recurring || false)
   const [notes, setNotes] = useState(expense?.notes || '')
@@ -504,7 +505,7 @@ function ExpenseFormModal({
                   sem feedback. Cliente leigo achava que o sistema nao
                   salvou. */}
               {(() => {
-                const todayStr = new Date().toISOString().split('T')[0]
+                const todayStr = todayBR()
                 if (occurredAt > todayStr) {
                   const future = new Date(occurredAt + 'T00:00:00')
                   return (

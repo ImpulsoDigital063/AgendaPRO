@@ -1,4 +1,5 @@
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { startOfDayBR, addDaysBR } from '@/lib/date-br'
 import GradeTimelineHeader from './GradeTimelineHeader'
 import TimelineGridInteractive from './TimelineGridInteractive'
 import type { BlockRow } from '@/lib/blocks'
@@ -75,8 +76,8 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .eq('type', 'product_sale')
       .eq('status', 'paid')
       .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', `${date}T00:00:00`)
-      .lt('paid_at', `${date}T23:59:59`),
+      .gte('paid_at', startOfDayBR(date))
+      .lt('paid_at', startOfDayBR(addDaysBR(date, 1))),
     // Atendimentos PAGOS no dia (por paid_at · não por appointment_date) ·
     // pro "Recebido" refletir o dinheiro que entrou HOJE, igual ao Fluxo de
     // Caixa. Serviço de ontem pago hoje entra no recebido de hoje. (Studio
@@ -86,8 +87,8 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .select('total_price, professional_id')
       .eq('business_id', businessId)
       .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', `${date}T00:00:00`)
-      .lt('paid_at', `${date}T23:59:59`)
+      .gte('paid_at', startOfDayBR(date))
+      .lt('paid_at', startOfDayBR(addDaysBR(date, 1)))
       .not('paid_at', 'is', null),
     // Vendas de produto PENDENTES do dia · entram no "A receber" junto com os
     // serviços não pagos. Comanda aberta = serviço + produto a receber, por

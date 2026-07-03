@@ -1,5 +1,6 @@
 'use client'
 
+import { todayBR } from '@/lib/date-br'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -689,7 +690,7 @@ function VoucherForm({
   setError: (e: string | null) => void
 }) {
   const [description, setDescription] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(todayBR())
   const [amount, setAmount] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -803,7 +804,7 @@ function SalaryForm({
   setError: (e: string | null) => void
 }) {
   const [description, setDescription] = useState('Salário')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(todayBR())
   const [amount, setAmount] = useState('')
   const [paid, setPaid] = useState(false)
   const [submitting, setSubmitting] = useState(false)

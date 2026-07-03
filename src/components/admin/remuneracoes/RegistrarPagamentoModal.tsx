@@ -1,5 +1,6 @@
 'use client'
 
+import { todayBR } from '@/lib/date-br'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
@@ -56,7 +57,7 @@ export default function RegistrarPagamentoModal({
 
   // Form state step 2
   const [notes, setNotes] = useState('')
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10))
+  const [paymentDate, setPaymentDate] = useState(todayBR())
   const [paymentAmount, setPaymentAmount] = useState('')
 
   useEffect(() => {
