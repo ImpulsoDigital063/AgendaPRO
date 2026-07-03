@@ -111,24 +111,34 @@ export async function POST(
 
     lineTotal = quantity * unit_price
 
-    // Nome do cliente pra denormalizar na venda (é o que a lista de Vendas mostra
-    // na coluna CLIENTE). Antes cravava 'Comanda aberta' — virava placeholder
-    // confuso numa comanda já paga (Eduardo 09/06). Resolve o cliente da comanda;
-    // se for avulso (sem customer_id), pega o nome do atendimento da própria comanda.
-    let clientName = 'Cliente'
-    if (invoice.customer_id) {
-      const { data: cust } = await admin
-        .from('customers').select('name').eq('id', invoice.customer_id).maybeSingle()
-      if (cust?.name) clientName = cust.name
-    } else {
+    // Data e nome do cliente da venda seguem o ATENDIMENTO ligado à comanda.
+    //  - sale_date = data do atendimento (não a de hoje). Sem isso, produto
+    //    lançado hoje numa comanda de atendimento FUTURO caía como "a receber
+    //    hoje" e a comanda no dia errado (Eduardo 03/07). Comanda avulsa (sem
+    //    atendimento) mantém a data de hoje.
+    //  - client_name: cliente cadastrado da comanda; se avulso, nome do
+    //    atendimento (antes 'Comanda aberta' · Eduardo 09/06).
+    let saleDate = nowIso.slice(0, 10)
+    let apptClientName: string | null = null
+    {
       const { data: apptItem } = await admin
         .from('invoice_items').select('reference_id')
         .eq('invoice_id', invoiceId).eq('item_type', 'appointment').limit(1).maybeSingle()
       if (apptItem?.reference_id) {
         const { data: appt } = await admin
-          .from('appointments').select('client_name').eq('id', apptItem.reference_id).maybeSingle()
-        if (appt?.client_name) clientName = appt.client_name
+          .from('appointments').select('client_name, appointment_date').eq('id', apptItem.reference_id).maybeSingle()
+        if (appt?.appointment_date) saleDate = appt.appointment_date as string
+        apptClientName = appt?.client_name ?? null
       }
+    }
+
+    let clientName = 'Cliente'
+    if (invoice.customer_id) {
+      const { data: cust } = await admin
+        .from('customers').select('name').eq('id', invoice.customer_id).maybeSingle()
+      if (cust?.name) clientName = cust.name
+    } else if (apptClientName) {
+      clientName = apptClientName
     }
 
     const { data: sale, error: saleErr } = await admin
@@ -139,7 +149,7 @@ export async function POST(
         customer_id: invoice.customer_id,
         client_name: clientName,
         professional_id,
-        sale_date: nowIso.slice(0, 10),
+        sale_date: saleDate,
         total: lineTotal,
         discount: 0,
         status: 'pending',
