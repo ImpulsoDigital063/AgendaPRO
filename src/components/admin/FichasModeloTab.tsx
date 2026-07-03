@@ -174,6 +174,16 @@ export default function FichasModeloTab() {
   const [formFields, setFormFields] = useState<FieldDef[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [niche, setNiche] = useState<{ available: { slug: string; name: string }[]; enabled: string[] | null }>({ available: [], enabled: null })
+
+  function nicheOn(slug: string) { return niche.enabled === null ? true : niche.enabled.includes(slug) }
+  async function toggleNiche(slug: string) {
+    const base = niche.enabled === null ? niche.available.map((a) => a.slug) : [...niche.enabled]
+    const next = base.includes(slug) ? base.filter((s) => s !== slug) : [...base, slug]
+    setNiche((p) => ({ ...p, enabled: next }))
+    await fetch('/api/admin/niche-fichas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }) })
+    router.refresh()
+  }
 
   async function load() {
     setLoading(true)
@@ -187,6 +197,7 @@ export default function FichasModeloTab() {
 
   useEffect(() => {
     load()
+    fetch('/api/admin/niche-fichas').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setNiche(d) }).catch(() => {})
   }, [])
 
   function resetForm() {
@@ -526,6 +537,37 @@ export default function FichasModeloTab() {
   // ═══════════════════════════════════════════════════════════════════
   return (
     <div className="space-y-4">
+      {niche.available.length > 0 && (
+        <div className="rounded-2xl p-4" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
+          <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Fichas prontas do seu segmento</p>
+          <p className="text-xs mt-1 mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+            Aparecem quando você abre a ficha de um cliente. Desmarque as que você não usa.
+          </p>
+          <div className="space-y-2">
+            {niche.available.map((nf) => {
+              const on = nicheOn(nf.slug)
+              return (
+                <button
+                  key={nf.slug}
+                  type="button"
+                  onClick={() => toggleNiche(nf.slug)}
+                  className="w-full flex items-center justify-between gap-3 p-3 rounded-xl text-left transition-colors"
+                  style={{ background: 'var(--admin-surface-hi)', border: `1px solid ${on ? 'var(--admin-accent)' : 'var(--admin-border)'}` }}
+                >
+                  <span className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>{nf.name}</span>
+                  <span
+                    className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
+                    style={{ background: on ? 'color-mix(in srgb, var(--admin-accent) 16%, transparent)' : 'transparent', color: on ? 'var(--admin-accent)' : 'var(--admin-text-mute)', border: on ? 'none' : '1px solid var(--admin-border)' }}
+                  >
+                    {on ? 'Ativa' : 'Desativada'}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
           {loading ? 'Carregando…' : `${templates.length} ${templates.length === 1 ? 'modelo cadastrado' : 'modelos cadastrados'}`}
