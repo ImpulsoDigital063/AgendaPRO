@@ -252,7 +252,9 @@ export default function CaixaView({
     if (isNaN(n) || n < 0) return null
     return Math.round(n * 100)
   }, [cardPhysical])
-  const cardDiff = cardPhysicalCents != null ? cardPhysicalCents - (totals.card_credit + totals.card_debit) : null
+  // Usa card_total (não credit+debit) · cartão sem tipo definido também conta,
+  // senão a conferência esperaria menos que o real e acusaria sobra falsa.
+  const cardDiff = cardPhysicalCents != null ? cardPhysicalCents - totals.card_total : null
 
   const pixPhysicalCents = useMemo(() => {
     const n = parseFloat(pixPhysical.replace(',', '.'))
@@ -523,8 +525,17 @@ export default function CaixaView({
         <div className="space-y-2">
           <Row label="PIX" value={formatBRL(totals.pix)} icon="PIX" color="#10B981" />
           <Row label="Dinheiro" value={formatBRL(totals.cash)} icon="$" color="#16A34A" />
-          <Row label="Cartão crédito" value={formatBRL(totals.card_credit)} icon="▭" color="var(--admin-accent)" />
-          <Row label="Cartão débito" value={formatBRL(totals.card_debit)} icon="▭" color="var(--admin-accent)" />
+          {/* Cartão = total (card_total). Antes só existiam as linhas crédito/débito;
+              cartão sem tipo definido (payment_card_type NULL) sumia do resumo mas
+              entrava no Bruto → dinheiro invisível + sobra falsa no fechamento.
+              Crédito/débito viram sub-detalhe só quando o tipo foi informado. */}
+          <Row label="Cartão" value={formatBRL(totals.card_total)} icon="▭" color="var(--admin-accent)" />
+          {totals.card_credit > 0 && (
+            <Row label="· crédito" value={formatBRL(totals.card_credit)} icon=" " color="var(--admin-text-mute)" />
+          )}
+          {totals.card_debit > 0 && (
+            <Row label="· débito" value={formatBRL(totals.card_debit)} icon=" " color="var(--admin-text-mute)" />
+          )}
           {totals.courtesy > 0 && (
             <Row label="Cortesia" value={formatBRL(totals.courtesy)} icon="✿" color="var(--admin-text-mute)" />
           )}
@@ -614,7 +625,7 @@ export default function CaixaView({
                 inputMode="decimal"
                 value={cardPhysical}
                 onChange={(e) => setCardPhysical(e.target.value)}
-                placeholder={`Sistema: ${formatBRL(totals.card_credit + totals.card_debit)}`}
+                placeholder={`Sistema: ${formatBRL(totals.card_total)}`}
                 className="admin-input w-full pl-8 pr-3 py-2.5 text-sm tabular-nums"
               />
             </div>
