@@ -138,6 +138,25 @@ export async function GET(
     if (inv?.status === 'open') { openInvoiceId = inv.id as string; break }
   }
 
+  // Produtos JÁ lançados na comanda aberta. Sem isso o editor mostrava só o
+  // carrinho da sessão atual · produto já adicionado sumia da área de edição e
+  // só aparecia na comanda (bug Eduardo 03/07). Devolvidos pra listar como
+  // "já na comanda" (removível pelo DELETE de item).
+  let comandaProducts: { item_id: string; name: string; unit_price: number; quantity: number }[] = []
+  if (openInvoiceId) {
+    const { data: prodItems } = await admin
+      .from('invoice_items')
+      .select('id, description, unit_price, quantity')
+      .eq('invoice_id', openInvoiceId)
+      .eq('item_type', 'product')
+    comandaProducts = (prodItems ?? []).map((p) => ({
+      item_id: p.id as string,
+      name: (p.description as string) ?? 'Produto',
+      unit_price: Number(p.unit_price ?? 0),
+      quantity: Number(p.quantity ?? 1),
+    }))
+  }
+
   return NextResponse.json({
     appointment: {
       id: appointment.id,
@@ -153,6 +172,7 @@ export async function GET(
     professionals: profs ?? [],
     currentServiceIds,
     invoice_id: openInvoiceId,
+    comanda_products: comandaProducts,
   })
 }
 

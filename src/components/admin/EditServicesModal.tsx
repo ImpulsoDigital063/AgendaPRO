@@ -56,6 +56,10 @@ export default function EditServicesModal({
   const [canSellProducts, setCanSellProducts] = useState(false)
   const [products, setProducts] = useState<{ id: string; name: string; variant: string | null; price: number | null }[]>([])
   const [productCart, setProductCart] = useState<{ product_id: string; name: string; unit_price: number }[]>([])
+  // Produtos JÁ lançados na comanda aberta (carregados do GET). Sem isso, produto
+  // adicionado antes sumia da área de edição e só aparecia na comanda.
+  const [comandaProducts, setComandaProducts] = useState<{ item_id: string; name: string; unit_price: number; quantity: number }[]>([])
+  const [removingItem, setRemovingItem] = useState<string | null>(null)
   const [prodPickerOpen, setProdPickerOpen] = useState(false)
   const [prodSearch, setProdSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -101,6 +105,7 @@ export default function EditServicesModal({
         if (appt.professional_id) setProfessionalId(appt.professional_id)
         setNotes(appt.notes || '')
         setInvoiceId(data.invoice_id ?? null)
+        setComandaProducts(data.comanda_products ?? [])
         setLocked(data.appointment?.locked === true)
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Erro')
@@ -151,6 +156,27 @@ export default function EditServicesModal({
   function removeProduct(idx: number) {
     setProductCart((prev) => prev.filter((_, i) => i !== idx))
   }
+  // Remove um produto JÁ na comanda · efeito imediato (item já persistido).
+  // A rota DELETE recalcula o total da comanda. Erro deixa o item na lista.
+  async function removeComandaProduct(itemId: string) {
+    if (!invoiceId || removingItem) return
+    setRemovingItem(itemId)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/items/${itemId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        if (mountedRef.current) setError(d.error || 'Erro ao remover produto da comanda')
+        return
+      }
+      if (mountedRef.current) setComandaProducts((prev) => prev.filter((p) => p.item_id !== itemId))
+      router.refresh()
+    } catch (e) {
+      if (mountedRef.current) setError(e instanceof Error ? e.message : 'Erro')
+    } finally {
+      if (mountedRef.current) setRemovingItem(null)
+    }
+  }
   const prodResults = (() => {
     const q = prodSearch.trim().toLowerCase()
     const list = q ? products.filter((p) => p.name.toLowerCase().includes(q) || (p.variant ?? '').toLowerCase().includes(q)) : products
@@ -161,7 +187,8 @@ export default function EditServicesModal({
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0)
   const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
   const productsSubtotal = productCart.reduce((sum, p) => sum + (p.unit_price ?? 0), 0)
-  const grandTotal = totalPrice + productsSubtotal
+  const comandaProdSubtotal = comandaProducts.reduce((sum, p) => sum + (p.unit_price ?? 0) * (p.quantity ?? 1), 0)
+  const grandTotal = totalPrice + productsSubtotal + comandaProdSubtotal
   const newEndTime = totalDuration > 0 ? calcEndTime(time || startTime, totalDuration) : null
 
   async function salvar(force = false) {
@@ -394,10 +421,33 @@ export default function EditServicesModal({
                 )}
               </div>
 
-              {/* Produtos · só plano Equipe e comanda aberta */}
-              {canSellProducts && invoiceId && (
+              {/* Produtos · aparece se há comanda aberta e (plano Equipe pode
+                  adicionar OU já existem produtos lançados pra listar/remover). */}
+              {invoiceId && (canSellProducts || comandaProducts.length > 0) && (
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Produtos (vender junto)</span>
+
+                  {/* Já na comanda · produtos lançados antes (removíveis) */}
+                  {comandaProducts.length > 0 && (
+                    <div className="space-y-1.5 mt-1.5">
+                      {comandaProducts.map((p) => (
+                        <div key={p.item_id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.30)' }}>
+                          <span className="min-w-0">
+                            <span className="text-sm truncate block" style={{ color: 'var(--admin-text)' }}>{p.name}{p.quantity > 1 ? ` ×${p.quantity}` : ''}</span>
+                            <span className="text-[10px]" style={{ color: '#16A34A' }}>já na comanda</span>
+                          </span>
+                          <span className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-sm font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>{formatPrice(p.unit_price * p.quantity)}</span>
+                            <button type="button" onClick={() => removeComandaProduct(p.item_id)} disabled={removingItem === p.item_id} className="w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-40" style={{ color: '#DC2626' }} aria-label={`Remover ${p.name} da comanda`}>
+                              <IconClose size={12} />
+                            </button>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Novos produtos desta edição (gravam ao Salvar) */}
                   {productCart.length > 0 && (
                     <div className="space-y-1.5 mt-1.5">
                       {productCart.map((p, idx) => (
@@ -413,6 +463,7 @@ export default function EditServicesModal({
                       ))}
                     </div>
                   )}
+                  {canSellProducts && (
                   <div className="mt-1.5">
                     {!prodPickerOpen ? (
                       <button
@@ -460,6 +511,7 @@ export default function EditServicesModal({
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               )}
 
@@ -528,9 +580,9 @@ export default function EditServicesModal({
                 <p className="font-bold mt-0.5" style={{ color: 'var(--admin-text)' }}>
                   {grandTotal > 0 ? formatPrice(grandTotal) : '—'}
                 </p>
-                {productsSubtotal > 0 && (
+                {(productsSubtotal > 0 || comandaProdSubtotal > 0) && (
                   <p className="text-[10px] mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
-                    serviços {formatPrice(totalPrice)} + produtos {formatPrice(productsSubtotal)}
+                    serviços {formatPrice(totalPrice)} + produtos {formatPrice(productsSubtotal + comandaProdSubtotal)}
                   </p>
                 )}
               </div>
