@@ -438,17 +438,19 @@ export default async function AdminInicioPage() {
           </div>
         </header>
 
+        {/* Pedidos de pontos por avaliação · aprovar/recusar na hora · fica no
+            TOPO (acima de atalhos e KPIs) pra não precisar rolar pra achar
+            (Eduardo 03/07). Some sozinho quando a fila zera. */}
+        <Suspense fallback={null}>
+          <ReviewClaimsSection businessId={business.id} />
+        </Suspense>
+
         {/* Atalhos rápidos */}
         <AtalhosRapidos />
 
         {/* KPIs */}
         <Suspense fallback={<KPIsSkeleton />}>
           <KPIsRow business={business} />
-        </Suspense>
-
-        {/* Pedidos de pontos por avaliação · aprovar/recusar na hora */}
-        <Suspense fallback={null}>
-          <ReviewClaimsSection businessId={business.id} />
         </Suspense>
 
         {/* Grid principal · 2 colunas em desktop */}
