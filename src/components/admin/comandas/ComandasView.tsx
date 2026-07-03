@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { IconSearch } from '@/components/ui/Icon'
+import { IconSearch, IconChevronLeft, IconChevronRight, IconCalendar } from '@/components/ui/Icon'
 import { getAreaPrefix } from '@/lib/area-prefix'
 
 export type InvoiceListItem = {
@@ -13,10 +13,32 @@ export type InvoiceListItem = {
   total: number
   created_at: string
   closed_at: string | null
+  /** Data efetiva (YYYY-MM-DD): dia do atendimento se ligada, senão criação. */
+  ref_date: string
   customer_name: string | null
   items_count: number
   has_service: boolean
   has_product: boolean
+}
+
+// Data local (fuso do navegador = do dono) em YYYY-MM-DD
+function localToday() {
+  const n = new Date()
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+}
+function shiftDate(ymd: string, days: number) {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + days)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+function fmtDayLabel(ymd: string) {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
+}
+function fmtRef(ymd: string) {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${String(y).slice(2)}`
 }
 
 const STATUS_LABEL: Record<InvoiceListItem['status'], string> = {
@@ -35,11 +57,6 @@ function brl(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function fmtDate(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
-}
-
 function isToday(iso: string) {
   const d = new Date(iso)
   const n = new Date()
@@ -51,6 +68,7 @@ export default function ComandasView({ initialInvoices }: { initialInvoices: Inv
   const areaPrefix = getAreaPrefix(pathname)
   const [statusFilter, setStatusFilter] = useState<'all' | InvoiceListItem['status']>('all')
   const [search, setSearch] = useState('')
+  const [selectedDate, setSelectedDate] = useState(localToday())
 
   const kpis = useMemo(() => {
     const hojePago = initialInvoices
@@ -63,26 +81,34 @@ export default function ComandasView({ initialInvoices }: { initialInvoices: Inv
     return { hojePago, abertas, mes }
   }, [initialInvoices])
 
-  const filtered = useMemo(() => {
-    let list = initialInvoices
-    if (statusFilter !== 'all') list = list.filter((i) => i.status === statusFilter)
+  // Busca (por # ou cliente) varre TODOS os dias · ignora o filtro de data.
+  // Sem busca, mostra só as comandas do dia selecionado (ref_date).
+  const searching = search.trim().length > 0
+  const base = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (q) {
       const asNum = Number(q)
-      list = list.filter((i) => {
-        if (Number.isFinite(asNum) && i.invoice_number === asNum) return true
-        return (i.customer_name ?? '').toLowerCase().includes(q)
-      })
+      return initialInvoices.filter((i) =>
+        (Number.isFinite(asNum) && i.invoice_number === asNum) ||
+        (i.customer_name ?? '').toLowerCase().includes(q),
+      )
     }
-    return list
-  }, [initialInvoices, statusFilter, search])
+    return initialInvoices.filter((i) => (i.ref_date ?? '') === selectedDate)
+  }, [initialInvoices, search, selectedDate])
+
+  const filtered = useMemo(
+    () => (statusFilter === 'all' ? base : base.filter((i) => i.status === statusFilter)),
+    [base, statusFilter],
+  )
 
   const countByStatus = useMemo(() => ({
-    all: initialInvoices.length,
-    open: initialInvoices.filter((i) => i.status === 'open').length,
-    closed: initialInvoices.filter((i) => i.status === 'closed').length,
-    cancelled: initialInvoices.filter((i) => i.status === 'cancelled').length,
-  }), [initialInvoices])
+    all: base.length,
+    open: base.filter((i) => i.status === 'open').length,
+    closed: base.filter((i) => i.status === 'closed').length,
+    cancelled: base.filter((i) => i.status === 'cancelled').length,
+  }), [base])
+
+  const dayTotal = useMemo(() => base.filter((i) => i.status !== 'cancelled').reduce((s, i) => s + i.total, 0), [base])
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto space-y-5">
@@ -107,6 +133,55 @@ export default function ComandasView({ initialInvoices }: { initialInvoices: Inv
         <KpiCard label="Comandas abertas" value={String(kpis.abertas)} hint="Aguardam pagamento" />
         <KpiCard label="Recebido no mês" value={brl(kpis.mes)} hint="Comandas pagas no mês" />
       </div>
+
+      {/* Navegador de dia · default hoje · calendário abre outros dias.
+          Some quando está buscando (busca varre todos os dias). */}
+      {!searching && (
+        <div className="flex items-center gap-2 flex-wrap rounded-2xl p-2.5" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
+          <button
+            type="button"
+            onClick={() => setSelectedDate((d) => shiftDate(d, -1))}
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+            aria-label="Dia anterior"
+          >
+            <IconChevronLeft size={16} />
+          </button>
+          <label className="relative flex items-center gap-2 px-3 h-9 rounded-xl cursor-pointer" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
+            <IconCalendar size={15} />
+            <span className="text-sm font-semibold capitalize" style={{ color: 'var(--admin-text)' }}>{fmtDayLabel(selectedDate)}</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value || localToday())}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              aria-label="Escolher data"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => setSelectedDate((d) => shiftDate(d, 1))}
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+            aria-label="Próximo dia"
+          >
+            <IconChevronRight size={16} />
+          </button>
+          {selectedDate !== localToday() && (
+            <button
+              type="button"
+              onClick={() => setSelectedDate(localToday())}
+              className="px-3 h-9 rounded-xl text-xs font-bold"
+              style={{ background: 'var(--admin-accent)', color: '#fff' }}
+            >
+              Hoje
+            </button>
+          )}
+          <span className="ml-auto text-xs font-semibold tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>
+            {base.length} comanda{base.length === 1 ? '' : 's'} · {brl(dayTotal)}
+          </span>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -143,10 +218,10 @@ export default function ComandasView({ initialInvoices }: { initialInvoices: Inv
       {filtered.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--admin-surface)', border: '1px dashed var(--admin-border)' }}>
           <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
-            Nenhuma comanda {statusFilter === 'all' ? 'ainda' : 'nesse filtro'}
+            {searching ? 'Nenhuma comanda encontrada' : `Nenhuma comanda em ${fmtRef(selectedDate)}`}
           </p>
           <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-            Aperte FATURAR no atendimento da agenda pra criar a primeira.
+            {searching ? 'Tente outro # ou nome.' : 'Use as setas ou o calendário pra ver outro dia · ou fature um atendimento.'}
           </p>
         </div>
       ) : (
@@ -188,7 +263,7 @@ export default function ComandasView({ initialInvoices }: { initialInvoices: Inv
                       {composicao}
                     </span>
                     <span className="text-xs tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>
-                      {fmtDate(inv.created_at)}
+                      {fmtRef(inv.ref_date)}
                     </span>
                     <span className="text-sm font-bold tabular-nums sm:text-right" style={{ color: 'var(--admin-text)' }}>
                       {brl(inv.total)}

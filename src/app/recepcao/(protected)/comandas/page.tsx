@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import ComandasView, { type InvoiceListItem } from '@/components/admin/comandas/ComandasView'
+import ComandasView from '@/components/admin/comandas/ComandasView'
+import { fetchComandaList } from '@/lib/comandas-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,34 +26,7 @@ export default async function RecepcaoComandasPage() {
     { auth: { persistSession: false } },
   )
 
-  const { data: invoices } = await admin
-    .from('invoices')
-    .select(`
-      id, invoice_number, status, subtotal, discount, total,
-      created_at, closed_at,
-      customer:customers(id, name, phone),
-      items:invoice_items(id, item_type)
-    `)
-    .eq('business_id', recep.business_id)
-    .order('created_at', { ascending: false })
-    .limit(300)
-
-  const list: InvoiceListItem[] = (invoices ?? []).map((inv) => {
-    const customer = Array.isArray(inv.customer) ? inv.customer[0] : inv.customer
-    const items = Array.isArray(inv.items) ? inv.items : []
-    return {
-      id: inv.id as string,
-      invoice_number: inv.invoice_number as number,
-      status: inv.status as 'open' | 'closed' | 'cancelled',
-      total: Number(inv.total ?? 0),
-      created_at: inv.created_at as string,
-      closed_at: inv.closed_at as string | null,
-      customer_name: customer?.name ?? null,
-      items_count: items.length,
-      has_service: items.some((i) => i.item_type === 'appointment'),
-      has_product: items.some((i) => i.item_type === 'product'),
-    }
-  })
+  const list = await fetchComandaList(admin, recep.business_id)
 
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
