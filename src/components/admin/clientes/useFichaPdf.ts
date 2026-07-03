@@ -16,20 +16,32 @@ function fmtDataLonga(d: Date) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
-// webp/data-url/Storage-url → { jpeg dataURL, w, h }. createImageBitmap come webp.
+// webp/data-url/Storage-url → { jpeg dataURL, w, h }.
+// Decodifica via <img> (não createImageBitmap): webp funciona em todo browser
+// que renderiza webp em <img>, incluindo Safari iOS — onde createImageBitmap
+// falha em webp. crossOrigin='anonymous' + CORS '*' do Storage = canvas limpo.
+function loadImg(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('img load fail'))
+    img.src = src
+  })
+}
 async function toJpeg(src: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
   try {
-    const res = await fetch(src)
-    const blob = await res.blob()
-    const bmp = await createImageBitmap(blob)
+    const img = await loadImg(src)
+    const w = img.naturalWidth || 1
+    const h = img.naturalHeight || 1
     const canvas = document.createElement('canvas')
-    canvas.width = bmp.width
-    canvas.height = bmp.height
+    canvas.width = w
+    canvas.height = h
     const ctx = canvas.getContext('2d')!
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, bmp.width, bmp.height)
-    ctx.drawImage(bmp, 0, 0)
-    return { dataUrl: canvas.toDataURL('image/jpeg', 0.9), w: bmp.width, h: bmp.height }
+    ctx.fillRect(0, 0, w, h)
+    ctx.drawImage(img, 0, 0)
+    return { dataUrl: canvas.toDataURL('image/jpeg', 0.9), w, h }
   } catch {
     return null
   }
@@ -71,13 +83,25 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
   }
   const kv = (label: string, value: string) => {
     if (!value) return
-    ensure(7)
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(107, 114, 128)
-    doc.text(label, mX, y)
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(31, 41, 55)
-    const lines = doc.splitTextToSize(value, cw - 45)
-    doc.text(lines, mX + 45, y)
-    y += Math.max(6, lines.length * 5)
+    // Rótulo largo (textarea de procedimento etc.) não cabe na coluna de 45mm →
+    // empilha: rótulo em cima, valor embaixo. Rótulo curto = duas colunas.
+    if (doc.getTextWidth(label) > 40) {
+      const labelLines = doc.splitTextToSize(label, cw)
+      ensure(labelLines.length * 4.5 + 5)
+      doc.text(labelLines, mX, y); y += labelLines.length * 4.5 + 1
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(31, 41, 55)
+      const lines = doc.splitTextToSize(value, cw)
+      ensure(lines.length * 5)
+      doc.text(lines, mX, y); y += lines.length * 5 + 2
+    } else {
+      ensure(7)
+      doc.text(label, mX, y)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(31, 41, 55)
+      const lines = doc.splitTextToSize(value, cw - 45)
+      doc.text(lines, mX + 45, y)
+      y += Math.max(6, lines.length * 5)
+    }
   }
   const para = (txt: string, size = 9, color: [number, number, number] = [75, 85, 99]) => {
     const lines = doc.splitTextToSize(txt, cw)
