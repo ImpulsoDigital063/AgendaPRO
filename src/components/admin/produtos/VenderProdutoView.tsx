@@ -189,7 +189,8 @@ export default function VenderProdutoView({ businessId, products, professionals,
   // (onChoose(null)) → venda pendente, como era antes.
   function handleRegister() {
     setError(null)
-    if (!cliente && !avulso) { setError('Selecione um cliente ou marque venda avulsa'); return }
+    // PDV: só produto basta. Sem cliente = venda de balcão (avulsa). Profissional
+    // e cliente são opcionais — quem vende produto não é a profissional (Eduardo 03/07).
     if (validLines.length === 0) { setError('Adicione pelo menos 1 produto'); return }
     if (stockWarnings.length > 0) {
       setError(`Estoque insuficiente: ${stockWarnings.map((w) => `${w.name} (atual ${w.atual}, pedido ${w.pedido})`).join('; ')}`)
@@ -205,8 +206,10 @@ export default function VenderProdutoView({ businessId, products, professionals,
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        customer_id: avulso ? null : cliente?.id ?? null,
-        client_name: avulso ? (avulsoName.trim() || 'Cliente avulso') : undefined,
+        // Com cliente vinculado → usa o cadastro. Sem cliente (balcão) → nome
+        // avulso (digitado ou "Cliente avulso"), independente de ter clicado no toggle.
+        customer_id: cliente?.id ?? null,
+        client_name: cliente ? undefined : (avulsoName.trim() || 'Cliente avulso'),
         professional_id: profId || null,
         sale_date: saleDate,
         notes: notes.trim() || null,
@@ -304,7 +307,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
       {/* Cliente */}
       <section className="rounded-2xl p-4" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
         <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-          <IconUser size={12} /> Cliente
+          <IconUser size={12} /> Cliente <span className="normal-case tracking-normal font-medium" style={{ color: 'var(--admin-text-mute)' }}>· opcional (sem cliente = balcão)</span>
         </label>
         {cliente ? (
           <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
@@ -467,7 +470,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
             <Link href={produtosHref} className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'transparent', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}>
               Cancelar
             </Link>
-            <button type="button" onClick={handleRegister} disabled={saving || validLines.length === 0 || (!cliente && !avulso)} className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40" style={{
+            <button type="button" onClick={handleRegister} disabled={saving || validLines.length === 0} className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40" style={{
               background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
               color: '#fff',
               borderTop: '1px solid rgba(255,255,255,0.25)',

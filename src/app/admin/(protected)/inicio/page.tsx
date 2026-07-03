@@ -271,10 +271,12 @@ function AtalhosRapidos() {
       glow: 'color-mix(in srgb, var(--admin-accent) 30%, transparent)',
     },
     {
-      // Balcão: atende e registra na hora (abre o modal em modo balcão).
-      // Antes apontava só pro relatório de vendas (label enganoso). Eduardo 09/06.
+      // PDV puro: vai direto pra Vender Produto — vende só com o produto, sem
+      // exigir profissional nem serviço nem agendar (quem vende produto não é a
+      // profissional · Eduardo 03/07). Antes abria o modal de balcão (agendamento)
+      // que travava o Salvar sem serviço/profissional.
       label: 'Registrar venda',
-      href: '/admin/inicio?balcao=1',
+      href: '/admin/produtos/vender',
       Icon: IconReceipt,
       iconBg: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
       glow: 'rgba(16,185,129,0.28)',
