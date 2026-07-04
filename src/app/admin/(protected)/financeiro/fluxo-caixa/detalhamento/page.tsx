@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ExportCSVButton from '@/components/admin/financeiro/ExportCSVButton'
+import { startOfDayBR, todayBR } from '@/lib/date-br'
 
 type SearchParams = {
   month?: string // YYYY-MM (legado · ainda aceito)
@@ -111,13 +112,22 @@ export default async function DetalhamentoPage({
     from = new Date(sp.from + 'T00:00:00')
     to = new Date(sp.to + 'T00:00:00')
   } else {
-    const monthStr = sp.month ?? new Date().toISOString().slice(0, 7)
+    const monthStr = sp.month ?? todayBR().slice(0, 7) // λ.fuso: mês default em BR
     const [yStr, mStr] = monthStr.split('-')
     const year = parseInt(yStr, 10)
     const month0 = parseInt(mStr, 10) - 1
     from = new Date(year, month0, 1)
     to = new Date(year, month0 + 1, 1)
   }
+
+  // λ.fuso: bounds de paid_at em MEIA-NOITE BR (−03:00) · consistente com o
+  // motor do fluxo-caixa. from/to (Date) seguem só pro rótulo e pro occorred_at
+  // (coluna DATE) da despesa.
+  const pad2 = (n: number) => String(n).padStart(2, '0')
+  const fromYmd = sp.from && sp.to ? sp.from : `${from.getFullYear()}-${pad2(from.getMonth() + 1)}-${pad2(from.getDate())}`
+  const toYmd = sp.from && sp.to ? sp.to : `${to.getFullYear()}-${pad2(to.getMonth() + 1)}-${pad2(to.getDate())}`
+  const fromISO = startOfDayBR(fromYmd)
+  const toISO = startOfDayBR(toYmd)
 
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -143,8 +153,8 @@ export default async function DetalhamentoPage({
         invoice:invoices!inner(id, invoice_number, business_id, customer:customers(name))
       `)
       .eq('invoice.business_id', business.id)
-      .gte('paid_at', from.toISOString())
-      .lt('paid_at', to.toISOString())
+      .gte('paid_at', fromISO)
+      .lt('paid_at', toISO)
       .not('payment_method', 'in', '(courtesy,credit)')
 
     if (dbMethods) qInv = qInv.in('payment_method', dbMethods)
@@ -191,8 +201,8 @@ export default async function DetalhamentoPage({
       `)
       .eq('business_id', business.id)
       .is('invoice_item_id', null)
-      .gte('paid_at', from.toISOString())
-      .lt('paid_at', to.toISOString())
+      .gte('paid_at', fromISO)
+      .lt('paid_at', toISO)
       .not('paid_at', 'is', null)
       .not('payment_method', 'in', '(courtesy,credit)')
 
@@ -231,8 +241,8 @@ export default async function DetalhamentoPage({
         .eq('type', 'product_sale')
         .eq('status', 'paid')
         .is('invoice_id', null)
-        .gte('paid_at', from.toISOString())
-        .lt('paid_at', to.toISOString())
+        .gte('paid_at', fromISO)
+        .lt('paid_at', toISO)
         .not('paid_at', 'is', null)
         .not('payment_method', 'in', '(courtesy,credit)')
 

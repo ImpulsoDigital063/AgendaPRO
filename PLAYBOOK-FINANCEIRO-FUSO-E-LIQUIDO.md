@@ -244,13 +244,14 @@ Já executado e em produção (commits `528571c`, `e8bc6b0`, `8c61cde`):
 **Lote 2 — FUSO (quase completo):**
 - ✅ clientes ("hoje"), hub (dateRange + buckets de hora), vendas (hora do produto)
 - ✅ remuneração (janela de mês em BR), os 4 cards (janelas rolling)
-- ⬜ **PENDENTE: `fluxo-caixa/page.tsx`** — é um MOTOR de data (colunas dia/semana/mês
-  em `now`; limites de query `from`/`to`; e 5 chamadas `keyForDate` bucketando
-  `paid_at`). Hoje as 3 camadas estão TODAS em UTC — consistentes entre si (funciona,
-  com virada de dia às 21h). Migrar exige shift BR **nas 3 ao mesmo tempo** senão
-  pagamento cai na coluna errada. Fazer numa passada dedicada: `now =`
-  `new Date(Date.now()-3h)` (cols viram BR via getUTC*), cada `new Date(x.paid_at)`
-  antes do `keyForDate` também −3h, e `from`/`to` da query via `startOfDayBR`.
+- ✅ **`fluxo-caixa/page.tsx`** (motor de data) — RESOLVIDO nas 3 camadas juntas:
+  `now = new Date(Date.now()-3h)` (colunas em BR via getters UTC do Vercel);
+  helper `emBR(iso)` (−3h) aplicado nos 4 buckets de instante (`paid_at`×3 +
+  `closed_at`); `occurred_at` (DATE) deixado intacto; `buildRange` com limites em
+  MEIA-NOITE BR (`Date.UTC(y,m,d,3)` = 00:00 −03:00) — exatos, pois `range.from`
+  é a fronteira acumulado/período (alargar sumiria pagamento do saldo).
+- ✅ **`fluxo-caixa/detalhamento/page.tsx`** — bounds de `paid_at` via `startOfDayBR`
+  (BR) pra bater com o motor; mês default via `todayBR()`; `occurred_at` intacto.
 - ⬜ triagem dos demais `toISOString().slice` (a maioria é data pura/UTC-de-propósito;
   varrer confirmando caso a caso).
 

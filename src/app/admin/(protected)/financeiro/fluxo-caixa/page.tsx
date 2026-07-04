@@ -103,30 +103,37 @@ function buildColumns(view: ViewKind, now: Date): MonthCol[] {
 }
 
 function buildRange(view: ViewKind, cols: MonthCol[], now: Date): { from: Date; to: Date } {
+  // λ.fuso: limites em MEIA-NOITE BR (03:00 UTC = 00:00 −03:00). range.from é a
+  // fronteira acumulado/período (as queries prior usam .lt paid_at range.from) →
+  // tem que ser EXATA em BR · não pode alargar senão pagamento some do saldo.
+  const brMid = (y: number, m0: number, d: number) => new Date(Date.UTC(y, m0, d, 3, 0, 0))
   if (view === 'daily') {
-    const first = new Date(cols[0].year, cols[0].month0, parseInt(cols[0].key.split('-')[2]!, 10))
-    first.setHours(0, 0, 0, 0)
-    const to = new Date(now)
-    to.setDate(to.getDate() + 1)
-    to.setHours(0, 0, 0, 0)
+    const first = brMid(cols[0].year, cols[0].month0, parseInt(cols[0].key.split('-')[2]!, 10))
+    const to = brMid(now.getFullYear(), now.getMonth(), now.getDate() + 1)
     return { from: first, to }
   }
   if (view === 'weekly') {
     const firstParts = cols[0].key.split(':')[1]!.split('-').map(Number)
-    const first = new Date(firstParts[0], firstParts[1], firstParts[2])
-    const to = new Date(cols[cols.length - 1].year, cols[cols.length - 1].month0, parseInt(cols[cols.length - 1].key.split('-')[2]!, 10) + 7)
+    const first = brMid(firstParts[0], firstParts[1], firstParts[2])
+    const to = brMid(cols[cols.length - 1].year, cols[cols.length - 1].month0, parseInt(cols[cols.length - 1].key.split('-')[2]!, 10) + 7)
     return { from: first, to }
   }
   if (view === 'yearly') {
-    const from = new Date(cols[0].year, 0, 1)
-    const to = new Date(cols[cols.length - 1].year + 1, 0, 1)
+    const from = brMid(cols[0].year, 0, 1)
+    const to = brMid(cols[cols.length - 1].year + 1, 0, 1)
     return { from, to }
   }
   // monthly
-  const from = new Date(cols[0].year, cols[0].month0, 1)
-  const to = new Date(cols[cols.length - 1].year, cols[cols.length - 1].month0 + 1, 1)
+  const from = brMid(cols[0].year, cols[0].month0, 1)
+  const to = brMid(cols[cols.length - 1].year, cols[cols.length - 1].month0 + 1, 1)
   return { from, to }
 }
+
+// λ.fuso: converte um instante (timestamptz · paid_at/closed_at) pra a "data BR"
+// deslocando −3h · assim os getters do keyForDate (UTC no Vercel) devolvem o
+// dia/mês/ano de Brasília, batendo com as colunas (também em BR via `now` −3h).
+// NÃO usar em occurred_at (coluna DATE · sem hora · deslocar tiraria um dia).
+const emBR = (iso: string) => new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000)
 
 function keyForDate(view: ViewKind, d: Date, cols: MonthCol[]): string | null {
   if (view === 'daily') return `d:${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
@@ -172,7 +179,9 @@ export default async function FluxoCaixaPage({
     { auth: { persistSession: false } },
   )
 
-  const now = new Date()
+  // λ.fuso: instante deslocado −3h → getDate()/getMonth() (UTC no Vercel) dão a
+  // data BR · buildColumns/buildRange e o bucketing (emBR) ficam todos em BR.
+  const now = new Date(Date.now() - 3 * 60 * 60 * 1000)
   const cols = buildColumns(view, now)
   const range = buildRange(view, cols, now)
   const startOfPeriod = range.from.toISOString()
@@ -285,7 +294,7 @@ export default async function FluxoCaixaPage({
     if (!p.paid_at) continue
     const raw = (p.payment_method as string | null) ?? 'other'
     if (raw === 'courtesy' || raw === 'credit') continue // não é receita real
-    const d = new Date(p.paid_at as string)
+    const d = emBR(p.paid_at as string)
     const key = keyForDate(view, d, cols)
     if (!key || !data[key]) continue
     const methodKey = resolveMethodKey(raw, p.card_type as string | null)
@@ -306,7 +315,7 @@ export default async function FluxoCaixaPage({
   // 2. Appointments DIRETOS (sem invoice · pago via PaymentMethodModal direto)
   for (const a of apptsDirect ?? []) {
     if (!a.paid_at) continue
-    const d = new Date(a.paid_at)
+    const d = emBR(a.paid_at as string)
     const key = keyForDate(view, d, cols)
     if (!key || !data[key]) continue
     const raw = (a.payment_method as string | null) ?? 'other'
@@ -327,7 +336,7 @@ export default async function FluxoCaixaPage({
   // 3. Sales DIRETAS (sem invoice · venda avulsa de produto)
   for (const s of salesDirect ?? []) {
     if (!s.paid_at) continue
-    const d = new Date(s.paid_at as string)
+    const d = emBR(s.paid_at as string)
     const key = keyForDate(view, d, cols)
     if (!key || !data[key]) continue
     const raw = (s.payment_method as string | null) ?? 'other'
@@ -370,7 +379,7 @@ export default async function FluxoCaixaPage({
     .lt('closed_at', range.to.toISOString())
   for (const inv of invDiscounts ?? []) {
     if (!inv.closed_at) continue
-    const d = new Date(inv.closed_at as string)
+    const d = emBR(inv.closed_at as string)
     const key = keyForDate(view, d, cols)
     if (!key || !data[key]) continue
     data[key].descontosTotal = (data[key].descontosTotal ?? 0) + Number(inv.discount ?? 0)
