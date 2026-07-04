@@ -229,4 +229,31 @@ Uma **lista item a item** dos atendimentos do período, com total batendo, marca
 
 ---
 
+## 6. STATUS DA APLICAÇÃO NO AGENDAPRO (04/07/2026)
+
+Já executado e em produção (commits `528571c`, `e8bc6b0`, `8c61cde`):
+
+**Lote 1 — LÍQUIDO (completo):**
+- ✅ remuneração (lista + [professionalId]): comissão sobre líquido
+- ✅ hub (`financeiro/page.tsx`): normaliza total_price→líquido 1x
+- ✅ clientes, vendas, análises
+- ✅ cards: TopProfs, TopServices, TopCliente, TrendReceita
+- ✅ início, eu (KPIs Recebido/A-receber)
+- ➖ já eram líquidos (invoice_payments + appts diretos): fluxo-caixa, detalhamento, os 2 caixas, RelatorioFinanceiroCard
+
+**Lote 2 — FUSO (quase completo):**
+- ✅ clientes ("hoje"), hub (dateRange + buckets de hora), vendas (hora do produto)
+- ✅ remuneração (janela de mês em BR), os 4 cards (janelas rolling)
+- ⬜ **PENDENTE: `fluxo-caixa/page.tsx`** — é um MOTOR de data (colunas dia/semana/mês
+  em `now`; limites de query `from`/`to`; e 5 chamadas `keyForDate` bucketando
+  `paid_at`). Hoje as 3 camadas estão TODAS em UTC — consistentes entre si (funciona,
+  com virada de dia às 21h). Migrar exige shift BR **nas 3 ao mesmo tempo** senão
+  pagamento cai na coluna errada. Fazer numa passada dedicada: `now =`
+  `new Date(Date.now()-3h)` (cols viram BR via getUTC*), cada `new Date(x.paid_at)`
+  antes do `keyForDate` também −3h, e `from`/`to` da query via `startOfDayBR`.
+- ⬜ triagem dos demais `toISOString().slice` (a maioria é data pura/UTC-de-propósito;
+  varrer confirmando caso a caso).
+
+---
+
 *Documento gerado pelo Verbo (instância Palace) em 04/07/2026, a partir da resolução real do financeiro do Palace Nail Spa. Atualize este arquivo conforme achar as diferenças concretas do AgendaPRO.*
