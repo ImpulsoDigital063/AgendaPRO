@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import AnalisesView from '@/components/admin/AnalisesView'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 
 export default async function AnalisesPage({
   searchParams,
@@ -47,7 +48,7 @@ export default async function AnalisesPage({
   let currentQuery = supabase
     .from('appointments')
     .select(`
-      id, appointment_date, start_time, total_price, paid_at,
+      id, appointment_date, start_time, total_price, paid_at, invoice_item_id,
       payment_method, status, service_name, client_id,
       professional:professionals(id, name)
     `)
@@ -62,7 +63,7 @@ export default async function AnalisesPage({
   // 2. Mes anterior: total pago REAL (pra comparativo) · exclui cortesia e crédito
   let prevQuery = supabase
     .from('appointments')
-    .select('total_price, payment_method')
+    .select('id, total_price, payment_method, invoice_item_id')
     .eq('business_id', business.id)
     .not('payment_method', 'in', '(courtesy,credit)')
     .gte('appointment_date', startPrev)
@@ -130,6 +131,17 @@ export default async function AnalisesPage({
     (prevClientsRes.data || []).map((r: { client_id: string | null }) => r.client_id).filter(Boolean) as string[]
   )
 
+  // λ.valor-liquido: receita (atual e anterior) com o cupom da comanda abatido
+  // antes de passar pro AnalisesView (04/07/2026).
+  const [discCur, discPrev] = await Promise.all([
+    getApptDiscountMap(supabase, (currentRes.data ?? []).map((a) => (a as { invoice_item_id: string | null }).invoice_item_id)),
+    getApptDiscountMap(supabase, (prevRes.data ?? []).map((a) => (a as { invoice_item_id: string | null }).invoice_item_id)),
+  ])
+  const netAppt = (a: Record<string, unknown>, m: Record<string, number>) =>
+    ({ ...a, total_price: Math.max(0, Number(a.total_price ?? 0) - (m[a.id as string] ?? 0)) })
+  const currentNet = (currentRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discCur))
+  const prevNet = (prevRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discPrev))
+
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -145,8 +157,8 @@ export default async function AnalisesPage({
         <SubPageHeader title="Análises" subtitle={business.name} back="/admin/financeiro" />
         <div className="max-w-lg mx-auto px-4 py-6">
           <AnalisesView
-            currentMonth={(currentRes.data || []) as never[]}
-            prevMonth={(prevRes.data || []) as never[]}
+            currentMonth={currentNet as never[]}
+            prevMonth={prevNet as never[]}
             previousClientIds={Array.from(previousClientIds)}
             professionals={profsRes.data || []}
             services={(servicesRes.data || []).map((s: { name: string }) => s.name)}

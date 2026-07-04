@@ -1,4 +1,5 @@
 import { todayBR } from '@/lib/date-br'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 import { redirect } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
@@ -271,6 +272,13 @@ export default async function VendasPage({
       if (it) s.invoice_item_id = it.id
     }
   }
+
+  // λ.valor-liquido: linha de serviço mostra o valor com o cupom da comanda já
+  // abatido (04/07/2026). invoice_item_id foi resolvido acima (reference_id =
+  // appointment.id, chave que getApptDiscountMap devolve). Produto não entra
+  // (valor final próprio, sem desconto de comanda).
+  const vendaDisc = await getApptDiscountMap(sb, apptSales.map((s) => s.invoice_item_id))
+  for (const s of apptSales) s.total_price = Math.max(0, Number(s.total_price ?? 0) - (vendaDisc[s.id] ?? 0))
 
   // Sales (produto): o slot invoice_item_id contém invoice.id direto
   const productInvoiceIds = productRows.map((s) => s.invoice_item_id).filter(Boolean) as string[]

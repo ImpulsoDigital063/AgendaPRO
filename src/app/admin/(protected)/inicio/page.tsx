@@ -10,6 +10,7 @@ import {
 } from '@/lib/admin-data'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 import Greeting from '@/components/admin/Greeting'
 import FocoDoDia from '@/components/admin/FocoDoDia'
 import ReviewClaimsCard from '@/components/admin/ReviewClaimsCard'
@@ -79,11 +80,14 @@ async function KPIsRow({ business }: { business: Business }) {
       (a.total_price ?? 0) > 0 &&
       (a.status === 'confirmed' || a.status === 'completed')
   )
+  // λ.valor-liquido: recebido e a-receber com o cupom da comanda abatido (04/07/2026).
+  const apptDisc = await getApptDiscountMap(sb, list.map((a) => a.invoice_item_id))
+  const liq = (a: { id: string; total_price: number | null }) => Math.max(0, Number(a.total_price ?? 0) - (apptDisc[a.id] ?? 0))
   const recebidos = list.filter((a) => a.paid_at != null && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
-  const recebidoApptsTotal = recebidos.reduce((s, a) => s + (a.total_price || 0), 0)
+  const recebidoApptsTotal = recebidos.reduce((s, a) => s + liq(a), 0)
   const recebidoTotal = recebidoApptsTotal + recebidoSalesTotal
   const recebidoCount = recebidos.length + recebidoSalesCount
-  const aReceberTotal = aReceber.reduce((s, a) => s + (a.total_price || 0), 0)
+  const aReceberTotal = aReceber.reduce((s, a) => s + liq(a), 0)
   const totalAgendados = list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show').length
 
   // "Recebido hoje" foi movido pro RelatorioFinanceiroCard (1º BigKpi)

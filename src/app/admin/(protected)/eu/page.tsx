@@ -9,6 +9,7 @@ import {
   getUpcomingAppointments,
 } from '@/lib/admin-data'
 import { createClient } from '@/lib/supabase/server'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
 import AppointmentCard from '@/components/AppointmentCard'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
@@ -66,7 +67,7 @@ async function PersonalKPIs({
   const sbEu = await createClient()
   const { data: paidTodayEu } = await sbEu
     .from('appointments')
-    .select('total_price')
+    .select('id, total_price, invoice_item_id')
     .eq('business_id', business.id)
     .eq('professional_id', owner.id)
     .not('payment_method', 'in', '(courtesy,credit)')
@@ -82,8 +83,13 @@ async function PersonalKPIs({
   )
   const pendentes = meus.filter((a) => a.status === 'pending')
   const atendidos = meus.filter((a) => a.status === 'completed')
-  const recebidoTotal = (paidTodayEu ?? []).reduce((sum, a) => sum + Number(a.total_price || 0), 0)
-  const aReceberTotal = aReceber.reduce((sum, a) => sum + (a.total_price || 0), 0)
+  // λ.valor-liquido: recebido e a-receber com o cupom da comanda abatido (04/07/2026).
+  const euDisc = await getApptDiscountMap(sbEu, [
+    ...(paidTodayEu ?? []).map((a) => a.invoice_item_id),
+    ...aReceber.map((a) => a.invoice_item_id),
+  ])
+  const recebidoTotal = (paidTodayEu ?? []).reduce((sum, a) => sum + Math.max(0, Number(a.total_price ?? 0) - (euDisc[a.id] ?? 0)), 0)
+  const aReceberTotal = aReceber.reduce((sum, a) => sum + Math.max(0, Number(a.total_price ?? 0) - (euDisc[a.id] ?? 0)), 0)
 
   return (
     <section className="relative max-w-lg mx-auto px-4 mb-6 space-y-2.5">

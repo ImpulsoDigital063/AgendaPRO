@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 import { IconStar } from '@/components/ui/Icon'
 
 /**
@@ -16,7 +17,7 @@ export default async function TopClienteCard({ businessId }: { businessId: strin
   const [apptsRes, salesRes] = await Promise.all([
     supabase
       .from('appointments')
-      .select('client_name, total_price, payment_method')
+      .select('id, client_name, total_price, payment_method, invoice_item_id')
       .eq('business_id', businessId)
       .not('paid_at', 'is', null)
       .not('payment_method', 'in', '(courtesy,credit)')
@@ -33,12 +34,15 @@ export default async function TopClienteCard({ businessId }: { businessId: strin
       .lte('sale_date', todayStr),
   ])
 
+  // λ.valor-liquido: gasto do cliente com cupom abatido (04/07/2026).
+  const apptDisc = await getApptDiscountMap(supabase, (apptsRes.data ?? []).map((a) => a.invoice_item_id))
+
   type Row = { name: string; total: number; count: number }
   const map = new Map<string, Row>()
   for (const a of apptsRes.data ?? []) {
     const name = (a.client_name || 'Sem nome').trim()
     const existing = map.get(name) ?? { name, total: 0, count: 0 }
-    existing.total += a.total_price ?? 0
+    existing.total += Math.max(0, (a.total_price ?? 0) - (apptDisc[a.id] ?? 0))
     existing.count += 1
     map.set(name, existing)
   }
