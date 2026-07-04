@@ -6,6 +6,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import { IconChevronLeft, IconChevronRight } from '@/components/ui/Icon'
 import RemuneracoesTable, { type ProfRow } from '@/components/admin/remuneracoes/RemuneracoesTable'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 function formatBRL(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -37,9 +38,12 @@ export default async function RemuneracoesPage({
   if (!business) redirect('/cadastro')
 
   const sp = await searchParams
-  const now = new Date()
-  let year = now.getFullYear()
-  let month0 = now.getMonth()
+  // λ.fuso: mês default no dia BR; janela de paid_at com offset −03:00
+  // (startOfDayBR) e colunas DATE (period_start, salário date) com a string do
+  // 1º dia. 00:00 UTC = 21h BR do dia anterior desviava a virada de mês.
+  const ymBR = todayBR()
+  let year = parseInt(ymBR.slice(0, 4), 10)
+  let month0 = parseInt(ymBR.slice(5, 7), 10) - 1
   if (sp.month) {
     const [y, m] = sp.month.split('-')
     if (y && m) {
@@ -48,10 +52,13 @@ export default async function RemuneracoesPage({
     }
   }
 
-  const from = new Date(Date.UTC(year, month0, 1))
-  const to = new Date(Date.UTC(year, month0 + 1, 1))
-  const fromDate = from.toISOString().slice(0, 10)
-  const toDate = to.toISOString().slice(0, 10)
+  const mmBR = String(month0 + 1).padStart(2, '0')
+  const nextYear = month0 === 11 ? year + 1 : year
+  const nextMM = String(month0 === 11 ? 1 : month0 + 2).padStart(2, '0')
+  const fromDate = `${year}-${mmBR}-01`
+  const toDate = `${nextYear}-${nextMM}-01`
+  const from = startOfDayBR(fromDate)
+  const to = startOfDayBR(toDate)
 
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -82,8 +89,8 @@ export default async function RemuneracoesPage({
       .select('id, professional_id, paid_at, total_price, invoice_item_id')
       .eq('business_id', business.id)
       .not('payment_method', 'in', '(courtesy,credit)') // cortesia não gera comissão
-      .gte('paid_at', from.toISOString())
-      .lt('paid_at', to.toISOString())
+      .gte('paid_at', from)
+      .lt('paid_at', to)
       .not('paid_at', 'is', null),
     sb
       .from('commission_payments')
@@ -104,8 +111,8 @@ export default async function RemuneracoesPage({
       .eq('type', 'product_sale')
       .eq('status', 'paid')
       .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', from.toISOString())
-      .lt('paid_at', to.toISOString())
+      .gte('paid_at', from)
+      .lt('paid_at', to)
       .not('paid_at', 'is', null),
     // Salários cadastrados no mês · v76 BLOCO 3 · inclui recep contratada
     sb
@@ -225,7 +232,7 @@ export default async function RemuneracoesPage({
   const prev = shiftMonth(year, month0, -1)
   const next = shiftMonth(year, month0, 1)
   const isCurrent =
-    year === now.getFullYear() && month0 === now.getMonth()
+    year === parseInt(ymBR.slice(0, 4), 10) && month0 === parseInt(ymBR.slice(5, 7), 10) - 1
 
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>

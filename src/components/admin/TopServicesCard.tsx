@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 import { IconSparkles } from '@/components/ui/Icon'
 
 /**
@@ -7,10 +8,8 @@ import { IconSparkles } from '@/components/ui/Icon'
  */
 export default async function TopServicesCard({ businessId }: { businessId: string }) {
   const supabase = await createClient()
-  const start = new Date()
-  start.setDate(start.getDate() - 30)
-  const startStr = start.toISOString().split('T')[0]
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todayBR() // λ.fuso: janela em dia BR (não UTC)
+  const startStr = addDaysBR(todayStr, -30)
 
   const [apptsRes, salesRes] = await Promise.all([
     supabase

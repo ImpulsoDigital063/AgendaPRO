@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ClientesView from '@/components/admin/ClientesView'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { todayBR } from '@/lib/date-br'
 
 export default async function ClientesPage() {
   const supabase = await createClient()
@@ -49,7 +50,7 @@ export default async function ClientesPage() {
   // totalSpent: só conta dinheiro que JA ENTROU (paid_at IS NOT NULL).
   type Stats = { count: number; firstDate: string; lastDate: string; totalSpent: number }
   const statsMap: Record<string, Stats> = {}
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayBR() // λ.fuso: dia BR (não UTC · >21h caía no dia seguinte)
 
   for (const a of apptData || []) {
     if (!a.client_id) continue

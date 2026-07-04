@@ -4,6 +4,7 @@ import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import DetalheCalculoLink from '@/components/admin/remuneracoes/DetalheCalculoLink'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Dinheiro',
@@ -46,9 +47,12 @@ export default async function RemuneracaoDetalhePage({
   const { professionalId } = await params
   const sp = await searchParams
 
-  const now = new Date()
-  let year = now.getFullYear()
-  let month0 = now.getMonth()
+  // λ.fuso: mês default ancorado no dia BR (não UTC) · a janela de paid_at usa
+  // offset −03:00 (startOfDayBR) senão pagamento 21–24h na virada do mês caía no
+  // mês errado (00:00 UTC = 21h BR do dia anterior).
+  const ymBR = todayBR()
+  let year = parseInt(ymBR.slice(0, 4), 10)
+  let month0 = parseInt(ymBR.slice(5, 7), 10) - 1
   if (sp.month) {
     const [y, m] = sp.month.split('-')
     if (y && m) {
@@ -57,8 +61,11 @@ export default async function RemuneracaoDetalhePage({
     }
   }
 
-  const from = new Date(Date.UTC(year, month0, 1))
-  const to = new Date(Date.UTC(year, month0 + 1, 1))
+  const mmBR = String(month0 + 1).padStart(2, '0')
+  const nextYear = month0 === 11 ? year + 1 : year
+  const nextMM = String(month0 === 11 ? 1 : month0 + 2).padStart(2, '0')
+  const from = startOfDayBR(`${year}-${mmBR}-01`)
+  const to = startOfDayBR(`${nextYear}-${nextMM}-01`)
 
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -92,8 +99,8 @@ export default async function RemuneracaoDetalhePage({
     `)
     .eq('business_id', business.id)
     .eq('professional_id', professionalId)
-    .gte('paid_at', from.toISOString())
-    .lt('paid_at', to.toISOString())
+    .gte('paid_at', from)
+    .lt('paid_at', to)
     .not('paid_at', 'is', null)
     .order('paid_at', { ascending: false })
 

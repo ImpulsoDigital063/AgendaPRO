@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 import { IconDollar } from '@/components/ui/Icon'
 
 /**
@@ -9,14 +10,10 @@ import { IconDollar } from '@/components/ui/Icon'
  */
 export default async function TrendReceitaCard({ businessId }: { businessId: string }) {
   const supabase = await createClient()
-  const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-  const yesterdayStr = yesterday.toISOString().split('T')[0]
-  const fourteenDaysAgo = new Date(today)
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
-  const fourteenDaysAgoStr = fourteenDaysAgo.toISOString().split('T')[0]
+  // λ.fuso: dias em BR (não UTC · >21h caía no dia seguinte e deslocava a série)
+  const todayStr = todayBR()
+  const yesterdayStr = addDaysBR(todayStr, -1)
+  const fourteenDaysAgoStr = addDaysBR(todayStr, -14)
 
   // Lê em paralelo: appointments pagos + vendas de produto pagas (sales)
   const [apptsRes, salesRes] = await Promise.all([
@@ -57,18 +54,14 @@ export default async function TrendReceitaCard({ businessId }: { businessId: str
   // Média dos últimos 7 dias completos (sem hoje · hoje ainda em andamento)
   const last7Days: number[] = []
   for (let i = 1; i <= 7; i++) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    last7Days.push(byDay.get(d.toISOString().split('T')[0]) ?? 0)
+    last7Days.push(byDay.get(addDaysBR(todayStr, -i)) ?? 0)
   }
   const media7d = last7Days.reduce((a, b) => a + b, 0) / 7
 
   // Sparkline dos últimos 14 dias (mais antigo → mais recente)
   const sparklineValues: number[] = []
   for (let i = 13; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    sparklineValues.push(byDay.get(d.toISOString().split('T')[0]) ?? 0)
+    sparklineValues.push(byDay.get(addDaysBR(todayStr, -i)) ?? 0)
   }
 
   const diffOntem = totalOntem > 0 ? ((totalHoje - totalOntem) / totalOntem) * 100 : null

@@ -219,7 +219,7 @@ export default async function VendasPage({
     // do produto ficar grudada na linha do serviço na mesma comanda).
     // Fallback: created_at da sale.
     const apptHHMM = appt?.start_time ? appt.start_time.slice(0, 5) : null
-    const fallbackHHMM = new Date(s.created_at).toISOString().slice(11, 16)
+    const fallbackHHMM = new Date(new Date(s.created_at).getTime() - 3 * 60 * 60 * 1000).toISOString().slice(11, 16) // λ.fuso: hora BR
     const hh = apptHHMM ?? fallbackHHMM
     return {
       id: s.id,

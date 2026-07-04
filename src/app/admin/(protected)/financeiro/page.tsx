@@ -4,6 +4,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import FinanceiroView, { type AppointmentRow } from '@/components/admin/FinanceiroView'
 import DashboardFinanceiro from '@/components/admin/financeiro/DashboardFinanceiro'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { todayBR } from '@/lib/date-br'
 
 const CATEGORY_LABEL: Record<string, string> = {
   rent: 'Aluguel',
@@ -49,7 +50,9 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 function dateRange(periodo: 'hoje' | 'semana' | 'mes'): { start: Date; end: Date; prevStart: Date; prevEnd: Date } {
-  const today = new Date()
+  // λ.fuso: ancora no dia BR ao meio-dia UTC · os toISOString().slice(0,10) que
+  // consomem essas datas devolvem sempre a data de Brasília (não pula dia >21h).
+  const today = new Date(todayBR() + 'T12:00:00Z')
   today.setHours(23, 59, 59, 999)
   let start: Date, end: Date
   if (periodo === 'hoje') {
@@ -338,22 +341,22 @@ export default async function FinanceiroPage({
     }
     for (const a of appointments) {
       if (!a.paid_at) continue
-      const h = new Date(a.paid_at).getHours()
+      const h = new Date(new Date(a.paid_at).getTime() - 3 * 60 * 60 * 1000).getUTCHours() // λ.fuso: hora BR
       buckets[h].current += Number(a.total_price ?? 0)
     }
     for (const s of productSales) {
       if (!s.paid_at) continue
-      const h = new Date(s.paid_at as string).getHours()
+      const h = new Date(new Date(s.paid_at as string).getTime() - 3 * 60 * 60 * 1000).getUTCHours() // λ.fuso: hora BR
       if (buckets[h]) buckets[h].current += Number(s.total ?? 0)
     }
     for (const a of prevAppts) {
       if (!a.paid_at) continue
-      const h = new Date(a.paid_at).getHours()
+      const h = new Date(new Date(a.paid_at).getTime() - 3 * 60 * 60 * 1000).getUTCHours() // λ.fuso: hora BR
       buckets[h].previous += Number(a.total_price ?? 0)
     }
     for (const s of prevProductSales) {
       if (!s.paid_at) continue
-      const h = new Date(s.paid_at as string).getHours()
+      const h = new Date(new Date(s.paid_at as string).getTime() - 3 * 60 * 60 * 1000).getUTCHours() // λ.fuso: hora BR
       if (buckets[h]) buckets[h].previous += Number(s.total ?? 0)
     }
   } else {
