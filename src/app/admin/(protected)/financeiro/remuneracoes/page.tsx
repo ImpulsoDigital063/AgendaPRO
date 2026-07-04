@@ -5,6 +5,7 @@ import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import { IconChevronLeft, IconChevronRight } from '@/components/ui/Icon'
 import RemuneracoesTable, { type ProfRow } from '@/components/admin/remuneracoes/RemuneracoesTable'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 
 function formatBRL(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -78,7 +79,7 @@ export default async function RemuneracoesPage({
       .order('name'),
     sb
       .from('appointments')
-      .select('professional_id, paid_at, total_price')
+      .select('id, professional_id, paid_at, total_price, invoice_item_id')
       .eq('business_id', business.id)
       .not('payment_method', 'in', '(courtesy,credit)') // cortesia não gera comissão
       .gte('paid_at', from.toISOString())
@@ -114,6 +115,11 @@ export default async function RemuneracoesPage({
       .gte('date', fromDate)
       .lt('date', toDate),
   ])
+
+  // λ.valor-liquido: comissão de serviço incide sobre o LÍQUIDO (cupom da
+  // comanda já abatido), nunca sobre o bruto (Eduardo 04/07/2026). Mesmo
+  // rateio do detalhe do profissional · usa invoice_item_id → invoices.discount.
+  const apptDiscMap = await getApptDiscountMap(sb, (paidAppts ?? []).map((a) => a.invoice_item_id))
 
   // BLOCO 3 · TODOS os profs aparecem · recep (contratada) sem comissão · só salário
 
@@ -164,7 +170,7 @@ export default async function RemuneracoesPage({
       ? 0
       : (paidAppts ?? [])
           .filter((a) => a.professional_id === p.id)
-          .reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+          .reduce((s, a) => s + Math.max(0, Number(a.total_price ?? 0) - (apptDiscMap[a.id] ?? 0)), 0)
     const commissionFromAppts = isRecep ? 0 : (sumPaidAppts * pct) / 100
     const commissionFromSales = isRecep
       ? 0

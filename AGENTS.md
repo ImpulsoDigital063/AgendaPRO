@@ -37,3 +37,12 @@ Como mobile e desktop renderizam dos mesmos componentes `.tsx`, a única forma t
 ## Quando há dúvida
 
 Pergunta. Não chuta. Mobile (Olímpio em uso real diário) e Desktop (Palace em onboarding) têm tolerância zero pra regressão cruzada.
+
+# Financeiro — LEIA antes de mexer em qualquer tela de valor
+
+O sistema irmão (Palace Nail Spa) teve **dois bugs financeiros reais** resolvidos em 03–04/07/2026 que quase com certeza existem aqui também (mesma arquitetura de comanda + `invoices.discount` + Vercel em UTC):
+
+1. **Fuso UTC × Brasil** — telas bucketizam pagamento no dia errado (>21h cai no dia seguinte). Use `src/lib/date-br.ts` (`todayBR`/`addDaysBR`/`startOfDayBR`), nunca `new Date().toISOString().slice()` cru pra contar dinheiro por dia.
+2. **Bruto × Líquido** — telas mostram o valor CHEIO onde teve cupom. `getApptDiscountMap` (em `commission-discount.ts`) já existe mas **só 2 telas usam**. Toda tela com valor tem que mostrar o líquido.
+
+**Detalhe completo, armadilhas e plano de ação passo a passo:** `PLAYBOOK-FINANCEIRO-FUSO-E-LIQUIDO.md` (raiz do projeto). Ler ANTES de tocar em Vendas / Caixa / Fluxo / Análises / Remunerações / hub financeiro / cards de Recebido.

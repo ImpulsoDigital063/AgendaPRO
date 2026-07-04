@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import FinanceiroView, { type AppointmentRow } from '@/components/admin/FinanceiroView'
 import DashboardFinanceiro from '@/components/admin/financeiro/DashboardFinanceiro'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 
 const CATEGORY_LABEL: Record<string, string> = {
   rent: 'Aluguel',
@@ -119,7 +120,7 @@ export default async function FinanceiroPage({
       .from('appointments')
       .select(`
         id, client_name, client_phone, appointment_date, start_time,
-        status, service_name, total_price, paid_at, payment_method,
+        status, service_name, total_price, paid_at, payment_method, invoice_item_id,
         payment_card_type, payment_card_brand, payment_fee_percent, payment_installments,
         professional:professionals(id, name, commission_percentage, employment_type)
       `)
@@ -129,7 +130,7 @@ export default async function FinanceiroPage({
       .order('appointment_date', { ascending: false }),
     supabase
       .from('appointments')
-      .select('total_price, paid_at, payment_method, status, appointment_date')
+      .select('id, total_price, paid_at, payment_method, status, appointment_date, invoice_item_id')
       .eq('business_id', business.id)
       .gte('appointment_date', prevStartStr)
       .lte('appointment_date', prevEndStr),
@@ -181,6 +182,17 @@ export default async function FinanceiroPage({
   const credits = creditsRes.data ?? []
   const productSales = productSalesCur.data ?? []
   const prevProductSales = productSalesPrev.data ?? []
+
+  // λ.valor-liquido: normaliza total_price pro LÍQUIDO (cupom da comanda já
+  // abatido) UMA vez · todas as somas, top profs/serviços, donut e buckets
+  // abaixo saem líquidos sem tocar cada ponto. Desconto vive em
+  // invoices.discount → getApptDiscountMap rateia (Eduardo 04/07/2026).
+  const [discCur, discPrev] = await Promise.all([
+    getApptDiscountMap(supabase, appointments.map((a) => a.invoice_item_id)),
+    getApptDiscountMap(supabase, prevAppts.map((a) => a.invoice_item_id)),
+  ])
+  for (const a of appointments) a.total_price = Math.max(0, Number(a.total_price ?? 0) - (discCur[a.id] ?? 0))
+  for (const a of prevAppts) a.total_price = Math.max(0, Number(a.total_price ?? 0) - (discPrev[a.id] ?? 0))
 
   // Cálculos · receita = appointments pagos + vendas de produto pagas
   // Receita real exclui cortesia (bonificação não conta como faturamento)

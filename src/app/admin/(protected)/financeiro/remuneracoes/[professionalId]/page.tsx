@@ -3,6 +3,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import DetalheCalculoLink from '@/components/admin/remuneracoes/DetalheCalculoLink'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Dinheiro',
@@ -86,7 +87,8 @@ export default async function RemuneracaoDetalhePage({
       service_name,
       client_name,
       payment_method,
-      commission_payment_id
+      commission_payment_id,
+      invoice_item_id
     `)
     .eq('business_id', business.id)
     .eq('professional_id', professionalId)
@@ -106,8 +108,14 @@ export default async function RemuneracaoDetalhePage({
     paymentMethod: string | null
   }
 
+  // λ.valor-liquido: comissão incide sobre o valor LÍQUIDO (cupom da comanda
+  // já abatido), nunca sobre o bruto. Sem isso o salão paga comissão sobre o
+  // dinheiro que o desconto tirou. O desconto vive em invoices.discount ·
+  // getApptDiscountMap rateia de volta por appointment (Eduardo 04/07/2026).
+  const apptDisc = await getApptDiscountMap(sb, (appts ?? []).map((a) => a.invoice_item_id))
+
   const rows: Row[] = (appts ?? []).map((a) => {
-    const base = Number(a.total_price ?? 0)
+    const base = Math.max(0, Number(a.total_price ?? 0) - (apptDisc[a.id] ?? 0))
     const remuneracao = (base * pct) / 100
     const paid = a.commission_payment_id ? remuneracao : 0
     const pendente = remuneracao - paid

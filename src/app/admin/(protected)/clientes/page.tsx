@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ClientesView from '@/components/admin/ClientesView'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 
 export default async function ClientesPage() {
   const supabase = await createClient()
@@ -21,7 +22,7 @@ export default async function ClientesPage() {
   const [apptRes, productSalesRes] = await Promise.all([
     supabase
       .from('appointments')
-      .select('client_id, appointment_date, status, service_name, total_price, paid_at')
+      .select('id, client_id, appointment_date, status, service_name, total_price, paid_at, invoice_item_id')
       .eq('business_id', business.id)
       .not('client_id', 'is', null)
       .order('appointment_date', { ascending: false }),
@@ -36,6 +37,10 @@ export default async function ClientesPage() {
   ])
   const apptData = apptRes.data
   const productSalesData = productSalesRes.data ?? []
+
+  // λ.valor-liquido: gasto do cliente pelo valor LÍQUIDO (cupom já abatido) ·
+  // desconto vive em invoices.discount → getApptDiscountMap rateia (04/07/2026).
+  const apptDisc = await getApptDiscountMap(supabase, (apptData || []).map((a) => a.invoice_item_id))
 
   // Stats por cliente · só conta atendimentos REALIZADOS (passado/hoje E não
   // cancelado/no_show). Futuros agendados não contam como atendimento feito.
@@ -67,7 +72,7 @@ export default async function ClientesPage() {
     // Total gasto = só pagamentos confirmados (paid_at). Sem isso, completed
     // sem pagamento inflava o numero. Cliente devedor nao conta como gasto.
     if (a.paid_at && a.total_price) {
-      statsMap[a.client_id].totalSpent += a.total_price
+      statsMap[a.client_id].totalSpent += Math.max(0, a.total_price - (apptDisc[a.id] ?? 0))
     }
   }
 
