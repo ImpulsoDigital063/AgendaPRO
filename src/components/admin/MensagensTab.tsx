@@ -56,8 +56,13 @@ export default function MensagensTab({ businessName }: Props) {
 
   function insertVar(token: string) {
     const el = reminderRef.current
-    const start = el?.selectionStart ?? reminder.length
-    const end = el?.selectionEnd ?? reminder.length
+    // Só usa o cursor se o campo estiver REALMENTE focado. Sem isso, clicar um
+    // chip com o campo desfocado caía em selectionStart=0 → variável grudava no
+    // COMEÇO da mensagem (template corrompido "{cliente}{negocio}...Oi..." ·
+    // Barbearia Guia Lopes 07/07). Desfocado = insere no fim.
+    const focused = !!el && typeof document !== 'undefined' && document.activeElement === el
+    const start = focused ? (el!.selectionStart ?? reminder.length) : reminder.length
+    const end = focused ? (el!.selectionEnd ?? reminder.length) : reminder.length
     const needsSpace = start > 0 && !/\s$/.test(reminder.slice(0, start))
     const insert = (needsSpace ? ' ' : '') + token
     const next = reminder.slice(0, start) + insert + reminder.slice(end)
