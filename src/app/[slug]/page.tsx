@@ -132,7 +132,7 @@ export default async function BusinessPage({
   const b = business as Business & { category?: string }
   const primary = b.brand_primary || '#3B82F6'
   const secondary = b.brand_secondary || '#06B6D4'
-  const mode = b.brand_mode || 'dark'
+  const mode = b.brand_mode || 'light'
   const isDark = mode === 'dark'
 
   const bg = isDark ? '#050713' : '#F6F8FC'

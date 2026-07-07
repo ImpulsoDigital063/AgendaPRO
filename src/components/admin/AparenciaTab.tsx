@@ -57,7 +57,7 @@ function isRecommended(presetName: string, category: string | null | undefined):
 
 const DEFAULT_PRIMARY = '#3B82F6'
 const DEFAULT_SECONDARY = '#06B6D4'
-const DEFAULT_MODE: 'dark' | 'light' = 'dark'
+const DEFAULT_MODE: 'dark' | 'light' = 'light'
 
 function snapshot(p: string, s: string, m: string, c: string | null | undefined) {
   return `${p}|${s}|${m}|${c ?? ''}`

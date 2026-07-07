@@ -39,7 +39,7 @@ export default async function MeusPontosPage({
   const b = business as Business
   const primary = b.brand_primary || '#3B82F6'
   const secondary = b.brand_secondary || '#06B6D4'
-  const mode = b.brand_mode || 'dark'
+  const mode = b.brand_mode || 'light'
   const isDark = mode === 'dark'
   const cover = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`
 

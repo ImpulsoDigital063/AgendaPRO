@@ -48,7 +48,7 @@ export default async function CancelarPage({
 
   const primary = business?.brand_primary || '#3B82F6'
   const secondary = business?.brand_secondary || '#06B6D4'
-  const mode = business?.brand_mode || 'dark'
+  const mode = business?.brand_mode || 'light'
   const isDark = mode === 'dark'
   const cover = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`
 

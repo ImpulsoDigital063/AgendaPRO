@@ -204,7 +204,7 @@ export default function BookingFlow({
 }) {
   const hasServices = services.length > 0
   const hasMultipleProfessionals = professionals.length > 1
-  const isDark = (business.brand_mode || 'dark') === 'dark'
+  const isDark = (business.brand_mode || 'light') === 'dark'
   // Paleta unificada — todos os steps usam essas vars pra consistência dark/light
   const C = isDark
     ? {
