@@ -68,12 +68,12 @@ export default function FichasTab({ customerId }: Props) {
         .select('id, template_id, data, created_at, niche_slug, template:client_form_templates(id, name, fields)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false }),
-      sb.from('customers').select('name, phone, birthday, business:businesses(description, enabled_niche_fichas)').eq('id', customerId).maybeSingle(),
+      sb.from('customers').select('name, phone, birthday, business:businesses(description, category, enabled_niche_fichas)').eq('id', customerId).maybeSingle(),
     ])
-    const custRow = custRes.data as { name: string; phone: string | null; birthday: string | null; business?: { description: string | null; enabled_niche_fichas: string[] | null } | { description: string | null; enabled_niche_fichas: string[] | null }[] | null } | null
+    const custRow = custRes.data as { name: string; phone: string | null; birthday: string | null; business?: { description: string | null; category: string | null; enabled_niche_fichas: string[] | null } | { description: string | null; category: string | null; enabled_niche_fichas: string[] | null }[] | null } | null
     setCustomer(custRow ? { name: custRow.name, phone: custRow.phone, birthday: custRow.birthday } : null)
     const biz = Array.isArray(custRow?.business) ? custRow?.business[0] : custRow?.business
-    setBusinessCategory(biz?.description ?? null)
+    setBusinessCategory(biz?.category ?? biz?.description ?? null)
     setNicheEnabled(biz?.enabled_niche_fichas ?? null)
     setTemplates((tplRes.data ?? []) as Template[])
     setResponses(

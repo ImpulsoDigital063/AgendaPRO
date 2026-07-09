@@ -5,7 +5,7 @@ import { NICHE_FICHAS } from '@/lib/fichas/registry'
 async function getOwnerBusiness(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
-  const { data } = await supabase.from('businesses').select('id, description, enabled_niche_fichas').eq('owner_id', user.id).maybeSingle()
+  const { data } = await supabase.from('businesses').select('id, description, category, enabled_niche_fichas').eq('owner_id', user.id).maybeSingle()
   return data
 }
 
@@ -22,7 +22,7 @@ export async function GET() {
   const biz = await getOwnerBusiness(supabase)
   if (!biz) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   return NextResponse.json({
-    available: availableFor(biz.description),
+    available: availableFor(biz.category ?? biz.description),
     // null = todas ativas (default); array = seleção explícita
     enabled: (biz.enabled_niche_fichas as string[] | null) ?? null,
   })
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   if (!biz) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const body = await request.json().catch(() => null)
   if (!body || !Array.isArray(body.enabled)) return NextResponse.json({ error: 'invalid_body' }, { status: 400 })
-  const valid = new Set(availableFor(biz.description).map((a) => a.slug))
+  const valid = new Set(availableFor(biz.category ?? biz.description).map((a) => a.slug))
   const enabled = body.enabled.filter((s: unknown): s is string => typeof s === 'string' && valid.has(s))
   const { error } = await supabase.from('businesses').update({ enabled_niche_fichas: enabled }).eq('id', biz.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
