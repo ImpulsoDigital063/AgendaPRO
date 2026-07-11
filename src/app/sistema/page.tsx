@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser } from '@/lib/admin-data'
 import { SISTEMA_CSS } from './styles'
+import EntrarButton from './EntrarButton'
 
 /**
  * /sistema — Painel de gestão do SaaS (visão do dono, cruza TODOS os negócios).
@@ -305,6 +306,7 @@ export default async function SistemaPage() {
                   </div>
                   <div className="sys-acts">
                     <WaButton phone={n.biz.phone} />
+                    <EntrarButton businessId={n.biz.id} name={n.biz.name ?? 'negócio'} />
                     <button className="sys-btn sys-guard" type="button" disabled title="Fatia 2 — reenviar cobrança">
                       Reenviar PIX
                     </button>
@@ -348,6 +350,7 @@ export default async function SistemaPage() {
                   </div>
                   <div className="sys-acts">
                     <WaButton phone={n.biz.phone} />
+                    <EntrarButton businessId={n.biz.id} name={n.biz.name ?? 'negócio'} />
                   </div>
                 </div>
               )
@@ -371,6 +374,7 @@ export default async function SistemaPage() {
                 </div>
                 <div className="sys-acts">
                   <WaButton phone={n.biz.phone} />
+                  <EntrarButton businessId={n.biz.id} name={n.biz.name ?? 'negócio'} />
                 </div>
               </div>
             ))}
