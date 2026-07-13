@@ -18,6 +18,7 @@ import FinanceDashboard from '@/components/lp/FinanceDashboard'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
+import VendasEstoque from '@/components/lp/VendasEstoque'
 import FichaAnamnese from '@/components/lp/FichaAnamnese'
 import OnboardingSteps from '@/components/OnboardingSteps'
 import SocialProofToast from '@/components/SocialProofToast'
@@ -746,6 +747,9 @@ export default async function SalaoPage() {
 
       {/* ═══════════ 4.5 FICHA DE ANAMNESE (capilar) ═══════════ */}
       <FichaAnamnese variant="salao" />
+
+      {/* ═══════════ 4.6 VENDAS + ESTOQUE ═══════════ */}
+      <VendasEstoque variant="salao" />
 
       {/* ═══════════ 5. TIMELINE ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">

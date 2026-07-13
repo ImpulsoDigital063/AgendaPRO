@@ -18,6 +18,7 @@ import { TimelineMicroUI, DorMicroUI } from '@/components/LandingMicroUI'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
+import VendasEstoque from '@/components/lp/VendasEstoque'
 import FinanceDashboard from '@/components/lp/FinanceDashboard'
 import OnboardingSteps from '@/components/OnboardingSteps'
 import SocialProofToast from '@/components/SocialProofToast'
@@ -784,6 +785,9 @@ export default async function BarbeariaPage() {
           </SectionReveal>
         </div>
       </section>
+
+      {/* ═══════════ 4.6 VENDAS + ESTOQUE ═══════════ */}
+      <VendasEstoque variant="barbearia" />
 
       {/* ═══════════ 5. TIMELINE ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">
