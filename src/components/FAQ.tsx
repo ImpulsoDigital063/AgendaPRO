@@ -21,7 +21,7 @@ const DEFAULT_FAQS: FAQItem[] = [
   },
   {
     q: 'Como funciona o lembrete automático?',
-    a: 'Na véspera do agendamento, o sistema manda um lembrete automático pro cliente. Isso reduz em até 50% as faltas. Automático — sem você precisar fazer nada.',
+    a: 'Na véspera do agendamento, o sistema manda um lembrete automático por e-mail pro cliente. Ele confirma ou avisa que não vem, e você reorganiza a agenda antes de perder o horário. Automático — sem você precisar fazer nada.',
   },
   {
     q: 'Tenho mais de um profissional. Funciona?',
