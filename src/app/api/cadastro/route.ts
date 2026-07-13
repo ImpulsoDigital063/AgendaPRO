@@ -185,7 +185,11 @@ export async function POST(req: NextRequest) {
       status: 'active',
       price_cents: priceCents,
       setup_cents: setupCents,
-      provider: 'trial',
+      // 'cortesia' é o único valor de provider que o banco aceita pra conta sem
+      // gateway (o CHECK subscriptions_provider_check só permite mercado_pago,
+      // asaas e cortesia — 'trial' explode com violação de constraint).
+      // É o mesmo provider que a Viva Cacheada já usa no trial dela.
+      provider: 'cortesia',
       plan_modalidade: null,        // sem ciclo de cobrança — é o que marca "trial"
       permanent_courtesy: false,    // vence de verdade (true = demo, nunca bloqueia)
       pago_ate: trialFim,
