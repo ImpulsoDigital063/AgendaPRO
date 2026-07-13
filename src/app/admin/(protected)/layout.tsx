@@ -7,6 +7,7 @@ import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
 import AdminDesktopSidebar from '@/components/admin/desktop/AdminDesktopSidebar'
+import TrialBanner from '@/components/admin/TrialBanner'
 import { createClient } from '@/lib/supabase/server'
 import {
   getCurrentUser,
@@ -34,6 +35,7 @@ export default async function AdminLayout({
   let pendingAppointments = 0
   let pendingClaims = 0
   let showOwnerTab = false
+  let trial: { diasRestantes: number; plano: string; precoMes: string } | null = null
   let brand: {
     brand_primary?: string | null
     brand_secondary?: string | null
@@ -95,6 +97,26 @@ export default async function AdminLayout({
     pendingAppointments = apptCount
     pendingClaims = claimsCount
     showOwnerTab = !!ownerProf
+
+    // TRIAL (7 dias, cravado 13/07): mesmo critério do billing-check —
+    // ativo · sem ciclo de cobrança · sem assinatura recorrente · não é demo.
+    // Sem esse aviso o teste vence e o dono só descobre no paywall.
+    const emTrial =
+      subscription.status === 'active' &&
+      !subscription.permanent_courtesy &&
+      !subscription.plan_modalidade &&
+      !subscription.asaas_subscription_id &&
+      !subscription.mp_subscription_id &&
+      !!subscription.pago_ate
+
+    if (emTrial) {
+      const restaMs = new Date(subscription.pago_ate!).getTime() - now.getTime()
+      trial = {
+        diasRestantes: Math.max(0, Math.ceil(restaMs / (24 * 60 * 60 * 1000))),
+        plano: subscription.plan === 'equipe' ? 'Equipe' : 'Solo',
+        precoMes: `R$ ${Math.round((subscription.price_cents ?? 6700) / 100)}`,
+      }
+    }
   }
 
   // Sistema light-only (tema dark removido 03/06). Sem leitura de cookie de tema.
@@ -132,6 +154,13 @@ export default async function AdminLayout({
             pendingClaims={pendingClaims}
             showOwnerTab={showOwnerTab}
           />
+          {trial && (
+            <TrialBanner
+              diasRestantes={trial.diasRestantes}
+              plano={trial.plano}
+              precoMes={trial.precoMes}
+            />
+          )}
           {children}
         </div>
       </div>

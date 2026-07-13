@@ -57,10 +57,20 @@ export const PRICING = {
     },
   },
 
-  /** Garantia (substitui o trial antigo) */
+  /**
+   * TRIAL — 7 dias grátis, sem cartão (cravado por Eduardo em 13/07/2026).
+   * A conta nasce ativa no cadastro e vence sozinha (billing-check avisa D-1 e bloqueia).
+   * NÃO tem setup: só a mensalidade, quando o teste acabar.
+   */
+  trial: {
+    dias: 7,
+    pitch: 'testa 7 dias de graça, sem cartão. Se não fizer sentido, é só não continuar.',
+  },
+
+  /** Garantia — vale pra quem JÁ pagou (reembolso, não é o mesmo que o trial) */
   garantia: {
     diasReembolso: 7,
-    pitch: 'você testa 7 dias, se não fizer sentido eu devolvo sem burocracia',
+    pitch: 'depois de assinar, se não fizer sentido eu devolvo sem burocracia',
   },
 
   /** Comparativo de mercado pra ancoragem */

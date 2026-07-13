@@ -165,15 +165,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Erro ao criar negócio.' }, { status: 500 })
   }
 
-  // 4. Cria assinatura em pending_payment (garantia ativa só após webhook MP)
+  // 4. Cria assinatura em TRIAL de 7 DIAS (cravado 13/07/2026).
+  //
+  // Antes nascia 'pending_payment' → o lead se cadastrava e caía direto no
+  // paywall. Não existia teste grátis. Agora a conta nasce ativa por 7 dias,
+  // sem pedir cartão nem PIX — é o que a prospecção promete.
+  //
+  // NÃO precisa de cron novo: o billing-check já trata exatamente esse formato
+  // (status=active · permanent_courtesy=false · plan_modalidade=null · sem
+  // asaas_subscription_id/mp_subscription_id). Ele avisa D-1 e, quando pago_ate
+  // vence, vira pending_payment e o gate manda pro paywall.
+  const trialFim = new Date(Date.now() + PRICING.trial.dias * 24 * 60 * 60 * 1000).toISOString()
+
   const { error: subError } = await supabase
     .from('subscriptions')
     .insert({
       business_id: business.id,
       plan: chosenPlan,
-      status: 'pending_payment',
+      status: 'active',
       price_cents: priceCents,
       setup_cents: setupCents,
+      provider: 'trial',
+      plan_modalidade: null,        // sem ciclo de cobrança — é o que marca "trial"
+      permanent_courtesy: false,    // vence de verdade (true = demo, nunca bloqueia)
+      pago_ate: trialFim,
+      current_period_start: new Date().toISOString(),
+      current_period_end: trialFim,
     })
 
   if (subError) {
