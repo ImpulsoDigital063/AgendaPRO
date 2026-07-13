@@ -20,6 +20,8 @@ import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
 import VendasEstoque from '@/components/lp/VendasEstoque'
 import ComandaComissao from '@/components/lp/ComandaComissao'
+import EquipeAcesso from '@/components/lp/EquipeAcesso'
+import Pacotes from '@/components/lp/Pacotes'
 import FichaAnamnese from '@/components/lp/FichaAnamnese'
 import OnboardingSteps from '@/components/OnboardingSteps'
 import SocialProofToast from '@/components/SocialProofToast'
@@ -765,6 +767,12 @@ export default async function NailPage() {
 
       {/* ═══════════ 4.6 VENDAS + ESTOQUE ═══════════ */}
       <VendasEstoque variant="nail" />
+
+      {/* ═══════════ 4.7 PACOTES ═══════════ */}
+      <Pacotes variant="nail" />
+
+      {/* ═══════════ 4.8 EQUIPE & ACESSO ═══════════ */}
+      <EquipeAcesso variant="nail" />
 
       {/* ═══════════ 5. TIMELINE ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">
