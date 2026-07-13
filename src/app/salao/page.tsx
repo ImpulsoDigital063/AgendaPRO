@@ -43,7 +43,7 @@ import {
 } from '@/components/BarberIcons'
 
 /* ═══════════════════════════════════════════════════════════
-   LP SALÃO DE BELEZA — SmartAgenda
+   LP SALÃO DE BELEZA — AgendaPRO
    Persona: dona de salão, 28-50, 2-8 profissionais.
    Dores: agenda de equipe no papel, comissão na planilha,
    cliente que marca e não vem (ticket R$80-150).
@@ -74,15 +74,15 @@ const DORES = [
 ]
 
 const MOTORES = [
-  { Icon: IconBrain,   tag: 'Atendimento',   titulo: 'Lembra a cliente sem você pedir',   desc: 'Lembrete automático por e-mail na véspera e 1h antes. Cliente confirma ou avisa que não vem. Agenda do dia fica limpa, sem surpresa.', color: '#06B6D4', stat: '-50%',  statLabel: 'faltas' },
-  { Icon: IconTrophy,  tag: 'Ranking',        titulo: 'Google cheio de 5 estrelas',        desc: 'Depois do atendimento, cliente ganha pontos pra avaliar no Google. Sua nota sobe e o Maps mostra seu salão primeiro.',  color: '#F59E0B', stat: '+0.6',  statLabel: 'nota/mês' },
-  { Icon: IconLink,    tag: 'Indicação',      titulo: 'Cliente traz a amiga',              desc: 'Cada cliente recebe link de indicação. Quando a amiga agenda, as duas ganham pontos. Boca a boca rastreado.',          color: '#8B5CF6', stat: 'x2.3',  statLabel: 'clientes' },
-  { Icon: IconBolt,    tag: 'Fila de espera',  titulo: 'Cancelou? Vaga preenchida',         desc: 'Cliente cancelou a escova de sexta? O sistema avisa as próximas da fila. Quem aceitar primeiro fica com o horário.',  color: '#A78BFA', stat: '3 min', statLabel: 'pra preencher' },
-  { Icon: IconGift,    tag: 'Reativação',      titulo: 'Cliente sumida volta sozinha',      desc: 'Sua VIP ficou 60+ dias sem aparecer? O sistema detecta e dispara cupom no WhatsApp. Cliente reativada vale R$ 600-2.000 em LTV — ninguém mais entrega.', color: '#10B981', stat: 'R$1.4k', statLabel: 'LTV recuperado' },
+  { Icon: IconBrain,   tag: 'Atendimento',   titulo: 'Lembra a cliente sem você pedir',   desc: 'Lembrete automático por e-mail na véspera do horário. Cliente confirma ou avisa que não vem. Agenda do dia fica limpa, sem surpresa.', color: '#06B6D4', stat: 'D-1', statLabel: 'lembrete por e-mail' },
+  { Icon: IconTrophy,  tag: 'Ranking',        titulo: 'Google cheio de 5 estrelas',        desc: 'Depois do atendimento, cliente ganha pontos pra avaliar no Google. Sua nota sobe e o Maps mostra seu salão primeiro.',  color: '#F59E0B', stat: '5★', statLabel: 'avaliação no Google' },
+  { Icon: IconLink,    tag: 'Indicação',      titulo: 'Cliente traz a amiga',              desc: 'Cada cliente recebe link de indicação. Quando a amiga agenda e paga, quem indicou ganha pontos. Boca a boca rastreado.',          color: '#8B5CF6', stat: 'link', statLabel: 'de indicação rastreado' },
+  { Icon: IconBolt,    tag: 'Fila de espera',  titulo: 'Cancelou? Vaga preenchida',         desc: 'Cliente cancelou a escova de sexta? O sistema avisa as próximas da fila. Quem aceitar primeiro fica com o horário.',  color: '#A78BFA', stat: 'fila', statLabel: 'de espera inclusa' },
+  { Icon: IconGift,    tag: 'Reativação',      titulo: 'Cliente sumida volta a aparecer',   desc: 'Sua VIP ficou 40+ dias sem aparecer? O sistema detecta e deixa o cupom pronto — você envia no WhatsApp com 1 clique, sem digitar nada.', color: '#10B981', stat: '40d', statLabel: 'sem aparecer' },
 ]
 
 const TIMELINE = [
-  { hora: '07:30', titulo: 'Você abre o salão com a agenda pronta',       detalhe: 'Ana marcou coloração às 23h pelo link na bio. A SmartAgenda confirmou sozinha e mandou lembrete.' },
+  { hora: '07:30', titulo: 'Você abre o salão com a agenda pronta',       detalhe: 'Ana marcou coloração às 23h pelo link na bio. O AgendaPRO confirmou sozinha e mandou lembrete.' },
   { hora: '10:00', titulo: 'Juliana cancelou — fila resolveu',             detalhe: 'Cancelou a escova de R$120? O sistema chamou Carla da fila. Ela aceitou em 4 minutos.' },
   { hora: '15:00', titulo: 'Mariana completou 10 visitas',                 detalhe: 'Programa de fidelidade: 10 procedimentos, 1 de bônus. Ela compartilhou o link. 3 amigas já agendaram.' },
   { hora: '20:00', titulo: 'Salão fecha com tudo calculado',               detalhe: 'R$1.840 no caixa. Comissão de cada profissional pronta. 4 avaliações 5 estrelas novas no Google.' },
@@ -129,7 +129,7 @@ const SALAO_FAQS: FAQItem[] = [
   },
   {
     q: 'Como funciona o lembrete?',
-    a: 'O sistema envia lembretes automáticos por e-mail: um na véspera e outro 1 hora antes do horário. Reduz faltas em até 50%. Usamos e-mail em vez de WhatsApp pra proteger seu número — sem risco de bloqueio por disparo em massa.',
+    a: 'O sistema envia lembretes automáticos por e-mail: um na véspera do horário. Usamos e-mail em vez de WhatsApp pra proteger seu número — sem risco de bloqueio por disparo em massa.',
   },
   {
     q: 'É difícil de configurar?',
@@ -141,7 +141,7 @@ const SALAO_FAQS: FAQItem[] = [
   },
   {
     q: 'Já uso Trinks/Avec. Por que trocar?',
-    a: 'Eles são agenda online. O AgendaPRO é SmartAgenda: fila de espera automática, fidelidade com pontos, indicação rastreada e Google Reviews integrado. Nenhum faz as 4 coisas. E custa menos.',
+    a: 'Eles são agenda online. O AgendaPRO vai além: fila de espera automática, fidelidade com pontos, indicação rastreada e Google Reviews integrado. Nenhum faz as 4 coisas. E custa menos.',
   },
   {
     q: 'Quem dá suporte?',
@@ -485,9 +485,9 @@ export default async function SalaoPage() {
 
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-2">
                     {[
-                      { kpi: '+5', label: 'Indicações por VIP' },
-                      { kpi: '14m', label: 'Cliente recorrente' },
-                      { kpi: 'R$ 2.8k', label: 'LTV médio' },
+                      { kpi: 'R$97', label: 'Até 5 profissionais' },
+                      { kpi: '24h', label: 'Cliente agenda sozinha' },
+                      { kpi: '7 dias', label: 'Garantia incondicional' },
                     ].map((s) => (
                       <div
                         key={s.label}
@@ -552,7 +552,7 @@ export default async function SalaoPage() {
         </div>
       </section>
 
-      <CTAInline titulo="A SmartAgenda resolve tudo isso" sub="Setup em 5 minutos. Garantia de 7 dias. Sem fidelidade — cancela quando quiser." />
+      <CTAInline titulo="O AgendaPRO resolve tudo isso" sub="Setup em 5 minutos. Garantia de 7 dias. Sem fidelidade — cancela quando quiser." />
 
       {/* ═══════════ 3. MOTORES ═══════════ */}
       <section id="mecanismos" className="relative py-16 sm:py-20 lg:py-28">
@@ -560,7 +560,7 @@ export default async function SalaoPage() {
           <SectionReveal className="text-center mb-10 sm:mb-14 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconMirror size={14} className="text-pink-400" />
-              <span>Os 5 motores da SmartAgenda</span>
+              <span>Os 5 motores do AgendaPRO</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Sistema que <span className="text-gradient">trabalha</span> enquanto você atende.
@@ -708,7 +708,7 @@ export default async function SalaoPage() {
               Comissão de cada profissional.{' '}<span className="text-gradient">Sem planilha.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto">
-              Fim de mês no salão é sempre a mesma coisa: caderninho, planilha, conta de cabeça. Com a SmartAgenda, abre o painel e tá tudo lá.
+              Fim de mês no salão é sempre a mesma coisa: caderninho, planilha, conta de cabeça. Com o AgendaPRO, abre o painel e tá tudo lá.
             </p>
           </SectionReveal>
 
@@ -749,7 +749,7 @@ export default async function SalaoPage() {
           <SectionReveal className="text-center mb-10 sm:mb-12 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconClock24 size={14} className="text-cyan-400" />
-              <span>Como seu dia fica com a SmartAgenda</span>
+              <span>Como seu dia fica com o AgendaPRO</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Seu salão no <span className="text-gradient">piloto automático</span>.
@@ -803,7 +803,7 @@ export default async function SalaoPage() {
               Menos que <span className="text-gradient">uma escova</span> por mês.
             </h2>
             <p className="text-base sm:text-lg text-slate-400">
-              Se 1 cliente da fila voltar essa semana, a SmartAgenda já se pagou.
+              Se 1 cliente da fila voltar essa semana, o AgendaPRO já se pagou.
             </p>
           </SectionReveal>
 
@@ -910,7 +910,7 @@ export default async function SalaoPage() {
           <SectionReveal className="mb-10 sm:mb-12 max-w-md mx-auto">
             <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(8,11,24,0.8)', border: '1px solid rgba(236,72,153,0.3)', boxShadow: '0 20px 60px rgba(236,72,153,0.2)' }}>
               <div className="flex items-center justify-between px-4 py-2 border-b text-[10px]" style={{ borderColor: 'rgba(236,72,153,0.2)', background: 'rgba(236,72,153,0.06)' }}>
-                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /><span className="text-white font-bold">SmartAgenda</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /><span className="text-white font-bold">AgendaPRO</span></span>
                 <span className="text-slate-500">agora mesmo</span>
               </div>
               <div className="p-3 space-y-2">
@@ -948,7 +948,7 @@ export default async function SalaoPage() {
 
           <SectionReveal className="text-center">
             <Link href="/cadastro" className="btn btn-primary-v2 btn-shimmer inline-flex font-black text-base sm:text-lg px-8 py-4 sm:py-5 min-h-[56px]" style={{ boxShadow: '0 0 40px rgba(236,72,153,0.5), 0 0 80px rgba(139,92,246,0.3)' }}>
-              <span className="relative z-10 flex items-center gap-2">Quero minha SmartAgenda agora<IconArrowRight size={20} /></span>
+              <span className="relative z-10 flex items-center gap-2">Quero minho AgendaPRO agora<IconArrowRight size={20} /></span>
             </Link>
             <p className="text-slate-400 text-xs sm:text-sm mt-4 sm:mt-5 max-w-md mx-auto">
               R$67/mês no plano Solo, sem setup. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
@@ -964,7 +964,7 @@ export default async function SalaoPage() {
             <div className="space-y-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-agendapro-dark.svg" alt="AgendaPRO" className="h-7" />
-              <p className="text-xs sm:text-sm text-slate-400 max-w-sm">A SmartAgenda dos negócios de serviço. Atende, lembra, fideliza e sobe seu ranking no Google.</p>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-sm">O AgendaPRO dos negócios de serviço. Atende, lembra, fideliza e sobe seu ranking no Google.</p>
               <a href="https://impulsodigital063.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-300 transition-colors mt-1">
                 Um produto <span className="font-semibold text-slate-400">Impulso Digital</span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>

@@ -43,7 +43,7 @@ import {
 } from '@/components/BarberIcons'
 
 /* ═══════════════════════════════════════════════════════════
-   LP BARBEARIA — SmartAgenda
+   LP BARBEARIA — AgendaPRO
    Persona: barbeiro 25-45, dono de 1-3 cadeiras.
    Tudo SVG, mobile-first, com movimento.
 ═══════════════════════════════════════════════════════════ */
@@ -55,16 +55,16 @@ const DORES = [
 ]
 
 const MOTORES = [
-  { Icon: IconBrain,   tag: 'Atendimento',   titulo: 'Confirma e lembra sozinha',       desc: 'Lembrete automático por e-mail na véspera e 1h antes. Cliente confirma, fila avança ou recua, agenda do dia chega na sua mão limpa.', color: '#06B6D4', stat: '-50%',  statLabel: 'faltas' },
-  { Icon: IconTrophy,  tag: 'Ranking',        titulo: 'Sobe no Google sem pagar',        desc: 'Cliente sai do corte, ganha pontos pra avaliar no Google. Sua nota sobe, o Maps te coloca em cima da concorrência.',              color: '#F59E0B', stat: '+0.6',  statLabel: 'nota/mês' },
-  { Icon: IconLink,    tag: 'Multiplicação',  titulo: 'Transforma cliente em vendedor',  desc: 'Link de indicação único por cliente. Quando o amigo agenda, ambos ganham pontos. Cliente vira promotor.',                       color: '#8B5CF6', stat: 'x2.3',  statLabel: 'clientes' },
-  { Icon: IconBolt,    tag: 'Recuperação',    titulo: 'Preenche cancelamento sozinha',   desc: 'Cancelou 10:00? O sistema chama os 3 primeiros da fila. Quem aceitar primeiro fica com a vaga.',                                 color: '#A78BFA', stat: '3 min', statLabel: 'pra preencher' },
-  { Icon: IconGift,    tag: 'Reativação',     titulo: 'Cliente sumido volta sozinho',    desc: 'Detecta quem ficou 60+ dias sem aparecer e dispara cupom de desconto via WhatsApp. Cliente reativado vale R$ 600-1.500 em LTV — concorrente não tem isso.', color: '#10B981', stat: 'R$1.2k', statLabel: 'LTV recuperado' },
+  { Icon: IconBrain,   tag: 'Atendimento',   titulo: 'Confirma e lembra sozinha',       desc: 'Lembrete automático por e-mail na véspera do horário. Cliente confirma, fila avança ou recua, agenda do dia chega na sua mão limpa.', color: '#06B6D4', stat: 'D-1',  statLabel: 'lembrete por e-mail' },
+  { Icon: IconTrophy,  tag: 'Ranking',        titulo: 'Sobe no Google sem pagar',        desc: 'Cliente sai do corte, ganha pontos pra avaliar no Google. Sua nota sobe, o Maps te coloca em cima da concorrência.',              color: '#F59E0B', stat: '5★',  statLabel: 'avaliação no Google' },
+  { Icon: IconLink,    tag: 'Multiplicação',  titulo: 'Transforma cliente em vendedor',  desc: 'Link de indicação único por cliente. Quando o amigo agenda e paga, quem indicou ganha pontos. Cliente vira promotor.',        color: '#8B5CF6', stat: 'link',  statLabel: 'de indicação rastreado' },
+  { Icon: IconBolt,    tag: 'Recuperação',    titulo: 'Preenche cancelamento sozinha',   desc: 'Cancelou 10:00? O sistema chama a fila de espera por e-mail. Quem aceitar primeiro fica com a vaga.',                          color: '#A78BFA', stat: 'fila', statLabel: 'de espera inclusa' },
+  { Icon: IconGift,    tag: 'Reativação',     titulo: 'Cliente sumido volta sozinho',    desc: 'Detecta quem ficou 40+ dias sem aparecer e deixa o cupom de desconto pronto — você envia no WhatsApp com 1 clique, sem digitar nada.', color: '#10B981', stat: '40d', statLabel: 'sem aparecer' },
 ]
 
 const TIMELINE = [
-  { kind: '07' as const, hora: '07:30', titulo: 'Você acorda com a agenda cheia',     detalhe: 'Cliente agendou 23:47 pela bio do Insta. SmartAgenda confirmou sozinha.' },
-  { kind: '10' as const, hora: '10:00', titulo: 'Pedro cancelou — fila assumiu',      detalhe: 'A SmartAgenda chamou Marcos da fila. Ele aceitou em 3 minutos.' },
+  { kind: '07' as const, hora: '07:30', titulo: 'Você acorda com a agenda cheia',     detalhe: 'Cliente agendou 23:47 pela bio do Insta. AgendaPRO confirmou sozinha.' },
+  { kind: '10' as const, hora: '10:00', titulo: 'Pedro cancelou — fila assumiu',      detalhe: 'O AgendaPRO chamou Marcos da fila. Ele aceitou em 3 minutos.' },
   { kind: '14' as const, hora: '14:00', titulo: 'João completou 10º corte',           detalhe: 'Recompensa liberada, ele compartilhou. 2 amigos já agendaram pelo link.' },
   { kind: '20' as const, hora: '20:00', titulo: 'Fim do expediente',                  detalhe: 'R$560 no caixa. 3 avaliações 5★ novas. Sua nota subiu pra 4.9.' },
 ]
@@ -101,7 +101,7 @@ const BARBER_FAQS: FAQItem[] = [
   },
   {
     q: 'Como funciona o lembrete anti-falta?',
-    a: 'O sistema envia lembretes automáticos por e-mail: um na véspera e outro 1 hora antes do horário. Reduz faltas em até 50%. Usamos e-mail em vez de WhatsApp pra proteger seu número — sem risco de bloqueio por disparo em massa.',
+    a: 'O sistema envia um lembrete automático por e-mail na véspera do horário. O cliente confirma ou avisa que não vem — e você reorganiza a agenda antes de perder a cadeira. Usamos e-mail em vez de WhatsApp pra proteger seu número, sem risco de bloqueio por disparo em massa.',
   },
   {
     q: 'E se alguém cancelar em cima da hora?',
@@ -133,7 +133,7 @@ const BARBER_FAQS: FAQItem[] = [
   },
   {
     q: 'Já uso Trinks/iSalon. Por que trocar?',
-    a: 'Eles são agenda online. O AgendaPRO é SmartAgenda: fila de espera automática, fidelidade com pontos, link de indicação rastreado e Google Reviews integrado. Nenhum deles faz essas 4 coisas. E custa menos.',
+    a: 'Eles são agenda online. O AgendaPRO vai além: fila de espera automática, fidelidade com pontos, link de indicação rastreado e Google Reviews integrado. Nenhum deles faz essas 4 coisas. E custa menos.',
   },
   {
     q: 'Quem dá suporte?',
@@ -413,8 +413,8 @@ export default async function BarbeariaPage() {
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-2">
                     {[
                       { kpi: '24h', label: 'Cliente agenda sozinho' },
-                      { kpi: '+R$1.2k', label: 'Volta pro caixa/mês' },
-                      { kpi: '4.9', label: 'Reviews no Google' },
+                      { kpi: 'R$67', label: 'Por mês, sem fidelidade' },
+                      { kpi: '7 dias', label: 'Garantia incondicional' },
                     ].map((s) => (
                       <div
                         key={s.label}
@@ -487,7 +487,7 @@ export default async function BarbeariaPage() {
       </section>
 
       <CTAInline
-        titulo="A SmartAgenda resolve tudo isso por você"
+        titulo="O AgendaPRO resolve tudo isso por você"
         sub="Setup em 5 minutos. Garantia de 7 dias. Sem fidelidade — cancela quando quiser."
       />
 
@@ -498,7 +498,7 @@ export default async function BarbeariaPage() {
           <SectionReveal className="text-center mb-10 sm:mb-14 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconClipper size={14} className="text-blue-400" />
-              <span>Os 5 motores da SmartAgenda</span>
+              <span>Os 5 motores do AgendaPRO</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Sistema que <span className="text-gradient">trabalha</span> enquanto você corta.
@@ -735,7 +735,7 @@ export default async function BarbeariaPage() {
               Seu financeiro <span className="text-gradient">no piloto automático.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto">
-              Chega de planilha, caderninho e conta de cabeça. A SmartAgenda calcula tudo: faturamento, comissão por barbeiro e relatório pronto pra você.
+              Chega de planilha, caderninho e conta de cabeça. O AgendaPRO calcula tudo: faturamento, comissão por barbeiro e relatório pronto pra você.
             </p>
           </SectionReveal>
 
@@ -791,7 +791,7 @@ export default async function BarbeariaPage() {
           <SectionReveal className="text-center mb-10 sm:mb-12 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconClock24 size={14} className="text-cyan-400" />
-              <span>Como seu dia fica com a SmartAgenda</span>
+              <span>Como seu dia fica com o AgendaPRO</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Seu dia inteiro no <span className="text-gradient">piloto automático</span>.
@@ -859,7 +859,7 @@ export default async function BarbeariaPage() {
               Menos que <span className="text-gradient">um corte</span> por semana.
             </h2>
             <p className="text-base sm:text-lg text-slate-400">
-              Se 1 cliente da fila voltar essa semana, a SmartAgenda já se pagou.
+              Se 1 cliente da fila voltar essa semana, o AgendaPRO já se pagou.
             </p>
           </SectionReveal>
 
@@ -1063,7 +1063,7 @@ export default async function BarbeariaPage() {
               >
                 <span className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-white font-bold">SmartAgenda</span>
+                  <span className="text-white font-bold">AgendaPRO</span>
                 </span>
                 <span className="text-slate-500">agora mesmo</span>
               </div>
@@ -1139,7 +1139,7 @@ export default async function BarbeariaPage() {
               }}
             >
               <span className="relative z-10 flex items-center gap-2">
-                Quero minha SmartAgenda agora
+                Quero minho AgendaPRO agora
                 <IconArrowRight size={20} />
               </span>
             </Link>
@@ -1161,7 +1161,7 @@ export default async function BarbeariaPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-agendapro-dark.svg" alt="AgendaPRO" className="h-7" />
               <p className="text-xs sm:text-sm text-slate-400 max-w-sm">
-                A SmartAgenda dos negócios de serviço. Atende, lembra, fideliza e sobe seu ranking no Google.
+                O AgendaPRO dos negócios de serviço. Atende, lembra, fideliza e sobe seu ranking no Google.
               </p>
               <a
                 href="https://impulsodigital063.com"

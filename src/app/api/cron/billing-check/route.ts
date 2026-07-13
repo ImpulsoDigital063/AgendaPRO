@@ -198,7 +198,12 @@ export async function GET(req: NextRequest) {
   // Critério (espelha o que NÃO tem renovação automática):
   //   status=active · plan_modalidade NULL (não é ciclo PIX) ·
   //   asaas_subscription_id NULL e mp_subscription_id NULL (sem assinatura
-  //   recorrente) · pago_ate vencido · permanent_courtesy=false (Palace isento).
+  //   recorrente) · pago_ate vencido · permanent_courtesy=false.
+  //
+  // permanent_courtesy=true = cortesia vitalícia, nunca bloqueia. Hoje só as
+  // contas DEMO usam (ex.: Studio Bella Lash, criada por scripts/build-demo-lash.mjs).
+  // Sem esse filtro, a demo seria bloqueada pelo cron no meio de uma apresentação.
+  // (O Palace era o caso original; virou fork dedicado e saiu deste banco em 13/07.)
   let trialsBlocked = 0
   let trialsWarned = 0
   const nowIso = new Date().toISOString()

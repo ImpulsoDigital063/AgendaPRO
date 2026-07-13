@@ -41,7 +41,7 @@ import {
 } from '@/components/BarberIcons'
 
 /* ═══════════════════════════════════════════════════════════
-   LP NAIL DESIGNER — SmartAgenda
+   LP NAIL DESIGNER — AgendaPRO
    Persona: nail designer / manicure, 22-40 anos.
    Geralmente solo ou com 1 auxiliar. Trabalha em casa,
    espaço alugado ou salão parceiro.
@@ -76,15 +76,15 @@ const DORES = [
 ]
 
 const MOTORES = [
-  { Icon: IconBrain,   tag: 'Anti-falta',     titulo: 'Lembrete que salva sua sessão',        desc: 'Lembrete automático por e-mail na véspera e 1h antes. Confirma ou avisa que não vem. Você sabe se vai ter cliente antes de separar o material.', color: '#F472B6', stat: '-50%',  statLabel: 'faltas' },
-  { Icon: IconTrophy,  tag: 'Ranking',         titulo: 'Google mostra seu trabalho primeiro',  desc: 'Depois do atendimento, a cliente ganha pontos pra avaliar no Google. Sua nota sobe e quem pesquisa "nail designer perto de mim" te acha.',  color: '#F59E0B', stat: '+0.6',  statLabel: 'nota/mês' },
-  { Icon: IconLink,    tag: 'Indicação',       titulo: 'Cliente traz a amiga pelo link',       desc: 'Cada cliente recebe link de indicação. A amiga agenda, as duas ganham pontos. Você rastreia de onde vem cada cliente nova.',                 color: '#8B5CF6', stat: 'x2.3',  statLabel: 'clientes' },
-  { Icon: IconBolt,    tag: 'Fila de espera',   titulo: 'Cancelou? Vaga preenchida',            desc: 'Gel de R$150 cancelado? O sistema avisa quem tá na fila. A primeira que aceitar fica com o horário. Sem você abrir o Instagram.',          color: '#06B6D4', stat: '3 min', statLabel: 'pra preencher' },
-  { Icon: IconGift,    tag: 'Reativação',        titulo: 'Cliente fiel volta a aparecer',        desc: 'Cliente que ficou 60+ dias sem manutenção é detectada automaticamente — cupom de desconto disparado pelo WhatsApp. Cadeira sempre cheia.', color: '#EC4899', stat: '+30%', statLabel: 'recorrência' },
+  { Icon: IconBrain,   tag: 'Anti-falta',     titulo: 'Lembrete que salva sua sessão',        desc: 'Lembrete automático por e-mail na véspera do horário. Confirma ou avisa que não vem. Você sabe se vai ter cliente antes de separar o material.', color: '#F472B6', stat: 'D-1', statLabel: 'lembrete por e-mail' },
+  { Icon: IconTrophy,  tag: 'Ranking',         titulo: 'Google mostra seu trabalho primeiro',  desc: 'Depois do atendimento, a cliente ganha pontos pra avaliar no Google. Sua nota sobe e quem pesquisa "nail designer perto de mim" te acha.',  color: '#F59E0B', stat: '5★', statLabel: 'avaliação no Google' },
+  { Icon: IconLink,    tag: 'Indicação',       titulo: 'Cliente traz a amiga pelo link',       desc: 'Cada cliente recebe link de indicação. A amiga agenda e paga, quem indicou ganha pontos. Você rastreia de onde vem cada cliente nova.',                 color: '#8B5CF6', stat: 'link', statLabel: 'de indicação rastreado' },
+  { Icon: IconBolt,    tag: 'Fila de espera',   titulo: 'Cancelou? Vaga preenchida',            desc: 'Gel de R$150 cancelado? O sistema avisa quem tá na fila. A primeira que aceitar fica com o horário. Sem você abrir o Instagram.',          color: '#06B6D4', stat: 'fila', statLabel: 'de espera inclusa' },
+  { Icon: IconGift,    tag: 'Reativação',        titulo: 'Cliente fiel volta a aparecer',        desc: 'Cliente que ficou 40+ dias sem manutenção é detectada sozinha — o cupom sai pronto e você envia no WhatsApp com 1 clique.', color: '#EC4899', stat: '40d', statLabel: 'sem manutenção' },
 ]
 
 const TIMELINE = [
-  { hora: '08:00', titulo: 'Você acorda e já tem cliente marcada',          detalhe: 'Larissa agendou fibra de vidro às 23h pelo link na bio. A SmartAgenda confirmou e programou lembrete pra véspera.' },
+  { hora: '08:00', titulo: 'Você acorda e já tem cliente marcada',          detalhe: 'Larissa agendou fibra de vidro às 23h pelo link na bio. O AgendaPRO confirmou e programou lembrete pra véspera.' },
   { hora: '11:00', titulo: 'Cancelamento virou faturamento',                detalhe: 'Carolina cancelou o gel de R$150. O sistema chamou Thais da fila. Ela aceitou em 3 minutos. Cadeira cheia.' },
   { hora: '15:00', titulo: 'Atendendo sem interrupção',                     detalhe: 'Enquanto você faz nail art na Bianca, 2 clientes novas agendaram pelo link. Sem DM. Sem WhatsApp. Sem parar a unha.' },
   { hora: '20:00', titulo: 'Dia fecha com tudo registrado',                 detalhe: 'R$720 faturados. 4 atendimentos. Ticket médio R$180. 2 avaliações 5 estrelas novas. Sem anotar nada.' },
@@ -131,7 +131,7 @@ const NAIL_FAQS: FAQItem[] = [
   },
   {
     q: 'Como funciona o lembrete?',
-    a: 'O sistema envia lembretes automáticos por e-mail: um na véspera e outro 1 hora antes. Usamos e-mail em vez de WhatsApp pra proteger seu número — sem risco de bloqueio por disparo em massa. Você sabe se vai ter atendimento antes de separar o material.',
+    a: 'O sistema envia lembretes automáticos por e-mail: um na véspera do horário. Usamos e-mail em vez de WhatsApp pra proteger seu número — sem risco de bloqueio por disparo em massa. Você sabe se vai ter atendimento antes de separar o material.',
   },
   {
     q: 'É difícil de configurar?',
@@ -563,7 +563,7 @@ export default async function NailPage() {
         </div>
       </section>
 
-      <CTAInline titulo="A SmartAgenda resolve tudo isso" sub="Setup em 5 minutos. Garantia de 7 dias. Sem fidelidade — cancela quando quiser." />
+      <CTAInline titulo="O AgendaPRO resolve tudo isso" sub="Setup em 5 minutos. Garantia de 7 dias. Sem fidelidade — cancela quando quiser." />
 
       {/* ═══════════ 3. MOTORES ═══════════ */}
       <section id="mecanismos" className="relative py-16 sm:py-20 lg:py-28">
@@ -571,7 +571,7 @@ export default async function NailPage() {
           <SectionReveal className="text-center mb-10 sm:mb-14 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconHand size={14} className="text-pink-300" />
-              <span>Os 5 motores da SmartAgenda</span>
+              <span>Os 5 motores do AgendaPRO</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Sistema que <span className="text-gradient">agenda</span> enquanto você atende.
@@ -760,7 +760,7 @@ export default async function NailPage() {
           <SectionReveal className="text-center mb-10 sm:mb-12 max-w-3xl mx-auto">
             <div className="pill mb-5 sm:mb-6 inline-flex items-center gap-2 text-xs sm:text-sm">
               <IconClock24 size={14} className="text-cyan-400" />
-              <span>Como seu dia fica com a SmartAgenda</span>
+              <span>Como seu dia fica com o AgendaPRO</span>
             </div>
             <h2 className="text-white font-black mb-3 sm:mb-4 leading-tight" style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)' }}>
               Foco na unha.{' '}<span className="text-gradient">A agenda cuida de si.</span>
@@ -921,7 +921,7 @@ export default async function NailPage() {
           <SectionReveal className="mb-10 sm:mb-12 max-w-md mx-auto">
             <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(8,11,24,0.8)', border: '1px solid rgba(244,114,182,0.3)', boxShadow: '0 20px 60px rgba(244,114,182,0.2)' }}>
               <div className="flex items-center justify-between px-4 py-2 border-b text-[10px]" style={{ borderColor: 'rgba(244,114,182,0.2)', background: 'rgba(244,114,182,0.06)' }}>
-                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /><span className="text-white font-bold">SmartAgenda</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /><span className="text-white font-bold">AgendaPRO</span></span>
                 <span className="text-slate-500">agora mesmo</span>
               </div>
               <div className="p-3 space-y-2">
@@ -959,7 +959,7 @@ export default async function NailPage() {
 
           <SectionReveal className="text-center">
             <Link href="/cadastro" className="btn btn-primary-v2 btn-shimmer inline-flex font-black text-base sm:text-lg px-8 py-4 sm:py-5 min-h-[56px]" style={{ boxShadow: '0 0 40px rgba(244,114,182,0.5), 0 0 80px rgba(139,92,246,0.3)' }}>
-              <span className="relative z-10 flex items-center gap-2">Quero minha SmartAgenda agora<IconArrowRight size={20} /></span>
+              <span className="relative z-10 flex items-center gap-2">Quero minho AgendaPRO agora<IconArrowRight size={20} /></span>
             </Link>
             <p className="text-slate-400 text-xs sm:text-sm mt-4 sm:mt-5 max-w-md mx-auto">
               R$67/mês, sem setup. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
@@ -975,7 +975,7 @@ export default async function NailPage() {
             <div className="space-y-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-agendapro-dark.svg" alt="AgendaPRO" className="h-7" />
-              <p className="text-xs sm:text-sm text-slate-400 max-w-sm">A SmartAgenda dos negócios de serviço. Atende, lembra, fideliza e sobe seu ranking no Google.</p>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-sm">O AgendaPRO dos negócios de serviço. Atende, lembra, fideliza e sobe seu ranking no Google.</p>
               <a href="https://impulsodigital063.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-300 transition-colors mt-1">
                 Um produto <span className="font-semibold text-slate-400">Impulso Digital</span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
