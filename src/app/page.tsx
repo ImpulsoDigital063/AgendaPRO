@@ -69,7 +69,7 @@ const VALUE_CORE = [
 
 const VALUE_BONUS = [
   { item: 'Lista de espera automática (preenche cancelamento)',  price: 'R$ 39/mês' },
-  { item: 'Reativação de sumidos (detecta + dispara cupom)',     price: 'R$ 89/mês' },
+  { item: 'Reativação de sumidos (detecta + cupom pronto)',      price: 'R$ 89/mês' },
   { item: 'Página personalizada do seu negócio (link próprio)',  price: 'R$ 99/mês' },
   { item: 'Setup guiado em 5 minutos com o fundador',            price: 'R$ 197 setup' },
   { item: 'Suporte direto via WhatsApp (não é robô)',            price: 'R$ 199/mês' },
@@ -555,7 +555,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ═══════════ 6. COMPARAÇÃO DIRETA — SmartAgenda x Outros apps ═══════════ */}
+      {/* ═══════════ 6. COMPARAÇÃO DIRETA — AgendaPRO x Outros apps ═══════════ */}
       <section className="section relative">
         <div className="container max-w-6xl">
           <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">

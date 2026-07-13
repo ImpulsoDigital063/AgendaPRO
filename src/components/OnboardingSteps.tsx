@@ -327,7 +327,7 @@ function AutomationMiniUI({ p }: { p: OnboardingPreset }) {
       <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
         <div className="flex items-center gap-1.5">
           <IconBrain size={11} className="text-violet-300" strokeWidth={2.2} />
-          <span className="text-[10px] font-bold text-white">SmartAgenda</span>
+          <span className="text-[10px] font-bold text-white">AgendaPRO</span>
         </div>
         <span
           className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded inline-flex items-center gap-1 text-white"
@@ -445,7 +445,7 @@ function buildSteps(p: OnboardingPreset): StepData[] {
     {
       n: '03',
       time: 'acontece sozinho',
-      title: 'A SmartAgenda assume',
+      title: 'O AgendaPRO assume',
       desc: p.step3Desc,
       Icon: IconBrain,
       MiniUI: () => <AutomationMiniUI p={p} />,

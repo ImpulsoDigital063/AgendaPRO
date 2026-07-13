@@ -192,7 +192,7 @@ const FEATURES: FeatureRow[] = [
   {
     icon: <IconRevive />,
     label: 'Reativação automática de sumidos',
-    detail: 'Detecta cliente 60+ dias sem aparecer e dispara cupom no WhatsApp',
+    detail: 'Detecta cliente 40+ dias sem aparecer e deixa o cupom pronto pra você enviar',
     usValue: 'yes',
     themValue: 'no',
   },
@@ -300,7 +300,7 @@ export default function ComparativoConcorrentes({
         </h2>
         <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
           Trinks, Booksy, ZenPlace são <strong className="text-slate-300">agendas online</strong>.
-          O AgendaPRO é <strong className="text-slate-300">SmartAgenda</strong> — agenda + fila + fidelidade + reviews + financeiro num painel só.
+          O AgendaPRO junta tudo num painel só: <strong className="text-slate-300">agenda + fila de espera + fidelidade + reviews + financeiro</strong>.
         </p>
       </div>
 
