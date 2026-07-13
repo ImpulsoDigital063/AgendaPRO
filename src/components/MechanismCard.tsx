@@ -33,7 +33,7 @@ const COPY: Record<Kind, { title: string; result: string; desc: string; accent: 
   reativacao: {
     title:  'Reativação automática de sumidos',
     result: 'Cliente que sumiu volta — você nem precisa lembrar',
-    desc:   'O sistema detecta quem ficou 60+ dias sem aparecer e dispara cupom de desconto. Cliente reativado vale R$ 600-1.500 em LTV — concorrente não tem isso.',
+    desc:   'O sistema detecta quem ficou 40+ dias sem aparecer e deixa o cupom de desconto pronto — você envia no WhatsApp com 1 clique, sem digitar nada.',
     accent: '#06B6D4',
   },
 }
