@@ -19,6 +19,7 @@ import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
 import VendasEstoque from '@/components/lp/VendasEstoque'
+import ComandaComissao from '@/components/lp/ComandaComissao'
 import FichaAnamnese from '@/components/lp/FichaAnamnese'
 import OnboardingSteps from '@/components/OnboardingSteps'
 import SocialProofToast from '@/components/SocialProofToast'
@@ -758,6 +759,9 @@ export default async function NailPage() {
 
       {/* ═══════════ 4.5 FICHA DE ANAMNESE ═══════════ */}
       <FichaAnamnese variant="nail" />
+
+      {/* ═══════════ 4.55 COMANDA · PAGAMENTO · COMISSAO ═══════════ */}
+      <ComandaComissao variant="nail" />
 
       {/* ═══════════ 4.6 VENDAS + ESTOQUE ═══════════ */}
       <VendasEstoque variant="nail" />

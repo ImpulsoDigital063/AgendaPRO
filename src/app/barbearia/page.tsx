@@ -19,6 +19,7 @@ import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
 import VendasEstoque from '@/components/lp/VendasEstoque'
+import ComandaComissao from '@/components/lp/ComandaComissao'
 import FinanceDashboard from '@/components/lp/FinanceDashboard'
 import OnboardingSteps from '@/components/OnboardingSteps'
 import SocialProofToast from '@/components/SocialProofToast'
@@ -785,6 +786,9 @@ export default async function BarbeariaPage() {
           </SectionReveal>
         </div>
       </section>
+
+      {/* ═══════════ 4.55 COMANDA · PAGAMENTO · COMISSAO ═══════════ */}
+      <ComandaComissao variant="barbearia" />
 
       {/* ═══════════ 4.6 VENDAS + ESTOQUE ═══════════ */}
       <VendasEstoque variant="barbearia" />
