@@ -18,6 +18,7 @@ import FinanceDashboard from '@/components/lp/FinanceDashboard'
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import PricingModalidades from '@/components/lp/PricingModalidades'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
+import FichaAnamnese from '@/components/lp/FichaAnamnese'
 import OnboardingSteps from '@/components/OnboardingSteps'
 import SocialProofToast from '@/components/SocialProofToast'
 import { AnimatedGradient, SectionReveal } from '@/components/ui'
@@ -753,6 +754,9 @@ export default async function NailPage() {
           </SectionReveal>
         </div>
       </section>
+
+      {/* ═══════════ 4.5 FICHA DE ANAMNESE ═══════════ */}
+      <FichaAnamnese variant="nail" />
 
       {/* ═══════════ 5. TIMELINE ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">
