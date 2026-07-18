@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import LogoutButton from '@/components/LogoutButton'
 import BillingPlanSelector from '@/components/billing/BillingPlanSelector'
+import AgendaDoDiaBloqueado from '@/components/billing/AgendaDoDiaBloqueado'
 
 type BlockReason = 'pending_payment' | 'refunded' | 'cancelled' | 'past_due'
 
@@ -128,7 +129,7 @@ export default async function AdminBloqueadoPage() {
             </p>
           </div>
 
-          {reason === 'pending_payment' && (
+          {(reason === 'pending_payment' || reason === 'past_due') && (
             <>
               {/* Plano em destaque */}
               <div
@@ -232,7 +233,7 @@ export default async function AdminBloqueadoPage() {
             </>
           )}
 
-          {reason !== 'pending_payment' && (
+          {(reason === 'refunded' || reason === 'cancelled') && (
             <a
               href={whatsappLink}
               target="_blank"
@@ -250,6 +251,13 @@ export default async function AdminBloqueadoPage() {
             </a>
           )}
         </div>
+
+        {/* A agenda do dia CONTINUA VISÍVEL mesmo com a mensalidade em aberto.
+            A reclamação que mais revolta contra os concorrentes é o bloqueio cego
+            ("eles bloqueiam, eu não conseguia ver quem estava agendado" — Avec,
+            Reclame Aqui). O dono não fica sem saber quem vem, com cliente na cadeira.
+            O que trava é o resto: financeiro, comanda, cadastro, produto. */}
+        <AgendaDoDiaBloqueado businessId={business.id} />
 
         <div className="flex justify-center mt-6">
           <LogoutButton />

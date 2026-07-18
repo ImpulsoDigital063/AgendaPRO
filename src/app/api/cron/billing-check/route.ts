@@ -119,9 +119,15 @@ export async function GET(req: NextRequest) {
           continue
         }
 
+        // Guarda o ID da cobrança (não só o link): o painel reaproveita esta
+        // MESMA cobrança no "Pagar agora" (rota /api/billing/pix-atual), então
+        // cliente nunca vê cobrança duplicada. Webhook casa por este id.
         await admin
           .from('subscriptions')
-          .update({ pix_link_atual: payRes.data.invoiceUrl })
+          .update({
+            pix_link_atual: payRes.data.invoiceUrl,
+            asaas_payment_id_atual: payRes.data.id,
+          })
           .eq('id', sub.id)
 
         await sendBillingReminderD3({

@@ -8,6 +8,8 @@ import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
 import AdminDesktopSidebar from '@/components/admin/desktop/AdminDesktopSidebar'
 import TrialBanner from '@/components/admin/TrialBanner'
+import BillingDueBanner from '@/components/admin/BillingDueBanner'
+import { diasAteVencer } from '@/lib/billing'
 import { createClient } from '@/lib/supabase/server'
 import {
   getCurrentUser,
@@ -36,6 +38,7 @@ export default async function AdminLayout({
   let pendingClaims = 0
   let showOwnerTab = false
   let trial: { diasRestantes: number; plano: string; precoMes: string } | null = null
+  let cobranca: { diasAteVencer: number; status: 'active' | 'past_due' } | null = null
   let brand: {
     brand_primary?: string | null
     brand_secondary?: string | null
@@ -117,6 +120,29 @@ export default async function AdminLayout({
         precoMes: `R$ ${Math.round((subscription.price_cents ?? 6700) / 100)}`,
       }
     }
+
+    // COBRANÇA PIX no painel (cravado 18/07): assinatura PIX perto de vencer
+    // ou vencida (ainda na carência — se a carência já venceu o gate acima
+    // redirecionou pra /bloqueado). Mostra a faixa com "Pagar agora" ≤3 dias.
+    // Cartão automático (Asaas retenta só) e trial (modalidade null) ficam de fora.
+    const modPix =
+      subscription.plan_modalidade === 'mensal_pix' ||
+      subscription.plan_modalidade === 'semestral_pix' ||
+      subscription.plan_modalidade === 'anual_pix'
+
+    if (
+      modPix &&
+      subscription.pago_ate &&
+      (subscription.status === 'active' || subscription.status === 'past_due')
+    ) {
+      const dias = diasAteVencer(subscription.pago_ate)
+      if (dias <= 3) {
+        cobranca = {
+          diasAteVencer: dias,
+          status: subscription.status === 'past_due' ? 'past_due' : 'active',
+        }
+      }
+    }
   }
 
   // Sistema light-only (tema dark removido 03/06). Sem leitura de cookie de tema.
@@ -159,6 +185,12 @@ export default async function AdminLayout({
               diasRestantes={trial.diasRestantes}
               plano={trial.plano}
               precoMes={trial.precoMes}
+            />
+          )}
+          {cobranca && (
+            <BillingDueBanner
+              diasAteVencer={cobranca.diasAteVencer}
+              status={cobranca.status}
             />
           )}
           {children}
