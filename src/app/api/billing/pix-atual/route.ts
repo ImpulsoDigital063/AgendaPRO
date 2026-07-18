@@ -75,6 +75,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Cobrança PIX indisponível pra esta assinatura' }, { status: 400 })
   }
 
+  // Blindagem (auditoria 18/07): NUNCA gerar/mostrar cobrança pra quem cancelou
+  // ou expirou — senão a rota cobraria de novo quem já saiu. Só quem tem
+  // assinatura viva (active/past_due) paga por aqui. Reativação de cancelado é
+  // outro fluxo (suporte/checkout), não este.
+  if (sub.status !== 'active' && sub.status !== 'past_due') {
+    return NextResponse.json({ error: 'Assinatura inativa' }, { status: 400 })
+  }
+
   const plan = (sub.plan === 'equipe' ? 'equipe' : 'solo') as PlanoTipo
   const preco = calcularPreco(plan, modalidade)
 
