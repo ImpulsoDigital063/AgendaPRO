@@ -4,30 +4,31 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { calcularPreco, type ModalidadeKey, type PlanoTipo } from '@/config/pricing'
 import {
-  getPaymentById,
   getPixQrCode,
   createPayment,
   findCustomerByExternalReference,
+  listPaymentsByCustomer,
   getNextDueDate,
 } from '@/lib/asaas'
 
 // =====================================================================
 // GET /api/billing/pix-atual
 //
-// Devolve o PIX da cobrança VIGENTE pro cliente pagar dentro do painel,
-// sem sair pro checkout do Asaas. É a espinha do "pagar pela tela do app"
+// Devolve o PIX da cobrança em aberto pro cliente pagar dentro do painel,
+// sem sair pro checkout do Asaas. Espinha do "pagar pela tela do app"
 // (decisão Eduardo 18/07): o painel é o canal de cobrança, email é reforço.
 //
-// Opção A (reaproveitar, não duplicar): tenta usar a cobrança que o cron
-// billing-check já criou (asaas_payment_id_atual). Só gera uma nova se não
-// existir, se a antiga já foi paga, ou se o Asaas não devolver mais o QR.
-// Assim o cliente nunca vê duas cobranças abertas pro mesmo mês.
+// FONTE DA VERDADE = a lista de cobranças do customer no Asaas, NÃO o campo
+// asaas_payment_id_atual gravado. Descoberto no teste do Olímpio (18/07): o
+// webhook grava esse campo com a última cobrança PAGA e o cron antigo não o
+// atualizava, então ele apontava pra um ciclo velho já quitado → a rota
+// respondia "já pago" no lugar de mostrar o PIX vencido. Por isso aqui a gente
+// pergunta ao Asaas qual cobrança está de fato PENDING/OVERDUE.
 //
 // Só faz sentido pra modalidades PIX — cartão automático o Asaas retenta só.
 // =====================================================================
 
 const PIX_MODALIDADES: ModalidadeKey[] = ['mensal_pix', 'semestral_pix', 'anual_pix']
-const STATUS_PAGO = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH']
 const STATUS_PAGAVEL = ['PENDING', 'OVERDUE', 'AWAITING_RISK_ANALYSIS']
 
 function getAdminClient() {
@@ -61,7 +62,7 @@ export async function GET(req: NextRequest) {
 
   const { data: sub } = await admin
     .from('subscriptions')
-    .select('id, plan, plan_modalidade, asaas_customer_id, asaas_payment_id_atual')
+    .select('id, plan, plan_modalidade, status, pago_ate, asaas_customer_id, asaas_payment_id_atual')
     .eq('business_id', business.id)
     .single()
 
@@ -71,7 +72,6 @@ export async function GET(req: NextRequest) {
 
   const modalidade = sub.plan_modalidade as ModalidadeKey | null
   if (!modalidade || !PIX_MODALIDADES.includes(modalidade)) {
-    // Cartão automático (ou sem ciclo) não paga PIX manual pelo painel.
     return NextResponse.json({ error: 'Cobrança PIX indisponível pra esta assinatura' }, { status: 400 })
   }
 
@@ -90,27 +90,7 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // ── 1. Tentar REAPROVEITAR a cobrança vigente (a do cron) ────────────
-  if (sub.asaas_payment_id_atual) {
-    const payRes = await getPaymentById(sub.asaas_payment_id_atual)
-    if (payRes.ok && payRes.data) {
-      const st = payRes.data.status
-      if (STATUS_PAGO.includes(st)) {
-        // Já paga — webhook deve ativar em segundos. Front trata como sucesso.
-        return NextResponse.json({ paid: true })
-      }
-      if (STATUS_PAGAVEL.includes(st)) {
-        const qrRes = await getPixQrCode(sub.asaas_payment_id_atual)
-        if (qrRes.ok && qrRes.data?.payload) {
-          return qrResponse(sub.asaas_payment_id_atual, qrRes.data)
-        }
-        // QR não voltou (expirou) → cai pra gerar nova cobrança abaixo.
-      }
-      // REFUNDED / cancelada / sem QR → gera nova abaixo.
-    }
-  }
-
-  // ── 2. Gerar cobrança nova (só quando não deu pra reaproveitar) ──────
+  // Garante customer id (recorrente sempre tem; senão tenta achar por ref)
   let asaasCustomerId = sub.asaas_customer_id as string | null
   if (!asaasCustomerId) {
     const findRes = await findCustomerByExternalReference(business.id)
@@ -120,11 +100,45 @@ export async function GET(req: NextRequest) {
     }
   }
   if (!asaasCustomerId) {
-    // Sem cadastro no Asaas — recorrente sempre tem; se cair aqui, manda pro
-    // fluxo completo de checkout (que coleta CPF/CNPJ).
+    // Sem cadastro no Asaas — manda pro fluxo completo (coleta CPF/CNPJ).
     return NextResponse.json({ error: 'need_full_checkout' }, { status: 409 })
   }
 
+  // Sincroniza o asaas_payment_id_atual se a cobrança escolhida for outra —
+  // o webhook casa por esse campo, então tem que apontar pra cobrança que o
+  // cliente vai pagar AGORA pra o pagamento ativar a conta.
+  async function sincroniza(paymentId: string, invoiceUrl?: string | null) {
+    const payload: Record<string, unknown> = { asaas_payment_id_atual: paymentId }
+    if (invoiceUrl) payload.pix_link_atual = invoiceUrl
+    await admin.from('subscriptions').update(payload).eq('id', sub!.id)
+  }
+
+  // ── 1. Achar a cobrança REALMENTE em aberto no Asaas ─────────────────
+  const listRes = await listPaymentsByCustomer(asaasCustomerId, 15)
+  if (listRes.ok && listRes.data?.data) {
+    // order=desc → a mais recente pagável é a cobrança do ciclo atual
+    const emAberto = listRes.data.data.find((p) => STATUS_PAGAVEL.includes(p.status))
+    if (emAberto) {
+      const qrRes = await getPixQrCode(emAberto.id)
+      if (qrRes.ok && qrRes.data?.payload) {
+        if (emAberto.id !== sub.asaas_payment_id_atual) {
+          await sincroniza(emAberto.id, emAberto.invoiceUrl)
+        }
+        return qrResponse(emAberto.id, qrRes.data)
+      }
+      // QR não voltou (cobrança em aberto sem PIX renderizável) → gera nova abaixo.
+    } else {
+      // Nenhuma cobrança pagável. Se a assinatura está coberta (em dia), então
+      // realmente não há nada a pagar agora — webhook já ativou.
+      const coberta = sub.status === 'active' && sub.pago_ate && new Date(sub.pago_ate) > new Date()
+      if (coberta) {
+        return NextResponse.json({ paid: true })
+      }
+      // Não coberta e sem cobrança em aberto → cron ainda não gerou; gera abaixo.
+    }
+  }
+
+  // ── 2. Gerar cobrança nova (sem cobrança em aberto reaproveitável) ───
   const payRes = await createPayment({
     customer: asaasCustomerId,
     billingType: 'PIX',
@@ -140,16 +154,6 @@ export async function GET(req: NextRequest) {
   }
 
   const qrRes = await getPixQrCode(payRes.data.id)
-
-  // Sincroniza a cobrança vigente: o webhook casa por asaas_payment_id_atual,
-  // então tem que apontar pra ESTA cobrança pra o pagamento ativar a conta.
-  await admin
-    .from('subscriptions')
-    .update({
-      asaas_payment_id_atual: payRes.data.id,
-      pix_link_atual: payRes.data.invoiceUrl ?? null,
-    })
-    .eq('id', sub.id)
-
+  await sincroniza(payRes.data.id, payRes.data.invoiceUrl)
   return qrResponse(payRes.data.id, qrRes.data)
 }

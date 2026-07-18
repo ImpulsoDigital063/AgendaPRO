@@ -261,6 +261,17 @@ export async function getPaymentById(paymentId: string) {
   return asaasFetch<AsaasPayment>(`/payments/${paymentId}`, { method: 'GET' })
 }
 
+// Lista as cobranças de um customer (mais recentes primeiro). Fonte da verdade
+// pra achar a cobrança REALMENTE em aberto — não dá pra confiar no
+// asaas_payment_id_atual gravado (o webhook grava a última PAGA, e o cron
+// antigo não atualizava, então esse campo pode apontar pra um ciclo velho).
+export async function listPaymentsByCustomer(customerId: string, limit = 10) {
+  return asaasFetch<{ data: AsaasPayment[]; totalCount: number }>(
+    `/payments?customer=${encodeURIComponent(customerId)}&limit=${limit}&order=desc`,
+    { method: 'GET' }
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────
 // PIX QR CODE (pra renderizar dentro do AgendaPRO sem cliente sair)
 // ─────────────────────────────────────────────────────────────────
