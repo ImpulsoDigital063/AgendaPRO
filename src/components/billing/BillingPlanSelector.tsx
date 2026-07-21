@@ -372,7 +372,7 @@ export default function BillingPlanSelector({ plan }: Props) {
           </p>
           <input
             type="text"
-            placeholder="Nome completo (do titular do cartão)"
+            placeholder={selectedKey === 'mensal_cartao' ? 'Nome completo (do titular do cartão)' : 'Nome completo'}
             value={customerData.name}
             onChange={(e) =>
               setCustomerData({ ...customerData, name: e.target.value })
