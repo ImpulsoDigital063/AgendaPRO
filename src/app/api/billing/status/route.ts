@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
       setup_paid_at, refund_deadline_at, refunded_at,
       current_period_start, current_period_end,
       grace_ends_at, public_blocked_at, cancelled_at,
-      provider, plan_modalidade, pago_ate
+      provider, plan_modalidade, pago_ate,
+      permanent_courtesy, asaas_subscription_id, mp_subscription_id
     `)
     .eq('business_id', business.id)
     .single()
@@ -65,6 +66,22 @@ export async function GET(req: NextRequest) {
       ))
     : null
 
+  // TRIAL = teste grátis ativo, ainda NÃO pagou. Mesmo critério do billing-check
+  // e do layout admin: active · sem cortesia vitalícia · sem ciclo de cobrança ·
+  // sem assinatura recorrente. Precisa disso pra o PlanoCard mostrar o CHECKOUT
+  // (assinar) em vez do card "Ativo/Cancelar" — senão o trial não tem como pagar
+  // antes de vencer (bug de conversão achado 21/07).
+  const isTrial =
+    subscription.status === 'active' &&
+    !subscription.permanent_courtesy &&
+    !subscription.plan_modalidade &&
+    !subscription.asaas_subscription_id &&
+    !subscription.mp_subscription_id
+
+  const trialDaysLeft = isTrial && subscription.pago_ate
+    ? Math.max(0, Math.ceil((new Date(subscription.pago_ate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+    : null
+
   return NextResponse.json({
     subscription: {
       ...subscription,
@@ -72,6 +89,8 @@ export async function GET(req: NextRequest) {
       public_blocked: !!publicBlocked,
       within_refund_window: !!withinRefundWindow,
       refund_days_left: refundDaysLeft,
+      is_trial: isTrial,
+      trial_days_left: trialDaysLeft,
     },
   })
 }

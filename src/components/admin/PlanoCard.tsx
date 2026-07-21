@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import { IconAlert, IconCheck, IconExternalLink } from '@/components/ui/Icon'
 import { PRICING } from '@/config/pricing'
+import BillingPlanSelector from '@/components/billing/BillingPlanSelector'
 
 type PlanModalidade = 'mensal_cartao' | 'mensal_pix' | 'semestral_pix' | 'anual_pix'
 
@@ -29,6 +30,9 @@ type Subscription = {
   plan_modalidade?: PlanModalidade | null
   /** v27 · até quando o pagamento atual cobre (data de vencimento PIX) */
   pago_ate?: string | null
+  /** trial grátis ativo (ainda não pagou) — server calcula em /api/billing/status */
+  is_trial?: boolean
+  trial_days_left?: number | null
 }
 
 /**
@@ -169,6 +173,36 @@ export default function PlanoCard() {
             Tentar de novo
           </button>
         </p>
+      </div>
+    )
+  }
+
+  // TRIAL ativo: mostra o CHECKOUT pra assinar (não o card "Ativo/Cancelar").
+  // Bug achado 21/07: trial tem status='active' igual assinante pago, então
+  // caía no card de assinante — sem NENHUM caminho pra pagar antes de vencer.
+  // O trial só conseguia assinar depois de vencer e cair no paywall. Aqui o
+  // "Assinar agora" leva pro pagamento de verdade (PIX/cartão + QR inline).
+  // Fundo escuro porque o BillingPlanSelector foi estilizado pro paywall dark.
+  if (sub.is_trial) {
+    const dias = sub.trial_days_left ?? 0
+    const tituloTrial =
+      dias <= 0 ? 'Seu teste termina hoje' : dias === 1 ? 'Falta 1 dia do seu teste' : `Faltam ${dias} dias do seu teste`
+    return (
+      <div
+        className="rounded-2xl p-5 space-y-4"
+        style={{
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.98) 0%, rgba(2,6,20,0.98) 100%)',
+          border: '1px solid rgba(16,185,129,0.25)',
+          boxShadow: '0 20px 60px -30px rgba(16,185,129,0.30)',
+        }}
+      >
+        <div className="text-center space-y-1">
+          <p className="text-base font-bold text-white">{tituloTrial}</p>
+          <p className="text-[12px] text-slate-400">
+            Assine agora pra continuar usando sem interrupção. Sem fidelidade, cancela quando quiser.
+          </p>
+        </div>
+        <BillingPlanSelector plan={sub.plan} />
       </div>
     )
   }
