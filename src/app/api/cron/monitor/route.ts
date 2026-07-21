@@ -21,8 +21,12 @@ import { todayBR } from '@/lib/date-br'
  */
 
 const BASELINE_MIN_AVG = 3      // só vigia negócio com média >= 3 agendamentos/dia ativo
-const BASELINE_MIN_DAYS = 5     // ...e com pelo menos 5 dias de atividade nos últimos 14
+const BASELINE_MIN_DAYS = 5     // ...e com pelo menos 5 dias de atividade nos últimos 28
 const ONLY_AFTER_HOUR_BRT = 12  // só alerta "zerou" depois do meio-dia (evita falso de manhã)
+const DOW_MIN_SAMPLES = 2       // só alerta se o negócio operou em >=2 dos últimos mesmos-dias-da-semana
+                                // (corta o falso positivo de DIA DE FOLGA — ex: segunda no ramo de beleza.
+                                //  Confirmado 20/07: Olímpio/Rosy/Viva alertados numa segunda de manhã
+                                //  sendo que operavam normal à tarde. O baseline não entendia dia de folga.)
 
 function getAdminClient() {
   return createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -49,7 +53,11 @@ export async function GET(req: NextRequest) {
   const db = getAdminClient()
   const today = todayBR()
   const todayStartISO = `${today}T00:00:00-03:00`
-  const since14 = `${new Date(Date.parse(today + 'T12:00:00-03:00') - 14 * 864e5).toISOString().slice(0, 10)}T00:00:00-03:00`
+  // Janela de 28 dias → ~4 amostras de cada dia da semana pra o baseline por dow.
+  const since28 = `${new Date(Date.parse(today + 'T12:00:00-03:00') - 28 * 864e5).toISOString().slice(0, 10)}T00:00:00-03:00`
+  // Dia da semana de HOJE em horário BR (0=dom … 6=sáb).
+  const todayDowBR = new Date(Date.parse(today + 'T12:00:00-03:00')).getUTCDay()
+  const DOW_LABEL = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
   const problems: string[] = []
 
   const { data: bizRows } = await db.from('businesses').select('id, name')
@@ -59,18 +67,26 @@ export async function GET(req: NextRequest) {
   const { data: recent, error: recErr } = await db
     .from('appointments')
     .select('business_id, created_at')
-    .gte('created_at', since14)
+    .gte('created_at', since28)
   if (recErr) {
     problems.push(`⚠️ monitor: erro lendo appointments — ${recErr.message}`)
   } else {
-    // agrega por negócio: dias ativos distintos, total, count de hoje
-    type Agg = { total: number; days: Set<string>; today: number }
+    // agrega por negócio: dias ativos distintos, total, count de hoje, e —
+    // NOVO — dias distintos com atividade POR dia-da-semana (baseline de dow).
+    type Agg = { total: number; days: Set<string>; today: number; dowDays: Map<number, Set<string>> }
     const byBiz = new Map<string, Agg>()
     for (const r of recent ?? []) {
-      const a = byBiz.get(r.business_id) ?? { total: 0, days: new Set(), today: 0 }
+      const a = byBiz.get(r.business_id) ?? { total: 0, days: new Set(), today: 0, dowDays: new Map() }
+      // created_at é UTC; converte pra BR (−3h) pra o dia e o dia-da-semana baterem
+      // com a operação real (senão agendamento da noite cai no dia/dow seguinte).
+      const brMs = new Date(r.created_at).getTime() - 3 * 3600e3
+      const brDate = new Date(brMs).toISOString().slice(0, 10)
+      const brDow = new Date(brMs).getUTCDay()
       a.total += 1
-      a.days.add(r.created_at.slice(0, 10))
+      a.days.add(brDate)
       if (r.created_at >= todayStartISO) a.today += 1
+      if (!a.dowDays.has(brDow)) a.dowDays.set(brDow, new Set())
+      a.dowDays.get(brDow)!.add(brDate)
       byBiz.set(r.business_id, a)
     }
 
@@ -79,8 +95,12 @@ export async function GET(req: NextRequest) {
         const activeDays = a.days.size
         const avg = a.total / Math.max(activeDays, 1)
         const silentToday = a.today === 0
-        if (avg >= BASELINE_MIN_AVG && activeDays >= BASELINE_MIN_DAYS && silentToday) {
-          problems.push(`🔴 <b>${nameOf.get(bizId) ?? bizId}</b> sem nenhum agendamento hoje (média ${avg.toFixed(1)}/dia). Verificar se a operação travou.`)
+        // Só alerta se o negócio COSTUMA operar neste dia da semana (teve
+        // atividade em >=DOW_MIN_SAMPLES dos últimos mesmos-dias). Sem isso,
+        // dia de folga (zero natural) virava alerta falso.
+        const operaNesseDia = (a.dowDays.get(todayDowBR)?.size ?? 0) >= DOW_MIN_SAMPLES
+        if (avg >= BASELINE_MIN_AVG && activeDays >= BASELINE_MIN_DAYS && operaNesseDia && silentToday) {
+          problems.push(`🔴 <b>${nameOf.get(bizId) ?? bizId}</b> sem nenhum agendamento hoje (média ${avg.toFixed(1)}/dia · costuma operar ${DOW_LABEL[todayDowBR]}). Verificar se a operação travou.`)
         }
       }
     }

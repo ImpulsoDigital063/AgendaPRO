@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
 import { PRICING } from '@/config/pricing'
+import { sendAlert } from '@/lib/alert'
 
 // Usa service role para criar usuário no auth + inserir dados
 function getAdminClient() {
@@ -245,6 +246,26 @@ export async function POST(req: NextRequest) {
     // Negócio criado, mas sem profissional — não é fatal, admin pode adicionar depois
     console.error('Erro ao criar profissional padrão:', profError)
   }
+
+  // Alerta operacional (Telegram) — Eduardo quer saber quando entra cadastro
+  // novo (antes só descobria por auditoria manual). Fire-and-forget: não
+  // bloqueia a resposta nem quebra o cadastro se o Telegram falhar.
+  const CANAL_LABEL: Record<string, string> = {
+    indicacao: 'Indicação', google: 'Google', instagram: 'Instagram', tiktok: 'TikTok',
+    chatgpt_ia: 'ChatGPT/IA', salao99_migrante: 'Migrante Salão99', whatsapp_organico: 'WhatsApp', outro: 'Outro',
+  }
+  const NEED_LABEL: Record<string, string> = {
+    agenda: 'Agenda', loja_vendas: 'Loja/Vendas', ambos: 'Ambos', indeciso: 'Indeciso',
+  }
+  void sendAlert(
+    `🆕 <b>Novo cadastro no AgendaPRO</b>\n` +
+    `<b>${businessName}</b> · ${chosenPlan === 'equipe' ? 'Equipe' : 'Solo'}\n` +
+    (phone ? `📱 ${phone}\n` : '') +
+    `✉️ ${email}\n` +
+    (channel ? `Origem: ${CANAL_LABEL[channel] ?? channel}` : '') +
+    (need ? `${channel ? ' · ' : ''}Precisa: ${NEED_LABEL[need] ?? need}` : '') +
+    `\nTrial de ${PRICING.trial.dias} dias começou.`
+  ).catch(() => {})
 
   return NextResponse.json({ ok: true, slug, plan: chosenPlan })
 }

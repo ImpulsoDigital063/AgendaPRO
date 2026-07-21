@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendPaymentConfirmed, sendRefundProcessed } from '@/lib/email'
+import { sendAlert } from '@/lib/alert'
 
 // =====================================================================
 // POST /api/webhooks/asaas
@@ -166,6 +167,9 @@ async function handlePaymentConfirmed(
   }
 
   const now = new Date()
+  // Primeira ativação? (antes do update — o setup_paid_at ainda reflete o estado
+  // pré-pagamento). Usado pra destacar "cliente novo" no alerta Telegram.
+  const isFirstPayment = !sub.setup_paid_at
   const baseDate =
     sub.pago_ate && new Date(sub.pago_ate) > now ? new Date(sub.pago_ate) : now
   const novoPagoAte = new Date(baseDate)
@@ -182,7 +186,7 @@ async function handlePaymentConfirmed(
   }
 
   // Primeira ativação
-  if (!sub.setup_paid_at) {
+  if (isFirstPayment) {
     updatePayload.setup_paid_at = now.toISOString()
     const refundDeadline = new Date(now)
     refundDeadline.setDate(refundDeadline.getDate() + 7)
@@ -199,7 +203,7 @@ async function handlePaymentConfirmed(
 
   // Email branded "Pagamento recebido" — substitui o do Asaas (que mostraria
   // "64.585.949 EDUARDO BARROS CHAVES" no header).
-  void notifyPaymentConfirmed(admin, sub.id, payment.value).catch((err) =>
+  void notifyPaymentConfirmed(admin, sub.id, payment.value, isFirstPayment).catch((err) =>
     console.error('[Asaas Webhook] sendPaymentConfirmed falhou:', err)
   )
 }
@@ -225,6 +229,7 @@ async function handleRecurringPayment(
   }
 
   const now = new Date()
+  const isFirstPayment = !sub.setup_paid_at
   const baseDate =
     sub.pago_ate && new Date(sub.pago_ate) > now ? new Date(sub.pago_ate) : now
   const periodEnd = new Date(baseDate)
@@ -239,7 +244,7 @@ async function handleRecurringPayment(
     provider: 'asaas',
   }
 
-  if (!sub.setup_paid_at) {
+  if (isFirstPayment) {
     updatePayload.setup_paid_at = now.toISOString()
     const refundDeadline = new Date(now)
     refundDeadline.setDate(refundDeadline.getDate() + 7)
@@ -254,7 +259,7 @@ async function handleRecurringPayment(
     `[Asaas Webhook] Cartão recorrente confirmado pra ${sub.business_id} — pago_ate=${periodEnd.toISOString()}`
   )
 
-  void notifyPaymentConfirmed(admin, sub.id, payment.value).catch((err) =>
+  void notifyPaymentConfirmed(admin, sub.id, payment.value, isFirstPayment).catch((err) =>
     console.error('[Asaas Webhook] sendPaymentConfirmed (cartao) falhou:', err)
   )
 }
@@ -360,7 +365,8 @@ async function handlePaymentOverdue(
 async function notifyPaymentConfirmed(
   admin: AdminClient,
   subscriptionId: string,
-  paymentValue: number | undefined
+  paymentValue: number | undefined,
+  isFirstPayment = false
 ) {
   const { data: sub } = await admin
     .from('subscriptions')
@@ -370,6 +376,18 @@ async function notifyPaymentConfirmed(
 
   if (!sub) return
   const business = (sub.businesses as unknown) as { name: string; owner_id: string }
+
+  // Alerta operacional (Telegram) — Eduardo quer saber quando cai pagamento,
+  // com destaque pra CLIENTE NOVO (1ª ativação) vs renovação. Fire-and-forget.
+  {
+    const valorTg = (paymentValue ?? sub.price_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    const planoTg = sub.plan === 'equipe' ? 'Equipe' : 'Solo'
+    void sendAlert(
+      isFirstPayment
+        ? `🎉 <b>NOVO CLIENTE pagou!</b>\n<b>${business.name}</b> — ${valorTg} (${planoTg})`
+        : `💰 <b>Renovação</b>\n<b>${business.name}</b> — ${valorTg} (${planoTg})`
+    ).catch(() => {})
+  }
 
   const { data: { user: ownerUser } } = await admin.auth.admin.getUserById(
     business.owner_id
