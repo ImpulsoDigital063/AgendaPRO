@@ -27,6 +27,11 @@ const DOW_MIN_SAMPLES = 2       // só alerta se o negócio operou em >=2 dos ú
                                 // (corta o falso positivo de DIA DE FOLGA — ex: segunda no ramo de beleza.
                                 //  Confirmado 20/07: Olímpio/Rosy/Viva alertados numa segunda de manhã
                                 //  sendo que operavam normal à tarde. O baseline não entendia dia de folga.)
+const MIN_DENSITY = 0.6         // só vigia negócio de operação DENSA (cria agendamento na maioria dos dias).
+                                // O alerta mede agendamentos CRIADOS hoje; quem opera em RAJADA (não cria
+                                // todo dia) tem "0 hoje" natural e NÃO é falha. Confirmado 21/07: Viva
+                                // Cacheada (12/28 dias ativos = 43%) alertou falso estando em pleno uso.
+                                // Olímpio (25/28 = 89%) é operação densa de verdade → esse sim se vigia.
 
 function getAdminClient() {
   return createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -95,12 +100,20 @@ export async function GET(req: NextRequest) {
         const activeDays = a.days.size
         const avg = a.total / Math.max(activeDays, 1)
         const silentToday = a.today === 0
-        // Só alerta se o negócio COSTUMA operar neste dia da semana (teve
-        // atividade em >=DOW_MIN_SAMPLES dos últimos mesmos-dias). Sem isso,
-        // dia de folga (zero natural) virava alerta falso.
+        // (1) operação DENSA: cria agendamento na maioria dos dias (senão "0 hoje"
+        //     é rajada normal, não falha — caso Viva Cacheada).
+        const densidade = activeDays / 28
+        // (2) COSTUMA operar neste dia da semana (>= DOW_MIN_SAMPLES amostras) —
+        //     senão dia de folga vira alerta falso.
         const operaNesseDia = (a.dowDays.get(todayDowBR)?.size ?? 0) >= DOW_MIN_SAMPLES
-        if (avg >= BASELINE_MIN_AVG && activeDays >= BASELINE_MIN_DAYS && operaNesseDia && silentToday) {
-          problems.push(`🔴 <b>${nameOf.get(bizId) ?? bizId}</b> sem nenhum agendamento hoje (média ${avg.toFixed(1)}/dia · costuma operar ${DOW_LABEL[todayDowBR]}). Verificar se a operação travou.`)
+        if (
+          avg >= BASELINE_MIN_AVG &&
+          activeDays >= BASELINE_MIN_DAYS &&
+          densidade >= MIN_DENSITY &&
+          operaNesseDia &&
+          silentToday
+        ) {
+          problems.push(`🔴 <b>${nameOf.get(bizId) ?? bizId}</b> sem nenhum agendamento hoje (média ${avg.toFixed(1)}/dia · opera quase todo dia, incl. ${DOW_LABEL[todayDowBR]}). Verificar se a operação travou.`)
         }
       }
     }
