@@ -89,7 +89,14 @@ async function PersonalKPIs({
     ...aReceber.map((a) => a.invoice_item_id),
   ])
   const recebidoTotal = (paidTodayEu ?? []).reduce((sum, a) => sum + Math.max(0, Number(a.total_price ?? 0) - (euDisc[a.id] ?? 0)), 0)
-  const aReceberTotal = aReceber.reduce((sum, a) => sum + Math.max(0, Number(a.total_price ?? 0) - (euDisc[a.id] ?? 0)), 0)
+  // "A receber" pelo valor da COMANDA quando tem produto (charged_total vem de
+  // getAppointmentsToday). O "recebido" acima NÃO usa — ele soma appointments
+  // pagos e o produto entra por outra via; usar charged lá duplicaria.
+  const aReceberTotal = aReceber.reduce(
+    (sum, a) => sum + ((a as typeof a & { charged_total?: number | null }).charged_total
+      ?? Math.max(0, Number(a.total_price ?? 0) - (euDisc[a.id] ?? 0))),
+    0,
+  )
 
   return (
     <section className="relative max-w-lg mx-auto px-4 mb-6 space-y-2.5">

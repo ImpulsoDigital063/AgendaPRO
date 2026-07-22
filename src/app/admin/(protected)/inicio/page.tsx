@@ -87,7 +87,14 @@ async function KPIsRow({ business }: { business: Business }) {
   const recebidoApptsTotal = recebidos.reduce((s, a) => s + liq(a), 0)
   const recebidoTotal = recebidoApptsTotal + recebidoSalesTotal
   const recebidoCount = recebidos.length + recebidoSalesCount
-  const aReceberTotal = aReceber.reduce((s, a) => s + liq(a), 0)
+  // "A receber" = valor da COMANDA quando tem produto (combo / vendido junto).
+  // charged_total vem injetado por getAppointmentsToday. Mostrava R$195 numa
+  // conta de R$290 (Eduardo 22/07). Não afeta o "recebido", que soma sales
+  // à parte — lá usar charged contaria o produto duas vezes.
+  const aReceberTotal = aReceber.reduce(
+    (s, a) => s + ((a as typeof a & { charged_total?: number | null }).charged_total ?? liq(a)),
+    0,
+  )
   const totalAgendados = list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show').length
 
   // "Recebido hoje" foi movido pro RelatorioFinanceiroCard (1º BigKpi)

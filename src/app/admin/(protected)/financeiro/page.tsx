@@ -200,17 +200,23 @@ export default async function FinanceiroPage({
     getApptChargedMap(supabase, appointments.map((a) => a.id as string)),
     getApptChargedMap(supabase, prevAppts.map((a) => a.id as string)),
   ])
-  // charged (invoices.total) JÁ vem líquido de desconto — não abate de novo.
+  // ATENÇÃO (Eduardo 22/07): total_price fica com o valor do SERVIÇO líquido.
+  // NÃO enfiar o produto aqui — esta página soma `productSales` à parte
+  // (valorRecebidoSales), e sobrescrever total_price com o total da comanda
+  // contava o produto DUAS vezes (combo de R$290 virava R$385). Também
+  // inflava Top Serviços / Top Profissionais, que leem este mesmo array.
+  // O valor cobrado vai num campo SEPARADO, usado só onde as sales não
+  // entram (ex: "a receber", que olha comanda ABERTA — venda ainda pendente).
   const normalizar = <T extends { id: string; total_price: number | null }>(
     rows: T[],
     disc: Record<string, number>,
     charged: Record<string, { charged: number; produtos: unknown[] }>,
   ) => {
     for (const a of rows) {
+      a.total_price = Math.max(0, Number(a.total_price ?? 0) - (disc[a.id] ?? 0))
       const c = charged[a.id as string]
-      a.total_price = c && c.produtos.length > 0
-        ? c.charged
-        : Math.max(0, Number(a.total_price ?? 0) - (disc[a.id] ?? 0))
+      ;(a as T & { charged_total?: number | null }).charged_total =
+        c && c.produtos.length > 0 ? c.charged : null
     }
   }
   normalizar(appointments, discCur, chargedCur)
@@ -228,7 +234,13 @@ export default async function FinanceiroPage({
   const prevValorRecebido = prevValorRecebidoAppts + prevValorRecebidoSales
 
   const naoPagos = appointments.filter((a) => !a.paid_at && a.status !== 'cancelled')
-  const valorProgramado = naoPagos.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  // "A receber" usa o valor da COMANDA: a venda do produto ainda está pendente
+  // e não entra em productSales (que só conta pagas) — sem isso, promete R$195
+  // numa conta de R$290.
+  const valorProgramado = naoPagos.reduce(
+    (s, a) => s + Number((a as typeof a & { charged_total?: number | null }).charged_total ?? a.total_price ?? 0),
+    0,
+  )
 
   const qtdAtendimentos = paidAppts.length
   const prevQtdAtendimentos = prevPaid.length
