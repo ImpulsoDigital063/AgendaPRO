@@ -33,6 +33,8 @@ type Subscription = {
   /** trial grátis ativo (ainda não pagou) — server calcula em /api/billing/status */
   is_trial?: boolean
   trial_days_left?: number | null
+  /** trial JÁ vencido (pending_payment, nunca pagou) — mostra "teste acabou" + checkout */
+  trial_ended?: boolean
 }
 
 /**
@@ -183,10 +185,14 @@ export default function PlanoCard() {
   // O trial só conseguia assinar depois de vencer e cair no paywall. Aqui o
   // "Assinar agora" leva pro pagamento de verdade (PIX/cartão + QR inline).
   // Fundo escuro porque o BillingPlanSelector foi estilizado pro paywall dark.
-  if (sub.is_trial) {
+  if (sub.is_trial || sub.trial_ended) {
     const dias = sub.trial_days_left ?? 0
-    const tituloTrial =
-      dias <= 0 ? 'Seu teste termina hoje' : dias === 1 ? 'Falta 1 dia do seu teste' : `Faltam ${dias} dias do seu teste`
+    const tituloTrial = sub.trial_ended
+      ? 'Seu teste acabou'
+      : dias <= 0 ? 'Seu teste termina hoje' : dias === 1 ? 'Falta 1 dia do seu teste' : `Faltam ${dias} dias do seu teste`
+    const subtitulo = sub.trial_ended
+      ? 'Você aproveitou seus dias grátis — seus dados estão salvos. Pra continuar de onde parou, é só escolher seu plano abaixo.'
+      : 'Assine agora pra continuar usando sem interrupção. Sem fidelidade, cancela quando quiser.'
     return (
       <div
         className="rounded-2xl p-5 space-y-4"
@@ -198,9 +204,7 @@ export default function PlanoCard() {
       >
         <div className="text-center space-y-1">
           <p className="text-base font-bold text-white">{tituloTrial}</p>
-          <p className="text-[12px] text-slate-400">
-            Assine agora pra continuar usando sem interrupção. Sem fidelidade, cancela quando quiser.
-          </p>
+          <p className="text-[12px] text-slate-400">{subtitulo}</p>
         </div>
         <BillingPlanSelector plan={sub.plan} />
       </div>

@@ -14,7 +14,14 @@ import { NextResponse, type NextRequest } from 'next/server'
  * Padrão oficial Supabase Next.js App Router (não inventar variações).
  */
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  // Propaga a pathname atual pro request downstream (Server Components não têm
+  // acesso à URL de outra forma). O gate do admin usa isso pra, quando o trial
+  // vence, redirecionar pra a aba de Plano SEM causar loop (exceção pra própria
+  // tela de config). Cravado 22/07.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-pathname', request.nextUrl.pathname)
+
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,8 +36,8 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          // 2. recria response pra carregar os cookies atualizados
-          supabaseResponse = NextResponse.next({ request })
+          // 2. recria response pra carregar os cookies atualizados (mantendo x-pathname)
+          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
           // 3. seta cookies no response (vai pro browser)
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)

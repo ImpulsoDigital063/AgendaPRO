@@ -82,6 +82,11 @@ export async function GET(req: NextRequest) {
     ? Math.max(0, Math.ceil((new Date(subscription.pago_ate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
     : null
 
+  // TRIAL VENCIDO = teste acabou e nunca pagou (pending_payment sem setup_paid_at).
+  // O PlanoCard mostra "seu teste acabou" + checkout, mesma UI do trial ativo.
+  const trialEnded =
+    subscription.status === 'pending_payment' && !subscription.setup_paid_at
+
   return NextResponse.json({
     subscription: {
       ...subscription,
@@ -91,6 +96,7 @@ export async function GET(req: NextRequest) {
       refund_days_left: refundDaysLeft,
       is_trial: isTrial,
       trial_days_left: trialDaysLeft,
+      trial_ended: trialEnded,
     },
   })
 }

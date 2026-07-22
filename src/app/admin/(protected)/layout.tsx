@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import AdminMobileTopBar from '@/components/admin/AdminMobileTopBar'
 import InstallBanner from '@/components/admin/InstallBanner'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
@@ -86,15 +87,32 @@ export default async function AdminLayout({
     const graceExpired =
       subscription.grace_ends_at && new Date(subscription.grace_ends_at) < now
 
-    // Bloqueios que redirecionam pra /admin/bloqueado
-    const blocked =
-      subscription.status === 'pending_payment' ||
+    // CHURN (cancelou/reembolsou) e pagante em atraso pós-carência → tela externa
+    // /admin/bloqueado (copy própria de "assinatura cancelada").
+    const blockedExterno =
       subscription.status === 'cancelled' ||
       !!subscription.refunded_at ||
       (subscription.status === 'past_due' && graceExpired)
 
-    if (blocked) {
+    if (blockedExterno) {
       redirect('/admin/bloqueado')
+    }
+
+    // TRIAL VENCIDO (aguardando 1º pagamento) → NÃO joga pra tela externa.
+    // Mantém o dono DENTRO do painel (menu/marca dele) e o leva pra a aba de
+    // Plano ("teste acabou + pagar"). Decisão Eduardo 22/07 (opção A): sensação
+    // de "minha conta pedindo renovação", não "fui expulso". A própria tela de
+    // config passa (senão loop); as telas de operação puxam de volta pra o Plano.
+    if (subscription.status === 'pending_payment') {
+      const pathname = (await headers()).get('x-pathname') || ''
+      // Fallback anti-loop: se o header não chegou (x-pathname vazio), cai no
+      // comportamento antigo (/admin/bloqueado) — seguro, sem risco de loop.
+      if (!pathname) {
+        redirect('/admin/bloqueado')
+      }
+      if (!pathname.startsWith('/admin/configuracoes')) {
+        redirect('/admin/configuracoes?tab=plano')
+      }
     }
 
     pendingAppointments = apptCount
