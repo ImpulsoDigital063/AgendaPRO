@@ -79,6 +79,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; itemId: string }> },
 ) {
   const supabase = await createClient()
+  // user é necessário pra creditar o movimento de estoque a quem ajustou
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const businessId = await getBusinessId(supabase)
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
@@ -92,13 +95,16 @@ export async function PATCH(
   // Lê item atual
   const { data: item, error: itemErr } = await admin
     .from('invoice_items')
-    .select('id, invoice_id, quantity, unit_price, discount, total')
+    .select('id, invoice_id, quantity, unit_price, discount, total, item_type, reference_id')
     .eq('id', itemId)
     .maybeSingle()
   if (itemErr) return NextResponse.json({ error: itemErr.message }, { status: 500 })
   if (!item || item.invoice_id !== id) return NextResponse.json({ error: 'item_not_found' }, { status: 404 })
 
-  const quantity = typeof body.quantity === 'number' ? Math.max(1, body.quantity) : item.quantity
+  // min 0.001 (não 1): material consumido pode ser fração de embalagem —
+  // meio pacote de cabelo, 30ml de um vidro. Antes Math.max(1, …) forçava
+  // inteiro e era impossível corrigir pra 0,5 (Eduardo 22/07).
+  const quantity = typeof body.quantity === 'number' ? Math.max(0.001, body.quantity) : Number(item.quantity)
   const unit_price = typeof body.unit_price === 'number' ? Math.max(0, body.unit_price) : Number(item.unit_price)
   const discount = typeof body.discount === 'number' ? Math.max(0, body.discount) : Number(item.discount)
   const total = Math.max(0, unit_price * quantity - discount)
@@ -108,6 +114,44 @@ export async function PATCH(
     .update({ quantity, unit_price, discount, total })
     .eq('id', itemId)
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
+
+  // ── ESTOQUE · sincroniza a venda quando a quantidade do PRODUTO muda ──────
+  // Antes o PATCH só mexia no valor: baixava 1 pacote, você corrigia pra 0,5,
+  // o preço caía mas o estoque continuava −1. Meio pacote sumia do sistema.
+  // Bug já existia com inteiros (2 → 1 não devolvia nada) · só era raro.
+  const qtdAntiga = Number(item.quantity ?? 0)
+  if (item.item_type === 'product' && item.reference_id && quantity !== qtdAntiga) {
+    const { data: saleItems, error: siErr } = await admin
+      .from('sale_items')
+      .select('id, product_id, quantity, unit_price')
+      .eq('sale_id', item.reference_id)
+    if (siErr) return NextResponse.json({ error: `sale_items_read_failed: ${siErr.message}` }, { status: 500 })
+
+    // A venda de um item de comanda tem 1 sale_item (criado por items/route.ts).
+    // Com mais de um, não dá pra saber a quem atribuir o delta — não adivinha.
+    if ((saleItems?.length ?? 0) === 1) {
+      const si = saleItems![0]
+      const delta = quantity - qtdAntiga // >0 consumiu mais · <0 devolveu
+
+      if (si.product_id && delta !== 0) {
+        const { error: movErr } = await admin.from('stock_movements').insert({
+          business_id: businessId,
+          product_id: si.product_id as string,
+          type: delta > 0 ? 'exit' : 'entry',
+          // exit é gravado negativo (mesma convenção da v66/v68)
+          quantity: delta > 0 ? -delta : Math.abs(delta),
+          reason: 'Ajuste de quantidade na comanda',
+          created_by: user.id,
+        })
+        if (movErr) return NextResponse.json({ error: `stock_adjust_failed: ${movErr.message}` }, { status: 500 })
+      }
+
+      // sale_item e sale acompanham, senão o relatório de vendas diverge da comanda
+      const novoTotalVenda = Math.max(0, Number(si.unit_price ?? unit_price) * quantity)
+      await admin.from('sale_items').update({ quantity }).eq('id', si.id)
+      await admin.from('sales').update({ total: novoTotalVenda }).eq('id', item.reference_id)
+    }
+  }
 
   await recalculateInvoice(id)
   return NextResponse.json({ ok: true })

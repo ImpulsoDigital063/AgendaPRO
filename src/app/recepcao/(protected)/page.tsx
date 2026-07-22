@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import LogoutButton from '@/components/LogoutButton'
@@ -84,14 +86,27 @@ export default async function RecepcaoAgendaPage({
     .order('start_time', { ascending: true })
     .limit(40)
 
-  const list = todayAppts ?? []
+  // Enriquece a lista UMA vez com o valor cobrado (comanda com produto) e
+  // repassa pros cards/foco/caixa — evita cada um refazer a query.
+  const sbRecepAdmin = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+  const listRaw = todayAppts ?? []
+  const chargedMap = await getApptChargedMap(sbRecepAdmin, listRaw.map((a) => a.id as string))
+  const list = listRaw.map((a) => {
+    const c = chargedMap[a.id as string]
+    return { ...a, charged_total: c && c.produtos.length > 0 ? c.charged : null }
+  })
   const active = list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')
   const pending = active.filter((a) => a.status === 'pending')
   const confirmed = active.filter((a) => a.status === 'confirmed')
   const completed = active.filter((a) => a.status === 'completed')
 
   const recebidos = list.filter((a) => a.paid_at != null && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
-  const recebidoTotal = recebidos.reduce((sum, a) => sum + (a.total_price || 0), 0)
+  // charged_total já veio injetado na list acima
+  const recebidoTotal = recebidos.reduce((sum, a) => sum + (a.charged_total ?? a.total_price ?? 0), 0)
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',

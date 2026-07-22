@@ -7,6 +7,7 @@ import { getAreaPrefix } from '@/lib/area-prefix'
 import { createClient } from '@/lib/supabase/client'
 import { resolveClientId } from '@/lib/clients'
 import { logActivity } from '@/lib/activity-log'
+import { ratearCombo } from '@/lib/combo-rateio'
 import {
   IconClose,
   IconSearch,
@@ -29,6 +30,22 @@ const NovoClienteModal = dynamic(() => import('@/components/admin/clientes/NovoC
 type Customer = { id: string; name: string; phone: string; total_points: number | null }
 type Professional = { id: string; name: string }
 type Service = { id: string; name: string; price: number | null; duration_minutes: number | null }
+
+/** Combo (packages + package_items) · serviço(s) + produto(s) num preço fechado. */
+type ComboItem = {
+  service_id: string | null
+  product_id: string | null
+  quantity: number
+  unit_price: number | null
+  services: { id: string; name: string; price: number | null; duration_minutes: number | null } | null
+  products: { id: string; name: string; variant: string | null; price: number | null; commission_type: string | null; commission_value: number | null } | null
+}
+type ComboRow = {
+  id: string
+  name: string
+  price: number
+  package_items: ComboItem[] | null
+}
 
 type ServiceLine = {
   /** id local pra key do React · não vai pro banco */
@@ -164,9 +181,19 @@ export default function AgendarModal({
   const [products, setProducts] = useState<{ id: string; name: string; variant: string | null; variant_group_id: string | null; price: number | null; commission_type: string | null; commission_value: number | null }[]>([])
   // Drill-down do picker: quando entra num grupo de variantes, guarda o group_id.
   const [prodPickerGroup, setProdPickerGroup] = useState<string | null>(null)
-  const [prodCart, setProdCart] = useState<{ product_id: string; product_name: string; unit_price: number; commission_type: string | null; commission_value: number | null }[]>([])
+  // quantity: default 1 pro produto vendido junto manual · o combo seta fração
+  // (ex: 0,5 pacote de cabelo). A rota /items já aceita numeric (trigger v66).
+  const [prodCart, setProdCart] = useState<{ product_id: string; product_name: string; quantity: number; unit_price: number; commission_type: string | null; commission_value: number | null }[]>([])
   const [prodPickerOpen, setProdPickerOpen] = useState(false)
   const [prodSearch, setProdSearch] = useState('')
+
+  // COMBOS (packages) · escolher um preenche serviço(s) + produto(s) de uma vez.
+  // Rateio cravado por Eduardo 21/07: o SERVIÇO entra pelo valor cheio (base da
+  // comissão intacta) e o PRODUTO absorve a diferença até fechar o preço do
+  // combo. Ex: combo 290 = Gypsy 195 + cabelo 95 (0,5 pacote).
+  const [combos, setCombos] = useState<ComboRow[]>([])
+  const [comboPickerOpen, setComboPickerOpen] = useState(false)
+  const [comboAplicado, setComboAplicado] = useState<{ id: string; name: string; price: number } | null>(null)
 
   // V3: Repetir atendimento (recorrência)
   const [recurring, setRecurring] = useState<boolean>(false)
@@ -219,6 +246,8 @@ export default function AgendarModal({
     setProdCart([])
     setProdPickerOpen(false)
     setProdSearch('')
+    setComboAplicado(null)
+    setComboPickerOpen(false)
   }, [open, defaultProfId, defaultDate, defaultTime, balcao])
 
   // Carrega produtos do negócio (pro picker de "vender junto")
@@ -232,6 +261,21 @@ export default function AgendarModal({
       .eq('sale_active', true)
       .order('name')
       .then(({ data }) => setProducts((data ?? []) as typeof products))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, businessId])
+
+  // Carrega combos ativos do negócio (catálogo da aba Pacotes) com os itens
+  // resolvidos · o produto vem pelo JOIN e não pela lista `products`, porque o
+  // material consumido num combo nem sempre está com sale_active=true.
+  useEffect(() => {
+    if (!open) return
+    supabase
+      .from('packages')
+      .select('id, name, price, package_items (service_id, product_id, quantity, unit_price, services (id, name, price, duration_minutes), products (id, name, variant, price, commission_type, commission_value))')
+      .eq('business_id', businessId)
+      .eq('active', true)
+      .order('name')
+      .then(({ data }) => setCombos((data ?? []) as unknown as ComboRow[]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, businessId])
 
@@ -333,7 +377,7 @@ export default function AgendarModal({
     0,
   )
   const totalDuration = validLines.reduce((sum, l) => sum + Number(l.duration || 0), 0)
-  const subtotalProds = prodCart.reduce((sum, p) => sum + Number(p.unit_price || 0), 0)
+  const subtotalProds = prodCart.reduce((sum, p) => sum + Number(p.unit_price || 0) * Number(p.quantity ?? 1), 0)
   const totalGeral = valorTotal + subtotalProds // serviços + produtos (o que o cliente paga)
   const canSave = (!!cliente || avulso) && !!profId && validLines.length >= 1 && !!date && !!time && totalDuration > 0
 
@@ -365,16 +409,69 @@ export default function AgendarModal({
     ? prodPicker.groups.find((g) => g.gid === prodPickerGroup) ?? null
     : null
   function addProduct(p: ProdT) {
-    setProdCart((prev) => [...prev, { product_id: p.id, product_name: p.variant ? `${p.name} · ${p.variant}` : p.name, unit_price: p.price ?? 0, commission_type: p.commission_type, commission_value: p.commission_value }])
+    setProdCart((prev) => [...prev, { product_id: p.id, product_name: p.variant ? `${p.name} · ${p.variant}` : p.name, quantity: 1, unit_price: p.price ?? 0, commission_type: p.commission_type, commission_value: p.commission_value }])
     setProdSearch('')
     setProdPickerOpen(false)
     setProdPickerGroup(null)
   }
-  function updateProdLine(idx: number, patch: Partial<{ unit_price: number }>) {
+  function updateProdLine(idx: number, patch: Partial<{ unit_price: number; quantity: number }>) {
     setProdCart((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)))
   }
   function removeProdLine(idx: number) {
     setProdCart((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  /**
+   * Aplica um combo: preenche as linhas de serviço e o carrinho de produtos.
+   *
+   * Rateio (Eduardo 21/07): o SERVIÇO entra pelo valor cheio — a base da
+   * comissão não pode ser inflada por material. O PRODUTO absorve a diferença
+   * até fechar o preço do combo. Com vários produtos, a diferença é rateada
+   * proporcionalmente ao valor de tabela de cada um.
+   *
+   * Substitui o que estiver preenchido (o combo define o atendimento inteiro).
+   */
+  function aplicarCombo(combo: ComboRow) {
+    const { servicos, produtos, somaServicos, restoBruto } = ratearCombo(
+      Number(combo.price || 0),
+      combo.package_items ?? [],
+    )
+    const novasLinhas: ServiceLine[] = servicos.map((s) => ({
+      ...newLine(),
+      serviceId: s.service_id,
+      duration: s.duration,
+      price: s.price,
+      discount: 0,
+    }))
+
+    // Combo só de produtos não vira atendimento: não há o que agendar. Avisa em
+    // vez de deixar a pessoa travada no "selecione um serviço" (Eduardo 21/07).
+    if (novasLinhas.length === 0) {
+      setError(`O combo "${combo.name}" não tem serviço — só produto. Pra vender só produto use "Vender produto" (PDV), ou adicione um serviço ao combo na aba Pacotes.`)
+      setComboPickerOpen(false)
+      return
+    }
+
+    setServiceLines(novasLinhas)
+    setProdCart(produtos)
+    setComboAplicado({ id: combo.id, name: combo.name, price: Number(combo.price || 0) })
+    setComboPickerOpen(false)
+
+    // Serviços já custam mais que o combo: o material sairia negativo. Não
+    // bloqueia (o dono pode ter feito de propósito), mas avisa em vez de
+    // engolir a diferença em silêncio.
+    if (restoBruto < 0) {
+      setError(`Atenção: os serviços do combo "${combo.name}" somam ${formatBRL(somaServicos)}, acima do preço do combo (${formatBRL(Number(combo.price || 0))}). O material entrou zerado — confira os valores.`)
+    } else {
+      setError(null)
+    }
+  }
+
+  function limparCombo() {
+    setComboAplicado(null)
+    setServiceLines([newLine()])
+    setProdCart([])
+    setError(null)
   }
 
   // Pega a comanda (invoice) ABERTA que o trigger v77 auto-criou pro atendimento.
@@ -401,7 +498,7 @@ export default function AgendarModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           product_id: line.product_id,
-          quantity: 1,
+          quantity: line.quantity ?? 1,
           unit_price: line.unit_price,
           // Produto NÃO é atribuído à profissional do serviço — é venda do
           // estúdio, não entra na comissão de ninguém (Izanara/Eduardo 16/06).
@@ -905,6 +1002,105 @@ export default function AgendarModal({
             <IconPlus size={14} /> Adicionar mais serviços
           </button>
 
+          {/* COMBOS · preenche serviço + produto de uma vez (Eduardo 21/07).
+              Só aparece se o negócio cadastrou algum combo na aba Pacotes. */}
+          {combos.length > 0 && (
+            comboAplicado ? (
+              <div
+                className="rounded-xl p-3 flex items-center gap-3"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-success) 8%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--admin-success) 45%, transparent)',
+                }}
+              >
+                <span style={{ color: 'var(--admin-success)' }}><IconCheck size={16} /></span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Combo aplicado</p>
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
+                    {comboAplicado.name} · {formatBRL(comboAplicado.price)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={limparCombo}
+                  className="text-xs font-bold px-2.5 py-1.5 rounded-lg"
+                  style={{ color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
+                >
+                  Remover
+                </button>
+              </div>
+            ) : (
+              <div
+                className="rounded-xl p-2.5 space-y-2"
+                style={{ background: 'color-mix(in srgb, var(--admin-accent) 6%, transparent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 40%, transparent)' }}
+              >
+                {!comboPickerOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setComboPickerOpen(true)}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
+                    style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}
+                  >
+                    <IconPlus size={14} /> Usar um combo
+                  </button>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-accent)' }}>
+                        Toque no combo pra aplicar
+                      </p>
+                      <button type="button" onClick={() => setComboPickerOpen(false)} style={{ color: 'var(--admin-text-mute)' }} aria-label="Fechar combos">
+                        <IconClose size={14} />
+                      </button>
+                    </div>
+                    <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                      {combos.map((c) => {
+                        const itens = c.package_items ?? []
+                        const resumo = itens.map((it) => {
+                          const nome = it.services?.name ?? it.products?.name ?? '?'
+                          const q = Number(it.quantity) || 0
+                          return q !== 1 ? `${q.toLocaleString('pt-BR')}× ${nome}` : nome
+                        }).join(' + ')
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => aplicarCombo(c)}
+                            title={`Aplicar ${c.name}`}
+                            className="w-full text-left px-3 py-2.5 rounded-xl transition-colors cursor-pointer flex items-center gap-3 hover:brightness-110"
+                            style={{
+                              background: 'var(--admin-input-bg)',
+                              // borda em destaque + sombra: card de AÇÃO, não campo de leitura
+                              border: '1px solid color-mix(in srgb, var(--admin-accent) 55%, transparent)',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.10)',
+                            }}
+                          >
+                            <span className="flex-1 min-w-0">
+                              <span className="flex items-baseline justify-between gap-2">
+                                <span className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>{c.name}</span>
+                                <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>{formatBRL(Number(c.price || 0))}</span>
+                              </span>
+                              {resumo && (
+                                <span className="block text-[11px] mt-0.5 truncate" style={{ color: 'var(--admin-text-mute)' }}>{resumo}</span>
+                              )}
+                            </span>
+                            {/* affordance explícita de ação · sem isso o card lê como resumo (Eduardo 21/07) */}
+                            <span
+                              className="flex-shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-lg"
+                              style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                            >
+                              Aplicar
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )
+          )}
+
           {/* Produtos vendidos JUNTO com o atendimento (balcão) · Eduardo 07/06 */}
           {prodCart.length > 0 && (
             <div className="space-y-2">
@@ -915,7 +1111,12 @@ export default function AgendarModal({
                   className="rounded-xl p-2.5 grid grid-cols-[1fr_90px_28px] gap-2 items-center"
                   style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}
                 >
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{line.product_name}</p>
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                    {Number(line.quantity ?? 1) !== 1 && (
+                      <span className="tabular-nums" style={{ color: 'var(--admin-accent)' }}>{line.quantity.toLocaleString('pt-BR')}× </span>
+                    )}
+                    {line.product_name}
+                  </p>
                   <input
                     type="number"
                     min={0}

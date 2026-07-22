@@ -496,10 +496,12 @@ export default function ComandaDetalhe({
                   </td>
                   <td className="py-2 text-right tabular-nums" style={{ color: 'var(--admin-text)' }}>
                     {canEditItems && invoice.status === 'open' ? (
+                      // produto aceita fração (meio pacote de cabelo, 30ml de um
+                      // vidro) · serviço continua inteiro, não existe meio corte
                       <EditableNumber
                         value={it.quantity}
-                        step={1}
-                        min={1}
+                        step={it.item_type === 'product' ? 0.5 : 1}
+                        min={it.item_type === 'product' ? 0.001 : 1}
                         onSave={(v) => patchItem(it.id, { quantity: v })}
                         align="right"
                       />

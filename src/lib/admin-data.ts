@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 
 /**
  * Helpers cacheados via React cache() — deduplica queries Supabase
@@ -133,7 +134,18 @@ export const getAppointmentsToday = unstable_cache(
       .eq('business_id', businessId)
       .eq('appointment_date', today)
       .order('start_time', { ascending: true })
-    return data ?? []
+    const list = data ?? []
+    if (list.length === 0) return list
+
+    // charged_total = o que a cliente PAGA (comanda com produto: combo /
+    // vendido junto). total_price é só o serviço — base da comissão — e os
+    // cards mostravam ele, exibindo R$195 numa conta de R$290 (Eduardo 22/07).
+    // Busca em LOTE aqui pra não virar 1 query por card.
+    const charged = await getApptChargedMap(admin, list.map((a) => a.id as string))
+    return list.map((a) => ({
+      ...a,
+      charged_total: charged[a.id as string]?.charged ?? null,
+    }))
   },
   ['admin-appointments-today'],
   { revalidate: 15 }

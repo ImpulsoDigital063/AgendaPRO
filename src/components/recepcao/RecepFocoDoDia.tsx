@@ -13,6 +13,8 @@ type Appointment = {
   status: string
   paid_at: string | null
   total_price: number | null
+  /** Valor da comanda quando tem produto (combo / vendido junto). */
+  charged_total?: number | null
   client_name: string
   customer_id: string | null
   start_time: string
@@ -42,8 +44,10 @@ export default async function RecepFocoDoDia({
       (a.total_price ?? 0) > 0 &&
       (a.status === 'confirmed' || a.status === 'completed'),
   )
+  // charged_total = valor da comanda quando tem produto (combo / vendido
+  // junto); total_price sozinho é só o serviço (Eduardo 22/07)
   const aReceberTotal = pagamentosPendentes.reduce(
-    (sum, a) => sum + (a.total_price || 0),
+    (sum, a) => sum + (a.charged_total ?? a.total_price ?? 0),
     0,
   )
 

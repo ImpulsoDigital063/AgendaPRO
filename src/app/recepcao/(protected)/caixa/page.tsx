@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import CaixaView from '@/components/recepcao/CaixaView'
 import { IconWallet } from '@/components/ui/Icon'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
@@ -67,10 +68,18 @@ export default async function RecepcaoCaixaPage() {
     { auth: { persistSession: false } },
   )
   const apptDisc = await getApptDiscountMap(sbAdmin, (paidToday ?? []).map((a) => a.invoice_item_id))
-  const todayAppts: AppointmentForCash[] = (paidToday ?? []).map((a) => ({
-    ...a,
-    discount_cents: Math.round((apptDisc[a.id as string] ?? 0) * 100),
-  }))
+  // Valor cobrado (comanda com produto: combo / vendido junto). Sem isso o
+  // caixa da recepção fechava por baixo — nem as linhas nem os totais somavam
+  // produto (Eduardo 22/07). Lote, via service-role (recep não lê invoices).
+  const apptCharged = await getApptChargedMap(sbAdmin, (paidToday ?? []).map((a) => a.id as string))
+  const todayAppts: AppointmentForCash[] = (paidToday ?? []).map((a) => {
+    const c = apptCharged[a.id as string]
+    return {
+      ...a,
+      discount_cents: Math.round((apptDisc[a.id as string] ?? 0) * 100),
+      charged_total: c && c.produtos.length > 0 ? c.charged : null,
+    }
+  })
 
   // Resumo do dia · atendimentos no dia + a receber (contexto antes de fechar)
   const { data: allTodayAppts } = await supabase
@@ -81,9 +90,15 @@ export default async function RecepcaoCaixaPage() {
     .not('status', 'in', '(cancelled,no_show)')
 
   const todayCount = (allTodayAppts ?? []).length
-  const pendingValueCents = (allTodayAppts ?? [])
-    .filter((a) => !a.paid_at)
-    .reduce((s, a) => s + Math.round((Number(a.total_price) || 0) * 100), 0)
+  // "A receber" também precisa do valor da comanda, senão promete menos do que
+  // vai entrar quando o atendimento tem produto.
+  const pendentes = (allTodayAppts ?? []).filter((a) => !a.paid_at)
+  const pendChargedMap = await getApptChargedMap(sbAdmin, pendentes.map((a) => a.id as string))
+  const pendingValueCents = pendentes.reduce((s, a) => {
+    const c = pendChargedMap[a.id as string]
+    const valor = c && c.produtos.length > 0 ? c.charged : Number(a.total_price) || 0
+    return s + Math.round(valor * 100)
+  }, 0)
   const pendingCount = (allTodayAppts ?? []).filter((a) => !a.paid_at).length
 
   // Recepção só vê dado DIÁRIO · não recebe histórico de fechamentos

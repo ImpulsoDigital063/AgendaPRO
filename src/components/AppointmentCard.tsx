@@ -22,7 +22,14 @@ type Props = {
     appointment_date: string
     status: string
     service_name?: string | null
+    /** SÓ os serviços · é a base da comissão. Não use pra exibir nem cobrar. */
     total_price?: number | null
+    /**
+     * O que a cliente PAGA (invoices.total) quando a comanda tem produto —
+     * combo ou vendido junto. Vem em lote de getApptChargedMap na página que
+     * monta a lista (evita N+1). Ausente = atendimento só de serviço.
+     */
+    charged_total?: number | null
     paid_at?: string | null
     payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
     professional?: { name: string } | null
@@ -38,6 +45,10 @@ type Props = {
 }
 
 export default function AppointmentCard({ appointment, showDate, nextUp, punctualityBonus = 10 }: Props) {
+  // Exibir e cobrar usam o valor da COMANDA quando há produto (combo / vendido
+  // junto); total_price sozinho é só o serviço e mostrava R$195 numa conta de
+  // R$290 — inclusive no modal de pagamento (Eduardo 22/07).
+  const valorCobrado = appointment.charged_total ?? appointment.total_price
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
@@ -391,9 +402,9 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
               </span>
             )}
           </div>
-          {appointment.total_price != null && appointment.total_price > 0 && (
+          {valorCobrado != null && valorCobrado > 0 && (
             <p className="text-sm font-bold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
-              {appointment.total_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {valorCobrado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           )}
         </div>
@@ -615,7 +626,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
       <PaymentMethodModal
         open={paymentModal}
         clientName={appointment.client_name}
-        totalPrice={appointment.total_price}
+        totalPrice={valorCobrado}
         withPunctualityBonus={withPunctuality}
         punctualityPoints={punctualityBonus}
         loading={loading}

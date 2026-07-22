@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { IconSearch, IconCalendar, IconDollar } from '@/components/ui/Icon'
+import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 
 type Professional = { id: string; name: string }
 
@@ -14,6 +15,8 @@ type AppointmentRow = {
   client_phone: string | null
   service_name: string | null
   total_price: number | null
+  /** Valor da comanda quando tem produto (combo / vendido junto). */
+  charged_total?: number | null
   status: string
   paid_at: string | null
   payment_method: string | null
@@ -78,13 +81,22 @@ export default function ConsultasView({ businessId, professionals }: Props) {
     }
 
     const { data } = await q
-    setResults((data ?? []) as AppointmentRow[])
+    const rows = (data ?? []) as AppointmentRow[]
+    // Valor cobrado (comanda com produto: combo / vendido junto) em LOTE —
+    // total_price sozinho é só o serviço e as consultas mostravam menos do que
+    // a cliente pagou (Eduardo 22/07).
+    const charged = await getApptChargedMap(supabase, rows.map((r) => r.id))
+    setResults(rows.map((r) => {
+      const c = charged[r.id]
+      return { ...r, charged_total: c && c.produtos.length > 0 ? c.charged : null }
+    }))
     setLoading(false)
   }
 
   const profMap = new Map(professionals.map((p) => [p.id, p.name]))
-  const totalValor = results.reduce((sum, a) => sum + (a.total_price || 0), 0)
-  const totalPago = results.filter((a) => a.paid_at).reduce((sum, a) => sum + (a.total_price || 0), 0)
+  const valorDe = (a: AppointmentRow) => a.charged_total ?? a.total_price ?? 0
+  const totalValor = results.reduce((sum, a) => sum + valorDe(a), 0)
+  const totalPago = results.filter((a) => a.paid_at).reduce((sum, a) => sum + valorDe(a), 0)
 
   return (
     <div className="relative max-w-lg md:max-w-7xl mx-auto px-4 md:px-6 pb-32 space-y-4">
@@ -230,13 +242,13 @@ export default function ConsultasView({ businessId, professionals }: Props) {
                   <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
                     {a.service_name ?? '—'}
                   </p>
-                  {a.total_price != null && (
+                  {valorDe(a) > 0 && (
                     <span
                       className="text-sm font-bold tabular-nums inline-flex items-center gap-1"
                       style={{ color: a.paid_at ? 'var(--admin-success)' : 'var(--admin-text)' }}
                     >
                       <IconDollar size={12} />
-                      {a.total_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {valorDe(a).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       {a.paid_at && (
                         <span className="text-[10px] ml-1" style={{ color: 'var(--admin-text-faded)' }}>
                           via {a.payment_method ?? '—'}

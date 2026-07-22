@@ -23,6 +23,7 @@ type ApptDetail = {
   paid_at: string | null
   payment_method: string | null
   total_price: number | null
+
   notes: string | null
   client_name: string | null
   client_phone: string | null
@@ -49,6 +50,9 @@ const STATUS_COLOR: Record<string, string> = {
   no_show: '#94A3B8',
 }
 
+/** Item de produto lançado na comanda do atendimento (combo / vendido junto). */
+type ComandaProduto = { description: string; quantity: number; unit_price: number; total: number }
+
 function formatBRL(v: number | null): string {
   if (v == null) return 'R$ 0,00'
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -64,6 +68,10 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
   const [data, setData] = useState<ApptDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [portalReady, setPortalReady] = useState(false)
+  // Produtos lançados na comanda deste atendimento (combo ou "vendido junto").
+  // appointments.total_price guarda SÓ o serviço (é a base da comissão), então
+  // sem isso o drawer mostrava R$195 num combo que a cliente paga R$290.
+  const [comanda, setComanda] = useState<{ produtos: ComandaProduto[]; total: number | null }>({ produtos: [], total: null })
 
   useEffect(() => { setPortalReady(true) }, [])
 
@@ -90,6 +98,44 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
         setData(d as ApptDetail | null)
         setLoading(false)
       })
+  }, [appointmentId])
+
+  // Comanda do atendimento · pega os PRODUTOS e o total real cobrado.
+  useEffect(() => {
+    if (!appointmentId) return
+    let cancelled = false
+    const sb = createClient()
+    ;(async () => {
+      // zera antes de buscar · evita mostrar o produto do atendimento anterior
+      setComanda({ produtos: [], total: null })
+      // invoice do atendimento (o trigger cria uma por atendimento)
+      const { data: ref } = await sb
+        .from('invoice_items')
+        .select('invoice_id')
+        .eq('reference_id', appointmentId)
+        .eq('item_type', 'appointment')
+        .maybeSingle()
+      if (cancelled || !ref?.invoice_id) return
+
+      const [{ data: itens }, { data: inv }] = await Promise.all([
+        sb.from('invoice_items')
+          .select('description, quantity, unit_price, total, item_type')
+          .eq('invoice_id', ref.invoice_id)
+          .eq('item_type', 'product'),
+        sb.from('invoices').select('total').eq('id', ref.invoice_id).maybeSingle(),
+      ])
+      if (cancelled) return
+      setComanda({
+        produtos: (itens ?? []).map((i) => ({
+          description: i.description as string,
+          quantity: Number(i.quantity ?? 0),
+          unit_price: Number(i.unit_price ?? 0),
+          total: Number(i.total ?? 0),
+        })),
+        total: inv?.total != null ? Number(inv.total) : null,
+      })
+    })()
+    return () => { cancelled = true }
   }, [appointmentId])
 
   useEffect(() => {
@@ -215,20 +261,52 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
                 <Row icon={<IconUser size={16} />} label="Cliente" value={data.client_name ?? customer?.name ?? '—'} sub={data.client_phone ?? customer?.phone ?? undefined} />
                 <Row icon={<IconCalendar size={16} />} label="Quando" value={<span className="capitalize">{formatDateLong(data.appointment_date)}</span>} sub={`${data.start_time.slice(0, 5)} até ${data.end_time.slice(0, 5)}`} />
                 <Row icon={<IconClock size={16} />} label="Profissional" value={prof?.name ?? '—'} />
-                <Row icon={<IconDollar size={16} />} label="Valor" value={<span className="font-bold text-lg" style={{ color: 'var(--admin-text)' }}>{formatBRL(data.total_price)}</span>} sub={data.payment_method ?? undefined} />
+                {(() => {
+                  // Valor exibido = o que a cliente PAGA (total da comanda).
+                  // total_price sozinho é só o serviço — num combo isso mostrava
+                  // R$195 numa conta de R$290 (Eduardo 21/07).
+                  const temProduto = comanda.produtos.length > 0
+                  const valorCobrado = temProduto && comanda.total != null ? comanda.total : data.total_price
+                  return (
+                    <Row
+                      icon={<IconDollar size={16} />}
+                      label="Valor"
+                      value={<span className="font-bold text-lg" style={{ color: 'var(--admin-text)' }}>{formatBRL(valorCobrado)}</span>}
+                      sub={data.payment_method ?? undefined}
+                    />
+                  )
+                })()}
                 {(() => {
                   const svcs = (data.appointment_services ?? []).filter((s) => s.service_name)
-                  if (svcs.length < 2) return null
+                  const prods = comanda.produtos
+                  // Detalha quando há produto (combo / vendido junto) OU mais de
+                  // um serviço. Atendimento simples continua sem lista.
+                  if (prods.length === 0 && svcs.length < 2) return null
                   return (
                     <div className="pt-3 border-t" style={{ borderColor: 'var(--admin-divider)' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
-                        Serviços
+                        {prods.length > 0 ? 'O que está incluso' : 'Serviços'}
                       </p>
                       <div className="space-y-1.5">
-                        {svcs.map((s, i) => (
-                          <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                        {(svcs.length > 0
+                          ? svcs
+                          : [{ service_name: data.service_name, price: data.total_price }]
+                        ).map((s, i) => (
+                          <div key={`s${i}`} className="flex items-center justify-between gap-2 text-sm">
                             <span className="truncate" style={{ color: 'var(--admin-text-2)' }}>{s.service_name}</span>
                             <span className="font-semibold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{formatBRL(s.price)}</span>
+                          </div>
+                        ))}
+                        {prods.map((p, i) => (
+                          <div key={`p${i}`} className="flex items-center justify-between gap-2 text-sm">
+                            <span className="truncate" style={{ color: 'var(--admin-text-2)' }}>
+                              {p.quantity !== 1 && (
+                                <span className="tabular-nums font-semibold" style={{ color: 'var(--admin-accent)' }}>
+                                  {p.quantity.toLocaleString('pt-BR')}× </span>
+                              )}
+                              {p.description}
+                            </span>
+                            <span className="font-semibold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{formatBRL(p.total)}</span>
                           </div>
                         ))}
                       </div>

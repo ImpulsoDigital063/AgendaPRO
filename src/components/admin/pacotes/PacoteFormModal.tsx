@@ -92,8 +92,15 @@ export default function PacoteFormModal({ initial, services, products, loading, 
     setLocalError(null)
     const n = name.trim()
     if (!n) { setLocalError('Nome obrigatório'); return }
-    const p = Number(price)
+    // Preço em branco = cobra a soma dos itens (sem desconto). Antes virava
+    // Number('') = 0 e criava um combo de R$0,00 — que cobraria zero da cliente
+    // E baixaria o estoque do material (Eduardo 22/07).
+    const p = price.trim() === '' ? itemsTotal : Number(price)
     if (!Number.isFinite(p) || p < 0) { setLocalError('Preço inválido'); return }
+    if (p === 0) {
+      setLocalError('O pacote ficaria R$ 0,00. Informe o preço, ou preencha o valor dos itens pra ele calcular sozinho.')
+      return
+    }
     if (validityKind !== 'none') {
       const v = Number(validityValue)
       if (!Number.isFinite(v) || v <= 0) { setLocalError('Informe a duração da validade'); return }
@@ -138,7 +145,13 @@ export default function PacoteFormModal({ initial, services, products, loading, 
     const q = Number(it.quantity) || 0
     return sum + (Number.isFinite(unit) ? unit : 0) * q
   }, 0)
-  const desconto = Math.max(0, itemsTotal - (Number(price) || 0))
+  // Preço efetivo = o que a cliente vai pagar. Em branco → soma dos itens
+  // (mesma regra do submit), senão o resumo mostrava "desconto de 100%".
+  const precoEfetivo = price.trim() === '' ? itemsTotal : (Number(price) || 0)
+  const desconto = Math.max(0, itemsTotal - precoEfetivo)
+  // Combo mais caro que a soma dos itens (ex: material vale mais dentro do
+  // combo). Não é desconto — é acréscimo, e o resumo precisa dizer isso.
+  const acrescimo = Math.max(0, precoEfetivo - itemsTotal)
 
   return createPortal(
     <div
@@ -203,9 +216,12 @@ export default function PacoteFormModal({ initial, services, products, loading, 
               step={0.01}
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="0,00"
+              placeholder={itemsTotal > 0 ? `Em branco = ${itemsTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (soma dos itens)` : '0,00'}
               className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums"
             />
+            <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+              É o que a cliente paga. Deixe em branco pra cobrar a soma dos itens, ou coloque um valor menor pra dar desconto.
+            </p>
           </div>
 
           {/* Validade */}
@@ -312,11 +328,16 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                   </div>
                   <div>
                     {idx === 0 && <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>Qtd</span>}
+                    {/* min=1 + step inteiro (padrão) bloqueavam FRAÇÃO — o combo
+                        da Izanara consome 0,5 pacote de cabelo e não podia nem
+                        ser cadastrado (Eduardo 22/07). */}
                     <input
                       type="number"
-                      min={1}
+                      min={0.001}
+                      step="any"
                       value={it.quantity}
                       onChange={(e) => updateItem(it.uid, { quantity: e.target.value })}
+                      title={isProduct ? 'Quanto desse produto sai do estoque por atendimento. Aceita fração: 0,5 = meio pacote' : 'Quantas vezes esse serviço entra no combo'}
                       className="admin-input w-full px-2 py-1.5 rounded-lg text-sm tabular-nums mt-1"
                     />
                   </div>
@@ -348,25 +369,33 @@ export default function PacoteFormModal({ initial, services, products, loading, 
             </div>
 
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
+              <strong>Qtd aceita fração</strong> — se o atendimento gasta meio pacote, escreva <strong>0,5</strong>. É essa quantidade que sai do estoque a cada atendimento.
+              <br />
               R$/un em branco = usa o preço padrão do item na venda. Produto do combo baixa do estoque na hora da venda.
             </p>
           </div>
 
           {/* Resumo do desconto */}
-          {itemsTotal > 0 && Number(price) > 0 && (
+          {itemsTotal > 0 && precoEfetivo > 0 && (
             <div className="rounded-xl p-3 text-sm space-y-1" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-divider)' }}>
               <div className="flex justify-between" style={{ color: 'var(--admin-text-mute)' }}>
                 <span>Soma cheia dos itens</span>
                 <span className="tabular-nums">{itemsTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
               <div className="flex justify-between font-semibold" style={{ color: desconto > 0 ? '#059669' : 'var(--admin-text)' }}>
-                <span>Pacote</span>
-                <span className="tabular-nums">{Number(price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <span>Pacote{price.trim() === '' && <span className="font-normal" style={{ color: 'var(--admin-text-faded)' }}> (calculado)</span>}</span>
+                <span className="tabular-nums">{precoEfetivo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
               {desconto > 0 && (
                 <div className="flex justify-between text-[12px]" style={{ color: '#059669' }}>
                   <span>Desconto pro cliente</span>
                   <span className="tabular-nums">− {desconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} ({((desconto / itemsTotal) * 100).toFixed(0)}%)</span>
+                </div>
+              )}
+              {acrescimo > 0 && (
+                <div className="flex justify-between text-[12px]" style={{ color: 'var(--admin-warn, #B45309)' }}>
+                  <span>Acima da soma dos itens</span>
+                  <span className="tabular-nums">+ {acrescimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} ({((acrescimo / itemsTotal) * 100).toFixed(0)}%)</span>
                 </div>
               )}
             </div>

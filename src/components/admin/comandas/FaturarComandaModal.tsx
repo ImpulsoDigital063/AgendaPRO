@@ -58,6 +58,8 @@ type Props = {
   onClose: () => void
 }
 
+import { getApptCharged, type ChargedProduct } from '@/lib/queries/appointment-charged-total'
+
 function brl(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -98,6 +100,10 @@ export default function FaturarComandaModal({
   const [canSellProducts, setCanSellProducts] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [cart, setCart] = useState<CartLine[]>([])
+  // Produtos JÁ lançados na comanda (combo aplicado no agendamento, ou produto
+  // vendido junto). Este modal nunca lia a comanda — mostrava só o serviço e
+  // fechava conta de R$290 dizendo R$195 (Eduardo 22/07).
+  const [jaNaComanda, setJaNaComanda] = useState<ChargedProduct[]>([])
   const [search, setSearch] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -140,6 +146,19 @@ export default function FaturarComandaModal({
       .finally(() => setLoadingProducts(false))
   }, [open])
 
+  // Produtos que já estão na comanda deste atendimento · sem isso o total
+  // exibido fica menor que o cobrado e o caixa não fecha.
+  useEffect(() => {
+    if (!open || !appointmentId) return
+    let cancelled = false
+    ;(async () => {
+      setJaNaComanda([])
+      const charged = await getApptCharged(supabase, appointmentId)
+      if (!cancelled) setJaNaComanda(charged?.produtos ?? [])
+    })()
+    return () => { cancelled = true }
+  }, [open, appointmentId, supabase])
+
   // Carrega serviços do negócio (pro picker de serviço extra)
   useEffect(() => {
     if (!open) return
@@ -154,7 +173,9 @@ export default function FaturarComandaModal({
 
   const subtotalProds = useMemo(() => cart.reduce((s, l) => s + l.quantity * l.unit_price, 0), [cart])
   const subtotalServices = useMemo(() => serviceCart.reduce((s, l) => s + l.unit_price, 0), [serviceCart])
-  const total = appointmentTotal + subtotalProds + subtotalServices
+  // Já lançado na comanda entra no total · é o que a cliente paga.
+  const subtotalJaNaComanda = useMemo(() => jaNaComanda.reduce((s, p) => s + p.total, 0), [jaNaComanda])
+  const total = appointmentTotal + subtotalJaNaComanda + subtotalProds + subtotalServices
 
   const svcDisponiveis = useMemo(() => {
     const q = svcSearch.trim().toLowerCase()
@@ -341,6 +362,35 @@ export default function FaturarComandaModal({
                 </p>
               </div>
             </div>
+
+            {/* JÁ na comanda · veio do combo aplicado no agendamento ou de
+                produto vendido junto. Não dá pra remover aqui (já está
+                lançado e o estoque já baixou) — pra mexer, abre a comanda. */}
+            {jaNaComanda.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+                  Já lançado nesta comanda
+                </p>
+                {jaNaComanda.map((p, idx) => (
+                  <div
+                    key={`ja-${idx}`}
+                    className="rounded-xl p-3 flex items-center justify-between gap-3"
+                    style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
+                  >
+                    <p className="text-sm font-semibold truncate min-w-0" style={{ color: 'var(--admin-text)' }}>
+                      {p.quantity !== 1 && (
+                        <span className="tabular-nums" style={{ color: 'var(--admin-accent)' }}>
+                          {p.quantity.toLocaleString('pt-BR')}× </span>
+                      )}
+                      {p.description}
+                    </p>
+                    <p className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
+                      {brl(p.total)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Produtos no carrinho · só plano Equipe */}
             {canSellProducts && cart.length > 0 && (

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { IconArrowLeft, IconCalendar, IconClock, IconDollar, IconUser } from '@/components/ui/Icon'
 import AppointmentActions from '@/components/admin/atendimentos/AppointmentActions'
 import ClientFichaSection from '@/components/admin/clientes/ClientFichaSection'
+import { getApptCharged } from '@/lib/queries/appointment-charged-total'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +69,12 @@ export default async function AppointmentDetailPage({
     .maybeSingle()
 
   if (!appt) notFound()
+
+  // Valor exibido/cobrado = o da comanda quando há produto (combo / vendido
+  // junto). Esta tela é a versão fullscreen do drawer e mostrava R$195 numa
+  // conta de R$290 — divergindo do próprio drawer (Eduardo 22/07).
+  const charged = await getApptCharged(supabase, appt.id as string)
+  const valorCobrado = charged && charged.produtos.length > 0 ? charged.charged : appt.total_price
 
   const prof = Array.isArray(appt.professional) ? appt.professional[0] : appt.professional
   const customer = Array.isArray(appt.customer) ? appt.customer[0] : appt.customer
@@ -150,10 +157,35 @@ export default async function AppointmentDetailPage({
             <Row icon={<IconUser size={16} />} label="Cliente" value={appt.client_name ?? customer?.name ?? '—'} sub={appt.client_phone ?? customer?.phone ?? undefined} />
             <Row icon={<IconCalendar size={16} />} label="Quando" value={<span className="capitalize">{formatDateLong(appt.appointment_date)}</span>} sub={`${appt.start_time.slice(0, 5)} até ${appt.end_time.slice(0, 5)}`} />
             <Row icon={<IconClock size={16} />} label="Profissional" value={prof?.name ?? '—'} />
-            <Row icon={<IconDollar size={16} />} label="Valor" value={<span className="font-bold text-lg" style={{ color: 'var(--admin-text)' }}>{formatBRL(appt.total_price)}</span>} sub={appt.payment_method ?? undefined} />
+            <Row icon={<IconDollar size={16} />} label="Valor" value={<span className="font-bold text-lg" style={{ color: 'var(--admin-text)' }}>{formatBRL(valorCobrado)}</span>} sub={appt.payment_method ?? undefined} />
+            {charged && charged.produtos.length > 0 && (
+              <div className="pt-3 border-t" style={{ borderColor: 'var(--admin-divider)' }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
+                  O que está incluso
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate" style={{ color: 'var(--admin-text-2)' }}>{appt.service_name ?? 'Serviço'}</span>
+                    <span className="font-semibold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{formatBRL(appt.total_price)}</span>
+                  </div>
+                  {charged.produtos.map((p, i) => (
+                    <div key={`p${i}`} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="truncate" style={{ color: 'var(--admin-text-2)' }}>
+                        {p.quantity !== 1 && (
+                          <span className="tabular-nums font-semibold" style={{ color: 'var(--admin-accent)' }}>
+                            {p.quantity.toLocaleString('pt-BR')}× </span>
+                        )}
+                        {p.description}
+                      </span>
+                      <span className="font-semibold flex-shrink-0" style={{ color: 'var(--admin-text)' }}>{formatBRL(p.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {(() => {
               const svcs = ((appt.appointment_services ?? []) as { service_name: string | null; price: number | null }[]).filter((s) => s.service_name)
-              if (svcs.length < 2) return null
+              if (svcs.length < 2 || (charged?.produtos.length ?? 0) > 0) return null
               return (
                 <div className="pt-3 border-t" style={{ borderColor: 'var(--admin-divider)' }}>
                   <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
@@ -196,7 +228,7 @@ export default async function AppointmentDetailPage({
             customerPhone={appt.client_phone ?? customer?.phone ?? null}
             businessId={business.id}
             startTime={appt.start_time as string}
-            totalPrice={appt.total_price}
+            totalPrice={valorCobrado}
             serviceName={appt.service_name as string | null}
             professionalId={prof?.id ?? null}
           />

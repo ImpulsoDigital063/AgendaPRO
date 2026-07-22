@@ -23,6 +23,12 @@ type AppointmentForCash = {
   client_name: string
   /** Desconto rateado da comanda (centavos) · caixa soma o líquido. */
   discount_cents?: number
+  /**
+   * O que a cliente PAGOU (invoices.total) quando a comanda tem produto —
+   * combo ou vendido junto. total_price sozinho é só o serviço, e o caixa
+   * fechava por baixo: R$195 numa conta de R$290 (Eduardo 22/07).
+   */
+  charged_total?: number | null
 }
 
 type ClosingRow = {
@@ -207,7 +213,11 @@ export default function CaixaView({
     for (const a of todayAppts) {
       // Líquido = bruto − desconto rateado da comanda. É o que entrou de fato no
       // caixa (Eduardo 03/06). Bruto inflava o esperado e gerava falta falsa.
-      const price = Math.round((a.total_price || 0) * 100) - (a.discount_cents || 0)
+      // charged_total já vem líquido de desconto da comanda (é invoices.total),
+      // então não abate discount_cents de novo — senão desconta em dobro.
+      const price = a.charged_total != null
+        ? Math.round(a.charged_total * 100)
+        : Math.round((a.total_price || 0) * 100) - (a.discount_cents || 0)
       t.gross += price
       switch (a.payment_method) {
         case 'pix':

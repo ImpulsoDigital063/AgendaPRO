@@ -5,6 +5,8 @@ type Appointment = {
   paid_at: string | null
   payment_method: string | null
   total_price: number | null
+  /** Valor da comanda quando tem produto (combo / vendido junto). */
+  charged_total?: number | null
 }
 
 /**
@@ -16,7 +18,7 @@ export default function RecepCaixaQuick({ todayAppts }: { todayAppts: Appointmen
 
   const totals = paid.reduce(
     (acc, a) => {
-      const price = a.total_price || 0
+      const price = a.charged_total ?? a.total_price ?? 0
       acc.gross += price
       if (a.payment_method === 'pix') acc.pix += price
       else if (a.payment_method === 'cash') acc.cash += price
