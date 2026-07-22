@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import { IconStar } from '@/components/ui/Icon'
 
@@ -35,13 +36,18 @@ export default async function TopClienteCard({ businessId }: { businessId: strin
 
   // λ.valor-liquido: gasto do cliente com cupom abatido (04/07/2026).
   const apptDisc = await getApptDiscountMap(supabase, (apptsRes.data ?? []).map((a) => a.invoice_item_id))
+  const charged = await getApptChargedMap(supabase, (apptsRes.data ?? []).map((a) => a.id as string))
 
   type Row = { name: string; total: number; count: number }
   const map = new Map<string, Row>()
   for (const a of apptsRes.data ?? []) {
     const name = (a.client_name || 'Sem nome').trim()
     const existing = map.get(name) ?? { name, total: 0, count: 0 }
-    existing.total += Math.max(0, (a.total_price ?? 0) - (apptDisc[a.id] ?? 0))
+    // quanto a CLIENTE gastou · inclui produto da comanda (combo / vendido junto)
+    const ch = charged[a.id]
+    existing.total += ch && ch.produtos.length > 0
+      ? ch.charged
+      : Math.max(0, (a.total_price ?? 0) - (apptDisc[a.id] ?? 0))
     existing.count += 1
     map.set(name, existing)
   }

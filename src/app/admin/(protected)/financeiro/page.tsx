@@ -4,6 +4,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import FinanceiroView, { type AppointmentRow } from '@/components/admin/FinanceiroView'
 import DashboardFinanceiro from '@/components/admin/financeiro/DashboardFinanceiro'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR } from '@/lib/date-br'
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -190,12 +191,30 @@ export default async function FinanceiroPage({
   // abatido) UMA vez · todas as somas, top profs/serviços, donut e buckets
   // abaixo saem líquidos sem tocar cada ponto. Desconto vive em
   // invoices.discount → getApptDiscountMap rateia (Eduardo 04/07/2026).
-  const [discCur, discPrev] = await Promise.all([
+  const [discCur, discPrev, chargedCur, chargedPrev] = await Promise.all([
     getApptDiscountMap(supabase, appointments.map((a) => a.invoice_item_id)),
     getApptDiscountMap(supabase, prevAppts.map((a) => a.invoice_item_id)),
+    // Valor cobrado quando a comanda tem produto (combo / vendido junto) —
+    // total_price é só o serviço. Normalizado aqui junto com o desconto, no
+    // mesmo ponto único (Eduardo 22/07).
+    getApptChargedMap(supabase, appointments.map((a) => a.id as string)),
+    getApptChargedMap(supabase, prevAppts.map((a) => a.id as string)),
   ])
-  for (const a of appointments) a.total_price = Math.max(0, Number(a.total_price ?? 0) - (discCur[a.id] ?? 0))
-  for (const a of prevAppts) a.total_price = Math.max(0, Number(a.total_price ?? 0) - (discPrev[a.id] ?? 0))
+  // charged (invoices.total) JÁ vem líquido de desconto — não abate de novo.
+  const normalizar = <T extends { id: string; total_price: number | null }>(
+    rows: T[],
+    disc: Record<string, number>,
+    charged: Record<string, { charged: number; produtos: unknown[] }>,
+  ) => {
+    for (const a of rows) {
+      const c = charged[a.id as string]
+      a.total_price = c && c.produtos.length > 0
+        ? c.charged
+        : Math.max(0, Number(a.total_price ?? 0) - (disc[a.id] ?? 0))
+    }
+  }
+  normalizar(appointments, discCur, chargedCur)
+  normalizar(prevAppts, discPrev, chargedPrev)
 
   // Cálculos · receita = appointments pagos + vendas de produto pagas
   // Receita real exclui cortesia (bonificação não conta como faturamento)

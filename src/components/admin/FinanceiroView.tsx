@@ -15,8 +15,14 @@ export type AppointmentRow = {
   start_time: string
   status: string
   service_name: string | null
+  /** SÓ os serviços · base da comissão. Não use pra exibir receita. */
   total_price: number | null
-  paid_at: string | null
+  /**
+   * O que a cliente PAGA (invoices.total) quando a comanda tem produto —
+   * combo ou vendido junto. Injetado em lote pela page.
+   */
+  charged_total?: number | null
+  paid_at?: string | null
   payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
   payment_card_type?: 'credit' | 'debit' | null
   payment_card_brand?: string | null
@@ -66,17 +72,22 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
   )
   const ativos = [...pagosReceita, ...naoPagos]
 
-  const totalRealizado = pagosReceita.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  const totalCortesia = cortesias.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  const totalPendente = naoPagos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  const totalFaturado = ativos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
+  // Receita = o que a cliente paga (comanda com produto: combo / vendido
+  // junto). total_price é só o serviço e deixava o faturamento por baixo.
+  const valorDe = (a: AppointmentRow) => a.charged_total ?? a.total_price ?? 0
+
+  const totalRealizado = pagosReceita.reduce((sum, a) => sum + valorDe(a), 0)
+  const totalCortesia = cortesias.reduce((sum, a) => sum + valorDe(a), 0)
+  const totalPendente = naoPagos.reduce((sum, a) => sum + valorDe(a), 0)
+  const totalFaturado = ativos.reduce((sum, a) => sum + valorDe(a), 0)
   const ticketMedio = ativos.length > 0 ? totalFaturado / ativos.length : 0
 
-  // Total de taxas (cartão · Pix com fee · etc) descontadas do bruto
+  // Total de taxas (cartão · Pix com fee · etc) descontadas do bruto.
+  // A maquininha cobra sobre o valor CHEIO da conta, não só sobre o serviço —
+  // calcular sobre total_price subestimava a taxa (Eduardo 22/07).
   const totalTaxas = pagosReceita.reduce((sum, a) => {
     if (!a.payment_fee_percent || a.payment_fee_percent <= 0) return sum
-    const price = a.total_price ?? 0
-    return sum + (price * a.payment_fee_percent) / 100
+    return sum + (valorDe(a) * a.payment_fee_percent) / 100
   }, 0)
   const totalLiquido = totalRealizado - totalTaxas
 
@@ -93,7 +104,7 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
     courtesy: { gross: totalCortesia, fees: 0, count: cortesias.length },
   }
   for (const a of pagosReceita) {
-    const price = a.total_price ?? 0
+    const price = valorDe(a)
     const fee = a.payment_fee_percent ? (price * a.payment_fee_percent) / 100 : 0
     let key: MethodKey
     if (a.payment_method === 'pix') key = 'pix'

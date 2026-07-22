@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import AnalisesView from '@/components/admin/AnalisesView'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 
 export default async function AnalisesPage({
   searchParams,
@@ -133,14 +134,29 @@ export default async function AnalisesPage({
 
   // λ.valor-liquido: receita (atual e anterior) com o cupom da comanda abatido
   // antes de passar pro AnalisesView (04/07/2026).
-  const [discCur, discPrev] = await Promise.all([
+  const [discCur, discPrev, chargedCur, chargedPrev] = await Promise.all([
     getApptDiscountMap(supabase, (currentRes.data ?? []).map((a) => (a as { invoice_item_id: string | null }).invoice_item_id)),
     getApptDiscountMap(supabase, (prevRes.data ?? []).map((a) => (a as { invoice_item_id: string | null }).invoice_item_id)),
+    // valor cobrado quando a comanda tem produto (combo / vendido junto)
+    getApptChargedMap(supabase, (currentRes.data ?? []).map((a) => (a as { id: string }).id)),
+    getApptChargedMap(supabase, (prevRes.data ?? []).map((a) => (a as { id: string }).id)),
   ])
-  const netAppt = (a: Record<string, unknown>, m: Record<string, number>) =>
-    ({ ...a, total_price: Math.max(0, Number(a.total_price ?? 0) - (m[a.id as string] ?? 0)) })
-  const currentNet = (currentRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discCur))
-  const prevNet = (prevRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discPrev))
+  // charged (invoices.total) já vem líquido — não abate desconto de novo.
+  const netAppt = (
+    a: Record<string, unknown>,
+    m: Record<string, number>,
+    c: Record<string, { charged: number; produtos: unknown[] }>,
+  ) => {
+    const ch = c[a.id as string]
+    return {
+      ...a,
+      total_price: ch && ch.produtos.length > 0
+        ? ch.charged
+        : Math.max(0, Number(a.total_price ?? 0) - (m[a.id as string] ?? 0)),
+    }
+  }
+  const currentNet = (currentRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discCur, chargedCur))
+  const prevNet = (prevRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discPrev, chargedPrev))
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>

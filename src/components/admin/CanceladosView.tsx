@@ -16,6 +16,8 @@ type Appointment = {
   status: 'cancelled' | 'no_show'
   service_name: string | null
   total_price: number | null
+  /** Valor da comanda quando tem produto (combo / vendido junto). */
+  charged_total?: number | null
   paid_at: string | null
   payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
   professional?: { id: string; name: string } | null
@@ -73,10 +75,10 @@ export default function CanceladosView({ appointments, periodo, businessName }: 
     const noShow = appointments.filter((a) => a.status === 'no_show')
     const totalLost = appointments
       .filter((a) => a.paid_at == null && a.total_price != null)
-      .reduce((sum, a) => sum + (a.total_price || 0), 0)
+      .reduce((sum, a) => sum + (a.charged_total ?? a.total_price ?? 0), 0)
     const totalRecovered = appointments
       .filter((a) => a.paid_at != null && a.total_price != null)
-      .reduce((sum, a) => sum + (a.total_price || 0), 0)
+      .reduce((sum, a) => sum + (a.charged_total ?? a.total_price ?? 0), 0)
     return {
       cancelled: cancelled.length,
       noShow: noShow.length,

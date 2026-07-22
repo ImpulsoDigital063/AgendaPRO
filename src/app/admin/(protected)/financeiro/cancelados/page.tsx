@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import CanceladosView from '@/components/admin/CanceladosView'
+import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 
 export default async function CanceladosPage({
   searchParams,
@@ -54,6 +55,14 @@ export default async function CanceladosPage({
     .order('appointment_date', { ascending: false })
     .order('start_time', { ascending: false })
 
+  // Perda estimada precisa do valor da comanda quando o atendimento cancelado
+  // tinha produto (combo / vendido junto) — senão subestima (Eduardo 22/07).
+  const chargedMap = await getApptChargedMap(supabase, (appointments ?? []).map((a) => a.id as string))
+  const appointmentsComValor = (appointments ?? []).map((a) => {
+    const c = chargedMap[a.id as string]
+    return { ...a, charged_total: c && c.produtos.length > 0 ? c.charged : null }
+  })
+
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -69,7 +78,7 @@ export default async function CanceladosPage({
         <SubPageHeader title="Cancelados" subtitle={business.name} back="/admin/financeiro" />
         <div className="max-w-lg mx-auto px-4 py-6">
           <CanceladosView
-            appointments={(appointments || []) as never[]}
+            appointments={appointmentsComValor as never[]}
             periodo={periodo}
             businessName={business.name}
           />

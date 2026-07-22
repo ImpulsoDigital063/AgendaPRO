@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import {
   CARD_BRANDS,
   CARD_BRAND_LABEL,
@@ -206,18 +207,26 @@ export default function MaquininhasTab({ businessId }: Props) {
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
     const { data: paid } = await supabase
       .from('appointments')
-      .select('total_price, payment_fee_percent')
+      .select('id, total_price, payment_fee_percent')
       .eq('business_id', businessId)
       .eq('payment_method', 'card')
       .gte('paid_at', firstDay)
       .not('paid_at', 'is', null)
 
     if (paid) {
+      // A maquininha cobra sobre o valor CHEIO passado no cartão, não só sobre
+      // o serviço. Com produto na comanda (combo / vendido junto), calcular
+      // sobre total_price subestimava a taxa (Eduardo 22/07).
+      const charged = await getApptChargedMap(
+        supabase,
+        (paid as Array<{ id: string }>).map((a) => a.id),
+      )
       let feesCents = 0
       let grossCents = 0
       let payments = 0
-      for (const a of paid as Array<{ total_price: number | null; payment_fee_percent: number | null }>) {
-        const price = a.total_price ?? 0
+      for (const a of paid as Array<{ id: string; total_price: number | null; payment_fee_percent: number | null }>) {
+        const c = charged[a.id]
+        const price = c && c.produtos.length > 0 ? c.charged : (a.total_price ?? 0)
         if (price <= 0) continue
         const rate = a.payment_fee_percent ?? 0
         feesCents += Math.round(price * rate)
