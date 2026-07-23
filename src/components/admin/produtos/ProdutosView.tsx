@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { IconPlus, IconAlert, IconInbox, IconDollar, IconChevronRight } from '@/components/ui/Icon'
+import { IconPlus, IconAlert, IconInbox, IconDollar, IconChevronRight, IconGift } from '@/components/ui/Icon'
 import { getAreaPrefix } from '@/lib/area-prefix'
 import NovoProdutoModal from './NovoProdutoModal'
 import ProdutoDrawer from './ProdutoDrawer'
@@ -239,6 +239,20 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
           >
             <IconInbox size={14} /> Entrada
           </Link>
+          {areaPrefix === '/admin' && (
+            <Link
+              href={`${areaPrefix}/produtos/combos`}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+              style={{
+                background: 'var(--admin-input-bg)',
+                color: 'var(--admin-text)',
+                border: '1px solid var(--admin-border)',
+              }}
+              title="Combos = serviço + produto vendidos juntos por um preço"
+            >
+              <IconGift size={14} /> Combos
+            </Link>
+          )}
           <Link
             href={`${areaPrefix}/produtos/vender`}
             className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"

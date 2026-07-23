@@ -56,21 +56,27 @@ function validateItems(raw: unknown): ItemInput[] | null {
 }
 
 // GET /api/admin/packages · lista pacotes do business (com items)
-export async function GET() {
+// ?kind=combo|pacote · filtra o tipo (combo=serviço+produto, pacote=multi-serviço)
+export async function GET(request: Request) {
   const supabase = await createClient()
   const businessId = await getBusinessId(supabase)
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
+  const kindFilter = new URL(request.url).searchParams.get('kind')
+
   const admin = getAdmin()
-  const { data: packages, error } = await admin
+  let q = admin
     .from('packages')
     .select(`
-      id, name, price, validity_kind, validity_value, active, description, created_at,
+      id, name, price, kind, validity_kind, validity_value, active, description, created_at,
       package_items (id, service_id, product_id, quantity, unit_price, services(name, price), products(name, price))
     `)
     .eq('business_id', businessId)
     .order('created_at', { ascending: false })
 
+  if (kindFilter === 'combo' || kindFilter === 'pacote') q = q.eq('kind', kindFilter)
+
+  const { data: packages, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ packages: packages ?? [] })
 }
@@ -87,6 +93,9 @@ export async function POST(request: Request) {
 
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const price = Number(body.price)
+  // kind separa combo (serviço+produto, venda imediata) de pacote (multi-serviço
+  // resgatável). Default 'combo' — é o que o form de Produtos cria.
+  const kind = body.kind === 'pacote' ? 'pacote' : 'combo'
   const validityKind = typeof body.validity_kind === 'string' ? body.validity_kind : 'none'
   const validityValue = body.validity_value != null ? Number(body.validity_value) : null
   const description = typeof body.description === 'string' ? body.description.trim() : null
@@ -101,6 +110,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'validity_value_required' }, { status: 400 })
   }
   if (!items) return NextResponse.json({ error: 'items_invalid', detail: 'Adicione ao menos 1 item (serviço ou produto) com quantidade > 0' }, { status: 400 })
+  // Pacote é só serviço (resgatável); produto não tem "sessão" pra resgatar.
+  if (kind === 'pacote' && items.some((it) => it.product_id)) {
+    return NextResponse.json({ error: 'pacote_sem_produto', detail: 'Pacote é só de serviços. Pra vender serviço + produto junto, use um Combo (em Produtos).' }, { status: 400 })
+  }
 
   const admin = getAdmin()
 
@@ -135,6 +148,7 @@ export async function POST(request: Request) {
       business_id: businessId,
       name,
       price,
+      kind,
       validity_kind: validityKind,
       validity_value: validityKind === 'none' ? null : validityValue,
       description,

@@ -35,6 +35,8 @@ type Props = {
   initialPackages: PackageRow[]
   services: Service[]
   products: Product[]
+  /** 'combo' = serviço+produto (em Produtos) · 'pacote' = multi-serviço resgatável (aba Pacotes). Default 'pacote'. */
+  kind?: 'combo' | 'pacote'
 }
 
 function brl(n: number) {
@@ -69,7 +71,9 @@ function sumItems(items: PackageItemRow[] | null): number {
   }, 0)
 }
 
-export default function PacotesView({ initialPackages, services, products }: Props) {
+export default function PacotesView({ initialPackages, services, products, kind = 'pacote' }: Props) {
+  const isCombo = kind === 'combo'
+  const noun = isCombo ? 'combo' : 'pacote'
   const router = useRouter()
   const [packages, setPackages] = useState(initialPackages)
   const [search, setSearch] = useState('')
@@ -84,7 +88,7 @@ export default function PacotesView({ initialPackages, services, products }: Pro
   )
 
   async function reload() {
-    const r = await fetch('/api/admin/packages')
+    const r = await fetch(`/api/admin/packages?kind=${kind}`)
     if (r.ok) {
       const j = await r.json()
       setPackages(j.packages ?? [])
@@ -95,7 +99,9 @@ export default function PacotesView({ initialPackages, services, products }: Pro
   async function handleSave(value: PackageFormValue) {
     setError(null)
     setLoading(true)
-    const body = JSON.stringify(value)
+    // Novo registro nasce com o kind da tela (combo em Produtos, pacote na aba).
+    // Editar não muda kind (o back-end mantém o que já está).
+    const body = JSON.stringify(editing ? value : { ...value, kind })
     const url = editing ? `/api/admin/packages/${editing.id}` : '/api/admin/packages'
     const method = editing ? 'PATCH' : 'POST'
     const r = await fetch(url, { method, headers: { 'content-type': 'application/json' }, body })
@@ -155,7 +161,7 @@ export default function PacotesView({ initialPackages, services, products }: Pro
             boxShadow: '0 4px 12px -4px rgba(59,130,246,0.5)',
           }}
         >
-          <IconPlus size={14} /> Novo pacote
+          <IconPlus size={14} /> Novo {noun}
         </button>
       </div>
 
@@ -182,11 +188,13 @@ export default function PacotesView({ initialPackages, services, products }: Pro
             <IconGift size={20} />
           </span>
           <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
-            {packages.length === 0 ? 'Nenhum pacote foi cadastrado' : 'Nenhum pacote encontrado pra essa busca'}
+            {packages.length === 0 ? `Nenhum ${noun} foi cadastrado` : `Nenhum ${noun} encontrado pra essa busca`}
           </p>
           {packages.length === 0 && (
             <p className="text-xs mt-2 leading-relaxed max-w-md mx-auto" style={{ color: 'var(--admin-text-mute)' }}>
-              Crie combos de serviços com preço promocional e validade. Ex: <b>4 manutenções por R$ 280</b> (em vez de R$ 360) válido por 90 dias.
+              {isCombo
+                ? <>Combo = serviço + produto vendidos juntos por um preço. Ex: <b>trança + cabelo por R$ 290</b>. Aparece na hora de agendar e na venda.</>
+                : <>Pacote = vários serviços vendidos de uma vez, resgatados aos poucos. Ex: <b>4 manutenções por R$ 280</b> válido por 90 dias.</>}
             </p>
           )}
         </div>
@@ -278,7 +286,7 @@ export default function PacotesView({ initialPackages, services, products }: Pro
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-base pt-1 mt-1" style={{ borderTop: '1px solid var(--admin-divider)', color: 'var(--admin-text)' }}>
-                    <span>Pacote</span>
+                    <span>{isCombo ? 'Combo' : 'Pacote'}</span>
                     <span className="tabular-nums">{brl(pkg.price)}</span>
                   </div>
                   <p className="text-[10px] mt-1.5 text-right" style={{ color: 'var(--admin-text-faded)' }}>
@@ -318,8 +326,8 @@ export default function PacotesView({ initialPackages, services, products }: Pro
       {/* Modal confirmar delete */}
       <ConfirmActionModal
         open={!!confirmDelete}
-        title={`Remover "${confirmDelete?.name ?? 'pacote'}"?`}
-        message="Se este pacote já foi vendido a algum cliente, ele será arquivado (não some · histórico fica). Se nunca foi vendido, será removido de vez."
+        title={`Remover "${confirmDelete?.name ?? noun}"?`}
+        message={`Se este ${noun} já foi vendido a algum cliente, ele será arquivado (não some · histórico fica). Se nunca foi vendido, será removido de vez.`}
         confirmLabel="Sim, remover"
         cancelLabel="Voltar"
         tone="danger"

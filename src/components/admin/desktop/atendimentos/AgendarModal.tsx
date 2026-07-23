@@ -274,6 +274,7 @@ export default function AgendarModal({
       .select('id, name, price, package_items (service_id, product_id, quantity, unit_price, services (id, name, price, duration_minutes), products (id, name, variant, price, commission_type, commission_value))')
       .eq('business_id', businessId)
       .eq('active', true)
+      .eq('kind', 'combo')
       .order('name')
       .then(({ data }) => setCombos((data ?? []) as unknown as ComboRow[]))
     // eslint-disable-next-line react-hooks/exhaustive-deps

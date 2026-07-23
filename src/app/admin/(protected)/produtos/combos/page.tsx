@@ -6,7 +6,10 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 
 export const dynamic = 'force-dynamic'
 
-export default async function PacotesPage() {
+// Combos = serviço + produto vendidos juntos por um preço. Vivem DENTRO de
+// Produtos (Eduardo 23/07/2026). Reusa a PacotesView com kind='combo'.
+// Pacote (multi-serviço resgatável) fica na aba própria /admin/pacotes.
+export default async function CombosPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
@@ -32,7 +35,7 @@ export default async function PacotesPage() {
         package_items (id, service_id, product_id, quantity, unit_price, services(name, price), products(name, price))
       `)
       .eq('business_id', business.id)
-      .eq('kind', 'pacote')
+      .eq('kind', 'combo')
       .order('created_at', { ascending: false }),
     admin
       .from('services')
@@ -50,10 +53,10 @@ export default async function PacotesPage() {
 
   return (
     <main style={{ minHeight: '100svh' }}>
-      <SubPageHeader title="Pacotes" subtitle={business.name} back="/admin/configuracoes" />
+      <SubPageHeader title="Combos" subtitle={business.name} back="/admin/produtos" />
       <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8">
         <PacotesView
-          kind="pacote"
+          kind="combo"
           initialPackages={(packages ?? []) as unknown as Parameters<typeof PacotesView>[0]['initialPackages']}
           services={(services ?? []) as Parameters<typeof PacotesView>[0]['services']}
           products={(products ?? []) as Parameters<typeof PacotesView>[0]['products']}
