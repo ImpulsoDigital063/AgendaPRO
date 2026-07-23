@@ -177,6 +177,38 @@ export async function POST(request: Request) {
     })
   if (sessErr) return NextResponse.json({ error: sessErr.message }, { status: 500 })
 
+  // Comissão do resgate (Eduardo 24/07): quem executa recebe comissão sobre o
+  // VALOR POR SESSÃO que a cliente pagou (preço do pacote ÷ nº total de sessões),
+  // não sobre a tabela. Na comanda o serviço entra R$0 (não re-entra no caixa ·
+  // já foi pago na venda do pacote), então gravamos essa base no total_price do
+  // ATENDIMENTO resgatado — é dali que TODA tela de Remunerações tira a comissão
+  // (base × pct). Atendimento em comanda já é excluído do faturamento direto
+  // (invoice_item_id não-nulo), então isso NÃO vira receita, só comissão.
+  // Incrementa (não seta) pra cobrir qty>1: o modal chama 1×/sessão em série.
+  if (appointmentId) {
+    const [{ data: cpForPrice }, { data: bals }] = await Promise.all([
+      admin.from('customer_packages').select('price_paid').eq('id', balance.customer_package_id).maybeSingle(),
+      admin.from('customer_package_balances').select('sessions_total, service_id').eq('customer_package_id', balance.customer_package_id),
+    ])
+    const totalSessions = (bals ?? [])
+      .filter((b) => b.service_id) // só serviço tem "sessão"; produto é entregue
+      .reduce((s, b) => s + Number(b.sessions_total ?? 0), 0)
+    const perSession = totalSessions > 0 ? Number(cpForPrice?.price_paid ?? 0) / totalSessions : 0
+    if (perSession > 0) {
+      const { data: ap } = await admin.from('appointments').select('total_price, paid_at').eq('id', appointmentId).maybeSingle()
+      // paid_at: o resgate JÁ foi pago na venda do pacote, então a comissão é
+      // reconhecida AGORA (Remunerações filtra por paid_at). payment_method fica
+      // null (não foi cash/pix/card · o dinheiro entrou lá atrás). Se a comanda
+      // tiver outros itens e for paga, o /pay reescreve paid_at — sem problema.
+      await admin.from('appointments')
+        .update({
+          total_price: Number(ap?.total_price ?? 0) + perSession,
+          paid_at: ap?.paid_at ?? new Date().toISOString(),
+        })
+        .eq('id', appointmentId)
+    }
+  }
+
   // Incrementa sessions_used
   const newUsed = balance.sessions_used + 1
   await admin

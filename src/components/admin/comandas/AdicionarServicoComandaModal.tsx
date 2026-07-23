@@ -167,6 +167,8 @@ export default function AdicionarServicoComandaModal({ invoiceId, businessId, cu
       setError(d.error ?? 'Erro ao adicionar serviço')
       return
     }
+    // Ids do atendimento/item que a rota acabou de criar · liga a sessão a eles.
+    const added = await r.json().catch(() => ({} as { appointment_id?: string; invoice_item_id?: string }))
     // Se selecionou pacote, registra consumo (1 sessão por unidade adicionada)
     if (selectedPackageBalanceId) {
       const qtyN = Math.max(1, Number(qty))
@@ -177,6 +179,8 @@ export default function AdicionarServicoComandaModal({ invoiceId, businessId, cu
           body: JSON.stringify({
             balance_id: selectedPackageBalanceId,
             professional_id: professionalId || null,
+            appointment_id: added.appointment_id ?? null,
+            invoice_item_id: added.invoice_item_id ?? null,
           }),
         })
         if (!cr.ok) {

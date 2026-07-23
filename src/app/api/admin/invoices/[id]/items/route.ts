@@ -89,6 +89,10 @@ export async function POST(
   const nowIso = new Date().toISOString()
   let lineTotal = 0
   let unit_price = 0
+  // Ids do atendimento/item criados no MODO SERVIÇO · devolvidos pra quem chama
+  // ligar a sessão de pacote resgatada a este atendimento (customer_package_sessions).
+  let createdApptId: string | null = null
+  let createdItemId: string | null = null
 
   if (product_id) {
     // ─── MODO PRODUTO ──────────────────────────────────────────────
@@ -296,6 +300,8 @@ export async function POST(
 
     // Linka bilateralmente
     await admin.from('appointments').update({ invoice_item_id: newItem.id }).eq('id', appt.id)
+    createdApptId = appt.id
+    createdItemId = newItem.id
   }
 
   // 4. Recalcular invoice (considera manual_discount geral pra não sobrescrever)
@@ -318,5 +324,5 @@ export async function POST(
     })
     .eq('id', invoiceId)
 
-  return NextResponse.json({ ok: true, new_total: total })
+  return NextResponse.json({ ok: true, new_total: total, appointment_id: createdApptId, invoice_item_id: createdItemId })
 }
