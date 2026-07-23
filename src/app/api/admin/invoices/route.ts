@@ -378,14 +378,32 @@ export async function POST(request: Request) {
     ))
   }
 
-  // 9. invoice_payments (se pagou)
+  // 9. Total autoritativo = soma de TODOS os invoice_items da comanda.
+  // BUG do combo (corrigido aqui): no Caminho A a comanda JÁ existia com o
+  // produto do combo dentro (serviço + material = R$290). O `total` derivado do
+  // request cobre só os itens NOVOS que o modal manda (o serviço, R$195); o
+  // produto do combo não vem no productSales porque já está na comanda. Pagar
+  // por esse `total` cobrava a comanda curta (R$195 num combo de R$290) e a
+  // etapa 9b logo abaixo "consertava" o invoices.total pra 290 — mascarando o
+  // furo. O valor pago tem que bater com a comanda inteira, então lemos os itens
+  // ANTES de inserir o pagamento e reusamos a mesma leitura na recalc (9b).
+  const { data: allItems } = await admin
+    .from('invoice_items')
+    .select('total, discount')
+    .eq('invoice_id', invoice.id)
+  const itemsSubtotal = (allItems ?? []).reduce((s, r) => s + Number(r.total ?? 0), 0)
+  const itemsDiscount = (allItems ?? []).reduce((s, r) => s + Number(r.discount ?? 0), 0)
+  // Fallback defensivo: se a leitura vier vazia (não deveria), cai no total do request.
+  const payableTotal = (allItems && allItems.length > 0) ? itemsSubtotal : total
+
+  // invoice_payments (se pagou) · amount = comanda inteira, nunca só os itens do request
   if (payment) {
     const { error: payErr } = await admin
       .from('invoice_payments')
       .insert({
         invoice_id: invoice.id,
         payment_method: payment.method,
-        amount: total,
+        amount: payableTotal,
         device_id: payment.device_id ?? null,
         card_brand: payment.card_brand ?? null,
         card_type: payment.card_type ?? null,
@@ -396,20 +414,14 @@ export async function POST(request: Request) {
     if (payErr) { await rollback(); return NextResponse.json({ error: payErr.message }, { status: 500 }) }
   }
 
-  // 9b. Recalcula subtotal/total da invoice (caminho A: pode ter mudado · caminho B: criou já com valor)
+  // 9b. Recalcula subtotal/total da invoice (reusa allItems lido acima)
   if (isExistingInvoice || productSales.length > 0 || extraServices.length > 0) {
-    const { data: allItems } = await admin
-      .from('invoice_items')
-      .select('total, discount')
-      .eq('invoice_id', invoice.id)
-    const newSubtotal = (allItems ?? []).reduce((s, r) => s + Number(r.total ?? 0), 0)
-    const newDiscount = (allItems ?? []).reduce((s, r) => s + Number(r.discount ?? 0), 0)
     await admin
       .from('invoices')
       .update({
-        subtotal: newSubtotal + newDiscount,
-        discount: newDiscount,
-        total: newSubtotal,
+        subtotal: itemsSubtotal + itemsDiscount,
+        discount: itemsDiscount,
+        total: itemsSubtotal,
         status: willClose ? 'closed' : 'open',
         closed_at: willClose ? nowIso : null,
         customer_id: customerId,
