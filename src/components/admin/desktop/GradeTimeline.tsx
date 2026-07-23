@@ -26,6 +26,7 @@ type ApptRow = {
   total_price: number | null
   paid_at: string | null
   payment_method: string | null
+  is_package?: boolean
 }
 
 const HOUR_START = 7 // 07:00 começa a grade (ajuste futuro: business_hours)
@@ -120,8 +121,16 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     }))
   // Quando filtrado pra um profissional (aba "Eu"), contagem/KPIs/grade
   // refletem só os appts dele.
-  const appts = ((apptsData ?? []) as ApptRow[])
+  const apptsBase = ((apptsData ?? []) as ApptRow[])
     .filter((a) => !onlyProfessionalId || a.professional_id === onlyProfessionalId)
+  // Resgates de pacote · marca os atendimentos que consumiram uma sessão pra a
+  // grade mostrar selo/cor (o valor não entra no caixa · já foi pago na venda).
+  const apptIds = apptsBase.map((a) => a.id)
+  const { data: pkgSessions } = apptIds.length
+    ? await sb.from('customer_package_sessions').select('appointment_id').in('appointment_id', apptIds)
+    : { data: [] as { appointment_id: string | null }[] }
+  const pkgSet = new Set((pkgSessions ?? []).map((s) => s.appointment_id).filter(Boolean) as string[])
+  const appts = apptsBase.map((a) => ({ ...a, is_package: pkgSet.has(a.id) }))
   const services = (servicesData ?? []) as { id: string; name: string; price: number | null; duration_minutes: number | null }[]
   const blocks = (blocksData ?? []) as BlockRow[]
 

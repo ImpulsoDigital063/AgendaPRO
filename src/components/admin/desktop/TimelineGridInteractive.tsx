@@ -21,6 +21,7 @@ type Appt = {
   service_name: string | null
   total_price: number | null
   paid_at: string | null
+  is_package?: boolean
 }
 type Service = { id: string; name: string; price: number | null; duration_minutes: number | null }
 
@@ -903,6 +904,22 @@ export default function TimelineGridInteractive({
                           {!isTiny && !isCompact && (
                             <span className="text-[11px] truncate" style={{ color: 'var(--admin-text-mute)' }}>
                               {a.service_name ?? '—'}
+                            </span>
+                          )}
+                          {/* Resgate de pacote · selo curto + cor de destaque. O valor
+                              não entra no caixa (já pago na venda do pacote) · a comissão
+                              da profissional sai na Remunerações. */}
+                          {!isTiny && a.is_package && (
+                            <span
+                              className={`text-[9px] font-bold uppercase inline-block w-fit px-1.5 py-0.5 rounded ${isCompact ? 'mt-0.5' : 'mt-1'}`}
+                              style={{
+                                background: 'color-mix(in srgb, var(--admin-accent) 88%, black)',
+                                color: '#fff',
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25)',
+                              }}
+                              title="Sessão de pacote resgatada · não entra no caixa"
+                            >
+                              Pacote
                             </span>
                           )}
                           {/* Chips só aparecem em cards com folga (>=45min) · evita poluir tiny/compact */}
