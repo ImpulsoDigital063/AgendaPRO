@@ -4,11 +4,13 @@ import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import DetalheCalculoLink from '@/components/admin/remuneracoes/DetalheCalculoLink'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { getPackageSessionCommission } from '@/lib/queries/package-session-commission'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Dinheiro',
   pix: 'Pix',
+  package: 'Pacote (resgate)',
   credit: 'Cartão de Crédito',
   credit_card: 'Cartão de Crédito',
   debit: 'Cartão de Débito',
@@ -137,6 +139,24 @@ export default async function RemuneracaoDetalhePage({
       paymentMethod: a.payment_method as string | null,
     }
   })
+
+  // Resgates de pacote do período · comissão sobre valor/sessão (o atendimento
+  // tem total_price 0, então não vem pela query de appts acima). Base × pct.
+  const sessionComm = await getPackageSessionCommission(sb, business.id, from, to)
+  for (const l of (sessionComm[professionalId]?.lines ?? [])) {
+    const remuneracao = (l.base * pct) / 100
+    rows.push({
+      date: l.date,
+      description: `${l.serviceName} · resgate de pacote`,
+      client: l.packageName,
+      valorBase: l.base,
+      valorRemuneracao: remuneracao,
+      valorPago: 0,
+      pagamentoPendente: remuneracao,
+      paymentMethod: 'package',
+    })
+  }
+  rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
   const totalQty = rows.length
   const totalBase = rows.reduce((s, r) => s + r.valorBase, 0)

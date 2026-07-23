@@ -6,6 +6,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import { IconChevronLeft, IconChevronRight } from '@/components/ui/Icon'
 import RemuneracoesTable, { type ProfRow } from '@/components/admin/remuneracoes/RemuneracoesTable'
 import { getApptDiscountMap } from '@/lib/commission-discount'
+import { getPackageSessionCommission } from '@/lib/queries/package-session-commission'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 function formatBRL(v: number): string {
@@ -128,6 +129,10 @@ export default async function RemuneracoesPage({
   // rateio do detalhe do profissional · usa invoice_item_id → invoices.discount.
   const apptDiscMap = await getApptDiscountMap(sb, (paidAppts ?? []).map((a) => a.invoice_item_id))
 
+  // Comissão do RESGATE de pacote (base = valor/sessão pago) · somada à parte
+  // porque o resgate entra R$0 na comanda (o total_price do atendimento é 0).
+  const sessionCommMap = await getPackageSessionCommission(sb, business.id, from, to)
+
   // BLOCO 3 · TODOS os profs aparecem · recep (contratada) sem comissão · só salário
 
   // Comissão por venda de produto · respeita snapshot do sale_item
@@ -178,7 +183,9 @@ export default async function RemuneracoesPage({
       : (paidAppts ?? [])
           .filter((a) => a.professional_id === p.id)
           .reduce((s, a) => s + Math.max(0, Number(a.total_price ?? 0) - (apptDiscMap[a.id] ?? 0)), 0)
-    const commissionFromAppts = isRecep ? 0 : (sumPaidAppts * pct) / 100
+    // Base do resgate de pacote entra na comissão de SERVIÇO (mesma %).
+    const sessionBase = isRecep ? 0 : (sessionCommMap[p.id]?.base ?? 0)
+    const commissionFromAppts = isRecep ? 0 : ((sumPaidAppts + sessionBase) * pct) / 100
     const commissionFromSales = isRecep
       ? 0
       : calcProductCommission(
