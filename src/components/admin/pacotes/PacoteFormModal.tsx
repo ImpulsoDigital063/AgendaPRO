@@ -32,6 +32,8 @@ type Props = {
   loading: boolean
   onClose: () => void
   onSubmit: (value: PackageFormValue) => void
+  /** 'combo' = serviço+produto · 'pacote' = só serviço (resgatável). Default 'pacote'. */
+  kind?: 'combo' | 'pacote'
 }
 
 const VALIDITY_OPTIONS: { value: PackageFormValue['validity_kind']; label: string }[] = [
@@ -48,7 +50,9 @@ function newUid() {
     : `${Date.now()}${Math.random()}`
 }
 
-export default function PacoteFormModal({ initial, services, products, loading, onClose, onSubmit }: Props) {
+export default function PacoteFormModal({ initial, services, products, loading, onClose, onSubmit, kind = 'pacote' }: Props) {
+  const isCombo = kind === 'combo'
+  const noun = isCombo ? 'combo' : 'pacote'
   const [portalReady, setPortalReady] = useState(false)
   const [name, setName] = useState(initial?.name ?? '')
   const [price, setPrice] = useState(initial?.price?.toString() ?? '')
@@ -176,10 +180,10 @@ export default function PacoteFormModal({ initial, services, products, loading, 
         >
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: 'var(--admin-text-faded)' }}>
-              {initial ? 'Editar pacote' : 'Novo pacote'}
+              {initial ? `Editar ${noun}` : `Novo ${noun}`}
             </p>
             <p className="text-lg font-bold" style={{ color: 'var(--admin-text)' }}>
-              Combo de serviços e produtos
+              {isCombo ? 'Combo de serviços e produtos' : 'Pacote de serviços'}
             </p>
           </div>
           <button
@@ -273,7 +277,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
           {/* Itens do pacote */}
           <div>
             <label className="admin-label flex items-center justify-between gap-2">
-              <span>Itens do pacote</span>
+              <span>Itens do {noun}</span>
               <span className="inline-flex items-center gap-3">
                 <button
                   type="button"
@@ -283,16 +287,19 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                 >
                   <IconPlus size={11} /> Serviço
                 </button>
-                <button
-                  type="button"
-                  onClick={() => addItem('product')}
-                  disabled={products.length === 0}
-                  className="text-[11px] font-bold inline-flex items-center gap-1 disabled:opacity-40"
-                  style={{ color: '#9333EA' }}
-                  title={products.length === 0 ? 'Cadastre produtos primeiro' : undefined}
-                >
-                  <IconPlus size={11} /> Produto
-                </button>
+                {/* Produto só no COMBO · pacote é só serviço (resgatável). */}
+                {isCombo && (
+                  <button
+                    type="button"
+                    onClick={() => addItem('product')}
+                    disabled={products.length === 0}
+                    className="text-[11px] font-bold inline-flex items-center gap-1 disabled:opacity-40"
+                    style={{ color: '#9333EA' }}
+                    title={products.length === 0 ? 'Cadastre produtos primeiro' : undefined}
+                  >
+                    <IconPlus size={11} /> Produto
+                  </button>
+                )}
               </span>
             </label>
 
@@ -369,9 +376,19 @@ export default function PacoteFormModal({ initial, services, products, loading, 
             </div>
 
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-              <strong>Qtd aceita fração</strong> — se o atendimento gasta meio pacote, escreva <strong>0,5</strong>. É essa quantidade que sai do estoque a cada atendimento.
-              <br />
-              R$/un em branco = usa o preço padrão do item na venda. Produto do combo baixa do estoque na hora da venda.
+              {isCombo ? (
+                <>
+                  <strong>Qtd aceita fração</strong> — se o atendimento gasta meio pacote de material, escreva <strong>0,5</strong>. É essa quantidade que sai do estoque a cada venda.
+                  <br />
+                  R$/un em branco = usa o preço padrão do item. O produto do combo baixa do estoque na hora da venda.
+                </>
+              ) : (
+                <>
+                  <strong>Qtd = nº de sessões</strong> daquele serviço no pacote. Ex: <strong>4</strong> manutenções. A cliente resgata uma por vez, respeitando a validade.
+                  <br />
+                  R$/un em branco = usa o preço padrão do serviço. O valor entra no caixa na venda; o resgate não re-entra, só registra a comissão.
+                </>
+              )}
             </p>
           </div>
 

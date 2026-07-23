@@ -314,6 +314,7 @@ export default function PacotesView({ initialPackages, services, products, kind 
       {/* Modal form (criar/editar) */}
       {showForm && (
         <PacoteFormModal
+          kind={kind}
           initial={editing}
           services={services}
           products={products}
