@@ -141,10 +141,18 @@ export const getAppointmentsToday = unstable_cache(
     // vendido junto). total_price é só o serviço — base da comissão — e os
     // cards mostravam ele, exibindo R$195 numa conta de R$290 (Eduardo 22/07).
     // Busca em LOTE aqui pra não virar 1 query por card.
-    const charged = await getApptChargedMap(admin, list.map((a) => a.id as string))
+    const apptIds = list.map((a) => a.id as string)
+    // charged_total (comanda com produto) + resgate de pacote (selo na agenda),
+    // ambos em LOTE pra não virar 1 query por card.
+    const [charged, { data: pkgSessions }] = await Promise.all([
+      getApptChargedMap(admin, apptIds),
+      admin.from('customer_package_sessions').select('appointment_id').in('appointment_id', apptIds),
+    ])
+    const pkgSet = new Set((pkgSessions ?? []).map((s) => s.appointment_id).filter(Boolean) as string[])
     return list.map((a) => ({
       ...a,
       charged_total: charged[a.id as string]?.charged ?? null,
+      is_package: pkgSet.has(a.id as string),
     }))
   },
   ['admin-appointments-today'],

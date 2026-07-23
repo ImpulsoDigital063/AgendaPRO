@@ -38,6 +38,9 @@ type Props = {
      *  card renderiza todos como pílulas (resolve B2 — sobrancelha
      *  somia quando service_name denormalizado só tem primeiro). */
     appointment_services?: { service_name: string | null }[] | null
+    /** Resgate de sessão de pacote · card mostra selo "Pacote". Vem em lote da
+     *  página que monta a lista (customer_package_sessions.appointment_id). */
+    is_package?: boolean
   }
   showDate?: boolean
   nextUp?: boolean
@@ -379,6 +382,18 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
                 </span>
               ))
             })()}
+            {appointment.is_package && (
+              <span
+                className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full inline-flex items-center flex-shrink-0"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-accent) 88%, black)',
+                  color: '#fff',
+                }}
+                title="Sessão de pacote resgatada · não entra no caixa"
+              >
+                Pacote
+              </span>
+            )}
             {canEditServices && (
               <button
                 type="button"
