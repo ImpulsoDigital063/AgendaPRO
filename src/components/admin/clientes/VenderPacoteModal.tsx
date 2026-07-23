@@ -72,6 +72,7 @@ export default function VenderPacoteModal({ customerId, customerName, onClose, o
           .from('packages')
           .select('id, name, price, validity_kind, validity_value, package_items(quantity, product_id, services(name), products(name))')
           .eq('active', true)
+          .eq('kind', 'pacote') // só pacote é vendido/resgatável · combo é aplicado no agendamento
           .order('name'),
         sb
           .from('professionals')
