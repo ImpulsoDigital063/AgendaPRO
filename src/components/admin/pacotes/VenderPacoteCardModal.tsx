@@ -11,7 +11,6 @@ import { IconClose, IconGift, IconSearch, IconPlus } from '@/components/ui/Icon'
 // não é vendido assim (aplica no agendamento).
 
 type CustomerHit = { id: string; name: string; phone: string | null }
-type Professional = { id: string; name: string }
 
 type Props = {
   packageId: string
@@ -36,8 +35,6 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
   const [creatingLoad, setCreatingLoad] = useState(false)
-  const [professionals, setProfessionals] = useState<Professional[]>([])
-  const [professionalId, setProfessionalId] = useState('')
   // Pacote é pago NA VENDA (não no resgate). Recebe aqui na hora e fecha a comanda.
   // 'open' = deixar em aberto pra fechar depois no Caixa (fiado/pagar depois).
   const [payMethod, setPayMethod] = useState<'pix' | 'cash' | 'card' | 'open'>('pix')
@@ -49,15 +46,6 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
     if (typeof document === 'undefined') return
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
-  }, [])
-
-  // profissionais (opcional · pra comissão da venda)
-  useEffect(() => {
-    (async () => {
-      const sb = createClient()
-      const { data } = await sb.from('professionals').select('id, name').eq('active', true).order('name')
-      setProfessionals((data ?? []) as Professional[])
-    })()
   }, [])
 
   // busca de cliente por nome (debounce). RLS escopa ao negócio.
@@ -131,7 +119,8 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
       body: JSON.stringify({
         package_id: packageId,
         customer_id: customer.id,
-        professional_id: professionalId || null,
+        // Sem profissional: a venda do pacote NÃO gera comissão. A comissão nasce
+        // no RESGATE, pra a profissional que executa a sessão (getPackageSessionCommission).
       }),
     })
     const j = await r.json().catch(() => ({}))
@@ -346,21 +335,6 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
                 A comanda fica aberta · você recebe depois no Caixa/Comandas.
               </p>
             )}
-          </div>
-
-          {/* Profissional (opcional) */}
-          <div>
-            <label className="admin-label">Profissional que vendeu (opcional · pra comissão)</label>
-            <select
-              value={professionalId}
-              onChange={(e) => setProfessionalId(e.target.value)}
-              className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
-            >
-              <option value="">Sem profissional</option>
-              {professionals.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
           </div>
 
           <div className="rounded-xl p-3 text-xs leading-relaxed"

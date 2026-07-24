@@ -14,6 +14,8 @@ export type ProfRow = {
   valorTotal: number
   /** Comissão originada de serviços (appointments pagos). */
   commissionFromAppts: number
+  /** Comissão originada de resgate de pacote (base = valor/sessão · pago na venda). */
+  commissionFromPackages: number
   /** Comissão originada de venda de produto (sales paid). */
   commissionFromSales: number
   /** Salários cadastrados no mês (pagos + pendentes). */
@@ -154,6 +156,7 @@ export default function RemuneracoesTable({ rows, monthIso, periodStart, periodE
                     {(() => {
                       const parts: string[] = []
                       if (r.commissionFromAppts > 0) parts.push(`serviços ${formatBRL(r.commissionFromAppts)}`)
+                      if (r.commissionFromPackages > 0) parts.push(`pacotes ${formatBRL(r.commissionFromPackages)}`)
                       if (r.commissionFromSales > 0) parts.push(`produtos ${formatBRL(r.commissionFromSales)}`)
                       if (r.salarios > 0) parts.push(`salário ${formatBRL(r.salarios)}`)
                       if (parts.length === 0) return null

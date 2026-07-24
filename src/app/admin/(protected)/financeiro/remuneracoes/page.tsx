@@ -183,9 +183,13 @@ export default async function RemuneracoesPage({
       : (paidAppts ?? [])
           .filter((a) => a.professional_id === p.id)
           .reduce((s, a) => s + Math.max(0, Number(a.total_price ?? 0) - (apptDiscMap[a.id] ?? 0)), 0)
-    // Base do resgate de pacote entra na comissão de SERVIÇO (mesma %).
+    // Comissão de serviço = só atendimentos pagos (sem o resgate de pacote).
+    const commissionFromAppts = isRecep ? 0 : (sumPaidAppts * pct) / 100
+    // Comissão de RESGATE de pacote · linha própria (mesma %, base = valor/sessão).
+    // Diferenciada do serviço porque nessa data NÃO há entrada de dinheiro (o
+    // pacote foi pago na venda) · Eduardo 24/07.
     const sessionBase = isRecep ? 0 : (sessionCommMap[p.id]?.base ?? 0)
-    const commissionFromAppts = isRecep ? 0 : ((sumPaidAppts + sessionBase) * pct) / 100
+    const commissionFromPackages = isRecep ? 0 : (sessionBase * pct) / 100
     const commissionFromSales = isRecep
       ? 0
       : calcProductCommission(
@@ -201,8 +205,8 @@ export default async function RemuneracoesPage({
       .filter((sa) => sa.professional_id === p.id && sa.paid === true)
       .reduce((s, sa) => s + Number(sa.amount ?? 0), 0)
 
-    // Valor Total = comissões + salário cadastrado (recep só tem salário)
-    const valorTotal = commissionFromAppts + commissionFromSales + salariosCadastrados
+    // Valor Total = comissões (serviço + pacote + produto) + salário cadastrado
+    const valorTotal = commissionFromAppts + commissionFromPackages + commissionFromSales + salariosCadastrados
 
     const pagoCommissoes = (payments ?? [])
       .filter((cp) => cp.professional_id === p.id)
@@ -220,6 +224,7 @@ export default async function RemuneracoesPage({
       is_receptionist: isRecep,
       valorTotal,
       commissionFromAppts,
+      commissionFromPackages,
       commissionFromSales,
       salarios: salariosCadastrados,
       pago,
@@ -230,6 +235,7 @@ export default async function RemuneracoesPage({
 
   const totalRemuneracoes = rows.reduce((s, r) => s + r.valorTotal, 0)
   const totalComissaoServicos = rows.reduce((s, r) => s + r.commissionFromAppts, 0)
+  const totalComissaoPacotes = rows.reduce((s, r) => s + r.commissionFromPackages, 0)
   const totalComissaoProdutos = rows.reduce((s, r) => s + r.commissionFromSales, 0)
   const totalSalarios = rows.reduce((s, r) => s + r.salarios, 0)
   const totalPago = rows.reduce((s, r) => s + r.pago, 0)
@@ -344,6 +350,16 @@ export default async function RemuneracoesPage({
                 <span style={{ color: 'var(--admin-text-mute)' }}>Comissão serviços</span>
                 <span className="tabular-nums" style={{ color: 'var(--admin-text-2)' }}>
                   {formatBRL(totalComissaoServicos)}
+                </span>
+              </div>
+            )}
+            {totalComissaoPacotes > 0 && (
+              <div className="flex justify-between text-[12px]">
+                <span style={{ color: 'var(--admin-text-mute)' }} title="Resgate de sessões de pacote · o dinheiro entrou na data da VENDA do pacote, não aqui">
+                  Comissão pacotes <span style={{ color: '#9333EA' }}>(resgate)</span>
+                </span>
+                <span className="tabular-nums" style={{ color: 'var(--admin-text-2)' }}>
+                  {formatBRL(totalComissaoPacotes)}
                 </span>
               </div>
             )}
