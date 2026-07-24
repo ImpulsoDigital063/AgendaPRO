@@ -18,7 +18,7 @@ type Props = {
   packageName: string
   price: number
   onClose: () => void
-  onSold: (customerName: string) => void
+  onSold: (customerName: string, paidMethod: 'pix' | 'cash' | 'card' | null, warn: string | null) => void
 }
 
 function brl(n: number) {
@@ -38,6 +38,9 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
   const [creatingLoad, setCreatingLoad] = useState(false)
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [professionalId, setProfessionalId] = useState('')
+  // Pacote é pago NA VENDA (não no resgate). Recebe aqui na hora e fecha a comanda.
+  // 'open' = deixar em aberto pra fechar depois no Caixa (fiado/pagar depois).
+  const [payMethod, setPayMethod] = useState<'pix' | 'cash' | 'card' | 'open'>('pix')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -121,6 +124,7 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
     setError(null)
     if (!customer) { setError('Escolha a cliente'); return }
     setSubmitting(true)
+    // 1) vende (cria customer_package + saldo + abre a comanda)
     const r = await fetch('/api/admin/packages/sell', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -130,13 +134,31 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
         professional_id: professionalId || null,
       }),
     })
-    setSubmitting(false)
+    const j = await r.json().catch(() => ({}))
     if (!r.ok) {
-      const j = await r.json().catch(() => ({}))
+      setSubmitting(false)
       setError(j.detail ?? j.error ?? 'Erro ao vender pacote')
       return
     }
-    onSold(customer.name)
+    // 2) recebe na hora (pacote é pago na venda) · a não ser que "em aberto"
+    if (payMethod !== 'open' && j.invoice_id) {
+      const pr = await fetch(`/api/admin/invoices/${j.invoice_id}/pay`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ method: payMethod }),
+      })
+      setSubmitting(false)
+      if (!pr.ok) {
+        // Venda OK, saldo já criado · só o recebimento falhou. Não perde a venda.
+        const pj = await pr.json().catch(() => ({}))
+        onSold(customer.name, null, `Vendido, mas o recebimento falhou (${pj.detail ?? pj.error ?? 'erro'}). Feche a comanda no Caixa.`)
+        return
+      }
+      onSold(customer.name, payMethod, null)
+      return
+    }
+    setSubmitting(false)
+    onSold(customer.name, null, null)
   }
 
   return createPortal(
@@ -289,6 +311,43 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
             )}
           </div>
 
+          {/* Forma de pagamento · o pacote é pago NA VENDA */}
+          <div>
+            <label className="admin-label">Pagamento (recebe agora · o pacote é pago na venda)</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {([
+                { key: 'pix', label: 'Pix' },
+                { key: 'cash', label: 'Dinheiro' },
+                { key: 'card', label: 'Cartão' },
+                { key: 'open', label: 'Em aberto' },
+              ] as const).map((opt) => {
+                const active = payMethod === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setPayMethod(opt.key)}
+                    className="py-2 rounded-xl text-xs font-bold transition-all"
+                    style={{
+                      background: active
+                        ? (opt.key === 'open' ? 'var(--admin-input-bg)' : 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)')
+                        : 'var(--admin-input-bg)',
+                      color: active ? (opt.key === 'open' ? 'var(--admin-text)' : '#fff') : 'var(--admin-text-mute)',
+                      border: active && opt.key === 'open' ? '1px solid var(--admin-text-mute)' : '1px solid var(--admin-border)',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+            {payMethod === 'open' && (
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+                A comanda fica aberta · você recebe depois no Caixa/Comandas.
+              </p>
+            )}
+          </div>
+
           {/* Profissional (opcional) */}
           <div>
             <label className="admin-label">Profissional que vendeu (opcional · pra comissão)</label>
@@ -307,7 +366,11 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
           <div className="rounded-xl p-3 text-xs leading-relaxed"
             style={{ background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', color: 'var(--admin-text-2)' }}
           >
-            <b style={{ color: 'var(--admin-accent)' }}>O que vai acontecer:</b> abre uma comanda nova com este pacote · você fecha ela com o pagamento (Pix/Cartão/Dinheiro) na tela de Comandas. A cliente já fica com o saldo de sessões pra resgatar no agendamento.
+            <b style={{ color: 'var(--admin-accent)' }}>O que vai acontecer:</b>{' '}
+            {payMethod === 'open'
+              ? <>abre uma comanda com este pacote e deixa em aberto · você recebe depois no Caixa/Comandas.</>
+              : <>a venda do pacote é <b>recebida agora</b> (entra no caixa de hoje) e a comanda já fecha paga.</>}
+            {' '}A cliente fica com o saldo de sessões pra <b>resgatar no agendamento</b> — no resgate o serviço entra R$0 (já foi pago aqui).
           </div>
 
           {error && (
@@ -339,7 +402,7 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
               color: '#fff',
             }}
           >
-            {submitting ? 'Vendendo...' : 'Confirmar venda'}
+            {submitting ? 'Processando...' : payMethod === 'open' ? 'Vender (em aberto)' : 'Receber e vender'}
           </button>
         </footer>
       </div>

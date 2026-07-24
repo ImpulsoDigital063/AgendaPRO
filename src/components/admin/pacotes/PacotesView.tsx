@@ -360,9 +360,14 @@ export default function PacotesView({ initialPackages, services, products, kind 
           packageName={selling.name}
           price={selling.price}
           onClose={() => setSelling(null)}
-          onSold={(clienteName) => {
+          onSold={(clienteName, paidMethod, warn) => {
+            const nome = selling.name
             setSelling(null)
-            setSoldMsg(`Pacote "${selling.name}" vendido pra ${clienteName}. Feche a comanda no Caixa/Comandas pra registrar o pagamento.`)
+            if (warn) { setSoldMsg(`Pacote "${nome}" — ${warn}`); return }
+            const label: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', card: 'Cartão' }
+            setSoldMsg(paidMethod
+              ? `Pacote "${nome}" vendido pra ${clienteName} e recebido (${label[paidMethod] ?? paidMethod}). Já entrou no caixa de hoje.`
+              : `Pacote "${nome}" vendido pra ${clienteName}. Comanda em aberto — receba no Caixa/Comandas.`)
           }}
         />
       )}
