@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendBarberNotification, sendClientBookingConfirmation } from '@/lib/email'
+import { sendWebPush } from '@/lib/notify-push'
 import { generateCancelToken } from '@/lib/token'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+
+// web-push (Node) — força runtime Node neste route handler.
+export const runtime = 'nodejs'
 
 function getAdminClient() {
   return createServiceClient(
@@ -88,6 +92,39 @@ export async function POST(req: NextRequest) {
       })
     } catch (err) {
       console.error('[notify] falha ao enviar email pro barbeiro:', err)
+    }
+  }
+
+  // Web Push pro dono/profissional (tolerante a falha, do lado do email).
+  // Destinatário = mesma lógica do email: profissional designado → dono.
+  // As assinaturas ficam em push_subscriptions (uma por device); envia pra
+  // todas e limpa as mortas (404/410). No-op se ninguém ativou / sem VAPID.
+  const recipientUserId = prof?.auth_user_id ?? appointment.business.owner_id
+  if (recipientUserId) {
+    try {
+      const { data: subs } = await admin
+        .from('push_subscriptions')
+        .select('endpoint, p256dh, auth')
+        .eq('user_id', recipientUserId)
+
+      if (subs && subs.length > 0) {
+        const hora = appointment.start_time.slice(0, 5)
+        const svc = serviceNames.length ? ` · ${serviceNames.join(', ')}` : ''
+        const payload = {
+          titulo: 'Novo agendamento',
+          corpo: `${appointment.client_name || 'Cliente'} às ${hora}${svc}`,
+          url: '/admin',
+        }
+        const results = await Promise.all(
+          subs.map((s: { endpoint: string; p256dh: string; auth: string }) => sendWebPush(s, payload))
+        )
+        const mortas = subs.filter((_, i) => results[i]?.gone).map((s) => s.endpoint)
+        if (mortas.length > 0) {
+          await admin.from('push_subscriptions').delete().in('endpoint', mortas)
+        }
+      }
+    } catch (err) {
+      console.error('[notify] falha ao enviar web push:', err)
     }
   }
 

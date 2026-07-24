@@ -10,7 +10,10 @@
 // rebaixar os chunks novos pós-deploy da nova UI. Sem isso, app instalado
 // (ex: Olímpio) servia chunk JS antigo + HTML novo → hidratação quebrava
 // e botões (ex: +Agendar) não respondiam. Bumpar SEMPRE que mudar UI/chunks.
-const STATIC_CACHE_VERSION = 'agendapro-static-v2'
+// v3 (24/07): bump ao adicionar os handlers de Web Push (push +
+// notificationclick) — força os SWs instalados a pegar a versão que sabe
+// mostrar notificação de agendamento novo pro dono.
+const STATIC_CACHE_VERSION = 'agendapro-static-v3'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
@@ -84,4 +87,46 @@ self.addEventListener('fetch', (event) => {
 
   // Pages HTML, API routes, /admin, /splash → passa direto pra rede
   // (sempre fresh — auth, dados dinamicos, server components)
+})
+
+// ============================================================
+// WEB PUSH (24/07) — notificacao de agendamento novo pro dono.
+// Portado do appdelyvery. O payload {titulo, corpo, url} vem do
+// servidor (web-push assinado com VAPID), disparado pela rota
+// /api/notify quando um cliente agenda pelo link publico.
+// ============================================================
+
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch (e) {
+    data = {}
+  }
+  const title = data.titulo || 'AgendaPRO'
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.corpo || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: [120, 60, 120],
+      data: { url: data.url || '/admin' },
+    })
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = (event.notification.data && event.notification.data.url) || '/admin'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ('focus' in c) {
+          c.navigate(url)
+          return c.focus()
+        }
+      }
+      return self.clients.openWindow(url)
+    })
+  )
 })

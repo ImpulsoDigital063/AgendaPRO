@@ -27,6 +27,7 @@ import {
   IconWallet,
 } from '@/components/ui/Icon'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
+import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import Image from 'next/image'
 
 function IconReceipt({ size = 20 }: { size?: number }) {
@@ -450,6 +451,10 @@ export default async function AdminInicioPage() {
             )}
           </div>
         </header>
+
+        {/* Ativar notificação de agendamento novo no celular do dono. Some
+            sozinha quando já ativou / não suporta / foi dispensada. */}
+        <PushEnableBanner />
 
         {/* Pedidos de pontos por avaliação · aprovar/recusar na hora · fica no
             TOPO (acima de atalhos e KPIs) pra não precisar rolar pra achar
