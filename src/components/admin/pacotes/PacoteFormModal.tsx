@@ -400,7 +400,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                 <span className="tabular-nums">{itemsTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
               <div className="flex justify-between font-semibold" style={{ color: desconto > 0 ? '#059669' : 'var(--admin-text)' }}>
-                <span>Pacote{price.trim() === '' && <span className="font-normal" style={{ color: 'var(--admin-text-faded)' }}> (calculado)</span>}</span>
+                <span>{isCombo ? 'Combo' : 'Pacote'}{price.trim() === '' && <span className="font-normal" style={{ color: 'var(--admin-text-faded)' }}> (calculado)</span>}</span>
                 <span className="tabular-nums">{precoEfetivo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
               {desconto > 0 && (
