@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
-import { IconClose, IconGift, IconSearch } from '@/components/ui/Icon'
+import { IconClose, IconGift, IconSearch, IconPlus } from '@/components/ui/Icon'
 
 // Venda de pacote PARTINDO do card (pacote fixo · escolhe a cliente). É o inverso
 // do VenderPacoteModal da ficha do cliente (cliente fixa · escolhe o pacote).
@@ -31,6 +31,11 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
   const [hits, setHits] = useState<CustomerHit[]>([])
   const [searching, setSearching] = useState(false)
   const [customer, setCustomer] = useState<CustomerHit | null>(null)
+  // Cadastro inline · cliente nova sem cadastro (balcão, primeira vez) sem sair do modal.
+  const [creating, setCreating] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+  const [creatingLoad, setCreatingLoad] = useState(false)
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [professionalId, setProfessionalId] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -75,6 +80,42 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
   }, [query, customer])
 
   if (!portalReady) return null
+
+  function openCreate() {
+    setError(null)
+    setNewName(query.trim()) // prefila com o que foi digitado na busca
+    setNewPhone('')
+    setCreating(true)
+  }
+
+  async function createAndUse() {
+    setError(null)
+    const nome = newName.trim()
+    const fone = newPhone.replace(/\D/g, '')
+    if (!nome) { setError('Nome obrigatório'); return }
+    if (fone.length < 10) { setError('Telefone inválido (com DDD)'); return }
+    setCreatingLoad(true)
+    const r = await fetch('/api/admin/customers', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: nome, phone: fone }),
+    })
+    const j = await r.json().catch(() => ({}))
+    setCreatingLoad(false)
+    if (!r.ok) {
+      // 409 = telefone já cadastrado · aproveita e usa a cliente existente.
+      if (r.status === 409 && j.existing_id) {
+        setCustomer({ id: j.existing_id, name: nome, phone: null })
+        setCreating(false)
+        return
+      }
+      setError(j.error ?? 'Erro ao cadastrar cliente')
+      return
+    }
+    const c = j.customer
+    setCustomer({ id: c.id, name: c.name, phone: c.phone ?? null })
+    setCreating(false)
+  }
 
   async function submit() {
     setError(null)
@@ -161,6 +202,47 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
                   Trocar
                 </button>
               </div>
+            ) : creating ? (
+              /* Cadastro inline · cliente nova sem sair do modal */
+              <div className="space-y-2 rounded-xl p-3" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-divider)' }}>
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Nova cliente</p>
+                <input
+                  autoFocus
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Nome"
+                  className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
+                />
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  placeholder="Telefone com DDD"
+                  className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
+                />
+                <div className="flex gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => { setCreating(false); setError(null) }}
+                    disabled={creatingLoad}
+                    className="px-3 py-2 rounded-lg text-xs font-bold disabled:opacity-50"
+                    style={{ color: 'var(--admin-text-mute)' }}
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={createAndUse}
+                    disabled={creatingLoad}
+                    className="flex-1 px-3 py-2 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    style={{ background: 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)', color: '#fff' }}
+                  >
+                    {creatingLoad ? 'Cadastrando...' : 'Cadastrar e usar'}
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
                 <div className="relative">
@@ -179,7 +261,7 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
                 {query.trim().length >= 2 && (
                   <div className="mt-1.5 rounded-xl overflow-hidden" style={{ border: '1px solid var(--admin-divider)' }}>
                     {searching && <p className="text-xs px-3 py-2.5" style={{ color: 'var(--admin-text-mute)' }}>Buscando...</p>}
-                    {!searching && hits.length === 0 && <p className="text-xs px-3 py-2.5" style={{ color: 'var(--admin-text-mute)' }}>Nenhuma cliente encontrada</p>}
+                    {!searching && hits.length === 0 && <p className="text-xs px-3 py-2.5" style={{ color: 'var(--admin-text-mute)' }}>Nenhuma cliente encontrada com esse nome</p>}
                     {hits.map((h) => (
                       <button
                         key={h.id}
@@ -194,6 +276,15 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
                     ))}
                   </div>
                 )}
+                {/* Cliente nova · cadastro inline sem trocar de tela */}
+                <button
+                  type="button"
+                  onClick={openCreate}
+                  className="mt-2 w-full py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5"
+                  style={{ color: 'var(--admin-accent)', background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 40%, transparent)' }}
+                >
+                  <IconPlus size={13} /> {query.trim().length >= 2 ? `Cadastrar "${query.trim()}"` : 'Cadastrar nova cliente'}
+                </button>
               </>
             )}
           </div>
