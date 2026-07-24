@@ -363,6 +363,18 @@ export function IconGift(p: IconProps) {
   )
 }
 
+// Combo (serviço + produto) · camadas empilhadas. Distinto do IconGift (Pacotes)
+// e do IconPackage (Produtos) pra não confundir as três entradas do Catálogo.
+export function IconLayers(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <polygon points="12 2 2 7 12 12 22 7 12 2" />
+      <polyline points="2 17 12 22 22 17" />
+      <polyline points="2 12 12 17 22 12" />
+    </svg>
+  )
+}
+
 export function IconPalette(p: IconProps) {
   return (
     <svg {...base(p)}>

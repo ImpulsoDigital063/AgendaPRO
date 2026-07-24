@@ -21,6 +21,7 @@ import {
   IconSearch,
   IconClose,
   IconWhatsapp,
+  IconLayers,
 } from '@/components/ui/Icon'
 
 type Props = {
@@ -101,8 +102,11 @@ export default function AdminMobileTopBar({
       items: [
         { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', Icon: IconSparkles },
         { label: 'Produtos', href: '/admin/produtos', Icon: IconGift },
+        // Combo (serviço + produto) · entrada própria abaixo de Produtos, igual
+        // ao desktop (Eduardo 24/07/2026). Já em produção.
+        { label: 'Combos', href: '/admin/combos', Icon: IconLayers },
         // Pacotes escondido no mobile até o resgate ficar pronto (mobile só lista
-        // o que está pronto · combo já vive dentro de Produtos). Desktop mostra "em breve".
+        // o que está pronto). Desktop mostra "em breve".
       ],
     },
     {

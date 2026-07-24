@@ -26,6 +26,7 @@ import {
   IconUpload,
   IconCamera,
   IconMapPin,
+  IconLayers,
 } from '@/components/ui/Icon'
 
 type Brand = {
@@ -91,8 +92,10 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       items: [
         { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', tabMatch: 'servicos', Icon: IconSparkles },
         { label: 'Produtos', href: '/admin/produtos', Icon: IconPackage },
-        // Pacote (multi-serviço resgatável) ainda em acabamento · combo (serviço
-        // + produto) já está pronto e vive dentro de Produtos. Marca "em breve".
+        // Combo (serviço + produto vendidos juntos) · entrada própria abaixo de
+        // Produtos (Eduardo 24/07/2026). Já está pronto e em produção.
+        { label: 'Combos', href: '/admin/combos', Icon: IconLayers },
+        // Pacote (multi-serviço resgatável) ainda em acabamento. Marca "em breve".
         { label: 'Pacotes', Icon: IconGift, comingSoon: true },
       ],
     },
