@@ -267,7 +267,7 @@ export default function PacotesView({ initialPackages, services, products, kind 
                           )}
                         </span>
                         <span className="tabular-nums text-[12px] flex-shrink-0" style={{ color: 'var(--admin-text-mute)' }}>
-                          {brl(Number(preco))} ea
+                          {brl(Number(preco))} cada
                         </span>
                       </li>
                     )
