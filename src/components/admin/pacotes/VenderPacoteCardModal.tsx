@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconGift, IconSearch, IconPlus } from '@/components/ui/Icon'
+import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 
 // Venda de pacote PARTINDO do card (pacote fixo · escolhe a cliente). É o inverso
 // do VenderPacoteModal da ficha do cliente (cliente fixa · escolhe o pacote).
-// Reusa a mesma rota /api/admin/packages/sell. Só pacote (kind='pacote') — combo
-// não é vendido assim (aplica no agendamento).
+// Reusa a mesma rota /api/admin/packages/sell + o PaymentMethodModal do caixa
+// (pra cartão perguntar débito/crédito + maquininha + parcelas). Só pacote
+// (kind='pacote') — combo não é vendido assim (aplica no agendamento).
 
 type CustomerHit = { id: string; name: string; phone: string | null }
 
@@ -16,15 +18,16 @@ type Props = {
   packageId: string
   packageName: string
   price: number
+  businessId: string
   onClose: () => void
-  onSold: (customerName: string, paidMethod: 'pix' | 'cash' | 'card' | null, warn: string | null) => void
+  onSold: (customerName: string, paidMethod: PaymentMethodChoice, warn: string | null) => void
 }
 
 function brl(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-export default function VenderPacoteCardModal({ packageId, packageName, price, onClose, onSold }: Props) {
+export default function VenderPacoteCardModal({ packageId, packageName, price, businessId, onClose, onSold }: Props) {
   const [portalReady, setPortalReady] = useState(false)
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<CustomerHit[]>([])
@@ -35,9 +38,9 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
   const [creatingLoad, setCreatingLoad] = useState(false)
-  // Pacote é pago NA VENDA (não no resgate). Recebe aqui na hora e fecha a comanda.
-  // 'open' = deixar em aberto pra fechar depois no Caixa (fiado/pagar depois).
-  const [payMethod, setPayMethod] = useState<'pix' | 'cash' | 'card' | 'open'>('pix')
+  // Pacote é pago NA VENDA (não no resgate). 2 passos: escolhe cliente → pagamento
+  // (reusa PaymentMethodModal · cartão pergunta débito/crédito + maquininha).
+  const [step, setStep] = useState<'client' | 'payment'>('client')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -108,33 +111,42 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
     setCreating(false)
   }
 
-  async function submit() {
+  // Chamado pelo PaymentMethodModal. method=null → "deixar em aberto" (recebe
+  // depois no Caixa). Cartão vem com cardDetails (maquininha/tipo/bandeira/taxa).
+  async function handlePay(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) {
+    if (!customer) { setError('Escolha a cliente'); setStep('client'); return }
     setError(null)
-    if (!customer) { setError('Escolha a cliente'); return }
     setSubmitting(true)
-    // 1) vende (cria customer_package + saldo + abre a comanda)
+    // 1) vende (cria customer_package + saldo + abre a comanda) · sem profissional:
+    //    a venda NÃO gera comissão (ela nasce no resgate).
     const r = await fetch('/api/admin/packages/sell', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        package_id: packageId,
-        customer_id: customer.id,
-        // Sem profissional: a venda do pacote NÃO gera comissão. A comissão nasce
-        // no RESGATE, pra a profissional que executa a sessão (getPackageSessionCommission).
-      }),
+      body: JSON.stringify({ package_id: packageId, customer_id: customer.id }),
     })
     const j = await r.json().catch(() => ({}))
     if (!r.ok) {
       setSubmitting(false)
       setError(j.detail ?? j.error ?? 'Erro ao vender pacote')
+      setStep('client')
       return
     }
-    // 2) recebe na hora (pacote é pago na venda) · a não ser que "em aberto"
-    if (payMethod !== 'open' && j.invoice_id) {
+    // 2) recebe na hora (pacote é pago na venda) · a não ser que "em aberto" (method null)
+    if (method && j.invoice_id) {
+      const payBody = method === 'card' && cardDetails
+        ? {
+            method: 'card',
+            device_id: cardDetails.device_id,
+            card_brand: cardDetails.card_brand,
+            card_type: cardDetails.card_type,
+            installments: cardDetails.installments,
+            fee_percent: cardDetails.fee_percent,
+          }
+        : { method }
       const pr = await fetch(`/api/admin/invoices/${j.invoice_id}/pay`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ method: payMethod }),
+        body: JSON.stringify(payBody),
       })
       setSubmitting(false)
       if (!pr.ok) {
@@ -143,11 +155,30 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
         onSold(customer.name, null, `Vendido, mas o recebimento falhou (${pj.detail ?? pj.error ?? 'erro'}). Feche a comanda no Caixa.`)
         return
       }
-      onSold(customer.name, payMethod, null)
+      onSold(customer.name, method, null)
       return
     }
     setSubmitting(false)
     onSold(customer.name, null, null)
+  }
+
+  // Passo 2 · pagamento · reusa o modal do caixa (cartão pergunta débito/crédito +
+  // maquininha + parcelas). "Deixar em aberto" = recebe depois no Caixa.
+  if (step === 'payment') {
+    return (
+      <PaymentMethodModal
+        open
+        clientName={customer?.name ?? 'a cliente'}
+        totalPrice={price}
+        businessId={businessId}
+        eyebrow={`Venda de pacote · ${packageName}`}
+        heading={`Como ${customer?.name ?? 'a cliente'} vai pagar?`}
+        deferLabel="Deixar em aberto (receber depois)"
+        loading={submitting}
+        onChoose={handlePay}
+        onClose={() => { if (!submitting) setStep('client') }}
+      />
+    )
   }
 
   return createPortal(
@@ -300,51 +331,10 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
             )}
           </div>
 
-          {/* Forma de pagamento · o pacote é pago NA VENDA */}
-          <div>
-            <label className="admin-label">Pagamento (recebe agora · o pacote é pago na venda)</label>
-            <div className="grid grid-cols-4 gap-1.5">
-              {([
-                { key: 'pix', label: 'Pix' },
-                { key: 'cash', label: 'Dinheiro' },
-                { key: 'card', label: 'Cartão' },
-                { key: 'open', label: 'Em aberto' },
-              ] as const).map((opt) => {
-                const active = payMethod === opt.key
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => setPayMethod(opt.key)}
-                    className="py-2 rounded-xl text-xs font-bold transition-all"
-                    style={{
-                      background: active
-                        ? (opt.key === 'open' ? 'var(--admin-input-bg)' : 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)')
-                        : 'var(--admin-input-bg)',
-                      color: active ? (opt.key === 'open' ? 'var(--admin-text)' : '#fff') : 'var(--admin-text-mute)',
-                      border: active && opt.key === 'open' ? '1px solid var(--admin-text-mute)' : '1px solid var(--admin-border)',
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
-            {payMethod === 'open' && (
-              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-                A comanda fica aberta · você recebe depois no Caixa/Comandas.
-              </p>
-            )}
-          </div>
-
           <div className="rounded-xl p-3 text-xs leading-relaxed"
             style={{ background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', color: 'var(--admin-text-2)' }}
           >
-            <b style={{ color: 'var(--admin-accent)' }}>O que vai acontecer:</b>{' '}
-            {payMethod === 'open'
-              ? <>abre uma comanda com este pacote e deixa em aberto · você recebe depois no Caixa/Comandas.</>
-              : <>a venda do pacote é <b>recebida agora</b> (entra no caixa de hoje) e a comanda já fecha paga.</>}
-            {' '}A cliente fica com o saldo de sessões pra <b>resgatar no agendamento</b> — no resgate o serviço entra R$0 (já foi pago aqui).
+            <b style={{ color: 'var(--admin-accent)' }}>Próximo passo:</b> escolher o pagamento — o pacote é <b>pago na venda</b> (entra no caixa de hoje). A cliente fica com o saldo de sessões pra <b>resgatar no agendamento</b>, e no resgate o serviço entra R$0 (já foi pago aqui).
           </div>
 
           {error && (
@@ -368,7 +358,7 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
           </button>
           <button
             type="button"
-            onClick={submit}
+            onClick={() => { if (customer) { setError(null); setStep('payment') } else setError('Escolha a cliente') }}
             disabled={submitting || !customer}
             className="px-5 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
             style={{
@@ -376,7 +366,7 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, o
               color: '#fff',
             }}
           >
-            {submitting ? 'Processando...' : payMethod === 'open' ? 'Vender (em aberto)' : 'Receber e vender'}
+            Ir pro pagamento →
           </button>
         </footer>
       </div>

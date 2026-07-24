@@ -36,6 +36,8 @@ type Props = {
   initialPackages: PackageRow[]
   services: Service[]
   products: Product[]
+  /** Negócio · usado no pagamento da venda de pacote (maquininhas do cartão). */
+  businessId: string
   /** 'combo' = serviço+produto (em Produtos) · 'pacote' = multi-serviço resgatável (aba Pacotes). Default 'pacote'. */
   kind?: 'combo' | 'pacote'
 }
@@ -72,7 +74,7 @@ function sumItems(items: PackageItemRow[] | null): number {
   }, 0)
 }
 
-export default function PacotesView({ initialPackages, services, products, kind = 'pacote' }: Props) {
+export default function PacotesView({ initialPackages, services, products, businessId, kind = 'pacote' }: Props) {
   const isCombo = kind === 'combo'
   const noun = isCombo ? 'combo' : 'pacote'
   const router = useRouter()
@@ -359,12 +361,13 @@ export default function PacotesView({ initialPackages, services, products, kind 
           packageId={selling.id}
           packageName={selling.name}
           price={selling.price}
+          businessId={businessId}
           onClose={() => setSelling(null)}
           onSold={(clienteName, paidMethod, warn) => {
             const nome = selling.name
             setSelling(null)
             if (warn) { setSoldMsg(`Pacote "${nome}" — ${warn}`); return }
-            const label: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', card: 'Cartão' }
+            const label: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', card: 'Cartão', points: 'Pontos' }
             setSoldMsg(paidMethod
               ? `Pacote "${nome}" vendido pra ${clienteName} e recebido (${label[paidMethod] ?? paidMethod}). Já entrou no caixa de hoje.`
               : `Pacote "${nome}" vendido pra ${clienteName}. Comanda em aberto — receba no Caixa/Comandas.`)

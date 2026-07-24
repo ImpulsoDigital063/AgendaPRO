@@ -32,6 +32,10 @@ type Props = {
   /** Modo "Atendi +bonus" altera o copy e a cor do header. */
   withPunctualityBonus?: boolean
   punctualityPoints?: number
+  /** Copy do header · sobrepõe o default ("Atendimento concluído" / "Como X pagou?").
+   *  Ex: venda de pacote usa "Venda de pacote" / "Como X vai pagar?". */
+  eyebrow?: string
+  heading?: string
   loading?: boolean
   /** Quando fornecido, mostra um botão explícito que dispara onChoose(null) com
    *  esse texto (ex: "Manter comanda aberta" / "Pagar depois"). Sem ele, o modal
@@ -69,6 +73,8 @@ export default function PaymentMethodModal({
   businessId,
   withPunctualityBonus = false,
   punctualityPoints = 0,
+  eyebrow,
+  heading,
   loading = false,
   deferLabel,
   onChoose,
@@ -152,14 +158,14 @@ export default function PaymentMethodModal({
                   className="text-[11px] font-semibold uppercase tracking-wider mb-1"
                   style={{ color: 'var(--admin-text-faded, #94A3B8)' }}
                 >
-                  {withPunctualityBonus ? `Atendido + ${punctualityPoints} pts pontualidade` : 'Atendimento concluído'}
+                  {eyebrow ?? (withPunctualityBonus ? `Atendido + ${punctualityPoints} pts pontualidade` : 'Atendimento concluído')}
                 </p>
                 <h3
                   id="payment-modal-title"
                   className="text-lg font-bold leading-tight"
                   style={{ color: 'var(--admin-text, #0F172A)' }}
                 >
-                  Como {clientName} pagou?
+                  {heading ?? `Como ${clientName} pagou?`}
                 </h3>
                 {priceLabel && (
                   <p

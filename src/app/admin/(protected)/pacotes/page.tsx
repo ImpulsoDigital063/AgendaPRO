@@ -54,6 +54,7 @@ export default async function PacotesPage() {
       <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8">
         <PacotesView
           kind="pacote"
+          businessId={business.id}
           initialPackages={(packages ?? []) as unknown as Parameters<typeof PacotesView>[0]['initialPackages']}
           services={(services ?? []) as Parameters<typeof PacotesView>[0]['services']}
           products={(products ?? []) as Parameters<typeof PacotesView>[0]['products']}
