@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { IconPlus, IconTrash, IconGift, IconPencil } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import PacoteFormModal, { type PackageFormValue } from './PacoteFormModal'
+import VenderPacoteCardModal from './VenderPacoteCardModal'
 
 type Service = { id: string; name: string; price: number | null; active: boolean }
 type Product = { id: string; name: string; price: number | null }
@@ -80,6 +81,8 @@ export default function PacotesView({ initialPackages, services, products, kind 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<PackageRow | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<PackageRow | null>(null)
+  const [selling, setSelling] = useState<PackageRow | null>(null)
+  const [soldMsg, setSoldMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -170,6 +173,15 @@ export default function PacotesView({ initialPackages, services, products, kind 
           style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#DC2626' }}
         >
           {error}
+        </div>
+      )}
+
+      {soldMsg && (
+        <div className="rounded-xl px-3 py-2.5 text-xs font-semibold flex items-start justify-between gap-2"
+          style={{ background: 'rgba(22,163,74,0.10)', border: '1px solid rgba(22,163,74,0.3)', color: '#15803D' }}
+        >
+          <span>✓ {soldMsg}</span>
+          <button type="button" onClick={() => setSoldMsg(null)} className="flex-shrink-0 font-bold" style={{ color: '#15803D' }} aria-label="Fechar">×</button>
         </div>
       )}
 
@@ -297,6 +309,23 @@ export default function PacotesView({ initialPackages, services, products, kind 
                   </p>
                 </div>
 
+                {/* Vender · só pacote (combo se vende na comanda/agendamento) e ativo.
+                    Abre modal que escolhe a cliente e cria a comanda de venda. */}
+                {!isCombo && pkg.active && (
+                  <button
+                    type="button"
+                    onClick={() => { setSelling(pkg); setSoldMsg(null) }}
+                    className="w-full mt-3 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-1.5 transition-all hover:-translate-y-px"
+                    style={{
+                      background: 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)',
+                      color: '#fff',
+                      boxShadow: '0 4px 12px -4px rgba(22,163,74,0.5)',
+                    }}
+                  >
+                    <IconGift size={14} /> Vender pra uma cliente
+                  </button>
+                )}
+
                 {!pkg.active && (
                   <span
                     className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
@@ -321,6 +350,20 @@ export default function PacotesView({ initialPackages, services, products, kind 
           loading={loading}
           onClose={() => { setShowForm(false); setEditing(null); setError(null) }}
           onSubmit={handleSave}
+        />
+      )}
+
+      {/* Modal vender pacote (parte do card · escolhe a cliente) */}
+      {selling && (
+        <VenderPacoteCardModal
+          packageId={selling.id}
+          packageName={selling.name}
+          price={selling.price}
+          onClose={() => setSelling(null)}
+          onSold={(clienteName) => {
+            setSelling(null)
+            setSoldMsg(`Pacote "${selling.name}" vendido pra ${clienteName}. Feche a comanda no Caixa/Comandas pra registrar o pagamento.`)
+          }}
         />
       )}
 
