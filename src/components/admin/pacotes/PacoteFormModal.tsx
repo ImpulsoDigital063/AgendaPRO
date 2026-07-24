@@ -309,7 +309,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                 const options = isProduct ? products : services
                 return (
                 <div key={it.uid}
-                  className="rounded-xl p-3 grid grid-cols-[1fr_70px_100px_auto] gap-2 items-end"
+                  className="rounded-xl p-3 grid grid-cols-[1fr_88px_92px_auto] gap-2 items-end"
                   style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
                 >
                   <div>
@@ -334,22 +334,29 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                     </select>
                   </div>
                   <div>
-                    {idx === 0 && <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>Qtd</span>}
-                    {/* min=1 + step inteiro (padrão) bloqueavam FRAÇÃO — o combo
-                        da Izanara consome 0,5 pacote de cabelo e não podia nem
-                        ser cadastrado (Eduardo 22/07). */}
+                    {/* Rótulo por LINHA · QTD significa coisas diferentes:
+                        produto = quanto sai do estoque (aceita 0,5 = meio pacote);
+                        serviço combo = quantas vezes (normalmente 1);
+                        serviço pacote = nº de sessões. min=0.001/step=any pra
+                        aceitar fração (Izanara usa 0,5 pacote de cabelo). */}
+                    <span className="text-[10px] font-bold uppercase tracking-wider block leading-tight"
+                      style={{ color: isProduct ? '#9333EA' : 'var(--admin-accent)' }}>
+                      {isProduct ? 'Qtd (estoque)' : isCombo ? 'Vezes' : 'Sessões'}
+                    </span>
                     <input
                       type="number"
                       min={0.001}
                       step="any"
                       value={it.quantity}
                       onChange={(e) => updateItem(it.uid, { quantity: e.target.value })}
-                      title={isProduct ? 'Quanto desse produto sai do estoque por atendimento. Aceita fração: 0,5 = meio pacote' : 'Quantas vezes esse serviço entra no combo'}
-                      className="admin-input w-full px-2 py-1.5 rounded-lg text-sm tabular-nums mt-1"
+                      className="admin-input w-full px-2 py-1.5 rounded-lg text-sm tabular-nums mt-0.5"
                     />
+                    <span className="text-[9px] leading-tight block mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
+                      {isProduct ? '0,5 = meio pacote' : isCombo ? 'ger. 1' : ''}
+                    </span>
                   </div>
                   <div>
-                    {idx === 0 && <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>R$/un (opc.)</span>}
+                    <span className="text-[10px] font-bold uppercase tracking-wider block leading-tight" style={{ color: 'var(--admin-text-faded)' }}>R$/un</span>
                     <input
                       type="number"
                       min={0}
@@ -357,7 +364,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                       value={it.unit_price}
                       onChange={(e) => updateItem(it.uid, { unit_price: e.target.value })}
                       placeholder="padrão"
-                      className="admin-input w-full px-2 py-1.5 rounded-lg text-sm tabular-nums mt-1"
+                      className="admin-input w-full px-2 py-1.5 rounded-lg text-sm tabular-nums mt-0.5"
                     />
                   </div>
                   <button
@@ -378,9 +385,9 @@ export default function PacoteFormModal({ initial, services, products, loading, 
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
               {isCombo ? (
                 <>
-                  <strong>Qtd aceita fração</strong> — se o atendimento gasta meio pacote de material, escreva <strong>0,5</strong>. É essa quantidade que sai do estoque a cada venda.
-                  <br />
-                  R$/un em branco = usa o preço padrão do item. O produto do combo baixa do estoque na hora da venda.
+                  <strong style={{ color: '#9333EA' }}>Produto</strong> · <strong>Qtd</strong> = quanto do material sai do estoque por venda. Use <strong>0,5</strong> se gasta meio pacote (ex: meio pacote de cabelo por trança).<br />
+                  <strong style={{ color: 'var(--admin-accent)' }}>Serviço</strong> · <strong>Vezes</strong> = quantas vezes entra no combo (quase sempre <strong>1</strong>).<br />
+                  R$/un em branco = usa o preço padrão do item.
                 </>
               ) : (
                 <>
