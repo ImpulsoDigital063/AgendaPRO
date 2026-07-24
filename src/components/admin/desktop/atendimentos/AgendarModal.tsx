@@ -54,6 +54,9 @@ type ServiceLine = {
   duration: number
   price: number
   discount: number
+  /** Quando setado, esta linha é um RESGATE de pacote: entra R$0 na conta e
+   *  consome 1 sessão do balance ao salvar. Só vale fora de recorrência. */
+  resgateBalanceId?: string | null
 }
 
 function newLine(): ServiceLine {
@@ -63,8 +66,11 @@ function newLine(): ServiceLine {
     duration: 60,
     price: 0,
     discount: 0,
+    resgateBalanceId: null,
   }
 }
+
+type ResgateOpt = { balance_id: string; package_name: string; sessions_remaining: number; expires_at: string | null }
 
 type Props = {
   open: boolean
@@ -195,6 +201,11 @@ export default function AgendarModal({
   const [comboPickerOpen, setComboPickerOpen] = useState(false)
   const [comboAplicado, setComboAplicado] = useState<{ id: string; name: string; price: number } | null>(null)
 
+  // RESGATE de pacote · por serviço, quando a cliente tem sessão ativa que cobre
+  // aquele serviço. resgateOpts[serviceId] = pacote ativo. Ligar o resgate numa
+  // linha faz o serviço entrar R$0 e consumir 1 sessão ao salvar.
+  const [resgateOpts, setResgateOpts] = useState<Record<string, ResgateOpt>>({})
+
   // V3: Repetir atendimento (recorrência)
   const [recurring, setRecurring] = useState<boolean>(false)
   const [recurFreq, setRecurFreq] = useState<'weekly' | 'biweekly' | 'monthly'>('weekly')
@@ -280,6 +291,31 @@ export default function AgendarModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, businessId])
 
+  // RESGATE · detecta, por serviço escolhido, se a CLIENTE tem pacote ativo que
+  // cobre. Reusa a rota /packages/consume (GET) já existente. Só pra cliente
+  // cadastrada (avulso não tem pacote). Reroda quando muda a cliente ou o
+  // conjunto de serviços das linhas.
+  const svcIdsKey = serviceLines.map((l) => l.serviceId).filter(Boolean).join(',')
+  useEffect(() => {
+    if (!open || !cliente?.id) { setResgateOpts({}); return }
+    const svcIds = Array.from(new Set(svcIdsKey.split(',').filter(Boolean)))
+    if (svcIds.length === 0) { setResgateOpts({}); return }
+    let cancelled = false
+    ;(async () => {
+      const entries = await Promise.all(svcIds.map(async (sid) => {
+        const r = await fetch(`/api/admin/packages/consume?customer_id=${cliente.id}&service_id=${sid}`)
+        if (!r.ok) return null
+        const j = await r.json().catch(() => ({}))
+        const opt = (j.options ?? [])[0] as ResgateOpt | undefined
+        return opt ? [sid, opt] as const : null
+      }))
+      if (cancelled) return
+      setResgateOpts(Object.fromEntries(entries.filter(Boolean) as [string, ResgateOpt][]))
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cliente?.id, svcIdsKey])
+
   // Lock scroll + ESC
   useEffect(() => {
     if (!open) return
@@ -309,6 +345,7 @@ export default function AgendarModal({
       serviceId: newServiceId,
       duration: s.duration_minutes ?? 60,
       price: Number(s.price ?? 0),
+      resgateBalanceId: null, // troca de serviço zera o resgate (pode não ser coberto)
     })
   }
 
@@ -373,10 +410,11 @@ export default function AgendarModal({
 
   // Linhas válidas = têm serviceId selecionado
   const validLines = serviceLines.filter((l) => l.serviceId)
-  const valorTotal = validLines.reduce(
-    (sum, l) => sum + Math.max(0, Number(l.price) - Number(l.discount)),
-    0,
-  )
+  // Linha resgatada entra R$0 na conta. Resgate não vale em recorrência (evita
+  // consumir N sessões de uma vez sem querer).
+  const lineIsResgate = (l: ServiceLine) => !recurring && !!l.resgateBalanceId
+  const linePriceOf = (l: ServiceLine) => lineIsResgate(l) ? 0 : Math.max(0, Number(l.price) - Number(l.discount))
+  const valorTotal = validLines.reduce((sum, l) => sum + linePriceOf(l), 0)
   const totalDuration = validLines.reduce((sum, l) => sum + Number(l.duration || 0), 0)
   const subtotalProds = prodCart.reduce((sum, p) => sum + Number(p.unit_price || 0) * Number(p.quantity ?? 1), 0)
   const totalGeral = valorTotal + subtotalProds // serviços + produtos (o que o cliente paga)
@@ -533,7 +571,7 @@ export default function AgendarModal({
     // Snapshot dos serviços usados (resolve nome via lookup pra log/denormalização)
     const linesWithMeta = validLines.map((l) => {
       const s = services.find((x) => x.id === l.serviceId)
-      const linePrice = Math.max(0, Number(l.price) - Number(l.discount))
+      const linePrice = linePriceOf(l)
       return { ...l, name: s?.name ?? '—', linePrice }
     })
     const first = linesWithMeta[0]
@@ -595,6 +633,27 @@ export default function AgendarModal({
     const { error: svcErr } = await supabase.from('appointment_services').insert(servicesRows)
     if (svcErr) {
       console.error('appointment_services insert error:', svcErr)
+    }
+
+    // RESGATE de pacote · pra cada linha marcada, baixa 1 sessão ligada a ESTE
+    // atendimento. Só em agendamento único (não recorrência) e cliente cadastrada.
+    // O serviço já entrou R$0 (linePriceOf), e a comissão do resgate sai pela via
+    // de customer_package_sessions (Remunerações · getPackageSessionCommission).
+    if (!recurring && cliente && insertedRows.length === 1) {
+      const apptId = insertedRows[0].id
+      for (const l of linesWithMeta) {
+        if (!l.resgateBalanceId) continue
+        const cr = await fetch('/api/admin/packages/consume', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ balance_id: l.resgateBalanceId, professional_id: profId, appointment_id: apptId }),
+        })
+        if (!cr.ok) {
+          const cd = await cr.json().catch(() => ({}))
+          console.error('resgate consume falhou:', cd)
+          setError(`Atendimento criado, mas falhou ao baixar a sessão do pacote: ${cd.error ?? 'erro'}. Confira o saldo.`)
+        }
+      }
     }
 
     // O primeiro appointment é o "principal" pra fins de log/redirect
@@ -974,20 +1033,52 @@ export default function AgendarModal({
           {/* Linhas de serviço · multi-serviços inline (V2)
               Vem ANTES do horário · duração total alimenta o TimeSlotPicker abaixo
               pra calcular sobreposição corretamente (decisão cravada 22/05). */}
-          {serviceLines.map((line, idx) => (
-            <ServiceLineBlock
-              key={line.uid}
-              index={idx}
-              line={line}
-              services={services}
-              canRemove={serviceLines.length > 1}
-              onPickService={(id) => handleServicePick(line.uid, id)}
-              onChangeDuration={(v) => updateLine(line.uid, { duration: v })}
-              onChangePrice={(v) => updateLine(line.uid, { price: v })}
-              onChangeDiscount={(v) => updateLine(line.uid, { discount: v })}
-              onRemove={() => removeLine(line.uid)}
-            />
-          ))}
+          {serviceLines.map((line, idx) => {
+            // Pacote ativo da cliente que cobre o serviço desta linha (fora de recorrência)
+            const resOpt = !recurring && cliente ? resgateOpts[line.serviceId] : undefined
+            const isRes = !recurring && !!line.resgateBalanceId
+            return (
+              <div key={line.uid} className="space-y-1.5">
+                <ServiceLineBlock
+                  index={idx}
+                  line={line}
+                  services={services}
+                  canRemove={serviceLines.length > 1}
+                  onPickService={(id) => handleServicePick(line.uid, id)}
+                  onChangeDuration={(v) => updateLine(line.uid, { duration: v })}
+                  onChangePrice={(v) => updateLine(line.uid, { price: v })}
+                  onChangeDiscount={(v) => updateLine(line.uid, { discount: v })}
+                  onRemove={() => removeLine(line.uid)}
+                />
+                {resOpt && (
+                  <button
+                    type="button"
+                    onClick={() => updateLine(line.uid, { resgateBalanceId: isRes ? null : resOpt.balance_id })}
+                    className="w-full text-left rounded-xl px-3 py-2 flex items-center justify-between gap-2 transition-colors"
+                    style={{
+                      background: isRes ? 'var(--admin-accent)' : 'color-mix(in srgb, var(--admin-accent) 8%, transparent)',
+                      color: isRes ? '#fff' : 'var(--admin-accent)',
+                      border: `1px solid ${isRes ? 'var(--admin-accent)' : 'color-mix(in srgb, var(--admin-accent) 40%, transparent)'}`,
+                    }}
+                    title="Baixa 1 sessão do pacote · serviço entra R$ 0,00 (já pago na venda)"
+                  >
+                    <span className="min-w-0 text-[12px] font-semibold">
+                      {isRes
+                        ? `✓ Resgatando do pacote · serviço entra R$ 0,00`
+                        : `★ Cliente tem pacote (${resOpt.package_name}) · resgatar sessão?`}
+                      <span className="block text-[10px] font-normal opacity-80">
+                        Restam {resOpt.sessions_remaining} {resOpt.sessions_remaining === 1 ? 'sessão' : 'sessões'}
+                        {resOpt.expires_at && ` · expira ${new Date(resOpt.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`}
+                      </span>
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
+                      {isRes ? 'Usando' : 'Usar'}
+                    </span>
+                  </button>
+                )}
+              </div>
+            )
+          })}
 
           {/* Botão adicionar mais serviços */}
           <button
