@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { IconPlus, IconTrash, IconGift, IconPencil } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import PacoteFormModal, { type PackageFormValue } from './PacoteFormModal'
@@ -78,6 +78,10 @@ export default function PacotesView({ initialPackages, services, products, busin
   const isCombo = kind === 'combo'
   const noun = isCombo ? 'combo' : 'pacote'
   const router = useRouter()
+  const pathname = usePathname()
+  // Resgatar pacote só faz sentido pra pacote (não combo) e na área admin, onde a
+  // agenda tem o fluxo de resgate (?resgatar=1 → ResgatarPacoteModal).
+  const canResgatar = !isCombo && pathname.startsWith('/admin')
   const [packages, setPackages] = useState(initialPackages)
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -156,6 +160,21 @@ export default function PacotesView({ initialPackages, services, products, busin
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
         </div>
+        {canResgatar && (
+          <button
+            type="button"
+            onClick={() => router.push('/admin?resgatar=1')}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+            style={{
+              background: 'linear-gradient(135deg, #9333EA 0%, #7C3AED 100%)',
+              color: '#fff',
+              boxShadow: '0 4px 12px -4px rgba(124,58,237,0.5)',
+            }}
+            title="Resgatar sessão de pacote de uma cliente"
+          >
+            <IconGift size={14} /> Resgatar
+          </button>
+        )}
         <button
           type="button"
           onClick={() => { setEditing(null); setShowForm(true); setError(null) }}

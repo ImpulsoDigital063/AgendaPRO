@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { IconChevronLeft, IconChevronRight, IconPlus, IconDollar, IconCheck, IconClock, IconCalendar } from '@/components/ui/Icon'
+import { IconChevronLeft, IconChevronRight, IconPlus, IconDollar, IconCheck, IconClock, IconCalendar, IconGift } from '@/components/ui/Icon'
 import { todayBR } from '@/lib/date-br'
+import { PACOTE_ENABLED } from '@/lib/feature-flags'
 
 type Props = {
   date: string // YYYY-MM-DD
@@ -220,6 +221,25 @@ export default function GradeTimelineHeader({
           >
             <IconDollar size={14} /> Vender produto
           </Link>
+
+          {/* Resgatar pacote → busca a cliente, mostra os pacotes ativos e abre o
+              agendamento pré-preenchido (Eduardo 24/07). Gated pelo PACOTE_ENABLED. */}
+          {PACOTE_ENABLED && (
+            <Link
+              href={`?resgatar=1&date=${date}`}
+              className="hidden sm:inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+              style={{
+                minHeight: 44,
+                background: 'linear-gradient(180deg, #9333EA 0%, #7C3AED 100%)',
+                color: '#fff',
+                borderTop: '1px solid rgba(255,255,255,0.30)',
+                boxShadow: '0 8px 22px -8px rgba(124,58,237,0.55), 0 2px 4px rgba(0,0,0,0.08)',
+              }}
+              title="Resgatar sessão de pacote · busca a cliente e abre o agendamento pronto"
+            >
+              <IconGift size={14} /> Resgatar pacote
+            </Link>
+          )}
           <Link
             href={`?balcao=1&date=${date}`}
             className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"

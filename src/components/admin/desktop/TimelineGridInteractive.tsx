@@ -6,6 +6,8 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus, IconInfo, IconSettings, IconCheck, IconClock } from '@/components/ui/Icon'
 import AppointmentDrawer from '@/components/admin/atendimentos/AppointmentDrawer'
 import AgendarModal from '@/components/admin/desktop/atendimentos/AgendarModal'
+import ResgatarPacoteModal, { type ResgateSelecionado } from '@/components/admin/pacotes/ResgatarPacoteModal'
+import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import { MiniKPI } from './GradeTimelineHeader'
 import { blockAppliesTo, blockTimeToMinutes, type BlockRow } from '@/lib/blocks'
 import { todayBR } from '@/lib/date-br'
@@ -196,6 +198,8 @@ export default function TimelineGridInteractive({
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
   // Drawer inline do agendamento clicado · Salão99-style · sem trocar de rota
   const [selectedApptId, setSelectedApptId] = useState<string | null>(null)
+  // Resgate de pacote · prefill do AgendarModal vindo do ResgatarPacoteModal.
+  const [resgatePrefill, setResgatePrefill] = useState<{ customer: { id: string; name: string; phone: string; total_points: number | null }; serviceId: string; balanceId: string } | null>(null)
   useEffect(() => { setPortalReady(true) }, [])
 
   function closeDrawer() {
@@ -1171,6 +1175,36 @@ export default function TimelineGridInteractive({
           router.refresh()
         }}
       />
+
+      {/* RESGATAR PACOTE · abre via ?resgatar=1 (botão da agenda ou vindo da aba
+          Pacotes). Busca a cliente → mostra pacotes ativos → "Resgatar" abre o
+          AgendarModal já com cliente + serviço + resgate ligados (Eduardo 24/07). */}
+      {PACOTE_ENABLED && searchParams.get('resgatar') === '1' && (
+        <ResgatarPacoteModal
+          onClose={() => { router.replace(pathname) }}
+          onResgatar={(r: ResgateSelecionado) => {
+            setResgatePrefill({
+              customer: { id: r.customer.id, name: r.customer.name, phone: r.customer.phone ?? '', total_points: null },
+              serviceId: r.serviceId,
+              balanceId: r.balanceId,
+            })
+            router.replace(pathname) // fecha o ?resgatar · o AgendarModal abre por estado
+          }}
+        />
+      )}
+      {resgatePrefill && (
+        <AgendarModal
+          open
+          businessId={businessId}
+          professionals={profs}
+          services={services}
+          defaultDate={date}
+          initialCustomer={resgatePrefill.customer}
+          initialServiceId={resgatePrefill.serviceId}
+          initialResgateBalanceId={resgatePrefill.balanceId}
+          onClose={() => { setResgatePrefill(null); router.refresh() }}
+        />
+      )}
     </div>
   )
 }

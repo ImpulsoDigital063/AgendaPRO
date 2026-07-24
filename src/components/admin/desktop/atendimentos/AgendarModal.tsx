@@ -87,6 +87,12 @@ type Props = {
    *  agendar. Abre com "já concluído" ON, hora=agora, data=hoje, sem grade nem
    *  recorrência. Fluxo: cliente/avulso → serviço + produto → pagar → fim. */
   balcao?: boolean
+  /** Prefill de RESGATE de pacote (vindo do ResgatarPacoteModal · Eduardo 24/07):
+   *  abre já com a cliente + o serviço + o resgate ligado. Operador só escolhe
+   *  profissional e horário. Todos opcionais · sem eles, comportamento normal. */
+  initialCustomer?: Customer | null
+  initialServiceId?: string | null
+  initialResgateBalanceId?: string | null
   onClose: () => void
 }
 
@@ -160,6 +166,9 @@ export default function AgendarModal({
   defaultDate = null,
   defaultTime = null,
   balcao = false,
+  initialCustomer = null,
+  initialServiceId = null,
+  initialResgateBalanceId = null,
   onClose,
 }: Props) {
   const router = useRouter()
@@ -233,9 +242,13 @@ export default function AgendarModal({
   // Reset ao abrir
   useEffect(() => {
     if (!open) return
-    setCliente(null)
+    // Prefill de resgate de pacote (opcional) · cliente + serviço + resgate ligado.
+    setCliente(initialCustomer ?? null)
     setProfId(defaultProfId ?? '')
-    setServiceLines([newLine()])
+    const svcPrefill = initialServiceId ? services.find((s) => s.id === initialServiceId) : null
+    setServiceLines(svcPrefill
+      ? [{ ...newLine(), serviceId: svcPrefill.id, duration: svcPrefill.duration_minutes ?? 60, price: svcPrefill.price ?? 0, resgateBalanceId: initialResgateBalanceId }]
+      : [newLine()])
     setDate(defaultDate ?? todayISO())
     // Balcão: hora = agora (timestamp do registro · sem grade de horário).
     setTime(defaultTime ?? (balcao ? nowHHMM() : ''))
@@ -261,7 +274,8 @@ export default function AgendarModal({
     setProdSearch('')
     setComboAplicado(null)
     setComboPickerOpen(false)
-  }, [open, defaultProfId, defaultDate, defaultTime, balcao])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultProfId, defaultDate, defaultTime, balcao, initialCustomer, initialServiceId, initialResgateBalanceId])
 
   // Carrega produtos do negócio (pro picker de "vender junto")
   useEffect(() => {
