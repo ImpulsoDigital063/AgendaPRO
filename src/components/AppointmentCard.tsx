@@ -41,6 +41,8 @@ type Props = {
     /** Resgate de sessão de pacote · card mostra selo "Pacote". Vem em lote da
      *  página que monta a lista (customer_package_sessions.appointment_id). */
     is_package?: boolean
+    /** Nome do combo de origem · card mostra selo "Combo · nome". */
+    combo_name?: string | null
   }
   showDate?: boolean
   nextUp?: boolean
@@ -392,6 +394,18 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
                 title="Sessão de pacote resgatada · não entra no caixa"
               >
                 Pacote
+              </span>
+            )}
+            {appointment.combo_name && (
+              <span
+                className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full inline-flex items-center flex-shrink-0 max-w-[160px] truncate"
+                style={{
+                  background: 'linear-gradient(180deg, #9333EA 0%, #7E22CE 100%)',
+                  color: '#fff',
+                }}
+                title={`Combo: ${appointment.combo_name}`}
+              >
+                Combo · {appointment.combo_name}
               </span>
             )}
             {canEditServices && (

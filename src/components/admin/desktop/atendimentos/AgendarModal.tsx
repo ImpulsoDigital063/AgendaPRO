@@ -637,6 +637,17 @@ export default function AgendarModal({
       console.error('appointment_services insert error:', svcErr)
     }
 
+    // Marca de qual COMBO o atendimento veio (selo "COMBO · nome" na agenda).
+    // Update SEPARADO + NÃO-FATAL: se a coluna combo_package_id ainda não existir
+    // (migration v97 não rodada), o atendimento segue salvo, só sem o selo.
+    if (comboAplicado && insertedRows.length > 0) {
+      const { error: comboErr } = await supabase
+        .from('appointments')
+        .update({ combo_package_id: comboAplicado.id })
+        .in('id', insertedRows.map((r) => r.id))
+      if (comboErr) console.error('marca de combo não gravou (não-fatal · rodou a v97?):', comboErr)
+    }
+
     // RESGATE de pacote · pra cada linha marcada, baixa 1 sessão ligada a ESTE
     // atendimento. Só em agendamento único (não recorrência) e cliente cadastrada.
     // O serviço já entrou R$0 (linePriceOf), e a comissão do resgate sai pela via

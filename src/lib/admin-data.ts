@@ -142,18 +142,26 @@ export const getAppointmentsToday = unstable_cache(
     // cards mostravam ele, exibindo R$195 numa conta de R$290 (Eduardo 22/07).
     // Busca em LOTE aqui pra não virar 1 query por card.
     const apptIds = list.map((a) => a.id as string)
-    // charged_total (comanda com produto) + resgate de pacote (selo na agenda),
-    // ambos em LOTE pra não virar 1 query por card.
-    const [charged, { data: pkgSessions }] = await Promise.all([
+    // combo_package_id vem via select('*') · undefined se a v97 não rodou (defensivo).
+    const comboIds = Array.from(new Set(list.map((a) => (a as { combo_package_id?: string | null }).combo_package_id).filter(Boolean) as string[]))
+    // charged_total (comanda com produto) + resgate de pacote + nome do combo,
+    // tudo em LOTE pra não virar 1 query por card.
+    const [charged, { data: pkgSessions }, { data: comboPkgs }] = await Promise.all([
       getApptChargedMap(admin, apptIds),
       admin.from('customer_package_sessions').select('appointment_id').in('appointment_id', apptIds),
+      comboIds.length ? admin.from('packages').select('id, name').in('id', comboIds) : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     ])
     const pkgSet = new Set((pkgSessions ?? []).map((s) => s.appointment_id).filter(Boolean) as string[])
-    return list.map((a) => ({
-      ...a,
-      charged_total: charged[a.id as string]?.charged ?? null,
-      is_package: pkgSet.has(a.id as string),
-    }))
+    const comboNameById = Object.fromEntries((comboPkgs ?? []).map((p) => [p.id, p.name]))
+    return list.map((a) => {
+      const cid = (a as { combo_package_id?: string | null }).combo_package_id
+      return {
+        ...a,
+        charged_total: charged[a.id as string]?.charged ?? null,
+        is_package: pkgSet.has(a.id as string),
+        combo_name: cid ? (comboNameById[cid] ?? null) : null,
+      }
+    })
   },
   ['admin-appointments-today'],
   { revalidate: 15 }

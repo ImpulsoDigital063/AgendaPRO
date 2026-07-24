@@ -27,6 +27,8 @@ type ApptRow = {
   paid_at: string | null
   payment_method: string | null
   is_package?: boolean
+  combo_package_id?: string | null
+  combo_name?: string | null
 }
 
 const HOUR_START = 7 // 07:00 começa a grade (ajuste futuro: business_hours)
@@ -48,7 +50,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .order('name'),
     sb
       .from('appointments')
-      .select('id, professional_id, start_time, end_time, status, client_name, service_name, total_price, paid_at, payment_method')
+      .select('id, professional_id, start_time, end_time, status, client_name, service_name, total_price, paid_at, payment_method, combo_package_id')
       .eq('business_id', businessId)
       .eq('appointment_date', date)
       // Cancelados aparecem visualmente diferentes (faixa diagonal/desbotado · vide TimelineGridInteractive)
@@ -130,7 +132,17 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     ? await sb.from('customer_package_sessions').select('appointment_id').in('appointment_id', apptIds)
     : { data: [] as { appointment_id: string | null }[] }
   const pkgSet = new Set((pkgSessions ?? []).map((s) => s.appointment_id).filter(Boolean) as string[])
-  const appts = apptsBase.map((a) => ({ ...a, is_package: pkgSet.has(a.id) }))
+  // Combos · nome do combo de origem (pro selo "COMBO · nome" no card).
+  const comboIds = Array.from(new Set(apptsBase.map((a) => a.combo_package_id).filter(Boolean) as string[]))
+  const { data: comboPkgs } = comboIds.length
+    ? await sb.from('packages').select('id, name').in('id', comboIds)
+    : { data: [] as { id: string; name: string }[] }
+  const comboNameById = Object.fromEntries((comboPkgs ?? []).map((p) => [p.id, p.name]))
+  const appts = apptsBase.map((a) => ({
+    ...a,
+    is_package: pkgSet.has(a.id),
+    combo_name: a.combo_package_id ? (comboNameById[a.combo_package_id] ?? null) : null,
+  }))
   const services = (servicesData ?? []) as { id: string; name: string; price: number | null; duration_minutes: number | null }[]
   const blocks = (blocksData ?? []) as BlockRow[]
 

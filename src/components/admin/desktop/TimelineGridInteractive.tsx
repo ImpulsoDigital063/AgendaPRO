@@ -22,6 +22,7 @@ type Appt = {
   total_price: number | null
   paid_at: string | null
   is_package?: boolean
+  combo_name?: string | null
 }
 type Service = { id: string; name: string; price: number | null; duration_minutes: number | null }
 
@@ -920,6 +921,21 @@ export default function TimelineGridInteractive({
                               title="Sessão de pacote resgatada · não entra no caixa"
                             >
                               Pacote
+                            </span>
+                          )}
+                          {/* Combo · selo com o NOME do combo, pra diferenciar de um
+                              atendimento comum (Eduardo 24/07). Roxo = cor de combo/produto. */}
+                          {!isTiny && a.combo_name && (
+                            <span
+                              className={`text-[9px] font-bold uppercase inline-block w-fit max-w-full truncate px-1.5 py-0.5 rounded ${isCompact ? 'mt-0.5' : 'mt-1'}`}
+                              style={{
+                                background: 'linear-gradient(180deg, #9333EA 0%, #7E22CE 100%)',
+                                color: '#fff',
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25)',
+                              }}
+                              title={`Combo: ${a.combo_name}`}
+                            >
+                              Combo · {a.combo_name}
                             </span>
                           )}
                           {/* Chips só aparecem em cards com folga (>=45min) · evita poluir tiny/compact */}
