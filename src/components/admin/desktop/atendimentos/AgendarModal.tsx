@@ -16,6 +16,8 @@ import {
   IconCalendar,
   IconClock,
   IconCheck,
+  IconGift,
+  IconInbox,
 } from '@/components/ui/Icon'
 import TimeSlotPicker from './TimeSlotPicker'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
@@ -1080,24 +1082,57 @@ export default function AgendarModal({
             )
           })}
 
-          {/* Botão adicionar mais serviços */}
-          <button
-            type="button"
-            onClick={addLine}
-            className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-colors"
-            style={{
+          {/* Barra compacta de ações · Serviço / Combo / Produto num row só
+              (Eduardo 24/07). Combo/Produto abrem o seletor logo abaixo. */}
+          {(() => {
+            const baseCls = 'flex-1 min-w-0 py-2.5 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors'
+            const idle = {
               background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)',
-              border: '1px dashed color-mix(in srgb, var(--admin-accent) 50%, transparent)',
+              border: '1px dashed color-mix(in srgb, var(--admin-accent) 45%, transparent)',
               color: 'var(--admin-accent)',
-            }}
-          >
-            <IconPlus size={14} /> Adicionar mais serviços
-          </button>
+            }
+            const active = {
+              background: 'var(--admin-accent)',
+              border: '1px solid var(--admin-accent)',
+              color: '#fff',
+            }
+            const showCombo = combos.length > 0 && !comboAplicado
+            const showProd = products.length > 0
+            return (
+              <div className="flex items-stretch gap-2">
+                <button type="button" onClick={addLine} className={baseCls} style={idle} title="Adicionar outro serviço">
+                  <IconPlus size={14} /> Serviço
+                </button>
+                {showCombo && (
+                  <button
+                    type="button"
+                    onClick={() => setComboPickerOpen((v) => !v)}
+                    className={baseCls}
+                    style={comboPickerOpen ? active : idle}
+                    title="Aplicar um combo (serviço + produto por um preço)"
+                  >
+                    <IconGift size={14} /> Combo
+                  </button>
+                )}
+                {showProd && (
+                  <button
+                    type="button"
+                    onClick={() => setProdPickerOpen((v) => !v)}
+                    className={baseCls}
+                    style={prodPickerOpen ? active : idle}
+                    title="Vender um produto junto (baixa do estoque)"
+                  >
+                    <IconInbox size={14} /> Produto
+                  </button>
+                )}
+              </div>
+            )
+          })()}
 
           {/* COMBOS · preenche serviço + produto de uma vez (Eduardo 21/07).
               Só aparece se o negócio cadastrou algum combo na aba Pacotes. */}
-          {combos.length > 0 && (
-            comboAplicado ? (
+          {/* Combo aplicado · resumo (o botão "Combo" do row some quando aplicado) */}
+          {comboAplicado && (
               <div
                 className="rounded-xl p-3 flex items-center gap-3"
                 style={{
@@ -1121,21 +1156,14 @@ export default function AgendarModal({
                   Remover
                 </button>
               </div>
-            ) : (
+          )}
+
+          {/* Seletor de combo · abre pelo botão "Combo" do row acima */}
+          {combos.length > 0 && !comboAplicado && comboPickerOpen && (
               <div
                 className="rounded-xl p-2.5 space-y-2"
                 style={{ background: 'color-mix(in srgb, var(--admin-accent) 6%, transparent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 40%, transparent)' }}
               >
-                {!comboPickerOpen ? (
-                  <button
-                    type="button"
-                    onClick={() => setComboPickerOpen(true)}
-                    className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
-                    style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}
-                  >
-                    <IconPlus size={14} /> Usar um combo
-                  </button>
-                ) : (
                   <>
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-accent)' }}>
@@ -1188,9 +1216,7 @@ export default function AgendarModal({
                       })}
                     </div>
                   </>
-                )}
               </div>
-            )
           )}
 
           {/* Produtos vendidos JUNTO com o atendimento (balcão) · Eduardo 07/06 */}
@@ -1232,22 +1258,18 @@ export default function AgendarModal({
             </div>
           )}
 
-          {/* Picker de produto · só aparece se o negócio tem produtos cadastrados */}
-          {products.length > 0 && (
+          {/* Seletor de produto · abre pelo botão "Produto" do row acima */}
+          {products.length > 0 && prodPickerOpen && (
             <div
               className="rounded-xl p-2.5 space-y-2"
               style={{ background: 'color-mix(in srgb, var(--admin-accent) 6%, transparent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 40%, transparent)' }}
             >
-              {!prodPickerOpen ? (
-                <button
-                  type="button"
-                  onClick={() => setProdPickerOpen(true)}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
-                  style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}
-                >
-                  <IconPlus size={14} /> Adicionar produto
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-accent)' }}>Adicionar produto</p>
+                <button type="button" onClick={() => setProdPickerOpen(false)} style={{ color: 'var(--admin-text-mute)' }} aria-label="Fechar produtos">
+                  <IconClose size={14} />
                 </button>
-              ) : (
+              </div>
                 <>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--admin-text-faded)' }}>
@@ -1309,7 +1331,6 @@ export default function AgendarModal({
                     fechar
                   </button>
                 </>
-              )}
             </div>
           )}
 
