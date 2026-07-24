@@ -110,9 +110,19 @@ export async function POST(req: NextRequest) {
       if (subs && subs.length > 0) {
         const hora = appointment.start_time.slice(0, 5)
         const svc = serviceNames.length ? ` · ${serviceNames.join(', ')}` : ''
+        // Dia + data do agendamento. appointment_date é DATE puro (YYYY-MM-DD);
+        // monto o Date com os componentes ao meio-dia local pra pegar o dia da
+        // semana certo sem shift de fuso (nada de new Date(iso) cru).
+        let quando = `às ${hora}`
+        try {
+          const [yy, mm, dd] = String(appointment.appointment_date).split('-')
+          const dt = new Date(Number(yy), Number(mm) - 1, Number(dd), 12, 0, 0)
+          const semana = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+          quando = `${semana} ${dd}/${mm} às ${hora}`
+        } catch {}
         const payload = {
           titulo: 'Novo agendamento',
-          corpo: `${appointment.client_name || 'Cliente'} às ${hora}${svc}`,
+          corpo: `${appointment.client_name || 'Cliente'} · ${quando}${svc}`,
           url: '/admin',
         }
         const results = await Promise.all(
