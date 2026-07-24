@@ -102,7 +102,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
     const p = price.trim() === '' ? itemsTotal : Number(price)
     if (!Number.isFinite(p) || p < 0) { setLocalError('Preço inválido'); return }
     if (p === 0) {
-      setLocalError('O pacote ficaria R$ 0,00. Informe o preço, ou preencha o valor dos itens pra ele calcular sozinho.')
+      setLocalError(`O ${noun} ficaria R$ 0,00. Informe o preço, ou preencha o valor dos itens pra ele calcular sozinho.`)
       return
     }
     if (validityKind !== 'none') {
@@ -201,19 +201,19 @@ export default function PacoteFormModal({ initial, services, products, loading, 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Nome */}
           <div>
-            <label className="admin-label">Nome do pacote</label>
+            <label className="admin-label">Nome do {noun}</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Combo Manutenção 4x"
+              placeholder={isCombo ? 'Ex: Trança + Cabelo' : 'Ex: Pacote 4 Manutenções'}
               className="admin-input w-full px-3 py-2.5 rounded-xl text-sm"
             />
           </div>
 
           {/* Preço */}
           <div>
-            <label className="admin-label">Preço do pacote (R$)</label>
+            <label className="admin-label">Preço do {noun} (R$)</label>
             <input
               type="number"
               min={0}
