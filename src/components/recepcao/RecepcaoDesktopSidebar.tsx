@@ -49,7 +49,7 @@ const ITEMS: SidebarItem[] = [
   { label: 'Consultas', href: '/recepcao/consultas', Icon: IconSearch },
   { label: 'Clientes', href: '/recepcao/clientes', Icon: IconUsers },
   { label: 'Produtos', href: '/recepcao/produtos', Icon: IconInbox },
-  { label: 'Pacotes', href: '/recepcao/pacotes', Icon: IconStar },
+  // Pacotes escondido até o resgate ficar pronto (recepção não tem "em breve").
   { label: 'Cupons', href: '/recepcao/cupons', Icon: IconGift },
   { label: 'Caixa', href: '/recepcao/caixa', Icon: IconWallet },
 ]

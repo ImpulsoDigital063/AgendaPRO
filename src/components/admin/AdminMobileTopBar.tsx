@@ -101,7 +101,8 @@ export default function AdminMobileTopBar({
       items: [
         { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', Icon: IconSparkles },
         { label: 'Produtos', href: '/admin/produtos', Icon: IconGift },
-        { label: 'Pacotes', href: '/admin/pacotes', Icon: IconGift },
+        // Pacotes escondido no mobile até o resgate ficar pronto (mobile só lista
+        // o que está pronto · combo já vive dentro de Produtos). Desktop mostra "em breve".
       ],
     },
     {
