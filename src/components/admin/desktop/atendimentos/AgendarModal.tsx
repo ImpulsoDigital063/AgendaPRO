@@ -1085,16 +1085,18 @@ export default function AgendarModal({
           {/* Barra compacta de ações · Serviço / Combo / Produto num row só
               (Eduardo 24/07). Combo/Produto abrem o seletor logo abaixo. */}
           {(() => {
-            const baseCls = 'flex-1 min-w-0 py-2.5 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors'
+            const baseCls = 'flex-1 min-w-0 py-2.5 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all hover:-translate-y-px'
+            // Estilo CHEIO (gradiente + sombra + texto branco), igual ao
+            // "Registrar venda" · Eduardo 24/07.
             const idle = {
-              background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)',
-              border: '1px dashed color-mix(in srgb, var(--admin-accent) 45%, transparent)',
-              color: 'var(--admin-accent)',
+              background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+              color: '#fff',
+              boxShadow: '0 8px 22px -8px rgba(5,150,105,0.55), inset 0 1px 0 rgba(255,255,255,0.25)',
             }
             const active = {
-              background: 'var(--admin-accent)',
-              border: '1px solid var(--admin-accent)',
+              background: 'linear-gradient(180deg, #059669 0%, #047857 100%)',
               color: '#fff',
+              boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.28)',
             }
             const showCombo = combos.length > 0 && !comboAplicado
             const showProd = products.length > 0
