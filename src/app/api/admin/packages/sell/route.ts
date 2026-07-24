@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { PACOTE_ENABLED } from '@/lib/feature-flags'
 
 async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser()
@@ -48,6 +49,11 @@ function getAdmin() {
  * Read-after-write: confirma customer_package criado + balances.
  */
 export async function POST(request: Request) {
+  // PACOTE "em breve" · resgate não verificado. Barra a venda no servidor
+  // (defesa em profundidade · o botão já está escondido). Ver feature-flags.
+  if (!PACOTE_ENABLED) {
+    return NextResponse.json({ error: 'pacote_disabled', detail: 'Venda de pacotes está em breve.' }, { status: 403 })
+  }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

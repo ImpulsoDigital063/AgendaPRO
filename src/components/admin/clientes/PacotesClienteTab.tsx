@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconGift, IconPlus } from '@/components/ui/Icon'
 import VenderPacoteModal from './VenderPacoteModal'
+import { PACOTE_ENABLED } from '@/lib/feature-flags'
 
 type Balance = {
   id: string
@@ -84,19 +85,22 @@ export default function PacotesClienteTab({ customerId, customerName }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Botão Vender pacote */}
-      <button
-        type="button"
-        onClick={() => setShowSellModal(true)}
-        className="w-full md:w-auto px-4 py-2.5 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5"
-        style={{
-          background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
-          color: '#fff',
-          boxShadow: '0 4px 12px -4px rgba(59,130,246,0.5)',
-        }}
-      >
-        <IconPlus size={14} /> Vender novo pacote
-      </button>
+      {/* Botão Vender pacote · escondido enquanto PACOTE está "em breve" (resgate
+          não verificado). Só reaparece quando PACOTE_ENABLED virar true. */}
+      {PACOTE_ENABLED && (
+        <button
+          type="button"
+          onClick={() => setShowSellModal(true)}
+          className="w-full md:w-auto px-4 py-2.5 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5"
+          style={{
+            background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+            color: '#fff',
+            boxShadow: '0 4px 12px -4px rgba(59,130,246,0.5)',
+          }}
+        >
+          <IconPlus size={14} /> Vender novo pacote
+        </button>
+      )}
 
       {error && (
         <div className="rounded-xl px-3 py-2 text-xs"
@@ -123,7 +127,9 @@ export default function PacotesClienteTab({ customerId, customerName }: Props) {
             Cliente ainda não tem pacotes
           </p>
           <p className="text-xs mt-1 max-w-sm mx-auto leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-            Vender pacote é a melhor forma de garantir retorno: cliente paga 1x e volta N vezes.
+            {PACOTE_ENABLED
+              ? 'Vender pacote é a melhor forma de garantir retorno: cliente paga 1x e volta N vezes.'
+              : 'Venda de pacotes (sessões resgatáveis) chega em breve.'}
           </p>
         </div>
       )}
