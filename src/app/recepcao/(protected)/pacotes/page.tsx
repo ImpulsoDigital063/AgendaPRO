@@ -31,10 +31,11 @@ export default async function RecepcaoPacotesPage() {
     admin
       .from('packages')
       .select(`
-        id, name, price, validity_kind, validity_value, active, description, created_at,
+        id, name, price, kind, validity_kind, validity_value, active, description, created_at,
         package_items (id, service_id, product_id, quantity, unit_price, services(name, price), products(name, price))
       `)
       .eq('business_id', business.id)
+      .eq('kind', 'pacote')
       .order('created_at', { ascending: false }),
     admin
       .from('services')
@@ -55,6 +56,7 @@ export default async function RecepcaoPacotesPage() {
       <SubPageHeader title="Pacotes" subtitle={business.name} back="/recepcao" />
       <div className="max-w-lg mx-auto px-4 py-6 md:max-w-7xl md:px-8">
         <PacotesView
+          kind="pacote"
           initialPackages={(packages ?? []) as unknown as Parameters<typeof PacotesView>[0]['initialPackages']}
           services={(services ?? []) as Parameters<typeof PacotesView>[0]['services']}
           products={(products ?? []) as Parameters<typeof PacotesView>[0]['products']}

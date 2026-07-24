@@ -17,6 +17,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
+import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import {
   IconHome,
   IconCalendar,
@@ -49,7 +50,8 @@ const ITEMS: SidebarItem[] = [
   { label: 'Consultas', href: '/recepcao/consultas', Icon: IconSearch },
   { label: 'Clientes', href: '/recepcao/clientes', Icon: IconUsers },
   { label: 'Produtos', href: '/recepcao/produtos', Icon: IconInbox },
-  // Pacotes escondido até o resgate ficar pronto (recepção não tem "em breve").
+  // Pacote (multi-serviço resgatável) · gated pelo PACOTE_ENABLED.
+  ...(PACOTE_ENABLED ? [{ label: 'Pacotes', href: '/recepcao/pacotes', Icon: IconGift }] as SidebarItem[] : []),
   { label: 'Cupons', href: '/recepcao/cupons', Icon: IconGift },
   { label: 'Caixa', href: '/recepcao/caixa', Icon: IconWallet },
 ]

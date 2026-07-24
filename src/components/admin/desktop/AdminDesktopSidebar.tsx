@@ -28,6 +28,7 @@ import {
   IconMapPin,
   IconLayers,
 } from '@/components/ui/Icon'
+import { PACOTE_ENABLED } from '@/lib/feature-flags'
 
 type Brand = {
   business_name?: string | null
@@ -95,8 +96,11 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         // Combo (serviço + produto vendidos juntos) · entrada própria abaixo de
         // Produtos (Eduardo 24/07/2026). Já está pronto e em produção.
         { label: 'Combos', href: '/admin/combos', Icon: IconLayers },
-        // Pacote (multi-serviço resgatável) ainda em acabamento. Marca "em breve".
-        { label: 'Pacotes', Icon: IconGift, comingSoon: true },
+        // Pacote (multi-serviço resgatável) · gated pelo PACOTE_ENABLED. Ligado =
+        // link real; desligado = "em breve".
+        PACOTE_ENABLED
+          ? { label: 'Pacotes', href: '/admin/pacotes', Icon: IconGift }
+          : { label: 'Pacotes', Icon: IconGift, comingSoon: true },
       ],
     },
     {

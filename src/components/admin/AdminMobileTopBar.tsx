@@ -23,6 +23,7 @@ import {
   IconWhatsapp,
   IconLayers,
 } from '@/components/ui/Icon'
+import { PACOTE_ENABLED } from '@/lib/feature-flags'
 
 type Props = {
   businessName: string | null
@@ -105,8 +106,8 @@ export default function AdminMobileTopBar({
         // Combo (serviço + produto) · entrada própria abaixo de Produtos, igual
         // ao desktop (Eduardo 24/07/2026). Já em produção.
         { label: 'Combos', href: '/admin/combos', Icon: IconLayers },
-        // Pacotes escondido no mobile até o resgate ficar pronto (mobile só lista
-        // o que está pronto). Desktop mostra "em breve".
+        // Pacote (multi-serviço resgatável) · gated pelo PACOTE_ENABLED.
+        ...(PACOTE_ENABLED ? [{ label: 'Pacotes', href: '/admin/pacotes', Icon: IconGift }] : []),
       ],
     },
     {
