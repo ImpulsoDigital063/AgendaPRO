@@ -573,15 +573,16 @@ export default function AgendarModal({
     if (!canSave || (!cliente && !avulso)) return
     setError(null)
     setSaving(true)
-    // BALCÃO = registro de venda (atendimento que muitas vezes JÁ aconteceu).
+    // BALCÃO e "JÁ ATENDI" = registro de atendimento que JÁ aconteceu.
     // A duração ali é irrelevante: o sistema não pode obrigar a recepcionista a
     // adivinhar que serviço longo + hora tardia estoura o range, nem deixar o
     // registro ocupar um bloco gigante na agenda. Por isso o registro vira um
     // PONTO no tempo (fim = início → appointment_range fica VAZIO: nunca cruza
     // meia-noite e a trava de exclusão por overlap não pega). Agenda normal
-    // segue usando a duração. (Eduardo 09/06.) A duração real do serviço
-    // continua salva em appointment_services pra relatório/comissão.
-    const endTime = balcao ? time : addMinutesToTime(time, totalDuration)
+    // (agendamento futuro) segue usando a duração. (Eduardo 09/06 · estendido pra
+    // jaConcluido 24/07 · resgate marcado "já atendi" batia no no_overlap.)
+    // A duração real do serviço continua salva em appointment_services.
+    const endTime = (balcao || jaConcluido) ? time : addMinutesToTime(time, totalDuration)
     const prof = professionals.find((p) => p.id === profId)
 
     // Snapshot dos serviços usados (resolve nome via lookup pra log/denormalização)
