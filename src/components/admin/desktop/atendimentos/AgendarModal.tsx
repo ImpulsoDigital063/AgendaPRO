@@ -712,6 +712,15 @@ export default function AgendarModal({
     // "Já concluído?" → abre o modal de pagamento (como foi pago) em vez da
     // tela de sucesso. Senão, fluxo normal (paga depois).
     if (jaConcluido) {
+      // Resgate puro / nada a cobrar (total R$0): NÃO pede pagamento — o serviço
+      // entrou R$0 (já foi pago na venda do pacote) e não há produto. Marca
+      // concluído direto (a sessão já foi consumida acima). Eduardo 24/07.
+      if (totalGeral <= 0) {
+        await supabase.from('appointments').update({ status: 'completed' }).eq('id', inserted.id)
+        setCreatedId(inserted.id)
+        setCreatedCustomerId(avulso ? null : cliente!.id)
+        return
+      }
       // a venda dos produtos é criada (paga) no concludeWithPayment, com o método
       setPayAppt({
         id: inserted.id,
