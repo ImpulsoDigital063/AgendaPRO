@@ -120,7 +120,9 @@ type PixInline = {
 }
 
 export default function BillingPlanSelector({ plan }: Props) {
-  const [selectedKey, setSelectedKey] = useState<Modalidade>('anual_pix')
+  // Default = MENSAL PIX (R$67): o anual (R$670) como padrão causava sticker shock
+  // e travava conversão (Gessica 28/07 — quase churnou por atrito, não por preço).
+  const [selectedKey, setSelectedKey] = useState<Modalidade>('mensal_pix')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null)
