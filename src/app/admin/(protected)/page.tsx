@@ -8,6 +8,7 @@ import {
 import WelcomeModal from '@/components/admin/onboarding/WelcomeModal'
 import OnboardingChecklist from '@/components/admin/onboarding/OnboardingChecklist'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
+import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import { todayBR } from '@/lib/date-br'
 
 // Garante revalidação imediata após mutações (router.refresh tras cancel/payment).
@@ -88,6 +89,12 @@ export default async function AdminPage({
           />
         </div>
       )}
+
+      {/* Ativar notificações · na AGENDA (tela que todos usam), não só no Início —
+          o banner some sozinho se já ativo/dispensado/sem suporte (Eduardo 28/07). */}
+      <div className="relative px-3 md:px-6 pt-3 md:pt-6">
+        <PushEnableBanner />
+      </div>
 
       {/* Agenda · GradeTimeline em todos os breakpoints (mobile = scroll horizontal) */}
       <div className="relative px-3 md:px-6 pt-3 md:pt-6 pb-8">

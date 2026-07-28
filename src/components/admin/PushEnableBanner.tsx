@@ -9,7 +9,10 @@
 import { useEffect, useState } from 'react'
 import { registerPush, pushSupported, hasActivePushSubscription, type PushResult } from '@/lib/push'
 
-const DISMISS_KEY = 'ap_push_banner_dismissed'
+// Dispensa temporária: guarda o timestamp e volta a oferecer depois de 7 dias
+// (antes era permanente · um "agora não" matava o banner pra sempre → adoção baixa).
+const DISMISS_KEY = 'ap_push_banner_dismissed_at'
+const DISMISS_DAYS = 7
 
 function IconBell({ size = 18 }: { size?: number }) {
   return (
@@ -42,7 +45,8 @@ export default function PushEnableBanner() {
     let alive = true
     ;(async () => {
       if (typeof window === 'undefined') return
-      if (localStorage.getItem(DISMISS_KEY) === '1') return
+      const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || 0)
+      if (dismissedAt && Date.now() - dismissedAt < DISMISS_DAYS * 86400000) return
 
       const ua = navigator.userAgent
       const isIOS = /iphone|ipad|ipod/i.test(ua)
@@ -69,7 +73,7 @@ export default function PushEnableBanner() {
 
   function dismiss() {
     try {
-      localStorage.setItem(DISMISS_KEY, '1')
+      localStorage.setItem(DISMISS_KEY, String(Date.now()))
     } catch {}
     setMode(null)
   }
@@ -167,7 +171,7 @@ export default function PushEnableBanner() {
           Ative as notificações neste aparelho
         </p>
         <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-          Seu celular apita e mostra o aviso quando um cliente agenda pelo seu link — mesmo com o app fechado.
+          Seu celular apita quando um cliente agenda pelo seu link e em avisos importantes da sua conta — mesmo com o app fechado.
         </p>
         {error && (
           <p className="text-xs mt-2 font-medium" style={{ color: '#DC2626' }}>
