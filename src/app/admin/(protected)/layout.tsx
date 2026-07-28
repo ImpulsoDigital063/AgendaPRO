@@ -38,7 +38,7 @@ export default async function AdminLayout({
   let pendingAppointments = 0
   let pendingClaims = 0
   let showOwnerTab = false
-  let trial: { diasRestantes: number; plano: string; precoMes: string } | null = null
+  let trial: { diasRestantes: number; plano: string; precoMes: string; vencido?: boolean } | null = null
   let cobranca: { diasAteVencer: number; status: 'active' | 'past_due' } | null = null
   let brand: {
     brand_primary?: string | null
@@ -139,6 +139,30 @@ export default async function AdminLayout({
       }
     }
 
+    // TRIAL VENCIDO em CARÊNCIA (past_due + grace ainda válida · modalidade null =
+    // não é pagante PIX): 3 dias de acesso liberado + faixa vermelha antes do
+    // bloqueio (Eduardo 28/07 · "igual o pagante"). O blockedExterno acima já
+    // deixou passar (carência não expirou). Aqui mostra a faixa com os dias que
+    // faltam pra bloquear.
+    const emTrialGrace =
+      subscription.status === 'past_due' &&
+      !subscription.permanent_courtesy &&
+      !subscription.plan_modalidade &&
+      !subscription.asaas_subscription_id &&
+      !subscription.mp_subscription_id &&
+      !!subscription.grace_ends_at &&
+      new Date(subscription.grace_ends_at) > now
+
+    if (emTrialGrace) {
+      const restaMs = new Date(subscription.grace_ends_at!).getTime() - now.getTime()
+      trial = {
+        diasRestantes: Math.max(1, Math.ceil(restaMs / (24 * 60 * 60 * 1000))),
+        plano: subscription.plan === 'equipe' ? 'Equipe' : 'Solo',
+        precoMes: `R$ ${Math.round((subscription.price_cents ?? 6700) / 100)}`,
+        vencido: true,
+      }
+    }
+
     // COBRANÇA PIX no painel (cravado 18/07): assinatura PIX perto de vencer
     // ou vencida (ainda na carência — se a carência já venceu o gate acima
     // redirecionou pra /bloqueado). Mostra a faixa com "Pagar agora" ≤3 dias.
@@ -203,6 +227,7 @@ export default async function AdminLayout({
               diasRestantes={trial.diasRestantes}
               plano={trial.plano}
               precoMes={trial.precoMes}
+              vencido={trial.vencido}
             />
           )}
           {cobranca && (

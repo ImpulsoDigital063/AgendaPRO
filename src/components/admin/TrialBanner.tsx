@@ -16,17 +16,24 @@ type Props = {
   diasRestantes: number
   plano: string
   precoMes: string
+  /** true = teste JÁ venceu e está na carência de 3 dias (past_due). `diasRestantes`
+   *  vira os dias que faltam pra bloquear. Faixa sempre vermelha. Eduardo 28/07. */
+  vencido?: boolean
 }
 
-export default function TrialBanner({ diasRestantes, plano, precoMes }: Props) {
-  const urgente = diasRestantes <= 2
-  const ultimoDia = diasRestantes <= 0
+export default function TrialBanner({ diasRestantes, plano, precoMes, vencido = false }: Props) {
+  const urgente = vencido || diasRestantes <= 2
+  const ultimoDia = !vencido && diasRestantes <= 0
 
-  const texto = ultimoDia
-    ? 'Seu teste termina hoje'
-    : diasRestantes === 1
-      ? 'Falta 1 dia do seu teste'
-      : `Faltam ${diasRestantes} dias do seu teste`
+  const texto = vencido
+    ? diasRestantes <= 1
+      ? 'Seu teste terminou · último dia pra ativar antes de bloquear'
+      : `Seu teste terminou · ${diasRestantes} dias pra ativar antes de bloquear`
+    : ultimoDia
+      ? 'Seu teste termina hoje'
+      : diasRestantes === 1
+        ? 'Falta 1 dia do seu teste'
+        : `Faltam ${diasRestantes} dias do seu teste`
 
   return (
     <div
@@ -45,7 +52,9 @@ export default function TrialBanner({ diasRestantes, plano, precoMes }: Props) {
         <span className="truncate">
           <strong className={urgente ? 'text-rose-700' : 'text-blue-700'}>{texto}.</strong>{' '}
           <span className="text-slate-600 hidden sm:inline">
-            Depois é {precoMes}/mês no plano {plano}. Sem fidelidade.
+            {vencido
+              ? `São ${precoMes}/mês no plano ${plano}. Sem fidelidade.`
+              : `Depois é ${precoMes}/mês no plano ${plano}. Sem fidelidade.`}
           </span>
         </span>
       </div>

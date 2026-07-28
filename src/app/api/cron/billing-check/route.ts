@@ -198,8 +198,10 @@ export async function GET(req: NextRequest) {
   // ── Passo 2: expiração de TRIAL / CORTESIA ────────────────────────
   // Trial e cortesia não-permanente (sem renovação automática) não passam
   // pelo fluxo PIX acima. Quando pago_ate vence, ninguém vira o status →
-  // acesso grátis vitalício (bug cravado 07/06). Aqui fechamos: status vira
-  // pending_payment, e no próximo acesso o dono cai no paywall (/admin/bloqueado).
+  // acesso grátis vitalício (bug cravado 07/06). Aqui fechamos: o trial vencido
+  // vira past_due + grace_ends_at (+3 dias), MESMO mecanismo do pagante em atraso
+  // (Eduardo 28/07): 3 dias de carência com acesso liberado + faixa vermelha, e
+  // o gate só bloqueia (/admin/bloqueado) quando a carência acaba. Não corta seco.
   //
   // Critério (espelha o que NÃO tem renovação automática):
   //   status=active · plan_modalidade NULL (não é ciclo PIX) ·
@@ -256,10 +258,12 @@ export async function GET(req: NextRequest) {
   if (trialErr) {
     console.error('[Cron Billing] Erro ao buscar trials vencidos:', trialErr)
   } else {
+    const graceTrialEnds = new Date()
+    graceTrialEnds.setDate(graceTrialEnds.getDate() + 3)
     for (const t of expiredTrials ?? []) {
       const { error: upErr } = await admin
         .from('subscriptions')
-        .update({ status: 'pending_payment' })
+        .update({ status: 'past_due', grace_ends_at: graceTrialEnds.toISOString() })
         .eq('id', t.id)
       if (upErr) {
         errors.push({ id: t.id, error: `trial_block_failed: ${upErr.message}` })
@@ -267,7 +271,7 @@ export async function GET(req: NextRequest) {
       }
       trialsBlocked++
       const biz = (t.businesses as unknown) as { name: string; owner_id: string } | null
-      console.log(`[Cron Billing] trial expirado → paywall: ${biz?.name ?? t.business_id}`)
+      console.log(`[Cron Billing] trial expirado → carência 3d (past_due): ${biz?.name ?? t.business_id}`)
       if (biz) {
         const email = await ownerEmail(biz.owner_id)
         if (email) {
