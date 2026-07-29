@@ -248,8 +248,12 @@ export async function POST(req: NextRequest) {
   }
 
   // Alerta operacional (Telegram) — Eduardo quer saber quando entra cadastro
-  // novo (antes só descobria por auditoria manual). Fire-and-forget: não
-  // bloqueia a resposta nem quebra o cadastro se o Telegram falhar.
+  // novo (antes só descobria por auditoria manual).
+  //
+  // AWAIT obrigatório, não `void` (28/07/2026): fire-and-forget aqui perdia
+  // alerta. O `return` vem duas linhas abaixo e a Vercel congela a invocação
+  // assim que a resposta sai — o fetch pro Telegram morria no meio. sendAlert
+  // nunca lança (retorna {ok:false}), então o await não quebra o cadastro.
   const CANAL_LABEL: Record<string, string> = {
     indicacao: 'Indicação', google: 'Google', instagram: 'Instagram', tiktok: 'TikTok',
     chatgpt_ia: 'ChatGPT/IA', salao99_migrante: 'Migrante Salão99', whatsapp_organico: 'WhatsApp', outro: 'Outro',
@@ -257,7 +261,7 @@ export async function POST(req: NextRequest) {
   const NEED_LABEL: Record<string, string> = {
     agenda: 'Agenda', loja_vendas: 'Loja/Vendas', ambos: 'Ambos', indeciso: 'Indeciso',
   }
-  void sendAlert(
+  await sendAlert(
     `🆕 <b>Novo cadastro no AgendaPRO</b>\n` +
     `<b>${businessName}</b> · ${chosenPlan === 'equipe' ? 'Equipe' : 'Solo'}\n` +
     (phone ? `📱 ${phone}\n` : '') +

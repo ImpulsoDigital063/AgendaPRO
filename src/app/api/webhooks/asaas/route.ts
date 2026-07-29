@@ -378,11 +378,16 @@ async function notifyPaymentConfirmed(
   const business = (sub.businesses as unknown) as { name: string; owner_id: string }
 
   // Alerta operacional (Telegram) — Eduardo quer saber quando cai pagamento,
-  // com destaque pra CLIENTE NOVO (1ª ativação) vs renovação. Fire-and-forget.
+  // com destaque pra CLIENTE NOVO (1ª ativação) vs renovação.
+  //
+  // AWAIT obrigatório, não `void` (28/07/2026): mesmo motivo do /api/cadastro.
+  // Aqui ainda havia trabalho awaited depois, então o alerta costumava dar
+  // tempo de sair — mas era corrida, não garantia. Alerta de dinheiro entrando
+  // não pode depender de sorte.
   {
     const valorTg = (paymentValue ?? sub.price_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     const planoTg = sub.plan === 'equipe' ? 'Equipe' : 'Solo'
-    void sendAlert(
+    await sendAlert(
       isFirstPayment
         ? `🎉 <b>NOVO CLIENTE pagou!</b>\n<b>${business.name}</b> — ${valorTg} (${planoTg})`
         : `💰 <b>Renovação</b>\n<b>${business.name}</b> — ${valorTg} (${planoTg})`
