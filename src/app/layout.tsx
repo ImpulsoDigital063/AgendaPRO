@@ -18,6 +18,10 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  // metadataBase (29/07/2026): sem ela o Next emite og:image em caminho
+  // relativo, e WhatsApp/Telegram nao resolvem — a previa cai pro favicon.
+  // A imagem em si vem de src/app/opengraph-image.tsx (convencao de arquivo).
+  metadataBase: new URL('https://agendapro.net.br'),
   title: 'AgendaPRO — Sua agenda virou o turno da noite do seu negócio',
   description:
     'Agendamento online com fidelidade, lista de espera automática, indicação e reputação Google. Enquanto você vive, o AgendaPRO agenda, lembra, cobra e traz cliente de volta. A partir de R$67/mês com garantia de 7 dias.',
