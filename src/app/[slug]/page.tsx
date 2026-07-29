@@ -718,7 +718,13 @@ export default async function BusinessPage({
           </section>
         )}
 
-        {/* CTA repetida no fim — também verde + pulse (consistência · Eduardo 05/06) */}
+        {/* CTA repetida no fim — também verde + pulse (consistência · Eduardo 05/06).
+            SÓ em página longa (29/07/2026): com poucos serviços a página inteira
+            cabe numa tela, e aí os dois CTAs verdes aparecem juntos e viram
+            bagunça (caso DN Diogo Nogueira, 1 serviço). Acima de 3 serviços o
+            cliente rolou até aqui e a repetição volta a fazer sentido — Olímpio,
+            Studio Marcela e cia. continuam vendo igual. */}
+        {(services?.length ?? 0) > 3 && (
         <Link
           href={agendarHref}
           className="cta-pulse-green group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] mb-6"
@@ -732,6 +738,7 @@ export default async function BusinessPage({
             <IconArrowRight size={18} />
           </span>
         </Link>
+        )}
 
         {/* Footer */}
         <div className="text-center space-y-2 pt-4">
