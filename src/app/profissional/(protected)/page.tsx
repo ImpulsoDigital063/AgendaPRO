@@ -80,11 +80,7 @@ export default async function ProfissionalPage({
   // Eduardo reportou lentidão em 30/07.
   const vazio = Promise.resolve({ data: null })
   const nextWeekStr = addDaysBR(today, 7)
-  const [{ data: donas }, { data: appointments }, { data: upcoming }] = await Promise.all([
-    // Coluna da dona fora da grade da equipe (30/07)
-    homeEhGrade && canBookOthers
-      ? supabase.from('professionals').select('id').eq('business_id', business.id).eq('role', 'owner')
-      : vazio,
+  const [{ data: appointments }, { data: upcoming }] = await Promise.all([
     // Lista "Hoje" + os 4 cards · só existem quando NÃO tem grade
     homeEhGrade ? vazio : supabase
       .from('appointments')
@@ -104,7 +100,6 @@ export default async function ProfissionalPage({
       .order('start_time', { ascending: true })
       .limit(10),
   ])
-  const idsDonas = (donas ?? []).map((d) => (d as { id: string }).id)
 
   // λ.fuso · formata a partir do dia BR já resolvido (ancorado ao meio-dia pra
    // não escorregar de novo na conversão) — antes era new Date() cru no servidor
@@ -332,8 +327,11 @@ export default async function ProfissionalPage({
               date={gradeDate}
               hideKpis
               hideCaixaActions
+              // 30/07 (fim do dia): a Renata ATENDE — descoberto testando. A
+              // coluna da dona voltou pra grade da equipe. Quem não atende sai
+              // sozinho pelo `does_appointments` do próprio cadastro, que é o
+              // lugar certo pra essa decisão (não o cargo).
               onlyProfessionalId={canBookOthers ? undefined : professional.id}
-              excludeProfessionalIds={idsDonas}
               firstProfessionalId={professional.id}
             />
           </Suspense>

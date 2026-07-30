@@ -58,8 +58,10 @@ export default async function AgendaEquipePage({
       .eq('business_id', business.id)
       .eq('active', true)
       .eq('is_receptionist', false)
-      // dona fora da lista (cravado 30/07 · ela administra, não atende)
-      .neq('role', 'owner')
+      // A dona entra na lista quando atende (Realli 30/07: a Renata atende).
+      // Quem não atende some pelo `does_appointments` do cadastro — o cargo não
+      // decide isso.
+      .eq('does_appointments', true)
       .order('name'),
     supabase
       .from('appointments')
