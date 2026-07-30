@@ -137,6 +137,12 @@ export default async function ProfissionalPage() {
 
   const navItems = [
     // v92 · só aparecem se a dona ligou a autonomia nas Configurações
+    canBookSelf && {
+      href: '/profissional/agenda',
+      label: 'Minha agenda em grade',
+      desc: 'O dia inteiro em blocos de horário',
+      icon: IconCalendar,
+    },
     seeTeamAgenda && {
       href: '/profissional/agenda-equipe',
       label: 'Agenda da equipe',
