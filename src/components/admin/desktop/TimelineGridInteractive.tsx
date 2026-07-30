@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus, IconInfo, IconSettings, IconCheck, IconClock } from '@/components/ui/Icon'
@@ -289,7 +289,16 @@ export default function TimelineGridInteractive({
 
   // Estado · profs visíveis · intervalo · cor · sidebar recolhida
   // Persistência via localStorage por business (key isolada por negócio).
-  const [visibleProfIds, setVisibleProfIds] = useState<Set<string>>(() => new Set(profs.map((p) => p.id)))
+  // Guardamos quem está ESCONDIDO, não quem está visível (Eduardo 30/07).
+  // Antes era lista de visíveis: profissional cadastrada DEPOIS não estava na
+  // lista salva e nascia invisível na grade, sem explicação — a dona contratava
+  // alguém e a pessoa simplesmente não aparecia. Com lista de escondidos, todo
+  // mundo nasce marcado e só some se alguém desmarcar de propósito.
+  const [hiddenProfIds, setHiddenProfIds] = useState<Set<string>>(() => new Set())
+  const visibleProfIds = useMemo(
+    () => new Set(profs.filter((p) => !hiddenProfIds.has(p.id)).map((p) => p.id)),
+    [profs, hiddenProfIds],
+  )
   const [interval, setInterval] = useState<Interval>(30)
   const [colorMode, setColorMode] = useState<ColorMode>('service')
   const [collapsed, setCollapsed] = useState(false)
@@ -305,8 +314,12 @@ export default function TimelineGridInteractive({
     try {
       const raw = localStorage.getItem(`agendapro-timeline-config-${businessId}`)
       if (raw) {
-        const cfg = JSON.parse(raw) as { visibleProfIds?: string[]; interval?: Interval; colorMode?: ColorMode; collapsed?: boolean }
-        if (cfg.visibleProfIds) setVisibleProfIds(new Set(cfg.visibleProfIds))
+        const cfg = JSON.parse(raw) as { hiddenProfIds?: string[]; visibleProfIds?: string[]; interval?: Interval; colorMode?: ColorMode; collapsed?: boolean }
+        // Config antiga (visibleProfIds) é IGNORADA de propósito: ela não sabe
+        // distinguir "escondi de propósito" de "essa profissional nem existia
+        // quando salvei". Na primeira abertura depois desta versão, todo mundo
+        // volta a aparecer — que é o comportamento que a pessoa espera.
+        if (cfg.hiddenProfIds) setHiddenProfIds(new Set(cfg.hiddenProfIds))
         if (cfg.interval && [15, 30, 60].includes(cfg.interval)) setInterval(cfg.interval)
         if (cfg.colorMode && ['service', 'professional', 'progress', 'payment'].includes(cfg.colorMode)) setColorMode(cfg.colorMode)
         if (typeof cfg.collapsed === 'boolean') setCollapsed(cfg.collapsed)
@@ -322,14 +335,14 @@ export default function TimelineGridInteractive({
       localStorage.setItem(
         `agendapro-timeline-config-${businessId}`,
         JSON.stringify({
-          visibleProfIds: Array.from(visibleProfIds),
+          hiddenProfIds: Array.from(hiddenProfIds),
           interval,
           colorMode,
           collapsed,
         }),
       )
     } catch {/* ignore */}
-  }, [visibleProfIds, interval, colorMode, collapsed, hydrated, businessId])
+  }, [hiddenProfIds, interval, colorMode, collapsed, hydrated, businessId])
 
   const visibleProfs = profs.filter((p) => visibleProfIds.has(p.id))
   const slots = buildSlots(hourStart, hourEnd, interval)
@@ -339,10 +352,10 @@ export default function TimelineGridInteractive({
   const dayStartMin = hourStart * 60
 
   function toggleProf(id: string) {
-    setVisibleProfIds((prev) => {
+    setHiddenProfIds((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(id)) next.delete(id) // estava escondida → mostra
+      else next.add(id)                 // estava visível → esconde
       return next
     })
   }
@@ -454,7 +467,7 @@ export default function TimelineGridInteractive({
                 </p>
                 <button
                   type="button"
-                  onClick={() => setVisibleProfIds(new Set(profs.map((p) => p.id)))}
+                  onClick={() => setHiddenProfIds(new Set())}
                   className="text-[10px] underline"
                   style={{ color: 'var(--admin-accent)' }}
                   title="Mostrar todos"
