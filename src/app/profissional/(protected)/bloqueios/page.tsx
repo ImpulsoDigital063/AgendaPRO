@@ -34,12 +34,14 @@ export default async function BloqueiosProfissionalPage() {
 
   const hoje = todayBR()
 
-  // Só os DELA, e só do futuro (bloqueio de ontem não serve pra nada)
+  // Os dela + os do salão (professional_id null · ela vê, não mexe).
+  // Bloqueio pontual do passado não interessa — recorrente sempre vale.
   const { data: blocos } = await supabase
     .from('business_blocks')
-    .select('id, block_type, block_date, day_of_week, start_time, end_time, reason, active')
-    .eq('professional_id', prof.id)
+    .select('id, block_type, block_date, day_of_week, start_time, end_time, reason, professional_id, active')
+    .eq('business_id', prof.business_id)
     .eq('active', true)
+    .or(`professional_id.eq.${prof.id},professional_id.is.null`)
     .order('block_date', { ascending: true })
 
   const futuros = (blocos ?? []).filter(
@@ -66,7 +68,7 @@ export default async function BloqueiosProfissionalPage() {
       </header>
 
       <div className="relative max-w-lg mx-auto px-4 pb-10">
-        <BloqueiosProfView blocos={futuros} hoje={hoje} />
+        <BloqueiosProfView blocos={futuros} hoje={hoje} meuProfId={prof.id} />
       </div>
     </main>
   )

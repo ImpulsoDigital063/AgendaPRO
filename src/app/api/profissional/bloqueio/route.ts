@@ -47,36 +47,60 @@ export async function POST(req: NextRequest) {
   if (!prof) return NextResponse.json({ error: 'nao_autorizado' }, { status: 403 })
 
   const body = await req.json().catch(() => null)
+  const tipo = body?.block_type === 'recurring' ? 'recurring' : 'specific'
   const date = typeof body?.date === 'string' ? body.date : ''
+  const diaSemana = Number(body?.day_of_week)
   const start = typeof body?.start_time === 'string' ? body.start_time : ''
   const end = typeof body?.end_time === 'string' ? body.end_time : ''
   const reason = typeof body?.reason === 'string' ? body.reason.trim().slice(0, 80) : null
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: 'data_invalida' }, { status: 400 })
   if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) {
     return NextResponse.json({ error: 'horario_invalido' }, { status: 400 })
   }
   if (end <= start) return NextResponse.json({ error: 'fim_antes_do_inicio' }, { status: 400 })
+  if (tipo === 'specific' && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ error: 'data_invalida' }, { status: 400 })
+  }
+  if (tipo === 'recurring' && !(diaSemana >= 0 && diaSemana <= 6)) {
+    return NextResponse.json({ error: 'dia_da_semana_invalido' }, { status: 400 })
+  }
 
   const admin = getAdmin()
 
   // Não deixa bloquear em cima de atendimento ativo — a cliente ficaria com
   // horário marcado num período "indisponível" e ninguém entenderia depois.
-  const { data: conflitos } = await admin
+  // Pontual: confere o dia. Recorrente: confere as próximas 8 semanas naquele
+  // dia da semana (janela suficiente pra pegar o que já está marcado sem varrer
+  // a agenda inteira).
+  let q = admin
     .from('appointments')
-    .select('id, start_time, end_time, client_name')
+    .select('id, appointment_date, start_time, end_time, client_name')
     .eq('professional_id', prof.id)
-    .eq('appointment_date', date)
     .not('status', 'in', '(cancelled,no_show)')
-  const bate = (conflitos ?? []).find((a) => {
+  if (tipo === 'specific') {
+    q = q.eq('appointment_date', date)
+  } else {
+    const hoje = new Date().toISOString().slice(0, 10)
+    const limite = new Date(Date.now() + 56 * 86_400_000).toISOString().slice(0, 10)
+    q = q.gte('appointment_date', hoje).lte('appointment_date', limite)
+  }
+  const { data: candidatos } = await q
+  const bate = (candidatos ?? []).find((a) => {
+    if (tipo === 'recurring') {
+      const dow = new Date(String(a.appointment_date) + 'T12:00:00Z').getUTCDay()
+      if (dow !== diaSemana) return false
+    }
     const s = String(a.start_time).slice(0, 5)
     const e = String(a.end_time).slice(0, 5)
     return s < end && e > start
   })
   if (bate) {
+    const quando = tipo === 'recurring'
+      ? ` em ${String(bate.appointment_date).slice(8, 10)}/${String(bate.appointment_date).slice(5, 7)}`
+      : ''
     return NextResponse.json({
       error: 'conflito',
-      detail: `Você tem ${bate.client_name ?? 'um atendimento'} das ${String(bate.start_time).slice(0, 5)} às ${String(bate.end_time).slice(0, 5)}. Cancele ou remarque antes de bloquear.`,
+      detail: `Você tem ${bate.client_name ?? 'um atendimento'}${quando} das ${String(bate.start_time).slice(0, 5)} às ${String(bate.end_time).slice(0, 5)}. Cancele ou remarque antes de bloquear.`,
     }, { status: 409 })
   }
 
@@ -85,14 +109,15 @@ export async function POST(req: NextRequest) {
     .insert({
       business_id: prof.business_id,
       professional_id: prof.id, // sempre a própria · nunca vem do body
-      block_type: 'specific',
-      block_date: date,
+      block_type: tipo,
+      block_date: tipo === 'specific' ? date : null,
+      day_of_week: tipo === 'recurring' ? diaSemana : null,
       start_time: `${start}:00`,
       end_time: `${end}:00`,
       reason: reason || 'Indisponível',
       active: true,
     })
-    .select('id, block_date, start_time, end_time, reason')
+    .select('id, block_type, block_date, day_of_week, start_time, end_time, reason')
     .single()
 
   if (error) {
