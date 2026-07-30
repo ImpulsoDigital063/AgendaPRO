@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconPlus, IconTrash, IconSearch } from '@/components/ui/Icon'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
-import { getAreaPrefix } from '@/lib/area-prefix'
+import { getAreaPrefix, areaSemTelasInternas } from '@/lib/area-prefix'
 import { createClient } from '@/lib/supabase/client'
 
 type ServiceLite = { id: string; name: string; price: number | null; duration_minutes: number | null }
@@ -290,8 +290,15 @@ export default function FaturarComandaModal({
     const d = await r.json()
     const invoiceId = d?.invoice?.id
     onClose()
-    if (invoiceId) router.push(`${areaPrefix}/comandas/${invoiceId}`)
-    else router.refresh()
+    // A área da profissional não tem tela de comandas — mandar ela pra
+    // /admin/comandas/[id] fazia o layout do admin chutar quem não é dona pra
+    // /cadastro ("cadastre seu negócio em 2 minutos"), com o pagamento já
+    // gravado (bug 30/07). Aqui ela fica na própria agenda, que atualiza.
+    if (invoiceId && !areaSemTelasInternas(areaPrefix)) {
+      router.push(`${areaPrefix}/comandas/${invoiceId}`)
+    } else {
+      router.refresh()
+    }
   }
 
   function openPagamento() {

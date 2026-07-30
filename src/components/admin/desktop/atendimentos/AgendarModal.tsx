@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
-import { getAreaPrefix } from '@/lib/area-prefix'
+import { getAreaPrefix, areaSemTelasInternas } from '@/lib/area-prefix'
 import { createClient } from '@/lib/supabase/client'
 import { resolveClientId } from '@/lib/clients'
 import { logActivity } from '@/lib/activity-log'
@@ -857,7 +857,13 @@ export default function AgendarModal({
     }
     // Fecha primeiro · senão o desmontar do modal pode cancelar o push
     onClose()
-    // ClientesView (admin) e RecepClientesList (recep) leem ?customer=ID
+    // ClientesView (admin) e RecepClientesList (recep) leem ?customer=ID.
+    // A profissional não tem tela de clientes: mandá-la pra /admin/clientes
+    // cairia em /cadastro (mesma armadilha do faturar · 30/07). Fica na agenda.
+    if (areaSemTelasInternas(areaPrefix)) {
+      router.refresh()
+      return
+    }
     router.push(`${areaPrefix}/clientes?customer=${customerId}`)
   }
 
