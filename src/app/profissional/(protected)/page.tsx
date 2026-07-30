@@ -18,7 +18,6 @@ import {
   IconCheck,
   IconClock,
   IconInbox,
-  IconPlus,
   IconSettings,
   IconUsers,
   IconWallet,
@@ -231,20 +230,14 @@ export default async function ProfissionalPage({
           </div>
         </div>
         {homeEhGrade ? (
-          <div className="flex items-baseline justify-between gap-3">
-            <h1
-              className="text-[19px] font-bold tracking-tight truncate"
-              style={{ color: 'var(--admin-text)' }}
-            >
-              {professional.name.split(' ')[0]}
-            </h1>
-            <p
-              className="text-xs capitalize flex-shrink-0"
-              style={{ color: 'var(--admin-text-mute)' }}
-            >
-              {todayFormatted}
-            </p>
-          </div>
+          // v98g · só o nome. A data completa e a contagem do dia já são o título
+          // da grade logo abaixo — repetir aqui era a mesma informação 2x.
+          <h1
+            className="text-[19px] font-bold tracking-tight truncate"
+            style={{ color: 'var(--admin-text)' }}
+          >
+            {professional.name.split(' ')[0]}
+          </h1>
         ) : (
           <>
             <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
@@ -308,21 +301,12 @@ export default async function ProfissionalPage({
         {/* Boas-vindas · card de primeiro acesso (dispensável no X) */}
         <WelcomeCard professionalName={professional.name} />
 
-        {/* v92 · marcar na própria agenda · aparece só com a autonomia ligada */}
-        {canBookSelf && (
-          <Link
-            href="/profissional/marcar"
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all"
-            style={{
-              background:
-                'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
-              color: '#FFFFFF',
-              boxShadow: '0 8px 20px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
-            }}
-          >
-            <IconPlus size={18} /> {canBookOthers ? 'Marcar cliente' : 'Marcar na minha agenda'}
-          </Link>
-        )}
+        {/* v98g · O botão "Marcar cliente" que existia aqui SAIU: era a mesma
+            função do "+ Agendar" que a própria grade tem no header, e apontado
+            por Eduardo 30/07 ("qual sentido de ter esses dois botões?").
+            Ficou o da grade porque é o padrão que a dona já usa no celular e
+            respeita o dia selecionado na navegação. A tela /profissional/marcar
+            foi removida junto. */}
 
         {/* v98d · A GRADE é a home · mesmo componente do /admin da dona e da
             recepção. hideCaixaActions: ela não vende produto nem abre balcão.
