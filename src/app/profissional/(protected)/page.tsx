@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import Image from 'next/image'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
+import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
@@ -302,6 +303,16 @@ export default async function ProfissionalPage({
           homeEhGrade ? 'md:max-w-none md:px-6 space-y-4 pb-2' : 'space-y-6 pb-10'
         }`}
       >
+        {/* Convite pra ativar a notificação no celular DELA (30/07).
+            A infra já existia inteira e já mira a profissional:
+              · /api/notify manda o push pro prof.auth_user_id (dono é reserva)
+              · a RPC salvar_push_subscription aceita qualquer usuário logado
+                (a v97 previu: business_id fica null pra quem não é dono)
+            Só faltava o convite — ele existia apenas em /admin, então nenhuma
+            das 6 da Realli tinha um device registrado e o push não tinha
+            pra onde ir. Dispensável, volta a oferecer em 7 dias. */}
+        <PushEnableBanner />
+
         {/* Boas-vindas · card de primeiro acesso (dispensável no X) */}
         <WelcomeCard professionalName={professional.name} />
 
