@@ -311,6 +311,7 @@ export default async function ProfissionalPage({
               hideCaixaActions
               onlyProfessionalId={canBookOthers ? undefined : professional.id}
               excludeProfessionalIds={idsDonas}
+              firstProfessionalId={professional.id}
             />
           </Suspense>
         )}

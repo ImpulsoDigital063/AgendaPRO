@@ -20,6 +20,11 @@ type Props = {
   /** v98d · esconde Vender produto / Resgatar pacote / Registrar venda do header.
    *  A profissional não opera caixa. Default false = admin e recepção iguais. */
   hideCaixaActions?: boolean
+  /** v98e · essa coluna vem PRIMEIRO (as outras seguem alfabéticas) e ganha o
+   *  selo "(você)" no nome. No painel da profissional é a agenda dela — abre o
+   *  app e a própria coluna já está na frente, sem rolar a sanfona no celular.
+   *  Default undefined = ordem alfabética normal (admin, recepção, Palace). */
+  firstProfessionalId?: string
 }
 
 type ApptRow = {
@@ -41,7 +46,7 @@ type ApptRow = {
 const HOUR_START = 7 // 07:00 começa a grade (ajuste futuro: business_hours)
 const HOUR_END = 22 // 22:00 termina
 
-export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds, hideCaixaActions = false }: Props) {
+export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds, hideCaixaActions = false, firstProfessionalId }: Props) {
   const excluded = new Set(excludeProfessionalIds ?? [])
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -128,9 +133,19 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     .filter((p) => !excluded.has(p.id))
     .map((p) => ({
       id: p.id,
-      name: p.name,
+      // v98e · "(você)" só quando alguém pediu destaque de coluna (painel da
+      // profissional). Admin e recepção não passam a prop → nome cru.
+      name: p.id === firstProfessionalId ? `${p.name} (você)` : p.name,
       photo_url: p.photo_url ?? null,
     }))
+    // v98e · a coluna em destaque vem primeiro · as outras seguem alfabéticas
+    // (a query já ordenou por name, e sort estável do JS preserva isso)
+    .sort((a, b) => {
+      if (!firstProfessionalId) return 0
+      if (a.id === firstProfessionalId) return -1
+      if (b.id === firstProfessionalId) return 1
+      return 0
+    })
   // Quando filtrado pra um profissional (aba "Eu"), contagem/KPIs/grade
   // refletem só os appts dele.
   const apptsBase = ((apptsData ?? []) as ApptRow[])

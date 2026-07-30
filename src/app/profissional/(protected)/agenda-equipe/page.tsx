@@ -69,7 +69,10 @@ export default async function AgendaEquipePage({
       .order('start_time', { ascending: true }),
   ])
 
-  const lista = profs ?? []
+  // v98e · a dela primeiro, as colegas depois em ordem alfabética
+  const lista = [...(profs ?? [])].sort((a, b) =>
+    a.id === me.id ? -1 : b.id === me.id ? 1 : 0
+  )
   const porProf = new Map<string, typeof appts>()
   for (const p of lista) porProf.set(p.id, [])
   for (const a of appts ?? []) {
