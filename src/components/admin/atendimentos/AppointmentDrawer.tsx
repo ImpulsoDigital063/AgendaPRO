@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconCalendar, IconClock, IconDollar, IconUser, IconExternalLink } from '@/components/ui/Icon'
 import AppointmentActions from './AppointmentActions'
@@ -65,6 +66,8 @@ function formatDateLong(d: string): string {
 }
 
 export default function AppointmentDrawer({ appointmentId, businessId, onClose }: Props) {
+  const pathname = usePathname()
+  const ehAreaProfissional = pathname.startsWith('/profissional')
   const [data, setData] = useState<ApptDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [portalReady, setPortalReady] = useState(false)
@@ -197,7 +200,10 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {data && (
+            {/* "Abrir em tela cheia" leva pra /admin/atendimentos, que é rota de
+                dono — a profissional seria chutada pro painel dela. Esconde na
+                área dela em vez de entregar botão que não funciona (30/07). */}
+            {data && !ehAreaProfissional && (
               <Link
                 href={`/admin/atendimentos/${data.id}`}
                 aria-label="Abrir em tela cheia"

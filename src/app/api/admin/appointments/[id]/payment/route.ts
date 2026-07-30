@@ -41,13 +41,22 @@ export async function POST(
   // Validacao: appointment + business
   const { data: appt } = await supabase
     .from('appointments')
-    .select('id, business_id')
+    .select('id, business_id, professional_id')
     .eq('id', id)
     .single()
   if (!appt) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-  // Autorização: dono OU recepcionista do business
-  const [{ data: business }, { data: prof }] = await Promise.all([
+  // Autorização: dono, recepcionista OU profissional (v98 · 30/07/2026).
+  //
+  // Eduardo 30/07: "quem marca, agenda e marca como pago são as próprias
+  // profissionais" — negócio sem recepção (Realli) não tinha ninguém além da
+  // dona pra receber. Sem isso, o atendimento nunca virava comissão pra ela
+  // nem recebido pra dona.
+  //
+  // Mesma regra do cancelar: age sempre no que é dela; no da colega só se o
+  // negócio ligou `professionals_can_book_others`. Default false = Olímpio,
+  // Studio MOOD e os outros seguem com dono/recepção só.
+  const [{ data: business }, { data: prof }, { data: biz }] = await Promise.all([
     supabase
       .from('businesses')
       .select('id')
@@ -59,11 +68,20 @@ export async function POST(
       .select('id, is_receptionist')
       .eq('business_id', appt.business_id)
       .eq('auth_user_id', user.id)
+      .eq('active', true)
+      .maybeSingle(),
+    supabase
+      .from('businesses')
+      .select('professionals_can_book_others')
+      .eq('id', appt.business_id)
       .maybeSingle(),
   ])
   const isOwner = !!business
   const isReceptionist = prof?.is_receptionist === true
-  if (!isOwner && !isReceptionist) {
+  const ehDela = !!prof && prof.id === appt.professional_id
+  const podeMexerNoDaColega = biz?.professionals_can_book_others === true
+  const isProfissionalAutorizada = !!prof && !prof.is_receptionist && (ehDela || podeMexerNoDaColega)
+  if (!isOwner && !isReceptionist && !isProfissionalAutorizada) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 

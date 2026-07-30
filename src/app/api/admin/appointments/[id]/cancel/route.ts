@@ -30,13 +30,23 @@ export async function POST(
   // Validação: appointment + business
   const { data: appt } = await supabase
     .from('appointments')
-    .select('id, business_id, status, invoice_item_id')
+    .select('id, business_id, professional_id, status, invoice_item_id')
     .eq('id', id)
     .single()
   if (!appt) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-  // Autorização: dono OU recepcionista do business
-  const [{ data: business }, { data: prof }] = await Promise.all([
+  // Autorização: dono, recepcionista OU profissional (v98 · 30/07/2026).
+  //
+  // Eduardo 30/07: "vamos deixar igual do adm, afinal eles não têm recepção —
+  // quem marca, agenda e marca como pago são as próprias profissionais".
+  // Negócio sem recepcionista (caso Realli) quebrava aqui: a profissional
+  // marcava a cliente mas não conseguia fechar o ciclo do atendimento.
+  //
+  // A profissional age SEMPRE no que é dela. Pra mexer no de uma colega, o
+  // negócio precisa ter ligado `professionals_can_book_others` — a mesma flag
+  // que libera marcar pra colega. Sem a flag (que é o default), nada muda pra
+  // Olímpio, Studio MOOD e os outros.
+  const [{ data: business }, { data: prof }, { data: biz }] = await Promise.all([
     supabase
       .from('businesses')
       .select('id')
@@ -48,11 +58,20 @@ export async function POST(
       .select('id, is_receptionist')
       .eq('business_id', appt.business_id)
       .eq('auth_user_id', user.id)
+      .eq('active', true)
+      .maybeSingle(),
+    supabase
+      .from('businesses')
+      .select('professionals_can_book_others')
+      .eq('id', appt.business_id)
       .maybeSingle(),
   ])
   const isOwner = !!business
   const isReceptionist = prof?.is_receptionist === true
-  if (!isOwner && !isReceptionist) {
+  const ehDela = !!prof && prof.id === appt.professional_id
+  const podeMexerNoDaColega = biz?.professionals_can_book_others === true
+  const isProfissionalAutorizada = !!prof && !prof.is_receptionist && (ehDela || podeMexerNoDaColega)
+  if (!isOwner && !isReceptionist && !isProfissionalAutorizada) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
