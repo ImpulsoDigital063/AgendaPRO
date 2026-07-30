@@ -296,8 +296,8 @@ export default async function ProfissionalPage({
           colunas respirarem. No mobile segue max-w-lg — a grade rola na horizontal,
           igual ao /admin da dona. Sem grade, nada muda em nenhum breakpoint. */}
       <div
-        className={`relative max-w-lg mx-auto px-4 pb-10 ${
-          homeEhGrade ? 'md:max-w-none md:px-6 space-y-4' : 'space-y-6'
+        className={`relative max-w-lg mx-auto px-4 ${
+          homeEhGrade ? 'md:max-w-none md:px-6 space-y-4 pb-2' : 'space-y-6 pb-10'
         }`}
       >
         {/* Boas-vindas · card de primeiro acesso (dispensável no X) */}
@@ -459,7 +459,13 @@ export default async function ProfissionalPage({
         </div>
         )}
 
-        <p className="text-center text-xs pb-2" style={{ color: 'var(--admin-text-faded)' }}>
+        {/* Com a grade na home o rodapé some: ele empurrava a grade pra cima e
+            criava o vão morto que o Eduardo apontou em 30/07. A marca já está
+            na top bar. */}
+        <p
+          className={`text-center text-xs pb-2 ${homeEhGrade ? 'hidden' : ''}`}
+          style={{ color: 'var(--admin-text-faded)' }}
+        >
           AgendaPRO · Impulso Digital
         </p>
       </div>

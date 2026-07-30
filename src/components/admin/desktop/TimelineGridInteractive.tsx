@@ -191,6 +191,8 @@ export default function TimelineGridInteractive({
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
+  // No painel da profissional a grade ocupa a tela toda · ajusta a altura útil
+  const ehAreaProfissional = pathname.startsWith('/profissional')
   const [popover, setPopover] = useState<PopoverState>(null)
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null) // `${profId}-${time}`
   const [portalReady, setPortalReady] = useState(false)
@@ -667,7 +669,15 @@ export default function TimelineGridInteractive({
               style={{
                 // 03/06: dock removido (R1) liberou espaço vertical no mobile/tablet.
                 // Tela dedicada a atendimento → grade mais alta. Offset menor = mais linhas.
-                maxHeight: 'calc(100svh - 188px)',
+                //
+                // 30/07: no painel da PROFISSIONAL a grade é a tela inteira — não
+                // tem KPIs nem menu acima dela, então sobrava um vão morto entre o
+                // fim da grade e o bottom nav (Eduardo: "aumenta o grid pra ir até
+                // o final"). Offset menor só nessa área; admin e recepção seguem
+                // com o valor calibrado em 03/06.
+                maxHeight: ehAreaProfissional
+                  ? 'calc(100svh - 132px)'
+                  : 'calc(100svh - 188px)',
               }}
             >
               {/* Header de profs · sticky no topo (vertical) · move com scroll horizontal */}

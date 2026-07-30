@@ -154,6 +154,24 @@ export default function NovoClienteModal({ onClose, onSuccess }: Props) {
   // Portal guard pra SSR. Sem isso, createPortal explode no build.
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
+
+  // Trava o scroll do fundo enquanto o modal está aberto (Eduardo 30/07: "os
+  // modais ficam soltos, quando scrollo ele mexe para as laterais").
+  // Era o ÚNICO modal sem essa trava — AgendarModal, FaturarComandaModal e
+  // PaymentMethodModal já tinham. Sem ela a página continua rolando atrás e,
+  // como a grade rola na horizontal, o iOS desloca o viewport inteiro: o modal
+  // é `fixed`, fica ancorado no documento e parece escorregar pro lado.
+  // Esc fecha, mesmo padrão dos outros.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
   if (!portalReady) return null
 
   return createPortal(
