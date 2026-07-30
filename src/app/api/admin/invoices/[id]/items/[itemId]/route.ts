@@ -1,27 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 
-async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: owner } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .maybeSingle()
-  if (owner) return owner.id
-
-  const { data: prof } = await supabase
-    .from('professionals')
-    .select('business_id')
-    .eq('auth_user_id', user.id)
-    .eq('active', true)
-    .eq('is_receptionist', true)
-    .maybeSingle()
-  return prof?.business_id ?? null
-}
+// v98k · mesma regra única das outras rotas de comanda
+const getBusinessId = resolveBusinessIdOperacao
 
 function getAdmin() {
   return createServiceClient(

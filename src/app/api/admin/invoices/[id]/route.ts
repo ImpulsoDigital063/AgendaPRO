@@ -1,27 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 
-async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: owner } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .maybeSingle()
-  if (owner) return owner.id
-
-  const { data: prof } = await supabase
-    .from('professionals')
-    .select('business_id')
-    .eq('auth_user_id', user.id)
-    .eq('active', true)
-    .eq('is_receptionist', true)
-    .maybeSingle()
-  return prof?.business_id ?? null
-}
+// v98k · dono, recepção OU profissional (esta só quando o negócio ligou a flag
+// de equipe). Regra única em resolveBusinessIdOperacao — antes cada rota tinha
+// a própria cópia, e cada poder novo dado à profissional estourava numa delas.
+const getBusinessId = resolveBusinessIdOperacao
 
 // GET /api/admin/invoices/[id] · retorna invoice + items + payments
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {

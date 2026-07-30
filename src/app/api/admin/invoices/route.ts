@@ -1,3 +1,4 @@
+import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -29,17 +30,8 @@ export async function POST(request: Request) {
     .eq('owner_id', user.id)
     .maybeSingle()
 
-  let businessId = ownerBusiness?.id ?? null
-  if (!businessId) {
-    const { data: profRow } = await supabase
-      .from('professionals')
-      .select('business_id, is_receptionist, active')
-      .eq('auth_user_id', user.id)
-      .eq('active', true)
-      .eq('is_receptionist', true)
-      .maybeSingle()
-    businessId = profRow?.business_id ?? null
-  }
+  // v98k · dono, recepção OU profissional (esta só com a flag de equipe ligada)
+  const businessId = ownerBusiness?.id ?? (await resolveBusinessIdOperacao(supabase))
   if (!businessId) return NextResponse.json({ error: 'no_business' }, { status: 403 })
 
   const body = await request.json().catch(() => null)
@@ -471,17 +463,8 @@ export async function GET(request: Request) {
     .eq('owner_id', user.id)
     .maybeSingle()
 
-  let businessId = ownerBusiness?.id ?? null
-  if (!businessId) {
-    const { data: profRow } = await supabase
-      .from('professionals')
-      .select('business_id')
-      .eq('auth_user_id', user.id)
-      .eq('active', true)
-      .eq('is_receptionist', true)
-      .maybeSingle()
-    businessId = profRow?.business_id ?? null
-  }
+  // v98k · mesma regra da criação (dono, recepção ou profissional com flag)
+  const businessId = ownerBusiness?.id ?? (await resolveBusinessIdOperacao(supabase))
   if (!businessId) return NextResponse.json({ error: 'no_business' }, { status: 403 })
 
   const url = new URL(request.url)
