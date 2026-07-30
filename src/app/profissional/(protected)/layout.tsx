@@ -103,7 +103,18 @@ export default async function ProfissionalLayout({
           brandLogoUrl={business.brand_logo_url ?? null}
           employmentType={employmentType}
         />
-        <div className="relative z-10" style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
+        {/* SEM z-index aqui de propósito (bug visual reportado por Eduardo 30/07:
+            "o modal fica abaixo da barra do header" no mobile).
+            `z-10` num elemento posicionado cria CONTEXTO DE EMPILHAMENTO: o
+            z-[300] do AgendarModal passava a valer só DENTRO desta caixa, e a
+            caixa inteira (valendo 10) ficava atrás da topbar mobile (z-30).
+            Com z-index auto não há contexto novo → o modal compete direto com a
+            topbar e sobe. `relative` sozinho não cria contexto, e o conteúdo
+            continua pintando acima do decor (fixed z-0) por ordem de DOM.
+            ⚠️ admin/layout.tsx:216 e recepcao/layout.tsx:90 têm o MESMO padrão —
+            a dona e a recepção sofrem o mesmo bug no celular. Entram na
+            varredura (registrado no STATUS). */}
+        <div className="relative" style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
           {children}
         </div>
         <ProfissionalBottomNav
