@@ -60,6 +60,18 @@ export default async function ProfissionalAgendaPage({
   // `onlyProfessionalId` mantém a grade na coluna dela e só nela.
   const podeMarcarPraColega = business.professionals_can_book_others === true
 
+  // A coluna da dona sai da grade da equipe (cravado 30/07: ela administra, não
+  // atende). Só busca quando a grade é da equipe — no modo "só a minha coluna"
+  // isso não muda nada.
+  const { data: donas } = podeMarcarPraColega
+    ? await supabase
+        .from('professionals')
+        .select('id')
+        .eq('business_id', business.id)
+        .eq('role', 'owner')
+    : { data: null }
+  const idsDonas = (donas ?? []).map((d) => d.id as string)
+
   const label = new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
@@ -133,6 +145,7 @@ export default async function ProfissionalAgendaPage({
             date={date}
             hideKpis
             onlyProfessionalId={podeMarcarPraColega ? undefined : me.id}
+            excludeProfessionalIds={idsDonas}
           />
         </Suspense>
       </div>

@@ -50,6 +50,9 @@ export default async function ProfissionalMarcarPage() {
       .order('name'),
     // v98b · lista completa só quando a dona liberou marcar pras colegas.
     // Sem a flag, nem buscamos: a lista sai dela e o form pula o passo.
+    // A DONA fica fora (`role != owner`, cravado 30/07): funcionária marca
+    // entre colegas, não na agenda de quem administra. Se o dono pedir a dona
+    // de volta, é remover esse .neq.
     podeMarcarPraColega
       ? supabase
           .from('professionals')
@@ -58,6 +61,7 @@ export default async function ProfissionalMarcarPage() {
           .eq('active', true)
           .eq('is_receptionist', false)
           .eq('does_appointments', true)
+          .neq('role', 'owner')
           .order('name')
       : Promise.resolve({ data: null }),
   ])

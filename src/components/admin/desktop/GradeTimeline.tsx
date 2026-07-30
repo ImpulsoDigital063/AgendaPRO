@@ -13,6 +13,10 @@ type Props = {
   /** Quando setado, mostra só a coluna desse profissional (ex: aba "Eu" do
    *  dono que atende). Default: todos os profs ativos do negócio. */
   onlyProfessionalId?: string
+  /** v98b · esconde colunas específicas. Usado no painel da profissional, que
+   *  não mostra a coluna da dona quando ela só administra (Realli 30/07).
+   *  Default: não esconde ninguém — admin, recepção e Palace seguem iguais. */
+  excludeProfessionalIds?: string[]
 }
 
 type ApptRow = {
@@ -34,7 +38,8 @@ type ApptRow = {
 const HOUR_START = 7 // 07:00 começa a grade (ajuste futuro: business_hours)
 const HOUR_END = 22 // 22:00 termina
 
-export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId }: Props) {
+export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds }: Props) {
+  const excluded = new Set(excludeProfessionalIds ?? [])
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -116,6 +121,8 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     .filter((p) => p.does_appointments !== false)
     // Aba "Eu" do dono: só a coluna dele
     .filter((p) => !onlyProfessionalId || p.id === onlyProfessionalId)
+    // v98b · colunas escondidas (painel da profissional não vê a da dona)
+    .filter((p) => !excluded.has(p.id))
     .map((p) => ({
       id: p.id,
       name: p.name,
@@ -125,6 +132,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
   // refletem só os appts dele.
   const apptsBase = ((apptsData ?? []) as ApptRow[])
     .filter((a) => !onlyProfessionalId || a.professional_id === onlyProfessionalId)
+    .filter((a) => !excluded.has(a.professional_id))
   // Resgates de pacote · marca os atendimentos que consumiram uma sessão pra a
   // grade mostrar selo/cor (o valor não entra no caixa · já foi pago na venda).
   const apptIds = apptsBase.map((a) => a.id)

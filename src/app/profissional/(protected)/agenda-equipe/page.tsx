@@ -58,6 +58,8 @@ export default async function AgendaEquipePage({
       .eq('business_id', business.id)
       .eq('active', true)
       .eq('is_receptionist', false)
+      // dona fora da lista (cravado 30/07 · ela administra, não atende)
+      .neq('role', 'owner')
       .order('name'),
     supabase
       .from('appointments')
