@@ -2,7 +2,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { startOfDayBR, addDaysBR } from '@/lib/date-br'
 import GradeTimelineHeader from './GradeTimelineHeader'
 import TimelineGridInteractive from './TimelineGridInteractive'
-import type { BlockRow } from '@/lib/blocks'
+import { blockAppliesTo, type BlockRow } from '@/lib/blocks'
 
 type Props = {
   businessId: string
@@ -43,8 +43,21 @@ type ApptRow = {
   combo_name?: string | null
 }
 
-const HOUR_START = 7 // 07:00 começa a grade (ajuste futuro: business_hours)
-const HOUR_END = 22 // 22:00 termina
+// Janela padrão quando o negócio não tem horário cadastrado nem nada marcado no
+// dia. Antes a grade era FIXA em 7h-22h e as primeiras linhas ficavam sempre
+// vazias — Eduardo 30/07: "começa às 7, mas os horários são das 8 em diante,
+// então remove esse horário [...] fica só tomando espaço". Agora 7h só aparece
+// se existir trabalho às 7h.
+const HORA_PADRAO_INICIO = 8
+const HORA_PADRAO_FIM = 20
+
+/** HH:MM[:SS] → minutos. */
+function hhmmParaMin(t: string | null | undefined): number | null {
+  if (!t) return null
+  const [h, m] = String(t).slice(0, 5).split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return null
+  return h * 60 + m
+}
 
 export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds, hideCaixaActions = false, firstProfessionalId }: Props) {
   const excluded = new Set(excludeProfessionalIds ?? [])
@@ -199,6 +212,53 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
   const aReceberHoje = aReceberApptsHoje + aReceberSalesHoje
   const pendentesHoje = appts.filter((a) => a.status === 'pending').length
 
+  // ─── Janela da grade · derivada do que EXISTE naquele dia ────────────────
+  // Fontes, nesta ordem de verdade:
+  //   1. working_hours das profissionais visíveis (o horário real de trabalho)
+  //   2. atendimentos do dia (alguém pode ter sido encaixado fora da janela)
+  //   3. bloqueios que valem nessa data
+  // Sem nenhuma delas, cai no padrão 8h-20h.
+  const dow = new Date(date + 'T12:00:00Z').getUTCDay()
+  const profIdsVisiveis = profs.map((p) => p.id)
+  const { data: horariosData } = profIdsVisiveis.length
+    ? await sb
+        .from('working_hours')
+        .select('professional_id, day_of_week, start_time, end_time')
+        .in('professional_id', profIdsVisiveis)
+        .eq('day_of_week', dow)
+    : { data: [] as { start_time: string; end_time: string }[] }
+
+  const inicios: number[] = []
+  const fins: number[] = []
+  for (const h of horariosData ?? []) {
+    const s = hhmmParaMin(h.start_time)
+    const e = hhmmParaMin(h.end_time)
+    if (s != null) inicios.push(s)
+    if (e != null) fins.push(e)
+  }
+  for (const a of appts) {
+    const s = hhmmParaMin(a.start_time)
+    const e = hhmmParaMin(a.end_time)
+    if (s != null) inicios.push(s)
+    if (e != null) fins.push(e)
+  }
+  for (const b of blocks) {
+    if (!blockAppliesTo(b, b.professional_id ?? profIdsVisiveis[0] ?? '', date)) continue
+    const s = hhmmParaMin(String(b.start_time))
+    const e = hhmmParaMin(String(b.end_time))
+    // Folga de dia inteiro (00:00-23:59) esticaria a grade pra 24h — ignora
+    if (s != null && e != null && !(s === 0 && e >= 1439)) {
+      inicios.push(s)
+      fins.push(e)
+    }
+  }
+
+  const hourStart = inicios.length ? Math.max(0, Math.floor(Math.min(...inicios) / 60)) : HORA_PADRAO_INICIO
+  const hourEndBruto = fins.length ? Math.min(24, Math.ceil(Math.max(...fins) / 60)) : HORA_PADRAO_FIM
+  // Garante pelo menos 4h de grade (dia com 1 atendimento de 30min não vira
+  // uma tira de uma linha só)
+  const hourEnd = Math.min(24, Math.max(hourEndBruto, hourStart + 4))
+
   return (
     <div className="grade-timeline">
       <GradeTimelineHeader
@@ -217,8 +277,8 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
         appts={appts}
         blocks={blocks}
         services={services}
-        hourStart={HOUR_START}
-        hourEnd={HOUR_END}
+        hourStart={hourStart}
+        hourEnd={hourEnd}
         date={date}
         recebidoHoje={recebidoHoje}
         aReceberHoje={aReceberHoje}
