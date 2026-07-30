@@ -54,6 +54,11 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     { auth: { persistSession: false } },
   )
 
+  // v98o · quando os KPIs estão escondidos (painel da profissional), as 3
+  // queries que só alimentam Recebido/A receber/Pendentes não rodam. Eram 3
+  // idas ao banco por carregamento pra calcular número que ninguém vê —
+  // Eduardo reportou lentidão em 30/07 e era isso somado ao resto.
+  const vazio = Promise.resolve({ data: [] as never[] })
   const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: blocksData }, { data: salesPaidDay }, { data: apptsPaidDay }, { data: salesPendingDay }] = await Promise.all([
     sb
       .from('professionals')
@@ -85,7 +90,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .eq('active', true),
     // Vendas de produto pagas no dia · entram no "Recebido" (exclui cortesia).
     // (Sem cutoff Palace — agendapro é multi-tenant, conta o dia inteiro.)
-    sb
+    hideKpis ? vazio : sb
       .from('sales')
       .select('total, paid_at')
       .eq('business_id', businessId)
@@ -98,7 +103,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     // pro "Recebido" refletir o dinheiro que entrou HOJE, igual ao Fluxo de
     // Caixa. Serviço de ontem pago hoje entra no recebido de hoje. (Studio
     // Mood 09/06: trança de 08/06 paga em 09/06 estava sumindo do recebido.)
-    sb
+    hideKpis ? vazio : sb
       .from('appointments')
       .select('total_price, professional_id')
       .eq('business_id', businessId)
@@ -109,7 +114,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     // Vendas de produto PENDENTES do dia · entram no "A receber" junto com os
     // serviços não pagos. Comanda aberta = serviço + produto a receber, por
     // inteiro (Eduardo 10/06). status=pending exclui pagas e canceladas.
-    sb
+    hideKpis ? vazio : sb
       .from('sales')
       .select('total, professional_id')
       .eq('business_id', businessId)

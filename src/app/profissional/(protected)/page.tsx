@@ -67,37 +67,44 @@ export default async function ProfissionalPage({
   // Cravado por Eduardo 30/07: "é o que elas vão usar e precisar de verdade".
   // Sem autonomia, segue a lista antiga (negócio que não ligou não muda nada).
   const homeEhGrade = canBookSelf
-  // Coluna da dona fora da grade da equipe (30/07)
-  const { data: donas } = homeEhGrade && canBookOthers
-    ? await supabase.from('professionals').select('id').eq('business_id', business.id).eq('role', 'owner')
-    : { data: null }
-  const idsDonas = (donas ?? []).map((d) => d.id as string)
 
   // λ.fuso · servidor da Vercel roda em UTC · depois das 21h no Brasil o
   // toISOString cru já estava no dia seguinte e a lista dela pulava um dia
   const today = todayBR()
 
-  // Agendamentos de hoje — só deste profissional
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('*, appointment_services(service_name)')
-    .eq('professional_id', professional.id)
-    .eq('appointment_date', today)
-    .order('start_time', { ascending: true })
-
-  // Próximos 7 dias · também em BR
+  // v98o · TUDO em paralelo, e só o que a tela vai desenhar.
+  //
+  // Antes: 3 idas sequenciais ao banco (donas → hoje → próximos 7 dias) e as
+  // duas últimas alimentavam a lista e os KPIs, que NÃO existem quando a grade
+  // é a home. Era trabalho jogado fora somando latência em cima da grade.
+  // Eduardo reportou lentidão em 30/07.
+  const vazio = Promise.resolve({ data: null })
   const nextWeekStr = addDaysBR(today, 7)
-
-  const { data: upcoming } = await supabase
-    .from('appointments')
-    .select('*, appointment_services(service_name)')
-    .eq('professional_id', professional.id)
-    .gt('appointment_date', today)
-    .lte('appointment_date', nextWeekStr)
-    .in('status', ['pending', 'confirmed'])
-    .order('appointment_date', { ascending: true })
-    .order('start_time', { ascending: true })
-    .limit(10)
+  const [{ data: donas }, { data: appointments }, { data: upcoming }] = await Promise.all([
+    // Coluna da dona fora da grade da equipe (30/07)
+    homeEhGrade && canBookOthers
+      ? supabase.from('professionals').select('id').eq('business_id', business.id).eq('role', 'owner')
+      : vazio,
+    // Lista "Hoje" + os 4 cards · só existem quando NÃO tem grade
+    homeEhGrade ? vazio : supabase
+      .from('appointments')
+      .select('*, appointment_services(service_name)')
+      .eq('professional_id', professional.id)
+      .eq('appointment_date', today)
+      .order('start_time', { ascending: true }),
+    // "Próximos dias" · idem
+    homeEhGrade ? vazio : supabase
+      .from('appointments')
+      .select('*, appointment_services(service_name)')
+      .eq('professional_id', professional.id)
+      .gt('appointment_date', today)
+      .lte('appointment_date', nextWeekStr)
+      .in('status', ['pending', 'confirmed'])
+      .order('appointment_date', { ascending: true })
+      .order('start_time', { ascending: true })
+      .limit(10),
+  ])
+  const idsDonas = (donas ?? []).map((d) => (d as { id: string }).id)
 
   // λ.fuso · formata a partir do dia BR já resolvido (ancorado ao meio-dia pra
    // não escorregar de novo na conversão) — antes era new Date() cru no servidor
