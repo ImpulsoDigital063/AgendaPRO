@@ -123,37 +123,66 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
         </div>
       </div>
 
-      {/* Realizado + Em aberto + Ticket médio */}
+      {/* Aviso quando a % não foi configurada — sem isso a tela inteira mostra
+          R$0,00 e ela acha que o sistema está quebrado. Na Realli, 4 das 6
+          estavam com 0% em 30/07. */}
+      {commissionPercentage === 0 && (
+        <div
+          className="rounded-2xl p-3.5"
+          style={{
+            background: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.35)',
+          }}
+        >
+          <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+            Sua comissão ainda não foi configurada
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Por isso os valores aparecem zerados. Peça pra administração definir
+            sua porcentagem no seu cadastro.
+          </p>
+        </div>
+      )}
+
+      {/* Tudo aqui é a COMISSÃO dela, não o valor do serviço (Eduardo 30/07:
+          "o certo é mostrar o valor da comissão [...] com uma legenda falando
+          que é o valor da comissão"). O valor cheio segue visível na agenda e
+          no card de cada atendimento como referência do cálculo. */}
       <div className="grid grid-cols-3 gap-2">
         <KpiTile
-          label="Realizado"
-          value={formatPrice(totalRealizado)}
-          sub={`${pagos.length} pago${pagos.length === 1 ? '' : 's'}`}
+          label="Comissão paga"
+          value={formatPrice(minhaComissao)}
+          sub={`${pagos.length} atendimento${pagos.length === 1 ? '' : 's'}`}
           icon={<IconCheck size={14} />}
           tone="success"
         />
         <KpiTile
-          label="Em aberto"
-          value={formatPrice(totalPendente)}
+          label="A receber"
+          value={formatPrice(comissaoPendente)}
           sub={`${naoPagos.length} pendente${naoPagos.length === 1 ? '' : 's'}`}
           icon={<IconClock size={14} />}
           tone="warn"
         />
         <KpiTile
-          label="Ticket médio"
-          value={formatPrice(ticketMedio)}
-          sub="por atendimento"
+          label="Média"
+          value={formatPrice(ticketMedio * (commissionPercentage / 100))}
+          sub="comissão por atendimento"
           icon={<IconDollar size={14} />}
           tone="accent"
         />
       </div>
+
+      <p className="text-[11px] text-center -mt-2" style={{ color: 'var(--admin-text-faded)' }}>
+        Os três valores acima são a <strong>sua comissão</strong> ({commissionPercentage}%),
+        não o valor cobrado da cliente.
+      </p>
 
       {/* Lista de agendamentos — readOnly (só dono confirma pagamento) */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
           Agendamentos · {PERIODO_LABEL[periodo]}
         </h2>
-        <FinanceAppointmentList items={rows} readOnly />
+        <FinanceAppointmentList items={rows} readOnly comissaoPercent={commissionPercentage} />
       </section>
     </div>
   )

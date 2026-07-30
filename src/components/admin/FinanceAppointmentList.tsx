@@ -59,10 +59,14 @@ function Row({
   a,
   onPaymentChange,
   readOnly,
+  comissaoPercent,
 }: {
   a: FinanceRow
   onPaymentChange: (id: string) => void
   readOnly?: boolean
+  /** Quando setado, a linha mostra a COMISSAO de quem esta vendo (com o valor
+   *  cheio como legenda embaixo). Undefined = valor do servico, como sempre. */
+  comissaoPercent?: number
 }) {
   const status = statusOf(a.status)
   const archived = isArchived(a.status)
@@ -132,15 +136,34 @@ function Row({
         <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
           <div className="flex items-center gap-1.5">
             {a.total_price ? (
-              <p
-                className="font-bold text-sm leading-none"
-                style={{
-                  color: archived ? 'var(--admin-text-faded)' : 'var(--admin-text)',
-                  textDecoration: archived ? 'line-through' : 'none',
-                }}
-              >
-                {formatPrice(a.total_price)}
-              </p>
+              comissaoPercent != null ? (
+                // Visão da profissional: o número grande é o que ELA recebe; o
+                // valor cobrado da cliente vira legenda do cálculo (30/07).
+                <div className="text-right">
+                  <p
+                    className="font-bold text-sm leading-none"
+                    style={{
+                      color: archived ? 'var(--admin-text-faded)' : 'var(--admin-text)',
+                      textDecoration: archived ? 'line-through' : 'none',
+                    }}
+                  >
+                    {formatPrice(a.total_price * (comissaoPercent / 100))}
+                  </p>
+                  <p className="text-[10px] mt-0.5 leading-none" style={{ color: 'var(--admin-text-faded)' }}>
+                    sua comissão · {comissaoPercent}% de {formatPrice(a.total_price)}
+                  </p>
+                </div>
+              ) : (
+                <p
+                  className="font-bold text-sm leading-none"
+                  style={{
+                    color: archived ? 'var(--admin-text-faded)' : 'var(--admin-text)',
+                    textDecoration: archived ? 'line-through' : 'none',
+                  }}
+                >
+                  {formatPrice(a.total_price)}
+                </p>
+              )
             ) : (
               <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>—</p>
             )}
@@ -392,9 +415,13 @@ function formatDateHeader(dateStr: string): string {
 export default function FinanceAppointmentList({
   items,
   readOnly,
+  comissaoPercent,
 }: {
   items: FinanceRow[]
   readOnly?: boolean
+  /** % de comissao de quem esta vendo · liga o modo "mostra a comissao" nas
+   *  linhas. Sem isso, cada linha mostra o valor do servico (visao da dona). */
+  comissaoPercent?: number
 }) {
   const [showArchived, setShowArchived] = useState(false)
   const [showAll, setShowAll] = useState(false)
@@ -455,7 +482,7 @@ export default function FinanceAppointmentList({
               className="admin-enter"
               style={{ ['--enter-delay' as string]: `${Math.min(i, 8) * 30}ms` }}
             >
-              <Row a={a} onPaymentChange={onPaymentChange} readOnly={readOnly} />
+              <Row a={a} onPaymentChange={onPaymentChange} readOnly={readOnly} comissaoPercent={comissaoPercent} />
             </div>
           ))}
         </div>
@@ -525,7 +552,7 @@ export default function FinanceAppointmentList({
           {showArchived && (
             <div className="space-y-2 mt-2">
               {archived.map((a) => (
-                <Row key={a.id} a={a} onPaymentChange={onPaymentChange} />
+                <Row key={a.id} a={a} onPaymentChange={onPaymentChange} comissaoPercent={comissaoPercent} />
               ))}
             </div>
           )}
