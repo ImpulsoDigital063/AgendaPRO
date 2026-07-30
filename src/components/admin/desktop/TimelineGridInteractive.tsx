@@ -1110,6 +1110,14 @@ export default function TimelineGridInteractive({
                 <p className="text-[10px]" style={{ color: 'var(--admin-text-mute)' }}>Cliente · serviço · horário</p>
               </div>
             </button>
+            {/* "Nova Venda" e "Bloqueio de Horário" não existem pra profissional
+                (Eduardo 30/07: clicou em bloqueio e foi parar na tela de criar
+                negócio). As duas empurram pra rotas de /admin — venda pro caixa,
+                bloqueio pras Configurações — e o layout do admin manda quem não
+                é dona pra /cadastro. Além do bug, nenhuma das duas é poder dela:
+                caixa e bloqueio de agenda são da administração. */}
+            {!ehAreaProfissional && (
+            <>
             <button
               type="button"
               onClick={novaVenda}
@@ -1150,6 +1158,8 @@ export default function TimelineGridInteractive({
                 <p className="text-[10px]" style={{ color: 'var(--admin-text-mute)' }}>Almoço · folga · indisponível</p>
               </div>
             </button>
+            </>
+            )}
           </div>
         </div>,
         document.body,
