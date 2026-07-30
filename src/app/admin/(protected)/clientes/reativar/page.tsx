@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ReativarSumidosView from '@/components/admin/ReativarSumidosView'
 
@@ -28,9 +29,9 @@ export default async function ReativarSumidosPage() {
   // nao esclarece quantos sumidos AINDA precisam de campanha.
   // Calcula via JOIN entre clients (com last appointment) e coupons.
   const SUMIDO_DAYS = 40
-  const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - SUMIDO_DAYS)
-  const cutoffStr = cutoffDate.toISOString().split('T')[0]
+  // λ.fuso · corte em dia BR · com new Date() no servidor (UTC) o corte de
+  // "sumido há 40 dias" deslocava 1 dia à noite
+  const cutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
 
   // Pega ultimo agendamento por client_id
   const { data: lastAppts } = await supabase
@@ -86,14 +87,13 @@ export default async function ReativarSumidosPage() {
 
   // Ticket médio do business · pra calcular ROI estimado da campanha.
   // Pega últimos 90 dias de pagos · fallback R$ 50 se sem dados.
-  const ninetyDaysAgo = new Date()
-  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+  const ninetyDaysAgoStr = addDaysBR(todayBR(), -90)
   const { data: paidAppts } = await supabase
     .from('appointments')
     .select('total_price')
     .eq('business_id', business.id)
     .not('paid_at', 'is', null)
-    .gte('appointment_date', ninetyDaysAgo.toISOString().split('T')[0])
+    .gte('appointment_date', ninetyDaysAgoStr)
   const validPrices = (paidAppts || []).map((a) => Number(a.total_price)).filter((p) => p > 0)
   const ticketMedio = validPrices.length > 0
     ? validPrices.reduce((s, p) => s + p, 0) / validPrices.length

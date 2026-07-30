@@ -4,6 +4,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import AnalisesView from '@/components/admin/AnalisesView'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 
 export default async function AnalisesPage({
   searchParams,
@@ -29,17 +30,13 @@ export default async function AnalisesPage({
   // Inconsistencia destruia credibilidade da demo.
   // - "current": ultimos 30 dias passados (mesma janela do KPI principal)
   // - "prev": 30 dias antes desses (pra comparativo)
-  const today = new Date()
-  const startCurrentDate = new Date(today)
-  startCurrentDate.setDate(startCurrentDate.getDate() - 30)
-  const startCurrent = startCurrentDate.toISOString().split('T')[0]
-  const endCurrent = today.toISOString().split('T')[0]
-  const startPrevDate = new Date(today)
-  startPrevDate.setDate(startPrevDate.getDate() - 60)
-  const startPrev = startPrevDate.toISOString().split('T')[0]
-  const endPrevDate = new Date(today)
-  endPrevDate.setDate(endPrevDate.getDate() - 31)
-  const endPrev = endPrevDate.toISOString().split('T')[0]
+  // λ.fuso · janelas em dia BR (servidor roda em UTC · depois das 21h a janela
+  // inteira deslocava 1 dia e o comparativo mês a mês ficava torto)
+  const today = todayBR()
+  const startCurrent = addDaysBR(today, -30)
+  const endCurrent = today
+  const startPrev = addDaysBR(today, -60)
+  const endPrev = addDaysBR(today, -31)
 
   // 1. Mes atual: TODOS agendamentos (pra calcular cancelamento e
   // taxa de conversao). Pagos vao agregar receita.

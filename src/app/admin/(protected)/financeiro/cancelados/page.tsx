@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import CanceladosView from '@/components/admin/CanceladosView'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
+import { todayBR, addDaysBR, monthBoundsBR } from '@/lib/date-br'
 
 export default async function CanceladosPage({
   searchParams,
@@ -23,22 +24,22 @@ export default async function CanceladosPage({
   const { periodo: periodoParam } = await searchParams
   const periodo = periodoParam || 'mes'
 
-  const today = new Date()
+  // λ.fuso · dia BR, nunca new Date().toISOString() cru (servidor roda em UTC:
+  // depois das 21h no Brasil o filtro "Hoje" mostrava o dia seguinte)
+  const today = todayBR()
   let startDate: string
   let endDate: string
   if (periodo === 'hoje') {
-    startDate = today.toISOString().split('T')[0]
-    endDate = startDate
+    startDate = today
+    endDate = today
   } else if (periodo === 'semana') {
-    const start = new Date(today)
-    start.setDate(start.getDate() - 6)
-    startDate = start.toISOString().split('T')[0]
-    endDate = today.toISOString().split('T')[0]
+    startDate = addDaysBR(today, -6)
+    endDate = today
   } else {
-    startDate = new Date(today.getFullYear(), today.getMonth(), 1)
-      .toISOString().split('T')[0]
-    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-      .toISOString().split('T')[0]
+    // Mês corrente · aritmética de string, sem Date de calendário
+    const bounds = monthBoundsBR(today.slice(0, 7))
+    startDate = bounds.start
+    endDate = bounds.end
   }
 
   const { data: appointments } = await supabase

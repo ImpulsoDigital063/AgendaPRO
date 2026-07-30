@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import DespesasView from '@/components/admin/DespesasView'
 import type { Expense } from '@/lib/types'
+import { todayBR, addDaysBR, monthBoundsBR } from '@/lib/date-br'
 
 export default async function DespesasPage({
   searchParams,
@@ -25,32 +26,33 @@ export default async function DespesasPage({
   // (essencial pra Marko que migrou despesas dos meses anteriores).
   const periodo = mesParam ? 'mes' : (periodoParam || 'mes')
 
-  const today = new Date()
+  // λ.fuso · tudo derivado do dia BR. Antes: new Date() cru + getFullYear/
+  // getMonth, que no servidor (UTC) viram o dia/mês seguinte depois das 21h —
+  // "Hoje" mostrava o dia errado e a navegação de mês podia pular na virada.
+  const today = todayBR()
+  const mesAtual = today.slice(0, 7) // YYYY-MM
   let startDate: string
   let endDate: string
   let currentMonth: string // YYYY-MM do mês ativo (pra navegação)
 
   if (mesParam) {
-    const [y, m] = mesParam.split('-').map(Number)
-    startDate = new Date(y, m - 1, 1).toISOString().split('T')[0]
-    endDate = new Date(y, m, 0).toISOString().split('T')[0]
+    const bounds = monthBoundsBR(mesParam)
+    startDate = bounds.start
+    endDate = bounds.end
     currentMonth = mesParam
   } else if (periodo === 'hoje') {
-    startDate = today.toISOString().split('T')[0]
-    endDate = startDate
-    currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+    startDate = today
+    endDate = today
+    currentMonth = mesAtual
   } else if (periodo === 'semana') {
-    const start = new Date(today)
-    start.setDate(start.getDate() - 6)
-    startDate = start.toISOString().split('T')[0]
-    endDate = today.toISOString().split('T')[0]
-    currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+    startDate = addDaysBR(today, -6)
+    endDate = today
+    currentMonth = mesAtual
   } else {
-    startDate = new Date(today.getFullYear(), today.getMonth(), 1)
-      .toISOString().split('T')[0]
-    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-      .toISOString().split('T')[0]
-    currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+    const bounds = monthBoundsBR(mesAtual)
+    startDate = bounds.start
+    endDate = bounds.end
+    currentMonth = mesAtual
   }
 
   const { data: expenses } = await supabase

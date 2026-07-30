@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { todayBR, monthBoundsBR } from '@/lib/date-br'
 
 const VALID_CATEGORIES = new Set([
   'rent', 'products', 'salary', 'utilities', 'marketing', 'taxes', 'other',
@@ -30,11 +31,9 @@ export async function GET(req: NextRequest) {
   const fromParam = url.searchParams.get('from')
   const toParam = url.searchParams.get('to')
 
-  const today = new Date()
-  const defaultFrom = new Date(today.getFullYear(), today.getMonth(), 1)
-    .toISOString().split('T')[0]
-  const defaultTo = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-    .toISOString().split('T')[0]
+  // λ.fuso · mês corrente em BR · antes era new Date() + getFullYear/getMonth,
+  // que no servidor (UTC) viram o mês seguinte na virada depois das 21h
+  const { start: defaultFrom, end: defaultTo } = monthBoundsBR(todayBR().slice(0, 7))
 
   const from = fromParam || defaultFrom
   const to = toParam || defaultTo

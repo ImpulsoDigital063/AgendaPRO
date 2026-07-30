@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { randomUUID } from 'crypto'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 
 // 40 dias — alinhado com ClientesView. Barbearia/nail tem ciclo
@@ -119,10 +120,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const today = new Date()
-    const sumidoCutoff = new Date(today)
-    sumidoCutoff.setDate(sumidoCutoff.getDate() - SUMIDO_DAYS)
-    const sumidoCutoffStr = sumidoCutoff.toISOString().split('T')[0]
+    // λ.fuso · corte em dia BR (servidor roda em UTC)
+    const sumidoCutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
 
     targetCustomersAll = customers.filter((c) => {
       const clientId = clientByPhone.get(c.phone)

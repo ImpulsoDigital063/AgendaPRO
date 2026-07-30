@@ -47,6 +47,24 @@ export function startOfDayBR(ymd: string): string {
 }
 
 /**
+ * Primeiro e último dia de um mês `YYYY-MM`, em YYYY-MM-DD.
+ * Ex: monthBoundsBR('2026-07') → { start: '2026-07-01', end: '2026-07-31' }.
+ *
+ * Existe pra matar o padrão `new Date(y, m, 0).toISOString().slice(0,10)`, que
+ * era repetido em cada tela financeira: `new Date(ano, mes, 0)` monta meia-noite
+ * no fuso do RUNTIME e o toISOString converte pra UTC — no servidor (UTC) passa,
+ * mas em qualquer runtime a leste de Greenwich o último dia do mês volta 1 dia.
+ * Aqui é aritmética de string: sem Date de calendário, sem fuso envolvido.
+ */
+export function monthBoundsBR(ym: string): { start: string; end: string } {
+  const y = Number(ym.slice(0, 4))
+  const m = Number(ym.slice(5, 7))
+  const nextFirst =
+    m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
+  return { start: `${ym}-01`, end: addDaysBR(nextFirst, -1) }
+}
+
+/**
  * Formata uma data YYYY-MM-DD (ou ISO) como DD/MM/AAAA (formato brasileiro),
  * SEM criar um Date — evita pular 1 dia por fuso (ex: aniversário 1994-09-18
  * com `new Date()` em BRT vira 17/09). Manipula a string direto.

@@ -239,7 +239,16 @@ export function formatValidity(expiresAt: Date): string {
   const diffMs = expiresAt.getTime() - now.getTime()
   const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
   if (days <= 14) return `${days} dia${days === 1 ? '' : 's'}`
-  return `até ${expiresAt.getDate().toString().padStart(2, '0')}/${(expiresAt.getMonth() + 1).toString().padStart(2, '0')}`
+  // λ.fuso · getDate/getMonth leem UTC no servidor: cupom que vence 23h no
+  // Brasil aparecia com a data do dia SEGUINTE na mensagem que vai pra cliente.
+  // Intl com timeZone fixo dá o dia BR nos dois lados (server e browser).
+  const ymdBR = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(expiresAt)
+  return `até ${ymdBR.slice(8, 10)}/${ymdBR.slice(5, 7)}`
 }
 
 export function formatDiscount(type: 'fixed' | 'percent', value: number): string {

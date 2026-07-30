@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
+import { todayBR, addDaysBR, startOfDayBR } from '@/lib/date-br'
 
 /**
  * Helpers cacheados via React cache() — deduplica queries Supabase
@@ -253,25 +254,19 @@ export type FocoDoDia = {
 export const getFocoDoDia = unstable_cache(
   async (businessId: string): Promise<FocoDoDia> => {
     const admin = getServiceClient()
-    const today = new Date()
-    const todayStr = today.toISOString().split('T')[0]
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toISOString().split('T')[0]
-    const dayAfterTomorrow = new Date(today)
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
-    const nowIso = today.toISOString()
-    const tomorrowEnd = new Date(tomorrow)
-    tomorrowEnd.setHours(23, 59, 59, 999)
-    const tomorrowEndIso = tomorrowEnd.toISOString()
+    // λ.fuso · TODAS as datas de dia (appointment_date, occurred_at) em BR.
+    // Antes era new Date().toISOString() cru: o servidor da Vercel roda em UTC,
+    // então depois das 21h no Brasil o "Foco do dia" já mostrava AMANHÃ — e
+    // isso todo cliente vê, na home, toda noite.
+    const todayStr = todayBR()
+    const nowIso = new Date().toISOString() // instante (timestamptz) · UTC é correto aqui
+    // Fim de amanhã em BR, como fronteira EXCLUSIVA (início de depois de amanhã)
+    const tomorrowEndIso = startOfDayBR(addDaysBR(todayStr, 2))
 
     // Janela rolling 30d (mesma do filtro "Mes")
-    const start30 = new Date(today)
-    start30.setDate(start30.getDate() - 30)
-    const start60 = new Date(today)
-    start60.setDate(start60.getDate() - 60)
-    const start31 = new Date(today)
-    start31.setDate(start31.getDate() - 31)
+    const start30Str = addDaysBR(todayStr, -30)
+    const start60Str = addDaysBR(todayStr, -60)
+    const start31Str = addDaysBR(todayStr, -31)
 
     const [
       claimsRes,
@@ -312,33 +307,33 @@ export const getFocoDoDia = unstable_cache(
         .eq('business_id', businessId)
         .is('used_at', null)
         .gt('expires_at', nowIso)
-        .lte('expires_at', tomorrowEndIso),
+        .lt('expires_at', tomorrowEndIso),
       admin
         .from('appointments')
         .select('total_price, payment_method')
         .eq('business_id', businessId)
-        .gte('appointment_date', start30.toISOString().split('T')[0])
+        .gte('appointment_date', start30Str)
         .lte('appointment_date', todayStr)
         .not('paid_at', 'is', null),
       admin
         .from('appointments')
         .select('total_price, payment_method')
         .eq('business_id', businessId)
-        .gte('appointment_date', start60.toISOString().split('T')[0])
-        .lte('appointment_date', start31.toISOString().split('T')[0])
+        .gte('appointment_date', start60Str)
+        .lte('appointment_date', start31Str)
         .not('paid_at', 'is', null),
       admin
         .from('expenses')
         .select('amount')
         .eq('business_id', businessId)
-        .gte('occurred_at', start30.toISOString().split('T')[0])
+        .gte('occurred_at', start30Str)
         .lte('occurred_at', todayStr),
       admin
         .from('expenses')
         .select('amount')
         .eq('business_id', businessId)
-        .gte('occurred_at', start60.toISOString().split('T')[0])
-        .lte('occurred_at', start31.toISOString().split('T')[0]),
+        .gte('occurred_at', start60Str)
+        .lte('occurred_at', start31Str),
     ])
 
     // Pagamentos pendentes hoje
@@ -349,9 +344,7 @@ export const getFocoDoDia = unstable_cache(
 
     // Sumidos sem cupom — calcula via lookup similar ao /reativar
     const SUMIDO_DAYS = 40
-    const cutoffDate = new Date(today)
-    cutoffDate.setDate(cutoffDate.getDate() - SUMIDO_DAYS)
-    const cutoffStr = cutoffDate.toISOString().split('T')[0]
+    const cutoffStr = addDaysBR(todayStr, -SUMIDO_DAYS)
     const lastByClient = new Map<string, string>()
     for (const a of apptsForSumidos.data || []) {
       if (a.client_id && !lastByClient.has(a.client_id)) {
@@ -411,8 +404,9 @@ export const getFocoDoDia = unstable_cache(
     const pct = prevLucro > 0 ? ((currentLucro - prevLucro) / prevLucro) * 100 : null
 
     // Aniversariantes do mês sem cupom ativo (v42 · 14/05)
-    const currentMonth = today.getMonth() + 1
-    const monthStr = String(currentMonth).padStart(2, '0')
+    // λ.fuso · mês tirado do dia BR: com getMonth() em UTC, no último dia do mês
+    // depois das 21h a lista pulava pro mês seguinte
+    const monthStr = todayStr.slice(5, 7)
     const { data: customersWithBirthday } = await admin
       .from('customers')
       .select('id, birthday')
@@ -441,9 +435,9 @@ export const getFocoDoDia = unstable_cache(
     ).length
 
     // Punições por no-show aplicadas nas últimas 24h ainda não revertidas (v45)
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayIso = yesterday.toISOString()
+    // "últimas 24h" é janela de INSTANTE (timestamptz) — UTC é correto aqui,
+    // não é bucketização por dia
+    const yesterdayIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { data: penalties } = await admin
       .from('points_transactions')
       .select('appointment_id')

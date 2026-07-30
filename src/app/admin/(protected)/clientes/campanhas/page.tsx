@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import CampanhasTabs from '@/components/admin/CampanhasTabs'
 
@@ -49,14 +50,14 @@ export default async function CampanhasPage({
   )
 
   // Ticket médio · últimos 90 dias de pagos · fallback R$ 50
-  const ninetyDaysAgoCamp = new Date()
-  ninetyDaysAgoCamp.setDate(ninetyDaysAgoCamp.getDate() - 90)
+  // λ.fuso · janelas e cortes em dia BR (servidor roda em UTC)
+  const ninetyDaysAgoCampStr = addDaysBR(todayBR(), -90)
   const { data: paidApptsCamp } = await supabase
     .from('appointments')
     .select('total_price')
     .eq('business_id', business.id)
     .not('paid_at', 'is', null)
-    .gte('appointment_date', ninetyDaysAgoCamp.toISOString().split('T')[0])
+    .gte('appointment_date', ninetyDaysAgoCampStr)
   const validPricesCamp = (paidApptsCamp || []).map((a) => Number(a.total_price)).filter((p) => p > 0)
   const ticketMedio = validPricesCamp.length > 0
     ? validPricesCamp.reduce((s, p) => s + p, 0) / validPricesCamp.length
@@ -65,9 +66,7 @@ export default async function CampanhasPage({
   // ─────────────────────────────────────────────────
   // ABA SUMIDOS — replicação da lógica de /clientes/reativar
   // ─────────────────────────────────────────────────
-  const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - SUMIDO_DAYS)
-  const cutoffStr = cutoffDate.toISOString().split('T')[0]
+  const cutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
 
   const { data: lastAppts } = await supabase
     .from('appointments')
@@ -126,8 +125,9 @@ export default async function CampanhasPage({
   // ─────────────────────────────────────────────────
   // ABA ANIVERSARIANTES — filtro por mês de birthday
   // ─────────────────────────────────────────────────
-  const currentMonth = new Date().getMonth() + 1
-  const monthStr = String(currentMonth).padStart(2, '0')
+  // λ.fuso · mês do dia BR · getMonth() no servidor lê UTC e, no último dia do
+  // mês depois das 21h, a lista de aniversariantes pulava pro mês seguinte
+  const monthStr = todayBR().slice(5, 7)
 
   const { data: customersWithBirthday } = await supabase
     .from('customers')
@@ -232,7 +232,7 @@ export default async function CampanhasPage({
             orphanCoupons={orphanCoupons}
             aniversariantesTotal={aniversariantesTotal}
             aniversariantesWithoutCoupon={aniversariantesWithoutCoupon}
-            mesAtualNome={MESES_PT[currentMonth - 1]}
+            mesAtualNome={MESES_PT[Number(monthStr) - 1]}
             professionals={professionalsAtivos || []}
             standaloneCoupons={standaloneCoupons}
             standaloneAtivos={standaloneAtivos}

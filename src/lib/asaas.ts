@@ -16,6 +16,8 @@
  *   - SUBSCRIPTION_CANCELLED
  */
 
+import { todayBR, addDaysBR } from '@/lib/date-br'
+
 const ASAAS_PROD_BASE = 'https://api.asaas.com/v3'
 const ASAAS_SANDBOX_BASE = 'https://api-sandbox.asaas.com/v3'
 
@@ -359,7 +361,7 @@ export function toAsaasParams(
  * Padrão: 1 dia no futuro pra dar tempo do cliente pagar.
  */
 export function getNextDueDate(daysFromNow: number = 1): string {
-  const d = new Date()
-  d.setDate(d.getDate() + daysFromNow)
-  return d.toISOString().split('T')[0] // YYYY-MM-DD
+  // λ.fuso · dia BR. Com new Date() cru, uma cobrança gerada depois das 21h no
+  // Brasil vencia 1 dia depois do que o e-mail/WhatsApp dizia ("vence amanhã").
+  return addDaysBR(todayBR(), daysFromNow) // YYYY-MM-DD
 }
