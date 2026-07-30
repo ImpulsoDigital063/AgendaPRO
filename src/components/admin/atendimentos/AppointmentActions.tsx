@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { IconCheck, IconWhatsapp, IconClose, IconSettings } from '@/components/ui/Icon'
+import { IconCheck, IconWhatsapp, IconClose, IconSettings, IconCalendar } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 import FaturarComandaModal from '@/components/admin/comandas/FaturarComandaModal'
 import EditServicesModal from '@/components/admin/EditServicesModal'
+import RemarcarModal from '@/components/admin/atendimentos/RemarcarModal'
 
 type Props = {
   appointmentId: string
@@ -33,6 +34,13 @@ type Props = {
    * botão que existe e não funciona é pior que botão que não existe.
    */
   podeCancelar?: boolean
+  /** Data do atendimento (YYYY-MM-DD) · necessária pro Remarcar (30/07). */
+  appointmentDate?: string
+  /**
+   * Esconde "Remarcar". Mesma régua do cancelar em quem pode: a rota já recusa,
+   * isto evita entregar botão que vai negar.
+   */
+  podeRemarcar?: boolean
 }
 
 export default function AppointmentActions({
@@ -48,10 +56,13 @@ export default function AppointmentActions({
   professionalId,
   onDone,
   podeCancelar = true,
+  appointmentDate,
+  podeRemarcar = true,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [remarcarOpen, setRemarcarOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [faturarOpen, setFaturarOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -233,6 +244,25 @@ export default function AppointmentActions({
         <IconSettings size={15} /> Editar atendimento
       </button>
 
+      {/* Remarcar · move data/hora mantendo cliente, serviço e duração.
+          Antes de 30/07 isso não existia: mudar horário era cancelar e criar de
+          novo, o que apagava o histórico e matava a comanda. */}
+      {podeRemarcar && appointmentDate && (
+        <button
+          type="button"
+          onClick={() => setRemarcarOpen(true)}
+          disabled={loading}
+          className="w-full py-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+          style={{
+            background: 'var(--admin-surface)',
+            color: 'var(--admin-text)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          <IconCalendar size={15} /> Remarcar
+        </button>
+      )}
+
       {/* Cancelar atendimento · ação destrutiva separada.
           Some quando não é da pessoa logada (profissional na agenda da colega). */}
       {podeCancelar && (
@@ -271,6 +301,20 @@ export default function AppointmentActions({
         loading={loading}
         onChoose={confirmarMetodo}
         onClose={() => setPaymentOpen(false)}
+      />
+
+      <RemarcarModal
+        open={remarcarOpen}
+        appointmentId={appointmentId}
+        clientName={customerName}
+        dataAtual={appointmentDate ?? ''}
+        horaAtual={startTime.slice(0, 5)}
+        onClose={() => setRemarcarOpen(false)}
+        onDone={() => {
+          setRemarcarOpen(false)
+          if (onDone) onDone()
+          else router.refresh()
+        }}
       />
 
       {editOpen && (

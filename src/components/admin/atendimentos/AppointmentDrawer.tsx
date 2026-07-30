@@ -375,6 +375,10 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
                     !ehAreaProfissional ||
                     (!!meuProfId && meuProfId === prof?.id && !isPaid)
                   }
+                  appointmentDate={data.appointment_date}
+                  // Remarcar segue a régua de MARCAR (a colega pode, com a flag
+                  // de equipe) — mas atendimento pago volta a ser da adm.
+                  podeRemarcar={!ehAreaProfissional || !isPaid}
                 />
               )}
             </>
