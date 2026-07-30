@@ -96,13 +96,19 @@ export default async function ProfissionalLayout({
             <BrandDecorBackground pattern="scatter" brand={businessSlug} opacity={0.02} />
           </div>
         )}
-        <InstallBanner area="profissional" />
         {/* Topbar mobile (header + drawer) · só <lg · coexiste com BottomNav */}
         <ProfissionalMobileTopBar
           businessName={business.name ?? null}
           brandLogoUrl={business.brand_logo_url ?? null}
           employmentType={employmentType}
         />
+        {/* DEPOIS da topbar de propósito (Eduardo 30/07, print do iPhone): a
+            barra é `fixed` e quem empurra o conteúdo é o espaçador de 56px que
+            ela renderiza logo abaixo de si (ProfissionalMobileTopBar:116).
+            Com o banner ANTES, ele nascia nesses 56px e ficava escondido atrás
+            da barra — o próprio card de boas-vindas mandava "toque no banner
+            acima" e não tinha banner visível. Não é z-index: é ordem no fluxo. */}
+        <InstallBanner area="profissional" />
         {/* SEM z-index aqui de propósito (bug visual reportado por Eduardo 30/07:
             "o modal fica abaixo da barra do header" no mobile).
             `z-10` num elemento posicionado cria CONTEXTO DE EMPILHAMENTO: o

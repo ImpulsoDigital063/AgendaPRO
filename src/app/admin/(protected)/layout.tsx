@@ -196,7 +196,6 @@ export default async function AdminLayout({
       <SlugCacher slug={businessSlug} />
       <div className="admin-shell admin-shell--with-sidebar" data-admin-theme={initialTheme}>
         <AppSplash />
-        <InstallBanner />
         {/* Decoração de marca · só desktop · só Palace · pattern scatter sutil
             atrás de todas as views admin. Mobile (Olímpio/Leticia/Erlane prod)
             NÃO renderiza nada. Regra mobile/desktop isolation cravada 19-20/05. */}
@@ -222,6 +221,11 @@ export default async function AdminLayout({
             pendingClaims={pendingClaims}
             showOwnerTab={showOwnerTab}
           />
+          {/* DEPOIS da topbar (mesmo motivo do painel da profissional · 30/07):
+              a barra é fixed e o espaçador dela é quem empurra o conteúdo. Com
+              o banner antes, ele ficava escondido atrás da barra no celular —
+              a dona nunca via o convite de instalar o app. */}
+          <InstallBanner />
           {trial && (
             <TrialBanner
               diasRestantes={trial.diasRestantes}
