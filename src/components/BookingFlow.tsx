@@ -45,6 +45,20 @@ function fromMinutes(n: number) {
 const BOOKING_BUFFER_MIN = 30
 
 /**
+ * Janela padrão do link público: varre 14 dias CORRIDOS e descarta os que não
+ * têm expediente. Num negócio seg-sex isso rende 10 cards — é o que todo mundo
+ * enxerga hoje e NÃO muda sem a coluna `booking_days_with_service` preenchida.
+ */
+const BOOKING_DEFAULT_SPAN_DAYS = 14
+
+/**
+ * Teto de varredura quando o negócio pede N dias COM ATENDIMENTO.
+ * Sem teto, quem atende 1 dia por semana e pede 30 faria o loop andar 210 dias.
+ * 120 corridos cobre ~17 semanas — folgado pra qualquer pedido realista.
+ */
+const BOOKING_SCAN_CAP_DAYS = 120
+
+/**
  * Gera os slots de um dia.
  * - `step`: granularidade configurada no dia (ex: 15min) — "régua" dos horários mostrados.
  * - `serviceDuration`: tempo total do agendamento (soma dos serviços escolhidos).
@@ -338,7 +352,16 @@ export default function BookingFlow({
     return totalDuration > 0 ? totalDuration : getSlotStep(date)
   }
 
-  // Gera as datas disponíveis dos próximos 14 dias INCLUINDO hoje.
+  // Gera as datas disponíveis INCLUINDO hoje. Dois modos (v100 · 30/07/2026):
+  //
+  //  · booking_days_with_service NULL (padrão — todos os negócios hoje)
+  //    varre BOOKING_DEFAULT_SPAN_DAYS corridos e descarta os sem expediente.
+  //    Seg-sex ⇒ 10 cards. É o comportamento histórico, intocado.
+  //
+  //  · booking_days_with_service = N (pedido do DN Diogo Nogueira, N=30)
+  //    varre até juntar N dias COM ATENDIMENTO, parando no teto de scan.
+  //    Seg-sex ⇒ 30 cards ≈ 42 dias corridos.
+  //
   // Pra hoje: só entra na lista se o expediente ainda tem janela válida
   // após o buffer de antecedência (BOOKING_BUFFER_MIN). Se tudo já passou,
   // hoje é pulado e a lista começa em amanhã.
@@ -347,12 +370,20 @@ export default function BookingFlow({
   const today = new Date()
   const nowMin = today.getHours() * 60 + today.getMinutes()
   const earliestBookingMin = nowMin + BOOKING_BUFFER_MIN
+  // Só conta como pedido explícito se for número > 0 — 0/negativo/NaN vindo do
+  // banco cairia no default em vez de zerar a agenda do cliente.
+  const rawWindow = business.booking_days_with_service
+  const daysWithService =
+    typeof rawWindow === 'number' && Number.isFinite(rawWindow) && rawWindow > 0
+      ? Math.floor(rawWindow)
+      : null
+  const scanLimit = daysWithService ? BOOKING_SCAN_CAP_DAYS : BOOKING_DEFAULT_SPAN_DAYS
   const availableDates: Date[] = []
   // Flag: quando hoje seria valido (profissional trabalha) mas expediente
   // ja encerrou. Cliente que abre a pagina à noite ve "Hoje sumiu" e
   // fica confuso — mostramos avisozinho explicativo acima do grid.
   let hojeFechouAposExpediente = false
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < scanLimit; i++) {
     const d = addDays(today, i)
     const dayOfWeek = d.getDay()
     const hoursOfDay = workingHours.filter(
@@ -369,6 +400,62 @@ export default function BookingFlow({
       }
     }
     availableDates.push(d)
+    // Modo "N dias com atendimento": para assim que junta o que foi pedido.
+    if (daysWithService && availableDates.length >= daysWithService) break
+  }
+
+  // Agrupa por mês — SÓ na janela longa. Com 30 dias a lista cruza 3 meses e
+  // "3 ago" x "3 set" viram cards idênticos (o mês é a linha menor do card).
+  // Quem está no padrão continua com o grid corrido de sempre, sem cabeçalho.
+  const anoAtual = today.getFullYear()
+  const monthGroups: { key: string; label: string; dates: Date[] }[] = []
+  if (daysWithService) {
+    for (const d of availableDates) {
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      const ultimo = monthGroups[monthGroups.length - 1]
+      if (ultimo && ultimo.key === key) {
+        ultimo.dates.push(d)
+        continue
+      }
+      const mes = d.toLocaleDateString('pt-BR', { month: 'long' })
+      monthGroups.push({
+        key,
+        label: d.getFullYear() === anoAtual ? mes : `${mes} de ${d.getFullYear()}`,
+        dates: [d],
+      })
+    }
+  }
+
+  // Card de dia — extraído porque agora renderiza em dois lugares (grid
+  // corrido no padrão, grid por mês na janela longa). Mesmo visual nos dois.
+  function renderDateButton(date: Date) {
+    const isSelected = selectedDate && formatDate(date) === formatDate(selectedDate)
+    return (
+      <button
+        key={formatDate(date)}
+        onClick={() => handleSelectDate(date)}
+        className="flex flex-col items-center py-3 rounded-xl border text-sm font-medium transition-colors"
+        style={
+          isSelected
+            ? {
+                background: 'var(--brand-primary, #111827)',
+                borderColor: 'var(--brand-primary, #111827)',
+                color: '#FFFFFF',
+              }
+            : {
+                background: C.surface,
+                borderColor: C.border,
+                color: C.text,
+              }
+        }
+      >
+        <span className="text-xs opacity-70">{DAYS[date.getDay()]}</span>
+        <span className="text-lg font-bold leading-tight">{date.getDate()}</span>
+        <span className="text-xs opacity-70">
+          {date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
+        </span>
+      </button>
+    )
   }
 
   // Toggle de serviço (seleciona/deseleciona)
@@ -1569,8 +1656,11 @@ export default function BookingFlow({
               </p>
               <p className="text-xs leading-relaxed" style={{ color: C.mute }}>
                 Já passou do expediente de hoje, ou nenhum profissional tem horários
-                cadastrados pra os próximos 14 dias. Tente entrar em contato direto
-                pelo WhatsApp do estabelecimento.
+                cadastrados pra{' '}
+                {daysWithService
+                  ? `os próximos ${daysWithService} dias de atendimento`
+                  : `os próximos ${BOOKING_DEFAULT_SPAN_DAYS} dias`}
+                . Tente entrar em contato direto pelo WhatsApp do estabelecimento.
               </p>
             </div>
           ) : (
@@ -1588,37 +1678,27 @@ export default function BookingFlow({
                   Próximas datas disponíveis abaixo.
                 </div>
               )}
-            <div className="grid grid-cols-4 gap-2">
-              {availableDates.map((date) => {
-                const isSelected = selectedDate && formatDate(date) === formatDate(selectedDate)
-                return (
-                  <button
-                    key={formatDate(date)}
-                    onClick={() => handleSelectDate(date)}
-                    className="flex flex-col items-center py-3 rounded-xl border text-sm font-medium transition-colors"
-                    style={
-                      isSelected
-                        ? {
-                            background: 'var(--brand-primary, #111827)',
-                            borderColor: 'var(--brand-primary, #111827)',
-                            color: '#FFFFFF',
-                          }
-                        : {
-                            background: C.surface,
-                            borderColor: C.border,
-                            color: C.text,
-                          }
-                    }
-                  >
-                    <span className="text-xs opacity-70">{DAYS[date.getDay()]}</span>
-                    <span className="text-lg font-bold leading-tight">{date.getDate()}</span>
-                    <span className="text-xs opacity-70">
-                      {date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+            {daysWithService ? (
+              <div className="flex flex-col gap-4">
+                {monthGroups.map((g) => (
+                  <div key={g.key}>
+                    <p
+                      className="text-[11px] font-semibold uppercase tracking-wider mb-2"
+                      style={{ color: C.mute }}
+                    >
+                      {g.label}
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {g.dates.map((date) => renderDateButton(date))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
+                {availableDates.map((date) => renderDateButton(date))}
+              </div>
+            )}
             </>
           )}
         </section>

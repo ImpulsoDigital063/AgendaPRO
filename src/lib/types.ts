@@ -37,6 +37,13 @@ export type Business = {
   professionals_can_book_self?: boolean | null
   professionals_can_book_others?: boolean | null
   professionals_see_team_agenda?: boolean | null
+  // Janela do link público (v100 · 30/07/2026 · pedido do DN Diogo Nogueira)
+  // Quantos dias COM ATENDIMENTO o cliente enxerga no passo "Escolha o dia".
+  // NULL = comportamento histórico (varre 14 dias corridos e descarta os sem
+  // working_hours — num seg-sex isso dá 10 cards). Preenchido = varre até
+  // juntar N dias atendíveis, limitado por BOOKING_SCAN_CAP_DAYS.
+  // Fica NULL em todo mundo; só quem pedir recebe valor.
+  booking_days_with_service?: number | null
   // Punição por no-show (v45 · 14/05/2026)
   no_show_punishment_enabled?: boolean | null
   no_show_penalty_mode?: 'proportional' | 'fixed' | null
