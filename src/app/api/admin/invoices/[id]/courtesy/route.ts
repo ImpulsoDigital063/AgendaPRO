@@ -1,3 +1,4 @@
+import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -28,15 +29,8 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  const { data: ownerBusiness } = await supabase
-    .from('businesses').select('id').eq('owner_id', user.id).maybeSingle()
-  let businessId = ownerBusiness?.id ?? null
-  if (!businessId) {
-    const { data: prof } = await supabase
-      .from('professionals').select('business_id')
-      .eq('auth_user_id', user.id).eq('active', true).eq('is_receptionist', true).maybeSingle()
-    businessId = prof?.business_id ?? null
-  }
+  // v98l · cortesia liberada pra profissional (Eduardo 30/07) · mesma regra única
+  const businessId = await resolveBusinessIdOperacao(supabase)
   if (!businessId) return NextResponse.json({ error: 'no_business' }, { status: 403 })
 
   const { id: invoiceId } = await params
