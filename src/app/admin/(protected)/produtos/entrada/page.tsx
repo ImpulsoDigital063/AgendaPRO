@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import EntradaEstoqueView from '@/components/admin/produtos/EntradaEstoqueView'
@@ -10,7 +11,7 @@ export default async function EntradaEstoquePage() {
   if (!user) redirect('/admin/login')
 
   const { data: business } = await supabase.from('businesses').select('id').eq('owner_id', user.id).single()
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   // Carrega produtos ativos pra montar dropdown da entrada
   const { data: products } = await supabase

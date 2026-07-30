@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { todayBR, addDaysBR } from '@/lib/date-br'
@@ -25,7 +26,7 @@ export default async function CampanhasPage({
     .select('id, slug, name, description')
     .eq('owner_id', user.id)
     .single()
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const { tab } = await searchParams
   const initialTab: 'sumidos' | 'aniversariantes' | 'avulso' =

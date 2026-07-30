@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
@@ -15,7 +16,7 @@ export default async function ImportarPage() {
     .eq('owner_id', user.id)
     .single()
 
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   return (
     <>

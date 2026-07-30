@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { todayBR } from '@/lib/date-br'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { redirect } from 'next/navigation'
@@ -33,7 +34,7 @@ export default async function VendasPage({
   if (!user) redirect('/admin/login')
 
   const business = await getCurrentBusiness(user.id)
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const sp = await searchParams
   const q = (sp.q ?? '').trim()

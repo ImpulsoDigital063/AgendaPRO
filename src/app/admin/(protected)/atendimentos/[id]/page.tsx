@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -50,7 +51,7 @@ export default async function AppointmentDetailPage({
     .select('id, name')
     .eq('owner_id', user.id)
     .single()
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const { data: appt } = await supabase
     .from('appointments')

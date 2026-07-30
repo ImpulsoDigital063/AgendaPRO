@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ConsultasView from '@/components/recepcao/ConsultasView'
@@ -19,7 +20,7 @@ export default async function AdminConsultasPage() {
     .select('id, name')
     .eq('owner_id', user.id)
     .single()
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const { data: profs } = await supabase
     .from('professionals')

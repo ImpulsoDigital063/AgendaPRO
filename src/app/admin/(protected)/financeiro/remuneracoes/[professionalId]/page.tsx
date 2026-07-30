@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { redirect, notFound } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
@@ -44,7 +45,7 @@ export default async function RemuneracaoDetalhePage({
   if (!user) redirect('/admin/login')
 
   const business = await getCurrentBusiness(user.id)
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const { professionalId } = await params
   const sp = await searchParams

@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import Image from 'next/image'
@@ -274,7 +275,7 @@ export default async function AdminEuPage() {
   if (!user) redirect('/admin/login')
 
   const business = await getCurrentBusiness(user.id)
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const owner = await getOwnerProfessional(user.id, business.id)
   // Defesa em profundidade — se o admin não atende, manda pra home.

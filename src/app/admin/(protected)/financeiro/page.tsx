@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
@@ -98,7 +99,7 @@ export default async function FinanceiroPage({
     .eq('owner_id', user.id)
     .single()
 
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const { periodo: periodoParam } = await searchParams
   const periodoNorm: 'hoje' | 'semana' | 'mes' =

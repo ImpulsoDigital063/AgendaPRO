@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -388,7 +389,7 @@ export default async function AdminInicioPage() {
   if (!user) redirect('/admin/login')
 
   const business = await getCurrentBusiness(user.id)
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     timeZone: 'America/Sao_Paulo',

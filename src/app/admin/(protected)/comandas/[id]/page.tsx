@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -16,7 +17,7 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
     .select('id, name, slug, loyalty_enabled')
     .eq('owner_id', user.id)
     .maybeSingle()
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const { id } = await params
 

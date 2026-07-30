@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ConfiguracoesTabs from '@/components/admin/ConfiguracoesTabs'
@@ -39,7 +40,7 @@ export default async function ConfiguracoesPage({
     .eq('owner_id', user.id)
     .single()
 
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const [
     { data: professionals },

@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ProdutosView from '@/components/admin/produtos/ProdutosView'
@@ -44,7 +45,7 @@ export default async function AdminProdutosPage() {
     .select('id, name')
     .eq('owner_id', user.id)
     .single()
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const { data: products } = await supabase
     .from('products')

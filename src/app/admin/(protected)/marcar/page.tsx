@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import MarcarAgendamentoForm from '@/components/recepcao/MarcarAgendamentoForm'
@@ -26,7 +27,7 @@ export default async function AdminMarcarPage({
     .select('id, slug, name')
     .eq('owner_id', user.id)
     .single()
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const sp = await searchParams
 

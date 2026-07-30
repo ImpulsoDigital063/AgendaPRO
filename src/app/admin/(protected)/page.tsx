@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import {
@@ -33,7 +34,7 @@ export default async function AdminPage({
   if (!user) redirect('/admin/login')
 
   const business = await getCurrentBusiness(user.id)
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const onboarding = await getOnboardingState(business.id, user.id, business)
 

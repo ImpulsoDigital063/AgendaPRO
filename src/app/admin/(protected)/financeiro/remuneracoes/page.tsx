@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -36,7 +37,7 @@ export default async function RemuneracoesPage({
   if (!user) redirect('/admin/login')
 
   const business = await getCurrentBusiness(user.id)
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   const sp = await searchParams
   // λ.fuso: mês default no dia BR; janela de paid_at com offset −03:00

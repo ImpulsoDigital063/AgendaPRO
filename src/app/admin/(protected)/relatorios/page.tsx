@@ -1,3 +1,4 @@
+import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
@@ -139,7 +140,7 @@ export default async function RelatoriosPage() {
   if (!user) redirect('/admin/login')
 
   const business = await getCurrentBusiness(user.id)
-  if (!business) redirect('/cadastro')
+  if (!business) redirect(await destinoSemNegocio())
 
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
