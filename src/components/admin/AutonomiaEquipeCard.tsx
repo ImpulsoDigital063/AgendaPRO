@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 
 type Props = {
   businessId: string
-  /** Estado inicial vindo do SSR (v92). */
+  /** Estado inicial vindo do SSR (v98a/b). */
   initialCanBookSelf: boolean
+  initialCanBookOthers: boolean
   initialSeeTeamAgenda: boolean
 }
 
@@ -27,9 +28,11 @@ type Props = {
 export default function AutonomiaEquipeCard({
   businessId,
   initialCanBookSelf,
+  initialCanBookOthers,
   initialSeeTeamAgenda,
 }: Props) {
   const [canBookSelf, setCanBookSelf] = useState(initialCanBookSelf)
+  const [canBookOthers, setCanBookOthers] = useState(initialCanBookOthers)
   const [seeTeamAgenda, setSeeTeamAgenda] = useState(initialSeeTeamAgenda)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
@@ -54,7 +57,20 @@ export default function AutonomiaEquipeCard({
   async function onToggleBook() {
     const next = !canBookSelf
     setCanBookSelf(next)
+    // Desligar "marcar pra si" derruba "marcar pra colega" junto — sem isso
+    // ficaria um estado impossível no banco (marca pra colega mas não pra si).
+    if (!next && canBookOthers) {
+      setCanBookOthers(false)
+      await persist({ professionals_can_book_self: false, professionals_can_book_others: false })
+      return
+    }
     await persist({ professionals_can_book_self: next })
+  }
+
+  async function onToggleOthers() {
+    const next = !canBookOthers
+    setCanBookOthers(next)
+    await persist({ professionals_can_book_others: next })
   }
 
   async function onToggleAgenda() {
@@ -104,6 +120,29 @@ export default function AutonomiaEquipeCard({
           </div>
           <Toggle checked={canBookSelf} onChange={onToggleBook} label="Marcar na própria agenda" />
         </div>
+
+        {/* v98b · só faz sentido se ela já pode marcar pra si */}
+        {canBookSelf && (
+          <div
+            className="flex items-start justify-between gap-3 pl-3"
+            style={{ borderLeft: '2px solid var(--admin-divider)' }}
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium" style={{ color: 'var(--admin-text)' }}>
+                Marcar também na agenda das colegas
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                Serve pra quem atende em dupla e encaixa cliente uma da outra.
+                Cancelar e remarcar continua só com você.
+              </p>
+            </div>
+            <Toggle
+              checked={canBookOthers}
+              onChange={onToggleOthers}
+              label="Marcar na agenda das colegas"
+            />
+          </div>
+        )}
 
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

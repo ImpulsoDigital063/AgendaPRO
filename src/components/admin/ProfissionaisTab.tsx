@@ -33,8 +33,9 @@ type Props = {
   subscriptionPlan: 'solo' | 'equipe'
   /** v78 · slots extras vendidos pra esse business · soma ao limite do plano */
   extraProfessionalSlots?: number
-  /** v92 · autonomia da equipe · default false (negócio que não ligar não muda) */
+  /** v98a/b · autonomia da equipe · default false (negócio que não ligar não muda) */
   canBookSelf?: boolean
+  canBookOthers?: boolean
   seeTeamAgenda?: boolean
 }
 
@@ -52,6 +53,7 @@ export default function ProfissionaisTab({
   subscriptionPlan,
   extraProfessionalSlots = 0,
   canBookSelf = false,
+  canBookOthers = false,
   seeTeamAgenda = false,
 }: Props) {
   const [filter, setFilter] = useState<Filter>('active')
@@ -633,6 +635,7 @@ export default function ProfissionaisTab({
       <AutonomiaEquipeCard
         businessId={businessId}
         initialCanBookSelf={canBookSelf}
+        initialCanBookOthers={canBookOthers}
         initialSeeTeamAgenda={seeTeamAgenda}
       />
 

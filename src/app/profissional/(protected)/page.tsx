@@ -30,7 +30,7 @@ export default async function ProfissionalPage() {
   // Busca o profissional logado · inclui brand_logo_url pra header
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, business:businesses(name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_see_team_agenda)')
+    .select('*, business:businesses(name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -41,12 +41,14 @@ export default async function ProfissionalPage() {
     slug: string
     punctuality_bonus_points?: number
     brand_logo_url?: string | null
-    // v92 · autonomia liberada pela dona nas Configurações
+    // v98a/b · autonomia liberada pela dona nas Configurações
     professionals_can_book_self?: boolean | null
+    professionals_can_book_others?: boolean | null
     professionals_see_team_agenda?: boolean | null
   }
   const punctualityBonus = business.punctuality_bonus_points ?? 10
   const canBookSelf = business.professionals_can_book_self === true
+  const canBookOthers = business.professionals_can_book_others === true
   const seeTeamAgenda = business.professionals_see_team_agenda === true
 
   const today = new Date().toISOString().split('T')[0]
@@ -139,8 +141,10 @@ export default async function ProfissionalPage() {
     // v92 · só aparecem se a dona ligou a autonomia nas Configurações
     canBookSelf && {
       href: '/profissional/agenda',
-      label: 'Minha agenda em grade',
-      desc: 'O dia inteiro em blocos de horário',
+      label: canBookOthers ? 'Agenda em grade' : 'Minha agenda em grade',
+      desc: canBookOthers
+        ? 'O dia da equipe em blocos · dá pra marcar aqui'
+        : 'O dia inteiro em blocos de horário',
       icon: IconCalendar,
     },
     seeTeamAgenda && {

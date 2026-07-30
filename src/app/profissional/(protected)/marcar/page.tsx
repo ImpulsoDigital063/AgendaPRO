@@ -21,7 +21,7 @@ export default async function ProfissionalMarcarPage() {
 
   const { data: prof } = await supabase
     .from('professionals')
-    .select('id, name, business:businesses(id, name, slug, professionals_can_book_self)')
+    .select('id, name, business:businesses(id, name, slug, professionals_can_book_self, professionals_can_book_others)')
     .eq('auth_user_id', user.id)
     .eq('is_receptionist', false)
     .single()
@@ -33,23 +33,45 @@ export default async function ProfissionalMarcarPage() {
     name: string
     slug: string
     professionals_can_book_self?: boolean | null
+    professionals_can_book_others?: boolean | null
   }
 
   // Dona não liberou (ou desligou depois) → nem renderiza o form
   if (!business.professionals_can_book_self) redirect('/profissional')
 
-  const { data: services } = await supabase
-    .from('services')
-    .select('id, name, price, duration_minutes')
-    .eq('business_id', business.id)
-    .eq('active', true)
-    .order('name')
+  const podeMarcarPraColega = business.professionals_can_book_others === true
+
+  const [{ data: services }, { data: colegas }] = await Promise.all([
+    supabase
+      .from('services')
+      .select('id, name, price, duration_minutes')
+      .eq('business_id', business.id)
+      .eq('active', true)
+      .order('name'),
+    // v98b · lista completa só quando a dona liberou marcar pras colegas.
+    // Sem a flag, nem buscamos: a lista sai dela e o form pula o passo.
+    podeMarcarPraColega
+      ? supabase
+          .from('professionals')
+          .select('id, name')
+          .eq('business_id', business.id)
+          .eq('active', true)
+          .eq('is_receptionist', false)
+          .eq('does_appointments', true)
+          .order('name')
+      : Promise.resolve({ data: null }),
+  ])
+
+  const listaProfs =
+    podeMarcarPraColega && colegas && colegas.length > 0
+      ? colegas
+      : [{ id: prof.id, name: prof.name }]
 
   return (
     <MarcarAgendamentoForm
       businessId={business.id}
       businessSlug={business.slug}
-      professionals={[{ id: prof.id, name: prof.name }]}
+      professionals={listaProfs}
       services={services ?? []}
       defaultProfId={prof.id}
       area="profissional"

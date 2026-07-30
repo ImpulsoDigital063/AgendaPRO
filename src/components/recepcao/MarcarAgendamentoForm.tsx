@@ -59,9 +59,11 @@ export default function MarcarAgendamentoForm({
   const router = useRouter()
   const supabase = createClient()
 
-  // v92 · profissional marca só na agenda dela → passo "com qual profissional?"
-  // não existe nesse fluxo (nem no avanço, nem no botão voltar).
-  const lockProf = area === 'profissional'
+  // v98a/b · quando a profissional só pode marcar pra si, a página manda ela
+  // sozinha em `professionals` → o passo "com qual profissional?" não existe
+  // (nem no avanço, nem no botão voltar). Se a dona liberou marcar pras
+  // colegas, a lista vem completa e o passo volta a aparecer normalmente.
+  const lockProf = area === 'profissional' && professionals.length <= 1
   const stepOrder: Step[] = lockProf
     ? ['cliente', 'servico', 'horario', 'confirma']
     : ['cliente', 'profissional', 'servico', 'horario', 'confirma']

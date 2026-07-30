@@ -38,7 +38,7 @@ export default async function ProfissionalAgendaPage({
 
   const { data: me } = await supabase
     .from('professionals')
-    .select('id, name, business:businesses(id, name, professionals_can_book_self, professionals_see_team_agenda)')
+    .select('id, name, business:businesses(id, name, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda)')
     .eq('auth_user_id', user.id)
     .eq('is_receptionist', false)
     .single()
@@ -49,10 +49,16 @@ export default async function ProfissionalAgendaPage({
     id: string
     name: string
     professionals_can_book_self?: boolean | null
+    professionals_can_book_others?: boolean | null
     professionals_see_team_agenda?: boolean | null
   }
 
   if (!business.professionals_can_book_self) redirect('/profissional')
+
+  // v98b · liberada pra marcar pras colegas → grade completa da equipe, com as
+  // colunas de todas (é a tela do print que o Eduardo pediu). Sem a flag,
+  // `onlyProfessionalId` mantém a grade na coluna dela e só nela.
+  const podeMarcarPraColega = business.professionals_can_book_others === true
 
   const label = new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -71,7 +77,7 @@ export default async function ProfissionalAgendaPage({
           <IconArrowLeft size={16} /> Meu painel
         </Link>
         <h1 className="text-[24px] font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
-          Minha agenda
+          {podeMarcarPraColega ? 'Agenda' : 'Minha agenda'}
         </h1>
         <p className="text-sm capitalize mt-1" style={{ color: 'var(--admin-text-mute)' }}>
           <span className="inline-flex items-center gap-1.5">
@@ -126,7 +132,7 @@ export default async function ProfissionalAgendaPage({
             businessId={business.id}
             date={date}
             hideKpis
-            onlyProfessionalId={me.id}
+            onlyProfessionalId={podeMarcarPraColega ? undefined : me.id}
           />
         </Suspense>
       </div>
