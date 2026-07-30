@@ -20,10 +20,22 @@ type Props = {
    *  Usado no Início, onde os mesmos KPIs já são renderizados pelo KPIsRow
    *  com 4 cards horizontais — duplicar polui visualmente. */
   hideKpis?: boolean
+  /** v98d · esconde as ações de caixa/estoque (Vender produto · Resgatar pacote ·
+   *  Registrar venda), deixando só navegação de dia + Agendar. Usado no painel
+   *  da profissional, que não opera caixa. Default false = admin e recepção
+   *  seguem com todos os botões. */
+  hideCaixaActions?: boolean
 }
 
 function formatBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+/** Área que está hospedando a grade · v98d somou /profissional às duas antigas. */
+function areaBasePath(pathname: string): string {
+  if (pathname.startsWith('/recepcao')) return '/recepcao'
+  if (pathname.startsWith('/profissional')) return '/profissional'
+  return '/admin'
 }
 
 function shiftDate(date: string, days: number): string {
@@ -53,6 +65,7 @@ export default function GradeTimelineHeader({
   aReceberHoje = 0,
   pendentesHoje = 0,
   hideKpis = false,
+  hideCaixaActions = false,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -68,10 +81,9 @@ export default function GradeTimelineHeader({
   function navigateTo(newDate: string) {
     const params = new URLSearchParams(searchParams)
     params.set('date', newDate)
-    // GradeTimeline agora é usado em /admin E /recepcao · respeita pathname atual
-    // pra não jogar recep pra rota da Adm
-    const basePath = pathname.startsWith('/recepcao') ? '/recepcao' : '/admin'
-    router.push(`${basePath}?${params.toString()}`)
+    // GradeTimeline é usado em /admin, /recepcao E /profissional (v98d) ·
+    // respeita o pathname atual pra não jogar ninguém pra rota da Adm
+    router.push(`${areaBasePath(pathname)}?${params.toString()}`)
   }
 
   return (
@@ -207,8 +219,9 @@ export default function GradeTimelineHeader({
               caminho na agenda era "Registrar venda" (balcão), que exige serviço +
               profissional e travava a venda só de produto (Eduardo 03/07). Desktop/
               tablet só (mobile usa o atalho da tela Início). */}
+          {!hideCaixaActions && (
           <Link
-            href={`${pathname.startsWith('/recepcao') ? '/recepcao' : '/admin'}/produtos/vender`}
+            href={`${areaBasePath(pathname)}/produtos/vender`}
             className="hidden sm:inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
             style={{
               minHeight: 44,
@@ -221,10 +234,11 @@ export default function GradeTimelineHeader({
           >
             <IconDollar size={14} /> Vender produto
           </Link>
+          )}
 
           {/* Resgatar pacote → busca a cliente, mostra os pacotes ativos e abre o
               agendamento pré-preenchido (Eduardo 24/07). Gated pelo PACOTE_ENABLED. */}
-          {PACOTE_ENABLED && (
+          {PACOTE_ENABLED && !hideCaixaActions && (
             <Link
               href={`?resgatar=1&date=${date}`}
               className="hidden sm:inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
@@ -240,6 +254,7 @@ export default function GradeTimelineHeader({
               <IconGift size={14} /> Resgatar pacote
             </Link>
           )}
+          {!hideCaixaActions && (
           <Link
             href={`?balcao=1&date=${date}`}
             className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
@@ -254,6 +269,7 @@ export default function GradeTimelineHeader({
           >
             <IconPlus size={14} /> Registrar venda
           </Link>
+          )}
 
           {/* Agendar · mantém a cor da marca (brand-primary) · só Registrar venda é verde. */}
           <Link

@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import Image from 'next/image'
+import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
+import { todayBR } from '@/lib/date-br'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import BrandHeaderLogo from '@/components/admin/BrandHeaderLogo'
@@ -21,7 +24,15 @@ import {
   IconWallet,
 } from '@/components/ui/Icon'
 
-export default async function ProfissionalPage() {
+export default async function ProfissionalPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>
+}) {
+  const sp = await searchParams
+  // Data da grade · vem do ?date= que a própria grade usa pra navegar
+  const gradeDate = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayBR()
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -30,13 +41,14 @@ export default async function ProfissionalPage() {
   // Busca o profissional logado · inclui brand_logo_url pra header
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, business:businesses(name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda)')
+    .select('*, business:businesses(id, name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda)')
     .eq('auth_user_id', user.id)
     .single()
 
   if (!professional) redirect('/profissional/login')
 
   const business = professional.business as {
+    id: string
     name: string
     slug: string
     punctuality_bonus_points?: number
@@ -50,6 +62,17 @@ export default async function ProfissionalPage() {
   const canBookSelf = business.professionals_can_book_self === true
   const canBookOthers = business.professionals_can_book_others === true
   const seeTeamAgenda = business.professionals_see_team_agenda === true
+
+  // v98d · com autonomia ligada, a HOME dela é a GRADE — mesmo padrão do /admin
+  // da dona, que já é grade em todos os breakpoints (mobile = scroll horizontal).
+  // Cravado por Eduardo 30/07: "é o que elas vão usar e precisar de verdade".
+  // Sem autonomia, segue a lista antiga (negócio que não ligou não muda nada).
+  const homeEhGrade = canBookSelf
+  // Coluna da dona fora da grade da equipe (30/07)
+  const { data: donas } = homeEhGrade && canBookOthers
+    ? await supabase.from('professionals').select('id').eq('business_id', business.id).eq('role', 'owner')
+    : { data: null }
+  const idsDonas = (donas ?? []).map((d) => d.id as string)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -138,16 +161,10 @@ export default async function ProfissionalPage() {
   }>
 
   const navItems = [
-    // v92 · só aparecem se a dona ligou a autonomia nas Configurações
-    canBookSelf && {
-      href: '/profissional/agenda',
-      label: canBookOthers ? 'Agenda em grade' : 'Minha agenda em grade',
-      desc: canBookOthers
-        ? 'O dia da equipe em blocos · dá pra marcar aqui'
-        : 'O dia inteiro em blocos de horário',
-      icon: IconCalendar,
-    },
-    seeTeamAgenda && {
+    // v98d · a grade virou a home, então o item que levava pra ela saiu daqui.
+    // "Agenda da equipe" (lista de leitura) só faz sentido quando ela NÃO tem a
+    // grade da equipe na home — senão é o mesmo dado duas vezes.
+    seeTeamAgenda && !(homeEhGrade && canBookOthers) && {
       href: '/profissional/agenda-equipe',
       label: 'Agenda da equipe',
       desc: 'Veja o horário das colegas',
@@ -250,7 +267,14 @@ export default async function ProfissionalPage() {
         </div>
       </section>
 
-      <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
+      {/* Com a grade na home, o container solta a largura NO DESKTOP (md:) pra as
+          colunas respirarem. No mobile segue max-w-lg — a grade rola na horizontal,
+          igual ao /admin da dona. Sem grade, nada muda em nenhum breakpoint. */}
+      <div
+        className={`relative max-w-lg mx-auto px-4 pb-10 space-y-6 ${
+          homeEhGrade ? 'md:max-w-none md:px-6' : ''
+        }`}
+      >
         {/* Boas-vindas */}
         <WelcomeCard professionalName={professional.name} />
 
@@ -266,11 +290,33 @@ export default async function ProfissionalPage() {
               boxShadow: '0 8px 20px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
             }}
           >
-            <IconPlus size={18} /> Marcar na minha agenda
+            <IconPlus size={18} /> {canBookOthers ? 'Marcar cliente' : 'Marcar na minha agenda'}
           </Link>
         )}
 
-        {/* Hoje */}
+        {/* v98d · A GRADE é a home · mesmo componente do /admin da dona e da
+            recepção. hideCaixaActions: ela não vende produto nem abre balcão.
+            hideKpis: faturamento do negócio não é assunto dela (o dela está
+            nos cards acima e em /profissional/financeiro). */}
+        {homeEhGrade && (
+          <Suspense
+            fallback={
+              <div className="h-96 rounded-2xl" style={{ background: 'var(--admin-surface)' }} />
+            }
+          >
+            <GradeTimeline
+              businessId={business.id}
+              date={gradeDate}
+              hideKpis
+              hideCaixaActions
+              onlyProfessionalId={canBookOthers ? undefined : professional.id}
+              excludeProfessionalIds={idsDonas}
+            />
+          </Suspense>
+        )}
+
+        {/* Hoje · só quando a home NÃO é a grade (senão é o mesmo dia duas vezes) */}
+        {!homeEhGrade && (
         <section>
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
@@ -316,6 +362,7 @@ export default async function ProfissionalPage() {
             />
           )}
         </section>
+        )}
 
         {/* Próximos dias */}
         {upcoming && upcoming.length > 0 && (
@@ -334,7 +381,21 @@ export default async function ProfissionalPage() {
           </section>
         )}
 
-        {/* Nav list */}
+        {/* v98d · Com a grade na home, esse menu saiu: Horários, Financeiro e
+            Conta já estão no bottom nav (ProfissionalBottomNav) — era o mesmo
+            atalho duas vezes na mesma tela. Eduardo apontou 30/07.
+            Negócio SEM autonomia continua com o menu, nada muda pra ele. */}
+        {homeEhGrade && seeTeamAgenda && !canBookOthers && (
+          <Link
+            href="/profissional/agenda-equipe"
+            className="block text-center text-sm font-semibold py-3 rounded-xl"
+            style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}
+          >
+            Ver a agenda das colegas →
+          </Link>
+        )}
+
+        {!homeEhGrade && (
         <div
           className="rounded-2xl overflow-hidden"
           style={{
@@ -378,6 +439,7 @@ export default async function ProfissionalPage() {
             )
           })}
         </div>
+        )}
 
         <p className="text-center text-xs pb-2" style={{ color: 'var(--admin-text-faded)' }}>
           AgendaPRO · Impulso Digital

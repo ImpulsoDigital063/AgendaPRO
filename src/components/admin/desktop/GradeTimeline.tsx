@@ -17,6 +17,9 @@ type Props = {
    *  não mostra a coluna da dona quando ela só administra (Realli 30/07).
    *  Default: não esconde ninguém — admin, recepção e Palace seguem iguais. */
   excludeProfessionalIds?: string[]
+  /** v98d · esconde Vender produto / Resgatar pacote / Registrar venda do header.
+   *  A profissional não opera caixa. Default false = admin e recepção iguais. */
+  hideCaixaActions?: boolean
 }
 
 type ApptRow = {
@@ -38,7 +41,7 @@ type ApptRow = {
 const HOUR_START = 7 // 07:00 começa a grade (ajuste futuro: business_hours)
 const HOUR_END = 22 // 22:00 termina
 
-export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds }: Props) {
+export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds, hideCaixaActions = false }: Props) {
   const excluded = new Set(excludeProfessionalIds ?? [])
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -185,6 +188,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
         aReceberHoje={aReceberHoje}
         pendentesHoje={pendentesHoje}
         hideKpis={true /* 28/05: KPIs migraram pra dentro da tabela */}
+        hideCaixaActions={hideCaixaActions}
       />
 
       <TimelineGridInteractive
