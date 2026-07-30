@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import Image from 'next/image'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
-import { todayBR } from '@/lib/date-br'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import BrandHeaderLogo from '@/components/admin/BrandHeaderLogo'
@@ -73,7 +73,9 @@ export default async function ProfissionalPage({
     : { data: null }
   const idsDonas = (donas ?? []).map((d) => d.id as string)
 
-  const today = new Date().toISOString().split('T')[0]
+  // λ.fuso · servidor da Vercel roda em UTC · depois das 21h no Brasil o
+  // toISOString cru já estava no dia seguinte e a lista dela pulava um dia
+  const today = todayBR()
 
   // Agendamentos de hoje — só deste profissional
   const { data: appointments } = await supabase
@@ -83,10 +85,8 @@ export default async function ProfissionalPage({
     .eq('appointment_date', today)
     .order('start_time', { ascending: true })
 
-  // Próximos 7 dias
-  const nextWeek = new Date()
-  nextWeek.setDate(nextWeek.getDate() + 7)
-  const nextWeekStr = nextWeek.toISOString().split('T')[0]
+  // Próximos 7 dias · também em BR
+  const nextWeekStr = addDaysBR(today, 7)
 
   const { data: upcoming } = await supabase
     .from('appointments')
@@ -99,7 +99,9 @@ export default async function ProfissionalPage({
     .order('start_time', { ascending: true })
     .limit(10)
 
-  const todayFormatted = new Date().toLocaleDateString('pt-BR', {
+  // λ.fuso · formata a partir do dia BR já resolvido (ancorado ao meio-dia pra
+   // não escorregar de novo na conversão) — antes era new Date() cru no servidor
+  const todayFormatted = new Date(today + 'T12:00:00').toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

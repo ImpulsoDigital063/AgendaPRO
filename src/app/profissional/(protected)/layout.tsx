@@ -7,6 +7,7 @@ import InstallBanner from '@/components/admin/InstallBanner'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
+import { todayBR } from '@/lib/date-br'
 
 export default async function ProfissionalLayout({
   children,
@@ -61,12 +62,10 @@ export default async function ProfissionalLayout({
 
   const employmentType = (professional.employment_type ?? 'commissioned') as 'commissioned' | 'employed'
 
-  // Badge: agendamentos pendentes de hoje pra esse profissional
-  const today = new Date()
-  const yyyy = today.getFullYear()
-  const mm = String(today.getMonth() + 1).padStart(2, '0')
-  const dd = String(today.getDate()).padStart(2, '0')
-  const todayStr = `${yyyy}-${mm}-${dd}`
+  // Badge: agendamentos pendentes de hoje pra esse profissional.
+  // λ.fuso · getFullYear/getMonth/getDate no SERVIDOR leem UTC: depois das 21h
+  // no Brasil o badge contava os pendentes de AMANHÃ. todayBR resolve.
+  const todayStr = todayBR()
 
   const { count: pendingCount } = await supabase
     .from('appointments')
