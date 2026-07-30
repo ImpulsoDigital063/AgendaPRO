@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconPlus, IconTrash, IconCheck } from '@/components/ui/Icon'
 import DrawCanvas from './DrawCanvas'
@@ -45,6 +45,10 @@ function formatDate(d: string): string {
 
 export default function FichasTab({ customerId }: Props) {
   const router = useRouter()
+  // A aba de fichas abre dentro do drawer do atendimento, que a profissional
+  // usa. Os links pra Configurações → Fichas Modelo são rota de dona: pra ela
+  // viram texto simples, senão é convite pra sair da própria área (30/07).
+  const ehAreaProfissional = usePathname().startsWith('/profissional')
   const [templates, setTemplates] = useState<Template[]>([])
   const [responses, setResponses] = useState<Response[]>([])
   const [customer, setCustomer] = useState<{ name: string; phone: string | null; birthday: string | null } | null>(null)
@@ -309,7 +313,13 @@ export default function FichasTab({ customerId }: Props) {
             Nenhuma ficha foi adicionada
           </p>
           <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-            Fichas são modelos cadastrados em <Link href="/admin/configuracoes?tab=fichas-modelo" className="underline" style={{ color: 'var(--admin-accent)' }}>Configurações → Fichas Modelo</Link> (anamnese · ficha técnica · etc) que você aplica no cliente e preenche aqui.
+            Fichas são modelos cadastrados em{' '}
+            {ehAreaProfissional ? (
+              <strong style={{ color: 'var(--admin-text-2)' }}>Configurações → Fichas Modelo</strong>
+            ) : (
+              <Link href="/admin/configuracoes?tab=fichas-modelo" className="underline" style={{ color: 'var(--admin-accent)' }}>Configurações → Fichas Modelo</Link>
+            )}{' '}
+            (anamnese · ficha técnica · etc) que você aplica no cliente e preenche aqui.
           </p>
         </div>
       ) : (
@@ -426,7 +436,11 @@ export default function FichasTab({ customerId }: Props) {
             )}
             {templates.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--admin-text-mute)' }}>
-                Nenhuma ficha pré-cadastrada foi encontrada. Entre em <Link href="/admin/configuracoes?tab=fichas-modelo" className="underline" style={{ color: 'var(--admin-accent)' }}>Configurações → Fichas Modelo</Link> e cadastre uma.
+                {ehAreaProfissional ? (
+                  <>Nenhuma ficha pré-cadastrada foi encontrada. Peça pra administração cadastrar em Configurações → Fichas Modelo.</>
+                ) : (
+                  <>Nenhuma ficha pré-cadastrada foi encontrada. Entre em <Link href="/admin/configuracoes?tab=fichas-modelo" className="underline" style={{ color: 'var(--admin-accent)' }}>Configurações → Fichas Modelo</Link> e cadastre uma.</>
+                )}
               </p>
             ) : (
               <div className="space-y-2">
