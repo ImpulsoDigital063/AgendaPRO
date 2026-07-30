@@ -25,6 +25,14 @@ type Props = {
   professionalId?: string | null
   /** Se passado, chamado após sucesso em vez de navegar pro backHref. Usado pelo drawer inline. */
   onDone?: () => void
+  /**
+   * Esconde "Cancelar atendimento" (v98n · 30/07/2026).
+   *
+   * Regra do Eduardo: profissional cancela só o DELA; o da colega é só a adm.
+   * A rota já recusa (403), isto aqui evita entregar um botão que vai negar —
+   * botão que existe e não funciona é pior que botão que não existe.
+   */
+  podeCancelar?: boolean
 }
 
 export default function AppointmentActions({
@@ -39,6 +47,7 @@ export default function AppointmentActions({
   serviceName,
   professionalId,
   onDone,
+  podeCancelar = true,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -224,7 +233,9 @@ export default function AppointmentActions({
         <IconSettings size={15} /> Editar atendimento
       </button>
 
-      {/* Cancelar atendimento · ação destrutiva separada */}
+      {/* Cancelar atendimento · ação destrutiva separada.
+          Some quando não é da pessoa logada (profissional na agenda da colega). */}
+      {podeCancelar && (
       <button
         type="button"
         onClick={() => setConfirmCancel(true)}
@@ -238,6 +249,7 @@ export default function AppointmentActions({
       >
         <IconClose size={14} /> Cancelar atendimento
       </button>
+      )}
 
       <ConfirmActionModal
         open={confirmCancel}

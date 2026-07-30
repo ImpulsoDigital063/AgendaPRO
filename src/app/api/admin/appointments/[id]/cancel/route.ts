@@ -42,11 +42,12 @@ export async function POST(
   // Negócio sem recepcionista (caso Realli) quebrava aqui: a profissional
   // marcava a cliente mas não conseguia fechar o ciclo do atendimento.
   //
-  // A profissional age SEMPRE no que é dela. Pra mexer no de uma colega, o
-  // negócio precisa ter ligado `professionals_can_book_others` — a mesma flag
-  // que libera marcar pra colega. Sem a flag (que é o default), nada muda pra
-  // Olímpio, Studio MOOD e os outros.
-  const [{ data: business }, { data: prof }, { data: biz }] = await Promise.all([
+  // CANCELAR é o único poder que NÃO acompanha a flag de equipe.
+  // Eduardo 30/07, depois de testar: "cada uma pode cancelar somente o seu.
+  // Quem pode cancelar o de qualquer uma é só a adm". Marcar e receber pela
+  // colega ajuda (elas se cobrem no balcão); desmarcar a cliente da outra é
+  // estrago que ninguém desfaz — some da agenda de quem nem estava por perto.
+  const [{ data: business }, { data: prof }] = await Promise.all([
     supabase
       .from('businesses')
       .select('id')
@@ -60,18 +61,13 @@ export async function POST(
       .eq('auth_user_id', user.id)
       .eq('active', true)
       .maybeSingle(),
-    supabase
-      .from('businesses')
-      .select('professionals_can_book_others')
-      .eq('id', appt.business_id)
-      .maybeSingle(),
   ])
   const isOwner = !!business
   const isReceptionist = prof?.is_receptionist === true
-  const ehDela = !!prof && prof.id === appt.professional_id
-  const podeMexerNoDaColega = biz?.professionals_can_book_others === true
-  const isProfissionalAutorizada = !!prof && !prof.is_receptionist && (ehDela || podeMexerNoDaColega)
-  if (!isOwner && !isReceptionist && !isProfissionalAutorizada) {
+  // Profissional: SÓ o próprio atendimento, sempre — não existe flag que abra
+  // o cancelamento do atendimento da colega.
+  const ehDela = !!prof && !prof.is_receptionist && prof.id === appt.professional_id
+  if (!isOwner && !isReceptionist && !ehDela) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 

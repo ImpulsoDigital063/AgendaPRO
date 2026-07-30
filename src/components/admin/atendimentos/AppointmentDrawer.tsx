@@ -68,6 +68,9 @@ function formatDateLong(d: string): string {
 export default function AppointmentDrawer({ appointmentId, businessId, onClose }: Props) {
   const pathname = usePathname()
   const ehAreaProfissional = pathname.startsWith('/profissional')
+  // Quem está logada · usado só pra decidir se o "Cancelar atendimento" aparece
+  // (v98n · profissional cancela só o dela; o da colega é da adm)
+  const [meuProfId, setMeuProfId] = useState<string | null>(null)
   const [data, setData] = useState<ApptDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [portalReady, setPortalReady] = useState(false)
@@ -77,6 +80,23 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
   const [comanda, setComanda] = useState<{ produtos: ComandaProduto[]; total: number | null }>({ produtos: [], total: null })
 
   useEffect(() => { setPortalReady(true) }, [])
+
+  // Só na área da profissional: descobre o id dela pra comparar com o dono do
+  // atendimento. No admin/recepção não roda — lá pode cancelar tudo.
+  useEffect(() => {
+    if (!ehAreaProfissional) return
+    const sb = createClient()
+    ;(async () => {
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const { data: p } = await sb
+        .from('professionals')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+      setMeuProfId(p?.id ?? null)
+    })()
+  }, [ehAreaProfissional])
 
   useEffect(() => {
     if (!appointmentId) {
@@ -348,6 +368,9 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
                   serviceName={data.service_name}
                   professionalId={prof?.id ?? null}
                   onDone={onClose}
+                  // Na área da profissional só aparece "Cancelar" no que é dela.
+                  // No admin/recepção segue como sempre (cancela qualquer um).
+                  podeCancelar={!ehAreaProfissional || (!!meuProfId && meuProfId === prof?.id)}
                 />
               )}
             </>
