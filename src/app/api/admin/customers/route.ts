@@ -31,11 +31,17 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   if (!business) {
+    // Recepção E profissional (v98 · 30/07/2026). Antes exigia
+    // is_receptionist=true: com a autonomia da equipe ligada, a profissional
+    // marcava agendamento mas NÃO conseguia cadastrar a cliente pra marcar —
+    // batia 404 business_not_found no meio do fluxo (relato Realli 30/07).
+    // Alinha a rota com a RLS: a policy customers_business_access (v81) já
+    // permite qualquer profissional ATIVA do negócio.
     const { data: prof } = await supabase
       .from('professionals')
-      .select('business_id, is_receptionist')
+      .select('business_id')
       .eq('auth_user_id', user.id)
-      .eq('is_receptionist', true)
+      .eq('active', true)
       .maybeSingle()
     if (prof) {
       business = { id: prof.business_id }
