@@ -8,12 +8,15 @@ async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>)
   if (!user) return null
   const { data: owner } = await supabase.from('businesses').select('id').eq('owner_id', user.id).maybeSingle()
   if (owner) return owner.id
+  // Dono, recepção OU profissional ativa (v98 · 30/07/2026). Ficha, foto e
+  // observação da cliente são o trabalho DELA — antes exigia is_receptionist e
+  // a profissional levava business_not_found no meio do atendimento, mesmo caso
+  // do cadastro de cliente (relato Realli 30/07). Dinheiro segue fechado.
   const { data: prof } = await supabase
     .from('professionals')
     .select('business_id')
     .eq('auth_user_id', user.id)
     .eq('active', true)
-    .eq('is_receptionist', true)
     .maybeSingle()
   return prof?.business_id ?? null
 }

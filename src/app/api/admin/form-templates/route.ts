@@ -17,6 +17,30 @@ async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>)
   return prof?.business_id ?? null
 }
 
+/**
+ * Só LEITURA: dono, recepção OU profissional ativa (v98 · 30/07/2026).
+ *
+ * A profissional precisa LER o template pra conseguir preencher a ficha da
+ * cliente dela — sem isso, abrir a ficha estoura 401 no meio do atendimento.
+ * Mas CRIAR / EDITAR / APAGAR template é configuração do negócio e continua
+ * exclusivo de dono e recepção (getBusinessId acima, inalterado).
+ */
+async function getBusinessIdParaLeitura(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data: owner } = await supabase.from('businesses').select('id').eq('owner_id', user.id).maybeSingle()
+  if (owner) return owner.id
+  const { data: prof } = await supabase
+    .from('professionals')
+    .select('business_id')
+    .eq('auth_user_id', user.id)
+    .eq('active', true)
+    .maybeSingle()
+  return prof?.business_id ?? null
+}
+
 function getAdmin() {
   return createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,7 +86,7 @@ function validateFields(raw: unknown): FieldDef[] | null {
 // GET · lista templates do business
 export async function GET() {
   const supabase = await createClient()
-  const businessId = await getBusinessId(supabase)
+  const businessId = await getBusinessIdParaLeitura(supabase)
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const admin = getAdmin()
   const { data } = await admin
