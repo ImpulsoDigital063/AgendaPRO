@@ -18,6 +18,7 @@ import {
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
 import ColaboradorFormDrawer from '@/components/admin/colaboradores/ColaboradorFormDrawer'
+import AutonomiaEquipeCard from '@/components/admin/AutonomiaEquipeCard'
 
 type Props = {
   businessId: string
@@ -32,6 +33,9 @@ type Props = {
   subscriptionPlan: 'solo' | 'equipe'
   /** v78 · slots extras vendidos pra esse business · soma ao limite do plano */
   extraProfessionalSlots?: number
+  /** v92 · autonomia da equipe · default false (negócio que não ligar não muda) */
+  canBookSelf?: boolean
+  seeTeamAgenda?: boolean
 }
 
 const PLAN_LIMITS: Record<'solo' | 'equipe', number> = {
@@ -47,6 +51,8 @@ export default function ProfissionaisTab({
   onChange,
   subscriptionPlan,
   extraProfessionalSlots = 0,
+  canBookSelf = false,
+  seeTeamAgenda = false,
 }: Props) {
   const [filter, setFilter] = useState<Filter>('active')
   const [search, setSearch] = useState('')
@@ -622,6 +628,13 @@ export default function ProfissionaisTab({
         </div>
       )}
 
+
+      {/* v92 · autonomia da equipe (marcar pra si · ver agenda das colegas) */}
+      <AutonomiaEquipeCard
+        businessId={businessId}
+        initialCanBookSelf={canBookSelf}
+        initialSeeTeamAgenda={seeTeamAgenda}
+      />
 
       {/* Modais */}
       <ConfirmActionModal

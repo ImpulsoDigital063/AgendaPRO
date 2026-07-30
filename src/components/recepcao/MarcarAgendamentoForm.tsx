@@ -35,8 +35,13 @@ type Props = {
   defaultDate?: string | null
   /** Horário pré-selecionado (HH:MM) */
   defaultTime?: string | null
-  /** Área que abriu o form · controla label header + rota de redirect pós-save */
-  area?: 'recepcao' | 'admin'
+  /**
+   * Área que abriu o form · controla label header + rota de redirect pós-save.
+   * 'profissional' (v92) = a própria profissional marcando pra si: recebe só
+   * ela mesma em `professionals`, pula o passo de escolher profissional e
+   * nunca oferece caminho pra agenda de colega.
+   */
+  area?: 'recepcao' | 'admin' | 'profissional'
 }
 
 type Step = 'cliente' | 'profissional' | 'servico' | 'horario' | 'confirma'
@@ -53,6 +58,13 @@ export default function MarcarAgendamentoForm({
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
+
+  // v92 · profissional marca só na agenda dela → passo "com qual profissional?"
+  // não existe nesse fluxo (nem no avanço, nem no botão voltar).
+  const lockProf = area === 'profissional'
+  const stepOrder: Step[] = lockProf
+    ? ['cliente', 'servico', 'horario', 'confirma']
+    : ['cliente', 'profissional', 'servico', 'horario', 'confirma']
 
   const [step, setStep] = useState<Step>('cliente')
   const [cliente, setCliente] = useState<Customer | null>(null)
@@ -138,12 +150,12 @@ export default function MarcarAgendamentoForm({
     }
     setCliente(data as Customer)
     setShowCreate(false)
-    setStep('profissional')
+    setStep(lockProf ? 'servico' : 'profissional')
   }
 
   function selectCliente(c: Customer) {
     setCliente(c)
-    setStep('profissional')
+    setStep(lockProf ? 'servico' : 'profissional')
   }
 
   // Slots de horário · 08:00 às 20:00 a cada 30min (simples · não consulta working_hours)
@@ -246,7 +258,7 @@ export default function MarcarAgendamentoForm({
       service_name: service.name,
       total_price: service.price,
       status: 'confirmed',
-      notes: 'Marcado pela recepção',
+      notes: area === 'profissional' ? 'Marcado pela profissional' : 'Marcado pela recepção',
     }).select('id').single()
 
     setSaving(false)
@@ -280,6 +292,9 @@ export default function MarcarAgendamentoForm({
       const params = new URLSearchParams()
       if (date) params.set('date', date)
       window.location.href = `/admin${params.toString() ? '?' + params.toString() : ''}`
+    } else if (area === 'profissional') {
+      router.push('/profissional')
+      router.refresh()
     } else {
       router.push('/recepcao')
       router.refresh()
@@ -293,9 +308,8 @@ export default function MarcarAgendamentoForm({
           {step !== 'cliente' && (
             <button
               onClick={() => {
-                const order: Step[] = ['cliente', 'profissional', 'servico', 'horario', 'confirma']
-                const i = order.indexOf(step)
-                setStep(order[Math.max(0, i - 1)])
+                const i = stepOrder.indexOf(step)
+                setStep(stepOrder[Math.max(0, i - 1)])
               }}
               aria-label="Voltar"
               className="p-1.5 -ml-1 rounded-full"
@@ -306,7 +320,11 @@ export default function MarcarAgendamentoForm({
           )}
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-              {area === 'admin' ? 'Atendimentos · Novo' : 'Recepção · Marcar'}
+              {area === 'admin'
+                ? 'Atendimentos · Novo'
+                : area === 'profissional'
+                  ? 'Minha agenda · Marcar'
+                  : 'Recepção · Marcar'}
             </p>
             <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
               {step === 'cliente' && 'Quem é o cliente?'}

@@ -15,7 +15,9 @@ import {
   IconCheck,
   IconClock,
   IconInbox,
+  IconPlus,
   IconSettings,
+  IconUsers,
   IconWallet,
 } from '@/components/ui/Icon'
 
@@ -28,14 +30,24 @@ export default async function ProfissionalPage() {
   // Busca o profissional logado · inclui brand_logo_url pra header
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, business:businesses(name, slug, punctuality_bonus_points, brand_logo_url)')
+    .select('*, business:businesses(name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_see_team_agenda)')
     .eq('auth_user_id', user.id)
     .single()
 
   if (!professional) redirect('/profissional/login')
 
-  const business = professional.business as { name: string; slug: string; punctuality_bonus_points?: number; brand_logo_url?: string | null }
+  const business = professional.business as {
+    name: string
+    slug: string
+    punctuality_bonus_points?: number
+    brand_logo_url?: string | null
+    // v92 · autonomia liberada pela dona nas Configurações
+    professionals_can_book_self?: boolean | null
+    professionals_see_team_agenda?: boolean | null
+  }
   const punctualityBonus = business.punctuality_bonus_points ?? 10
+  const canBookSelf = business.professionals_can_book_self === true
+  const seeTeamAgenda = business.professionals_see_team_agenda === true
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -124,6 +136,13 @@ export default async function ProfissionalPage() {
   }>
 
   const navItems = [
+    // v92 · só aparecem se a dona ligou a autonomia nas Configurações
+    seeTeamAgenda && {
+      href: '/profissional/agenda-equipe',
+      label: 'Agenda da equipe',
+      desc: 'Veja o horário das colegas',
+      icon: IconUsers,
+    },
     !isEmployed && {
       href: '/profissional/horarios',
       label: 'Meus horários',
@@ -224,6 +243,22 @@ export default async function ProfissionalPage() {
       <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
         {/* Boas-vindas */}
         <WelcomeCard professionalName={professional.name} />
+
+        {/* v92 · marcar na própria agenda · aparece só com a autonomia ligada */}
+        {canBookSelf && (
+          <Link
+            href="/profissional/marcar"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all"
+            style={{
+              background:
+                'linear-gradient(135deg, var(--brand-primary, #3B82F6) 0%, var(--brand-secondary, #06B6D4) 100%)',
+              color: '#FFFFFF',
+              boxShadow: '0 8px 20px -6px color-mix(in srgb, var(--admin-accent) 45%, transparent)',
+            }}
+          >
+            <IconPlus size={18} /> Marcar na minha agenda
+          </Link>
+        )}
 
         {/* Hoje */}
         <section>
