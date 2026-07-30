@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus, IconInfo, IconSettings, IconCheck, IconClock } from '@/components/ui/Icon'
 import AppointmentDrawer from '@/components/admin/atendimentos/AppointmentDrawer'
@@ -193,6 +194,18 @@ export default function TimelineGridInteractive({
   const pathname = usePathname()
   // No painel da profissional a grade ocupa a tela toda · ajusta a altura útil
   const ehAreaProfissional = pathname.startsWith('/profissional')
+  // Quem está logada · usado pra liberar bloqueio SÓ na coluna dela
+  const [meuProfId, setMeuProfId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!ehAreaProfissional) return
+    const sb = createSupabaseClient()
+    ;(async () => {
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      const { data: p } = await sb.from('professionals').select('id').eq('auth_user_id', user.id).maybeSingle()
+      setMeuProfId(p?.id ?? null)
+    })()
+  }, [ehAreaProfissional])
   const [popover, setPopover] = useState<PopoverState>(null)
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null) // `${profId}-${time}`
   const [portalReady, setPortalReady] = useState(false)
@@ -287,6 +300,46 @@ export default function TimelineGridInteractive({
     if (!popover) return
     router.push(`/admin/configuracoes?tab=bloqueios&prof=${popover.profId}&date=${date}&time=${popover.time}`)
     setPopover(null)
+  }
+
+  // Bloqueio da PRÓPRIA agenda (30/07) · a profissional não vai pras
+  // Configurações do negócio (rota de dona): resolve num modal curto aqui mesmo,
+  // e o servidor grava só na agenda dela.
+  const [bloqueioProf, setBloqueioProf] = useState<{ time: string } | null>(null)
+  const [bloqueioDur, setBloqueioDur] = useState(60)
+  const [bloqueioMotivo, setBloqueioMotivo] = useState('')
+  const [bloqueioErro, setBloqueioErro] = useState<string | null>(null)
+  const [bloqueando, setBloqueando] = useState(false)
+
+  function abrirBloqueioProprio() {
+    if (!popover) return
+    setBloqueioMotivo('')
+    setBloqueioErro(null)
+    setBloqueioDur(60)
+    setBloqueioProf({ time: popover.time })
+    setPopover(null)
+  }
+
+  async function confirmarBloqueioProprio() {
+    if (!bloqueioProf) return
+    setBloqueando(true)
+    setBloqueioErro(null)
+    const [h, m] = bloqueioProf.time.split(':').map(Number)
+    const fimMin = h * 60 + m + bloqueioDur
+    const fim = `${String(Math.floor(fimMin / 60) % 24).padStart(2, '0')}:${String(fimMin % 60).padStart(2, '0')}`
+    const res = await fetch('/api/profissional/bloqueio', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ date, start_time: bloqueioProf.time, end_time: fim, reason: bloqueioMotivo }),
+    })
+    setBloqueando(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setBloqueioErro(d.detail || 'Não consegui bloquear. Tenta de novo.')
+      return
+    }
+    setBloqueioProf(null)
+    router.refresh()
   }
 
   // Estado · profs visíveis · intervalo · cor · sidebar recolhida
@@ -1160,6 +1213,115 @@ export default function TimelineGridInteractive({
             </button>
             </>
             )}
+
+            {/* Profissional bloqueia a PRÓPRIA agenda · só na coluna dela
+                (Eduardo 30/07: "deve estar aí, pra quando elas precisam
+                bloquear a sua agenda"). Resolve num modal aqui mesmo — ela não
+                tem acesso às Configurações do negócio. */}
+            {ehAreaProfissional && !!meuProfId && popover.profId === meuProfId && (
+              <button
+                type="button"
+                onClick={abrirBloqueioProprio}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-[var(--admin-surface-hi)]"
+              >
+                <span
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: 'linear-gradient(135deg, #94A3B8 0%, #64748B 100%)',
+                    color: '#fff',
+                    boxShadow: '0 2px 6px -1px rgba(100,116,139,0.4)',
+                  }}
+                >
+                  <IconClose size={14} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Bloquear meu horário</p>
+                  <p className="text-[10px]" style={{ color: 'var(--admin-text-mute)' }}>Almoço · folga · compromisso</p>
+                </div>
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {/* Modal do bloqueio próprio · curto de propósito: horário já vem do toque,
+          ela só escolhe por quanto tempo e (se quiser) o motivo. */}
+      {bloqueioProf && portalReady && createPortal(
+        <div
+          className="fixed inset-0 z-[330] flex items-end sm:items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setBloqueioProf(null)}
+        >
+          <div
+            className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-5 space-y-4"
+            style={{ background: 'var(--admin-popover-bg, #fff)', border: '1px solid var(--admin-popover-border, #E2E8F0)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+                Bloquear minha agenda
+              </p>
+              <p className="text-lg font-bold" style={{ color: 'var(--admin-text)' }}>
+                {bloqueioProf.time} · {new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-mute)' }}>
+                Por quanto tempo
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {[30, 60, 120, 240].map((min) => (
+                  <button
+                    key={min}
+                    type="button"
+                    onClick={() => setBloqueioDur(min)}
+                    className="py-2.5 rounded-xl text-sm font-bold"
+                    style={
+                      bloqueioDur === min
+                        ? { background: 'var(--admin-accent)', color: '#fff' }
+                        : { background: 'var(--admin-input-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }
+                    }
+                  >
+                    {min < 60 ? `${min}min` : `${min / 60}h`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <input
+              value={bloqueioMotivo}
+              onChange={(e) => setBloqueioMotivo(e.target.value)}
+              placeholder="Motivo (opcional) · almoço, médico…"
+              maxLength={80}
+              className="w-full px-3 py-2.5 rounded-xl text-sm"
+              style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+            />
+
+            {bloqueioErro && (
+              <p className="text-xs" style={{ color: 'var(--admin-danger, #DC2626)' }}>{bloqueioErro}</p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setBloqueioProf(null)}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-text)' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarBloqueioProprio}
+                disabled={bloqueando}
+                className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
+                style={{ background: 'linear-gradient(180deg, #64748B 0%, #475569 100%)', color: '#fff' }}
+              >
+                {bloqueando ? 'Bloqueando…' : 'Bloquear'}
+              </button>
+            </div>
           </div>
         </div>,
         document.body,

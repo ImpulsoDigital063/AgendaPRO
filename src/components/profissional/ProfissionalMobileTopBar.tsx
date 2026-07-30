@@ -38,6 +38,9 @@ const ALL_ITEMS: NavItem[] = [
   { label: 'Início', href: '/profissional', exact: true, Icon: IconHome },
   { label: 'Atendimentos', href: '/profissional', exact: true, Icon: IconCalendar },
   { label: 'Horários', href: '/profissional/horarios', Icon: IconClock },
+  // Bloqueios da própria agenda (30/07) · espelha a aba que a dona tem em
+  // Configurações → Bloqueios, mas escopada nela
+  { label: 'Bloqueios', href: '/profissional/bloqueios', Icon: IconClose },
   { label: 'Financeiro', href: '/profissional/financeiro', Icon: IconWallet },
   { label: 'Conta', href: '/profissional/conta', Icon: IconSettings },
 ]
