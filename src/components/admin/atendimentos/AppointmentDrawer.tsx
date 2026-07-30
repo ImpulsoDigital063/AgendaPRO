@@ -368,9 +368,13 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
                   serviceName={data.service_name}
                   professionalId={prof?.id ?? null}
                   onDone={onClose}
-                  // Na área da profissional só aparece "Cancelar" no que é dela.
-                  // No admin/recepção segue como sempre (cancela qualquer um).
-                  podeCancelar={!ehAreaProfissional || (!!meuProfId && meuProfId === prof?.id)}
+                  // Na área da profissional, "Cancelar" só aparece no que é dela
+                  // E enquanto não estiver pago — depois do pagamento é a dona
+                  // quem desfaz (30/07). No admin/recepção nada muda.
+                  podeCancelar={
+                    !ehAreaProfissional ||
+                    (!!meuProfId && meuProfId === prof?.id && !isPaid)
+                  }
                 />
               )}
             </>

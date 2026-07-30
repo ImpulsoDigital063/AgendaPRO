@@ -30,7 +30,7 @@ export async function POST(
   // Validação: appointment + business
   const { data: appt } = await supabase
     .from('appointments')
-    .select('id, business_id, professional_id, status, invoice_item_id')
+    .select('id, business_id, professional_id, status, invoice_item_id, paid_at')
     .eq('id', id)
     .single()
   if (!appt) return NextResponse.json({ error: 'not_found' }, { status: 404 })
@@ -69,6 +69,19 @@ export async function POST(
   const ehDela = !!prof && !prof.is_receptionist && prof.id === appt.professional_id
   if (!isOwner && !isReceptionist && !ehDela) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
+  // Depois de PAGO, profissional não cancela mais — só a dona (Eduardo 30/07).
+  // Cancelar um atendimento pago desfaz dinheiro: zera paid_at, solta o
+  // invoice_item, cancela a comanda, estorna estoque e apaga o pagamento (vide
+  // cascata abaixo). Isso é decisão de quem responde pelo caixa.
+  // Recepção NÃO entra na trava: em negócio com recepcionista ela é quem opera
+  // o caixa hoje, e restringir aqui seria mudar o comportamento de quem já usa.
+  if (!isOwner && !isReceptionist && appt.paid_at) {
+    return NextResponse.json({
+      error: 'ja_pago',
+      detail: 'Atendimento já pago. Só a administração pode cancelar depois do pagamento.',
+    }, { status: 403 })
   }
 
   // UPDATE → status=cancelled + zera paid_at + solta invoice_item_id
