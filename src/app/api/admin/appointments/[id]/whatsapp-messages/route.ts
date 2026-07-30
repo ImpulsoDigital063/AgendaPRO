@@ -61,7 +61,7 @@ export async function GET(
   // Permissão: dono OU profissional do appointment OU recepcionista do business
   const [ownerRes, profRes] = await Promise.all([
     admin.from('businesses')
-      .select('id, name, whatsapp_confirmation_template, whatsapp_reminder_template')
+      .select('id, name, whatsapp_confirmation_template, whatsapp_reminder_template, professionals_can_book_others')
       .eq('id', appt.business_id).maybeSingle(),
     admin.from('professionals')
       .select('id, business_id, is_receptionist')
@@ -72,7 +72,15 @@ export async function GET(
     .from('businesses').select('id').eq('id', appt.business_id).eq('owner_id', user.id).maybeSingle()).data != null
   const isProfOfAppt = !!profRes.data && profRes.data.business_id === appt.business_id && profRes.data.id === appt.professional_id
   const isRecepOfBiz = !!profRes.data && profRes.data.business_id === appt.business_id && profRes.data.is_receptionist === true
-  if (!isOwner && !isProfOfAppt && !isRecepOfBiz) {
+  // 30/07 · quando o negócio liberou a equipe a marcar uma pela outra, faz
+  // sentido mandar a confirmação do que acabou de marcar pra colega também.
+  // Sem isso o botão de WhatsApp aparecia e dava "Acesso negado" no
+  // atendimento da colega. Default false → nada muda pros outros negócios.
+  const isProfDoTime = !!profRes.data
+    && profRes.data.business_id === appt.business_id
+    && profRes.data.is_receptionist !== true
+    && ownerRes.data?.professionals_can_book_others === true
+  if (!isOwner && !isProfOfAppt && !isRecepOfBiz && !isProfDoTime) {
     return NextResponse.json({ error: 'Acesso negado.' }, { status: 403 })
   }
   if (!business) return NextResponse.json({ error: 'Negócio não encontrado.' }, { status: 404 })
