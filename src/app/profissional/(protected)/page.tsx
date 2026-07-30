@@ -209,9 +209,18 @@ export default async function ProfissionalPage({
         />
       </div>
 
-      {/* Header */}
-      <header className="relative max-w-lg mx-auto px-4 pt-7 pb-6">
-        <div className="flex items-center justify-between mb-6">
+      {/* Header · v98f (Eduardo 30/07: "essas informações só ocupam espaço, vamos
+          manter o sistema mais focado"). Com a grade na home o topo é enxuto —
+          primeiro nome, data curta, sem repetir o nome do negócio (já está na
+          top bar) e sem os 4 cards de KPI (o dia inteiro está na grade logo
+          abaixo, e número de comissão vive no Financeiro do bottom nav).
+          Negócio sem autonomia mantém o header antigo inteiro. */}
+      <header
+        className={`relative max-w-lg mx-auto px-4 ${
+          homeEhGrade ? 'pt-4 pb-3 md:max-w-none md:px-6' : 'pt-7 pb-6'
+        }`}
+      >
+        <div className={`flex items-center justify-between ${homeEhGrade ? 'mb-3' : 'mb-6'}`}>
           <BrandHeaderLogo
             brandLogoUrl={business.brand_logo_url ?? null}
             businessName={business.name}
@@ -221,20 +230,40 @@ export default async function ProfissionalPage({
             <LogoutButton />
           </div>
         </div>
-        <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
-          {professional.name}
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-          {business.name}
-        </p>
-        <p className="text-sm capitalize mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-          <span className="inline-flex items-center gap-1.5">
-            <IconCalendar size={14} /> {todayFormatted}
-          </span>
-        </p>
+        {homeEhGrade ? (
+          <div className="flex items-baseline justify-between gap-3">
+            <h1
+              className="text-[19px] font-bold tracking-tight truncate"
+              style={{ color: 'var(--admin-text)' }}
+            >
+              {professional.name.split(' ')[0]}
+            </h1>
+            <p
+              className="text-xs capitalize flex-shrink-0"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              {todayFormatted}
+            </p>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>
+              {professional.name}
+            </h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+              {business.name}
+            </p>
+            <p className="text-sm capitalize mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+              <span className="inline-flex items-center gap-1.5">
+                <IconCalendar size={14} /> {todayFormatted}
+              </span>
+            </p>
+          </>
+        )}
       </header>
 
-      {/* Stats */}
+      {/* Stats · saem quando a grade é a home (só ocupavam dobra) */}
+      {!homeEhGrade && (
       <section className="relative max-w-lg mx-auto px-4 mb-6">
         <div className="grid grid-cols-2 gap-2.5">
           {stats.map((stat) => {
@@ -266,16 +295,17 @@ export default async function ProfissionalPage({
           })}
         </div>
       </section>
+      )}
 
       {/* Com a grade na home, o container solta a largura NO DESKTOP (md:) pra as
           colunas respirarem. No mobile segue max-w-lg — a grade rola na horizontal,
           igual ao /admin da dona. Sem grade, nada muda em nenhum breakpoint. */}
       <div
-        className={`relative max-w-lg mx-auto px-4 pb-10 space-y-6 ${
-          homeEhGrade ? 'md:max-w-none md:px-6' : ''
+        className={`relative max-w-lg mx-auto px-4 pb-10 ${
+          homeEhGrade ? 'md:max-w-none md:px-6 space-y-4' : 'space-y-6'
         }`}
       >
-        {/* Boas-vindas */}
+        {/* Boas-vindas · card de primeiro acesso (dispensável no X) */}
         <WelcomeCard professionalName={professional.name} />
 
         {/* v92 · marcar na própria agenda · aparece só com a autonomia ligada */}
@@ -365,8 +395,9 @@ export default async function ProfissionalPage({
         </section>
         )}
 
-        {/* Próximos dias */}
-        {upcoming && upcoming.length > 0 && (
+        {/* Próximos dias · sai quando a grade é a home: a navegação de dia da
+            própria grade já leva pra frente e pra trás (v98f · foco) */}
+        {!homeEhGrade && upcoming && upcoming.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
