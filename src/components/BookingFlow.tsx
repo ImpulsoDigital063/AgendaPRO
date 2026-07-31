@@ -529,27 +529,69 @@ export default function BookingFlow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business.id, professional?.id, janelaFrom, janelaTo, totalDuration, workingHours])
 
-  // Seta de voltar do header: volta UM passo em vez de sair pro início.
+  // Qual é o passo anterior a partir do atual. Serve pra seta do header E pro
+  // botão VOLTAR do aparelho — os dois passam pelo mesmo caminho.
   // Reporte do Eduardo (31/07): quem abria um dia lotado pra ver os horários e
-  // clicava em voltar era jogado pro começo, perdendo serviço e data. O "editar"
-  // dos cards de resumo já fazia isso, mas está escondido — e quem clicou num
-  // dia cheio é exatamente quem ainda quer marcar.
-  useEffect(() => {
-    const anterior: Partial<Record<Step, Step>> = {
+  // clicava em voltar era jogado pro começo, perdendo serviço e data.
+  let passoAnterior: Step | null = null
+  {
+    const mapa: Partial<Record<Step, Step>> = {
       professional: 'service',
       date: hasMultipleProfessionals ? 'professional' : 'service',
       time: 'date',
       form: 'time',
     }
-    const alvo = anterior[step]
-    // Sem passo anterior (primeiro passo, ou 'done') a seta volta a ser o link
-    // pra home do negócio. Idem quando o negócio não tem etapa de serviço.
-    if (!alvo || (alvo === 'service' && !hasServices)) {
-      registrarVoltar(null)
+    const alvo = mapa[step]
+    // 'service'/'done' não têm anterior. Idem quando o negócio não tem etapa
+    // de serviço — não inventa um passo que não existe pra ele.
+    if (alvo && !(alvo === 'service' && !hasServices)) passoAnterior = alvo
+  }
+
+  const stepRef = useRef<Step>(step)
+  stepRef.current = step
+  // Marca que a mudança de passo veio do histórico, pra não empurrar uma
+  // entrada nova em cima de uma volta (senão o voltar fica preso em looping).
+  const voltouPeloHistorico = useRef(false)
+
+  // Espelha o passo no histórico do navegador (v103 · 31/07/2026), pra que o
+  // botão VOLTAR do Android ande DENTRO do fluxo em vez de sair da página.
+  // Antes, o cliente no meio do agendamento apertava voltar e perdia tudo — e
+  // no celular esse botão é mais usado que a seta da tela.
+  //
+  // O spread de window.history.state é obrigatório: o App Router guarda estado
+  // dele ali, e sobrescrever quebra a navegação do Next.
+  useEffect(() => {
+    if (voltouPeloHistorico.current) {
+      voltouPeloHistorico.current = false
       return
     }
-    registrarVoltar(() => setStep(alvo))
-  }, [step, hasMultipleProfessionals, hasServices, registrarVoltar])
+    const estado = { ...(window.history.state ?? {}), bookingStep: step }
+    // 'done' faz replace, não push: o agendamento já foi criado, voltar pro
+    // formulário seria reabrir algo que virou agendamento.
+    if (!passoAnterior || step === 'done') window.history.replaceState(estado, '')
+    else window.history.pushState(estado, '')
+  }, [step, passoAnterior])
+
+  useEffect(() => {
+    function aoVoltar(e: PopStateEvent) {
+      // Já concluiu: deixa o navegador sair de vez em vez de reabrir o fluxo.
+      if (stepRef.current === 'done') return
+      const alvo = (e.state as { bookingStep?: Step } | null)?.bookingStep
+      // Sem bookingStep = voltou pra antes da página de agendamento. Deixa o
+      // navegador seguir: é o que o cliente quer nesse ponto.
+      if (!alvo) return
+      voltouPeloHistorico.current = true
+      setStep(alvo)
+    }
+    window.addEventListener('popstate', aoVoltar)
+    return () => window.removeEventListener('popstate', aoVoltar)
+  }, [])
+
+  // A seta do header também vai pelo histórico. Se ela mexesse no step direto,
+  // sobraria entrada acumulada e o botão do aparelho ficaria repetindo passos.
+  useEffect(() => {
+    registrarVoltar(passoAnterior ? () => window.history.back() : null)
+  }, [passoAnterior, registrarVoltar])
 
   // Card de dia — extraído porque agora renderiza em dois lugares (grid
   // corrido no padrão, grid por mês na janela longa). Mesmo visual nos dois.
