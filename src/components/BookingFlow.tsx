@@ -273,6 +273,13 @@ export default function BookingFlow({
   // mensagem genérica. 'duration' = serviço maior que qualquer período;
   // 'full' = caberia mas tudo ocupado/passou do buffer; null = tem slots.
   const [slotsEmptyReason, setSlotsEmptyReason] = useState<'duration' | 'full' | null>(null)
+  // Dias sem NENHUM horario livre (v101 - 31/07/2026, reporte do Diogo).
+  // O card segue CLICAVEL de proposito: o cliente entra, ve os horarios
+  // vermelhos e pode entrar na fila de espera. Só deixa de parecer disponivel.
+  const [fullDays, setFullDays] = useState<Set<string>>(new Set())
+  // availableDates e recalculado a cada render (array novo). A ref evita
+  // coloca-lo como dependencia do efeito, que viraria loop infinito.
+  const availableDatesRef = useRef<Date[]>([])
 
   // Dados do cliente — pre-preenchidos se vier da fila
   const [clientName, setClientName] = useState(prefill?.name || '')
@@ -426,14 +433,110 @@ export default function BookingFlow({
     }
   }
 
+  // Descobre quais dias da janela já estão sem nenhum horário livre.
+  // UMA request cobre a janela inteira; o veredito por dia sai de generateSlots
+  // — a MESMA função que decide o que aparece quando o cliente clica no dia.
+  // Escrever uma segunda regra aqui seria o jeito de sumir com dia que tem vaga
+  // (perda de agendamento real) ou pintar de livre o que está cheio.
+  availableDatesRef.current = availableDates
+  const janelaFrom = availableDates.length ? formatDate(availableDates[0]) : ''
+  const janelaTo = availableDates.length ? formatDate(availableDates[availableDates.length - 1]) : ''
+
+  useEffect(() => {
+    if (!professional?.id || !janelaFrom || !janelaTo) {
+      setFullDays(new Set())
+      return
+    }
+    let cancelado = false
+    ;(async () => {
+      const avail = await fetch(
+        `/api/booking/availability?business=${business.id}&professional=${professional.id}&from=${janelaFrom}&to=${janelaTo}`
+      )
+        .then((r) => r.json())
+        .catch(() => null)
+      if (cancelado || !avail) return // rede caiu: nao marca nada, dia segue clicavel
+
+      const appts = (avail.appointments ?? []) as {
+        appointment_date: string
+        start_time: string
+        end_time: string
+      }[]
+      const blocks = (avail.blocks ?? []) as {
+        start_time: string
+        end_time: string
+        block_type: string
+        day_of_week: number | null
+        block_date: string | null
+      }[]
+
+      const ocupadoPorDia = new Map<string, { start: number; end: number }[]>()
+      for (const a of appts) {
+        const lista = ocupadoPorDia.get(a.appointment_date) ?? []
+        lista.push({ start: toMinutes(a.start_time.slice(0, 5)), end: toMinutes(a.end_time.slice(0, 5)) })
+        ocupadoPorDia.set(a.appointment_date, lista)
+      }
+
+      const agora = new Date()
+      const cheios = new Set<string>()
+      for (const d of availableDatesRef.current) {
+        const dateStr = formatDate(d)
+        const dow = d.getDay()
+        const periods = workingHours
+          .filter((w) => w.professional_id === professional.id && w.day_of_week === dow)
+          .sort((a, b) => a.start_time.localeCompare(b.start_time))
+        if (periods.length === 0) continue
+
+        const bloqueados = blocks
+          .filter(
+            (b) =>
+              (b.block_type === 'recurring' && b.day_of_week === dow)
+              || (b.block_type === 'specific' && b.block_date === dateStr)
+          )
+          .map((b) => ({
+            start: toMinutes(b.start_time.slice(0, 5)),
+            end: toMinutes(b.end_time.slice(0, 5)),
+          }))
+
+        const booked = [...(ocupadoPorDia.get(dateStr) ?? []), ...bloqueados]
+        // Mesmo corte de "hoje" do handleSelectDate: o que já passou (ou está
+        // dentro do buffer) não conta como vaga.
+        const minStartMin = isSameLocalDay(d, agora)
+          ? agora.getHours() * 60 + agora.getMinutes() + BOOKING_BUFFER_MIN
+          : undefined
+
+        const temLivre = periods.some((p) =>
+          generateSlots(
+            p.start_time,
+            p.end_time,
+            getSlotStep(d),
+            getServiceDuration(d),
+            booked,
+            minStartMin
+          ).some((s) => s.available)
+        )
+        if (!temLivre) cheios.add(dateStr)
+      }
+      if (!cancelado) setFullDays(cheios)
+    })()
+    return () => {
+      cancelado = true
+    }
+    // getSlotStep/getServiceDuration sao declaracoes de funcao recriadas a cada
+    // render — entrariam em loop como dependencia. totalDuration ja cobre a
+    // unica entrada variavel delas (servicos escolhidos).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [business.id, professional?.id, janelaFrom, janelaTo, totalDuration, workingHours])
+
   // Card de dia — extraído porque agora renderiza em dois lugares (grid
   // corrido no padrão, grid por mês na janela longa). Mesmo visual nos dois.
   function renderDateButton(date: Date) {
     const isSelected = selectedDate && formatDate(date) === formatDate(selectedDate)
+    const lotado = fullDays.has(formatDate(date))
     return (
       <button
         key={formatDate(date)}
         onClick={() => handleSelectDate(date)}
+        aria-label={lotado ? `${date.getDate()} — sem horário livre` : undefined}
         className="flex flex-col items-center py-3 rounded-xl border text-sm font-medium transition-colors"
         style={
           isSelected
@@ -441,6 +544,16 @@ export default function BookingFlow({
                 background: 'var(--brand-primary, #111827)',
                 borderColor: 'var(--brand-primary, #111827)',
                 color: '#FFFFFF',
+              }
+            : lotado
+            ? {
+                // Mesmo vermelho dos horarios ocupados (padrao cravado 05/06),
+                // com opacidade menor: o dia fica apagado mas continua legivel
+                // e clicavel — de dentro dele da pra entrar na fila de espera.
+                background: isDark ? 'rgba(239,68,68,0.10)' : '#FEF2F2',
+                borderColor: isDark ? 'rgba(239,68,68,0.28)' : '#FECACA',
+                color: isDark ? '#FCA5A5' : '#DC2626',
+                opacity: 0.7,
               }
             : {
                 background: C.surface,
@@ -451,8 +564,10 @@ export default function BookingFlow({
       >
         <span className="text-xs opacity-70">{DAYS[date.getDay()]}</span>
         <span className="text-lg font-bold leading-tight">{date.getDate()}</span>
-        <span className="text-xs opacity-70">
-          {date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
+        <span className="text-xs opacity-80">
+          {lotado
+            ? 'ocupado'
+            : date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
         </span>
       </button>
     )
