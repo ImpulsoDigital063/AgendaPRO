@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import BookingFlow from '@/components/BookingFlow'
 import type { Business, Professional } from '@/lib/types'
-import { IconArrowLeft } from '@/components/ui/Icon'
+import { BookingBackProvider, BookingBackButton } from '@/components/BookingBack'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -156,6 +156,9 @@ export default async function AgendarPage({
         } as React.CSSProperties
       }
     >
+      {/* Provider é client, mas recebe o header server-rendered como children —
+          nada aqui precisa virar client por causa dele. */}
+      <BookingBackProvider>
       <div className="max-w-lg mx-auto">
         {/* Header com cover branded — sticky pra "respirar" ao rolar */}
         <div className="relative">
@@ -167,18 +170,18 @@ export default async function AgendarPage({
               borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
             }}
           >
-            <Link
-              href={`/${slug}`}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 flex-shrink-0"
+            {/* Volta UM passo do fluxo; só sai pra home do negócio quando já
+                está no primeiro passo. Antes era Link fixo e jogava o cliente
+                pro início, perdendo serviço e data escolhidos. */}
+            <BookingBackButton
+              slug={slug}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 flex-shrink-0 cursor-pointer"
               style={{
                 background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
                 color: isDark ? '#F8FAFC' : '#0F172A',
                 border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
               }}
-              aria-label="Voltar"
-            >
-              <IconArrowLeft size={18} />
-            </Link>
+            />
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold flex-shrink-0 overflow-hidden"
               style={{
@@ -241,6 +244,7 @@ export default async function AgendarPage({
           </div>
         </div>
       </div>
+      </BookingBackProvider>
     </main>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
+import { useBookingBack } from '@/components/BookingBack'
 import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
 import { maskPhoneInput } from '@/lib/client-display'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
@@ -280,6 +281,7 @@ export default function BookingFlow({
   // availableDates e recalculado a cada render (array novo). A ref evita
   // coloca-lo como dependencia do efeito, que viraria loop infinito.
   const availableDatesRef = useRef<Date[]>([])
+  const { registrarVoltar } = useBookingBack()
 
   // Dados do cliente — pre-preenchidos se vier da fila
   const [clientName, setClientName] = useState(prefill?.name || '')
@@ -526,6 +528,28 @@ export default function BookingFlow({
     // unica entrada variavel delas (servicos escolhidos).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business.id, professional?.id, janelaFrom, janelaTo, totalDuration, workingHours])
+
+  // Seta de voltar do header: volta UM passo em vez de sair pro início.
+  // Reporte do Eduardo (31/07): quem abria um dia lotado pra ver os horários e
+  // clicava em voltar era jogado pro começo, perdendo serviço e data. O "editar"
+  // dos cards de resumo já fazia isso, mas está escondido — e quem clicou num
+  // dia cheio é exatamente quem ainda quer marcar.
+  useEffect(() => {
+    const anterior: Partial<Record<Step, Step>> = {
+      professional: 'service',
+      date: hasMultipleProfessionals ? 'professional' : 'service',
+      time: 'date',
+      form: 'time',
+    }
+    const alvo = anterior[step]
+    // Sem passo anterior (primeiro passo, ou 'done') a seta volta a ser o link
+    // pra home do negócio. Idem quando o negócio não tem etapa de serviço.
+    if (!alvo || (alvo === 'service' && !hasServices)) {
+      registrarVoltar(null)
+      return
+    }
+    registrarVoltar(() => setStep(alvo))
+  }, [step, hasMultipleProfessionals, hasServices, registrarVoltar])
 
   // Card de dia — extraído porque agora renderiza em dois lugares (grid
   // corrido no padrão, grid por mês na janela longa). Mesmo visual nos dois.
