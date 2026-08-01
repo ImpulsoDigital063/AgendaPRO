@@ -9,6 +9,7 @@ import { TimelineMicroUI, DorMicroUI, PassoMicroUI } from '@/components/LandingM
 import ComparisonMiniUIs from '@/components/ComparisonMiniUIs'
 import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
 import FinanceDashboard from '@/components/lp/FinanceDashboard'
+import QuemUsa from '@/components/lp/QuemUsa'
 import {
   AnimatedGradient,
   SectionReveal,
@@ -818,6 +819,9 @@ export default async function HomePage() {
           </SectionReveal>
         </div>
       </section>
+
+      {/* ═══════════ 5.7 QUEM USA — parede de nomes reais ═══════════ */}
+      <QuemUsa variant="home" />
 
       {/* ═══════════ 6. COMPARAÇÃO DIRETA — AgendaPRO x Outros apps ═══════════ */}
       <section className="section relative">

@@ -22,6 +22,7 @@ import VendasEstoque from '@/components/lp/VendasEstoque'
 import ComandaComissao from '@/components/lp/ComandaComissao'
 import EquipeAcesso from '@/components/lp/EquipeAcesso'
 import AdequacaoNegocio from '@/components/lp/AdequacaoNegocio'
+import QuemUsa from '@/components/lp/QuemUsa'
 import Pacotes from '@/components/lp/Pacotes'
 import FichaAnamnese from '@/components/lp/FichaAnamnese'
 import OnboardingSteps from '@/components/OnboardingSteps'
@@ -778,6 +779,8 @@ export default async function SalaoPage() {
 
       {/* ADEQUACAO AO NEGOCIO · o diferencial que nao e software (01/08) */}
       <AdequacaoNegocio variant="salao" />
+
+      <QuemUsa variant="salao" />
 
       {/* ═══════════ 5. TIMELINE ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">

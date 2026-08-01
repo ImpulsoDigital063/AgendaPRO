@@ -22,6 +22,7 @@ import VendasEstoque from '@/components/lp/VendasEstoque'
 import ComandaComissao from '@/components/lp/ComandaComissao'
 import EquipeAcesso from '@/components/lp/EquipeAcesso'
 import AdequacaoNegocio from '@/components/lp/AdequacaoNegocio'
+import QuemUsa from '@/components/lp/QuemUsa'
 import Pacotes from '@/components/lp/Pacotes'
 import FinanceDashboard from '@/components/lp/FinanceDashboard'
 import OnboardingSteps from '@/components/OnboardingSteps'
@@ -816,6 +817,8 @@ export default async function BarbeariaPage() {
 
       {/* ADEQUACAO AO NEGOCIO · o diferencial que nao e software (01/08) */}
       <AdequacaoNegocio variant="barbearia" />
+
+      <QuemUsa variant="barbearia" />
 
       {/* ═══════════ 5. TIMELINE ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">
