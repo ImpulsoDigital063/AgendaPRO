@@ -38,11 +38,11 @@ const COPY: Record<Variant, { h2a: string; h2b: string; sub: string; profNome: s
     fecho: 'Você não precisa escolher entre dar autonomia pra equipe e proteger seus números.',
   },
   salao: {
-    h2a: 'Sua equipe trabalha no sistema.',
+    h2a: 'Sua equipe marca sozinha.',
     h2b: 'Sem ver seu faturamento.',
-    sub: 'Cada profissional acompanha a agenda e a comissão dela em tempo real — para de te perguntar quanto fez. A recepção marca, atende e fecha comanda. Nenhuma das duas abre o seu financeiro.',
+    sub: 'Cada profissional entra com o login dela: marca a própria cliente, recebe no fim do atendimento, bloqueia o horário do almoço e acompanha a comissão dela em tempo real. Para de te perguntar quanto fez — e para de depender de você pra encaixar alguém.',
     profNome: 'Profissional', profLabel: 'Ana',
-    fecho: 'Salão com equipe precisa disso. Você não pode dar sua senha pra recepção — nem ficar preso no balcão.',
+    fecho: 'Salão com equipe precisa disso. Você deixa de ser o gargalo da agenda sem abrir seu financeiro pra ninguém.',
   },
   nail: {
     h2a: 'Trabalha com mais alguém?',
@@ -95,7 +95,7 @@ function AcessoMock({ v }: { v: Variant }) {
           </div>
           <div className="mt-2.5 flex items-center gap-1.5 text-[9.5px] text-slate-500">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-            <span>Só leitura — não fecha caixa, não altera pagamento</span>
+            <span>Marca, atende e recebe — só a agenda dela. Você liga e desliga.</span>
           </div>
         </div>
       </div>
@@ -139,11 +139,19 @@ export default function EquipeAcesso({ variant }: { variant: Variant }) {
   const t = THEME[variant]
   const c = COPY[variant]
 
+  // Atualizado 01/08/2026 · a autonomia da equipe foi entregue em 29-30/07
+  // (caso Realli, 5 profissionais e nenhuma recepcionista). Antes daqui a copy
+  // dizia "só leitura, não mexe no dinheiro" — virou mentira no dia em que ela
+  // passou a marcar, receber e bloquear a própria agenda.
   const BULLETS = [
-    { t: 'Cada um com o próprio login', d: 'Você não empresta sua senha pra ninguém. Cria o acesso e pronto.' },
-    { t: `${c.profNome} vê a comissão dele em tempo real`, d: 'Para de te perguntar quanto fez no mês. Ele abre no celular e vê — atendimento por atendimento.' },
-    { t: 'Mas não mexe no dinheiro', d: 'Ele acompanha, você decide. Não fecha caixa, não altera pagamento, não dá desconto.' },
-    { t: 'Recepção opera sem ver seu lucro', d: 'Marca, atende, fecha comanda e vende produto. Seu financeiro, seus relatórios e a comissão dos outros ficam fora do alcance dela.' },
+    { t: 'Cada uma com o próprio login', d: 'Você não empresta sua senha pra ninguém. Cria o acesso e pronto.' },
+    { t: 'Ela marca a própria cliente', d: 'Abre o app, vê a agenda da equipe e encaixa. Você para de ser o meio de campo — e para de perder encaixe porque estava atendendo.' },
+    { t: 'Recebe e fecha o atendimento', d: 'PIX, dinheiro ou cartão na maquininha, com a taxa já descontada. O que entra cai no seu caixa na hora, sem ninguém anotar em papel.' },
+    { t: `${c.profNome} vê a comissão dela em tempo real`, d: 'Para de te perguntar quanto fez no mês. Abre no celular e vê — atendimento por atendimento, já no valor líquido.' },
+    { t: 'Bloqueia o próprio horário', d: 'Almoço, folga, médico. Ela fecha a agenda dela e a cliente para de ver aquele horário — sem passar por você.' },
+    { t: 'Você decide o quanto solta', d: 'Três chaves nas configurações: marcar só pra si, marcar pras colegas, ver a agenda da equipe. Tudo começa desligado; você liga o que fizer sentido.' },
+    { t: 'Cancelar tem freio', d: 'Ela cancela só o atendimento dela, e só enquanto não recebeu. Depois de pago, quem desfaz é você.' },
+    { t: 'Seu financeiro continua seu', d: 'Faturamento do salão, lucro, despesas e a comissão das colegas ficam fora do alcance dela. Autonomia na agenda, não no seu caixa.' },
   ]
 
   return (

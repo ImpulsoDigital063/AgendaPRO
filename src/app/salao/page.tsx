@@ -118,11 +118,23 @@ const SALAO_FAQS: FAQItem[] = [
   },
   {
     q: 'Cada profissional tem agenda separada?',
-    a: 'Sim. Cabeleireira, manicure, maquiadora — cada uma com seus horários e serviços. A cliente escolhe com quem quer. Você vê tudo no painel.',
+    a: 'Sim. Cabeleireira, manicure, maquiadora — cada uma com seus horários e serviços. A cliente escolhe com quem quer. Você vê a agenda de todas numa tela só, lado a lado.',
+  },
+  {
+    q: 'A profissional tem acesso próprio ao sistema?',
+    a: 'Tem. Cada uma entra com o login dela pelo celular e vê a agenda da equipe. Você decide o que ela pode fazer: marcar só na agenda dela, marcar também pras colegas, e se enxerga o dia das outras. Tudo começa desligado — você liga o que fizer sentido pro seu salão.',
+  },
+  {
+    q: 'A profissional pode receber o pagamento da cliente?',
+    a: 'Pode, se você liberar. Ela fecha a comanda em PIX, dinheiro ou cartão — inclusive parcelado, com a taxa da maquininha descontada. Serve pra salão sem recepção, onde quem atende é quem fecha. Cancelar atendimento já pago continua só com você.',
+  },
+  {
+    q: 'Ela consegue bloquear o próprio horário?',
+    a: 'Sim. Almoço, folga ou compromisso: ela mesma fecha aquele horário no app dela e a cliente para de ver a vaga. Você não precisa fazer isso por ela. Folga fixa e feriado do salão continuam sendo definidos por você.',
   },
   {
     q: 'Como funciona a comissão?',
-    a: 'Você define a porcentagem de cada profissional. O sistema calcula automaticamente: produção, porcentagem, valor a pagar. Fim do mês, abre o painel e tá tudo lá.',
+    a: 'Você define a porcentagem de cada profissional. O sistema calcula sozinho e cada uma vê a dela no celular, atendimento por atendimento. A conta é sobre o valor líquido: se a cliente usou cupom de 20%, a comissão cai proporcional — ninguém paga comissão sobre dinheiro que não entrou.',
   },
   {
     q: 'E o WhatsApp? Perco clientes que me chamam lá?',
@@ -360,7 +372,7 @@ export default async function SalaoPage() {
 
               {/* Subhead — dor específica + cálculo concreto */}
               <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-                Você passa <strong className="text-white">3h por dia no WhatsApp</strong> confirmando, remarcando e cobrando. Cobra R$ 80/h pra cortar — e dá esse tempo de graça pra responder mensagem. <strong className="text-white">O AgendaPRO devolve.</strong>
+                Você passa <strong className="text-white">3h por dia no WhatsApp</strong> confirmando, remarcando e cobrando — e ainda é quem encaixa cliente pras meninas. Cobra R$ 80/h pra cortar e dá esse tempo de graça. <strong className="text-white">Aqui cada profissional marca a própria cliente, recebe e vê a comissão dela. Você volta pra cadeira.</strong>
               </p>
 
               {/* Stats — hierarquia: tempo (principal) → dinheiro → reputação */}
