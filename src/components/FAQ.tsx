@@ -25,7 +25,15 @@ const DEFAULT_FAQS: FAQItem[] = [
   },
   {
     q: 'Tenho mais de um profissional. Funciona?',
-    a: 'Sim. No plano Equipe, cada profissional tem agenda e horários independentes. O cliente escolhe com quem quer ser atendido. Você acompanha a comissão de cada um pelo painel.',
+    a: 'Sim. No plano Equipe, cada profissional tem agenda e horários independentes, e entra com o login dela pelo celular. Você decide o que cada uma pode fazer: marcar só na própria agenda, marcar também pras colegas, receber o pagamento da cliente. A comissão é calculada sozinha e cada uma vê só a dela.',
+  },
+  {
+    q: 'Vocês adaptam o sistema pro meu negócio?',
+    a: 'Sim, e é o que mais fazemos. Quando um negócio entra, a gente estuda como ele funciona de verdade e ajusta o sistema pra aquilo — já mudamos o fluxo pra quem atende no balcão sem agendamento prévio, criamos acesso próprio pras profissionais num studio sem recepção e integramos ficha de cliente pra quem trabalhava com papel. Você fala direto com quem escreve o código, não com atendimento de primeiro nível.',
+  },
+  {
+    q: 'O sistema controla comissão e pagamento?',
+    a: 'Controla. Você recebe em PIX, dinheiro ou cartão — parcelado, com a taxa da maquininha por bandeira já descontada. A comissão de cada profissional sai automática sobre o valor líquido: se a cliente usou cupom, a comissão cai proporcional. E você acompanha despesas, lucro real e projeção do mês.',
   },
   {
     q: 'Como funciona a garantia?',

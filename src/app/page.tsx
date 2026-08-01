@@ -82,7 +82,8 @@ const VALUE_BONUS = [
   { item: 'Despesas, lucro real e projeção do mês',              price: 'R$ 99/mês' },
   { item: 'Página personalizada do seu negócio (link próprio)',  price: 'R$ 99/mês' },
   { item: 'Setup guiado em 5 minutos com o fundador',            price: 'R$ 197 setup' },
-  { item: 'Suporte direto via WhatsApp (não é robô)',            price: 'R$ 199/mês' },
+  { item: 'Suporte direto com quem escreve o código (WhatsApp)',  price: 'R$ 199/mês' },
+  { item: 'Adequação do sistema ao seu jeito de trabalhar',       price: 'sob consulta' },
 ]
 
 const STEPS: { n: '01' | '02' | '03'; title: string; desc: string }[] = [
@@ -723,6 +724,97 @@ export default async function HomePage() {
                 <p className="text-slate-400 text-sm leading-relaxed">{c.desc}</p>
               </div>
             ))}
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* ═══════════ 5.6 ADEQUAÇÃO AO NEGÓCIO — o diferencial que não estava escrito ═══════════
+          Eduardo 01/08: "um serviço que ofereço e venho fazendo é personalizar o
+          sistema de acordo com as necessidades do negócio". É real e tem 4 casos
+          de clientes ativos. Nenhum concorrente dessa faixa faz — eles vendem
+          software de prateleira. Os casos abaixo estão descritos pelo QUE foi
+          feito, sem expor nome de cliente sem autorização (o único nomeado é o
+          Olímpio, que já aparece nos mockups do site). */}
+      <section id="adequacao" className="section relative">
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(6,182,212,0.10) 0%, transparent 60%)'
+        }} />
+
+        <div className="container relative">
+          <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
+            <div className="pill mb-6">
+              <span style={{ color: '#06B6D4' }}>●</span>
+              <span>Adequação ao seu negócio</span>
+            </div>
+            <h2 className="display-lg text-white mb-4">
+              Você não se adapta ao sistema.<br />
+              <span className="text-gradient">Ele se adapta</span> a você.
+            </h2>
+            <p className="text-lg text-slate-400">
+              Quando um negócio entra, a gente estuda como ele funciona de verdade e ajusta o
+              sistema pra aquilo. Não é suporte que responde ticket em 48h — é ajuste no produto,
+              feito por quem escreve o código. Alguns casos reais:
+            </p>
+          </SectionReveal>
+
+          <SectionReveal className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+            {[
+              {
+                caso: 'Studio de unhas · 5 profissionais, sem recepção',
+                pedido: 'A dona era a única que marcava. Toda cliente passava por ela, mesmo quando estava com a mão na massa.',
+                feito: 'Cada profissional ganhou login próprio pra marcar, receber e bloquear a agenda dela. No ar em menos de 24 horas.',
+                accent: '#8B5CF6',
+              },
+              {
+                caso: 'Salão que atende no balcão',
+                pedido: 'A cliente chega sem marcar. O sistema todo era pensado pra quem agenda antes — não servia pro fluxo dela.',
+                feito: 'Fluxo de balcão: atende, registra depois e fecha a conta na hora, sem precisar existir agendamento antes.',
+                accent: '#EC4899',
+              },
+              {
+                caso: 'Estúdio que trabalha com ficha de cliente',
+                pedido: 'Ela tinha ficha em papel de cada cliente e não queria perder isso ao migrar.',
+                feito: 'Ficha integrada ao atendimento: abre junto do horário, com anamnese, histórico e foto do trabalho.',
+                accent: '#10B981',
+              },
+              {
+                caso: 'Barbearia Olímpio · uso diário desde maio',
+                pedido: 'Uso real todo dia revela detalhe que nenhum plano prevê — do jeito que o dinheiro entra ao horário que o dia começa.',
+                feito: 'Melhorias contínuas saídas do uso dele. Várias viraram função pra todo mundo depois.',
+                accent: '#06B6D4',
+              },
+            ].map((c) => (
+              <div
+                key={c.caso}
+                className="glass rounded-2xl p-5"
+                style={{ border: `1px solid ${c.accent}25` }}
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${c.accent}18`, color: c.accent, border: `1px solid ${c.accent}40` }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-white font-bold text-base leading-tight pt-1.5">{c.caso}</h3>
+                </div>
+                <p className="text-slate-400 text-sm leading-relaxed mb-2">
+                  <strong className="text-slate-300">Chegou assim:</strong> {c.pedido}
+                </p>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  <strong style={{ color: c.accent }}>O que fizemos:</strong> {c.feito}
+                </p>
+              </div>
+            ))}
+          </SectionReveal>
+
+          <SectionReveal className="text-center mt-8 max-w-2xl mx-auto">
+            <p className="text-slate-400 text-base leading-relaxed">
+              Os aplicativos grandes te entregam a mesma tela que entregam pra outros 40 mil negócios.
+              <strong className="text-white"> Aqui, se o seu jeito de trabalhar não cabe no sistema, o sistema muda.</strong>
+            </p>
           </SectionReveal>
         </div>
       </section>
