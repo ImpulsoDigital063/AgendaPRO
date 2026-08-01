@@ -211,6 +211,23 @@ export default function VendasEstoque({ variant }: { variant: Variant }) {
             {c.h2a}{' '}<span className="text-gradient">{c.h2b}</span>
           </h2>
           <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto">{c.sub}</p>
+
+          {/* Venda de produto e estoque são do plano EQUIPE — o gate é real e
+              está em /api/admin/products (canSellProducts = plan === 'equipe').
+              Sem dizer isso, alguém assina o Solo esperando controlar estoque e
+              descobre depois. Eduardo 01/08: tem que estar em todas as LPs. */}
+          <div className="mt-5 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12px] sm:text-[13px]"
+            style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.30)' }}
+          >
+            <span className="font-bold px-2 py-0.5 rounded-lg text-[10px] uppercase tracking-wide"
+              style={{ background: '#10B981', color: '#05070f' }}
+            >
+              Plano Equipe
+            </span>
+            <span className="text-slate-300">
+              Venda de produto e controle de estoque entram no <strong className="text-white">Equipe (R$97/mês)</strong> — quem atende registra a venda junto do atendimento e o estoque baixa sozinho.
+            </span>
+          </div>
         </SectionReveal>
 
         <SectionReveal>

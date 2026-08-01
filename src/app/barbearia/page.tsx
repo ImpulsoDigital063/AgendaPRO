@@ -5,7 +5,7 @@ import { redirectIfLoggedIn } from '@/lib/auth-guard'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Barbearias — Agenda Online com Lembrete Automático',
-  description: 'Sistema de agendamento online para barbearias. Cliente agenda pelo link, recebe lembrete por e-mail, fila de espera preenche cancelamentos. A partir de R$67/mês, sem setup. Garantia de 7 dias.',
+  description: 'Sistema de agendamento online para barbearias. Cliente agenda pelo link, recebe lembrete por e-mail, fila de espera preenche cancelamentos. A partir de R$67/mês, sem setup. 7 dias grátis, sem cartão.',
   openGraph: {
     title: 'AgendaPRO para Barbearias',
     description: 'Seu cliente agenda sozinho pelo link na bio. Lembrete automático, fila de espera e Google Reviews integrado.',
@@ -21,6 +21,7 @@ import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
 import VendasEstoque from '@/components/lp/VendasEstoque'
 import ComandaComissao from '@/components/lp/ComandaComissao'
 import EquipeAcesso from '@/components/lp/EquipeAcesso'
+import AdequacaoNegocio from '@/components/lp/AdequacaoNegocio'
 import Pacotes from '@/components/lp/Pacotes'
 import FinanceDashboard from '@/components/lp/FinanceDashboard'
 import OnboardingSteps from '@/components/OnboardingSteps'
@@ -79,7 +80,7 @@ const BARBER_FAQS: FAQItem[] = [
   /* ── RISCO / PREÇO (fecha primeiro) ── */
   {
     q: 'Como funciona a garantia?',
-    a: '7 dias de garantia após o pagamento. Você configura, usa de verdade e, se não fizer sentido, devolvo sem burocracia — sem formulário, sem fila de cancelamento.',
+    a: 'São 7 dias grátis, sem cartão. Você cadastra, usa com cliente de verdade e só decide depois. Se continuar, escolhe o plano e paga — e mesmo aí tem 7 dias de garantia: se não fizer sentido, devolvo sem burocracia.',
   },
   {
     q: 'Quanto custa?',
@@ -189,7 +190,7 @@ export default async function BarbeariaPage() {
         }}
       >
         <IconScissors size={14} className="flex-shrink-0" />
-        <span>Solo R$67/mês ou Equipe R$97/mês — <strong>sem setup, sem fidelidade</strong>. Garantia de 7 dias.</span>
+        <span>Solo R$67/mês ou Equipe R$97/mês — <strong>sem setup, sem fidelidade</strong>. 7 dias grátis, sem cartão.</span>
       </div>
 
       {/* Nav */}
@@ -325,7 +326,7 @@ export default async function BarbeariaPage() {
 
               {/* Ancoragem de mercado — empilha valor antes do preço aparecer no scroll */}
               <p className="text-xs sm:text-sm text-slate-400 max-w-md">
-                A partir de R$ 67/mês · Cancela quando quiser · Garantia 7 dias.{' '}
+                A partir de R$ 67/mês · Cancela quando quiser · 7 dias grátis, sem cartão.{' '}
                 <span className="text-slate-500">
                   Trinks/ZenPlace cobram R$ 200-500 com fidelidade anual — aqui é livre.
                 </span>
@@ -492,7 +493,7 @@ export default async function BarbeariaPage() {
 
       <CTAInline
         titulo="O AgendaPRO resolve tudo isso por você"
-        sub="Setup em 5 minutos. Garantia de 7 dias. Sem fidelidade — cancela quando quiser."
+        sub="Setup em 5 minutos. 7 dias grátis, sem cartão. Sem fidelidade — cancela quando quiser."
       />
 
 
@@ -801,6 +802,9 @@ export default async function BarbeariaPage() {
       {/* ═══════════ 4.8 EQUIPE & ACESSO ═══════════ */}
       <EquipeAcesso variant="barbearia" />
 
+      {/* ADEQUACAO AO NEGOCIO · o diferencial que nao e software (01/08) */}
+      <AdequacaoNegocio variant="barbearia" />
+
       {/* ═══════════ 5. TIMELINE ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">
         <div className="container px-4">
@@ -989,7 +993,7 @@ export default async function BarbeariaPage() {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs text-slate-400">
                   <span className="flex items-center gap-1">
                     <IconCheck size={11} strokeWidth={3} className="text-emerald-400" />
-                    Garantia 7 dias
+                    7 dias grátis
                   </span>
                   <span className="flex items-center gap-1">
                     <IconCheck size={11} strokeWidth={3} className="text-emerald-400" />
@@ -1125,7 +1129,7 @@ export default async function BarbeariaPage() {
           {/* Objection stompers — 4 chips matando as últimas dúvidas */}
           <SectionReveal className="flex flex-wrap justify-center gap-2.5 sm:gap-3 mb-10 sm:mb-12">
             {[
-              { ico: <IconCheck size={12} strokeWidth={3} />, t: 'Garantia de 7 dias' },
+              { ico: <IconCheck size={12} strokeWidth={3} />, t: '7 dias grátis, sem cartão' },
               { ico: <IconClock24 size={12} strokeWidth={2.2} />, t: '5 minutos pra configurar' },
               { ico: <IconCash size={12} strokeWidth={2.2} />, t: 'R$1,60/dia no Solo' },
               { ico: <IconBolt size={12} strokeWidth={2.4} />, t: 'Cancela em 1 clique' },
@@ -1160,7 +1164,7 @@ export default async function BarbeariaPage() {
               </span>
             </Link>
             <p className="text-slate-400 text-xs sm:text-sm mt-4 sm:mt-5 max-w-md mx-auto">
-              R$67/mês no plano Solo, sem setup. Garantia de 7 dias.<br />
+              R$67/mês no plano Solo, sem setup. 7 dias grátis, sem cartão.<br />
               <span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
             </p>
           </SectionReveal>

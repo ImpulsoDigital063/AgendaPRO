@@ -5,7 +5,7 @@ import { redirectIfLoggedIn } from '@/lib/auth-guard'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Salões de Beleza — Agenda Online com Lembrete Automático',
-  description: 'Sistema de agendamento online para salões. Cada profissional com agenda própria, lembrete por e-mail, fila de espera e comissão automática. A partir de R$67/mês, sem setup. Garantia de 7 dias.',
+  description: 'Sistema de agendamento online para salões. Cada profissional com agenda própria, lembrete por e-mail, fila de espera e comissão automática. A partir de R$67/mês, sem setup. 7 dias grátis, sem cartão.',
   openGraph: {
     title: 'AgendaPRO para Salões de Beleza',
     description: 'Agenda online para salão. Lembrete automático, fila de espera, comissão por profissional e Google Reviews integrado.',
@@ -21,6 +21,7 @@ import ComparativoConcorrentes from '@/components/lp/ComparativoConcorrentes'
 import VendasEstoque from '@/components/lp/VendasEstoque'
 import ComandaComissao from '@/components/lp/ComandaComissao'
 import EquipeAcesso from '@/components/lp/EquipeAcesso'
+import AdequacaoNegocio from '@/components/lp/AdequacaoNegocio'
 import Pacotes from '@/components/lp/Pacotes'
 import FichaAnamnese from '@/components/lp/FichaAnamnese'
 import OnboardingSteps from '@/components/OnboardingSteps'
@@ -98,7 +99,7 @@ const TIMELINE = [
 const SALAO_FAQS: FAQItem[] = [
   {
     q: 'Como funciona a garantia?',
-    a: '7 dias de garantia após o pagamento. Se não fizer sentido pro seu salão, devolvo sem burocracia. Sem trial pré-pago — você paga, testa com cliente real e decide.',
+    a: 'São 7 dias grátis, sem cartão. Você cadastra, usa com cliente de verdade e só decide depois. Se continuar, escolhe o plano e paga — e mesmo aí tem 7 dias de garantia: se não fizer sentido, devolvo sem burocracia.',
   },
   {
     q: 'Quanto custa?',
@@ -316,7 +317,7 @@ export default async function SalaoPage() {
         }}
       >
         <IconHairDryer size={14} className="flex-shrink-0" />
-        <span>Solo R$67/mês ou Equipe R$97/mês — <strong>sem setup, sem fidelidade</strong>. Garantia de 7 dias.</span>
+        <span>Solo R$67/mês ou Equipe R$97/mês — <strong>sem setup, sem fidelidade</strong>. 7 dias grátis, sem cartão.</span>
       </div>
 
       {/* Nav */}
@@ -416,7 +417,7 @@ export default async function SalaoPage() {
 
               {/* Ancoragem mercado */}
               <p className="text-xs sm:text-sm text-slate-400 max-w-md">
-                A partir de R$ 67/mês · Cancela quando quiser · Garantia 7 dias.{' '}
+                A partir de R$ 67/mês · Cancela quando quiser · 7 dias grátis, sem cartão.{' '}
                 <span className="text-slate-500">
                   Trinks/Avec cobram R$ 200-500 com fidelidade anual — aqui é livre.
                 </span>
@@ -569,7 +570,7 @@ export default async function SalaoPage() {
         </div>
       </section>
 
-      <CTAInline titulo="O AgendaPRO resolve tudo isso" sub="Setup em 5 minutos. Garantia de 7 dias. Sem fidelidade — cancela quando quiser." />
+      <CTAInline titulo="O AgendaPRO resolve tudo isso" sub="Setup em 5 minutos. 7 dias grátis, sem cartão. Sem fidelidade — cancela quando quiser." />
 
       {/* ═══════════ 3. MOTORES ═══════════ */}
       <section id="mecanismos" className="relative py-16 sm:py-20 lg:py-28">
@@ -775,6 +776,9 @@ export default async function SalaoPage() {
       {/* ═══════════ 4.8 EQUIPE & ACESSO ═══════════ */}
       <EquipeAcesso variant="salao" />
 
+      {/* ADEQUACAO AO NEGOCIO · o diferencial que nao e software (01/08) */}
+      <AdequacaoNegocio variant="salao" />
+
       {/* ═══════════ 5. TIMELINE ═══════════ */}
       <section className="relative py-16 sm:py-20 lg:py-28">
         <div className="container px-4">
@@ -891,7 +895,7 @@ export default async function SalaoPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-white font-bold text-sm sm:text-base mb-0.5">Zero risco pra testar</div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs text-slate-400">
-                  {['Garantia 7 dias', 'Preço travado vitalício', 'Cancela em 1 clique', 'Seus dados ficam seus'].map((t) => (
+                  {['7 dias grátis', 'Preço travado vitalício', 'Cancela em 1 clique', 'Seus dados ficam seus'].map((t) => (
                     <span key={t} className="flex items-center gap-1"><IconCheck size={11} strokeWidth={3} className="text-emerald-400" />{t}</span>
                   ))}
                 </div>
@@ -967,7 +971,7 @@ export default async function SalaoPage() {
 
           <SectionReveal className="flex flex-wrap justify-center gap-2.5 sm:gap-3 mb-10 sm:mb-12">
             {[
-              { ico: <IconCheck size={12} strokeWidth={3} />, t: 'Garantia de 7 dias' },
+              { ico: <IconCheck size={12} strokeWidth={3} />, t: '7 dias grátis, sem cartão' },
               { ico: <IconClock24 size={12} strokeWidth={2.2} />, t: '5 minutos pra configurar' },
               { ico: <IconCash size={12} strokeWidth={2.2} />, t: 'R$1,60/dia no Solo' },
               { ico: <IconBolt size={12} strokeWidth={2.4} />, t: 'Cancela em 1 clique' },
@@ -983,7 +987,7 @@ export default async function SalaoPage() {
               <span className="relative z-10 flex items-center gap-2">Quero minho AgendaPRO agora<IconArrowRight size={20} /></span>
             </Link>
             <p className="text-slate-400 text-xs sm:text-sm mt-4 sm:mt-5 max-w-md mx-auto">
-              R$67/mês no plano Solo, sem setup. Garantia de 7 dias.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
+              R$67/mês no plano Solo, sem setup. 7 dias grátis, sem cartão.<br /><span className="text-slate-500">Suporte direto com a Impulso Digital pelo WhatsApp.</span>
             </p>
           </SectionReveal>
         </div>

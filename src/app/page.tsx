@@ -111,7 +111,7 @@ export default async function HomePage() {
         }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 flex-shrink-0"><rect x="3" y="8" width="18" height="14" rx="2"/><path d="M12 8V2"/><path d="M3 14h18"/><path d="M12 14v8"/><path d="M7.5 2L12 8l4.5-6"/></svg>
-        Solo R$67/mês ou Equipe R$97/mês — <strong className="mx-1">sem setup, sem fidelidade</strong>. Garantia de 7 dias.
+        Solo R$67/mês ou Equipe R$97/mês — <strong className="mx-1">sem setup, sem fidelidade</strong>. 7 dias grátis, sem cartão.
       </div>
 
       {/* ═══════════ Nav ═══════════ */}
@@ -201,7 +201,7 @@ export default async function HomePage() {
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </Link>
-          <p className="text-[11px] text-slate-500 mt-2">R$67/mês · Sem setup · Garantia de 7 dias</p>
+          <p className="text-[11px] text-slate-500 mt-2">R$67/mês · Sem setup · 7 dias grátis</p>
         </div>
 
         {/* ——— DESKTOP HERO ——— */}
@@ -240,7 +240,7 @@ export default async function HomePage() {
               </div>
 
               <p className="text-sm text-slate-400">
-                R$67/mês · Sem setup · Garantia de 7 dias
+                R$67/mês · Sem setup · 7 dias grátis
               </p>
             </SectionReveal>
 
@@ -1019,7 +1019,7 @@ export default async function HomePage() {
           <SectionReveal stagger className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
             {[
               {
-                title: 'Garantia de 7 dias',
+                title: '7 dias grátis',
                 desc: 'Você usa, testa com cliente real, mexe na agenda. Se em 7 dias não fizer sentido, devolvo 100%. Sem perguntar nada.',
                 accent: '#10B981',
                 iconPath: (
@@ -1106,7 +1106,7 @@ export default async function HomePage() {
               Escolha o <span className="text-gradient">seu</span>.
             </h2>
             <p className="text-lg text-slate-400">
-              Preço fixo, sem setup, sem fidelidade. Garantia de 7 dias.
+              Preço fixo, sem setup, sem fidelidade. 7 dias grátis, sem cartão.
             </p>
           </SectionReveal>
 
@@ -1152,7 +1152,7 @@ export default async function HomePage() {
               </ul>
 
               <p className="text-emerald-400 text-xs font-semibold mb-4">
-                Garantia de 7 dias
+                7 dias grátis
               </p>
               <Link href="/cadastro" className="btn btn-primary-v2 w-full justify-center">
                 Começar agora
@@ -1194,7 +1194,7 @@ export default async function HomePage() {
               </ul>
 
               <p className="text-emerald-400 text-xs font-semibold mb-4">
-                Garantia de 7 dias
+                7 dias grátis
               </p>
               <Link href="/cadastro" className="btn btn-primary-v2 w-full justify-center">
                 Começar agora
@@ -1223,7 +1223,7 @@ export default async function HomePage() {
                 A operação completa do seu negócio em <span className="text-gradient">um link</span>.
               </h3>
               <p className="text-slate-300 leading-relaxed mb-6 max-w-xl mx-auto">
-                Solo R$ 67/mês ou Equipe R$ 97/mês. Sem setup. Sem fidelidade. Garantia de 7 dias — testa de verdade, se não fizer sentido eu devolvo. Concorrente cobra R$ 200-500/mês com fidelidade anual.
+                Solo R$ 67/mês ou Equipe R$ 97/mês. Sem setup. Sem fidelidade. 7 dias grátis — testa de verdade, se não fizer sentido eu devolvo. Concorrente cobra R$ 200-500/mês com fidelidade anual.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
                 <span className="flex items-center gap-2">
@@ -1273,7 +1273,7 @@ export default async function HomePage() {
           <SectionReveal>
             <div className="pill-glow mb-6 animate-pulse-glow">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-300"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span>Garantia de 7 dias · preço vitalício · cancele quando quiser</span>
+              <span>7 dias grátis · preço vitalício · cancele quando quiser</span>
             </div>
             <h2 className="display-xl text-white mb-6">
               Amanhã você vai abrir o WhatsApp<br />

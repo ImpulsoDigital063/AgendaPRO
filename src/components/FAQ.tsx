@@ -37,7 +37,7 @@ const DEFAULT_FAQS: FAQItem[] = [
   },
   {
     q: 'Como funciona a garantia?',
-    a: '7 dias de garantia após o pagamento. Se não fizer sentido pro seu negócio, devolvo sem burocracia. Sem trial pré-pago — você paga, testa com cliente real e decide.',
+    a: 'São 7 dias grátis, sem cartão. Você cadastra, usa com cliente de verdade e só decide depois. Se continuar, escolhe o plano e paga — e mesmo aí tem 7 dias de garantia: se não fizer sentido, devolvo sem burocracia.',
   },
   {
     q: 'Quanto custa?',
