@@ -10,7 +10,7 @@
 
 import { IconCheck, IconBolt, IconTrophy, IconLink, IconStar, IconClock24 } from './BarberIcons'
 
-export type ComparisonVariant = 'barbearia' | 'salao' | 'estetica' | 'nail'
+export type ComparisonVariant = 'barbearia' | 'salao' | 'estetica' | 'nail' | 'lash'
 
 type Slot = { h: string; c: string; s: string; status: 'ok' | 'empty' | 'cancel' }
 type Notif = { kind: 'fila' | 'pontos' | 'indicacao'; t: string; s: string; time: string }
@@ -68,6 +68,21 @@ const VARIANTS: Record<ComparisonVariant, VariantData> = {
       { kind: 'fila',      t: 'Fila acionada',         s: '15:30 Aline F. — +R$350',    time: 'há 5min' },
       { kind: 'pontos',    t: 'Bianca M. ganhou +80pts', s: 'avaliação 5★ no Google',   time: 'há 11min' },
       { kind: 'indicacao', t: 'Indicação confirmada',  s: 'Camila indicou Patrícia',    time: 'há 22min' },
+    ],
+  },
+  lash: {
+    concorrentes: 'Trinks · Booksy · Belezzia · caderno',
+    slotsOutros: [
+      { h: '09:00', c: 'Aline R.',    s: 'Volume russo',      status: 'ok' },
+      { h: '11:30', c: '—',           s: '(vazio)',           status: 'empty' },
+      { h: '13:30', c: 'Camila S.',   s: 'Manutenção 21d',    status: 'ok' },
+      { h: '15:00', c: '—',           s: '(vazio)',           status: 'empty' },
+      { h: '16:30', c: 'Juliana P.',  s: 'Volume brasileiro', status: 'cancel' },
+    ],
+    notifs: [
+      { kind: 'fila',      t: 'Fila acionada',           s: '16:30 Rafaela M. — +R$160', time: 'há 3min' },
+      { kind: 'pontos',    t: 'Camila S. ganhou +40pts', s: 'avaliação 5★ no Google',    time: 'há 10min' },
+      { kind: 'indicacao', t: 'Indicação confirmada',    s: 'Aline trouxe Letícia',      time: 'há 16min' },
     ],
   },
   nail: {

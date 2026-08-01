@@ -20,13 +20,14 @@
 import { SectionReveal } from '@/components/ui'
 import { IconCheck, IconCash, IconBrain } from '@/components/BarberIcons'
 
-type Variant = 'barbearia' | 'salao' | 'nail' | 'estetica'
+type Variant = 'barbearia' | 'salao' | 'nail' | 'estetica' | 'lash'
 
 const THEME: Record<Variant, { rgb: string; hex: string; soft: string }> = {
   barbearia: { rgb: '6,182,212', hex: '#06B6D4', soft: '#67E8F9' },
   salao: { rgb: '236,72,153', hex: '#EC4899', soft: '#F9A8D4' },
   nail: { rgb: '244,114,182', hex: '#F472B6', soft: '#F9A8D4' },
   estetica: { rgb: '16,185,129', hex: '#10B981', soft: '#6EE7B7' },
+  lash: { rgb: '167,139,250', hex: '#A78BFA', soft: '#C4B5FD' },
 }
 
 const COPY: Record<Variant, { h2a: string; h2b: string; sub: string; prof: string; servico: string; bruto: string; cupom: string; liquido: string; taxa: string; entrou: string; comErrada: string; comCerta: string; fecho: string }> = {
@@ -62,6 +63,17 @@ const COPY: Record<Variant, { h2a: string; h2b: string; sub: string; prof: strin
     taxa: '− R$ 4,42', entrou: 'R$ 125,58',
     comErrada: 'R$ 75,00', comCerta: 'R$ 62,79',
     fecho: 'É pouco por atendimento. No mês inteiro, é o seu lucro indo embora.',
+  },
+  lash: {
+    h2a: 'Comissão sobre o que entrou.',
+    h2b: 'Não sobre o que você cobrou.',
+    sub: 'Deu desconto na primeira aplicação? Passou no cartão e a maquininha comeu a taxa? Se você divide com outra lash, a conta tem que sair do valor que realmente caiu — não do que estava na tabela.',
+    prof: 'Lash designer',
+    servico: 'Volume Russo',
+    bruto: 'R$ 180,00', cupom: '− R$ 30,00', liquido: 'R$ 150,00',
+    taxa: '− R$ 5,10', entrou: 'R$ 144,90',
+    comErrada: 'R$ 90,00', comCerta: 'R$ 72,45',
+    fecho: 'São R$ 17 por aplicação saindo do seu bolso sem você ver. Em 40 aplicações no mês, R$ 680.',
   },
   estetica: {
     h2a: 'Comissão sobre o que entrou.',

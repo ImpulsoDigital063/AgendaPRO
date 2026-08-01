@@ -8,7 +8,7 @@
    Variant prop adapta KPIs/cores ao nicho.
 ═══════════════════════════════════════════════════════════ */
 
-type Variant = 'barbearia' | 'salao' | 'estetica' | 'nail'
+type Variant = 'barbearia' | 'salao' | 'estetica' | 'nail' | 'lash'
 
 type DashContent = {
   receita: number
@@ -65,6 +65,19 @@ const DASH: Record<Variant, DashContent> = {
     chart7d: [70, 60, 75, 85, 80, 90, 100],
     insight: 'Pacotes pré-pagos representam 64% da receita',
     projecao: 21500,
+  },
+  lash: {
+    receita: 8620,
+    despesa: 2180,
+    accent: '#A78BFA',
+    topExpenses: [
+      { cat: 'Aluguel',      valor: 1100, color: '#EF4444' },
+      { cat: 'Cola e fios',  valor:  620, color: '#F59E0B' },
+      { cat: 'Descartáveis', valor:  460, color: '#A78BFA' },
+    ],
+    chart7d: [55, 70, 65, 85, 90, 100, 95],
+    insight: 'Manutenção de 21 dias responde por 58% dos horários',
+    projecao: 9800,
   },
   nail: {
     receita: 9840,

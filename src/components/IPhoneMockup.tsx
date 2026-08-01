@@ -15,7 +15,7 @@
  * e nome do negócio. Sem variant = barbearia (padrão).
  */
 
-type Variant = 'barbearia' | 'salao' | 'estetica' | 'nail'
+type Variant = 'barbearia' | 'salao' | 'estetica' | 'nail' | 'lash'
 
 type ScreenContent = {
   business: string
@@ -60,6 +60,18 @@ const SCREENS: Record<Variant, ScreenContent> = {
       { name: 'Drenagem linfática', time: '60 min', price: 'R$ 130' },
       { name: 'Peeling', time: '45 min', price: 'R$ 200' },
       { name: 'Massagem relaxante', time: '50 min', price: 'R$ 120' },
+    ],
+  },
+  lash: {
+    business: 'Studio Lash Bruna',
+    city: 'Goiânia, GO',
+    initial: 'B',
+    brandColor: '#A78BFA',
+    services: [
+      { name: 'Volume brasileiro', time: '120 min', price: 'R$ 160' },
+      { name: 'Volume russo', time: '150 min', price: 'R$ 180' },
+      { name: 'Manutenção 21 dias', time: '90 min', price: 'R$ 110' },
+      { name: 'Lash lifting', time: '60 min', price: 'R$ 120' },
     ],
   },
   nail: {

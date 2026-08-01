@@ -25,7 +25,7 @@ import {
   IconSparkle,
 } from './BarberIcons'
 
-export type OnboardingVariant = 'barbearia' | 'salao' | 'estetica' | 'nail'
+export type OnboardingVariant = 'barbearia' | 'salao' | 'estetica' | 'nail' | 'lash'
 
 type Service = { s: string; p: string }
 type OnboardingPreset = {
@@ -129,6 +129,28 @@ const PRESETS: Record<OnboardingVariant, OnboardingPreset> = {
     notif1: 'Camila S. · qua 14h · Drenagem',
     notif2: 'Bianca M. · 18:00 ontem',
     notif3: 'Aline assumiu 15h · +R$ 350',
+  },
+  lash: {
+    negocioLabel: 'Setup do studio',
+    businessName: 'Studio Lash Bruna',
+    servicos: [
+      { s: 'Volume russo', p: 'R$180' },
+      { s: 'Brasileiro', p: 'R$160' },
+      { s: 'Manutenção', p: 'R$110' },
+    ],
+    cidade: 'Setor Bueno · GO',
+    bio: 'Volume russo · brasileiro · manutenção de 21 dias. Hora marcada.',
+    instaUser: 'studiolash.bruna',
+    slug: 'studio-lash-bruna',
+    bioStat1: '9,2k seguidoras',
+    bioStat2: '640 posts',
+    step1Title: 'Cadastra o studio',
+    step1Desc: 'Nome, serviços, horários e técnicas em um form só. Sem técnico, sem papel.',
+    step3Desc: 'Confirma, lembra do retoque de 21 dias, preenche cancelamento e sobe seu ranking. Você só aplica.',
+    finalLabel: 'Seu studio online',
+    notif1: 'Aline R. · qui 09h · Volume russo',
+    notif2: 'Camila S. · 18:00 ontem',
+    notif3: 'Rafaela assumiu 16h · +R$ 160',
   },
   nail: {
     negocioLabel: 'Setup do estúdio',

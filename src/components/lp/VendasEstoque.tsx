@@ -23,13 +23,14 @@
 import { SectionReveal } from '@/components/ui'
 import { IconCheck, IconCash, IconGift } from '@/components/BarberIcons'
 
-type Variant = 'barbearia' | 'salao' | 'nail' | 'estetica'
+type Variant = 'barbearia' | 'salao' | 'nail' | 'estetica' | 'lash'
 
 const THEME: Record<Variant, { rgb: string; hex: string; soft: string }> = {
   barbearia: { rgb: '6,182,212', hex: '#06B6D4', soft: '#67E8F9' },
   salao: { rgb: '236,72,153', hex: '#EC4899', soft: '#F9A8D4' },
   nail: { rgb: '244,114,182', hex: '#F472B6', soft: '#F9A8D4' },
   estetica: { rgb: '16,185,129', hex: '#10B981', soft: '#6EE7B7' },
+  lash: { rgb: '167,139,250', hex: '#A78BFA', soft: '#C4B5FD' },
 }
 
 const COPY: Record<Variant, {
@@ -77,6 +78,19 @@ const COPY: Record<Variant, {
       { nome: 'Kit Lixa Profissional', qtd: '5 un', custo: 'R$ 24,00' },
     ],
     fecho: 'Cada cor e cada tamanho tem preço e estoque próprios. Nada de contar de cabeça.',
+  },
+  lash: {
+    h2a: 'Você revende máscara,',
+    h2b: 'sérum e escovinha.',
+    sub: 'A cliente sai da maca e leva o kit de manutenção. Vende junto da aplicação — e o estoque baixa sozinho, sem você anotar em lugar nenhum.',
+    servico: { nome: 'Volume Russo', valor: 'R$ 180,00' },
+    produto: { nome: 'Shampoo para cílios', valor: 'R$ 45,00', estoqueAntes: 16, estoqueDepois: 15 },
+    estoque: [
+      { nome: 'Shampoo para cílios', qtd: '15 un', custo: 'R$ 19,00' },
+      { nome: 'Escovinha descartável', qtd: '48 un', custo: 'R$ 0,60' },
+      { nome: 'Selante de cílios', qtd: '6 un', custo: 'R$ 28,00' },
+    ],
+    fecho: 'O que você usa na aplicação e o que revende ficam no mesmo controle. Você vê quando a cola está acabando antes de faltar.',
   },
   estetica: {
     h2a: 'Você indica o dermocosmético.',

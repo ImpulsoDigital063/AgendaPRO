@@ -10,8 +10,15 @@
        marcar, pacotes, produtos
      · RECEPÇÃO NÃO vê: financeiro, relatórios, colaboradores,
        configurações
-     · PROFISSIONAL vê: a agenda dele, a comissão dele em tempo real,
-       os horários dele, a conta dele — e é READ-ONLY no pagamento
+     · PROFISSIONAL (atualizado 01/08/2026 · autonomia entregue na v98):
+       vê a agenda da equipe, marca a própria cliente, recebe o pagamento,
+       dá desconto, remarca e bloqueia o próprio horário — TUDO gated por
+       3 flags do negócio (professionals_can_book_self / _others /
+       see_team_agenda), que nascem DESLIGADAS. Cancelar: só o dela e só
+       antes de pago. Continua sem ver faturamento do negócio nem comissão
+       das colegas.
+       ⚠️ Antes desta data a copy dizia "read-only no pagamento" — virou
+       mentira no dia em que a Realli passou a operar sem recepção.
    NÃO EXISTE no SaaS (não prometer):
      · 31 autorizações granulares (isso é do fork SystemPalace)
      · supervisor com aprovação de ação (idem)
@@ -20,13 +27,14 @@
 import { SectionReveal } from '@/components/ui'
 import { IconCheck, IconContacts } from '@/components/BarberIcons'
 
-type Variant = 'barbearia' | 'salao' | 'nail' | 'estetica'
+type Variant = 'barbearia' | 'salao' | 'nail' | 'estetica' | 'lash'
 
 const THEME: Record<Variant, { rgb: string; hex: string; soft: string }> = {
   barbearia: { rgb: '6,182,212', hex: '#06B6D4', soft: '#67E8F9' },
   salao: { rgb: '236,72,153', hex: '#EC4899', soft: '#F9A8D4' },
   nail: { rgb: '244,114,182', hex: '#F472B6', soft: '#F9A8D4' },
   estetica: { rgb: '16,185,129', hex: '#10B981', soft: '#6EE7B7' },
+  lash: { rgb: '167,139,250', hex: '#A78BFA', soft: '#C4B5FD' },
 }
 
 const COPY: Record<Variant, { h2a: string; h2b: string; sub: string; profNome: string; profLabel: string; fecho: string }> = {
@@ -57,6 +65,13 @@ const COPY: Record<Variant, { h2a: string; h2b: string; sub: string; profNome: s
     sub: 'Cada profissional acompanha a agenda e a comissão dela em tempo real. A recepção marca, atende e fecha comanda. Nenhuma das duas abre o seu financeiro.',
     profNome: 'Profissional', profLabel: 'Camila',
     fecho: 'Clínica com equipe precisa disso. Você não pode dar sua senha pra recepção — nem ficar preso no balcão.',
+  },
+  lash: {
+    h2a: 'Divide o studio com outra lash?',
+    h2b: 'Cada uma vê o que é dela.',
+    sub: 'Cada lash entra com o login dela: marca a própria cliente, recebe no fim da aplicação e acompanha a comissão dela. Você para de ser a agenda das duas — e continua sendo a única que enxerga o caixa.',
+    profNome: 'Lash designer', profLabel: 'Bruna',
+    fecho: 'Autonomia na agenda, seus números só seus.',
   },
 }
 

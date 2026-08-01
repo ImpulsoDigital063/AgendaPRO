@@ -15,13 +15,14 @@
 import { SectionReveal } from '@/components/ui'
 import { IconCheck, IconGift } from '@/components/BarberIcons'
 
-type Variant = 'barbearia' | 'salao' | 'nail' | 'estetica'
+type Variant = 'barbearia' | 'salao' | 'nail' | 'estetica' | 'lash'
 
 const THEME: Record<Variant, { rgb: string; hex: string; soft: string }> = {
   barbearia: { rgb: '6,182,212', hex: '#06B6D4', soft: '#67E8F9' },
   salao: { rgb: '236,72,153', hex: '#EC4899', soft: '#F9A8D4' },
   nail: { rgb: '244,114,182', hex: '#F472B6', soft: '#F9A8D4' },
   estetica: { rgb: '16,185,129', hex: '#10B981', soft: '#6EE7B7' },
+  lash: { rgb: '167,139,250', hex: '#A78BFA', soft: '#C4B5FD' },
 }
 
 const COPY: Record<Variant, { h2a: string; h2b: string; sub: string; pacote: string; total: number; usadas: number; valor: string; avulso: string; fecho: string }> = {
@@ -40,6 +41,14 @@ const COPY: Record<Variant, { h2a: string; h2b: string; sub: string; pacote: str
     pacote: 'Escova · 8 sessões', total: 8, usadas: 3,
     valor: 'R$ 640,00', avulso: 'R$ 95,00 avulsa',
     fecho: 'Dinheiro na frente, cliente voltando. E ninguém discutindo quantas sessões sobraram.',
+  },
+  lash: {
+    h2a: 'Vende pacote de manutenção?',
+    h2b: 'O saldo se controla sozinho.',
+    sub: 'Cílios pedem retoque a cada 3 semanas. A cliente pagou 4 manutenções adiantado — quantas ela já fez? Se está na agenda de papel, uma hora vira discussão na cadeira.',
+    pacote: 'Manutenção · 4 retoques', total: 4, usadas: 2,
+    valor: 'R$ 380,00', avulso: 'R$ 110,00 avulsa',
+    fecho: 'Dinheiro na frente e a cliente voltando de 3 em 3 semanas — que é exatamente o que segura o seu mês.',
   },
   nail: {
     h2a: 'Vende pacote de manutenção?',

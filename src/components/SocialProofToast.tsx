@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 
-type Variant = 'barbearia' | 'salao' | 'estetica' | 'nail'
+type Variant = 'barbearia' | 'salao' | 'estetica' | 'nail' | 'lash'
 
 type Proof = { nome: string; cidade: string; plano: 'Solo' | 'Equipe' }
 
@@ -44,6 +44,14 @@ const POOLS: Record<Variant, Proof[]> = {
     { nome: 'Estética Mariana',  cidade: 'PE',  plano: 'Solo' },
     { nome: 'Pele & Beleza',     cidade: 'SP',  plano: 'Equipe' },
     { nome: 'Clínica Aline',     cidade: 'DF',  plano: 'Solo' },
+  ],
+  lash: [
+    { nome: 'Studio Lash Bruna',     cidade: 'GO', plano: 'Solo' },
+    { nome: 'Lash Designer Aline',   cidade: 'SP', plano: 'Solo' },
+    { nome: 'Studio Cílios Camila',  cidade: 'RJ', plano: 'Equipe' },
+    { nome: 'Lash by Rafaela',       cidade: 'MG', plano: 'Solo' },
+    { nome: 'Espaço Olhar Juliana',  cidade: 'PR', plano: 'Solo' },
+    { nome: 'Lash Studio Letícia',   cidade: 'CE', plano: 'Solo' },
   ],
   nail: [
     { nome: 'Nail Designer Lari',   cidade: 'PR',  plano: 'Solo' },
