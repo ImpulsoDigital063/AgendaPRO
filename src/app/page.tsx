@@ -60,16 +60,26 @@ const MOTORES = ['fidelidade', 'fila', 'indicacao', 'reviews', 'reativacao'] as 
  * 4 ferramentas-núcleo (substituíveis) + 4 bônus que parecem caros
  * (não substituíveis — só aqui).
  */
+// Atualizado 01/08/2026: o stack listava 4 ferramentas e ancorava em R$680,
+// mas o produto passou a cobrir caixa/PDV, painel de equipe com comissão,
+// prontuário (ficha + foto) e estoque. Cada linha aqui existe de verdade no
+// sistema — nada aspiracional.
 const VALUE_CORE = [
-  { item: 'Agenda online (Trinks, iSalon, Booksy)',       price: 'R$ 89/mês' },
-  { item: 'Programa de fidelidade com pontos',            price: 'R$ 49/mês' },
-  { item: 'Sistema de indicação rastreada por cliente',   price: 'R$ 79/mês' },
-  { item: 'Gestão de avaliações Google Reviews',          price: 'R$ 39/mês' },
+  { item: 'Agenda online (Trinks, iSalon, Booksy)',            price: 'R$ 89/mês' },
+  { item: 'Caixa e comanda com maquininha e taxa de cartão',   price: 'R$ 129/mês' },
+  { item: 'Painel por profissional com comissão automática',   price: 'R$ 119/mês' },
+  { item: 'Ficha da cliente: anamnese, foto antes/depois',     price: 'R$ 79/mês' },
+  { item: 'Controle de estoque e venda de produto',            price: 'R$ 69/mês' },
+  { item: 'Programa de fidelidade com pontos',                 price: 'R$ 49/mês' },
+  { item: 'Sistema de indicação rastreada por cliente',        price: 'R$ 79/mês' },
+  { item: 'Gestão de avaliações Google Reviews',               price: 'R$ 39/mês' },
 ]
 
 const VALUE_BONUS = [
   { item: 'Lista de espera automática (preenche cancelamento)',  price: 'R$ 39/mês' },
   { item: 'Reativação de sumidos (detecta + cupom pronto)',      price: 'R$ 89/mês' },
+  { item: 'Pacotes e combos com saldo de sessões',               price: 'R$ 59/mês' },
+  { item: 'Despesas, lucro real e projeção do mês',              price: 'R$ 99/mês' },
   { item: 'Página personalizada do seu negócio (link próprio)',  price: 'R$ 99/mês' },
   { item: 'Setup guiado em 5 minutos com o fundador',            price: 'R$ 197 setup' },
   { item: 'Suporte direto via WhatsApp (não é robô)',            price: 'R$ 199/mês' },
@@ -135,12 +145,12 @@ export default async function HomePage() {
           </div>
 
           <h1 className="text-[1.7rem] leading-[1.1] font-black text-white tracking-tight mb-3">
-            WhatsApp parado.<br />
-            <span style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Agenda lotada.</span>
+            Agenda, caixa e equipe.<br />
+            <span style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Num lugar só.</span>
           </h1>
 
           <p className="text-[13.5px] text-slate-300 leading-relaxed mb-5 max-w-[300px]">
-            Cliente agenda sozinho pelo link da bio. Lembrete antes de cada horário. Fila de espera quando alguém cancela. <strong className="text-white">Você só atende.</strong>
+            Cliente agenda sozinho pelo link. Cada profissional entra com o login dela e vê a própria comissão. Você recebe em PIX, dinheiro ou cartão e vê o lucro do mês. <strong className="text-white">Tudo no mesmo app.</strong>
           </p>
 
           {/* Mockup do iPhone + labels flutuantes */}
@@ -204,15 +214,16 @@ export default async function HomePage() {
               </div>
 
               <h1 className="display-xl text-white">
-                WhatsApp, caderno, planilha.<br />
-                <span className="text-gradient">Três ferramentas</span> pro que<br />
-                um link resolve.
+                Agenda, caixa, comissão e<br />
+                <span className="text-gradient">ficha da cliente</span><br />
+                num lugar só.
               </h1>
 
               <p className="text-xl text-slate-300 max-w-2xl leading-relaxed">
-                Enquanto você confirma horário no WhatsApp, preenche planilha e liga pra remarcar,
-                seu concorrente recebe agendamento dormindo.
-                <strong className="text-white"> O AgendaPRO faz isso — e mais 4 coisas que nenhum outro app faz.</strong>
+                A cliente agenda sozinha pelo link. Cada profissional entra com o login dela,
+                marca o próprio atendimento e vê só a comissão dela. Você recebe em PIX, dinheiro
+                ou cartão — com taxa da maquininha descontada — e fecha o mês sabendo o lucro real.
+                <strong className="text-white"> Um app no lugar de quatro.</strong>
               </p>
 
               <div className="flex flex-row gap-4">
@@ -491,6 +502,152 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ═══════════ 5.4 SUA EQUIPE — cada profissional com painel próprio ═══════════
+          Entregue em 29-30/07/2026 (caso Realli Studio Nails · 5 profissionais,
+          sem recepção). Era a maior função sem uma linha na vitrine: o site só
+          dizia "até 5 profissionais". */}
+      <section id="equipe" className="section relative">
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(139,92,246,0.10) 0%, transparent 60%)'
+        }} />
+
+        <div className="container relative">
+          <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
+            <div className="pill mb-6">
+              <span style={{ color: '#8B5CF6' }}>●</span>
+              <span>Equipe</span>
+            </div>
+            <h2 className="display-lg text-white mb-4">
+              Cada profissional com<br />
+              <span className="text-gradient">o próprio login</span>.
+            </h2>
+            <p className="text-lg text-slate-400">
+              Você para de ser o gargalo da agenda. Elas marcam, atendem e recebem —
+              e enxergam só o que é delas. O caixa do salão continua seu.
+            </p>
+          </SectionReveal>
+
+          <SectionReveal className="grid md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+            {[
+              {
+                title: 'Ela marca sozinha',
+                desc: 'Abre o app, vê a agenda da equipe inteira e encaixa a cliente dela. Sem passar por você, sem grupo de WhatsApp.',
+                accent: '#8B5CF6',
+              },
+              {
+                title: 'Comissão calculada sozinha',
+                desc: 'Terminou o atendimento e recebeu, a comissão dela já aparece — no valor líquido, com o desconto do cupom abatido. Ela vê a dela; a das colegas, não.',
+                accent: '#10B981',
+              },
+              {
+                title: 'Ela bloqueia o próprio horário',
+                desc: 'Almoço, folga ou médico: ela mesma fecha a agenda e a cliente para de ver aquele horário. Você não é mais a secretária da equipe.',
+                accent: '#F59E0B',
+              },
+              {
+                title: 'Você decide o quanto solta',
+                desc: 'Três chaves nas configurações: marcar só pra si, marcar pras colegas, ver a agenda da equipe. Liga e desliga quando quiser.',
+                accent: '#3B82F6',
+              },
+              {
+                title: 'Cancelar tem freio',
+                desc: 'Ela cancela só o atendimento dela, e só antes de receber. Depois de pago, quem desfaz é você — dinheiro não se desfaz no balcão.',
+                accent: '#EF4444',
+              },
+              {
+                title: 'Recepção também tem lugar',
+                desc: 'Se o negócio tem recepcionista, ela ganha uma tela própria: marca pra todo mundo, recebe e fecha caixa, sem ver comissão de ninguém.',
+                accent: '#06B6D4',
+              },
+            ].map((c) => (
+              <div
+                key={c.title}
+                className="glass rounded-2xl p-5"
+                style={{ border: `1px solid ${c.accent}25` }}
+              >
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
+                  style={{ background: `${c.accent}18`, color: c.accent, border: `1px solid ${c.accent}40` }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </div>
+                <h3 className="text-white font-bold text-base mb-1.5 leading-tight">{c.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{c.desc}</p>
+              </div>
+            ))}
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* ═══════════ 5.45 A CLIENTE — ficha, foto e histórico ═══════════
+          Prontuário digital. Vale mais em estética/nail, mas serve a todos —
+          por isso mora na LP mãe e é destacado nas segmentadas. */}
+      <section id="cliente" className="section relative">
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(236,72,153,0.10) 0%, transparent 60%)'
+        }} />
+
+        <div className="container relative">
+          <SectionReveal className="text-center mb-12 max-w-3xl mx-auto">
+            <div className="pill mb-6">
+              <span style={{ color: '#EC4899' }}>●</span>
+              <span>Ficha da cliente</span>
+            </div>
+            <h2 className="display-lg text-white mb-4">
+              A ficha dela abre<br />
+              <span className="text-gradient">dentro do atendimento</span>.
+            </h2>
+            <p className="text-lg text-slate-400">
+              Anamnese, alergia, o que foi feito da última vez e a foto do trabalho.
+              Sem caderno, sem pasta, sem &quot;deixa eu lembrar aqui&quot;.
+            </p>
+          </SectionReveal>
+
+          <SectionReveal className="grid md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+            {[
+              {
+                title: 'Ficha de anamnese digital',
+                desc: 'Você monta o modelo uma vez — alergia, saúde, autorização de imagem — e ele passa a valer pra toda cliente nova. Assinatura na tela, quando precisa.',
+                accent: '#EC4899',
+              },
+              {
+                title: 'Foto antes e depois',
+                desc: 'A foto fica anexada ao atendimento, não perdida na galeria do celular. Na próxima visita, você abre e vê exatamente o que fez.',
+                accent: '#8B5CF6',
+              },
+              {
+                title: 'Ficha por tipo de trabalho',
+                desc: 'Modelos prontos por nicho: cílios, unha, estética, cabelo. Você não começa do zero nem inventa o que perguntar.',
+                accent: '#06B6D4',
+              },
+            ].map((c) => (
+              <div
+                key={c.title}
+                className="glass rounded-2xl p-5"
+                style={{ border: `1px solid ${c.accent}25` }}
+              >
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
+                  style={{ background: `${c.accent}18`, color: c.accent, border: `1px solid ${c.accent}40` }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="9" y1="15" x2="15" y2="15" />
+                  </svg>
+                </div>
+                <h3 className="text-white font-bold text-base mb-1.5 leading-tight">{c.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{c.desc}</p>
+              </div>
+            ))}
+          </SectionReveal>
+        </div>
+      </section>
+
       {/* ═══════════ 5.5 FINANCEIRO INTELIGENTE — controle real, não só faturamento ═══════════ */}
       <section id="financeiro" className="section relative">
         <div className="absolute inset-0 pointer-events-none" style={{
@@ -504,11 +661,11 @@ export default async function HomePage() {
               <span>Controle financeiro de verdade</span>
             </div>
             <h2 className="display-lg text-white mb-4">
-              Faturamento é fácil.<br />
-              <span className="text-gradient">Lucro líquido</span> separa o profissional do amador.
+              Recebe no balcão.<br />
+              <span className="text-gradient">Fecha o mês</span> sabendo o lucro.
             </h2>
             <p className="text-lg text-slate-400">
-              Concorrente mostra só faturamento. Aqui você vê despesas categorizadas, lucro líquido real e projeção do mês — nível Conta Azul, sem pagar Conta Azul.
+              A comanda abre sozinha quando o atendimento entra. Você recebe em PIX, dinheiro ou cartão — parcelado, com a taxa da maquininha já descontada — e no fim do mês vê o que sobrou de verdade, não só o que entrou.
             </p>
           </SectionReveal>
 
@@ -518,6 +675,21 @@ export default async function HomePage() {
 
           <SectionReveal className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mt-8">
             {[
+              {
+                title: 'Comanda que abre sozinha',
+                desc: 'Cliente entrou na agenda, a conta dela já existe. Serviço a mais na hora, produto vendido junto — tudo entra na mesma comanda e fecha num pagamento só.',
+                accent: '#8B5CF6',
+              },
+              {
+                title: 'Cartão com a taxa certa',
+                desc: 'Você cadastra sua maquininha e a taxa de cada bandeira. Passou parcelado em 3x, o sistema desconta a taxa e mostra quanto realmente sobrou daquela venda.',
+                accent: '#3B82F6',
+              },
+              {
+                title: 'Comissão sobre o líquido',
+                desc: 'Deu 20% de desconto? A comissão da profissional cai junto, proporcional. Ninguém paga comissão sobre dinheiro que não entrou.',
+                accent: '#F59E0B',
+              },
               {
                 title: 'Despesas categorizadas',
                 desc: 'Aluguel, produtos, salários, energia, marketing, impostos. Cada R$ que sai já entra em uma categoria — você sabe pra onde foi.',
@@ -647,7 +819,7 @@ export default async function HomePage() {
               <span className="text-gradient">custaria separado</span>.
             </h2>
             <p className="text-lg text-slate-400">
-              Pra ter tudo isso junto hoje, você teria que assinar 4 ferramentas e ainda contratar consultoria.
+              Pra ter tudo isso junto hoje, você assinaria agenda, PDV, controle de estoque, prontuário e uma planilha de comissão — cinco contratos, cinco logins, cinco boletos.
             </p>
           </SectionReveal>
 
@@ -693,9 +865,9 @@ export default async function HomePage() {
               <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.04)' }}>
                 <div>
                   <p className="text-slate-300 font-semibold text-sm md:text-base">Valor total se comprasse separado</p>
-                  <p className="text-slate-500 text-[11px] mt-0.5">9 contas, 9 logins, 9 boletos</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">15 contas, 15 logins, 15 boletos</p>
                 </div>
-                <p className="font-mono text-slate-400 font-bold line-through text-base md:text-lg flex-shrink-0">R$ 680/mês</p>
+                <p className="font-mono text-slate-400 font-bold line-through text-base md:text-lg flex-shrink-0">R$ 1.236/mês</p>
               </div>
 
               {/* Preço final ancorado */}
