@@ -79,6 +79,18 @@ const TIMELINE = [
 const BARBER_FAQS: FAQItem[] = [
   /* ── RISCO / PREÇO (fecha primeiro) ── */
   {
+    q: 'O barbeiro pode receber o pagamento do cliente?',
+    a: 'Pode, se você liberar. Ele fecha a comanda em PIX, dinheiro ou cartão — parcelado, com a taxa da maquininha já descontada. Serve pra barbearia sem recepção, onde quem corta é quem recebe. Cancelar atendimento já pago continua só com você.',
+  },
+  {
+    q: 'Vendo pomada e óleo. O sistema controla?',
+    a: 'Controla, no plano Equipe. O produto entra na mesma comanda do corte e baixa do estoque sozinho. Você vê quanto sobrou de cada item e quanto aquilo rendeu no mês — sem anotar em caderno.',
+  },
+  {
+    q: 'Vocês adaptam o sistema pra minha barbearia?',
+    a: 'Sim, e é o que mais fazemos. A gente estuda como sua barbearia funciona de verdade e ajusta o sistema pra aquilo. A Barbearia Olímpio usa todo dia desde maio — boa parte do que existe hoje no AgendaPRO saiu do uso real dela.',
+  },
+  {
     q: 'Como funciona a garantia?',
     a: 'São 7 dias grátis, sem cartão. Você cadastra, usa com cliente de verdade e só decide depois. Se continuar, escolhe o plano e paga — e mesmo aí tem 7 dias de garantia: se não fizer sentido, devolvo sem burocracia.',
   },
@@ -114,7 +126,7 @@ const BARBER_FAQS: FAQItem[] = [
   },
   {
     q: 'Tenho 3 barbeiros. Cada um tem agenda separada?',
-    a: 'Sim. No plano Equipe, cada barbeiro tem agenda, horários e comissão independentes. O cliente escolhe com quem quer cortar. E você vê o relatório de cada um no painel.',
+    a: 'Sim. No plano Equipe (R$97), cada barbeiro tem agenda, horários e comissão independentes — e entra com o login dele pelo celular. Você decide o que ele pode fazer: marcar só na agenda dele, marcar também pros colegas, receber o pagamento do cliente. O Equipe ainda inclui 1 recepcionista com tela própria (marca e fecha caixa sem ver seu faturamento) e libera venda de produto com controle de estoque.',
   },
 
   /* ── TÉCNICO (consigo usar?) ── */

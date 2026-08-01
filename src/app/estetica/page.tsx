@@ -100,6 +100,18 @@ const TIMELINE = [
 
 const ESTETICA_FAQS: FAQItem[] = [
   {
+    q: 'Tem ficha de anamnese e histórico da cliente?',
+    a: 'Tem. Você monta o modelo uma vez — alergia, medicação, contraindicação, autorização de imagem — e ele vale pra toda cliente nova. A ficha abre dentro do atendimento, junto com a foto do antes e depois e o histórico do que já foi feito. Sem pasta, sem papel.',
+  },
+  {
+    q: 'Trabalho com pacote de sessões. O sistema controla o saldo?',
+    a: 'Controla. A cliente compra o pacote e o sistema acompanha quantas sessões ela já usou e quantas faltam. Ninguém precisa lembrar de cabeça nem discutir na recepção.',
+  },
+  {
+    q: 'Vendo dermocosmético pra levar pra casa. Dá pra controlar?',
+    a: 'Dá, no plano Equipe. O produto entra na mesma comanda do procedimento e baixa do estoque sozinho — a receita que hoje vai pra farmácia fica com você, com controle do que entrou e do que sobrou.',
+  },
+  {
     q: 'Como funciona a garantia?',
     a: 'São 7 dias grátis, sem cartão. Você cadastra, usa com cliente de verdade e só decide depois. Se continuar, escolhe o plano e paga — e mesmo aí tem 7 dias de garantia: se não fizer sentido, devolvo sem burocracia.',
   },
@@ -125,11 +137,11 @@ const ESTETICA_FAQS: FAQItem[] = [
   },
   {
     q: 'Cada esteticista tem agenda separada?',
-    a: 'Sim. Cada profissional com seus horários e procedimentos. A cliente escolhe com quem quer. Você vê tudo no painel.',
+    a: 'Sim. Cada profissional com horários e procedimentos próprios, e entra com o login dela pelo celular pra marcar a própria cliente. Você decide o quanto solta: marcar só na agenda dela, marcar pras colegas, receber o pagamento. No plano Equipe entra também 1 recepcionista com tela dedicada — ela marca pra todas e fecha caixa sem enxergar seu faturamento.',
   },
   {
     q: 'Como funciona a comissão?',
-    a: 'Você define a porcentagem de cada profissional. O sistema calcula automaticamente: produção, porcentagem, valor a pagar. Abre o painel e tá tudo lá.',
+    a: 'Você define a porcentagem de cada profissional e o sistema calcula sozinho — sobre o valor LÍQUIDO. Se a cliente usou cupom ou pagou no cartão parcelado, a comissão cai proporcional: ninguém recebe comissão sobre dinheiro que não entrou. Cada profissional acompanha a dela no celular, atendimento por atendimento.',
   },
   {
     q: 'E o WhatsApp? Perco as clientes que me chamam lá?',
