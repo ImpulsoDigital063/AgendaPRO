@@ -128,7 +128,19 @@ const NAIL_FAQS: FAQItem[] = [
   },
   {
     q: 'Trabalho sozinha. Serve pra mim?',
-    a: 'Serve perfeitamente. O plano Solo foi feito pra quem trabalha sozinha. Agenda, lembrete, fila de espera, financeiro — tudo num painel só.',
+    a: 'Serve perfeitamente. O plano Solo foi feito pra quem trabalha sozinha. Agenda, lembrete, fila de espera, financeiro — tudo num painel só. E se um dia você chamar alguém pra dividir o studio, é só trocar de plano: o que você já cadastrou continua lá.',
+  },
+  {
+    q: 'Tenho outras profissionais no studio. Elas podem usar?',
+    a: 'Podem, no plano Equipe. Cada uma entra com o login dela pelo celular, marca a própria cliente e acompanha a comissão dela em tempo real. Você escolhe o quanto solta: marcar só na agenda dela, marcar também pras colegas, receber o pagamento. Studio de unhas com 5 profissionais e sem recepção é justamente o caso pra isso — as meninas param de depender de você pra encaixar cliente.',
+  },
+  {
+    q: 'Consigo guardar foto do trabalho de cada cliente?',
+    a: 'Consegue. A foto fica anexada ao atendimento, não perdida na galeria do celular. Na manutenção seguinte você abre a ficha e vê o que fez da última vez — formato, cor, alongamento — junto da anamnese e do produto que usou.',
+  },
+  {
+    q: 'A cliente pode pagar no cartão? Como fica a taxa?',
+    a: 'Pode. Você cadastra sua maquininha e a taxa de cada bandeira uma vez. Quando passar parcelado, o sistema desconta a taxa e mostra quanto sobrou de verdade daquele atendimento — não só o valor cheio que apareceu na tela da maquininha.',
   },
   {
     q: 'E se eu precisar bloquear um horário?',

@@ -17,16 +17,37 @@
 import { SectionReveal } from '@/components/ui'
 import { IconCheck, IconWhatsapp, IconSparkles } from '@/components/BarberIcons'
 
-type Variant = 'nail' | 'estetica' | 'salao'
+type Variant = 'nail' | 'estetica' | 'salao' | 'lash'
 
 const THEME: Record<Variant, { rgb: string; hex: string; soft: string }> = {
   nail: { rgb: '244,114,182', hex: '#F472B6', soft: '#F9A8D4' },
   estetica: { rgb: '16,185,129', hex: '#10B981', soft: '#6EE7B7' },
   salao: { rgb: '236,72,153', hex: '#EC4899', soft: '#F9A8D4' },
+  // Lash designer · roxo, pra separar visualmente de nail (rosa)
+  lash: { rgb: '167,139,250', hex: '#A78BFA', soft: '#C4B5FD' },
 }
 
 const COPY: Record<Variant, { pill: string; h2a: string; h2b: string; sub: string; fichaTitulo: string; itens: string[]; bullets: { t: string; d: string }[]; fecho: string }> = {
+  // 01/08/2026 · a variante `nail` estava com conteúdo de CÍLIOS (mapping,
+  // curvatura B a M, marca da cola). Era lash ocupando a página de unhas. O
+  // conteúdo de cílios foi preservado na variante `lash` abaixo — ele é bom
+  // demais pra jogar fora e vira a base da LP de lash designer.
   nail: {
+    pill: 'Ficha digital · sem papel',
+    h2a: 'Sua pasta de fichas',
+    h2b: 'cabe no celular.',
+    sub: 'Anamnese, foto do trabalho e o produto que você usou — do jeito que você já faz no caderno. Só que não molha, não some, e você acha em 3 segundos.',
+    fichaTitulo: 'Unhas · Anamnese',
+    itens: ['Alergia a acrílico / gel / esmalte', 'Micose ou onicomicose', 'Diabetes', 'Gestante ou lactante', 'Rói unha / cutícula sensível'],
+    bullets: [
+      { t: 'As perguntas de saúde já vêm prontas', d: 'Alergia a acrílico e gel, micose, diabetes, gestante, cutícula sensível. Ela marca o que se aplica e detalha embaixo — antes de sentar na cadeira.' },
+      { t: 'Foto do antes e depois, junto do atendimento', d: 'A foto fica presa àquele horário, não perdida na galeria. Na manutenção, você abre e vê exatamente o que fez da última vez: formato, cor, alongamento.' },
+      { t: 'Marca e lote do produto que você usou', d: 'Se a cliente reclamar de descolamento ou reação, você abre a ficha e mostra o que foi aplicado, em que dia. É a sua proteção.' },
+      { t: 'Termo assinado na tela', d: 'A cliente assina com o dedo. Autoriza o procedimento e, se quiser, o uso da foto no seu portfólio.' },
+    ],
+    fecho: 'Trinks, Booksy e Avec não têm ficha de anamnese. Aqui vem junto — na mensalidade que você já ia pagar.',
+  },
+  lash: {
     pill: 'Ficha digital · sem papel',
     h2a: 'Sua pasta de fichas',
     h2b: 'cabe no celular.',
