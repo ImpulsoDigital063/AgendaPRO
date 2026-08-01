@@ -888,7 +888,7 @@ export default async function EsteticaPage() {
 
           {/* 4 modalidades de pagamento (cartão + 3 PIX) */}
           <SectionReveal>
-            <PricingModalidades accent="emerald" />
+            <PricingModalidades accent="emerald" defaultPlano="equipe" />
           </SectionReveal>
 
           {/* Selo garantia */}

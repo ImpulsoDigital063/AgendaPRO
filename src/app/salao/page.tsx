@@ -883,7 +883,7 @@ export default async function SalaoPage() {
 
           {/* 4 modalidades de pagamento (cartão + 3 PIX) */}
           <SectionReveal>
-            <PricingModalidades accent="pink" />
+            <PricingModalidades accent="pink" defaultPlano="equipe" />
           </SectionReveal>
 
           {/* Selo garantia */}

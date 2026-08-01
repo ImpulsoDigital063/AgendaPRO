@@ -963,7 +963,7 @@ export default async function BarbeariaPage() {
 
           {/* ── 4 modalidades de pagamento (cartão + 3 PIX) ── */}
           <SectionReveal>
-            <PricingModalidades accent="cyan" />
+            <PricingModalidades accent="cyan" defaultPlano="equipe" />
           </SectionReveal>
 
           {/* ── Selo de garantia ── */}

@@ -157,13 +157,33 @@ export default function PricingModalidades({
           >
             Equipe
             <span className="ml-1.5 text-[10px] opacity-70">até 5</span>
+            {/* Equipe deixa de ser "o outro" e passa a ser o completo (Eduardo
+                01/08). Não uso "mais escolhido" porque seria mentira: hoje a
+                maioria da base é Solo. O argumento é o que ele DESTRAVA. */}
+            {plano !== 'equipe' && (
+              <span
+                className="ml-2 text-[9px] font-black px-1.5 py-0.5 rounded-md align-middle"
+                style={{ background: 'rgba(16,185,129,0.18)', color: '#34D399' }}
+              >
+                COMPLETO
+              </span>
+            )}
           </button>
         </div>
         <p className="text-[11px] sm:text-xs text-slate-400 text-center max-w-md">
           {plano === 'solo'
             ? 'Admin + 1 colaborador. Pra quem trabalha sozinho ou com 1 ajudante.'
-            : 'Admin + até 5 profissionais. Cada um com agenda e comissão própria.'}
+            : 'Admin + até 5 profissionais + 1 recepcionista. Cada profissional entra com o login dela, marca a própria cliente e vê a comissão dela. A recepção tem tela própria: marca pra todo mundo e fecha caixa, sem enxergar seu faturamento.'}
         </p>
+        {plano === 'solo' && (
+          // O que o Equipe destrava é regra de banco, não promessa: o trigger
+          // v47 recusa recepcionista no Solo e /api/admin/products exige
+          // plan='equipe' pra vender produto.
+          <p className="text-[11px] sm:text-xs text-center max-w-md" style={{ color: '#34D399' }}>
+            No Equipe (R$97) entram: até 5 profissionais com acesso próprio, comissão por pessoa,
+            <strong> recepcionista com tela dedicada</strong>, venda de produto e controle de estoque.
+          </p>
+        )}
       </div>
 
       {/* ── 4 cards modalidade ── */}
