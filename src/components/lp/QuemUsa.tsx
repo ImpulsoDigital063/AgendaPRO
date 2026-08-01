@@ -6,9 +6,20 @@
    colocar todos, inclusive os demos" — e depois: "eu me responsabilizo".
 
    Fonte dos dados: tabela `businesses` em produção (nome, telefone,
-   endereço, description). O local vem do endereço quando existe; do
-   contrário, do DDD do telefone — por isso alguns aparecem só com o
-   estado, que é o mais longe que o dado garante. Nunca inventar cidade.
+   endereço, description). Rua NUNCA aparece — só cidade e estado.
+
+   Como cada praça foi definida:
+   · endereço preenchido pelo dono → cidade direta (Olímpio, Rosy, Diogo,
+     Império, Amanda — "Jardim Santa Marina" é Jacareí)
+   · DDD de capital/metrópole → a capital (11 SP · 85 Fortaleza ·
+     81 Recife · 31 BH · 48 Floripa · 27 Vitória · 63 Palmas)
+   · DDD de interior → "Região de X · UF", porque o DDD cobre dezenas de
+     municípios e o dado NÃO diz qual (55, 44, 37, 75, 54, 19, 42)
+   · Palace Nail Spa (Macaé · RJ) → informado pelo Eduardo
+
+   Nunca inventar cidade. Se o dono confirmar o município no WhatsApp,
+   troca o "Região de" pela cidade real. Wanessa Silva Estética é a única
+   sem nenhum dado de local — cadastrou sem telefone e sem endereço.
 
    ⚠️ A lista inclui contas de demonstração (Studio Marcela Hair, Studio
    Larissa Nails, Studio Bella Lash, Império Barbershop). Decisão do
@@ -45,32 +56,32 @@ type Negocio = { nome: string; seg: string; local?: string; tag: Tag }
 const NEGOCIOS: Negocio[] = [
   { nome: 'Olímpio Barbearia', seg: 'Barbearia', local: 'Palmas · TO', tag: 'barbearia' },
   { nome: 'Império Barbershop', seg: 'Barbearia', local: 'Palmas · TO', tag: 'barbearia' },
-  { nome: 'Barbearia Guia Lopes', seg: 'Barbearia', local: 'Rio Grande do Sul', tag: 'barbearia' },
+  { nome: 'Barbearia Guia Lopes', seg: 'Barbearia', local: 'Região de Santa Maria · RS', tag: 'barbearia' },
   { nome: 'Barbearia Samuel Felipe', seg: 'Barbearia', local: 'São Paulo · SP', tag: 'barbearia' },
 
   { nome: 'Palace Nail Spa', seg: 'Nail spa', local: 'Macaé · RJ', tag: 'nail' },
-  { nome: 'Realli Studio Nails', seg: 'Studio de unhas', local: 'Paraná', tag: 'nail' },
+  { nome: 'Realli Studio Nails', seg: 'Studio de unhas', local: 'Região de Maringá · PR', tag: 'nail' },
   { nome: 'Gessica Batista Nails', seg: 'Nail designer', local: 'Fortaleza · CE', tag: 'nail' },
   { nome: 'Studio Larissa Nails', seg: 'Studio de unhas', local: 'Palmas · TO', tag: 'nail' },
-  { nome: 'Cibely Nails Studio', seg: 'Studio de unhas', local: 'Minas Gerais', tag: 'nail' },
+  { nome: 'Cibely Nails Studio', seg: 'Studio de unhas', local: 'Região de Divinópolis · MG', tag: 'nail' },
 
-  { nome: 'Studio MOOD', seg: 'Salão de beleza', local: 'Bahia', tag: 'salao' },
+  { nome: 'Studio MOOD', seg: 'Salão de beleza', local: 'Região de Feira de Santana · BA', tag: 'salao' },
   { nome: 'Viva Cacheada', seg: 'Salão de cachos', local: 'Palmas · TO', tag: 'salao' },
   { nome: 'Rosy Borges Beauty Studio', seg: 'Beauty studio', local: 'Serra · ES', tag: 'salao' },
   { nome: 'Studio Marcela Hair', seg: 'Salão de beleza', local: 'Palmas · TO', tag: 'salao' },
-  { nome: 'Lopes Studio de Beleza', seg: 'Salão de beleza', local: 'Rio Grande do Sul', tag: 'salao' },
+  { nome: 'Lopes Studio de Beleza', seg: 'Salão de beleza', local: 'Região de Caxias do Sul · RS', tag: 'salao' },
   { nome: 'Studio Fernanda Souza', seg: 'Salão de beleza', local: 'São Paulo · SP', tag: 'salao' },
 
-  { nome: 'Studio Amanda Freitas', seg: 'Extensão de cílios', local: 'Vale do Paraíba · SP', tag: 'lash' },
+  { nome: 'Studio Amanda Freitas', seg: 'Extensão de cílios', local: 'Jacareí · SP', tag: 'lash' },
   { nome: 'Studio Bella Lash', seg: 'Extensão de cílios', local: 'Palmas · TO', tag: 'lash' },
 
-  { nome: 'K’F Beauty', seg: 'Clínica de estética', local: 'Interior de SP', tag: 'estetica' },
+  { nome: 'K’F Beauty', seg: 'Clínica de estética', local: 'Região de Campinas · SP', tag: 'estetica' },
   { nome: 'Camila Prazeres Clinic Beauty', seg: 'Clínica de estética', local: 'Recife · PE', tag: 'estetica' },
   { nome: 'Wanessa Silva Estética', seg: 'Clínica de estética', tag: 'estetica' },
-  { nome: 'Camila Delfino Estética', seg: 'Estética', local: 'Minas Gerais', tag: 'estetica' },
-  { nome: 'Vitoria Gonzaga', seg: 'Estética', local: 'Espírito Santo', tag: 'estetica' },
-  { nome: 'Studio Anaelisa', seg: 'Estética', local: 'Paraná', tag: 'estetica' },
-  { nome: 'Espaço da Cura', seg: 'Terapias integrativas', local: 'Santa Catarina', tag: 'outro' },
+  { nome: 'Camila Delfino Estética', seg: 'Estética', local: 'Belo Horizonte · MG', tag: 'estetica' },
+  { nome: 'Vitoria Gonzaga', seg: 'Estética', local: 'Vitória · ES', tag: 'estetica' },
+  { nome: 'Studio Anaelisa', seg: 'Estética', local: 'Região de Ponta Grossa · PR', tag: 'estetica' },
+  { nome: 'Espaço da Cura', seg: 'Terapias integrativas', local: 'Florianópolis · SC', tag: 'outro' },
 
   { nome: 'DN Diogo Nogueira', seg: 'Papel de parede e decoração', local: 'Cachoeirinha · RS', tag: 'outro' },
 ]
