@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+import { JsonLd, faqJsonLd, breadcrumbJsonLd, softwareApplicationJsonLd, organizationJsonLd, SITE_URL } from '@/lib/jsonld'
 import { redirectIfLoggedIn } from '@/lib/auth-guard'
 
 export const metadata: Metadata = {
@@ -310,8 +311,20 @@ function DorFinanceiroBloco() {
 
 export default async function NailPage() {
   await redirectIfLoggedIn()
+  const dados = [
+    organizationJsonLd(),
+    softwareApplicationJsonLd(),
+    faqJsonLd(NAIL_FAQS, `${SITE_URL}/nail`),
+    breadcrumbJsonLd([
+      { nome: 'AgendaPRO', url: `${SITE_URL}/` },
+      { nome: 'Studio de unhas', url: `${SITE_URL}/nail` },
+    ]),
+  ]
+
   return (
     <main className="relative overflow-hidden" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+
+      <JsonLd data={dados} />
 
       {/* Announcement bar */}
       <div

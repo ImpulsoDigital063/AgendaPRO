@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
 import { notFound } from 'next/navigation'
+import { JsonLd, localBusinessJsonLd } from '@/lib/jsonld'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Business, Service } from '@/lib/types'
@@ -143,6 +144,23 @@ export default async function BusinessPage({
   const subtle = isDark ? '#64748B' : '#94A3B8'
   const cover = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`
 
+  // JSON-LD do negócio: faz a página do cliente poder aparecer em busca local
+  // ("nail designer em Fortaleza") e em resposta de IA. Só emite campo que o
+  // dono preencheu — ver src/lib/jsonld.tsx.
+  const negocioJsonLd = localBusinessJsonLd({
+    name: b.name,
+    slug: b.slug,
+    description: b.description,
+    address: b.address,
+    phone: b.phone,
+    logo: b.logo_url,
+    cover: b.cover_url,
+    rating: b.google_rating,
+    reviews: b.google_reviews_count,
+    category: b.category,
+    services: ((services as Service[]) ?? []).map((sv) => ({ name: sv.name, price: sv.price })),
+  })
+
   return (
     <main
       className="relative overflow-x-hidden"
@@ -156,6 +174,8 @@ export default async function BusinessPage({
         } as React.CSSProperties
       }
     >
+      <JsonLd data={negocioJsonLd} />
+
       {/* Banner sticky pra admin que abriu via "Ver minha página real"
           na aba Aparencia. Sem isso, admin ficava preso na pagina
           publica sem caminho de retorno (especialmente em PWA standalone). */}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+import { JsonLd, faqJsonLd, breadcrumbJsonLd, softwareApplicationJsonLd, organizationJsonLd, SITE_URL } from '@/lib/jsonld'
 import { redirectIfLoggedIn } from '@/lib/auth-guard'
 
 export const metadata: Metadata = {
@@ -190,8 +191,20 @@ function CTAInline({ titulo, sub }: { titulo: string; sub: string }) {
 
 export default async function BarbeariaPage() {
   await redirectIfLoggedIn()
+  const dados = [
+    organizationJsonLd(),
+    softwareApplicationJsonLd(),
+    faqJsonLd(BARBER_FAQS, `${SITE_URL}/barbearia`),
+    breadcrumbJsonLd([
+      { nome: 'AgendaPRO', url: `${SITE_URL}/` },
+      { nome: 'Barbearia', url: `${SITE_URL}/barbearia` },
+    ]),
+  ]
+
   return (
     <main className="relative overflow-hidden" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+
+      <JsonLd data={dados} />
 
       {/* Announcement bar */}
       <div

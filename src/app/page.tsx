@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import FAQ from '@/components/FAQ'
+import { DEFAULT_FAQS } from '@/lib/faq-home'
+import { JsonLd, faqJsonLd, softwareApplicationJsonLd, organizationJsonLd, SITE_URL } from '@/lib/jsonld'
 import { redirectIfLoggedIn } from '@/lib/auth-guard'
 import AgendaDesktopMockup from '@/components/AgendaDesktopMockup'
 import IPhoneMockup from '@/components/IPhoneMockup'
@@ -99,8 +101,17 @@ const STEPS: { n: '01' | '02' | '03'; title: string; desc: string }[] = [
 
 export default async function HomePage() {
   await redirectIfLoggedIn()
+
+  const dados = [
+    organizationJsonLd(),
+    softwareApplicationJsonLd(),
+    faqJsonLd(DEFAULT_FAQS, `${SITE_URL}/`),
+  ]
+
   return (
     <main className="relative overflow-hidden" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+
+      <JsonLd data={dados} />
 
       {/* ═══════════ Announcement bar (hidden on mobile) ═══════════ */}
       <div

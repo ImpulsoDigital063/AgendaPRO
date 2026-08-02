@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
+import { JsonLd, faqJsonLd, breadcrumbJsonLd, softwareApplicationJsonLd, organizationJsonLd, SITE_URL } from '@/lib/jsonld'
 import { redirectIfLoggedIn } from '@/lib/auth-guard'
 
 export const metadata: Metadata = {
@@ -317,8 +318,20 @@ function DorComissaoManual() {
 
 export default async function EsteticaPage() {
   await redirectIfLoggedIn()
+  const dados = [
+    organizationJsonLd(),
+    softwareApplicationJsonLd(),
+    faqJsonLd(ESTETICA_FAQS, `${SITE_URL}/estetica`),
+    breadcrumbJsonLd([
+      { nome: 'AgendaPRO', url: `${SITE_URL}/` },
+      { nome: 'Clínica de estética', url: `${SITE_URL}/estetica` },
+    ]),
+  ]
+
   return (
     <main className="relative overflow-hidden" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+
+      <JsonLd data={dados} />
 
       {/* Announcement bar */}
       <div
