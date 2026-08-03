@@ -18,13 +18,17 @@
    dev e preview fica desligado sozinho, sem sujar a métrica com nossa
    própria navegação.
 
-   strategy="afterInteractive": o script sobe depois que a página fica usável.
-   Métrica não pode atrasar o carregamento de quem está decidindo comprar.
+   ⚠️ POR QUE <script> CRU E NÃO next/script (03/08/2026):
+   a primeira versão usava <Script strategy="afterInteractive"> pros dois
+   scripts. O carregador (com src) saía no HTML, mas o INLINE de
+   inicialização não — e gtag.js sem `gtag('config')` não envia hit nenhum.
+   Resultado: tag "instalada", Tempo real em zero, e meia hora perdida
+   procurando culpa no Google. Com <script> cru os dois aparecem no HTML e dá
+   pra conferir com um curl, sem depender de abrir navegador.
    ═══════════════════════════════════════════════════════════════ */
 
 'use client'
 
-import Script from 'next/script'
 import { usePathname } from 'next/navigation'
 
 // Prefixos que NUNCA recebem o gtag — ver comentário acima.
@@ -39,18 +43,12 @@ export default function GoogleAnalytics() {
 
   return (
     <>
-      <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-        strategy="afterInteractive"
+      <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`,
+        }}
       />
-      <Script id="ga-init" strategy="afterInteractive">
-        {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', '${gaId}');
-        `}
-      </Script>
     </>
   )
 }
