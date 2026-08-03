@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-const BASE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.agendapro.net.br').replace(/\/$/, '')
+import { SITE_URL as BASE } from '@/lib/site-url'
 
 /**
  * robots.txt (01/08/2026).

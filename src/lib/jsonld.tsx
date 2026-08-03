@@ -25,7 +25,8 @@
 import { PRICING } from '@/config/pricing'
 import type { FAQItem } from '@/components/FAQ'
 
-export const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.agendapro.net.br').replace(/\/$/, '')
+import { SITE_URL } from '@/lib/site-url'
+export { SITE_URL } from '@/lib/site-url'
 
 /* ─── Organização — quem é a empresa por trás ─────────────────── */
 export function organizationJsonLd() {

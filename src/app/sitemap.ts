@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { RESPOSTAS } from '@/lib/respostas'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
-const BASE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.agendapro.net.br').replace(/\/$/, '')
+import { SITE_URL as BASE } from '@/lib/site-url'
 
 // Contas internas: demos de gravação/teste e a conta tutorial. São páginas
 // reais e funcionais, mas não são negócio de ninguém — não entram no índice.

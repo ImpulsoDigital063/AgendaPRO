@@ -22,7 +22,7 @@
 import { PRICING } from '@/config/pricing'
 import { RESPOSTAS } from '@/lib/respostas'
 
-const BASE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.agendapro.net.br').replace(/\/$/, '')
+import { SITE_URL as BASE } from '@/lib/site-url'
 
 // Revalida 1x por dia: o conteúdo é estável, mas acompanha mudança de preço.
 export const revalidate = 86400
