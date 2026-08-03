@@ -68,8 +68,28 @@ export default function PrivacidadePage() {
               <li><strong>Supabase</strong> — banco de dados seguro (infraestrutura em nuvem)</li>
               <li><strong>Resend</strong> — serviço de envio de e-mails transacionais</li>
               <li><strong>Vercel</strong> — hospedagem da plataforma</li>
+              <li><strong>Google Analytics</strong> — medição de audiência das páginas públicas</li>
             </ul>
             <p className="mt-2">Não vendemos, alugamos ou comercializamos seus dados com terceiros.</p>
+          </section>
+
+          <section>
+            <h2 className="font-semibold text-gray-900 mb-2">5.1. Cookies e medição de audiência</h2>
+            <p>
+              Usamos o <strong>Google Analytics</strong> para entender como as pessoas chegam ao site e quais páginas
+              são mais úteis. Ele grava um cookie no seu navegador e registra dados de navegação em forma agregada,
+              como página visitada, origem do acesso, tipo de dispositivo e região aproximada. Não é usado para
+              identificar você pessoalmente.
+            </p>
+            <p className="mt-2">
+              A medição é feita <strong>apenas nas páginas públicas</strong> — site institucional e páginas de
+              agendamento. As áreas internas (painel do estabelecimento, área da profissional e da recepção) não
+              carregam nenhuma ferramenta de medição.
+            </p>
+            <p className="mt-2">
+              Você pode bloquear esses cookies nas configurações do seu navegador ou instalar o complemento oficial
+              de desativação do Google Analytics. Nenhuma funcionalidade do sistema deixa de funcionar por isso.
+            </p>
           </section>
 
           <section>

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import RegisterSW from "@/components/RegisterSW";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -108,6 +109,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col" style={{ background: '#030510' }}>
         <RegisterSW />
+        <GoogleAnalytics />
         {children}
       </body>
     </html>
