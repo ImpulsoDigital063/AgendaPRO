@@ -1,6 +1,6 @@
 'use client'
 
-import { todayBR } from '@/lib/date-br'
+import { todayBR, addMonthsBR, dividirParcelas, formatDateBR } from '@/lib/date-br'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
@@ -497,6 +497,22 @@ function ExpenseFormModal({
   // não sente diferença nenhuma no formulário.
   const [ehProgramada, setEhProgramada] = useState(expense?.status === 'scheduled')
   const [dueDate, setDueDate] = useState(expense?.due_date || todayBR())
+  // v105 · parcelas. Só na criação: editar uma despesa que já virou 3 linhas no
+  // banco teria que decidir o que fazer com as outras duas — fica pra depois.
+  const [numParcelas, setNumParcelas] = useState(1)
+
+  // Prévia do que vai ser criado. O valor digitado é o TOTAL da compra; aqui ela
+  // vê parcela por parcela ANTES de salvar, que é onde o erro clássico aparece
+  // (digitar o valor da parcela achando que era o total, e cadastrar o triplo).
+  const previaParcelas = (() => {
+    const totalNum = Number(amount.replace(',', '.'))
+    if (!ehProgramada || numParcelas < 2 || !Number.isFinite(totalNum) || totalNum <= 0) return []
+    return dividirParcelas(totalNum, numParcelas).map((valor, i) => ({
+      n: i + 1,
+      valor,
+      venc: addMonthsBR(dueDate, i),
+    }))
+  })()
 
   async function submit() {
     setError(null)
@@ -523,6 +539,8 @@ function ExpenseFormModal({
       occurred_at: ehProgramada ? dueDate : occurredAt,
       due_date: ehProgramada ? dueDate : null,
       status: ehProgramada ? 'scheduled' : 'paid',
+      // Total da compra; o servidor divide e cria uma linha por parcela.
+      installments: ehProgramada && !isEdit ? numParcelas : 1,
       recurring,
       notes: notes.trim(),
     }
@@ -695,6 +713,61 @@ function ExpenseFormModal({
               })()}
             </div>
           </div>
+
+          {/* v105 · parcelas. Só aparece em conta a pagar e só na criação:
+              editar uma compra que já virou N linhas exigiria decidir o que
+              fazer com as outras — assunto de outra rodada. */}
+          {ehProgramada && !isEdit && (
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>
+                Parcelas
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {[1, 2, 3, 4, 5, 6, 10, 12].map((n) => {
+                  const ativo = numParcelas === n
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setNumParcelas(n)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-bold transition-colors"
+                      style={
+                        ativo
+                          ? { background: 'var(--admin-accent)', color: '#fff', border: '1px solid var(--admin-accent)' }
+                          : { background: 'var(--admin-surface)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }
+                      }
+                    >
+                      {n === 1 ? 'À vista' : `${n}x`}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {previaParcelas.length > 0 && (
+                <div
+                  className="mt-2 rounded-xl p-3 space-y-1"
+                  style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-divider)' }}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                    Vai criar {previaParcelas.length} contas
+                  </p>
+                  {previaParcelas.map((p) => (
+                    <div key={p.n} className="flex items-center justify-between text-xs">
+                      <span style={{ color: 'var(--admin-text-2)' }}>
+                        {p.n}/{previaParcelas.length} · vence {formatDateBR(p.venc)}
+                      </span>
+                      <span className="font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                        {formatPrice(p.valor)}
+                      </span>
+                    </div>
+                  ))}
+                  <p className="text-[11px] pt-1.5" style={{ color: 'var(--admin-text-mute)', borderTop: '1px solid var(--admin-divider)' }}>
+                    O valor digitado é o <strong>total da compra</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>

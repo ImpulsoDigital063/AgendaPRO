@@ -65,6 +65,46 @@ export function monthBoundsBR(ym: string): { start: string; end: string } {
 }
 
 /**
+ * Soma `n` meses a uma data YYYY-MM-DD, GRUDANDO no último dia quando o dia não
+ * existe no mês de destino (v105 · parcelamento de despesa).
+ *
+ * Compra parcelada vencendo 31/08 não tem "31 de setembro". `new Date` resolve
+ * isso transbordando pro dia 1º de outubro — a parcela pularia o mês inteiro e
+ * cairia junto com a seguinte. Aqui ela vira 30/09, que é como boleto e cartão
+ * fazem. Vale pro 29/02 também: 29/01 + 1 mês → 28/02 em ano comum.
+ *
+ * Aritmética de string + monthBoundsBR: sem Date de calendário, sem fuso.
+ * Ex: addMonthsBR('2026-08-31', 1) → '2026-09-30'
+ */
+export function addMonthsBR(ymd: string, n: number): string {
+  const y = Number(ymd.slice(0, 4))
+  const m = Number(ymd.slice(5, 7))
+  const dia = Number(ymd.slice(8, 10))
+  const totalMeses = y * 12 + (m - 1) + n
+  const anoAlvo = Math.floor(totalMeses / 12)
+  const mesAlvo = (totalMeses % 12) + 1
+  const ymAlvo = `${anoAlvo}-${String(mesAlvo).padStart(2, '0')}`
+  const ultimoDia = Number(monthBoundsBR(ymAlvo).end.slice(8, 10))
+  return `${ymAlvo}-${String(Math.min(dia, ultimoDia)).padStart(2, '0')}`
+}
+
+/**
+ * Divide um valor em `n` parcelas com 2 casas, jogando a sobra de centavos na
+ * ÚLTIMA (padrão de banco/maquininha). Garante que a soma bate com o total:
+ * 350 em 3x → [116.67, 116.67, 116.66]. Sem isso, 3×116,67 = 350,01 e a dívida
+ * cadastrada fica maior que a compra.
+ */
+export function dividirParcelas(total: number, n: number): number[] {
+  const centavos = Math.round(total * 100)
+  // Base arredondada normalmente e a ÚLTIMA absorve a diferença — assim as
+  // parcelas exibidas são as "redondas" (116,67) e só a final desconta (116,66).
+  const base = Math.round(centavos / n)
+  const parcelas = Array<number>(n).fill(base)
+  parcelas[n - 1] = centavos - base * (n - 1)
+  return parcelas.map((c) => c / 100)
+}
+
+/**
  * Formata uma data YYYY-MM-DD (ou ISO) como DD/MM/AAAA (formato brasileiro),
  * SEM criar um Date — evita pular 1 dia por fuso (ex: aniversário 1994-09-18
  * com `new Date()` em BRT vira 17/09). Manipula a string direto.

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
-import { todayBR, monthBoundsBR } from '@/lib/date-br'
+import { todayBR, monthBoundsBR, addMonthsBR, dividirParcelas } from '@/lib/date-br'
 
 const VALID_CATEGORIES = new Set([
   'rent', 'products', 'salary', 'utilities', 'marketing', 'taxes', 'other',
@@ -102,6 +102,13 @@ export async function POST(req: NextRequest) {
   const notes = typeof body.notes === 'string' ? body.notes.trim() || null : null
   // v104 · conta a pagar. 'scheduled' = ainda não saiu do caixa.
   const status = body.status === 'scheduled' ? 'scheduled' : 'paid'
+  // v105 · parcelamento (sugestão da Letícia). O valor recebido é sempre o
+  // TOTAL da compra; o servidor divide. Só faz sentido em conta a pagar.
+  const parcelasPedidas = Number(body.installments)
+  const parcelas =
+    status === 'scheduled' && Number.isFinite(parcelasPedidas) && parcelasPedidas > 1
+      ? Math.min(Math.floor(parcelasPedidas), 24)
+      : 1
   const due_date =
     typeof body.due_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.due_date)
       ? body.due_date
@@ -136,24 +143,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Observação muito longa (max 1000)' }, { status: 400 })
   }
 
-  const { data: expense, error } = await supabase
-    .from('expenses')
-    .insert({
+  // Uma linha por parcela, com vencimento mês a mês. addMonthsBR gruda no
+  // último dia quando o dia não existe no mês destino (31/08 → 30/09), senão a
+  // parcela transbordaria pro mês seguinte e cairia junto com a próxima.
+  const valores = parcelas > 1 ? dividirParcelas(amount, parcelas) : [amount]
+  const linhas = valores.map((valor, i) => {
+    const venc = parcelas > 1 ? addMonthsBR(due_date as string, i) : due_date
+    return {
       business_id: business.id,
-      name,
-      amount,
+      name: parcelas > 1 ? `${name} (${i + 1}/${parcelas})` : name,
+      amount: valor,
       category,
       // Programada ainda não saiu do caixa: occurred_at guarda a data PREVISTA
       // (= vencimento) e vira a data real quando ela marcar como paga. Assim o
       // fluxo de caixa realizado, que soma por occurred_at, nunca mistura os dois.
-      occurred_at: status === 'scheduled' ? due_date : occurred_at,
-      due_date,
+      occurred_at: status === 'scheduled' ? venc : occurred_at,
+      due_date: status === 'scheduled' ? venc : due_date,
       status,
       recurring,
       notes,
-    })
-    .select('*')
-    .single()
+    }
+  })
+
+  // Insert em bloco: ou entram todas as parcelas, ou nenhuma. Criar 2 de 3 e
+  // falhar no meio deixaria dívida pela metade no financeiro dela.
+  const { data: criadas, error } = await supabase.from('expenses').insert(linhas).select('*')
+  const expense = criadas?.[0]
 
   if (error) {
     console.error('expenses POST error:', error)
@@ -162,5 +177,5 @@ export async function POST(req: NextRequest) {
 
   revalidatePath('/admin/financeiro')
   revalidatePath('/admin/financeiro/despesas')
-  return NextResponse.json({ ok: true, expense })
+  return NextResponse.json({ ok: true, expense, criadas: criadas?.length ?? 0 })
 }
