@@ -11,6 +11,8 @@ import type { Expense, ExpenseCategory } from '@/lib/types'
 
 type Props = {
   expenses: Expense[]
+  /** v104 · contas vencidas e não pagas de períodos anteriores (sempre visíveis) */
+  vencidas?: Expense[]
   periodo: string
   currentMonth?: string // YYYY-MM
   mesEspecifico?: boolean // true se URL tem ?mes=YYYY-MM
@@ -134,31 +136,74 @@ function formatDate(dateStr: string) {
   })
 }
 
-export default function DespesasView({ expenses, periodo, currentMonth, mesEspecifico }: Props) {
+export default function DespesasView({ expenses, vencidas = [], periodo, currentMonth, mesEspecifico }: Props) {
   const router = useRouter()
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   // Paginação: dono pode acumular dezenas de despesas no mês.
   const [showAllExpenses, setShowAllExpenses] = useState(false)
+  const [pagandoId, setPagandoId] = useState<string | null>(null)
 
-  const total = useMemo(
-    () => expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0),
+  // v104 · pago × programado. Despesa antiga não tem status no banco antigo em
+  // cache — `?? 'paid'` mantém ela no lado realizado, como sempre foi.
+  const pagas = useMemo(
+    () => expenses.filter((e) => (e.status ?? 'paid') === 'paid'),
     [expenses]
   )
 
-  // Agrupamento por categoria
+  // Vencidas de meses anteriores entram junto com as do período, ordenadas pelo
+  // vencimento: o que está atrasado aparece primeiro.
+  const programadas = useMemo(() => {
+    const doPeriodo = expenses.filter((e) => e.status === 'scheduled')
+    return [...vencidas, ...doPeriodo].sort((a, b) =>
+      (a.due_date ?? '').localeCompare(b.due_date ?? '')
+    )
+  }, [expenses, vencidas])
+
+  // O total do período continua sendo o REALIZADO. Conta que ainda vai ser paga
+  // não pode inflar o gasto do mês — senão o número que ela usa pra decidir mente.
+  const total = useMemo(
+    () => pagas.reduce((sum, e) => sum + Number(e.amount || 0), 0),
+    [pagas]
+  )
+  const totalProgramado = useMemo(
+    () => programadas.reduce((sum, e) => sum + Number(e.amount || 0), 0),
+    [programadas]
+  )
+
+  const hoje = todayBR()
+  const atrasadas = programadas.filter((e) => (e.due_date ?? '') < hoje)
+
+  async function marcarComoPaga(expense: Expense) {
+    setPagandoId(expense.id)
+    try {
+      // Pagou hoje: occurred_at vira a data real, que é o que o fluxo de caixa
+      // soma. O due_date fica guardado pra dar pra ver que saiu atrasada.
+      const res = await fetch(`/api/admin/expenses/${expense.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'paid', occurred_at: todayBR() }),
+      })
+      if (res.ok) router.refresh()
+    } finally {
+      setPagandoId(null)
+    }
+  }
+
+  // Agrupamento por categoria — só do que já saiu do caixa
   const byCategory = useMemo(() => {
     const map: Record<ExpenseCategory, number> = {
       rent: 0, products: 0, salary: 0, utilities: 0,
       marketing: 0, taxes: 0, other: 0,
     }
-    for (const e of expenses) {
+    for (const e of pagas) {
       map[e.category] = (map[e.category] || 0) + Number(e.amount || 0)
     }
     return map
-  }, [expenses])
+  }, [pagas])
 
-  const editingExpense = expenses.find((e) => e.id === editingId)
+  const editingExpense =
+    expenses.find((e) => e.id === editingId) ?? vencidas.find((e) => e.id === editingId)
 
   // Mês selecionado pra exibir no hero (label)
   const headerLabel = mesEspecifico && currentMonth
@@ -199,7 +244,8 @@ export default function DespesasView({ expenses, periodo, currentMonth, mesEspec
             {formatPrice(total)}
           </p>
           <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-            {expenses.length} despesa{expenses.length === 1 ? '' : 's'} cadastrada{expenses.length === 1 ? '' : 's'}
+            {pagas.length} despesa{pagas.length === 1 ? '' : 's'} paga{pagas.length === 1 ? '' : 's'}
+            {programadas.length > 0 && ` · ${programadas.length} a pagar`}
           </p>
         </div>
       </div>
@@ -221,6 +267,72 @@ export default function DespesasView({ expenses, periodo, currentMonth, mesEspec
         </svg>
         Adicionar despesa
       </button>
+
+      {/* v104 · A pagar. Fica ACIMA do realizado de propósito: é o que exige
+          ação dela. As atrasadas vêm primeiro, com o vencimento em vermelho. */}
+      {programadas.length > 0 && (
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+              A pagar
+              {atrasadas.length > 0 && (
+                <span className="ml-2 normal-case tracking-normal font-bold" style={{ color: '#DC2626' }}>
+                  · {atrasadas.length} vencida{atrasadas.length > 1 ? 's' : ''}
+                </span>
+              )}
+            </h2>
+            <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text-2)' }}>
+              {formatPrice(totalProgramado)}
+            </span>
+          </div>
+          <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-2">
+            {programadas.map((e) => {
+              const venceu = (e.due_date ?? '') < hoje
+              return (
+                <div
+                  key={e.id}
+                  className="admin-card p-3 flex items-center gap-3 w-full"
+                  style={venceu ? { borderColor: 'rgba(220,38,38,0.35)' } : undefined}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(e.id)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                  >
+                    <span
+                      className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
+                      style={{ background: `${CATEGORY_COLOR[e.category]}1F`, color: CATEGORY_COLOR[e.category] }}
+                    >
+                      {CATEGORY_LETTER[e.category]}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                        {e.name}
+                      </span>
+                      <span className="block text-xs" style={{ color: venceu ? '#DC2626' : 'var(--admin-text-mute)' }}>
+                        {venceu ? 'Venceu ' : 'Vence '}
+                        {e.due_date ? formatDate(e.due_date) : '—'} · {CATEGORY_LABEL[e.category]}
+                      </span>
+                    </span>
+                    <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
+                      {formatPrice(Number(e.amount))}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => marcarComoPaga(e)}
+                    disabled={pagandoId === e.id}
+                    className="px-3 h-9 rounded-xl text-xs font-bold whitespace-nowrap transition-colors disabled:opacity-50 flex-shrink-0"
+                    style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                  >
+                    {pagandoId === e.id ? '...' : 'Paguei'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Breakdown por categoria (só aparece se tem despesa) */}
       {total > 0 && (
@@ -269,7 +381,7 @@ export default function DespesasView({ expenses, periodo, currentMonth, mesEspec
         <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
           Lista · {headerLabel}
         </h2>
-        {expenses.length === 0 ? (
+        {pagas.length === 0 ? (
           <div className="admin-card p-8 text-center">
             <p className="text-sm font-medium" style={{ color: 'var(--admin-text-2)' }}>
               Nenhuma despesa cadastrada neste período
@@ -280,7 +392,7 @@ export default function DespesasView({ expenses, periodo, currentMonth, mesEspec
           </div>
         ) : (
           <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-2">
-            {(showAllExpenses ? expenses : expenses.slice(0, 10)).map((e) => (
+            {(showAllExpenses ? pagas : pagas.slice(0, 10)).map((e) => (
               <button
                 key={e.id}
                 type="button"
@@ -311,7 +423,7 @@ export default function DespesasView({ expenses, periodo, currentMonth, mesEspec
                 </p>
               </button>
             ))}
-            {!showAllExpenses && expenses.length > 10 && (
+            {!showAllExpenses && pagas.length > 10 && (
               <button
                 type="button"
                 onClick={() => setShowAllExpenses(true)}
@@ -322,7 +434,7 @@ export default function DespesasView({ expenses, periodo, currentMonth, mesEspec
                   border: '1px solid var(--admin-divider)',
                 }}
               >
-                Ver mais {expenses.length - 10}
+                Ver mais {pagas.length - 10}
               </button>
             )}
           </div>
@@ -374,6 +486,10 @@ function ExpenseFormModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  // v104 · "já paguei" continua sendo o padrão: quem só lança gasto que já saiu
+  // não sente diferença nenhuma no formulário.
+  const [ehProgramada, setEhProgramada] = useState(expense?.status === 'scheduled')
+  const [dueDate, setDueDate] = useState(expense?.due_date || todayBR())
 
   async function submit() {
     setError(null)
@@ -386,12 +502,20 @@ function ExpenseFormModal({
       setError('Valor inválido')
       return
     }
+    if (ehProgramada && !dueDate) {
+      setError('Escolha a data de vencimento')
+      return
+    }
     setSubmitting(true)
     const body = {
       name: name.trim(),
       amount: amountNum,
       category,
-      occurred_at: occurredAt,
+      // Programada: quem manda é o vencimento — a API grava occurred_at = due_date
+      // e só troca pela data real quando ela marcar como paga.
+      occurred_at: ehProgramada ? dueDate : occurredAt,
+      due_date: ehProgramada ? dueDate : null,
+      status: ehProgramada ? 'scheduled' : 'paid',
       recurring,
       notes: notes.trim(),
     }
@@ -476,6 +600,47 @@ function ExpenseFormModal({
             />
           </div>
 
+          {/* v104 · a escolha que define o resto do formulário. "Já paguei" é o
+              padrão, então quem só registra gasto que já saiu segue no mesmo
+              fluxo de sempre e não precisa aprender nada. */}
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>
+              Situação
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {([
+                { valor: false, titulo: 'Já paguei', ajuda: 'Saiu do caixa' },
+                { valor: true, titulo: 'Vou pagar', ajuda: 'Conta a pagar' },
+              ] as const).map((op) => {
+                const ativo = ehProgramada === op.valor
+                return (
+                  <button
+                    key={op.titulo}
+                    type="button"
+                    onClick={() => setEhProgramada(op.valor)}
+                    className="px-3 py-2 rounded-xl text-left transition-colors"
+                    style={
+                      ativo
+                        ? {
+                            background: 'var(--admin-accent)',
+                            color: '#fff',
+                            border: '1px solid var(--admin-accent)',
+                          }
+                        : {
+                            background: 'var(--admin-surface)',
+                            color: 'var(--admin-text-2)',
+                            border: '1px solid var(--admin-border)',
+                          }
+                    }
+                  >
+                    <span className="block text-sm font-bold">{op.titulo}</span>
+                    <span className="block text-[11px] opacity-80">{op.ajuda}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>
@@ -492,19 +657,19 @@ function ExpenseFormModal({
             </div>
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>
-                Data
+                {ehProgramada ? 'Vencimento' : 'Data'}
               </label>
               <input
                 type="date"
-                value={occurredAt}
-                onChange={(e) => setOccurredAt(e.target.value)}
+                value={ehProgramada ? dueDate : occurredAt}
+                onChange={(e) =>
+                  ehProgramada ? setDueDate(e.target.value) : setOccurredAt(e.target.value)
+                }
                 className="admin-input w-full px-3 py-2.5 text-sm"
               />
-              {/* Aviso quando data e' futura — CIC reportou que cadastrar
-                  despesa com data futura sumia da lista do mes corrente
-                  sem feedback. Cliente leigo achava que o sistema nao
-                  salvou. */}
-              {(() => {
+              {/* Data futura em despesa JÁ PAGA continua sendo caso estranho —
+                  o aviso fica. Na programada isso é o normal, então não avisa. */}
+              {!ehProgramada && (() => {
                 const todayStr = todayBR()
                 if (occurredAt > todayStr) {
                   const future = new Date(occurredAt + 'T00:00:00')
@@ -512,6 +677,7 @@ function ExpenseFormModal({
                     <p className="text-[11px] mt-1.5" style={{ color: '#F59E0B' }}>
                       📅 Despesa agendada para {future.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}.
                       Vai aparecer na lista do mês correspondente.
+                      {' '}Se ainda não pagou, use <strong>Vou pagar</strong> acima.
                     </p>
                   )
                 }

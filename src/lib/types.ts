@@ -283,6 +283,12 @@ export type Expense = {
   notes: string | null
   created_at: string
   updated_at: string
+  // v104 · conta a pagar (sugestão da Letícia · Viva Cacheada · 03/08/2026)
+  // 'paid'      → já saiu do caixa. occurred_at = data real do pagamento.
+  // 'scheduled' → ainda não saiu. due_date = vencimento (obrigatório no banco).
+  // Só o que está 'paid' entra no fluxo de caixa realizado.
+  status?: 'paid' | 'scheduled'
+  due_date?: string | null
 }
 
 export type Coupon = {

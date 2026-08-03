@@ -65,6 +65,20 @@ export default async function DespesasPage({
     .order('occurred_at', { ascending: false })
     .order('created_at', { ascending: false })
 
+  // v104 · contas VENCIDAS e não pagas voltam sempre, mesmo fora do período
+  // escolhido. Conta atrasada que some quando vira o mês é conta esquecida —
+  // e não perder vencimento de vista é o motivo da feature existir.
+  const { data: vencidasForaDoPeriodo } = await supabase
+    .from('expenses')
+    .select('*')
+    .eq('business_id', business.id)
+    .eq('status', 'scheduled')
+    .lt('due_date', startDate)
+    .order('due_date', { ascending: true })
+
+  const idsNoPeriodo = new Set((expenses || []).map((e) => e.id))
+  const vencidas = (vencidasForaDoPeriodo || []).filter((e) => !idsNoPeriodo.has(e.id))
+
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -81,6 +95,7 @@ export default async function DespesasPage({
         <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8">
           <DespesasView
             expenses={(expenses || []) as Expense[]}
+            vencidas={vencidas as Expense[]}
             periodo={periodo}
             currentMonth={currentMonth}
             mesEspecifico={!!mesParam}
