@@ -305,17 +305,24 @@ export default function DespesasView({ expenses, vencidas = [], periodo, current
                     >
                       {CATEGORY_LETTER[e.category]}
                     </span>
+                    {/* Nome sozinho na primeira linha: e por ele que ela sabe
+                        que conta e aquela, e era o que estava sendo cortado
+                        ("Boleto dos produ..."). Valor e vencimento descem pra
+                        segunda linha, que ja existia. Altura do card não muda. */}
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
                         {e.name}
                       </span>
-                      <span className="block text-xs" style={{ color: venceu ? '#DC2626' : 'var(--admin-text-mute)' }}>
+                      <span className="block text-xs truncate" style={{ color: venceu ? '#DC2626' : 'var(--admin-text-mute)' }}>
+                        <span className="font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                          {formatPrice(Number(e.amount))}
+                        </span>
+                        {' · '}
                         {venceu ? 'Venceu ' : 'Vence '}
-                        {e.due_date ? formatDate(e.due_date) : '—'} · {CATEGORY_LABEL[e.category]}
+                        {e.due_date ? formatDate(e.due_date) : '—'}
+                        {' · '}
+                        {CATEGORY_LABEL[e.category]}
                       </span>
-                    </span>
-                    <span className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
-                      {formatPrice(Number(e.amount))}
                     </span>
                   </button>
                   <button
