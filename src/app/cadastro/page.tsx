@@ -5,6 +5,7 @@ import Turnstile from '@/components/Turnstile'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { gaCadastroConcluido } from '@/lib/ga-event'
 
 const CATEGORIES = [
   'Barbearia',
@@ -214,6 +215,10 @@ export default function CadastroPage() {
       router.push('/admin/login')
       return
     }
+
+    // Conversão no GA4 — só o fato + nicho + canal declarado, sem PII.
+    // Depois do login: só conta cadastro que de fato entrou no painel.
+    gaCadastroConcluido({ nicho: category, canal: acquisitionChannel })
 
     setStep('done')
     setLoading(false)
