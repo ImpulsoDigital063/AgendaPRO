@@ -641,8 +641,11 @@ function ExpenseFormModal({
             </div>
           </div>
 
+          {/* min-w-0 nos filhos: item de grid tem min-width:auto e NÃO encolhe
+              abaixo do conteúdo. No iOS o input[type=date] renderiza a data por
+              extenso ("3 de ago. de 2026") e vazava pra fora do modal. */}
           <div className="grid grid-cols-2 gap-2">
-            <div>
+            <div className="min-w-0">
               <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>
                 Valor *
               </label>
@@ -652,10 +655,10 @@ function ExpenseFormModal({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0,00"
-                className="admin-input w-full px-3 py-2.5 text-sm"
+                className="admin-input w-full min-w-0 px-3 py-2.5 text-sm"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="text-[11px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--admin-text-faded)' }}>
                 {ehProgramada ? 'Vencimento' : 'Data'}
               </label>
@@ -665,7 +668,7 @@ function ExpenseFormModal({
                 onChange={(e) =>
                   ehProgramada ? setDueDate(e.target.value) : setOccurredAt(e.target.value)
                 }
-                className="admin-input w-full px-3 py-2.5 text-sm"
+                className="admin-input w-full min-w-0 px-3 py-2.5 text-sm"
               />
               {/* Data futura em despesa JÁ PAGA continua sendo caso estranho —
                   o aviso fica. Na programada isso é o normal, então não avisa. */}
