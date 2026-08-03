@@ -13,7 +13,7 @@ async function verifyOwner(req: Request, id: string) {
   if (!user) return { error: 'unauthenticated', status: 401 as const, supabase }
   const { data: expense } = await supabase
     .from('expenses')
-    .select('id, business_id')
+    .select('id, business_id, status, due_date')
     .eq('id', id)
     .single()
   if (!expense) return { error: 'not_found', status: 404 as const, supabase }
@@ -60,6 +60,25 @@ export async function PATCH(
   }
   if (typeof body.recurring === 'boolean') updates.recurring = body.recurring
   if ('notes' in body) updates.notes = typeof body.notes === 'string' ? body.notes.trim() || null : null
+
+  // v104 · marcar conta programada como paga (ou voltar pra programada).
+  // due_date NÃO é limpo ao pagar: guardar o vencimento junto com a data real
+  // do pagamento é o que permite ver depois que a conta saiu atrasada.
+  if (body.status === 'paid' || body.status === 'scheduled') updates.status = body.status
+  if (typeof body.due_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.due_date)) {
+    updates.due_date = body.due_date
+  }
+  // Voltar pra programada sem vencimento viola o CHECK do banco — barra antes
+  // de bater lá, pra devolver erro legível em vez de 500.
+  if (updates.status === 'scheduled') {
+    const venc = updates.due_date ?? verified.expense?.due_date
+    if (!venc) {
+      return NextResponse.json(
+        { error: 'Conta programada precisa da data de vencimento' },
+        { status: 400 }
+      )
+    }
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'no_changes' }, { status: 400 })

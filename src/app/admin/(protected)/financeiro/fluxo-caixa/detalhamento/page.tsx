@@ -273,6 +273,8 @@ export default async function DetalhamentoPage({
       .from('expenses')
       .select('occurred_at, amount, description, category')
       .eq('business_id', business.id)
+      // v104 · detalhamento do REALIZADO: conta programada não entra aqui.
+      .eq('status', 'paid')
       .gte('occurred_at', from.toISOString().slice(0, 10))
       .lt('occurred_at', to.toISOString().slice(0, 10))
       .order('occurred_at', { ascending: false })

@@ -326,12 +326,15 @@ export const getFocoDoDia = unstable_cache(
         .from('expenses')
         .select('amount')
         .eq('business_id', businessId)
+        // v104 · só saída REALIZADA. Conta programada ainda não saiu do caixa.
+        .eq('status', 'paid')
         .gte('occurred_at', start30Str)
         .lte('occurred_at', todayStr),
       admin
         .from('expenses')
         .select('amount')
         .eq('business_id', businessId)
+        .eq('status', 'paid')
         .gte('occurred_at', start60Str)
         .lte('occurred_at', start31Str),
     ])

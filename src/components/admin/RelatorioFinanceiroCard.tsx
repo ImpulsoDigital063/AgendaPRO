@@ -145,12 +145,15 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .from('expenses')
       .select('amount')
       .eq('business_id', businessId)
+      // v104 · só saída REALIZADA. Conta programada ainda não saiu do caixa.
+      .eq('status', 'paid')
       .gte('occurred_at', firstDayMonthStr)
       .lte('occurred_at', todayStr),
     sb
       .from('expenses')
       .select('amount')
       .eq('business_id', businessId)
+      .eq('status', 'paid')
       .gte('occurred_at', startPrev.toISOString().slice(0, 10))
       .lt('occurred_at', firstDayMonthStr),
     // ─── Recebido HOJE · invoice_payments + appts diretos + sales diretas

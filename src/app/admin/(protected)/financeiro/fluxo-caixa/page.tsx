@@ -230,6 +230,9 @@ export default async function FluxoCaixaPage({
       .from('expenses')
       .select('occurred_at, amount, category')
       .eq('business_id', business.id)
+      // v104 · fluxo REALIZADO conta só o que saiu. Conta programada aparece
+      // na projeção (Parte 2), nunca somada ao realizado.
+      .eq('status', 'paid')
       .gte('occurred_at', fullRangeFromDate)
       .lt('occurred_at', fullRangeToDate),
     // priors
@@ -260,6 +263,7 @@ export default async function FluxoCaixaPage({
       .from('expenses')
       .select('amount')
       .eq('business_id', business.id)
+      .eq('status', 'paid')
       .lt('occurred_at', fullRangeFromDate),
   ])
 

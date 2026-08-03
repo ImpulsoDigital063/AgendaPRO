@@ -143,12 +143,15 @@ export default async function FinanceiroPage({
       .from('expenses')
       .select('amount, category, paid_at, occurred_at')
       .eq('business_id', business.id)
+      // v104 · só saída REALIZADA. Conta programada ainda não saiu do caixa.
+      .eq('status', 'paid')
       .gte('occurred_at', startStr)
       .lte('occurred_at', endStr),
     supabase
       .from('expenses')
       .select('amount, paid_at')
       .eq('business_id', business.id)
+      .eq('status', 'paid')
       .gte('occurred_at', prevStartStr)
       .lte('occurred_at', prevEndStr),
     supabase

@@ -52,7 +52,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'fetch_failed' }, { status: 500 })
   }
 
-  return NextResponse.json({ expenses: expenses || [], from, to })
+  // v104 · contas VENCIDAS e não pagas voltam sempre, mesmo fora do período.
+  // Conta atrasada que some da tela quando vira o mês é conta esquecida — e o
+  // motivo de existir a feature é justamente não perder vencimento de vista.
+  const { data: atrasadas } = await supabase
+    .from('expenses')
+    .select('*')
+    .eq('business_id', business.id)
+    .eq('status', 'scheduled')
+    .lt('due_date', from)
+    .order('due_date', { ascending: true })
+
+  const jaListadas = new Set((expenses || []).map((e) => e.id))
+  const vencidas = (atrasadas || []).filter((e) => !jaListadas.has(e.id))
+
+  return NextResponse.json({
+    expenses: expenses || [],
+    vencidas,
+    from,
+    to,
+  })
 }
 
 /**
@@ -81,6 +100,12 @@ export async function POST(req: NextRequest) {
   const occurred_at = typeof body.occurred_at === 'string' ? body.occurred_at : null
   const recurring = !!body.recurring
   const notes = typeof body.notes === 'string' ? body.notes.trim() || null : null
+  // v104 · conta a pagar. 'scheduled' = ainda não saiu do caixa.
+  const status = body.status === 'scheduled' ? 'scheduled' : 'paid'
+  const due_date =
+    typeof body.due_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.due_date)
+      ? body.due_date
+      : null
 
   if (!name) return NextResponse.json({ error: 'Nome obrigatório' }, { status: 400 })
   if (name.length > 200) {
@@ -96,7 +121,15 @@ export async function POST(req: NextRequest) {
   if (!VALID_CATEGORIES.has(category)) {
     return NextResponse.json({ error: 'Categoria inválida' }, { status: 400 })
   }
-  if (!occurred_at || !/^\d{4}-\d{2}-\d{2}$/.test(occurred_at)) {
+  // Programada é definida pelo VENCIMENTO; paga, pela data em que saiu.
+  if (status === 'scheduled') {
+    if (!due_date) {
+      return NextResponse.json(
+        { error: 'Conta programada precisa da data de vencimento' },
+        { status: 400 }
+      )
+    }
+  } else if (!occurred_at || !/^\d{4}-\d{2}-\d{2}$/.test(occurred_at)) {
     return NextResponse.json({ error: 'Data inválida (YYYY-MM-DD)' }, { status: 400 })
   }
   if (notes && notes.length > 1000) {
@@ -110,7 +143,12 @@ export async function POST(req: NextRequest) {
       name,
       amount,
       category,
-      occurred_at,
+      // Programada ainda não saiu do caixa: occurred_at guarda a data PREVISTA
+      // (= vencimento) e vira a data real quando ela marcar como paga. Assim o
+      // fluxo de caixa realizado, que soma por occurred_at, nunca mistura os dois.
+      occurred_at: status === 'scheduled' ? due_date : occurred_at,
+      due_date,
+      status,
       recurring,
       notes,
     })
