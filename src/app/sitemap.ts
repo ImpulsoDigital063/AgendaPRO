@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { RESPOSTAS } from '@/lib/respostas'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 const BASE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.agendapro.net.br').replace(/\/$/, '')
@@ -33,6 +34,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/estetica`, lastModified: agora, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/nail`, lastModified: agora, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/lash`, lastModified: agora, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${BASE}/respostas`, lastModified: agora, changeFrequency: 'weekly', priority: 0.8 },
+    ...RESPOSTAS.map((r) => ({
+      url: `${BASE}/respostas/${r.slug}`,
+      lastModified: agora,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
     { url: `${BASE}/cadastro`, lastModified: agora, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${BASE}/termos`, lastModified: agora, changeFrequency: 'yearly', priority: 0.2 },
     { url: `${BASE}/privacidade`, lastModified: agora, changeFrequency: 'yearly', priority: 0.2 },

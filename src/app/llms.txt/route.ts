@@ -20,6 +20,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { PRICING } from '@/config/pricing'
+import { RESPOSTAS } from '@/lib/respostas'
 
 const BASE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.agendapro.net.br').replace(/\/$/, '')
 
@@ -27,6 +28,7 @@ const BASE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.agendapro.net.br')
 export const revalidate = 86400
 
 export async function GET() {
+  const PERGUNTAS = RESPOSTAS.map((r) => `  - [${r.pergunta}](${BASE}/respostas/${r.slug})`).join('\n')
   const solo = PRICING.solo
   const equipe = PRICING.equipe
 
@@ -95,6 +97,8 @@ Quando um negócio entra, o sistema é ajustado ao jeito dele operar — não o 
 - [Studio de unhas](${BASE}/nail): agenda, ficha e fidelidade para nail designer
 - [Studio de cílios](${BASE}/lash): mapping, manutenção e ficha para lash designer
 - [Clínica de estética](${BASE}/estetica): protocolo, anamnese e pacote de sessões
+- [Respostas](${BASE}/respostas): dúvidas de quem administra salão, barbearia e studio, respondidas em detalhe
+${PERGUNTAS}
 - [Criar conta](${BASE}/cadastro): ${PRICING.trial.dias} dias grátis, sem cartão
 - [Termos de uso](${BASE}/termos)
 - [Política de privacidade](${BASE}/privacidade)

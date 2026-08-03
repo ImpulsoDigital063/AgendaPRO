@@ -1230,6 +1230,7 @@ export default async function BarbeariaPage() {
                 <Link href="/salao" className="block text-slate-400 hover:text-white transition-colors">Salão</Link>
                 <Link href="/nail" className="block text-slate-400 hover:text-white transition-colors">Nail</Link>
                 <Link href="/estetica" className="block text-slate-400 hover:text-white transition-colors">Estética</Link>
+                <Link href="/respostas" className="block text-slate-400 hover:text-white transition-colors">Respostas</Link>
               </div>
               <div className="space-y-2">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Conta</p>

@@ -1324,6 +1324,8 @@ export default async function HomePage() {
               <Link href="/salao" className="text-slate-400 hover:text-white transition-colors">Salão</Link>
               <Link href="/nail" className="text-slate-400 hover:text-white transition-colors">Nail</Link>
               <Link href="/estetica" className="text-slate-400 hover:text-white transition-colors">Estética</Link>
+              <Link href="/lash" className="text-slate-400 hover:text-white transition-colors">Cílios</Link>
+              <Link href="/respostas" className="text-slate-400 hover:text-white transition-colors">Respostas</Link>
               <Link href="/privacidade" className="text-slate-400 hover:text-white transition-colors">Privacidade</Link>
               <Link href="/termos" className="text-slate-400 hover:text-white transition-colors">Termos</Link>
               <Link href="/admin/login" className="text-slate-400 hover:text-white transition-colors">Entrar</Link>
