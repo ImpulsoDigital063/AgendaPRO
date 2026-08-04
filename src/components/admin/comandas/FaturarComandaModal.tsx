@@ -110,6 +110,12 @@ export default function FaturarComandaModal({
     return Number.isFinite(n) && n >= 0 ? n : 0
   })()
   const valorServicoEfetivo = podeEditarValor ? valorServico : appointmentTotal
+  /* Regra cravada por Eduardo em 04/08: serviço criado SEM valor fixo tem o
+     preço definido na hora de fechar a comanda; serviço com valor já
+     definido só é ajustado se o final ficou diferente. A página pública já
+     mostra 'sob consulta' pra esses — aqui fecha o outro lado do fluxo.
+     DN Diogo (instalação orçada por metragem) é o caso que originou. */
+  const servicoSemValorFixo = appointmentTotal <= 0
 
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
@@ -380,7 +386,7 @@ export default function FaturarComandaModal({
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-                    Serviço
+                    {servicoSemValorFixo ? 'Serviço · valor a definir' : 'Serviço'}
                   </p>
                   <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{appointmentServiceName}</p>
                 </div>
@@ -403,6 +409,7 @@ export default function FaturarComandaModal({
                       placeholder="0,00"
                       aria-label="Valor do serviço"
                       className="admin-input w-full text-sm font-bold tabular-nums text-right py-1.5 pl-8 pr-2.5"
+                      style={servicoSemValorFixo ? { borderColor: '#F59E0B', boxShadow: '0 0 0 3px rgba(245,158,11,0.12)' } : undefined}
                     />
                   </div>
                 ) : (
@@ -413,9 +420,11 @@ export default function FaturarComandaModal({
               </div>
               {podeEditarValor && (
                 <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-faded)' }}>
-                  {valorServicoEfetivo > 0
-                    ? 'Ajuste se o valor final ficou diferente do combinado.'
-                    : '⚠ Sem valor, este atendimento não entra no seu faturamento nem gera comissão.'}
+                  {valorServicoEfetivo <= 0
+                    ? '⚠ Sem valor, este atendimento não entra no seu faturamento nem gera comissão.'
+                    : servicoSemValorFixo
+                      ? 'Serviço sem preço fixo — o valor é o que você cobrou neste atendimento.'
+                      : 'Ajuste se o valor final ficou diferente do combinado.'}
                 </p>
               )}
             </div>
