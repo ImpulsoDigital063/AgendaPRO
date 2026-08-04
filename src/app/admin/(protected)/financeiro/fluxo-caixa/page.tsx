@@ -6,7 +6,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import FluxoCaixaTable, { type CashMonth, type MonthCol } from '@/components/admin/financeiro/FluxoCaixaTable'
 import FluxoCaixaViewSelector from '@/components/admin/financeiro/FluxoCaixaViewSelector'
 import ProjecaoFluxo, { type LinhaProjecao, type SemanaProjecao } from '@/components/admin/financeiro/ProjecaoFluxo'
-import { todayBR, addDaysBR } from '@/lib/date-br'
+import { todayBR, addDaysBR, addMonthsBR, monthBoundsBR } from '@/lib/date-br'
 
 // Source of truth do breakdown:
 // - invoice_payments cobre split + comanda (cada linha = 1 método com amount próprio)
@@ -405,15 +405,25 @@ export default async function FluxoCaixaPage({
      Datas por date-br: contar dinheiro por dia com data de servidor joga
      tudo depois das 21h pro dia seguinte (Vercel em UTC). */
   const HOJE = todayBR()
-  /* 28 dias = 4 semanas EXATAS (04/08). Com 30 sobravam 2 dias soltos: as
-     contas desses dias entravam no total "vai sair" mas nao cabiam em
-     nenhuma linha da tabela, e o dono somava as semanas e chegava num numero
-     diferente do tile — R$4.251,67 contra R$4.468,34 na conta da Viva
-     Cacheada. Com 4 semanas fechadas, tile e tabela batem, e a media das
-     ultimas 4 semanas passa a cobrir exatamente a mesma janela. */
-  const SEMANAS_PROJECAO = 4
-  const DIAS_PROJECAO = SEMANAS_PROJECAO * 7
-  const FIM_PROJECAO = addDaysBR(HOJE, DIAS_PROJECAO)
+  /* PROJEÇÃO POR MÊS, igual à tabela de cima (Eduardo, 04/08).
+     ─────────────────────────────────────────────────────────────────
+     Antes era janela móvel de 4 semanas, que andava um dia por dia e
+     atravessava a virada do mês. A tabela do realizado logo acima é
+     MENSAL (MAI/JUN/JUL/AGO) — então quem olhava as duas comparava
+     períodos diferentes sem perceber, e a projeção nunca respondia
+     "como eu fecho agosto?", que é a pergunta que o dono faz quando
+     olha aluguel e parcela.
+
+     Agora são 4 colunas de mês, mesma linguagem da tabela. O mês
+     corrente conta do DIA DE HOJE em diante: o que já aconteceu nele
+     está no realizado acima, e somar de novo seria contar duas vezes. */
+  const MESES_PROJECAO = 4
+  const meses = Array.from({ length: MESES_PROJECAO }, (_, i) => {
+    const ym = addMonthsBR(`${HOJE.slice(0, 8)}01`, i).slice(0, 7)
+    const b = monthBoundsBR(ym)
+    return { ym, ini: i === 0 ? HOJE : b.start, fim: b.end }
+  })
+  const FIM_PROJECAO = meses[meses.length - 1].fim
 
   const [futurosRes, comandasAbertasRes, contasRes, mediaRes] = await Promise.all([
     /* Atendimento marcado e ainda não pago. NÃO filtra invoice_item_id
@@ -494,23 +504,24 @@ export default async function FluxoCaixaPage({
     .filter((c) => vencimento(c) && vencimento(c) < HOJE)
     .reduce((s, c) => s + Number(c.amount ?? 0), 0)
 
-  const entradasPrevistas = futuros.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
-  const saidasPrevistas = contasNoPeriodo.reduce((s, c) => s + Number(c.amount ?? 0), 0)
+
 
   /* Semanas: só as que cabem INTEIRAS na janela. A última linha dizia
      "01/09 a 07/09" mas contava só até 03/09, porque o corte é de 30 dias —
      rótulo prometendo período que o número não cobre. */
-  const semanas: SemanaProjecao[] = []
-  for (let i = 0; i < SEMANAS_PROJECAO; i++) {
-    const ini = addDaysBR(HOJE, i * 7)
-    const fim = addDaysBR(HOJE, i * 7 + 6)
-    const dentro = (d: string) => d >= ini && d <= fim
-    semanas.push({
-      rotulo: i === 0 ? 'Próximos 7 dias' : `${ini.slice(8)}/${ini.slice(5, 7)} a ${fim.slice(8)}/${fim.slice(5, 7)}`,
+  const NOMES_MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+  const linhasMes: SemanaProjecao[] = meses.map((m, i) => {
+    const dentro = (d: string) => d >= m.ini && d <= m.fim
+    const nome = `${NOMES_MES[Number(m.ym.slice(5, 7)) - 1]}/${m.ym.slice(2, 4)}`
+    return {
+      // O primeiro é parcial (começa hoje) e o rótulo diz isso — senão o dono
+      // compara "Ago" da projeção com "Ago" da tabela acima e estranha a
+      // diferença, que é justamente a parte já realizada.
+      rotulo: i === 0 ? `${nome} · do dia ${Number(HOJE.slice(8))} em diante` : nome,
       entradas: futuros.filter((a) => dentro(a.appointment_date)).reduce((s, a) => s + Number(a.total_price ?? 0), 0),
       saidas: contasNoPeriodo.filter((c) => dentro(vencimento(c))).reduce((s, c) => s + Number(c.amount ?? 0), 0),
-    })
-  }
+    }
+  })
 
   const proximas: LinhaProjecao[] = [
     ...futuros
@@ -551,16 +562,16 @@ export default async function FluxoCaixaPage({
           </p>
 
           <ProjecaoFluxo
-            entradasPrevistas={entradasPrevistas}
+            entradasPrevistas={linhasMes[0]?.entradas ?? 0}
             mediaMensal={mediaMensal}
             devendo={totalDevendo}
             devendoDesde={devendo.length ? devendo.map((d) => d.desde).sort()[0] : null}
             devendoQtd={devendo.length}
-            saidasPrevistas={saidasPrevistas}
+            saidasPrevistas={linhasMes[0]?.saidas ?? 0}
             atrasadas={atrasadas}
-            semanas={semanas}
+            meses={linhasMes}
             proximas={proximas}
-            semanas4={SEMANAS_PROJECAO}
+            rotuloMesAtual={NOMES_MES[Number(HOJE.slice(5, 7)) - 1]}
           />
 
         </div>

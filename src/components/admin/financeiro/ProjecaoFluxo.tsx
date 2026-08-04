@@ -71,9 +71,9 @@ export default function ProjecaoFluxo({
   devendoQtd,
   saidasPrevistas,
   atrasadas,
-  semanas,
+  meses,
   proximas,
-  semanas4,
+  rotuloMesAtual,
 }: {
   entradasPrevistas: number
   /** Media do que entrou por mes nas ultimas 4 semanas. Sem isso o bloco
@@ -88,11 +88,11 @@ export default function ProjecaoFluxo({
   /** Contas com vencimento já passado e ainda não pagas. Aparecem separadas:
    *  misturar atrasado com futuro esconde justamente o que precisa de ação. */
   atrasadas: number
-  semanas: SemanaProjecao[]
+  /** Uma linha por mes, igual as colunas da tabela do realizado. */
+  meses: SemanaProjecao[]
   proximas: LinhaProjecao[]
-  /** Quantas semanas fechadas a janela cobre. Rotulo em SEMANAS, nao em dias:
-   *  e assim que o dono pensa, e garante que tile e tabela cubram o mesmo. */
-  semanas4: number
+  /** Nome do mes corrente (Ago, Set...) pro titulo e pros tiles. */
+  rotuloMesAtual: string
 }) {
   const sobraHistorica = mediaMensal - saidasPrevistas
   const vazio = entradasPrevistas === 0 && saidasPrevistas === 0 && atrasadas === 0 && devendo === 0
@@ -101,7 +101,7 @@ export default function ProjecaoFluxo({
     <section className="mt-8">
       <div className="flex items-baseline justify-between gap-3 mb-1">
         <h2 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
-          Projeção · próximas {semanas4} semanas
+          Projeção · resto de {rotuloMesAtual} e próximos meses
         </h2>
       </div>
       <p className="text-[11px] mb-4" style={{ color: 'var(--admin-text-faded)' }}>
@@ -118,7 +118,7 @@ export default function ProjecaoFluxo({
           style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
         >
           <p className="text-sm" style={{ color: 'var(--admin-text-2)' }}>
-            Nada previsto pras próximas {semanas4} semanas.
+            Nada previsto pros próximos meses.
           </p>
           <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
             Atendimento marcado e conta a pagar cadastrada aparecem aqui automaticamente.
@@ -128,8 +128,8 @@ export default function ProjecaoFluxo({
         <>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[
-              { r: 'Já marcado', v: entradasPrevistas, cor: '#10B981' },
-              { r: 'Vai sair', v: saidasPrevistas, cor: '#EF4444' },
+              { r: `Já marcado · ${rotuloMesAtual}`, v: entradasPrevistas, cor: '#10B981' },
+              { r: `Vai sair · ${rotuloMesAtual}`, v: saidasPrevistas, cor: '#EF4444' },
               { r: 'Sobra pelo histórico', v: sobraHistorica, cor: sobraHistorica >= 0 ? '#3B82F6' : '#EF4444' },
             ].map((t) => (
               <div
@@ -180,12 +180,12 @@ export default function ProjecaoFluxo({
             </div>
           )}
 
-          {semanas.length > 0 && (
+          {meses.length > 0 && (
             <div
               className="rounded-2xl mt-3 overflow-hidden"
               style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
             >
-              {semanas.map((s, i) => {
+              {meses.map((s, i) => {
                 const sobra = s.entradas - s.saidas
                 return (
                   <div
