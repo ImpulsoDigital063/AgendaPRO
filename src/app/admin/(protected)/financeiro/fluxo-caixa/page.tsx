@@ -5,6 +5,8 @@ import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import FluxoCaixaTable, { type CashMonth, type MonthCol } from '@/components/admin/financeiro/FluxoCaixaTable'
 import FluxoCaixaViewSelector from '@/components/admin/financeiro/FluxoCaixaViewSelector'
+import ProjecaoFluxo, { type LinhaProjecao, type SemanaProjecao } from '@/components/admin/financeiro/ProjecaoFluxo'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 
 // Source of truth do breakdown:
 // - invoice_payments cobre split + comanda (cada linha = 1 método com amount próprio)
@@ -399,6 +401,89 @@ export default async function FluxoCaixaPage({
     acc = row.saldoFinal
   }
 
+  /* ─── PROJEÇÃO (Parte 2 · pedido da Viva Cacheada 03/08) ──────────────
+     Datas por date-br: contar dinheiro por dia com data de servidor joga
+     tudo depois das 21h pro dia seguinte (Vercel em UTC). */
+  const HOJE = todayBR()
+  const DIAS_PROJECAO = 30
+  const FIM_PROJECAO = addDaysBR(HOJE, DIAS_PROJECAO)
+
+  const [futurosRes, comandasAbertasRes, contasRes] = await Promise.all([
+    // Atendimento marcado, ainda não pago e fora de comanda. Com invoice_item_id
+    // o valor já está contado na comanda aberta — somar os dois seria dobrar.
+    sb
+      .from('appointments')
+      .select('appointment_date, client_name, service_name, total_price')
+      .eq('business_id', business.id)
+      .neq('status', 'cancelled')
+      .is('paid_at', null)
+      .is('invoice_item_id', null)
+      .gte('appointment_date', HOJE)
+      .lte('appointment_date', FIM_PROJECAO),
+    sb
+      .from('invoices')
+      .select('total')
+      .eq('business_id', business.id)
+      .eq('status', 'open'),
+    sb
+      .from('expenses')
+      .select('due_date, occurred_at, name, amount')
+      .eq('business_id', business.id)
+      .eq('status', 'scheduled'),
+  ])
+
+  const futuros = futurosRes.data ?? []
+  const comandasAbertas = (comandasAbertasRes.data ?? []).reduce((s, i) => s + Number(i.total ?? 0), 0)
+  const contas = contasRes.data ?? []
+
+  const vencimento = (c: { due_date: string | null; occurred_at: string | null }) =>
+    (c.due_date || c.occurred_at || '').slice(0, 10)
+
+  const contasNoPeriodo = contas.filter((c) => {
+    const d = vencimento(c)
+    return d >= HOJE && d <= FIM_PROJECAO
+  })
+  // Vencidas ficam de fora do total futuro e aparecem em destaque próprio:
+  // misturar as duas esconde o que precisa de ação hoje.
+  const atrasadas = contas
+    .filter((c) => vencimento(c) && vencimento(c) < HOJE)
+    .reduce((s, c) => s + Number(c.amount ?? 0), 0)
+
+  const entradasPrevistas =
+    futuros.reduce((s, a) => s + Number(a.total_price ?? 0), 0) + comandasAbertas
+  const saidasPrevistas = contasNoPeriodo.reduce((s, c) => s + Number(c.amount ?? 0), 0)
+
+  const semanas: SemanaProjecao[] = []
+  for (let i = 0; i < DIAS_PROJECAO / 7; i++) {
+    const ini = addDaysBR(HOJE, i * 7)
+    const fim = addDaysBR(HOJE, i * 7 + 6)
+    const dentro = (d: string) => d >= ini && d <= fim
+    semanas.push({
+      rotulo: i === 0 ? 'Esta semana' : `${ini.slice(8)}/${ini.slice(5, 7)} a ${fim.slice(8)}/${fim.slice(5, 7)}`,
+      entradas: futuros.filter((a) => dentro(a.appointment_date)).reduce((s, a) => s + Number(a.total_price ?? 0), 0),
+      saidas: contasNoPeriodo.filter((c) => dentro(vencimento(c))).reduce((s, c) => s + Number(c.amount ?? 0), 0),
+    })
+  }
+
+  const proximas: LinhaProjecao[] = [
+    ...futuros
+      .filter((a) => Number(a.total_price ?? 0) > 0)
+      .map((a) => ({
+        data: a.appointment_date as string,
+        descricao: `${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Atendimento'}`,
+        valor: Number(a.total_price ?? 0),
+        tipo: 'entrada' as const,
+      })),
+    ...contasNoPeriodo.map((c) => ({
+      data: vencimento(c),
+      descricao: c.name as string,
+      valor: Number(c.amount ?? 0),
+      tipo: 'saida' as const,
+    })),
+  ]
+    .sort((a, b) => a.data.localeCompare(b.data))
+    .slice(0, 12)
+
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
       <div className="relative">
@@ -417,6 +502,21 @@ export default async function FluxoCaixaPage({
           <p className="text-[11px] mt-3 text-center" style={{ color: 'var(--admin-text-faded)' }}>
             Clica em <b>Receitas</b> ou <b>Despesas</b> pra ver breakdown por método/categoria · Saldo Inicial = Saldo Final do período anterior
           </p>
+
+          <ProjecaoFluxo
+            entradasPrevistas={entradasPrevistas}
+            saidasPrevistas={saidasPrevistas}
+            atrasadas={atrasadas}
+            semanas={semanas}
+            proximas={proximas}
+            dias={DIAS_PROJECAO}
+          />
+
+          {comandasAbertas > 0 && (
+            <p className="text-[11px] mt-2 text-center" style={{ color: 'var(--admin-text-faded)' }}>
+              Comandas em aberto entram no “vai entrar” sem data marcada — por isso não aparecem na quebra por semana.
+            </p>
+          )}
         </div>
       </div>
     </main>
