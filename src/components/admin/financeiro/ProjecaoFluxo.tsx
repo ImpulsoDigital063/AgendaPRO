@@ -172,7 +172,7 @@ export default function ProjecaoFluxo({
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.28)' }}
             >
               <span className="text-xs font-semibold" style={{ color: '#DC2626' }}>
-                Contas vencidas e não pagas
+                Contas de meses anteriores ainda não pagas
               </span>
               <span className="text-sm font-black tabular-nums" style={{ color: '#DC2626' }}>
                 {brl(atrasadas)}

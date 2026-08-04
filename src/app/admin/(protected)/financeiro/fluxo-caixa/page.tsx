@@ -418,10 +418,23 @@ export default async function FluxoCaixaPage({
      corrente conta do DIA DE HOJE em diante: o que já aconteceu nele
      está no realizado acima, e somar de novo seria contar duas vezes. */
   const MESES_PROJECAO = 4
+  /* O mês corrente conta do DIA 1 (Eduardo, 04/08), não de hoje: só assim a
+     linha "Ago" daqui embaixo é comparável com a coluna "AGO/26" da tabela do
+     realizado logo acima.
+
+     Não há dupla contagem com o realizado: lá em cima entra o que foi PAGO,
+     aqui só o que continua pendente — atendimento sem pagamento e conta com
+     status `scheduled`. Um boleto que venceu dia 2 e não foi pago é dinheiro
+     que ainda vai sair em agosto, e tem que aparecer na linha de agosto.
+
+     Por consequência, "contas vencidas" passou a contar só as de meses
+     ANTERIORES: as deste mês já estão na linha do mês, e somar de novo faria
+     a soma das linhas divergir do total. */
+  const INICIO_MES = monthBoundsBR(HOJE.slice(0, 7)).start
   const meses = Array.from({ length: MESES_PROJECAO }, (_, i) => {
     const ym = addMonthsBR(`${HOJE.slice(0, 8)}01`, i).slice(0, 7)
     const b = monthBoundsBR(ym)
-    return { ym, ini: i === 0 ? HOJE : b.start, fim: b.end }
+    return { ym, ini: b.start, fim: b.end }
   })
   const FIM_PROJECAO = meses[meses.length - 1].fim
 
@@ -444,7 +457,7 @@ export default async function FluxoCaixaPage({
       .eq('business_id', business.id)
       .neq('status', 'cancelled')
       .is('paid_at', null)
-      .gte('appointment_date', HOJE)
+      .gte('appointment_date', INICIO_MES)
       .lte('appointment_date', FIM_PROJECAO),
     /* Comanda aberta cujo atendimento já PASSOU: isso é cliente que
        atendeu e não pagou — cobrança, não previsão. Some do "vai entrar" e
@@ -496,12 +509,12 @@ export default async function FluxoCaixaPage({
 
   const contasNoPeriodo = contas.filter((c) => {
     const d = vencimento(c)
-    return d >= HOJE && d <= FIM_PROJECAO
+    return d >= INICIO_MES && d <= FIM_PROJECAO
   })
   // Vencidas ficam de fora do total futuro e aparecem em destaque próprio:
   // misturar as duas esconde o que precisa de ação hoje.
   const atrasadas = contas
-    .filter((c) => vencimento(c) && vencimento(c) < HOJE)
+    .filter((c) => vencimento(c) && vencimento(c) < INICIO_MES)
     .reduce((s, c) => s + Number(c.amount ?? 0), 0)
 
 
@@ -517,7 +530,7 @@ export default async function FluxoCaixaPage({
       // O primeiro é parcial (começa hoje) e o rótulo diz isso — senão o dono
       // compara "Ago" da projeção com "Ago" da tabela acima e estranha a
       // diferença, que é justamente a parte já realizada.
-      rotulo: i === 0 ? `${nome} · do dia ${Number(HOJE.slice(8))} em diante` : nome,
+      rotulo: nome,
       entradas: futuros.filter((a) => dentro(a.appointment_date)).reduce((s, a) => s + Number(a.total_price ?? 0), 0),
       saidas: contasNoPeriodo.filter((c) => dentro(vencimento(c))).reduce((s, c) => s + Number(c.amount ?? 0), 0),
     }
