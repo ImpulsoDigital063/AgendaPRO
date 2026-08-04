@@ -109,7 +109,7 @@ export default function FaturarComandaModal({
     const n = Number(limpo)
     return Number.isFinite(n) && n >= 0 ? n : 0
   })()
-  const valorServicoEfetivo = podeEditarValor ? valorServico : appointmentTotal
+  const valorServicoEfetivo = podeEditarValor && appointmentTotal <= 0 ? valorServico : appointmentTotal
   /* Regra cravada por Eduardo em 04/08: serviço criado SEM valor fixo tem o
      preço definido na hora de fechar a comanda; serviço com valor já
      definido só é ajustado se o final ficou diferente. A página pública já
@@ -274,7 +274,7 @@ export default function FaturarComandaModal({
     const body: Record<string, unknown> = {
       appointmentIds: [appointmentId],
       // Rota ignora quando igual ao atual; grava antes de montar os itens.
-      ...(podeEditarValor ? { appointmentTotals: { [appointmentId]: valorServicoEfetivo } } : {}),
+      ...(podeEditarValor && servicoSemValorFixo ? { appointmentTotals: { [appointmentId]: valorServicoEfetivo } } : {}),
       productSales: cart.map((l) => ({
         product_id: l.product_id,
         product_name: l.product_name,
@@ -390,7 +390,7 @@ export default function FaturarComandaModal({
                   </p>
                   <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{appointmentServiceName}</p>
                 </div>
-                {podeEditarValor ? (
+                {podeEditarValor && servicoSemValorFixo ? (
                   /* Valor definido na hora do atendimento (DN Diogo: instalação
                      orçada por metragem; salão: cabelo que pediu mais produto).
                      Mesmo campo em mobile e desktop — a necessidade é a mesma. */
@@ -418,7 +418,7 @@ export default function FaturarComandaModal({
                   </p>
                 )}
               </div>
-              {podeEditarValor && (
+              {podeEditarValor && servicoSemValorFixo && (
                 <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-faded)' }}>
                   {valorServicoEfetivo <= 0
                     ? '⚠ Sem valor, este atendimento não entra no seu faturamento nem gera comissão.'

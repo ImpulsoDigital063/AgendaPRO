@@ -129,7 +129,12 @@ export default function PaymentMethodModal({
   })()
 
   // O que vale pra taxa de cartão e pro que vai ser gravado.
-  const valorEfetivo = permiteEditarValor ? valorDigitado : (totalPrice ?? null)
+  /* Regra 04/08: o campo so existe pra servico SEM valor fixo. Atendimento
+     com preco definido volta a exibir o valor como texto, como sempre foi —
+     Eduardo: "voltar ao normal e alterar somente a situacao do DN". */
+  const semValorFixo = totalPrice == null || totalPrice <= 0
+  const campoValor = permiteEditarValor && semValorFixo
+  const valorEfetivo = campoValor ? valorDigitado : (totalPrice ?? null)
 
   if (!open || !portalReady) return null
 
@@ -141,14 +146,14 @@ export default function PaymentMethodModal({
   // travar o botão quebraria a operação dela (medido em 03/08: 3 pagos, 3
   // em aberto). Bloquear um cliente pagante pra proteger o hábito de outro é
   // a troca errada.
-  const semValor = permiteEditarValor && (valorEfetivo == null || valorEfetivo <= 0)
+  const semValor = campoValor && (valorEfetivo == null || valorEfetivo <= 0)
 
   function handleMethodClick(method: NonNullable<PaymentMethodChoice>) {
     if (method === 'card' && businessId) {
       setCardStep(true)
       return
     }
-    onChoose(method, undefined, permiteEditarValor ? valorEfetivo ?? undefined : undefined)
+    onChoose(method, undefined, campoValor ? valorEfetivo ?? undefined : undefined)
   }
 
   const priceLabel = formatPrice(totalPrice)
@@ -178,7 +183,7 @@ export default function PaymentMethodModal({
             clientName={clientName}
             loading={loading}
             onBack={() => setCardStep(false)}
-            onConfirm={(details) => onChoose('card', details, permiteEditarValor ? valorEfetivo ?? undefined : undefined)}
+            onConfirm={(details) => onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined)}
             onClose={onClose}
           />
         ) : (
@@ -199,7 +204,7 @@ export default function PaymentMethodModal({
                 >
                   {heading ?? `Como ${clientName} pagou?`}
                 </h3>
-                {priceLabel && !permiteEditarValor && (
+                {priceLabel && !campoValor && (
                   <p
                     className="text-sm font-semibold mt-1.5 tabular-nums"
                     style={{ color: 'var(--admin-text-2, #475569)' }}
@@ -222,7 +227,7 @@ export default function PaymentMethodModal({
             {/* Valor do atendimento — só quando o chamador liga a edição.
                 Mesmo campo em mobile e desktop: a necessidade é a mesma nos
                 dois (dono no celular, recepção no computador). */}
-            {permiteEditarValor && (
+            {campoValor && (
               <div className="px-5 pb-3">
                 <label
                   className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5"
