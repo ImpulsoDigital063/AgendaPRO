@@ -15,12 +15,30 @@
    rótulo próprio, e NUNCA entra na conta do realizado — dono que soma
    previsão com caixa toma decisão em cima de dinheiro que não tem.
 
-   Entra como ENTRADA: atendimento marcado e ainda não pago, e comanda
-   aberta. Cliente pode não vir e comanda pode ser cancelada — por isso a
-   palavra é "previsto", nunca "a receber garantido".
-
    Entra como SAÍDA: despesa com status `scheduled` e vencimento no
-   período. Essa é a parte firme da projeção: já foi comprado.
+   período. Essa é a parte firme: já foi comprado, valor e data conhecidos.
+
+   ⚠️ POR QUE O RÓTULO É "JÁ MARCADO" E NÃO "VAI ENTRAR" (04/08/2026)
+   ──────────────────────────────────────────────────────────────────
+   Backtest contra o histórico real, simulando o que a tela teria dito em
+   cada segunda-feira:
+
+     Olímpio        0% · 38% · 86% · 16%  do que de fato entrou
+     Viva Cacheada 12% · 86% · 100%
+     Rosy          35% · 26% · 161%
+
+   A causa apareceu no dado: a antecedência MEDIANA com que a cliente
+   marca é de 1 a 2 dias em todos os negócios da base. Não é jeito de usar
+   de um cliente — é o setor. Beleza se marca em cima da hora.
+
+   Ou seja: o lado da entrada enxerga dois dias, não trinta. Chamar aquilo
+   de "vai entrar" e subtrair as contas do mês produzia uma "sobra
+   prevista" negativa por construção — a Viva Cacheada abriria a tela e
+   veria -R$ 3.288 sem estar no vermelho.
+
+   Por isso a tela agora diz o que o número é ("já marcado") e coloca ao
+   lado a média real das últimas 4 semanas. O dono compara os dois e
+   decide. O sistema não finge que sabe o futuro.
    ═══════════════════════════════════════════════════════════════ */
 
 export type LinhaProjecao = {
@@ -47,6 +65,7 @@ function dataCurta(ymd: string) {
 
 export default function ProjecaoFluxo({
   entradasPrevistas,
+  mediaMensal,
   saidasPrevistas,
   atrasadas,
   semanas,
@@ -54,6 +73,9 @@ export default function ProjecaoFluxo({
   dias,
 }: {
   entradasPrevistas: number
+  /** Media do que entrou por mes nas ultimas 4 semanas. Sem isso o bloco
+   *  mente por omissao — ver comentario do topo. */
+  mediaMensal: number
   saidasPrevistas: number
   /** Contas com vencimento já passado e ainda não pagas. Aparecem separadas:
    *  misturar atrasado com futuro esconde justamente o que precisa de ação. */
@@ -62,7 +84,7 @@ export default function ProjecaoFluxo({
   proximas: LinhaProjecao[]
   dias: number
 }) {
-  const saldo = entradasPrevistas - saidasPrevistas
+  const sobraHistorica = mediaMensal - saidasPrevistas
   const vazio = entradasPrevistas === 0 && saidasPrevistas === 0 && atrasadas === 0
 
   return (
@@ -73,7 +95,11 @@ export default function ProjecaoFluxo({
         </h2>
       </div>
       <p className="text-[11px] mb-4" style={{ color: 'var(--admin-text-faded)' }}>
-        O que ainda vai entrar e sair. Não entra no realizado acima — é compromisso, não caixa.
+        Não entra no realizado acima — é compromisso, não caixa.
+        {mediaMensal > 0 && (
+          <> Sua média das últimas 4 semanas é <b>{brl(mediaMensal)}</b>; como cliente costuma marcar
+          com 1 ou 2 dias, o “já marcado” cresce ao longo do mês.</>
+        )}
       </p>
 
       {vazio ? (
@@ -92,9 +118,9 @@ export default function ProjecaoFluxo({
         <>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[
-              { r: 'Vai entrar', v: entradasPrevistas, cor: '#10B981' },
+              { r: 'Já marcado', v: entradasPrevistas, cor: '#10B981' },
               { r: 'Vai sair', v: saidasPrevistas, cor: '#EF4444' },
-              { r: 'Sobra prevista', v: saldo, cor: saldo >= 0 ? '#3B82F6' : '#EF4444' },
+              { r: 'Sobra pelo histórico', v: sobraHistorica, cor: sobraHistorica >= 0 ? '#3B82F6' : '#EF4444' },
             ].map((t) => (
               <div
                 key={t.r}

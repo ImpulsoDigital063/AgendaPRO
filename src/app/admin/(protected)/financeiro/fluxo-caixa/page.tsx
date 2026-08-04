@@ -408,7 +408,7 @@ export default async function FluxoCaixaPage({
   const DIAS_PROJECAO = 30
   const FIM_PROJECAO = addDaysBR(HOJE, DIAS_PROJECAO)
 
-  const [futurosRes, comandasAbertasRes, contasRes] = await Promise.all([
+  const [futurosRes, comandasAbertasRes, contasRes, mediaRes] = await Promise.all([
     // Atendimento marcado, ainda não pago e fora de comanda. Com invoice_item_id
     // o valor já está contado na comanda aberta — somar os dois seria dobrar.
     sb
@@ -430,9 +430,20 @@ export default async function FluxoCaixaPage({
       .select('due_date, occurred_at, name, amount')
       .eq('business_id', business.id)
       .eq('status', 'scheduled'),
+    // Media real das ultimas 4 semanas. E o unico numero honesto de receita
+    // futura que temos: a cliente marca com 1-2 dias de antecedencia
+    // (mediana medida em toda a base), entao o agendado nao antecipa o mes.
+    sb
+      .from('appointments')
+      .select('total_price')
+      .eq('business_id', business.id)
+      .not('paid_at', 'is', null)
+      .gte('appointment_date', addDaysBR(todayBR(), -28))
+      .lt('appointment_date', todayBR()),
   ])
 
   const futuros = futurosRes.data ?? []
+  const mediaMensal = (mediaRes.data ?? []).reduce((s2, a) => s2 + Number(a.total_price ?? 0), 0)
   const comandasAbertas = (comandasAbertasRes.data ?? []).reduce((s, i) => s + Number(i.total ?? 0), 0)
   const contas = contasRes.data ?? []
 
@@ -505,6 +516,7 @@ export default async function FluxoCaixaPage({
 
           <ProjecaoFluxo
             entradasPrevistas={entradasPrevistas}
+            mediaMensal={mediaMensal}
             saidasPrevistas={saidasPrevistas}
             atrasadas={atrasadas}
             semanas={semanas}
