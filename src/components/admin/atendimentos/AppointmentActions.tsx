@@ -360,6 +360,9 @@ export default function AppointmentActions({
         appointmentServiceName={serviceName ?? 'Atendimento'}
         appointmentTotal={totalPrice ?? 0}
         podeEditarValor={podeEditarValor}
+        // Fluxo real de pagamento passa por aqui (o botao abre a comanda,
+        // nao o modal de metodo). Sem isso o ganho nao chega em ninguem.
+        onPago={onPago ? ({ total }) => onPago({ paid_at: new Date().toISOString(), total_price: total }) : undefined}
         appointmentProfessionalId={professionalId ?? null}
         customerName={customerName}
         businessId={businessId}

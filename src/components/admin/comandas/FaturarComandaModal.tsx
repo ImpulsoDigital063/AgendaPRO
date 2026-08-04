@@ -57,6 +57,10 @@ type Props = {
   businessId: string
   /** v100b · libera editar o valor do serviço aqui. Fica com dono e recepção. */
   podeEditarValor?: boolean
+  /** Quando existe, o pagamento avisa por aqui e a tela NAO navega pra
+   *  comanda — quem chamou atualiza a agenda no lugar. Eduardo 04/08:
+   *  "marcou pagamento nao tem porque sair da tela". */
+  onPago?: (dados: { invoiceId: string | null; total: number }) => void
   onClose: () => void
 }
 
@@ -90,7 +94,7 @@ const selectStyle: React.CSSProperties = {
 
 export default function FaturarComandaModal({
   open, appointmentId, appointmentServiceName, appointmentTotal, appointmentProfessionalId, podeEditarValor = false,
-  customerName, businessId, onClose,
+  customerName, businessId, onClose, onPago,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -314,7 +318,18 @@ export default function FaturarComandaModal({
       return
     }
     const d = await r.json()
-    const invoiceId = d?.invoice?.id
+    const invoiceId = d?.invoice?.id ?? null
+
+    // Pagou e quem chamou sabe atualizar a tela: fica onde esta. Evita a
+    // segunda travessia ate Oregon (~220ms) mais a renderizacao de outra
+    // pagina, e nao tira o dono do lugar onde ele trabalha — ele marca
+    // varios pagamentos seguidos.
+    if (onPago && payment !== 'leave_open' && payment !== null) {
+      onPago({ invoiceId, total })
+      onClose()
+      return
+    }
+
     onClose()
     // A área da profissional não tem tela de comandas — mandar ela pra
     // /admin/comandas/[id] fazia o layout do admin chutar quem não é dona pra
