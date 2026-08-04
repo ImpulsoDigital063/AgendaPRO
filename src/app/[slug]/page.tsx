@@ -112,6 +112,8 @@ export default async function BusinessPage({
       .select('id, name, price, duration_minutes, points, active')
       .eq('business_id', business.id)
       .eq('active', true)
+      // v107 · serviço interno: o dono usa ao marcar, a cliente não vê.
+      .eq('public_visible', true)
       .order('name'),
     supabase
       .from('professionals')

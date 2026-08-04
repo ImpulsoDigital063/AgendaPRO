@@ -47,6 +47,10 @@ export default async function AgendarPage({
       .select('id, name, description, price, duration_minutes, points, active, business_id')
       .eq('business_id', business.id)
       .eq('active', true)
+      // v107 · serviço interno não pode ser marcado pela cliente. Se saísse só
+      // da vitrine e continuasse agendável aqui, quem tivesse o link ainda
+      // marcaria — era o caso da Viva Cacheada, com 60min grátis abertos.
+      .eq('public_visible', true)
       .order('name'),
   ])
 

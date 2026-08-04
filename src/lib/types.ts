@@ -153,6 +153,11 @@ export type Service = {
   price: number | null
   duration_minutes: number
   active: boolean
+  /** v107 · false = serviço interno: o dono usa ao marcar, a cliente não vê
+   *  na página pública nem consegue agendar. Diferente de `active`, que
+   *  define se o serviço pode ser usado. Opcional porque linhas carregadas
+   *  antes da migration não trazem o campo. */
+  public_visible?: boolean
   points: number
 }
 

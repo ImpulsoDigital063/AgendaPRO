@@ -277,6 +277,23 @@ export default function ServicosTab({ businessId, initialServices, category }: P
     setLoadingId(null)
   }
 
+  /* v107 · vitrine separada do uso. Nasceu do "Agenda pessoal" de R$ 0 da Viva
+     Cacheada: serviço ativo aparece na página pública, então qualquer pessoa
+     com o link dela podia marcar 60 minutos de graça. Ela nunca percebeu.
+     `active` = posso usar · `public_visible` = a cliente vê e pode marcar. */
+  async function toggleVisivel(service: Service) {
+    const novo = service.public_visible === false
+    setLoadingId(service.id)
+    const { error } = await supabase
+      .from('services')
+      .update({ public_visible: novo })
+      .eq('id', service.id)
+    if (!error) {
+      setServices(services.map((s) => (s.id === service.id ? { ...s, public_visible: novo } : s)))
+    }
+    setLoadingId(null)
+  }
+
   return (
     <div className="space-y-3 pb-24 relative">
       {/* KPI strip */}
@@ -411,6 +428,7 @@ export default function ServicosTab({ businessId, initialServices, category }: P
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={() => handleSaveEdit(service.id)}
             onToggle={() => toggleActive(service)}
+            onToggleVisivel={() => toggleVisivel(service)}
             onAskDelete={() => setConfirmDelete(service)}
             onUsoProdutos={() => setUsoProdutosFor(service)}
           />
@@ -648,6 +666,7 @@ function ServiceCard({
   onCancelEdit,
   onSaveEdit,
   onToggle,
+  onToggleVisivel,
   onAskDelete,
   onUsoProdutos,
 }: {
@@ -662,6 +681,7 @@ function ServiceCard({
   onCancelEdit: () => void
   onSaveEdit: () => void
   onToggle: () => void
+  onToggleVisivel: () => void
   onAskDelete: () => void
   onUsoProdutos: () => void
 }) {
@@ -811,6 +831,13 @@ function ServiceCard({
       icon: service.active ? <IconEyeOff size={15} /> : <IconEye size={15} />,
       onClick: onToggle,
     },
+    /* v107 · separado do Ocultar de propósito: aqui o serviço continua vivo
+       pra você marcar, só some da página que a cliente abre. */
+    {
+      label: service.public_visible === false ? 'Mostrar pra cliente' : 'Só uso interno',
+      icon: service.public_visible === false ? <IconEye size={15} /> : <IconEyeOff size={15} />,
+      onClick: onToggleVisivel,
+    },
     {
       label: 'Remover',
       icon: <IconTrash size={15} />,
@@ -851,6 +878,21 @@ function ServiceCard({
           </span>
           <span aria-hidden>·</span>
           <span className="tabular-nums">{formatDuration(service.duration_minutes)}</span>
+          {/* v107 · estado que muda o que a CLIENTE vê não pode ficar escondido
+              dentro do menu. Sem o selo, o dono não descobre que tirou o
+              serviço do ar — foi assim que a Viva Cacheada ficou com 60min
+              grátis abertos sem saber. */}
+          {service.public_visible === false && (
+            <>
+              <span aria-hidden>·</span>
+              <span
+                className="px-1.5 py-0.5 rounded font-semibold"
+                style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)', fontSize: 10 }}
+              >
+                só uso interno
+              </span>
+            </>
+          )}
           {service.points > 0 && (
             <>
               <span aria-hidden>·</span>
