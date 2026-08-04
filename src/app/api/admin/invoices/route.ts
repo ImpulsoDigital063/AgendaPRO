@@ -129,6 +129,48 @@ export async function POST(request: Request) {
   }
 
   // 3. Totais
+  /* ─── VALOR DEFINIDO NA HORA DE FATURAR (v100b · 04/08/2026) ──────────
+     A v100 pôs o campo de valor no PaymentMethodModal, mas "marcar como
+     pago" na agenda abre a COMANDA — o modal de pagamento direto é outro
+     caminho. Eduardo testou e o campo não estava onde ele clica. Aqui é o
+     lugar certo: a comanda é criada a partir do total_price guardado no
+     atendimento, então o valor tem que ser corrigido ANTES dos itens
+     serem montados, senão a fatura nasce com o valor velho.
+
+     Mesmo bloqueio da v100: atendimento já incluído em comissão paga não
+     tem o valor reescrito. Comanda ainda não existe neste ponto, então o
+     bloqueio de "comanda já paga" não se aplica. */
+  const totaisInformados = (body.appointmentTotals ?? {}) as Record<string, unknown>
+  for (const a of appts) {
+    const bruto = totaisInformados[a.id]
+    if (bruto === undefined || bruto === null) continue
+    const novo = Number(bruto)
+    if (!Number.isFinite(novo) || novo < 0 || novo > 1_000_000) continue
+    if (Math.abs(novo - Number(a.total_price ?? 0)) < 0.001) continue
+
+    const { data: travado } = await supabase
+      .from('appointments')
+      .select('commission_payment_id')
+      .eq('id', a.id)
+      .maybeSingle()
+    if (travado?.commission_payment_id) {
+      return NextResponse.json(
+        { error: 'Este atendimento já entrou num pagamento de comissão. O valor não pode mais ser alterado.' },
+        { status: 409 },
+      )
+    }
+
+    const { error: errValor } = await supabase
+      .from('appointments')
+      .update({ total_price: novo })
+      .eq('id', a.id)
+    if (errValor) {
+      return NextResponse.json({ error: 'nao_foi_possivel_atualizar_valor' }, { status: 500 })
+    }
+    // Espelha na lista em memória — os itens da fatura saem daqui embaixo.
+    a.total_price = novo
+  }
+
   const subtotalAppts = appts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
   const subtotalProds = productSales.reduce((s, p) => s + p.quantity * p.unit_price, 0)
   const subtotalExtraSvcs = extraServices.reduce((s, e) => s + Math.max(1, Number(e.quantity ?? 1)) * Number(e.unit_price ?? svcMap[e.service_id]?.price ?? 0), 0)

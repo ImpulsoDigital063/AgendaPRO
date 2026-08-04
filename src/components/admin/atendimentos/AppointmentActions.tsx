@@ -342,6 +342,7 @@ export default function AppointmentActions({
         appointmentId={appointmentId}
         appointmentServiceName={serviceName ?? 'Atendimento'}
         appointmentTotal={totalPrice ?? 0}
+        podeEditarValor={podeEditarValor}
         appointmentProfessionalId={professionalId ?? null}
         customerName={customerName}
         businessId={businessId}

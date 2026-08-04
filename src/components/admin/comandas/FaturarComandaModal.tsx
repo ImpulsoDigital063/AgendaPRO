@@ -55,6 +55,8 @@ type Props = {
   appointmentProfessionalId: string | null
   customerName: string
   businessId: string
+  /** v100b · libera editar o valor do serviço aqui. Fica com dono e recepção. */
+  podeEditarValor?: boolean
   onClose: () => void
 }
 
@@ -87,12 +89,26 @@ const selectStyle: React.CSSProperties = {
 }
 
 export default function FaturarComandaModal({
-  open, appointmentId, appointmentServiceName, appointmentTotal, appointmentProfessionalId,
+  open, appointmentId, appointmentServiceName, appointmentTotal, appointmentProfessionalId, podeEditarValor = false,
   customerName, businessId, onClose,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const areaPrefix = getAreaPrefix(pathname)
+  /* Valor do serviço editável (v100b). Texto cru: o dono digita "450",
+     "450,00" e "1.450,00". Converte só na hora de enviar. */
+  const [valorServicoTexto, setValorServicoTexto] = useState('')
+  useEffect(() => {
+    if (open) setValorServicoTexto(appointmentTotal > 0 ? String(appointmentTotal).replace('.', ',') : '')
+  }, [open, appointmentTotal])
+  const valorServico = (() => {
+    const limpo = valorServicoTexto.replace(/\./g, '').replace(',', '.').trim()
+    if (!limpo) return 0
+    const n = Number(limpo)
+    return Number.isFinite(n) && n >= 0 ? n : 0
+  })()
+  const valorServicoEfetivo = podeEditarValor ? valorServico : appointmentTotal
+
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
 
@@ -175,7 +191,7 @@ export default function FaturarComandaModal({
   const subtotalServices = useMemo(() => serviceCart.reduce((s, l) => s + l.unit_price, 0), [serviceCart])
   // Já lançado na comanda entra no total · é o que a cliente paga.
   const subtotalJaNaComanda = useMemo(() => jaNaComanda.reduce((s, p) => s + p.total, 0), [jaNaComanda])
-  const total = appointmentTotal + subtotalJaNaComanda + subtotalProds + subtotalServices
+  const total = valorServicoEfetivo + subtotalJaNaComanda + subtotalProds + subtotalServices
 
   const svcDisponiveis = useMemo(() => {
     const q = svcSearch.trim().toLowerCase()
@@ -249,6 +265,8 @@ export default function FaturarComandaModal({
 
     const body: Record<string, unknown> = {
       appointmentIds: [appointmentId],
+      // Rota ignora quando igual ao atual; grava antes de montar os itens.
+      ...(podeEditarValor ? { appointmentTotals: { [appointmentId]: valorServicoEfetivo } } : {}),
       productSales: cart.map((l) => ({
         product_id: l.product_id,
         product_name: l.product_name,
@@ -364,10 +382,40 @@ export default function FaturarComandaModal({
                   </p>
                   <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{appointmentServiceName}</p>
                 </div>
-                <p className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
-                  {brl(appointmentTotal)}
-                </p>
+                {podeEditarValor ? (
+                  /* Valor definido na hora do atendimento (DN Diogo: instalação
+                     orçada por metragem; salão: cabelo que pediu mais produto).
+                     Mesmo campo em mobile e desktop — a necessidade é a mesma. */
+                  <div className="relative flex-shrink-0" style={{ width: 118 }}>
+                    <span
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold pointer-events-none"
+                      style={{ color: 'var(--admin-text-faded)' }}
+                    >
+                      R$
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={valorServicoTexto}
+                      onChange={(e) => setValorServicoTexto(e.target.value.replace(/[^\d.,]/g, ''))}
+                      placeholder="0,00"
+                      aria-label="Valor do serviço"
+                      className="admin-input w-full text-sm font-bold tabular-nums text-right py-1.5 pl-8 pr-2.5"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: 'var(--admin-text)' }}>
+                    {brl(appointmentTotal)}
+                  </p>
+                )}
               </div>
+              {podeEditarValor && (
+                <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-faded)' }}>
+                  {valorServicoEfetivo > 0
+                    ? 'Ajuste se o valor final ficou diferente do combinado.'
+                    : 'Informe o valor cobrado pra receber o pagamento.'}
+                </p>
+              )}
             </div>
 
             {/* JÁ na comanda · veio do combo aplicado no agendamento ou de
@@ -660,7 +708,7 @@ export default function FaturarComandaModal({
               </button>
               <button
                 type="button"
-                disabled={submitting}
+                disabled={submitting || (podeEditarValor && valorServicoEfetivo <= 0)}
                 onClick={openPagamento}
                 className="py-3 rounded-xl text-sm font-bold disabled:opacity-50"
                 style={{
