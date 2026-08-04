@@ -12,7 +12,10 @@ import Link from 'next/link'
 type Props = {
   appointmentId: string | null
   businessId: string
-  onClose: () => void
+  onClose: (precisaRecarregar?: boolean) => void
+  /** Avisa quem desenha a grade que o atendimento virou pago, pra pintar
+   *  localmente em vez de recarregar a pagina toda. */
+  onPago?: (id: string, dados: { paid_at: string; total_price?: number | null }) => void
 }
 
 type ApptDetail = {
@@ -65,7 +68,7 @@ function formatDateLong(d: string): string {
   })
 }
 
-export default function AppointmentDrawer({ appointmentId, businessId, onClose }: Props) {
+export default function AppointmentDrawer({ appointmentId, businessId, onClose, onPago }: Props) {
   const pathname = usePathname()
   const ehAreaProfissional = pathname.startsWith('/profissional')
   // Quem está logada · usado só pra decidir se o "Cancelar atendimento" aparece
@@ -190,7 +193,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
       <div
         className="absolute inset-0"
         style={{ background: 'rgba(0,0,0,0.5)' }}
-        onClick={onClose}
+        onClick={() => onClose(false)}
       />
 
       {/* Drawer · 480px direita · padrão 3D premium */}
@@ -236,7 +239,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => onClose(false)}
               aria-label="Fechar"
               className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--admin-input-bg)]"
               style={{ color: 'var(--admin-text-mute)' }}
@@ -367,7 +370,14 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
                   totalPrice={data.total_price}
                   serviceName={data.service_name}
                   professionalId={prof?.id ?? null}
-                  onDone={onClose}
+                  // Pagamento: avisa a grade e fecha SEM recarregar a pagina.
+                  // Cancelar/remarcar mudam a posicao do card, entao esses
+                  // continuam pedindo os dados do servidor (onDone padrao).
+                  onPago={(dados) => {
+                    if (appointmentId && onPago) onPago(appointmentId, dados)
+                    onClose(!onPago)
+                  }}
+                  onDone={() => onClose(true)}
                   // Na área da profissional, "Cancelar" só aparece no que é dela
                   // E enquanto não estiver pago — depois do pagamento é a dona
                   // quem desfaz (30/07). No admin/recepção nada muda.

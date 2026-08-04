@@ -178,14 +178,14 @@ function formatBRL(v: number) {
 export default function TimelineGridInteractive({
   businessId,
   profs,
-  appts,
+  appts: apptsDoServidor,
   services,
   blocks = [],
   hourStart,
   hourEnd,
   date,
-  recebidoHoje = 0,
-  aReceberHoje = 0,
+  recebidoHoje: recebidoDoServidor = 0,
+  aReceberHoje: aReceberDoServidor = 0,
   pendentesHoje = 0,
   hideKpis = false,
 }: Props) {
@@ -217,9 +217,38 @@ export default function TimelineGridInteractive({
   const [resgatePrefill, setResgatePrefill] = useState<{ customer: { id: string; name: string; phone: string; total_points: number | null }; serviceId: string; balanceId: string } | null>(null)
   useEffect(() => { setPortalReady(true) }, [])
 
-  function closeDrawer() {
+  /* ATUALIZACAO LOCAL DO PAGAMENTO (04/08/2026)
+     ─────────────────────────────────────────────────────────────────
+     closeDrawer() chamava router.refresh() SEMPRE — inclusive quando o
+     dono so abria o atendimento pra olhar e fechava. Cada abertura
+     custava uma re-renderizacao da agenda inteira no servidor, que fica
+     em Oregon: ~220ms de travessia + todas as consultas do dia de novo.
+
+     Agora marcar pago aplica o resultado AQUI, em cima do que o servidor
+     ja mandou, e nao pede a pagina de novo. O router.refresh() sobrou so
+     pro que muda a POSICAO do atendimento na grade (cancelar, remarcar),
+     onde a tela precisa vir do servidor mesmo.
+
+     Os ajustes locais sao descartados assim que chega lista nova do
+     servidor (troca de dia, refresh de verdade): o servidor continua
+     sendo a verdade, isso aqui so evita esperar por ela pra pintar o
+     verde que o dono acabou de causar. */
+  const [ajustesLocais, setAjustesLocais] = useState<Record<string, Partial<Appt>>>({})
+  /* Os KPIs vem prontos do servidor. Sem mover o valor aqui tambem, o dono
+     marcaria o pagamento, veria o card ficar verde e o "Recebido hoje"
+     parado — parece que nao salvou. Pior que a lentidao que estamos
+     tirando. Zera junto com os ajustes quando chega dado novo. */
+  const [recebidoLocal, setRecebidoLocal] = useState(0)
+  useEffect(() => { setAjustesLocais({}); setRecebidoLocal(0) }, [apptsDoServidor])
+  const appts = Object.keys(ajustesLocais).length
+    ? apptsDoServidor.map((a) => (ajustesLocais[a.id] ? { ...a, ...ajustesLocais[a.id] } : a))
+    : apptsDoServidor
+
+  function closeDrawer(precisaRecarregar = false) {
     setSelectedApptId(null)
-    router.refresh() // pega mudanças de pagamento/cancelamento feitas no drawer
+    // So volta ao servidor quando a mudanca mexe na grade (cancelamento,
+    // remarcacao). Pagamento ja foi aplicado localmente.
+    if (precisaRecarregar) router.refresh()
   }
 
   // Fecha popover · ESC + click fora
@@ -667,14 +696,14 @@ export default function TimelineGridInteractive({
           <div className="grid grid-cols-3 gap-2">
             <MiniKPI
               label="Recebido"
-              value={formatBRL(recebidoHoje)}
+              value={formatBRL(recebidoDoServidor + recebidoLocal)}
               color="#10B981"
               colorDark="#059669"
               Icon={IconDollar}
             />
             <MiniKPI
               label="A receber"
-              value={formatBRL(aReceberHoje)}
+              value={formatBRL(Math.max(0, aReceberDoServidor - recebidoLocal))}
               color="#1AA9A8"
               colorDark="#0E7C7B"
               Icon={IconCheck}
@@ -1332,6 +1361,13 @@ export default function TimelineGridInteractive({
         appointmentId={selectedApptId}
         businessId={businessId}
         onClose={closeDrawer}
+        // Pagamento pinta o card aqui mesmo — sem pedir a agenda inteira
+        // de volta ao servidor (ver comentario em closeDrawer).
+        onPago={(id, dados) => {
+          setAjustesLocais((atual) => ({ ...atual, [id]: { ...atual[id], ...dados } }))
+          const valor = dados.total_price ?? apptsDoServidor.find((a) => a.id === id)?.total_price ?? 0
+          setRecebidoLocal((v) => v + Number(valor || 0))
+        }}
       />
 
       {/* MODAL · Como interpretar as cores · explicação completa dos 4 modos */}

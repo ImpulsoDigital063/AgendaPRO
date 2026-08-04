@@ -45,6 +45,9 @@ type Props = {
    *  Fica com dono e recepcao: deixar a profissional definir o valor e deixar
    *  ela definir a base da propria comissao (decisao do Eduardo, 03/08). */
   podeEditarValor?: boolean
+  /** Quando existe, o sucesso do pagamento avisa por aqui em vez de recarregar
+   *  a pagina inteira — a grade pinta o card localmente. */
+  onPago?: (dados: { paid_at: string; total_price?: number | null }) => void
 }
 
 export default function AppointmentActions({
@@ -63,6 +66,7 @@ export default function AppointmentActions({
   appointmentDate,
   podeRemarcar = true,
   podeEditarValor = false,
+  onPago,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -120,6 +124,19 @@ export default function AppointmentActions({
     const ok = await postPayment(body)
     if (!ok) return
     setPaymentOpen(false)
+
+    // Quem desenha a grade sabe pintar o card sozinho — evita mandar o
+    // servidor renderizar a agenda inteira de novo só pra ficar verde.
+    // Sem esse callback (tela de detalhe, ficha do cliente), segue o
+    // comportamento antigo.
+    if (onPago) {
+      onPago({
+        paid_at: new Date().toISOString(),
+        total_price: typeof valor === 'number' ? valor : undefined,
+      })
+      return
+    }
+
     if (onDone) onDone()
     else router.refresh()
   }
