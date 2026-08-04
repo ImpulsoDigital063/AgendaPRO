@@ -73,7 +73,7 @@ export default function ProjecaoFluxo({
   atrasadas,
   semanas,
   proximas,
-  dias,
+  semanas4,
 }: {
   entradasPrevistas: number
   /** Media do que entrou por mes nas ultimas 4 semanas. Sem isso o bloco
@@ -90,7 +90,9 @@ export default function ProjecaoFluxo({
   atrasadas: number
   semanas: SemanaProjecao[]
   proximas: LinhaProjecao[]
-  dias: number
+  /** Quantas semanas fechadas a janela cobre. Rotulo em SEMANAS, nao em dias:
+   *  e assim que o dono pensa, e garante que tile e tabela cubram o mesmo. */
+  semanas4: number
 }) {
   const sobraHistorica = mediaMensal - saidasPrevistas
   const vazio = entradasPrevistas === 0 && saidasPrevistas === 0 && atrasadas === 0 && devendo === 0
@@ -99,7 +101,7 @@ export default function ProjecaoFluxo({
     <section className="mt-8">
       <div className="flex items-baseline justify-between gap-3 mb-1">
         <h2 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
-          Projeção · próximos {dias} dias
+          Projeção · próximas {semanas4} semanas
         </h2>
       </div>
       <p className="text-[11px] mb-4" style={{ color: 'var(--admin-text-faded)' }}>
@@ -116,7 +118,7 @@ export default function ProjecaoFluxo({
           style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
         >
           <p className="text-sm" style={{ color: 'var(--admin-text-2)' }}>
-            Nada previsto pros próximos {dias} dias.
+            Nada previsto pras próximas {semanas4} semanas.
           </p>
           <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
             Atendimento marcado e conta a pagar cadastrada aparecem aqui automaticamente.

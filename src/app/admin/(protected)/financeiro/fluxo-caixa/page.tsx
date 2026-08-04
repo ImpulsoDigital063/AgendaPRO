@@ -405,7 +405,14 @@ export default async function FluxoCaixaPage({
      Datas por date-br: contar dinheiro por dia com data de servidor joga
      tudo depois das 21h pro dia seguinte (Vercel em UTC). */
   const HOJE = todayBR()
-  const DIAS_PROJECAO = 30
+  /* 28 dias = 4 semanas EXATAS (04/08). Com 30 sobravam 2 dias soltos: as
+     contas desses dias entravam no total "vai sair" mas nao cabiam em
+     nenhuma linha da tabela, e o dono somava as semanas e chegava num numero
+     diferente do tile — R$4.251,67 contra R$4.468,34 na conta da Viva
+     Cacheada. Com 4 semanas fechadas, tile e tabela batem, e a media das
+     ultimas 4 semanas passa a cobrir exatamente a mesma janela. */
+  const SEMANAS_PROJECAO = 4
+  const DIAS_PROJECAO = SEMANAS_PROJECAO * 7
   const FIM_PROJECAO = addDaysBR(HOJE, DIAS_PROJECAO)
 
   const [futurosRes, comandasAbertasRes, contasRes, mediaRes] = await Promise.all([
@@ -494,7 +501,7 @@ export default async function FluxoCaixaPage({
      "01/09 a 07/09" mas contava só até 03/09, porque o corte é de 30 dias —
      rótulo prometendo período que o número não cobre. */
   const semanas: SemanaProjecao[] = []
-  for (let i = 0; i < Math.floor(DIAS_PROJECAO / 7); i++) {
+  for (let i = 0; i < SEMANAS_PROJECAO; i++) {
     const ini = addDaysBR(HOJE, i * 7)
     const fim = addDaysBR(HOJE, i * 7 + 6)
     const dentro = (d: string) => d >= ini && d <= fim
@@ -553,7 +560,7 @@ export default async function FluxoCaixaPage({
             atrasadas={atrasadas}
             semanas={semanas}
             proximas={proximas}
-            dias={DIAS_PROJECAO}
+            semanas4={SEMANAS_PROJECAO}
           />
 
         </div>
