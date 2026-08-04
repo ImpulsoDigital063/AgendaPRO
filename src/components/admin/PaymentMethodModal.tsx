@@ -41,8 +41,12 @@ type Props = {
    *  esse texto (ex: "Manter comanda aberta" / "Pagar depois"). Sem ele, o modal
    *  só oferece os métodos + fechar (X) — comportamento legado preservado. */
   deferLabel?: string
-  /** null = "Pagar depois". Pra cartão, vem segundo argumento com detalhes da taxa. */
-  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) => void
+  /** v100 · libera edicao do valor no ato do pagamento. Opt-in: quem nao passa
+   *  segue com o comportamento antigo (valor so exibido). Ver comentario da
+   *  rota /appointments/[id]/payment sobre a propagacao pra comanda. */
+  permiteEditarValor?: boolean
+  /** 3o argumento so chega quando permiteEditarValor esta ligado e o valor mudou. */
+  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number) => void
   onClose: () => void
 }
 
@@ -70,6 +74,7 @@ export default function PaymentMethodModal({
   open,
   clientName,
   totalPrice,
+  permiteEditarValor = false,
   businessId,
   withPunctualityBonus = false,
   punctualityPoints = 0,
@@ -109,14 +114,37 @@ export default function PaymentMethodModal({
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
 
+  /* Valor editável (v100) — texto cru, não número, porque o dono digita
+     "450", "450,00" e "1.450,00". Converter só na hora de enviar. */
+  const [valorTexto, setValorTexto] = useState('')
+  useEffect(() => {
+    if (open) setValorTexto(totalPrice != null && totalPrice > 0 ? String(totalPrice).replace('.', ',') : '')
+  }, [open, totalPrice])
+
+  const valorDigitado = (() => {
+    const limpo = valorTexto.replace(/\./g, '').replace(',', '.').trim()
+    if (!limpo) return null
+    const n = Number(limpo)
+    return Number.isFinite(n) && n >= 0 ? n : null
+  })()
+
+  // O que vale pra taxa de cartão e pro que vai ser gravado.
+  const valorEfetivo = permiteEditarValor ? valorDigitado : (totalPrice ?? null)
+
   if (!open || !portalReady) return null
 
+  // Sem valor, PIX/dinheiro/cartão fecham atendimento zerado — foi o que
+  // aconteceu com 6 dos 14 atendimentos do Diogo. Cortesia e pontos são
+  // zero por natureza e seguem liberados.
+  const exigeValor = permiteEditarValor && (valorEfetivo == null || valorEfetivo <= 0)
+
   function handleMethodClick(method: NonNullable<PaymentMethodChoice>) {
+    if (exigeValor && method !== 'points') return
     if (method === 'card' && businessId) {
       setCardStep(true)
       return
     }
-    onChoose(method)
+    onChoose(method, undefined, permiteEditarValor ? valorEfetivo ?? undefined : undefined)
   }
 
   const priceLabel = formatPrice(totalPrice)
@@ -146,7 +174,7 @@ export default function PaymentMethodModal({
             clientName={clientName}
             loading={loading}
             onBack={() => setCardStep(false)}
-            onConfirm={(details) => onChoose('card', details)}
+            onConfirm={(details) => onChoose('card', details, permiteEditarValor ? valorEfetivo ?? undefined : undefined)}
             onClose={onClose}
           />
         ) : (
@@ -167,7 +195,7 @@ export default function PaymentMethodModal({
                 >
                   {heading ?? `Como ${clientName} pagou?`}
                 </h3>
-                {priceLabel && (
+                {priceLabel && !permiteEditarValor && (
                   <p
                     className="text-sm font-semibold mt-1.5 tabular-nums"
                     style={{ color: 'var(--admin-text-2, #475569)' }}
@@ -187,13 +215,50 @@ export default function PaymentMethodModal({
               </button>
             </div>
 
+            {/* Valor do atendimento — só quando o chamador liga a edição.
+                Mesmo campo em mobile e desktop: a necessidade é a mesma nos
+                dois (dono no celular, recepção no computador). */}
+            {permiteEditarValor && (
+              <div className="px-5 pb-3">
+                <label
+                  className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5"
+                  style={{ color: 'var(--admin-text-faded, #94A3B8)' }}
+                >
+                  Valor cobrado
+                </label>
+                <div className="relative">
+                  <span
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold pointer-events-none"
+                    style={{ color: 'var(--admin-text-mute, #64748B)' }}
+                  >
+                    R$
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    autoFocus
+                    value={valorTexto}
+                    onChange={(e) => setValorTexto(e.target.value.replace(/[^\d.,]/g, ''))}
+                    placeholder="0,00"
+                    disabled={loading}
+                    className="admin-input w-full text-base font-bold tabular-nums py-2.5 pl-10 pr-3"
+                  />
+                </div>
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded, #94A3B8)' }}>
+                  {exigeValor
+                    ? 'Informe o valor pra registrar o pagamento.'
+                    : 'Pode ajustar se o valor final ficou diferente do combinado.'}
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2.5 px-5 pb-3">
               {METHODS.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => handleMethodClick(m.id)}
-                  disabled={loading}
+                  disabled={loading || (exigeValor && m.id !== 'points')}
                   className="relative rounded-2xl p-3.5 text-left transition-all disabled:opacity-40 hover:translate-y-[-1px] active:scale-[0.98]"
                   style={{
                     background: 'var(--admin-surface, #F8FAFC)',

@@ -232,6 +232,7 @@ export default async function AppointmentDetailPage({
             totalPrice={valorCobrado}
             serviceName={appt.service_name as string | null}
             professionalId={prof?.id ?? null}
+            podeEditarValor
           />
         )}
       </div>

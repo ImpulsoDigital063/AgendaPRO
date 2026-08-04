@@ -41,6 +41,10 @@ type Props = {
    * isto evita entregar botão que vai negar.
    */
   podeRemarcar?: boolean
+  /** v100 · libera o campo de valor no modal de pagamento.
+   *  Fica com dono e recepcao: deixar a profissional definir o valor e deixar
+   *  ela definir a base da propria comissao (decisao do Eduardo, 03/08). */
+  podeEditarValor?: boolean
 }
 
 export default function AppointmentActions({
@@ -58,6 +62,7 @@ export default function AppointmentActions({
   podeCancelar = true,
   appointmentDate,
   podeRemarcar = true,
+  podeEditarValor = false,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -96,13 +101,15 @@ export default function AppointmentActions({
     else router.refresh()
   }
 
-  async function confirmarMetodo(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) {
+  async function confirmarMetodo(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number) {
     if (!method) {
       // null = "Pagar depois" — só fecha o modal
       setPaymentOpen(false)
       return
     }
     const body: Record<string, unknown> = { method }
+    // Rota ignora se vier igual ao atual; so propaga pra comanda quando muda.
+    if (podeEditarValor && typeof valor === 'number') body.total_price = valor
     if (method === 'card' && cardDetails) {
       body.device_id = cardDetails.device_id
       body.card_brand = cardDetails.card_brand
@@ -297,6 +304,7 @@ export default function AppointmentActions({
         open={paymentOpen}
         clientName={customerName}
         totalPrice={totalPrice}
+        permiteEditarValor={podeEditarValor}
         businessId={businessId}
         loading={loading}
         onChoose={confirmarMetodo}

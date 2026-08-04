@@ -41,7 +41,7 @@ export async function POST(
   // Validacao: appointment + business
   const { data: appt } = await supabase
     .from('appointments')
-    .select('id, business_id, professional_id')
+    .select('id, business_id, professional_id, total_price, invoice_item_id, commission_payment_id')
     .eq('id', id)
     .single()
   if (!appt) return NextResponse.json({ error: 'not_found' }, { status: 404 })
@@ -85,6 +85,73 @@ export async function POST(
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
+  /* ─── VALOR NO ATO DO PAGAMENTO (v100 · 03/08/2026) ───────────────────
+     Eduardo, a partir do caso DN Diogo Nogueira: "o tempo e o valor do
+     serviço muitas vezes é definido quando faz o atendimento e não no
+     agendamento". Instalação de papel de parede é orçada por metragem —
+     e o mesmo vale pra cabelo que precisou de mais produto ou sessão que
+     rendeu mais tempo. Antes disso o dono tinha que sair da tela, editar o
+     atendimento, salvar e voltar pra marcar pago. Ele fazia uma vez e
+     desistia: 6 dos 14 atendimentos do Diogo ficaram sem valor.
+
+     ⚠️ "alterar o valor propaga pra TODO o sistema financeiro. TODO."
+     (Eduardo, 03/08). O valor NÃO vive só em appointments.total_price —
+     está copiado na comanda:
+
+        appointments.total_price
+          └─ invoice_items.unit_price + .total      (cópia por item)
+              └─ invoices.subtotal + .total         (soma dos itens)
+
+     Hoje 1.437 atendimentos estão dentro de comanda. Gravar só o
+     total_price deixaria a comanda com o valor velho — duas telas de
+     dinheiro discordando. Por isso a propagação abaixo é parte do mesmo
+     fluxo, não um "depois".
+
+     BLOQUEIOS (o que NÃO se reescreve):
+     · atendimento já incluído em comissão paga (commission_payment_id) —
+       mudar a base depois faz o que foi pago à profissional não bater com
+       o que o sistema calcula
+     · comanda que já tem pagamento registrado — o dinheiro já entrou por
+       um valor; corrigir isso é estorno, não edição
+     Nos dois casos devolve 409 e a tela explica o motivo.
+     ─────────────────────────────────────────────────────────────────── */
+  let novoValor: number | null = null
+  if (body.paid !== false && body.total_price !== undefined && body.total_price !== null) {
+    const v = Number(body.total_price)
+    if (!Number.isFinite(v) || v < 0 || v > 1_000_000) {
+      return NextResponse.json({ error: 'valor inválido' }, { status: 400 })
+    }
+    // Só encara como alteração se mudou de fato — evita reescrever comanda à toa.
+    if (Math.abs(v - Number(appt.total_price ?? 0)) > 0.001) {
+      if (appt.commission_payment_id) {
+        return NextResponse.json(
+          { error: 'Este atendimento já entrou num pagamento de comissão. O valor não pode mais ser alterado.' },
+          { status: 409 }
+        )
+      }
+      if (appt.invoice_item_id) {
+        const { data: item } = await supabase
+          .from('invoice_items')
+          .select('invoice_id')
+          .eq('id', appt.invoice_item_id)
+          .maybeSingle()
+        if (item?.invoice_id) {
+          const { count } = await supabase
+            .from('invoice_payments')
+            .select('id', { count: 'exact', head: true })
+            .eq('invoice_id', item.invoice_id)
+          if ((count ?? 0) > 0) {
+            return NextResponse.json(
+              { error: 'A comanda deste atendimento já foi paga. Para corrigir o valor, estorne o pagamento da comanda.' },
+              { status: 409 }
+            )
+          }
+        }
+      }
+      novoValor = v
+    }
+  }
+
   // 2 modos: marcar pago (com method) OU desmarcar (paid: false)
   const updates: {
     paid_at: string | null
@@ -94,6 +161,7 @@ export async function POST(
     payment_card_type?: string | null
     payment_fee_percent?: number | null
     payment_installments?: number
+    total_price?: number
   } = {
     paid_at: null,
     payment_method: null,
@@ -157,6 +225,11 @@ export async function POST(
     }
   }
 
+  // Valor entra no MESMO update do pagamento. Tem que estar gravado antes da
+  // reconciliação de comanda lá embaixo, que lê o total pra criar o
+  // invoice_payments — senão a comanda registra o valor antigo.
+  if (novoValor !== null) updates.total_price = novoValor
+
   const { error: updateErr } = await supabase
     .from('appointments')
     .update(updates)
@@ -165,6 +238,62 @@ export async function POST(
   if (updateErr) {
     console.error('payment update error:', updateErr)
     return NextResponse.json({ error: 'update_failed' }, { status: 500 })
+  }
+
+  /* ─── PROPAGAÇÃO PRA COMANDA ────────────────────────────────────────
+     Roda ANTES da reconciliação de pagamento (bloco seguinte), que soma
+     invoices.total. Ordem invertida = comanda paga com valor velho.
+
+     Refaz o total da fatura somando os itens em vez de aplicar a
+     diferença: soma é idempotente e sobrevive a item adicionado por outro
+     caminho; delta acumula erro a cada correção. */
+  if (novoValor !== null && appt.invoice_item_id) {
+    try {
+      const admin = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { persistSession: false } },
+      )
+      const { data: item } = await admin
+        .from('invoice_items')
+        .select('id, invoice_id, quantity, discount')
+        .eq('id', appt.invoice_item_id)
+        .maybeSingle()
+
+      if (item) {
+        const qtd = Number(item.quantity ?? 1) || 1
+        const descontoItem = Number(item.discount ?? 0)
+        await admin
+          .from('invoice_items')
+          .update({
+            unit_price: novoValor,
+            total: Math.max(0, novoValor * qtd - descontoItem),
+          })
+          .eq('id', item.id)
+
+        const { data: itens } = await admin
+          .from('invoice_items')
+          .select('total')
+          .eq('invoice_id', item.invoice_id)
+        const subtotal = (itens ?? []).reduce((s, i) => s + Number(i.total ?? 0), 0)
+
+        const { data: fatura } = await admin
+          .from('invoices')
+          .select('discount')
+          .eq('id', item.invoice_id)
+          .maybeSingle()
+        const descontoFatura = Number(fatura?.discount ?? 0)
+
+        await admin
+          .from('invoices')
+          .update({ subtotal, total: Math.max(0, subtotal - descontoFatura) })
+          .eq('id', item.invoice_id)
+      }
+    } catch (e) {
+      // Não-fatal pro pagamento, mas registra: comanda fora de sincronia é
+      // dinheiro divergente entre telas e precisa aparecer no log.
+      console.error('propagacao de valor para comanda falhou:', e)
+    }
   }
 
   // Reconcilia comanda ABERTA (bug Olímpio 09/06): se o atendimento já pertence

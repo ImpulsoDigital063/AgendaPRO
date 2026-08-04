@@ -379,6 +379,10 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose }
                   // Remarcar segue a régua de MARCAR (a colega pode, com a flag
                   // de equipe) — mas atendimento pago volta a ser da adm.
                   podeRemarcar={!ehAreaProfissional || !isPaid}
+                  // Valor do atendimento fica com dono e recepção. Deixar a
+                  // profissional editar seria deixar ela definir a base da
+                  // própria comissão (Eduardo, 03/08). Chave reversível.
+                  podeEditarValor={!ehAreaProfissional}
                 />
               )}
             </>
