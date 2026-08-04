@@ -63,8 +63,19 @@ function formatDuration(min: number) {
   return m === 0 ? `${h}h` : `${h}h ${m}min`
 }
 
+/* DN Diogo Nogueira (04/08/2026): instalação de papel de parede é orçada por
+   metragem, então ele cadastrou o serviço sem preço — e a tela dizia
+   "Gratuito". Serviço orçado na hora não é serviço de graça, e o dono lê isso
+   como erro do sistema.
+
+   Preço vazio e preço zero eram tratados igual (`if (!price)`). Agora:
+     null  → nunca teve preço definido    → "Sob consulta"
+     0     → o dono digitou zero          → "Gratuito"
+   "Sob consulta" é a mesma palavra que a página pública já usa pro cliente
+   final, então o dono vê na gestão o que a cliente dele vê. */
 function formatPrice(price: number | null) {
-  if (!price) return 'Gratuito'
+  if (price == null) return 'Sob consulta'
+  if (price === 0) return 'Gratuito'
   return price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
@@ -469,6 +480,15 @@ export default function ServicosTab({ businessId, initialServices, category }: P
               placeholder="Ex: 30,00"
               className="admin-input w-full px-3 py-2.5 text-sm"
             />
+            {/* Regra cravada em 04/08: serviço sem preço tem o valor definido no
+                fechamento da comanda. Sem esta linha a opção existe e ninguém
+                descobre — o Diogo chegou nela sozinho, tentando resolver o
+                problema dele, e ainda assim ficou com 6 atendimentos zerados. */}
+            <p className="text-[11px] mt-1.5 leading-snug" style={{ color: 'var(--admin-text-faded)' }}>
+              {form.price.trim()
+                ? 'A cliente vê este valor na página de agendamento.'
+                : 'Deixe vazio se o valor depende do atendimento. A cliente vê “sob consulta” e você informa quanto foi ao fechar a comanda.'}
+            </p>
           </div>
           <div className="flex-1">
             <label className="admin-label">Duração</label>
@@ -693,6 +713,11 @@ function ServiceCard({
               placeholder="0,00"
               className="admin-input w-full px-3 py-2.5 text-sm"
             />
+            <p className="text-[11px] mt-1.5 leading-snug" style={{ color: 'var(--admin-text-faded)' }}>
+              {editForm.price.trim()
+                ? 'A cliente vê este valor na página de agendamento.'
+                : 'Deixe vazio se o valor depende do atendimento. A cliente vê “sob consulta” e você informa quanto foi ao fechar a comanda.'}
+            </p>
           </div>
           <div className="flex-1">
             <label className="admin-label">Duração</label>
