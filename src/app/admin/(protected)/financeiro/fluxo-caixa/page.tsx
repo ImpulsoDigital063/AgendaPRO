@@ -165,7 +165,7 @@ function resolveMethodKey(raw: string | null, cardType: string | null): string {
 export default async function FluxoCaixaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>
+  searchParams: Promise<{ view?: string; pm?: string }>
 }) {
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
@@ -405,38 +405,36 @@ export default async function FluxoCaixaPage({
      Datas por date-br: contar dinheiro por dia com data de servidor joga
      tudo depois das 21h pro dia seguinte (Vercel em UTC). */
   const HOJE = todayBR()
-  /* PROJEÇÃO POR MÊS, igual à tabela de cima (Eduardo, 04/08).
+  /* UM MÊS POR VEZ, com as SEMANAS dele (Eduardo, 04/08).
      ─────────────────────────────────────────────────────────────────
-     Antes era janela móvel de 4 semanas, que andava um dia por dia e
-     atravessava a virada do mês. A tabela do realizado logo acima é
-     MENSAL (MAI/JUN/JUL/AGO) — então quem olhava as duas comparava
-     períodos diferentes sem perceber, e a projeção nunca respondia
-     "como eu fecho agosto?", que é a pergunta que o dono faz quando
-     olha aluguel e parcela.
+     Passou por três formatos até chegar aqui: janela móvel de 30 dias,
+     4 semanas fechadas e 4 linhas de mês. O pedido final junta o melhor
+     dos dois últimos — a semana responde "aguento pagar a conta do dia
+     10?", e o seletor de mês responde "como eu fecho agosto?" sem
+     empilhar quatro meses numa tela só.
 
-     Agora são 4 colunas de mês, mesma linguagem da tabela. O mês
-     corrente conta do DIA DE HOJE em diante: o que já aconteceu nele
-     está no realizado acima, e somar de novo seria contar duas vezes. */
-  const MESES_PROJECAO = 4
-  /* O mês corrente conta do DIA 1 (Eduardo, 04/08), não de hoje: só assim a
-     linha "Ago" daqui embaixo é comparável com a coluna "AGO/26" da tabela do
-     realizado logo acima.
+     Mês vem da URL (?pm=YYYY-MM), não de estado no cliente: assim o botão
+     voltar do celular funciona, a página segue renderizando no servidor e
+     a dona pode deixar aberto num mês específico.
 
-     Não há dupla contagem com o realizado: lá em cima entra o que foi PAGO,
-     aqui só o que continua pendente — atendimento sem pagamento e conta com
-     status `scheduled`. Um boleto que venceu dia 2 e não foi pago é dinheiro
-     que ainda vai sair em agosto, e tem que aparecer na linha de agosto.
+     O mês conta do DIA 1, não de hoje: só assim a projeção de agosto é
+     comparável com a coluna AGO/26 da tabela acima. Não há dupla contagem
+     com o realizado — lá entra o que foi PAGO, aqui só o que segue
+     pendente. Boleto vencido dia 2 e não pago ainda vai sair em agosto. */
+  const mesAtual = HOJE.slice(0, 7)
+  const mesSel = /^\d{4}-\d{2}$/.test(sp.pm ?? '') ? (sp.pm as string) : mesAtual
+  const boundsSel = monthBoundsBR(mesSel)
+  const INICIO_MES = boundsSel.start
+  const FIM_PROJECAO = boundsSel.end
 
-     Por consequência, "contas vencidas" passou a contar só as de meses
-     ANTERIORES: as deste mês já estão na linha do mês, e somar de novo faria
-     a soma das linhas divergir do total. */
-  const INICIO_MES = monthBoundsBR(HOJE.slice(0, 7)).start
-  const meses = Array.from({ length: MESES_PROJECAO }, (_, i) => {
-    const ym = addMonthsBR(`${HOJE.slice(0, 8)}01`, i).slice(0, 7)
-    const b = monthBoundsBR(ym)
-    return { ym, ini: b.start, fim: b.end }
-  })
-  const FIM_PROJECAO = meses[meses.length - 1].fim
+  const linkMes = (ym: string) => {
+    const p = new URLSearchParams()
+    if (sp.view) p.set('view', sp.view)
+    p.set('pm', ym)
+    return '?' + p.toString()
+  }
+  const mesAnterior = addMonthsBR(mesSel + '-01', -1).slice(0, 7)
+  const mesProximo = addMonthsBR(mesSel + '-01', 1).slice(0, 7)
 
   const [futurosRes, comandasAbertasRes, contasRes, mediaRes] = await Promise.all([
     /* Atendimento marcado e ainda não pago. NÃO filtra invoice_item_id
@@ -522,19 +520,26 @@ export default async function FluxoCaixaPage({
   /* Semanas: só as que cabem INTEIRAS na janela. A última linha dizia
      "01/09 a 07/09" mas contava só até 03/09, porque o corte é de 30 dias —
      rótulo prometendo período que o número não cobre. */
-  const NOMES_MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-  const linhasMes: SemanaProjecao[] = meses.map((m, i) => {
-    const dentro = (d: string) => d >= m.ini && d <= m.fim
-    const nome = `${NOMES_MES[Number(m.ym.slice(5, 7)) - 1]}/${m.ym.slice(2, 4)}`
-    return {
-      // O primeiro é parcial (começa hoje) e o rótulo diz isso — senão o dono
-      // compara "Ago" da projeção com "Ago" da tabela acima e estranha a
-      // diferença, que é justamente a parte já realizada.
-      rotulo: nome,
+  const NOMES_MES = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  ]
+  const nomeDoMes = (ym: string) => NOMES_MES[Number(ym.slice(5, 7)) - 1]
+
+  /* Semanas do mês em blocos de 7 dias a partir do dia 1 — não semana de
+     calendário. Semana de calendário faria a primeira e a última linha
+     invadirem o mês vizinho, e aí a soma das semanas deixaria de bater com o
+     total do mês, que foi o defeito que a v106d corrigiu. */
+  const semanas: SemanaProjecao[] = []
+  for (let d = boundsSel.start; d <= boundsSel.end; d = addDaysBR(d, 7)) {
+    const fimBloco = [addDaysBR(d, 6), boundsSel.end].sort()[0]
+    const dentro = (x: string) => x >= d && x <= fimBloco
+    semanas.push({
+      rotulo: `${Number(d.slice(8))} a ${Number(fimBloco.slice(8))}`,
       entradas: futuros.filter((a) => dentro(a.appointment_date)).reduce((s, a) => s + Number(a.total_price ?? 0), 0),
       saidas: contasNoPeriodo.filter((c) => dentro(vencimento(c))).reduce((s, c) => s + Number(c.amount ?? 0), 0),
-    }
-  })
+    })
+  }
 
   const proximas: LinhaProjecao[] = [
     ...futuros
@@ -575,16 +580,21 @@ export default async function FluxoCaixaPage({
           </p>
 
           <ProjecaoFluxo
-            entradasPrevistas={linhasMes[0]?.entradas ?? 0}
+            entradasPrevistas={semanas.reduce((t, x) => t + x.entradas, 0)}
             mediaMensal={mediaMensal}
             devendo={totalDevendo}
             devendoDesde={devendo.length ? devendo.map((d) => d.desde).sort()[0] : null}
             devendoQtd={devendo.length}
-            saidasPrevistas={linhasMes[0]?.saidas ?? 0}
+            saidasPrevistas={semanas.reduce((t, x) => t + x.saidas, 0)}
             atrasadas={atrasadas}
-            meses={linhasMes}
+            semanas={semanas}
             proximas={proximas}
-            rotuloMesAtual={NOMES_MES[Number(HOJE.slice(5, 7)) - 1]}
+            mesNome={nomeDoMes(mesSel)}
+            ehMesAtual={mesSel === mesAtual}
+            hrefAnterior={linkMes(mesAnterior)}
+            hrefProximo={linkMes(mesProximo)}
+            nomeAnterior={nomeDoMes(mesAnterior)}
+            nomeProximo={nomeDoMes(mesProximo)}
           />
 
         </div>

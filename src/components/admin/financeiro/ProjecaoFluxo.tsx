@@ -71,9 +71,14 @@ export default function ProjecaoFluxo({
   devendoQtd,
   saidasPrevistas,
   atrasadas,
-  meses,
+  semanas,
   proximas,
-  rotuloMesAtual,
+  mesNome,
+  ehMesAtual,
+  hrefAnterior,
+  hrefProximo,
+  nomeAnterior,
+  nomeProximo,
 }: {
   entradasPrevistas: number
   /** Media do que entrou por mes nas ultimas 4 semanas. Sem isso o bloco
@@ -88,21 +93,48 @@ export default function ProjecaoFluxo({
   /** Contas com vencimento já passado e ainda não pagas. Aparecem separadas:
    *  misturar atrasado com futuro esconde justamente o que precisa de ação. */
   atrasadas: number
-  /** Uma linha por mes, igual as colunas da tabela do realizado. */
-  meses: SemanaProjecao[]
+  /** Blocos de 7 dias DENTRO do mes selecionado. */
+  semanas: SemanaProjecao[]
   proximas: LinhaProjecao[]
-  /** Nome do mes corrente (Ago, Set...) pro titulo e pros tiles. */
-  rotuloMesAtual: string
+  mesNome: string
+  ehMesAtual: boolean
+  hrefAnterior: string
+  hrefProximo: string
+  nomeAnterior: string
+  nomeProximo: string
 }) {
   const sobraHistorica = mediaMensal - saidasPrevistas
   const vazio = entradasPrevistas === 0 && saidasPrevistas === 0 && atrasadas === 0 && devendo === 0
 
   return (
     <section className="mt-8">
-      <div className="flex items-baseline justify-between gap-3 mb-1">
+      {/* Seletor de mês. Link e não botão de estado: assim o voltar do celular
+          funciona e a página continua renderizando no servidor. */}
+      <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
         <h2 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>
-          Projeção · resto de {rotuloMesAtual} e próximos meses
+          Projeção · {mesNome}
+          {!ehMesAtual && (
+            <span className="ml-2 text-[11px] font-semibold px-2 py-0.5 rounded" style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)' }}>
+              outro mês
+            </span>
+          )}
         </h2>
+        <div className="flex items-center gap-1.5">
+          <a
+            href={hrefAnterior}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:brightness-95"
+            style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)', color: 'var(--admin-text-2)' }}
+          >
+            ‹ {nomeAnterior}
+          </a>
+          <a
+            href={hrefProximo}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:brightness-95"
+            style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)', color: 'var(--admin-text-2)' }}
+          >
+            {nomeProximo} ›
+          </a>
+        </div>
       </div>
       <p className="text-[11px] mb-4" style={{ color: 'var(--admin-text-faded)' }}>
         Não entra no realizado acima — é compromisso, não caixa.
@@ -118,7 +150,7 @@ export default function ProjecaoFluxo({
           style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
         >
           <p className="text-sm" style={{ color: 'var(--admin-text-2)' }}>
-            Nada previsto pros próximos meses.
+            Nada previsto pra {mesNome}.
           </p>
           <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
             Atendimento marcado e conta a pagar cadastrada aparecem aqui automaticamente.
@@ -128,8 +160,8 @@ export default function ProjecaoFluxo({
         <>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[
-              { r: `Já marcado · ${rotuloMesAtual}`, v: entradasPrevistas, cor: '#10B981' },
-              { r: `Vai sair · ${rotuloMesAtual}`, v: saidasPrevistas, cor: '#EF4444' },
+              { r: 'Já marcado', v: entradasPrevistas, cor: '#10B981' },
+              { r: 'Vai sair', v: saidasPrevistas, cor: '#EF4444' },
               { r: 'Sobra pelo histórico', v: sobraHistorica, cor: sobraHistorica >= 0 ? '#3B82F6' : '#EF4444' },
             ].map((t) => (
               <div
@@ -180,12 +212,12 @@ export default function ProjecaoFluxo({
             </div>
           )}
 
-          {meses.length > 0 && (
+          {semanas.length > 0 && (
             <div
               className="rounded-2xl mt-3 overflow-hidden"
               style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
             >
-              {meses.map((s, i) => {
+              {semanas.map((s, i) => {
                 const sobra = s.entradas - s.saidas
                 return (
                   <div
