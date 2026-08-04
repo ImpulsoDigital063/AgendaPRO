@@ -1,4 +1,5 @@
 import { todayBR } from '@/lib/date-br'
+import { fetchAll } from '@/lib/fetch-all'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -35,40 +36,47 @@ export async function GET(req: NextRequest) {
 
   const today = todayBR()
 
-  let query = sb
-    .from('appointments')
-    .select(`
-      id, appointment_date, start_time, client_name, client_phone,
-      service_name, total_price, status, paid_at, payment_method,
-      professional:professionals(name)
-    `)
-    .eq('business_id', business.id)
-    .lte('appointment_date', from || to ? (to ?? today) : today)
+  // Builder do supabase-js é de uso único, e o fetchAll precisa de um novo a
+  // cada página — por isso a consulta virou função em vez de variável montada
+  // em etapas.
+  const montarConsulta = () => {
+    let query = sb
+      .from('appointments')
+      .select(`
+        id, appointment_date, start_time, client_name, client_phone,
+        service_name, total_price, status, paid_at, payment_method,
+        professional:professionals(name)
+      `)
+      .eq('business_id', business.id)
+      .lte('appointment_date', from || to ? (to ?? today) : today)
 
-  if (from) query = query.gte('appointment_date', from)
-  if (profId) query = query.eq('professional_id', profId)
+    if (from) query = query.gte('appointment_date', from)
+    if (profId) query = query.eq('professional_id', profId)
 
-  if (status === 'pending') {
-    query = query.is('paid_at', null).is('invoice_item_id', null).neq('status', 'cancelled')
-  } else if (status === 'paid') {
-    query = query.not('paid_at', 'is', null).is('invoice_item_id', null).neq('status', 'cancelled')
-  } else if (status === 'invoiced') {
-    query = query.not('invoice_item_id', 'is', null)
-  } else if (status === 'cancelled') {
-    query = query.eq('status', 'cancelled')
+    if (status === 'pending') {
+      query = query.is('paid_at', null).is('invoice_item_id', null).neq('status', 'cancelled')
+    } else if (status === 'paid') {
+      query = query.not('paid_at', 'is', null).is('invoice_item_id', null).neq('status', 'cancelled')
+    } else if (status === 'invoiced') {
+      query = query.not('invoice_item_id', 'is', null)
+    } else if (status === 'cancelled') {
+      query = query.eq('status', 'cancelled')
+    }
+
+    if (q) {
+      const term = q.replace(/[%_]/g, '\\$&')
+      query = query.or(`client_name.ilike.%${term}%,service_name.ilike.%${term}%`)
+    }
+
+    return query
+      .order('appointment_date', { ascending: false })
+      .order('start_time', { ascending: false })
   }
 
-  if (q) {
-    const term = q.replace(/[%_]/g, '\\$&')
-    query = query.or(`client_name.ilike.%${term}%,service_name.ilike.%${term}%`)
-  }
-
-  query = query
-    .order('appointment_date', { ascending: false })
-    .order('start_time', { ascending: false })
-    .limit(10000)
-
-  const { data: rows } = await query
+  // Planilha que o dono abre pra conferir dinheiro: truncar aqui é entregar
+  // relatório incompleto com cara de completo. O `.limit(10000)` que estava
+  // aqui devolvia 1000 — o teto é do servidor (medido em 04/08/2026).
+  const rows = await fetchAll<Record<string, unknown>>(montarConsulta)
 
   const STATUS_LABEL: Record<string, string> = {
     pending: 'Pendente',

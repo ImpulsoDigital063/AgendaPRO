@@ -1,4 +1,5 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
+import { fetchAll } from '@/lib/fetch-all'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { todayBR, addDaysBR } from '@/lib/date-br'
@@ -35,12 +36,16 @@ export default async function ReativarSumidosPage() {
   const cutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
 
   // Pega ultimo agendamento por client_id
-  const { data: lastAppts } = await supabase
-    .from('appointments')
-    .select('client_id, appointment_date')
-    .eq('business_id', business.id)
-    .not('client_id', 'is', null)
-    .order('appointment_date', { ascending: false })
+  // Base inteira: e daqui que sai quem 'sumiu'. Truncado em 1000, cliente
+  // antigo simplesmente nao aparece na lista de reativacao.
+  const lastAppts = await fetchAll<{ client_id: string | null; appointment_date: string }>(() =>
+    supabase
+      .from('appointments')
+      .select('client_id, appointment_date')
+      .eq('business_id', business.id)
+      .not('client_id', 'is', null)
+      .order('appointment_date', { ascending: false }),
+  )
 
   const lastByClient = new Map<string, string>()
   for (const a of lastAppts || []) {

@@ -1,4 +1,5 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
+import { fetchAll } from '@/lib/fetch-all'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { todayBR, addDaysBR } from '@/lib/date-br'
@@ -69,15 +70,17 @@ export default async function CampanhasPage({
   // ─────────────────────────────────────────────────
   const cutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
 
-  const { data: lastAppts } = await supabase
-    .from('appointments')
-    .select('client_id, appointment_date')
-    .eq('business_id', business.id)
-    .not('client_id', 'is', null)
-    .order('appointment_date', { ascending: false })
-    // LIMIT defensivo idêntico ao FocoDoDia (admin-data.ts). 10k cobre
-    // ~ano de salão movimentado · evita scan de tabela em base grande.
-    .limit(10000)
+  // 04/08: o .limit(10000) que estava aqui NAO fazia nada — o teto de 1000
+  // linhas e do servidor (PostgREST db-max-rows), entao .limit(10000) e ate
+  // .range(0,4999) devolvem 1000. Medido contra o banco. So paginar resolve.
+  const lastAppts = await fetchAll<{ client_id: string | null; appointment_date: string }>(() =>
+    supabase
+      .from('appointments')
+      .select('client_id, appointment_date')
+      .eq('business_id', business.id)
+      .not('client_id', 'is', null)
+      .order('appointment_date', { ascending: false }),
+  )
 
   const lastByClient = new Map<string, string>()
   for (const a of lastAppts || []) {

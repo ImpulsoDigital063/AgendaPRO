@@ -1,4 +1,5 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
+import { fetchAll } from '@/lib/fetch-all'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
@@ -22,12 +23,16 @@ export default async function ClientesPage() {
 
   // Busca atendimentos + vendas de produto pagas (entram em totalSpent)
   const [apptRes, productSalesRes] = await Promise.all([
-    supabase
-      .from('appointments')
-      .select('id, client_id, appointment_date, status, service_name, total_price, paid_at, invoice_item_id')
-      .eq('business_id', business.id)
-      .not('client_id', 'is', null)
-      .order('appointment_date', { ascending: false }),
+    // Varre a base inteira do negocio: sem paginar, para em 1000 e a lista de
+    // clientes passa a mentir total gasto e ultima visita (ver src/lib/fetch-all).
+    fetchAll(() =>
+      supabase
+        .from('appointments')
+        .select('id, client_id, appointment_date, status, service_name, total_price, paid_at, invoice_item_id')
+        .eq('business_id', business.id)
+        .not('client_id', 'is', null)
+        .order('appointment_date', { ascending: false }),
+    ).then((data) => ({ data })),
     supabase
       .from('sales')
       .select('customer_id, sale_date, total, paid_at')
