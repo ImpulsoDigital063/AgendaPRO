@@ -409,22 +409,35 @@ export default async function FluxoCaixaPage({
   const FIM_PROJECAO = addDaysBR(HOJE, DIAS_PROJECAO)
 
   const [futurosRes, comandasAbertasRes, contasRes, mediaRes] = await Promise.all([
-    // Atendimento marcado, ainda não pago e fora de comanda. Com invoice_item_id
-    // o valor já está contado na comanda aberta — somar os dois seria dobrar.
+    /* Atendimento marcado e ainda não pago. NÃO filtra invoice_item_id
+       (correção 04/08): a comanda aberta é só a forma como o valor está
+       guardado — o compromisso continua sendo o atendimento, e é ele que
+       tem DATA.
+
+       Antes eu excluía quem estava em comanda e somava as comandas abertas
+       à parte, sem data. Na conta da Viva Cacheada isso produzia a tela
+       que o Eduardo estranhou: o tile dizia R$ 1.380 e todas as semanas
+       diziam +R$ 0,00. Os quatro atendimentos que formavam esse valor
+       tinham data (08/08, 08/08, 12/08 e 26/11) — só não passavam por
+       aqui. E o de 26/11 entrava no total dos "próximos 30 dias" porque
+       comanda aberta não passava pelo filtro de período. */
     sb
       .from('appointments')
-      .select('appointment_date, client_name, service_name, total_price')
+      .select('appointment_date, client_name, service_name, total_price, invoice_item_id')
       .eq('business_id', business.id)
       .neq('status', 'cancelled')
       .is('paid_at', null)
-      .is('invoice_item_id', null)
       .gte('appointment_date', HOJE)
       .lte('appointment_date', FIM_PROJECAO),
+    /* Comanda aberta cujo atendimento já PASSOU: isso é cliente que
+       atendeu e não pagou — cobrança, não previsão. Some do "vai entrar" e
+       ganha bloco próprio. */
     sb
       .from('invoices')
-      .select('total')
+      .select('id, total, created_at, invoice_items(id)')
       .eq('business_id', business.id)
-      .eq('status', 'open'),
+      .eq('status', 'open')
+      .gt('total', 0),
     sb
       .from('expenses')
       .select('due_date, occurred_at, name, amount')
@@ -444,8 +457,22 @@ export default async function FluxoCaixaPage({
 
   const futuros = futurosRes.data ?? []
   const mediaMensal = (mediaRes.data ?? []).reduce((s2, a) => s2 + Number(a.total_price ?? 0), 0)
-  const comandasAbertas = (comandasAbertasRes.data ?? []).reduce((s, i) => s + Number(i.total ?? 0), 0)
   const contas = contasRes.data ?? []
+
+  /* Comanda aberta de atendimento que JÁ PASSOU = cliente devendo. O
+     atendimento futuro em comanda já foi contado acima (ele tem data), então
+     aqui sobra só o atraso. Sem essa separação, dívida antiga aparecia como
+     receita futura: a Viva Cacheada tem uma de 29/07 parada até hoje. */
+  const idsItensFuturos = new Set(
+    futuros.map((a) => a.invoice_item_id).filter(Boolean) as string[],
+  )
+  const devendo = (comandasAbertasRes.data ?? [])
+    .filter((inv) => {
+      const itens = (inv.invoice_items ?? []) as { id: string }[]
+      return !itens.some((it) => idsItensFuturos.has(it.id))
+    })
+    .map((inv) => ({ total: Number(inv.total ?? 0), desde: String(inv.created_at).slice(0, 10) }))
+  const totalDevendo = devendo.reduce((s, d) => s + d.total, 0)
 
   const vencimento = (c: { due_date: string | null; occurred_at: string | null }) =>
     (c.due_date || c.occurred_at || '').slice(0, 10)
@@ -460,17 +487,19 @@ export default async function FluxoCaixaPage({
     .filter((c) => vencimento(c) && vencimento(c) < HOJE)
     .reduce((s, c) => s + Number(c.amount ?? 0), 0)
 
-  const entradasPrevistas =
-    futuros.reduce((s, a) => s + Number(a.total_price ?? 0), 0) + comandasAbertas
+  const entradasPrevistas = futuros.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
   const saidasPrevistas = contasNoPeriodo.reduce((s, c) => s + Number(c.amount ?? 0), 0)
 
+  /* Semanas: só as que cabem INTEIRAS na janela. A última linha dizia
+     "01/09 a 07/09" mas contava só até 03/09, porque o corte é de 30 dias —
+     rótulo prometendo período que o número não cobre. */
   const semanas: SemanaProjecao[] = []
-  for (let i = 0; i < DIAS_PROJECAO / 7; i++) {
+  for (let i = 0; i < Math.floor(DIAS_PROJECAO / 7); i++) {
     const ini = addDaysBR(HOJE, i * 7)
     const fim = addDaysBR(HOJE, i * 7 + 6)
     const dentro = (d: string) => d >= ini && d <= fim
     semanas.push({
-      rotulo: i === 0 ? 'Esta semana' : `${ini.slice(8)}/${ini.slice(5, 7)} a ${fim.slice(8)}/${fim.slice(5, 7)}`,
+      rotulo: i === 0 ? 'Próximos 7 dias' : `${ini.slice(8)}/${ini.slice(5, 7)} a ${fim.slice(8)}/${fim.slice(5, 7)}`,
       entradas: futuros.filter((a) => dentro(a.appointment_date)).reduce((s, a) => s + Number(a.total_price ?? 0), 0),
       saidas: contasNoPeriodo.filter((c) => dentro(vencimento(c))).reduce((s, c) => s + Number(c.amount ?? 0), 0),
     })
@@ -517,6 +546,9 @@ export default async function FluxoCaixaPage({
           <ProjecaoFluxo
             entradasPrevistas={entradasPrevistas}
             mediaMensal={mediaMensal}
+            devendo={totalDevendo}
+            devendoDesde={devendo.length ? devendo.map((d) => d.desde).sort()[0] : null}
+            devendoQtd={devendo.length}
             saidasPrevistas={saidasPrevistas}
             atrasadas={atrasadas}
             semanas={semanas}
@@ -524,11 +556,6 @@ export default async function FluxoCaixaPage({
             dias={DIAS_PROJECAO}
           />
 
-          {comandasAbertas > 0 && (
-            <p className="text-[11px] mt-2 text-center" style={{ color: 'var(--admin-text-faded)' }}>
-              Comandas em aberto entram no “vai entrar” sem data marcada — por isso não aparecem na quebra por semana.
-            </p>
-          )}
         </div>
       </div>
     </main>

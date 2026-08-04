@@ -66,6 +66,9 @@ function dataCurta(ymd: string) {
 export default function ProjecaoFluxo({
   entradasPrevistas,
   mediaMensal,
+  devendo,
+  devendoDesde,
+  devendoQtd,
   saidasPrevistas,
   atrasadas,
   semanas,
@@ -76,6 +79,11 @@ export default function ProjecaoFluxo({
   /** Media do que entrou por mes nas ultimas 4 semanas. Sem isso o bloco
    *  mente por omissao — ver comentario do topo. */
   mediaMensal: number
+  /** Comanda aberta de atendimento que JA passou: cliente atendeu e nao pagou.
+   *  Fica FORA do "vai entrar" — e cobranca, nao previsao. */
+  devendo: number
+  devendoDesde: string | null
+  devendoQtd: number
   saidasPrevistas: number
   /** Contas com vencimento já passado e ainda não pagas. Aparecem separadas:
    *  misturar atrasado com futuro esconde justamente o que precisa de ação. */
@@ -85,7 +93,7 @@ export default function ProjecaoFluxo({
   dias: number
 }) {
   const sobraHistorica = mediaMensal - saidasPrevistas
-  const vazio = entradasPrevistas === 0 && saidasPrevistas === 0 && atrasadas === 0
+  const vazio = entradasPrevistas === 0 && saidasPrevistas === 0 && atrasadas === 0 && devendo === 0
 
   return (
     <section className="mt-8">
@@ -137,6 +145,25 @@ export default function ProjecaoFluxo({
             ))}
           </div>
 
+          {/* Cliente que atendeu e não pagou. Bloco próprio porque a ação é
+              outra: aqui não se planeja, se cobra. Antes esse dinheiro estava
+              somado no "vai entrar" — a Viva Cacheada tem uma conta parada
+              desde 29/07 aparecendo como receita futura. */}
+          {devendo > 0 && (
+            <div
+              className="rounded-xl px-4 py-3 mt-2 flex items-center justify-between gap-3"
+              style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.28)' }}
+            >
+              <span className="text-xs font-semibold" style={{ color: 'var(--admin-text-2)' }}>
+                {devendoQtd === 1 ? 'Cliente atendida e não paga' : `${devendoQtd} clientes atendidas e não pagas`}
+                {devendoDesde && <> · a mais antiga desde {dataCurta(devendoDesde)}</>}
+              </span>
+              <span className="text-sm font-black tabular-nums" style={{ color: '#B45309' }}>
+                {brl(devendo)}
+              </span>
+            </div>
+          )}
+
           {atrasadas > 0 && (
             <div
               className="rounded-xl px-4 py-3 mt-2 flex items-center justify-between gap-3"
@@ -168,8 +195,10 @@ export default function ProjecaoFluxo({
                       {s.rotulo}
                     </span>
                     <span className="flex items-center gap-3 text-xs tabular-nums">
-                      <span style={{ color: '#10B981' }}>+{brl(s.entradas)}</span>
-                      <span style={{ color: '#EF4444' }}>−{brl(s.saidas)}</span>
+                      {/* Zero não vira coluna: sem entrada, "−R$ 830,00 · −R$ 830,00"
+                          aparecia duplicado e parecia defeito de tela. */}
+                      {s.entradas > 0 && <span style={{ color: '#10B981' }}>+{brl(s.entradas)}</span>}
+                      {s.saidas > 0 && <span style={{ color: '#EF4444' }}>−{brl(s.saidas)}</span>}
                       <span className="font-bold" style={{ color: sobra >= 0 ? 'var(--admin-text)' : '#EF4444', minWidth: 78, textAlign: 'right', display: 'inline-block' }}>
                         {brl(sobra)}
                       </span>
