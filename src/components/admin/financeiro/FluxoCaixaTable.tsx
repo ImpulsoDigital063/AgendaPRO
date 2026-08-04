@@ -362,7 +362,20 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                   <td
                     key={`sf-${m.key}`}
                     className="px-4 py-3 text-right tabular-nums font-bold"
-                    style={{ color: r.saldoFinal < 0 ? 'var(--admin-danger,#EF4444)' : 'var(--admin-accent)' }}
+                    /* Cor de SINAL, nunca cor de marca (04/08/2026).
+                       O positivo usava var(--admin-accent), que é a cor do
+                       negócio — e a Viva Cacheada tem #a80000 na marca. O saldo
+                       dela aparecia VERMELHO estando positivo (R$ 450,23), na
+                       mesma tabela em que o Resultado Líquido logo acima já
+                       pintava verde. Num número de dinheiro, vermelho só pode
+                       significar uma coisa. Mesma régua da linha de Resultado. */
+                    style={{
+                      color: r.saldoFinal < 0
+                        ? 'var(--admin-danger,#EF4444)'
+                        : r.saldoFinal > 0
+                          ? '#059669'
+                          : 'var(--admin-text-mute)',
+                    }}
                   >
                     {formatBRL(r.saldoFinal)}
                   </td>

@@ -300,7 +300,12 @@ export default function DashboardFinanceiro({
           </h3>
           <ResumoLine color="#059669" label="Valor recebido" value={comparativoTotals.valor_recebido} />
           <ResumoLine color="#DC2626" label="Despesas pagas" value={comparativoTotals.despesas_pagas} />
-          <ResumoLine color="var(--admin-accent)" label="Valor programado" value={comparativoTotals.valor_programado} />
+          {/* Azul fixo, não a cor da marca: as outras três linhas deste resumo
+              são cores de sinal (verde recebeu, vermelho pagou, âmbar pendente).
+              Com var(--admin-accent) esta linha herdava a cor do negócio, e a
+              Viva Cacheada tem #a80000 — "Valor programado" aparecia vermelho,
+              lado a lado com "Despesas pagas", como se fosse problema. */}
+          <ResumoLine color="#2563EB" label="Valor programado" value={comparativoTotals.valor_programado} />
           <ResumoLine color="var(--admin-warning,#F59E0B)" label="Despesas pendentes" value={comparativoTotals.despesas_pendentes} />
         </div>
       </div>
