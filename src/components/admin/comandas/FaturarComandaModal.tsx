@@ -99,7 +99,9 @@ export default function FaturarComandaModal({
      "450,00" e "1.450,00". Converte só na hora de enviar. */
   const [valorServicoTexto, setValorServicoTexto] = useState('')
   useEffect(() => {
-    if (open) setValorServicoTexto(appointmentTotal > 0 ? String(appointmentTotal).replace('.', ',') : '')
+    // Prefill inclui o zero de propósito: negócio que fecha atendimento
+    // sem valor (Viva Cacheada) não pode ser travado por causa disso.
+    if (open) setValorServicoTexto(appointmentTotal > 0 ? String(appointmentTotal).replace('.', ',') : '0')
   }, [open, appointmentTotal])
   const valorServico = (() => {
     const limpo = valorServicoTexto.replace(/\./g, '').replace(',', '.').trim()
@@ -413,7 +415,7 @@ export default function FaturarComandaModal({
                 <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-faded)' }}>
                   {valorServicoEfetivo > 0
                     ? 'Ajuste se o valor final ficou diferente do combinado.'
-                    : 'Informe o valor cobrado pra receber o pagamento.'}
+                    : '⚠ Sem valor, este atendimento não entra no seu faturamento nem gera comissão.'}
                 </p>
               )}
             </div>
@@ -708,7 +710,7 @@ export default function FaturarComandaModal({
               </button>
               <button
                 type="button"
-                disabled={submitting || (podeEditarValor && valorServicoEfetivo <= 0)}
+                disabled={submitting}
                 onClick={openPagamento}
                 className="py-3 rounded-xl text-sm font-bold disabled:opacity-50"
                 style={{

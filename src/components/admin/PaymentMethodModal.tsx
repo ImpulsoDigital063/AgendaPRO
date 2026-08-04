@@ -118,7 +118,7 @@ export default function PaymentMethodModal({
      "450", "450,00" e "1.450,00". Converter só na hora de enviar. */
   const [valorTexto, setValorTexto] = useState('')
   useEffect(() => {
-    if (open) setValorTexto(totalPrice != null && totalPrice > 0 ? String(totalPrice).replace('.', ',') : '')
+    if (open) setValorTexto(totalPrice != null && totalPrice > 0 ? String(totalPrice).replace('.', ',') : '0')
   }, [open, totalPrice])
 
   const valorDigitado = (() => {
@@ -136,10 +136,14 @@ export default function PaymentMethodModal({
   // Sem valor, PIX/dinheiro/cartão fecham atendimento zerado — foi o que
   // aconteceu com 6 dos 14 atendimentos do Diogo. Cortesia e pontos são
   // zero por natureza e seguem liberados.
-  const exigeValor = permiteEditarValor && (valorEfetivo == null || valorEfetivo <= 0)
+  // Sem valor o atendimento não entra no faturamento nem gera comissão — mas
+  // AVISA, não trava: Viva Cacheada fecha atendimento a R$0 de propósito e
+  // travar o botão quebraria a operação dela (medido em 03/08: 3 pagos, 3
+  // em aberto). Bloquear um cliente pagante pra proteger o hábito de outro é
+  // a troca errada.
+  const semValor = permiteEditarValor && (valorEfetivo == null || valorEfetivo <= 0)
 
   function handleMethodClick(method: NonNullable<PaymentMethodChoice>) {
-    if (exigeValor && method !== 'points') return
     if (method === 'card' && businessId) {
       setCardStep(true)
       return
@@ -245,8 +249,8 @@ export default function PaymentMethodModal({
                   />
                 </div>
                 <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded, #94A3B8)' }}>
-                  {exigeValor
-                    ? 'Informe o valor pra registrar o pagamento.'
+                  {semValor
+                    ? '⚠ Sem valor, este atendimento não entra no seu faturamento nem gera comissão.'
                     : 'Pode ajustar se o valor final ficou diferente do combinado.'}
                 </p>
               </div>
@@ -258,7 +262,7 @@ export default function PaymentMethodModal({
                   key={m.id}
                   type="button"
                   onClick={() => handleMethodClick(m.id)}
-                  disabled={loading || (exigeValor && m.id !== 'points')}
+                  disabled={loading}
                   className="relative rounded-2xl p-3.5 text-left transition-all disabled:opacity-40 hover:translate-y-[-1px] active:scale-[0.98]"
                   style={{
                     background: 'var(--admin-surface, #F8FAFC)',
