@@ -298,12 +298,31 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                   // R$195 numa conta de R$290 (Eduardo 21/07).
                   const temProduto = comanda.produtos.length > 0
                   const valorCobrado = temProduto && comanda.total != null ? comanda.total : data.total_price
+                  /* Sinal já pago aparece AQUI também (05/08). A comanda já
+                     mostrava "falta receber", mas quem abre o atendimento pra
+                     conferir via só R$ 45 — e é essa a tela que ela olha antes
+                     de cobrar a cliente na cadeira. */
+                  const sinalPago = data.sinal_pago_at ? Number(data.sinal_valor ?? 0) : 0
+                  const falta = Math.max(0, Number(valorCobrado ?? 0) - sinalPago)
                   return (
                     <Row
                       icon={<IconDollar size={16} />}
                       label="Valor"
-                      value={<span className="font-bold text-lg" style={{ color: 'var(--admin-text)' }}>{formatBRL(valorCobrado)}</span>}
-                      sub={data.payment_method ?? undefined}
+                      value={
+                        <span className="font-bold text-lg" style={{ color: 'var(--admin-text)' }}>
+                          {formatBRL(valorCobrado)}
+                          {sinalPago > 0 && !data.paid_at && (
+                            <span className="ml-2 text-xs font-semibold" style={{ color: '#059669' }}>
+                              · falta {formatBRL(falta)}
+                            </span>
+                          )}
+                        </span>
+                      }
+                      sub={
+                        sinalPago > 0
+                          ? `Sinal de ${formatBRL(sinalPago)} já pago no PIX`
+                          : data.payment_method ?? undefined
+                      }
                     />
                   )
                 })()}
