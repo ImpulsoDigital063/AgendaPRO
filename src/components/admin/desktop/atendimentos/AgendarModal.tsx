@@ -607,6 +607,24 @@ export default function AgendarModal({
     // Avulso (walk-in sem telefone) fica sem vínculo, ok.
     const clientId = avulso ? null : await resolveClientId(supabase, cliente!.name, cliente!.phone)
 
+    /* SINAL (v112) · quando o negocio cobra sinal, o horario que o DONO marca
+       tambem nasce reservado — 90% dos agendamentos da base sao assim, entao
+       era esse o caminho que precisava existir. Ele agenda como sempre e
+       depois cobra pela aba Sinal, em um toque.
+
+       Avulso (walk-in sem telefone) fica de fora: ja esta na cadeira, nao ha
+       o que reservar nem pra quem mandar cobranca. */
+    const { data: cfgSinal } = await supabase
+      .from('businesses')
+      .select('sinal_enabled, sinal_percent, pix_key')
+      .eq('id', businessId)
+      .maybeSingle()
+    const cobraSinal =
+      cfgSinal?.sinal_enabled === true && !!cfgSinal?.pix_key && !avulso && valorTotal > 0
+    const valorSinal = cobraSinal
+      ? Math.round(valorTotal * (Number(cfgSinal?.sinal_percent ?? 0) / 100) * 100) / 100
+      : null
+
     // Insert TODOS os appointments da série em batch
     const appointmentRows = allDates.map((d, idx) => ({
       business_id: businessId,
@@ -621,7 +639,8 @@ export default function AgendarModal({
       service_id: first.serviceId,
       service_name: displayName,
       total_price: valorTotal,
-      status: 'confirmed',
+      status: valorSinal ? 'pending' : 'confirmed',
+      sinal_valor: valorSinal,
       notes: notes.trim() || null,
       recurring_group_id: recurringGroupId,
       recurring_index: recurringGroupId ? idx + 1 : null,

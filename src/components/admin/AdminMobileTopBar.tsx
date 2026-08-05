@@ -95,6 +95,7 @@ export default function AdminMobileTopBar({
         { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconWallet },
         { label: 'Comandas', href: '/admin/comandas', Icon: IconWallet },
         { label: 'Fluxo de Caixa', href: '/admin/financeiro/fluxo-caixa', Icon: IconDollar },
+        { label: 'Sinal', href: '/admin/financeiro/sinal', Icon: IconDollar },
         { label: 'Remunerações', href: '/admin/financeiro/remuneracoes', Icon: IconTrendingUp },
       ],
     },
