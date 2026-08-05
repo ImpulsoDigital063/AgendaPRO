@@ -53,11 +53,16 @@ export default function SinalView() {
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [agindo, setAgindo] = useState<string | null>(null)
+  /* Percentual guardado como TEXTO, não número. Com number, apagar o campo
+     virava Number('') = 0 e o zero voltava sozinho — o dono não conseguia
+     limpar pra digitar outro valor (Eduardo, 05/08, testando no iPhone). */
+  const [percentTexto, setPercentTexto] = useState('')
 
   async function carregar() {
     const r = await fetch('/api/admin/sinal').then((x) => x.json()).catch(() => null)
     if (r?.config) {
       setCfg(r.config)
+      setPercentTexto(String(r.config.percentual ?? ''))
       setPendentes(r.pendentes ?? [])
     }
     setCarregando(false)
@@ -71,7 +76,7 @@ export default function SinalView() {
     const r = await fetch('/api/admin/sinal', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(cfg),
+      body: JSON.stringify({ ...cfg, percentual: Number(percentTexto) }),
     }).then((x) => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { setErro(r?.error || 'Não consegui salvar.'); return }
@@ -227,23 +232,27 @@ export default function SinalView() {
 
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="admin-label">Nome no banco</label>
+              <label className="admin-label">Nome de quem recebe</label>
               <input
                 value={cfg.recebedor}
                 onChange={(e) => setCfg({ ...cfg, recebedor: e.target.value })}
-                placeholder={cfg.nomeNegocio}
+                placeholder="Seu nome completo"
                 className="admin-input w-full px-3 py-2.5 text-sm"
               />
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                E o nome que a cliente ve no app do banco dela. Use o titular da conta,
+                nao o nome do salao.
+              </p>
             </div>
             <div style={{ width: 120 }}>
               <label className="admin-label">Percentual</label>
               <div className="relative">
                 <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={cfg.percentual}
-                  onChange={(e) => setCfg({ ...cfg, percentual: Number(e.target.value) })}
+                  type="text"
+                  inputMode="numeric"
+                  value={percentTexto}
+                  onChange={(e) => setPercentTexto(e.target.value.replace(/D/g, '').slice(0, 3))}
+                  placeholder="30"
                   className="admin-input w-full px-3 py-2.5 text-sm pr-7"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--admin-text-faded)' }}>%</span>
@@ -252,13 +261,20 @@ export default function SinalView() {
           </div>
 
           <div>
-            <label className="admin-label">Cidade</label>
+            <label className="admin-label">Cidade (opcional)</label>
             <input
               value={cfg.cidade}
               onChange={(e) => setCfg({ ...cfg, cidade: e.target.value })}
               placeholder="Cidade da sua conta"
               className="admin-input w-full px-3 py-2.5 text-sm"
             />
+            {/* O padrao do PIX (BACEN) exige o campo cidade no codigo. Nao muda
+                pra onde o dinheiro vai — se ficar vazio mandamos BRASIL. Dito
+                aqui porque o dono pergunta, com razao, por que precisa disso. */}
+            <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+              O padrao do PIX pede esse campo dentro do codigo. Nao muda pra onde o
+              dinheiro vai — se deixar vazio, usamos "BRASIL".
+            </p>
           </div>
 
           <button
