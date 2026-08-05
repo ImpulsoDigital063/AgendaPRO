@@ -27,6 +27,8 @@ type ApptDetail = {
   paid_at: string | null
   payment_method: string | null
   total_price: number | null
+  sinal_valor?: number | null
+  sinal_pago_at?: string | null
 
   notes: string | null
   client_name: string | null
@@ -111,7 +113,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
     sb.from('appointments')
       .select(`
         id, appointment_date, start_time, end_time, status, paid_at,
-        payment_method, total_price, notes,
+        payment_method, total_price, notes, sinal_valor, sinal_pago_at,
         client_name, client_phone, customer_id,
         service_name,
         appointment_services(service_name, price),
@@ -357,6 +359,41 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                 <ClientFichaSection customerId={data.customer_id} />
               )}
 
+              {/* SINAL PENDENTE (v112c) · Eduardo: "tive que ir na aba sinal
+                  pra poder autorizar, sendo que podia mostrar na grade".
+                  Certo — quem abre o atendimento pra ver ja deveria poder
+                  confirmar ali. A aba continua existindo pra quem quer a
+                  lista do dia; isto aqui e pro caso a caso. */}
+              {!ehAreaProfissional && data.sinal_valor && !data.sinal_pago_at && (
+                <div
+                  className="rounded-xl px-4 py-3 mb-3"
+                  style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}
+                >
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <span className="text-xs font-semibold" style={{ color: '#B45309' }}>
+                      Aguardando sinal
+                    </span>
+                    <span className="text-sm font-black tabular-nums" style={{ color: '#B45309' }}>
+                      {Number(data.sinal_valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const r = await fetch('/api/admin/sinal', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ appointmentId, acao: 'recebi' }),
+                      }).then((x) => x.json()).catch(() => null)
+                      if (r?.ok) onClose(true)
+                    }}
+                    className="w-full py-2.5 rounded-lg text-xs font-bold"
+                    style={{ background: 'rgba(16,185,129,0.15)', color: '#059669', border: '1px solid rgba(16,185,129,0.35)' }}
+                  >
+                    Recebi o sinal — confirmar horário
+                  </button>
+                </div>
+              )}
+
               {/* Ações · sem mostrar pra cancelados */}
               {!isCancelled && (
                 <AppointmentActions
@@ -393,6 +430,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                   // profissional editar seria deixar ela definir a base da
                   // própria comissão (Eduardo, 03/08). Chave reversível.
                   podeEditarValor={!ehAreaProfissional}
+                  sinalPago={data.sinal_pago_at ? Number(data.sinal_valor ?? 0) : 0}
                 />
               )}
             </>

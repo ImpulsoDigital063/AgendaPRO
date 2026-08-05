@@ -52,6 +52,8 @@ type Props = {
   appointmentId: string
   appointmentServiceName: string
   appointmentTotal: number
+  /** Sinal ja pago no PIX (v112c). Abate do que falta receber. */
+  sinalPago?: number
   appointmentProfessionalId: string | null
   customerName: string
   businessId: string
@@ -93,7 +95,7 @@ const selectStyle: React.CSSProperties = {
 }
 
 export default function FaturarComandaModal({
-  open, appointmentId, appointmentServiceName, appointmentTotal, appointmentProfessionalId, podeEditarValor = false,
+  open, appointmentId, appointmentServiceName, appointmentTotal, appointmentProfessionalId, podeEditarValor = false, sinalPago = 0,
   customerName, businessId, onClose, onPago,
 }: Props) {
   const router = useRouter()
@@ -709,10 +711,37 @@ export default function FaturarComandaModal({
 
           {/* Footer · totais + ações */}
           <footer className="flex-shrink-0 border-t px-5 py-4 space-y-3" style={{ borderColor: 'var(--admin-divider)', background: 'var(--admin-surface)' }}>
+            {/* Sinal já pago (v112c) · Eduardo pegou testando: serviço de R$45
+                com R$9 de sinal já no PIX, e a comanda pedia R$45 de novo — ela
+                cobraria os R$9 duas vezes. O total do serviço continua sendo o
+                total; o que muda é o que FALTA receber. */}
+            {sinalPago > 0 && (
+              <div
+                className="flex items-center justify-between gap-3 rounded-xl px-3 py-2"
+                style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}
+              >
+                <span className="text-xs font-semibold" style={{ color: '#059669' }}>
+                  Sinal já pago no PIX
+                </span>
+                <span className="text-sm font-bold tabular-nums" style={{ color: '#059669' }}>
+                  − {brl(sinalPago)}
+                </span>
+              </div>
+            )}
+
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>Total</p>
-                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>{brl(total)}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+                  {sinalPago > 0 ? 'Falta receber' : 'Total'}
+                </p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                  {brl(Math.max(0, total - sinalPago))}
+                </p>
+                {sinalPago > 0 && (
+                  <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+                    de {brl(total)} no total
+                  </p>
+                )}
               </div>
               {(cart.length > 0 || serviceCart.length > 0) && (
                 <p className="text-xs text-right" style={{ color: 'var(--admin-text-mute)' }}>

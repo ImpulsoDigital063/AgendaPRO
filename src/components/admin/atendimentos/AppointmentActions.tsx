@@ -45,6 +45,8 @@ type Props = {
    *  Fica com dono e recepcao: deixar a profissional definir o valor e deixar
    *  ela definir a base da propria comissao (decisao do Eduardo, 03/08). */
   podeEditarValor?: boolean
+  /** Sinal ja pago no PIX (v112c) · abate do que falta receber na comanda. */
+  sinalPago?: number | null
   /** Quando existe, o sucesso do pagamento avisa por aqui em vez de recarregar
    *  a pagina inteira — a grade pinta o card localmente. */
   onPago?: (dados: { paid_at: string; total_price?: number | null }) => void
@@ -66,6 +68,7 @@ export default function AppointmentActions({
   appointmentDate,
   podeRemarcar = true,
   podeEditarValor = false,
+  sinalPago,
   onPago,
 }: Props) {
   const router = useRouter()
@@ -359,6 +362,7 @@ export default function AppointmentActions({
         appointmentId={appointmentId}
         appointmentServiceName={serviceName ?? 'Atendimento'}
         appointmentTotal={totalPrice ?? 0}
+        sinalPago={Number(sinalPago ?? 0)}
         podeEditarValor={podeEditarValor}
         // Fluxo real de pagamento passa por aqui (o botao abre a comanda,
         // nao o modal de metodo). Sem isso o ganho nao chega em ninguem.

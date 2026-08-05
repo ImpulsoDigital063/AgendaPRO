@@ -67,11 +67,11 @@ export async function POST(request: Request) {
   )
 
   // 1. Atendimentos · valida pertencimento e estado
-  let appts: { id: string; business_id: string; client_name: string | null; service_name: string | null; total_price: number | null; invoice_item_id: string | null; status: string; professional_id: string | null; customer_id: string | null }[] = []
+  let appts: { id: string; business_id: string; client_name: string | null; service_name: string | null; total_price: number | null; invoice_item_id: string | null; status: string; professional_id: string | null; customer_id: string | null; sinal_valor?: number | null; sinal_pago_at?: string | null }[] = []
   if (appointmentIds.length > 0) {
     const { data, error } = await admin
       .from('appointments')
-      .select('id, business_id, client_name, service_name, total_price, invoice_item_id, status, professional_id, customer_id')
+      .select('id, business_id, client_name, service_name, total_price, invoice_item_id, status, professional_id, customer_id, sinal_valor, sinal_pago_at')
       .in('id', appointmentIds)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -430,14 +430,51 @@ export async function POST(request: Request) {
   // Fallback defensivo: se a leitura vier vazia (não deveria), cai no total do request.
   const payableTotal = (allItems && allItems.length > 0) ? itemsSubtotal : total
 
-  // invoice_payments (se pagou) · amount = comanda inteira, nunca só os itens do request
+  /* SINAL JÁ PAGO (v112c · 05/08) — abate do que falta receber.
+     ─────────────────────────────────────────────────────────────────
+     Eduardo pegou testando: serviço de R$ 45 com sinal de R$ 9 já pago no
+     PIX, e a comanda pedia R$ 45 de novo. Ela cobraria os R$ 9 duas vezes.
+
+     O sinal é dinheiro que JÁ ENTROU na conta dela — então vira uma linha
+     de pagamento própria, com o método (pix) e a DATA em que caiu, não a
+     data de hoje. Assim o faturamento do dia em que a cliente pagou o
+     sinal fica certo, e o restante entra no dia do atendimento.
+
+     Duas linhas de pagamento na mesma comanda em vez de uma: é o que
+     mantém a soma dos pagamentos igual ao total, sem inventar desconto
+     que ninguém deu. */
+  const sinaisPagos = appts
+    .filter((a) => (a as { sinal_pago_at?: string | null }).sinal_pago_at && Number((a as { sinal_valor?: number | null }).sinal_valor ?? 0) > 0)
+    .map((a) => ({
+      valor: Number((a as { sinal_valor?: number | null }).sinal_valor ?? 0),
+      quando: (a as { sinal_pago_at?: string | null }).sinal_pago_at as string,
+    }))
+  const totalSinal = sinaisPagos.reduce((s, x) => s + x.valor, 0)
+
+  if (payment && totalSinal > 0) {
+    for (const s of sinaisPagos) {
+      const { error: sinalErr } = await admin.from('invoice_payments').insert({
+        invoice_id: invoice.id,
+        payment_method: 'pix',
+        amount: s.valor,
+        installments: 1,
+        fee_percent: 0,
+        paid_at: s.quando,
+        notes: 'Sinal do agendamento',
+      })
+      if (sinalErr) { await rollback(); return NextResponse.json({ error: sinalErr.message }, { status: 500 }) }
+    }
+  }
+
+  // invoice_payments (se pagou) · amount = comanda inteira menos o sinal já pago
   if (payment) {
+    const restante = Math.max(0, payableTotal - totalSinal)
     const { error: payErr } = await admin
       .from('invoice_payments')
       .insert({
         invoice_id: invoice.id,
         payment_method: payment.method,
-        amount: payableTotal,
+        amount: restante,
         device_id: payment.device_id ?? null,
         card_brand: payment.card_brand ?? null,
         card_type: payment.card_type ?? null,
