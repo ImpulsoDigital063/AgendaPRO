@@ -20,6 +20,11 @@ export type Business = {
   // Quando false, UI esconde opções de pontos (resgate de recompensa,
   // saldo na comanda, etc). Negócio decide ativar na aba Fidelidade.
   loyalty_enabled?: boolean
+  /* v112 · sinal. A pagina publica precisa saber ANTES de a cliente escolher
+     horario, pra avisar que vai ter pagamento — descobrir isso so no fim e
+     surpresa ruim (Eduardo, 05/08). */
+  sinal_enabled?: boolean
+  sinal_percent?: number
   brand_primary?: string | null
   brand_secondary?: string | null
   brand_mode?: 'dark' | 'light' | null

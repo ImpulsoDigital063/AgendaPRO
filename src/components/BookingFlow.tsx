@@ -573,6 +573,12 @@ export default function BookingFlow({
     // formulário seria reabrir algo que virou agendamento.
     if (!passoAnterior || step === 'done') window.history.replaceState(estado, '')
     else window.history.pushState(estado, '')
+
+    /* Volta pro topo ao trocar de passo. Sem isso a tela final abria na
+       altura em que o formulário estava — e a cliente caía no rodapé, com o
+       PIX fora de vista. Ela via "pontos" e "indique um amigo" e ia embora
+       sem pagar (Eduardo, 05/08, testando pelo link do Studio Marcela). */
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }, [step, passoAnterior])
 
   useEffect(() => {
@@ -1155,10 +1161,16 @@ export default function BookingFlow({
                 <IconCheck size={26} />
               </div>
               <div className="min-w-0">
+                {/* Com sinal pendente NÃO diz confirmado: o horário está
+                    reservado esperando o PIX. A tela afirmava as duas coisas ao
+                    mesmo tempo, e a cliente que lesse só a letra grande ia
+                    embora sem pagar (Eduardo, 05/08, testando pelo link). */}
                 <p className="text-[11px] font-semibold uppercase tracking-wider opacity-80">
-                  Tudo certo
+                  {pixSinal ? 'Quase lá' : 'Tudo certo'}
                 </p>
-                <h2 className="text-xl font-bold leading-tight">Agendamento confirmado!</h2>
+                <h2 className="text-xl font-bold leading-tight">
+                  {pixSinal ? 'Horário reservado' : 'Agendamento confirmado!'}
+                </h2>
               </div>
             </div>
 
@@ -1671,6 +1683,23 @@ export default function BookingFlow({
       {/* ETAPA 0 — ESCOLHER SERVIÇOS (múltipla seleção) */}
       {hasServices && step === 'service' && (
         <section>
+          {/* Aviso do sinal LOGO NO PRIMEIRO PASSO (05/08). A cliente escolhia
+              serviço, dia e horário e só descobria o pagamento no fim — surpresa
+              que faz desistir depois de todo o trabalho. Dito aqui, ela decide
+              informada, e quem chega até o fim já veio sabendo. */}
+          {business.sinal_enabled && Number(business.sinal_percent) > 0 && (
+            <div
+              className="rounded-2xl px-4 py-3 mb-3 flex items-start gap-2.5"
+              style={{ background: 'var(--brand-primary, #3B82F6)14', border: '1px solid var(--brand-primary, #3B82F6)44' }}
+            >
+              <span className="text-lg leading-none mt-0.5">💳</span>
+              <p className="text-xs leading-relaxed" style={{ color: C.text }}>
+                Para confirmar o horário, {business.name} pede um sinal de{' '}
+                <strong>{business.sinal_percent}% do valor</strong>, pago no PIX ao fim do
+                agendamento. O restante fica para o dia do atendimento.
+              </p>
+            </div>
+          )}
           <p className="text-xs mb-3" style={{ color: C.mute }}>
             Selecione um ou mais serviços abaixo
           </p>
