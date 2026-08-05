@@ -1,5 +1,4 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
-import { fetchAll } from '@/lib/fetch-all'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { todayBR, addDaysBR } from '@/lib/date-br'
@@ -70,23 +69,17 @@ export default async function CampanhasPage({
   // ─────────────────────────────────────────────────
   const cutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
 
-  // 04/08: o .limit(10000) que estava aqui NAO fazia nada — o teto de 1000
-  // linhas e do servidor (PostgREST db-max-rows), entao .limit(10000) e ate
-  // .range(0,4999) devolvem 1000. Medido contra o banco. So paginar resolve.
-  const lastAppts = await fetchAll<{ client_id: string | null; appointment_date: string }>(() =>
-    supabase
-      .from('appointments')
-      .select('client_id, appointment_date')
-      .eq('business_id', business.id)
-      .not('client_id', 'is', null)
-      .order('appointment_date', { ascending: false }),
-  )
+  /* v109 · uma linha por cliente em vez da base inteira. A função devolve a
+     última data QUALQUER (inclui futuro e cancelado), que é a régua desta
+     tela: quem tem horário marcado à frente não sumiu. Conferido contra o
+     cálculo antigo em 5 negócios — zero divergência. */
+  const { data: ultimos } = await supabase.rpc('ultimo_agendamento_clientes', {
+    p_business_id: business.id,
+  })
 
   const lastByClient = new Map<string, string>()
-  for (const a of lastAppts || []) {
-    if (a.client_id && !lastByClient.has(a.client_id)) {
-      lastByClient.set(a.client_id, a.appointment_date)
-    }
+  for (const r of ultimos ?? []) {
+    if (r.client_id && r.ultima) lastByClient.set(r.client_id as string, r.ultima as string)
   }
 
   const sumidoClientIds = Array.from(lastByClient.entries())

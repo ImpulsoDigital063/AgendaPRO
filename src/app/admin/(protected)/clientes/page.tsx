@@ -1,10 +1,8 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
-import { fetchAll } from '@/lib/fetch-all'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ClientesView from '@/components/admin/ClientesView'
-import { getApptDiscountMap } from '@/lib/commission-discount'
 import { todayBR } from '@/lib/date-br'
 
 export default async function ClientesPage() {
@@ -21,82 +19,37 @@ export default async function ClientesPage() {
 
   if (!business) redirect(await destinoSemNegocio())
 
-  // Busca atendimentos + vendas de produto pagas (entram em totalSpent)
-  const [apptRes, productSalesRes] = await Promise.all([
-    // Varre a base inteira do negocio: sem paginar, para em 1000 e a lista de
-    // clientes passa a mentir total gasto e ultima visita (ver src/lib/fetch-all).
-    fetchAll(() =>
-      supabase
-        .from('appointments')
-        .select('id, client_id, appointment_date, status, service_name, total_price, paid_at, invoice_item_id')
-        .eq('business_id', business.id)
-        .not('client_id', 'is', null)
-        .order('appointment_date', { ascending: false }),
-    ).then((data) => ({ data })),
-    supabase
-      .from('sales')
-      .select('customer_id, sale_date, total, paid_at')
-      .eq('business_id', business.id)
-      .eq('type', 'product_sale')
-      .eq('status', 'paid')
-      .not('customer_id', 'is', null)
-      .not('paid_at', 'is', null),
-  ])
-  const apptData = apptRes.data
-  const productSalesData = productSalesRes.data ?? []
+  /* v108 · a conta por cliente vem AGREGADA do banco.
+     ─────────────────────────────────────────────────────────────────
+     Antes esta tela baixava todos os atendimentos do negócio pra somar no
+     JS: 367 linhas no Olímpio pra exibir 163 clientes, crescendo ~158
+     linhas por mês. Agora vem uma linha por cliente e para de crescer com
+     a história — o playbook que o Eduardo trouxe do ComandaPRO em 04/08.
 
-  // λ.valor-liquido: gasto do cliente pelo valor LÍQUIDO (cupom já abatido) ·
-  // desconto vive em invoices.discount → getApptDiscountMap rateia (04/07/2026).
-  const apptDisc = await getApptDiscountMap(supabase, (apptData || []).map((a) => a.invoice_item_id))
+     A função `resumo_clientes` (supabase-migration-v108) tem cópia fiel
+     das regras que estavam aqui: só visita realizada, só dinheiro que
+     entrou, desconto de comanda rateado e venda de produto somada.
+     Conferido cliente a cliente em 5 negócios antes de trocar — zero
+     divergência em visitas, última data e total gasto.
 
-  // Stats por cliente · só conta atendimentos REALIZADOS (passado/hoje E não
-  // cancelado/no_show). Futuros agendados não contam como atendimento feito.
-  // Resolve bug do import Salao99 que trouxe recorrencias futuras inflando
-  // o numero (Ana Paula mostrava 202 quando real era 5).
-  // totalSpent: só conta dinheiro que JA ENTROU (paid_at IS NOT NULL).
+     p_hoje daqui, não CURRENT_DATE: o banco responde em UTC e depois das
+     21h atendimento de hoje viraria "futuro". */
+  const today = todayBR()
+  const { data: resumo } = await supabase.rpc('resumo_clientes', {
+    p_business_id: business.id,
+    p_hoje: today,
+  })
+
+  // Mesma forma de antes, agora vinda pronta do banco. Mantido o nome
+  // statsMap pra o resto da tela seguir igual.
   type Stats = { count: number; firstDate: string; lastDate: string; totalSpent: number }
   const statsMap: Record<string, Stats> = {}
-  const today = todayBR() // λ.fuso: dia BR (não UTC · >21h caía no dia seguinte)
-
-  for (const a of apptData || []) {
-    if (!a.client_id) continue
-    const isPast = a.appointment_date <= today
-    const isCancelled = a.status === 'cancelled' || a.status === 'no_show'
-    const isRealized = isPast && !isCancelled
-
-    if (!isRealized) continue // futuros e cancelados nao entram no contador
-
-    if (!statsMap[a.client_id]) {
-      statsMap[a.client_id] = { count: 0, firstDate: '', lastDate: '', totalSpent: 0 }
-    }
-    statsMap[a.client_id].count++
-    if (!statsMap[a.client_id].lastDate || a.appointment_date > statsMap[a.client_id].lastDate) {
-      statsMap[a.client_id].lastDate = a.appointment_date
-    }
-    if (!statsMap[a.client_id].firstDate || a.appointment_date < statsMap[a.client_id].firstDate) {
-      statsMap[a.client_id].firstDate = a.appointment_date
-    }
-    // Total gasto = só pagamentos confirmados (paid_at). Sem isso, completed
-    // sem pagamento inflava o numero. Cliente devedor nao conta como gasto.
-    if (a.paid_at && a.total_price) {
-      statsMap[a.client_id].totalSpent += Math.max(0, a.total_price - (apptDisc[a.id] ?? 0))
-    }
-  }
-
-  // Soma vendas de produto pagas em totalSpent (customer_id é client_id global)
-  for (const s of productSalesData) {
-    const cid = s.customer_id as string
-    if (!cid) continue
-    if (!statsMap[cid]) {
-      statsMap[cid] = { count: 0, firstDate: s.sale_date as string, lastDate: s.sale_date as string, totalSpent: 0 }
-    }
-    statsMap[cid].totalSpent += Number(s.total ?? 0)
-    // Atualiza last/first date também
-    if (!statsMap[cid].lastDate || (s.sale_date as string) > statsMap[cid].lastDate) {
-      statsMap[cid].lastDate = s.sale_date as string
-    }
-    if (!statsMap[cid].firstDate || (s.sale_date as string) < statsMap[cid].firstDate) {
-      statsMap[cid].firstDate = s.sale_date as string
+  for (const r of resumo ?? []) {
+    statsMap[r.client_id as string] = {
+      count: Number(r.visitas ?? 0),
+      firstDate: (r.primeira as string) ?? '',
+      lastDate: (r.ultima as string) ?? '',
+      totalSpent: Number(r.total_gasto ?? 0),
     }
   }
 
