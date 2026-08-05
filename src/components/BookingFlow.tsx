@@ -1681,25 +1681,31 @@ export default function BookingFlow({
       )}
 
       {/* ETAPA 0 — ESCOLHER SERVIÇOS (múltipla seleção) */}
+      {/* AVISO DO SINAL · em TODOS os passos, não só no de serviço (05/08).
+          O fluxo PULA a escolha de serviço quando a cliente entra por link com
+          serviço já definido (fila de espera) ou quando o negócio não cadastrou
+          serviços. Nesses casos o aviso nunca aparecia e ela só descobria o
+          pagamento no fim — exatamente o que estamos tentando evitar.
+
+          Diz QUEM pede (o salão, não o AgendaPRO), QUANTO antes de ela investir
+          tempo, e que o restante fica pro dia — senão ela pode achar que é o
+          valor inteiro adiantado. */}
+      {business.sinal_enabled && Number(business.sinal_percent) > 0 && (
+        <div
+          className="rounded-2xl px-4 py-3 mb-4 flex items-start gap-2.5"
+          style={{ background: `${C.surfaceHi}`, border: `1px solid ${C.border}` }}
+        >
+          <span className="text-lg leading-none mt-0.5">💳</span>
+          <p className="text-xs leading-relaxed" style={{ color: C.text }}>
+            Para confirmar o horário, {business.name} pede um sinal de{' '}
+            <strong>{business.sinal_percent}% do valor</strong>, pago no PIX ao fim do
+            agendamento. O restante fica para o dia do atendimento.
+          </p>
+        </div>
+      )}
+
       {hasServices && step === 'service' && (
         <section>
-          {/* Aviso do sinal LOGO NO PRIMEIRO PASSO (05/08). A cliente escolhia
-              serviço, dia e horário e só descobria o pagamento no fim — surpresa
-              que faz desistir depois de todo o trabalho. Dito aqui, ela decide
-              informada, e quem chega até o fim já veio sabendo. */}
-          {business.sinal_enabled && Number(business.sinal_percent) > 0 && (
-            <div
-              className="rounded-2xl px-4 py-3 mb-3 flex items-start gap-2.5"
-              style={{ background: 'var(--brand-primary, #3B82F6)14', border: '1px solid var(--brand-primary, #3B82F6)44' }}
-            >
-              <span className="text-lg leading-none mt-0.5">💳</span>
-              <p className="text-xs leading-relaxed" style={{ color: C.text }}>
-                Para confirmar o horário, {business.name} pede um sinal de{' '}
-                <strong>{business.sinal_percent}% do valor</strong>, pago no PIX ao fim do
-                agendamento. O restante fica para o dia do atendimento.
-              </p>
-            </div>
-          )}
           <p className="text-xs mb-3" style={{ color: C.mute }}>
             Selecione um ou mais serviços abaixo
           </p>
