@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
+import SinalPix from '@/components/booking/SinalPix'
 import { useBookingBack } from '@/components/BookingBack'
 import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
 import { maskPhoneInput } from '@/lib/client-display'
@@ -268,6 +269,8 @@ export default function BookingFlow({
   const [selectedProfessional, setSelectedProfessional] = useState<Professional>(initialProf)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
+  // v112 · sinal: o server devolve o PIX pronto quando o negocio exige
+  const [pixSinal, setPixSinal] = useState<{ valor: number; copiaECola: string } | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   // Razão do "vazio" — usada pra diagnóstico inteligente em vez de
@@ -998,6 +1001,8 @@ export default function BookingFlow({
       return
     }
 
+    if (res.pix) setPixSinal(res.pix as { valor: number; copiaECola: string })
+
     // appointmentId alimenta cupom/notify abaixo.
     const appointment = { id: res.appointmentId as string }
 
@@ -1092,8 +1097,32 @@ export default function BookingFlow({
       ? `https://wa.me/?text=${encodeURIComponent(waShareMsg)}`
       : null
 
+    // Usado na mensagem de comprovante do sinal — o salão precisa saber de
+    // qual horário a cliente está falando quando o print chegar.
+    const resumoDoHorario = [
+      selectedServices.map((sv) => sv.name).join(', '),
+      selectedDate ? formatDate(selectedDate).split('-').reverse().join('/') : '',
+      selectedTime ?? '',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+
     return (
       <div className="p-4 space-y-4" style={{ color: C.text }}>
+        {/* SINAL (v112) · vem ANTES do hero: enquanto o PIX não cai, essa é a
+            única coisa que importa na tela. Comemorar "agendado!" em cima de um
+            horário que ainda pode cair seria mentir pra cliente. */}
+        {pixSinal && (
+          <SinalPix
+            valor={pixSinal.valor}
+            copiaECola={pixSinal.copiaECola}
+            nomeNegocio={business.name}
+            telefoneNegocio={business.phone}
+            resumo={resumoDoHorario}
+            cor="#3B82F6"
+          />
+        )}
+
         {/* A) HERO BRANDED com resumo dentro */}
         <div
           className="relative overflow-hidden rounded-3xl p-6 text-white"

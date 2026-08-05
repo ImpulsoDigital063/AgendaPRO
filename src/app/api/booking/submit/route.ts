@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { calcularSinal, gerarBRCode } from '@/lib/pix-brcode'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 
@@ -159,6 +160,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'overlap' }, { status: 409 })
   }
 
+  /* SINAL (v112) · pedido da Wanessa Silva em 05/08.
+     ───────────────────────────────────────────────────────────────
+     Quando o negocio liga o sinal, o horario NAO nasce confirmado: fica
+     pendente ate o dono ver o PIX cair e marcar. E o fluxo que ela
+     descreveu e ja usa na academia dela.
+
+     O valor e congelado aqui, no ato da marcacao: se o percentual do
+     negocio mudar amanha, quem marcou hoje continua devendo o que foi
+     combinado hoje.
+
+     Servico sem preco (DN Diogo) nao gera sinal — nao da pra cobrar
+     percentual de um valor que ainda nao existe. */
+  const { data: negocio } = await db
+    .from('businesses')
+    .select('sinal_enabled, sinal_percent, pix_key, pix_receiver_name, pix_city')
+    .eq('id', businessId)
+    .maybeSingle()
+
+  const exigeSinal =
+    negocio?.sinal_enabled === true &&
+    !!negocio?.pix_key &&
+    hasPrice &&
+    !!totalPrice &&
+    totalPrice > 0
+  const valorSinal = exigeSinal
+    ? calcularSinal(totalPrice as number, Number(negocio?.sinal_percent ?? 0))
+    : null
+
   // 3. Criar agendamento
   const firstService = services[0] ?? null
   const { data: appointment, error: apptErr } = await db
@@ -176,7 +205,8 @@ export async function POST(req: NextRequest) {
       appointment_date: appointmentDate,
       start_time: startTime,
       end_time: endTime,
-      status: 'confirmed',
+      status: valorSinal ? 'pending' : 'confirmed',
+      sinal_valor: valorSinal,
     })
     .select('id')
     .single()
@@ -222,10 +252,28 @@ export async function POST(req: NextRequest) {
   // 6. Pontos que o cliente VAI ganhar (creditados pelo trigger SQL no completed)
   const pointsEarned = services.reduce((sum, s) => sum + (s.points ?? 0), 0)
 
+  /* Devolve o PIX pronto quando há sinal. O BR Code é montado no servidor
+     porque a chave e o nome do recebedor não devem trafegar antes da hora —
+     e porque assim a cliente recebe o código exato que o banco espera, sem
+     depender de nada rodar certo no celular dela. */
+  const pix = valorSinal
+    ? {
+        valor: valorSinal,
+        copiaECola: gerarBRCode({
+          chave: negocio!.pix_key as string,
+          nomeRecebedor: (negocio as { pix_receiver_name?: string })?.pix_receiver_name || 'RECEBEDOR',
+          cidade: (negocio as { pix_city?: string })?.pix_city || 'BRASIL',
+          valor: valorSinal,
+          identificador: appointment.id.replace(/-/g, '').slice(0, 25),
+        }),
+      }
+    : null
+
   return NextResponse.json({
     ok: true,
     appointmentId: appointment.id,
     referralCode: referralCodeOut,
     pointsEarned,
+    pix,
   })
 }
