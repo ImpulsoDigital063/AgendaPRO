@@ -184,9 +184,57 @@ export async function POST(req: NextRequest) {
     hasPrice &&
     !!totalPrice &&
     totalPrice > 0
-  const valorSinal = exigeSinal
+  const sinalCheio = exigeSinal
     ? calcularSinal(totalPrice as number, Number(negocio?.sinal_percent ?? 0))
     : null
+
+  /* CRÉDITO ABATE O SINAL (v113 · decisão do Eduardo, 05/08).
+     ─────────────────────────────────────────────────────────────────
+     Sem isto o crédito seria inútil no caso que o criou: a cliente
+     cancelou dentro do prazo, ganhou R$ 9 de crédito, e ao remarcar pelo
+     link o sistema pediria outro PIX de R$ 9 — ela pagaria duas vezes
+     pra usar o que já é dela.
+
+     Consome do mais antigo pro mais novo, e o que sobrar CONTINUA DELA:
+     crédito de R$ 20 num sinal de R$ 9 vira R$ 9 consumidos e uma nova
+     linha de R$ 11, com a mesma validade. Zerar a sobra seria confiscar.
+
+     Crédito vencido não entra: expires_at no passado fica de fora. */
+  let creditoAplicado = 0
+  const creditosUsados: string[] = []
+  let sobra: { valor: number; expira: string | null } | null = null
+
+  if (sinalCheio && sinalCheio > 0 && customerId) {
+    const { data: disponiveis } = await db
+      .from('customer_credits')
+      .select('id, amount, expires_at')
+      .eq('business_id', businessId)
+      .eq('customer_id', customerId)
+      .is('used_in_invoice_id', null)
+      .is('used_in_appointment_id', null)
+      .order('expires_at', { ascending: true, nullsFirst: false })
+
+    const agora = new Date()
+    for (const c of disponiveis ?? []) {
+      if (creditoAplicado >= sinalCheio) break
+      if (c.expires_at && new Date(c.expires_at) < agora) continue
+      const valor = Number(c.amount ?? 0)
+      if (valor <= 0) continue
+      const falta = sinalCheio - creditoAplicado
+      creditosUsados.push(c.id)
+      if (valor <= falta) {
+        creditoAplicado += valor
+      } else {
+        creditoAplicado += falta
+        sobra = { valor: Math.round((valor - falta) * 100) / 100, expira: c.expires_at ?? null }
+      }
+    }
+  }
+
+  // O que ainda falta pagar no PIX depois de abater o crédito.
+  const valorSinal = sinalCheio ? Math.max(0, Math.round((sinalCheio - creditoAplicado) * 100) / 100) : null
+  // Crédito cobriu tudo: o horário já nasce confirmado, sem PIX nenhum.
+  const sinalQuitadoPorCredito = !!sinalCheio && creditoAplicado >= sinalCheio
 
   // 3. Criar agendamento
   const firstService = services[0] ?? null
@@ -205,8 +253,12 @@ export async function POST(req: NextRequest) {
       appointment_date: appointmentDate,
       start_time: startTime,
       end_time: endTime,
-      status: valorSinal ? 'pending' : 'confirmed',
-      sinal_valor: valorSinal,
+      // Crédito cobriu tudo: confirma direto. Sobrou diferença: fica reservado.
+      status: valorSinal && valorSinal > 0 ? 'pending' : 'confirmed',
+      // sinal_valor guarda o SINAL CHEIO (o que a comanda vai abater depois),
+      // não o que faltou pagar no PIX — o crédito também é dinheiro que entrou.
+      sinal_valor: sinalCheio,
+      sinal_pago_at: sinalQuitadoPorCredito ? new Date().toISOString() : null,
     })
     .select('id')
     .single()
@@ -221,6 +273,29 @@ export async function POST(req: NextRequest) {
     if (isOverlap) return NextResponse.json({ error: 'overlap' }, { status: 409 })
     console.error('booking submit · appointment insert error:', apptErr)
     return NextResponse.json({ error: 'failed' }, { status: 500 })
+  }
+
+  /* Consome o crédito DEPOIS do agendamento existir — precisamos do id pra
+     marcar onde ele foi usado. Se o insert acima tivesse falhado, o crédito
+     continuaria intacto: nada de queimar saldo por agendamento que não nasceu. */
+  if (creditosUsados.length > 0) {
+    await db
+      .from('customer_credits')
+      .update({ used_in_appointment_id: appointment.id })
+      .in('id', creditosUsados)
+
+    // Sobra volta como crédito novo, com a mesma validade do original.
+    if (sobra && sobra.valor > 0) {
+      await db.from('customer_credits').insert({
+        business_id: businessId,
+        customer_id: customerId,
+        amount: sobra.valor,
+        origin: 'sinal',
+        date: appointmentDate,
+        expires_at: sobra.expira,
+        notes: 'Sobra de crédito usado no sinal',
+      })
+    }
   }
 
   // 4. Serviços do agendamento
@@ -256,7 +331,7 @@ export async function POST(req: NextRequest) {
      porque a chave e o nome do recebedor não devem trafegar antes da hora —
      e porque assim a cliente recebe o código exato que o banco espera, sem
      depender de nada rodar certo no celular dela. */
-  const pix = valorSinal
+  const pix = valorSinal && valorSinal > 0
     ? {
         valor: valorSinal,
         copiaECola: gerarBRCode({
@@ -275,5 +350,7 @@ export async function POST(req: NextRequest) {
     referralCode: referralCodeOut,
     pointsEarned,
     pix,
+    // A tela precisa saber pra dizer 'crédito aplicado' em vez de sumir com o valor.
+    credito: creditoAplicado > 0 ? { aplicado: creditoAplicado, sinalCheio, quitado: sinalQuitadoPorCredito } : null,
   })
 }

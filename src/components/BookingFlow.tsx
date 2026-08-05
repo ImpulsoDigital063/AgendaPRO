@@ -271,6 +271,8 @@ export default function BookingFlow({
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   // v112 · sinal: o server devolve o PIX pronto quando o negocio exige
   const [pixSinal, setPixSinal] = useState<{ valor: number; copiaECola: string } | null>(null)
+  // v113 · credito abatido do sinal. Sem mostrar, o valor "some" e ela estranha.
+  const [creditoSinal, setCreditoSinal] = useState<{ aplicado: number; sinalCheio: number | null; quitado: boolean } | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   // Razão do "vazio" — usada pra diagnóstico inteligente em vez de
@@ -1008,6 +1010,7 @@ export default function BookingFlow({
     }
 
     if (res.pix) setPixSinal(res.pix as { valor: number; copiaECola: string })
+    if (res.credito) setCreditoSinal(res.credito as { aplicado: number; sinalCheio: number | null; quitado: boolean })
 
     // appointmentId alimenta cupom/notify abaixo.
     const appointment = { id: res.appointmentId as string }
@@ -1118,6 +1121,26 @@ export default function BookingFlow({
         {/* SINAL (v112) · vem ANTES do hero: enquanto o PIX não cai, essa é a
             única coisa que importa na tela. Comemorar "agendado!" em cima de um
             horário que ainda pode cair seria mentir pra cliente. */}
+        {/* Crédito abatido (v113). Aparece MESMO quando quitou tudo: a cliente
+            precisa entender por que não pediram PIX nenhum, senão acha que deu
+            errado e vem perguntar pro salão. */}
+        {creditoSinal && (
+          <div
+            className="rounded-2xl px-4 py-3 flex items-start gap-2.5"
+            style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.3)' }}
+          >
+            <span className="text-lg leading-none mt-0.5">🎁</span>
+            <p className="text-xs leading-relaxed" style={{ color: C.text }}>
+              Você tinha{' '}
+              <strong>
+                {creditoSinal.aplicado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </strong>{' '}
+              de crédito, e ele foi usado no sinal.{' '}
+              {creditoSinal.quitado ? 'Não precisa pagar nada agora.' : 'Falta só a diferença abaixo.'}
+            </p>
+          </div>
+        )}
+
         {pixSinal && (
           <SinalPix
             valor={pixSinal.valor}
