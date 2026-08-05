@@ -84,6 +84,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconReceipt },
         { label: 'Comandas', href: '/admin/comandas', Icon: IconReceipt },
         { label: 'Fluxo de Caixa', href: '/admin/financeiro/fluxo-caixa', Icon: IconDollar },
+        { label: 'Sinal', href: '/admin/financeiro/sinal', Icon: IconDollar },
         { label: 'Remunerações', href: '/admin/financeiro/remuneracoes', Icon: IconTrendingUp },
         { label: 'Notas Fiscais', Icon: IconFile, comingSoon: true },
       ],
