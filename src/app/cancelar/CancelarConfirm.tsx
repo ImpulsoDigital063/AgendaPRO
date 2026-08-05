@@ -9,6 +9,16 @@ type Props = {
   token: string
   alreadyCancelled: boolean
   businessSlug?: string
+  businessPhone?: string | null
+  /** v113 · o que acontece com o sinal se ela cancelar AGORA. */
+  decisaoSinal?: {
+    temSinal: boolean
+    valor: number
+    horasRestantes: number
+    horasLimite: number
+    viraCredito: boolean
+    expiraEm: string | null
+  } | null
   isDark: boolean
 }
 
@@ -17,6 +27,8 @@ export default function CancelarConfirm({
   token,
   alreadyCancelled,
   businessSlug,
+  businessPhone,
+  decisaoSinal,
   isDark,
 }: Props) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
@@ -119,8 +131,68 @@ export default function CancelarConfirm({
     )
   }
 
+  const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const zap = (businessPhone || '').replace(/\D/g, '')
+  const linkRemarcar = zap
+    ? 'https://wa.me/' +
+      (zap.startsWith('55') ? zap : '55' + zap) +
+      '?text=' +
+      encodeURIComponent('Oi! Preciso remarcar meu horário, pode me ajudar?')
+    : null
+
   return (
     <div className="space-y-2">
+      {/* O QUE ACONTECE COM O SINAL (v113) · dito ANTES de ela clicar, nunca
+          depois. Reter dinheiro sem ter avisado é briga garantida — e a
+          cliente tem razão quando não foi informada.
+
+          O botão de remarcar vem junto de propósito: remarcar é o que o salão
+          prefere (o dinheiro fica, o horário só muda) e o que resolve pra ela
+          quando o problema é a data, não o serviço. */}
+      {decisaoSinal?.temSinal && (
+        <div
+          className="rounded-2xl px-4 py-3 mb-1"
+          style={{
+            background: decisaoSinal.viraCredito ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.10)',
+            border: decisaoSinal.viraCredito
+              ? '1px solid rgba(16,185,129,0.32)'
+              : '1px solid rgba(239,68,68,0.32)',
+          }}
+        >
+          <p className="text-xs leading-relaxed" style={{ color: text }}>
+            {decisaoSinal.viraCredito ? (
+              <>
+                Cancelando agora, o sinal de <strong>{brl(decisaoSinal.valor)}</strong> fica como{' '}
+                <strong>crédito</strong> na sua ficha
+                {decisaoSinal.expiraEm && (
+                  <>
+                    {' '}até <strong>{new Date(decisaoSinal.expiraEm).toLocaleDateString('pt-BR')}</strong>
+                  </>
+                )}
+                , pra usar em outro horário.
+              </>
+            ) : (
+              <>
+                Faltam menos de <strong>{decisaoSinal.horasLimite}h</strong> para o seu horário.
+                Cancelando agora, o sinal de <strong>{brl(decisaoSinal.valor)}</strong> não é
+                devolvido.
+              </>
+            )}
+          </p>
+          {linkRemarcar && (
+            <a
+              href={linkRemarcar}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2.5 block w-full rounded-xl py-2.5 text-center text-xs font-bold"
+              style={{ background: '#25D366', color: '#fff' }}
+            >
+              Prefiro remarcar — falar no WhatsApp
+            </a>
+          )}
+        </div>
+      )}
+
       <button
         onClick={() => setShowConfirm(true)}
         disabled={status === 'loading'}

@@ -4,6 +4,7 @@ import { sendClientNotification } from '@/lib/email'
 import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
 import { verifyActionToken, verifyCancelToken } from '@/lib/token'
 import { rateLimit } from '@/lib/rate-limit'
+import { aplicarRegraDoSinal } from '@/lib/sinal-cancelamento'
 
 function getAdminClient() {
   return createServiceClient(
@@ -40,6 +41,14 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = getAdminClient()
+
+  /* Sinal (v113): a regra roda ANTES do update, enquanto o atendimento ainda
+     conta a história — depois de cancelado, a decisão de prazo já não vale.
+     Aqui quem cancela é a CLIENTE pelo link, então o prazo manda: com folga
+     vira crédito, em cima da hora ela perde. */
+  if (action === 'cancelled') {
+    await aplicarRegraDoSinal(supabase, id)
+  }
 
   const { error } = await supabase
     .from('appointments')

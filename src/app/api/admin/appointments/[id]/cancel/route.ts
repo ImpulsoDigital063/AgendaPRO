@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { aplicarRegraDoSinal } from '@/lib/sinal-cancelamento'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
@@ -85,6 +86,11 @@ export async function POST(
   }
 
   // UPDATE → status=cancelled + zera paid_at + solta invoice_item_id
+  /* Sinal vira credito ANTES do cancelamento, enquanto o atendimento ainda
+     tem os dados. Cancelado pelo painel = sempre credito, qualquer prazo: se
+     quem desmarcou foi a dona, a cliente nao pode perder dinheiro. */
+  await aplicarRegraDoSinal(supabase, id, { porDono: true })
+
   const { error: updateErr } = await supabase
     .from('appointments')
     .update({ status: 'cancelled', paid_at: null, invoice_item_id: null, payment_method: null })

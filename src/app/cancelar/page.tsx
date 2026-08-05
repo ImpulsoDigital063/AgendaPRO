@@ -5,6 +5,7 @@ import Link from 'next/link'
 import CancelarConfirm from './CancelarConfirm'
 import { verifyCancelToken } from '@/lib/token'
 import { IconCalendar, IconClock, IconUsers, IconSparkles } from '@/components/ui/Icon'
+import { preverDecisao } from '@/lib/sinal-cancelamento'
 
 function getAdminClient() {
   return createServiceClient(
@@ -28,12 +29,17 @@ export default async function CancelarPage({
   const { data: appointment } = await supabase
     .from('appointments')
     .select(
-      'id, client_name, appointment_date, start_time, end_time, status, service_name, business:businesses(name, slug, brand_primary, brand_secondary, brand_mode), professional:professionals(name)'
+      'id, client_name, appointment_date, start_time, end_time, status, service_name, business:businesses(name, slug, phone, brand_primary, brand_secondary, brand_mode), professional:professionals(name)'
     )
     .eq('id', id)
     .single()
 
   if (!appointment) notFound()
+
+  /* O que vai acontecer com o sinal (v113). Calculado ANTES de ela clicar:
+     reter dinheiro sem ter avisado e briga garantida, e a cliente tem razao
+     quando nao foi informada. */
+  const decisaoSinal = await preverDecisao(supabase, id)
 
   const [year, month, day] = appointment.appointment_date.split('-')
   const dateFormatted = `${day}/${month}/${year}`
@@ -185,6 +191,8 @@ export default async function CancelarPage({
           token={token}
           alreadyCancelled={appointment.status === 'cancelled'}
           businessSlug={business?.slug}
+          businessPhone={(appointment.business as unknown as { phone?: string | null })?.phone ?? null}
+          decisaoSinal={decisaoSinal}
           isDark={isDark}
         />
 

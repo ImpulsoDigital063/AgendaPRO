@@ -32,7 +32,7 @@ export async function GET() {
   const [{ data: negocio }, { data: pendentes }] = await Promise.all([
     supabase
       .from('businesses')
-      .select('pix_key, pix_receiver_name, pix_city, sinal_enabled, sinal_percent, name, phone')
+      .select('pix_key, pix_receiver_name, pix_city, sinal_enabled, sinal_percent, sinal_cancel_horas, sinal_credito_dias, name, phone')
       .eq('id', businessId)
       .single(),
     supabase
@@ -72,6 +72,8 @@ export async function GET() {
       cidade: negocio?.pix_city ?? '',
       ativo: negocio?.sinal_enabled ?? false,
       percentual: negocio?.sinal_percent ?? 50,
+      cancelHoras: negocio?.sinal_cancel_horas ?? 24,
+      creditoDias: negocio?.sinal_credito_dias ?? 30,
       nomeNegocio: negocio?.name ?? '',
     },
     pendentes: lista,
@@ -102,6 +104,8 @@ export async function PUT(req: NextRequest) {
       pix_city: typeof body.cidade === 'string' ? body.cidade.trim() || null : null,
       sinal_enabled: body.ativo === true,
       sinal_percent: Math.round(percentual),
+      sinal_cancel_horas: Number.isFinite(Number(body.cancelHoras)) ? Math.max(0, Math.round(Number(body.cancelHoras))) : 24,
+      sinal_credito_dias: Number.isFinite(Number(body.creditoDias)) ? Math.max(1, Math.round(Number(body.creditoDias))) : 30,
     })
     .eq('id', businessId)
 

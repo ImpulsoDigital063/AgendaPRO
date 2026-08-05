@@ -39,6 +39,8 @@ type Config = {
   cidade: string
   ativo: boolean
   percentual: number
+  cancelHoras: number
+  creditoDias: number
   nomeNegocio: string
 }
 
@@ -259,6 +261,52 @@ export default function SinalView() {
               </div>
             </div>
           </div>
+
+          {/* Regra de cancelamento (v113). Os números vêm da Wanessa — 24h e 30
+              dias — mas são dela: clínica de procedimento caro pode querer 48h,
+              barbearia pode querer 2h. */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="admin-label">Cancelar sem perder o sinal até</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={String(cfg.cancelHoras ?? 24)}
+                  onChange={(e) =>
+                    setCfg({ ...cfg, cancelHoras: Number(e.target.value.replace(/\D/g, '').slice(0, 3) || 0) })
+                  }
+                  className="admin-input w-full px-3 py-2.5 text-sm pr-12"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                  horas
+                </span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <label className="admin-label">Crédito vale por</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={String(cfg.creditoDias ?? 30)}
+                  onChange={(e) =>
+                    setCfg({ ...cfg, creditoDias: Number(e.target.value.replace(/\D/g, '').slice(0, 3) || 0) })
+                  }
+                  className="admin-input w-full px-3 py-2.5 text-sm pr-10"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                  dias
+                </span>
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] -mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+            Cancelando <b>antes</b> desse prazo, o sinal vira crédito na ficha da cliente e ela usa
+            em outro horário. Cancelando <b>depois</b>, o sinal fica com você. Quando <b>você</b>{' '}
+            cancela pelo painel, vira crédito sempre — a cliente não pode perder dinheiro por uma
+            desmarcação sua.
+          </p>
 
           <div>
             <label className="admin-label">Cidade (opcional)</label>
