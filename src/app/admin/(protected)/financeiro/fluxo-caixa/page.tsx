@@ -436,7 +436,7 @@ export default async function FluxoCaixaPage({
   const mesAnterior = addMonthsBR(mesSel + '-01', -1).slice(0, 7)
   const mesProximo = addMonthsBR(mesSel + '-01', 1).slice(0, 7)
 
-  const [futurosRes, comandasAbertasRes, contasRes, mediaRes] = await Promise.all([
+  const [futurosRes, comandasAbertasRes, contasRes, mediaRes, futurosAbsolutosRes] = await Promise.all([
     /* Atendimento marcado e ainda não pago. NÃO filtra invoice_item_id
        (correção 04/08): a comanda aberta é só a forma como o valor está
        guardado — o compromisso continua sendo o atendimento, e é ele que
@@ -481,6 +481,16 @@ export default async function FluxoCaixaPage({
       .not('paid_at', 'is', null)
       .gte('appointment_date', addDaysBR(todayBR(), -28))
       .lt('appointment_date', todayBR()),
+    // Atendimento AINDA POR VIR, sem recorte de mes: serve so pra separar
+    // "cliente devendo" de "vai acontecer". Independe do mes na tela.
+    sb
+      .from('appointments')
+      .select('invoice_item_id')
+      .eq('business_id', business.id)
+      .neq('status', 'cancelled')
+      .is('paid_at', null)
+      .not('invoice_item_id', 'is', null)
+      .gte('appointment_date', HOJE),
   ])
 
   const futuros = futurosRes.data ?? []
@@ -491,8 +501,14 @@ export default async function FluxoCaixaPage({
      atendimento futuro em comanda já foi contado acima (ele tem data), então
      aqui sobra só o atraso. Sem essa separação, dívida antiga aparecia como
      receita futura: a Viva Cacheada tem uma de 29/07 parada até hoje. */
+  /* ⚠️ ABSOLUTO, não do mês selecionado (bug pego em 04/08 navegando pra
+     setembro): "cliente devendo" é quem já foi atendida e não pagou — isso
+     depende de HOJE, não do mês que a tela está mostrando. Amarrado ao mês
+     selecionado, abrir setembro fazia as comandas de agosto virarem dívida:
+     o bloco saltava de 2 clientes / R$ 380 pra 5 clientes / R$ 1.380 só por
+     mudar de aba. Mesmo raciocínio vale pras contas vencidas logo abaixo. */
   const idsItensFuturos = new Set(
-    futuros.map((a) => a.invoice_item_id).filter(Boolean) as string[],
+    (futurosAbsolutosRes.data ?? []).map((a) => a.invoice_item_id).filter(Boolean) as string[],
   )
   const devendo = (comandasAbertasRes.data ?? [])
     .filter((inv) => {
@@ -512,7 +528,7 @@ export default async function FluxoCaixaPage({
   // Vencidas ficam de fora do total futuro e aparecem em destaque próprio:
   // misturar as duas esconde o que precisa de ação hoje.
   const atrasadas = contas
-    .filter((c) => vencimento(c) && vencimento(c) < INICIO_MES)
+    .filter((c) => vencimento(c) && vencimento(c) < monthBoundsBR(mesAtual).start)
     .reduce((s, c) => s + Number(c.amount ?? 0), 0)
 
 
