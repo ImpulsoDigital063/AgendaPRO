@@ -52,10 +52,16 @@ export default function NovidadeSinalCard({ sinalAtivo }: { sinalAtivo: boolean 
        se em 2s ela não falou, é porque não está nesta tela — aí este card
        aparece. Fechar a faixa dispara `false` e este card entra na hora. */
     let vivo = true
+    /* O timeout é DESARMADO na resposta. Na primeira versão ele continuava
+       armado e, 2s depois de a faixa dizer "estou visível", forçava o card a
+       aparecer assim mesmo — os dois voltavam a empilhar (visto no print do
+       painel do Olímpio). Declarado antes do ouvinte porque `ouvirFaixaPush`
+       responde na hora quando a faixa já decidiu. */
+    const semResposta = setTimeout(() => { if (vivo) setMostrar(true) }, 2000)
     const parar = ouvirFaixaPush((faixaVisivel) => {
+      clearTimeout(semResposta)
       if (vivo) setMostrar(!faixaVisivel)
     })
-    const semResposta = setTimeout(() => { if (vivo) setMostrar(true) }, 2000)
 
     return () => { vivo = false; clearTimeout(semResposta); parar() }
   }, [sinalAtivo])
