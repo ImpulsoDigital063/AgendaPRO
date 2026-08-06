@@ -226,6 +226,9 @@ export default function AgendarModal({
   const [error, setError] = useState<string | null>(null)
   const [createdId, setCreatedId] = useState<string | null>(null)
   const [createdCustomerId, setCreatedCustomerId] = useState<string | null>(null)
+  /* Crédito que abateu o sinal · a dona precisa VER isso na hora, senão vai
+     na aba Sinal cobrar um valor que o sistema já quitou. */
+  const [creditoNoSinal, setCreditoNoSinal] = useState<{ aplicado: number; quitado: boolean } | null>(null)
 
   // Cliente search/create
   const [showClientPicker, setShowClientPicker] = useState(false)
@@ -703,6 +706,29 @@ export default function AgendarModal({
       }
     }
 
+    /* SINAL × CRÉDITO (auditoria 05/08) · se a cliente tem crédito de um
+       cancelamento anterior, ele abate o sinal AQUI também. O link público
+       já fazia isso; este caminho não fazia, e é por ele que passam ~90%
+       dos agendamentos — a cliente seria cobrada de novo por dinheiro que
+       já é dela, contra o que a tela de cancelamento prometeu.
+
+       Só o primeiro da série: crédito abate um sinal, não uma assinatura. */
+    if (valorSinal && valorSinal > 0 && !avulso) {
+      try {
+        const rc = await fetch('/api/admin/sinal/aplicar-credito', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ appointmentId: insertedRows[0].id }),
+        })
+        const rd = await rc.json().catch(() => ({}))
+        if (rc.ok && Number(rd.aplicado ?? 0) > 0) {
+          setCreditoNoSinal({ aplicado: Number(rd.aplicado), quitado: !!rd.quitado })
+        }
+      } catch {
+        // não-fatal: o atendimento está salvo · o sinal fica cheio na aba Sinal
+      }
+    }
+
     // O primeiro appointment é o "principal" pra fins de log/redirect
     const inserted = insertedRows[0]
 
@@ -863,6 +889,7 @@ export default function AgendarModal({
     setNotes('')
     setCreatedId(null)
     setCreatedCustomerId(null)
+    setCreditoNoSinal(null)
     setError(null)
   }
 
@@ -926,6 +953,30 @@ export default function AgendarModal({
             <h3 className="text-lg font-bold" style={{ color: 'var(--admin-text)' }}>
               Atendimento criado com sucesso!
             </h3>
+            {creditoNoSinal && (
+              <div
+                className="mt-3 rounded-xl px-3 py-2.5 text-left"
+                style={{
+                  background: 'color-mix(in srgb, #10B981 12%, transparent)',
+                  border: '1px solid color-mix(in srgb, #10B981 32%, transparent)',
+                }}
+              >
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text)' }}>
+                  {creditoNoSinal.quitado ? (
+                    <>
+                      O sinal já está <strong>quitado</strong> com{' '}
+                      <strong>{formatBRL(creditoNoSinal.aplicado)}</strong> de crédito da cliente.
+                      Não precisa cobrar.
+                    </>
+                  ) : (
+                    <>
+                      <strong>{formatBRL(creditoNoSinal.aplicado)}</strong> de crédito da cliente
+                      entraram no sinal. Cobre só a diferença na aba Sinal.
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
           </div>
           <div className="px-3 pb-3 space-y-1">
             <ActionRow label="Novo atendimento" onClick={novoAtendimento} />
