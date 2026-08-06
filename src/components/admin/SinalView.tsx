@@ -20,6 +20,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useEffect, useState } from 'react'
+import { linkCobrancaWhatsApp, textoPrazo } from '@/lib/sinal-cobranca'
 
 type Pendente = {
   id: string
@@ -61,13 +62,6 @@ const PRAZOS = [
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-/** "45 min", "2h", "1h20" — ninguém lê "137 minutos" e entende de cara. */
-function textoPrazo(min: number): string {
-  if (min < 60) return `${min} min`
-  const h = Math.floor(min / 60)
-  const m = min % 60
-  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`
-}
 const dataCurta = (ymd: string) => ymd.split('-').reverse().slice(0, 2).join('/')
 
 export default function SinalView() {
@@ -122,21 +116,21 @@ export default function SinalView() {
     setPendentes((lista) => lista.filter((p) => p.id !== id))
   }
 
+  /* O texto mora em lib/sinal-cobranca — a tela de sucesso do agendamento
+     cobra pelo mesmo caminho, e duas cópias divergiriam no primeiro ajuste.
+     A cliente receberia mensagens diferentes conforme o botão que a dona
+     apertou. */
   function linkCobranca(p: Pendente) {
-    const tel = (p.client_phone || '').replace(/\D/g, '')
-    if (!tel || !p.copiaECola) return null
-    const texto =
-      `Oi ${p.client_name?.split(' ')[0] ?? ''}! Seu horário de ${p.service_name ?? 'atendimento'} ` +
-      `dia ${dataCurta(p.appointment_date)} às ${p.start_time.slice(0, 5)} está reservado.\n\n` +
-      `Pra confirmar, é só pagar o sinal de ${brl(Number(p.sinal_valor))} no PIX abaixo — ` +
-      `copia o código e cola no seu banco:\n\n${p.copiaECola}\n\n` +
-      /* O prazo entra na mensagem porque é ele que faz a pessoa pagar agora em
-         vez de "depois eu vejo". E é honesto: o horário vai ser solto mesmo. */
-      (typeof p.minutosPraVencer === 'number' && p.minutosPraVencer > 0
-        ? `Consigo segurar por mais ${textoPrazo(p.minutosPraVencer)} — depois disso o horário volta pra agenda.\n\n`
-        : '') +
-      `Assim que cair eu confirmo aqui. Qualquer coisa me chama!`
-    return `https://wa.me/${tel.startsWith('55') ? tel : '55' + tel}?text=${encodeURIComponent(texto)}`
+    return linkCobrancaWhatsApp({
+      clienteNome: p.client_name,
+      clienteTelefone: p.client_phone,
+      servico: p.service_name,
+      data: p.appointment_date,
+      hora: p.start_time,
+      valorSinal: Number(p.sinal_valor ?? 0),
+      copiaECola: p.copiaECola,
+      minutosPraVencer: p.minutosPraVencer,
+    })
   }
 
   if (carregando) return <p className="text-sm opacity-60 p-4">Carregando…</p>

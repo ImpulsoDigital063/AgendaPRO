@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { resolveClientId } from '@/lib/clients'
 import { logActivity } from '@/lib/activity-log'
 import { ratearCombo } from '@/lib/combo-rateio'
+import { textoPrazo as textoPrazoCobranca } from '@/lib/sinal-cobranca'
 import {
   IconClose,
   IconSearch,
@@ -229,6 +230,14 @@ export default function AgendarModal({
   /* Crédito que abateu o sinal · a dona precisa VER isso na hora, senão vai
      na aba Sinal cobrar um valor que o sistema já quitou. */
   const [creditoNoSinal, setCreditoNoSinal] = useState<{ aplicado: number; quitado: boolean } | null>(null)
+  /* Sinal que ficou PENDENTE nesse agendamento. A dona precisa cobrar agora,
+     não depois: o horário está reservado esperando um PIX e tem prazo pra
+     morrer. Antes disto a tela só dizia "criado com sucesso" e ela ia embora
+     sem saber que havia cobrança a fazer (Eduardo, 06/08). */
+  const [cobrarSinal, setCobrarSinal] = useState<
+    { valor: number; link: string | null; copiaECola: string; minutosPraVencer: number | null } | null
+  >(null)
+  const [copiouPix, setCopiouPix] = useState(false)
 
   // Cliente search/create
   const [showClientPicker, setShowClientPicker] = useState(false)
@@ -737,6 +746,23 @@ export default function AgendarModal({
       } catch {
         // não-fatal: o atendimento está salvo · o sinal fica cheio na aba Sinal
       }
+
+      /* Se sobrou sinal a pagar, traz a cobrança pronta pra tela de sucesso.
+         A rota responde cobrar:false quando o crédito quitou tudo. */
+      try {
+        const cc = await fetch(`/api/admin/sinal/cobranca?appointmentId=${insertedRows[0].id}`)
+        const cd = await cc.json().catch(() => ({}))
+        if (cc.ok && cd.cobrar) {
+          setCobrarSinal({
+            valor: Number(cd.valor),
+            link: cd.link ?? null,
+            copiaECola: cd.copiaECola,
+            minutosPraVencer: typeof cd.minutosPraVencer === 'number' ? cd.minutosPraVencer : null,
+          })
+        }
+      } catch {
+        // não-fatal: a aba Sinal continua listando quem está devendo
+      }
     }
 
     // O primeiro appointment é o "principal" pra fins de log/redirect
@@ -963,6 +989,54 @@ export default function AgendarModal({
             <h3 className="text-lg font-bold" style={{ color: 'var(--admin-text)' }}>
               Atendimento criado com sucesso!
             </h3>
+            {/* COBRAR O SINAL AGORA (06/08) · o horário nasceu reservado e tem
+                prazo. Empurrar essa cobrança pra "depois, na aba Sinal" é
+                perder o horário: a dona sai da tela e esquece. Aqui ela está
+                com o telefone na mão e a cliente na cabeça. */}
+            {cobrarSinal && (
+              <div
+                className="mt-3 rounded-xl px-3 py-3 text-left"
+                style={{
+                  background: 'color-mix(in srgb, #F59E0B 12%, transparent)',
+                  border: '1px solid color-mix(in srgb, #F59E0B 34%, transparent)',
+                }}
+              >
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text)' }}>
+                  O horário está <strong>reservado</strong> até o sinal de{' '}
+                  <strong>{formatBRL(cobrarSinal.valor)}</strong> cair
+                  {typeof cobrarSinal.minutosPraVencer === 'number' && cobrarSinal.minutosPraVencer > 0 && (
+                    <> — você tem {textoPrazoCobranca(cobrarSinal.minutosPraVencer)} pra cobrar</>
+                  )}
+                  .
+                </p>
+                {cobrarSinal.link ? (
+                  <a
+                    href={cobrarSinal.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2.5 block w-full rounded-xl py-2.5 text-center text-xs font-bold"
+                    style={{ background: '#25D366', color: '#fff' }}
+                  >
+                    Cobrar no WhatsApp
+                  </a>
+                ) : (
+                  /* Sem telefone não dá pra abrir conversa — resta o código
+                     pra ela mandar pelo canal que usar com essa cliente. */
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(cobrarSinal.copiaECola)
+                      setCopiouPix(true)
+                    }}
+                    className="mt-2.5 block w-full rounded-xl py-2.5 text-center text-xs font-bold"
+                    style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                  >
+                    {copiouPix ? 'Código copiado' : 'Copiar código PIX'}
+                  </button>
+                )}
+              </div>
+            )}
+
             {creditoNoSinal && (
               <div
                 className="mt-3 rounded-xl px-3 py-2.5 text-left"
