@@ -3,6 +3,7 @@ import { calcularSinal, gerarBRCode } from '@/lib/pix-brcode'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { variacoesDeTelefone } from '@/lib/phone-variants'
+import { todayBR } from '@/lib/date-br'
 
 /**
  * POST /api/booking/submit
@@ -76,6 +77,19 @@ export async function POST(req: NextRequest) {
 
   if (!businessId || !professionalId || !name || !phone || !appointmentDate || !startTime || !endTime) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 })
+  }
+
+  /* Data no passado (auditoria 05/08) · a tela nunca deixa escolher, mas a
+     rota é pública e aceitava. Agendamento em data vencida entra na agenda
+     como se fosse real e polui todo relatório que conta por dia.
+
+     Fica só nisso de propósito: replicar aqui a validação de expediente,
+     bloqueio e intervalo (que hoje mora na tela) tem risco alto de recusar
+     agendamento legítimo do Olímpio, que é o caminho de receita. Data
+     passada é inequívoco. λ.fuso: compara no fuso de Brasília, não em UTC —
+     em UTC, depois das 21h "hoje" já virou ontem. */
+  if (appointmentDate < todayBR()) {
+    return NextResponse.json({ error: 'data_passada' }, { status: 400 })
   }
 
   const db = admin()
