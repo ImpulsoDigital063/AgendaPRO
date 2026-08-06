@@ -82,10 +82,35 @@ export async function GET(req: NextRequest) {
     ? Math.max(0, Math.ceil((new Date(subscription.pago_ate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
     : null
 
-  // TRIAL VENCIDO = teste acabou e nunca pagou (pending_payment sem setup_paid_at).
-  // O PlanoCard mostra "seu teste acabou" + checkout, mesma UI do trial ativo.
+  // TRIAL VENCIDO = teste acabou e nunca pagou. O PlanoCard mostra "seu teste
+  // acabou" + checkout, mesma UI do trial ativo.
+  //
+  // São DOIS estados, não um (bug de conversão achado 05/08):
+  //  - `pending_payment` — como o trial vencia até 28/07;
+  //  - `past_due` sem ciclo de cobrança — como vence DEPOIS que o cron passou a
+  //    dar 3 dias de carência ao trial (mesma transição do pagante em atraso).
+  //
+  // Só o primeiro estava coberto aqui. Efeito: nos 3 dias de carência a dona
+  // continuava dentro do painel, via a faixa "Seu teste terminou · Assinar
+  // agora", clicava, e a aba Plano abria o card de ASSINANTE — sem seletor de
+  // modalidade, sem CPF, sem QR; só "Cancelar assinatura". Ela só conseguia
+  // pagar depois de ser bloqueada, pela /admin/bloqueado. Pegou Realli, DN
+  // Diogo, Amanda Freitas e Lopes Studio.
+  //
+  // O critério de "sem ciclo" é o mesmo do `isTrial` acima, do billing-check e
+  // do `emTrialGrace` no layout do admin — é o que separa trial de PAGANTE PIX
+  // atrasado (esse tem plan_modalidade preenchida e NÃO pode cair aqui: ele já
+  // tem cobrança gerada e paga pela faixa "Pagar agora").
+  const trialVencidoEmCarencia =
+    subscription.status === 'past_due' &&
+    !subscription.permanent_courtesy &&
+    !subscription.plan_modalidade &&
+    !subscription.asaas_subscription_id &&
+    !subscription.mp_subscription_id
+
   const trialEnded =
-    subscription.status === 'pending_payment' && !subscription.setup_paid_at
+    (subscription.status === 'pending_payment' || trialVencidoEmCarencia) &&
+    !subscription.setup_paid_at
 
   return NextResponse.json({
     subscription: {
