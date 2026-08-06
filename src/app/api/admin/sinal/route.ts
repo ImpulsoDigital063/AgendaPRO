@@ -99,6 +99,12 @@ export async function GET() {
       creditoDias: negocio?.sinal_credito_dias ?? 30,
       expiraMinutos: negocio?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN,
       nomeNegocio: negocio?.name ?? '',
+      /* WhatsApp do NEGÓCIO (não da cliente). Sem ele a cliente que quer
+         remarcar não tem pra onde ligar: o botão "Prefiro remarcar" na tela
+         de cancelamento some, e ela cancela em vez de remarcar. Medido em
+         06/08: de 23 negócios só um estava sem — a Wanessa, justamente quem
+         pediu o sinal. */
+      telefoneNegocio: negocio?.phone ?? null,
     },
     pendentes: lista,
   })

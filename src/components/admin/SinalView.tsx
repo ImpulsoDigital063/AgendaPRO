@@ -45,6 +45,7 @@ type Config = {
   creditoDias: number
   expiraMinutos: number
   nomeNegocio: string
+  telefoneNegocio: string | null
 }
 
 /* Prazo em minutos no banco, mas a dona escolhe em linguagem de gente.
@@ -99,6 +100,14 @@ export default function SinalView() {
     }).then((x) => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { setErro(r?.error || 'Não consegui salvar.'); return }
+    /* Ligou o sinal sem WhatsApp cadastrado: avisa no ato, não só no banner do
+       topo que ela pode ter rolado sem ler. É a hora em que a decisão foi
+       tomada — depois disso a cliente já pode cair no cancelamento sem saída. */
+    if (cfg.ativo && !(cfg.telefoneNegocio || '').replace(/\D/g, '')) {
+      setAviso('Salvo. Cadastre o WhatsApp do negócio pra cliente conseguir remarcar com você.')
+      setTimeout(() => setAviso(null), 6000)
+      return
+    }
     setAviso('Salvo.')
     setTimeout(() => setAviso(null), 2500)
     carregar()
@@ -141,6 +150,36 @@ export default function SinalView() {
       {erro && (
         <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#DC2626' }}>
           {erro}
+        </div>
+      )}
+
+      {/* WhatsApp DO NEGÓCIO faltando (06/08) · o sinal inteiro depende de
+          conversa: cobrar, confirmar que caiu, remarcar. Sem o número, o botão
+          "Prefiro remarcar" some da tela de cancelamento e a cliente cancela
+          em vez de remarcar — o salão perde o horário e ainda devolve o sinal.
+
+          Fica no topo e só aparece quando falta. Aviso que some sozinho ao ser
+          resolvido não vira paisagem. */}
+      {!(cfg.telefoneNegocio || '').replace(/\D/g, '') && (
+        <div
+          className="rounded-xl px-4 py-3"
+          style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.34)' }}
+        >
+          <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+            Falta cadastrar o WhatsApp do seu negócio
+          </p>
+          <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+            É por ele que a cliente fala com você pra remarcar. Sem o número, quem precisa mudar
+            o horário só tem a opção de cancelar — e aí o horário fica vago e você ainda devolve
+            o sinal.
+          </p>
+          <a
+            href="/admin/configuracoes?tab=negocio"
+            className="mt-2.5 inline-block rounded-lg px-3 py-2 text-xs font-bold"
+            style={{ background: 'var(--admin-accent)', color: '#fff' }}
+          >
+            Cadastrar agora
+          </a>
         </div>
       )}
 
