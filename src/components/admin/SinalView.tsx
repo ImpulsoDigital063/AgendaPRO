@@ -322,8 +322,8 @@ export default function SinalView() {
                 className="admin-input w-full px-3 py-2.5 text-sm"
               />
               <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-                E o nome que a cliente ve no app do banco dela. Use o titular da conta,
-                nao o nome do salao.
+                É o nome que a cliente vê no app do banco dela. Use o titular da conta,
+                não o nome do salão.
               </p>
             </div>
             <div style={{ width: 120 }}>
@@ -422,7 +422,7 @@ export default function SinalView() {
                 pra onde o dinheiro vai — se ficar vazio mandamos BRASIL. Dito
                 aqui porque o dono pergunta, com razao, por que precisa disso. */}
             <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-              O padrao do PIX pede esse campo dentro do codigo. Nao muda pra onde o
+              O padrão do PIX pede esse campo dentro do código. Não muda pra onde o
               dinheiro vai — se deixar vazio, usamos "BRASIL".
             </p>
           </div>
