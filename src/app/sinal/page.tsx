@@ -72,7 +72,17 @@ export async function generateMetadata({
     description: descricao,
     // Link de cobrança não entra em buscador.
     robots: { index: false, follow: false },
-    openGraph: { title: `Confirmar horário · ${nome}`, description: descricao, type: 'website' },
+    openGraph: {
+      title: `Confirmar horário · ${nome}`,
+      description: descricao,
+      type: 'website',
+      /* A marca fica, o anúncio sai. siteName põe "AgendaPRO" no rodapé do
+         card e o domínio aparece de qualquer jeito — exposição de graça, que
+         é o que interessa. O que não podia era o pitch com preço de
+         assinatura em cima de uma cobrança: a cliente está decidindo pagar
+         R$ 14 e lia "a partir de R$ 67/mês". */
+      siteName: 'AgendaPRO',
+    },
   }
 }
 
@@ -300,6 +310,22 @@ export default async function SinalPage({
             Ver {business.name}
           </Link>
         )}
+
+        {/* Selo do AgendaPRO · a propaganda vive AQUI, não na prévia da
+            cobrança. A diferença é o momento: na conversa ela está decidindo
+            pagar e um preço de assinatura ao lado confunde; aqui ela já pagou
+            ou está resolvendo, e uma linha discreta no rodapé é o padrão que
+            todo mundo aceita (Calendly, Typeform). Mesmo raciocínio do pack
+            de divulgação: cada cliente vira distribuidor passivo. */}
+        <a
+          href="https://www.agendapro.net.br?utm_source=sinal&utm_medium=rodape"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-center text-[11px] pt-4 pb-2 transition-opacity hover:opacity-80"
+          style={{ color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(15,23,42,0.35)' }}
+        >
+          Agendamento e pagamento por <strong>AgendaPRO</strong>
+        </a>
       </div>
     </main>
   )
