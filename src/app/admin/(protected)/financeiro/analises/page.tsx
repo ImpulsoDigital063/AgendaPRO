@@ -48,7 +48,7 @@ export default async function AnalisesPage({
     .from('appointments')
     .select(`
       id, appointment_date, start_time, total_price, paid_at, invoice_item_id,
-      payment_method, status, service_name, client_id,
+      payment_method, status, service_name, client_id, sinal_expirado_at,
       professional:professionals(id, name)
     `)
     .eq('business_id', business.id)

@@ -12,6 +12,9 @@ type Appointment = {
   paid_at: string | null
   payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
   status: string
+  /* v117 · preenchido = horario solto por falta de pagamento do sinal, nao
+     desistencia. Fica FORA da conta de perdas. */
+  sinal_expirado_at?: string | null
   service_name: string | null
   client_id: string | null
   professional?: { id: string; name: string } | null
@@ -89,8 +92,14 @@ export default function AnalisesView({
     a.payment_method !== 'courtesy' &&
     (a.payment_method as string | null) !== 'credit',
   ), [currentMonth])
+  /* Horario que venceu por falta de sinal sai da conta (v117): a cliente
+     nunca confirmou, entao nao houve desistencia nem perda de atendimento
+     agendado. Sem esse filtro a metrica que ORIGINOU o sinal - o quanto se
+     perde com falta - subiria sozinha conforme o sinal fosse ligado. */
   const cancelados = useMemo(
-    () => currentMonth.filter((a) => a.status === 'cancelled' || a.status === 'no_show'),
+    () => currentMonth.filter(
+      (a) => (a.status === 'cancelled' || a.status === 'no_show') && !a.sinal_expirado_at,
+    ),
     [currentMonth]
   )
   const totalAgendamentos = currentMonth.length

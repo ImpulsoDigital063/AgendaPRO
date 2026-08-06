@@ -20,6 +20,10 @@ type Appointment = {
   charged_total?: number | null
   paid_at: string | null
   payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
+  /* v117 · preenchido = o horario foi solto porque o sinal nao foi pago no
+     prazo. A cliente nunca confirmou: nao e cancelamento nem dinheiro
+     perdido, e a mensagem pra ela e outra. */
+  sinal_expirado_at?: string | null
   professional?: { id: string; name: string } | null
 }
 
@@ -38,6 +42,15 @@ const STATUS_COLOR: Record<Appointment['status'], string> = {
   cancelled: '#94A3B8',
   no_show: '#EF4444',
 }
+
+/* Quem venceu o prazo do sinal aparece na lista, mas com o nome certo: a
+   cliente nao cancelou, ela nao chegou a confirmar (v117). Cor propria pra
+   dona bater o olho e separar - ambar de "ficou pelo caminho", nao o
+   vermelho de falta. */
+const rotuloDe = (a: Appointment) =>
+  a.sinal_expirado_at ? 'Não confirmou o sinal' : STATUS_LABEL[a.status]
+const corDe = (a: Appointment) =>
+  a.sinal_expirado_at ? '#F59E0B' : STATUS_COLOR[a.status]
 
 const PERIODO_LABEL: Record<string, string> = {
   hoje: 'Hoje',
@@ -71,9 +84,15 @@ export default function CanceladosView({ appointments, periodo, businessName }: 
   const [showAllCancelled, setShowAllCancelled] = useState(false)
 
   const stats = useMemo(() => {
-    const cancelled = appointments.filter((a) => a.status === 'cancelled')
-    const noShow = appointments.filter((a) => a.status === 'no_show')
-    const totalLost = appointments
+    /* Horario vencido por falta de sinal fica fora das duas contas: nao entra
+       em "cancelados" nem no dinheiro perdido. Ninguem prometeu vir - a
+       cliente parou no meio do agendamento. Contar isso como perda infla a
+       propria metrica que o sinal existe pra derrubar (v117). */
+    const expirados = appointments.filter((a) => !!a.sinal_expirado_at)
+    const reais = appointments.filter((a) => !a.sinal_expirado_at)
+    const cancelled = reais.filter((a) => a.status === 'cancelled')
+    const noShow = reais.filter((a) => a.status === 'no_show')
+    const totalLost = reais
       .filter((a) => a.paid_at == null && a.total_price != null)
       .reduce((sum, a) => sum + (a.charged_total ?? a.total_price ?? 0), 0)
     const totalRecovered = appointments
@@ -82,6 +101,7 @@ export default function CanceladosView({ appointments, periodo, businessName }: 
     return {
       cancelled: cancelled.length,
       noShow: noShow.length,
+      naoConfirmados: expirados.length,
       totalLost,
       totalRecovered,
     }
@@ -91,10 +111,20 @@ export default function CanceladosView({ appointments, periodo, businessName }: 
     const phone = (a.client_phone || '').replace(/\D/g, '')
     if (phone.length < 10) return null
     const isNoShow = a.status === 'no_show'
+    const naoConfirmou = !!a.sinal_expirado_at
     const date = formatDate(a.appointment_date)
     const time = a.start_time.slice(0, 5)
     const service = a.service_name ? ` (${a.service_name})` : ''
     const price = a.total_price ? ` no valor de ${formatPrice(a.total_price)}` : ''
+    /* Pra quem so nao pagou o sinal, cobrar "voce nao compareceu" ou "seu
+       agendamento foi cancelado" e mentira: o horario caiu sozinho no prazo.
+       A mensagem certa abre a porta em vez de acusar. */
+    if (naoConfirmou) {
+      return `https://wa.me/55${phone}?text=${encodeURIComponent(
+        `Olá ${a.client_name}! Seu horário de ${date} às ${time}${service} não chegou a ser confirmado e voltou pra agenda. Se ainda quiser, me chama que eu remarco. ${businessName}`,
+      )}`
+    }
+
     const text = isNoShow
       ? `Olá ${a.client_name}! Notei que você não compareceu ao seu horário de ${date} às ${time}${service}${price}. Posso te ajudar a remarcar? ${businessName}`
       : `Olá ${a.client_name}! Vi que seu agendamento de ${date} às ${time}${service} foi cancelado. Quer remarcar? ${businessName}`
@@ -134,6 +164,7 @@ export default function CanceladosView({ appointments, periodo, businessName }: 
         <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
           {stats.cancelled} cancelad{stats.cancelled === 1 ? 'o' : 'os'}
           {stats.noShow > 0 && ` · ${stats.noShow} não compareceu`}
+          {stats.naoConfirmados > 0 && ` · ${stats.naoConfirmados} não confirmou o sinal`}
           {stats.totalRecovered > 0 && (
             <span style={{ color: '#10B981' }}>
               {' · '}{formatPrice(stats.totalRecovered)} recuperado
@@ -188,9 +219,9 @@ export default function CanceladosView({ appointments, periodo, businessName }: 
                       ) : null}
                       <span
                         className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{ background: `${STATUS_COLOR[a.status]}20`, color: STATUS_COLOR[a.status] }}
+                        style={{ background: `${corDe(a)}20`, color: corDe(a) }}
                       >
-                        {STATUS_LABEL[a.status]}
+                        {rotuloDe(a)}
                       </span>
                     </div>
                   </div>

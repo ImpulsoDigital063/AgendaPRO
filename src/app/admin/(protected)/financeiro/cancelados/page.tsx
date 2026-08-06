@@ -47,7 +47,7 @@ export default async function CanceladosPage({
     .from('appointments')
     .select(`
       id, client_name, client_phone, appointment_date, start_time,
-      status, service_name, total_price, paid_at, payment_method,
+      status, service_name, total_price, paid_at, payment_method, sinal_expirado_at,
       professional:professionals(id, name)
     `)
     .eq('business_id', business.id)
