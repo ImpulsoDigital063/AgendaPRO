@@ -1,18 +1,35 @@
 'use client'
 
-// Faixa da home do painel (/admin/inicio) que liga a notificação de
-// agendamento novo no celular do dono. Decide sozinha o que mostrar:
+// Faixa que liga a notificação de agendamento novo no celular. Aparece na
+// agenda e no Início do dono, na área do profissional e na recepção. Decide
+// sozinha o que mostrar:
 //  - 'enable'      → botão "Ativar notificações" (navegador suporta, ainda não ativou)
 //  - 'ios-install' → dica de instalar na tela de início (iPhone no Safari, sem PWA)
-//  - null          → some (já ativo · dispensado · não suportado · permissão negada)
-// Dismissível: guarda em localStorage pra não incomodar quem fechou.
+//  - 'blocked'     → permissão negada no aparelho: explica como liberar nos ajustes
+//  - null          → some (já ativo NOS DOIS LADOS · dispensado · sem suporte)
+//
+// "Já ativo" quer dizer assinatura no aparelho E row no banco — é o banco que o
+// /api/notify lê. Se só o aparelho tiver, a faixa reenvia pro banco antes de
+// sumir (ver syncPushSubscription em lib/push).
+//
+// Dispensa: 7 dias em localStorage pra quem já recebe em algum aparelho; só a
+// sessão atual pra quem não tem NENHUM registrado — esse tem que rever o
+// convite toda vez que abrir a agenda.
 import { useEffect, useState } from 'react'
-import { registerPush, pushSupported, syncPushSubscription, type PushResult } from '@/lib/push'
+import { registerPush, pushSupported, syncPushSubscription, contarDevicesRegistrados, type PushResult } from '@/lib/push'
 
 // Dispensa temporária: guarda o timestamp e volta a oferecer depois de 7 dias
 // (antes era permanente · um "agora não" matava o banner pra sempre → adoção baixa).
 const DISMISS_KEY = 'ap_push_banner_dismissed_at'
 const DISMISS_DAYS = 7
+
+// Quem NÃO tem nenhum aparelho registrado no banco não entra na dispensa de 7
+// dias (Eduardo, 06/08: "quando o Olímpio e o funcionário dele abrirem a agenda,
+// têm que ver o aviso"). Pra essas pessoas o convite volta toda vez que a tela
+// é aberta de novo — o ✕ vale só pra sessão atual, pra não atrapalhar quem está
+// no meio de um atendimento. Quem já ativou em ALGUM aparelho mantém a dispensa
+// de 7 dias no aparelho novo: já recebe notificação, o convite ali é opcional.
+const DISMISS_SESSION_KEY = 'ap_push_banner_dismissed_session'
 
 function IconBell({ size = 18 }: { size?: number }) {
   return (
@@ -40,6 +57,8 @@ export default function PushEnableBanner() {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // true = pessoa sem nenhum aparelho registrado (o convite insiste; ver topo)
+  const [persistente, setPersistente] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -52,8 +71,19 @@ export default function PushEnableBanner() {
         window.matchMedia('(display-mode: standalone)').matches ||
         (window.navigator as unknown as { standalone?: boolean }).standalone === true
 
+      // Sem NENHUM aparelho no banco = pessoa que não recebe notificação em
+      // lugar nenhum. Aí a dispensa de 7 dias não vale (só a da sessão), senão
+      // um "agora não" apagava o convite por uma semana justo pra quem mais
+      // precisa dele. null (não deu pra consultar) cai no comportamento antigo.
+      const registrados = await contarDevicesRegistrados()
+      if (!alive) return
+      const nuncaAtivou = registrados === 0
+      setPersistente(nuncaAtivou)
+
       const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || 0)
-      const dispensada = dismissedAt && Date.now() - dismissedAt < DISMISS_DAYS * 86400000
+      const dispensada = nuncaAtivou
+        ? sessionStorage.getItem(DISMISS_SESSION_KEY) === '1'
+        : !!(dismissedAt && Date.now() - dismissedAt < DISMISS_DAYS * 86400000)
 
       if (!pushSupported()) {
         // iPhone no Safari (não instalado) não expõe PushManager — o push só
@@ -89,7 +119,10 @@ export default function PushEnableBanner() {
 
   function dismiss() {
     try {
-      localStorage.setItem(DISMISS_KEY, String(Date.now()))
+      // Nunca ativou em aparelho nenhum → some só nesta sessão; volta na
+      // próxima vez que abrir a agenda. Já ativou em algum → 7 dias.
+      if (persistente) sessionStorage.setItem(DISMISS_SESSION_KEY, '1')
+      else localStorage.setItem(DISMISS_KEY, String(Date.now()))
     } catch {}
     setMode(null)
   }

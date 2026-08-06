@@ -121,6 +121,24 @@ export async function syncPushSubscription(): Promise<boolean> {
   }
 }
 
+// Quantos aparelhos DESTE usuário estão registrados no banco (RLS já filtra por
+// user_id = auth.uid()). Zero = essa pessoa não recebe notificação em lugar
+// nenhum, só email — é o caso do Olímpio e do funcionário dele. Devolve null
+// se não deu pra consultar (offline/sessão), pra quem chama não confundir
+// "não sei" com "não tem".
+export async function contarDevicesRegistrados(): Promise<number | null> {
+  try {
+    const sb = createClient()
+    const { count, error } = await sb
+      .from('push_subscriptions')
+      .select('endpoint', { count: 'exact', head: true })
+    if (error) return null
+    return count ?? 0
+  } catch {
+    return null
+  }
+}
+
 // Estado real deste aparelho, olhando os DOIS lados. Usado pela tela fixa de
 // Notificações (Configurações), que precisa dizer a verdade pro dono — e não
 // só "some quando parece ok", que era o comportamento da faixa.
