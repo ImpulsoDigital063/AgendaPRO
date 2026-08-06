@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/Icon'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import PushEnableBanner from '@/components/admin/PushEnableBanner'
+import NovidadeSinalCard from '@/components/admin/NovidadeSinalCard'
 import Image from 'next/image'
 
 function IconReceipt({ size = 20 }: { size?: number }) {
@@ -456,6 +457,10 @@ export default async function AdminInicioPage() {
         {/* Ativar notificação de agendamento novo no celular do dono. Some
             sozinha quando já ativou / não suporta / foi dispensada. */}
         <PushEnableBanner />
+
+        {/* Novidade do sinal (06/08) · some pra quem ja ligou, pra quem
+            dispensou e depois de 31/08. */}
+        <NovidadeSinalCard sinalAtivo={business.sinal_enabled === true} />
 
         {/* Pedidos de pontos por avaliação · aprovar/recusar na hora · fica no
             TOPO (acima de atalhos e KPIs) pra não precisar rolar pra achar

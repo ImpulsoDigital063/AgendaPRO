@@ -10,6 +10,7 @@ import WelcomeModal from '@/components/admin/onboarding/WelcomeModal'
 import OnboardingChecklist from '@/components/admin/onboarding/OnboardingChecklist'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import PushEnableBanner from '@/components/admin/PushEnableBanner'
+import NovidadeSinalCard from '@/components/admin/NovidadeSinalCard'
 import { todayBR } from '@/lib/date-br'
 
 // Garante revalidação imediata após mutações (router.refresh tras cancel/payment).
@@ -93,8 +94,12 @@ export default async function AdminPage({
 
       {/* Ativar notificações · na AGENDA (tela que todos usam), não só no Início —
           o banner some sozinho se já ativo/dispensado/sem suporte (Eduardo 28/07). */}
-      <div className="relative px-3 md:px-6 pt-3 md:pt-6">
+      <div className="relative px-3 md:px-6 pt-3 md:pt-6 space-y-3">
         <PushEnableBanner />
+        {/* Novidade do sinal (06/08). Some sozinho pra quem ja ligou, pra quem
+            dispensou e depois de 31/08 — o push alcanca so quem ativou
+            notificacao, este card alcanca todo mundo que abre o painel. */}
+        <NovidadeSinalCard sinalAtivo={business.sinal_enabled === true} />
       </div>
 
       {/* Agenda · GradeTimeline em todos os breakpoints (mobile = scroll horizontal) */}
