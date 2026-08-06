@@ -268,6 +268,13 @@ export default function AgendarModal({
     setError(null)
     setCreatedId(null)
     setCreatedCustomerId(null)
+    /* Sem isto o aviso de crédito do agendamento ANTERIOR reaparecia na tela de
+       sucesso do próximo — Eduardo marcou o Edu (crédito aplicado), depois a
+       Denise, e a Denise recebeu a mensagem do Edu. Ela não tem crédito
+       nenhum. Falar de dinheiro que não existe é o pior tipo de erro de tela:
+       a dona deixa de cobrar. (novoAtendimento já limpava; abrir o modal de
+       novo, não.) */
+    setCreditoNoSinal(null)
     setShowClientPicker(false)
     setShowFullClientForm(false)
     setSearch('')
@@ -575,6 +582,9 @@ export default function AgendarModal({
   async function handleSave() {
     if (!canSave || (!cliente && !avulso)) return
     setError(null)
+    // Segunda trava contra o aviso de crédito vazar de um agendamento pro
+    // outro: aqui não depende de o modal ter fechado e reaberto.
+    setCreditoNoSinal(null)
     setSaving(true)
     // BALCÃO e "JÁ ATENDI" = registro de atendimento que JÁ aconteceu.
     // A duração ali é irrelevante: o sistema não pode obrigar a recepcionista a
