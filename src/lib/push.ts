@@ -82,3 +82,70 @@ export async function hasActivePushSubscription(): Promise<boolean> {
     return false
   }
 }
+
+// Reconciliação navegador × banco (achado 06/08 · caso Olímpio).
+//
+// O navegador guardar uma assinatura NÃO quer dizer que ela existe no banco —
+// e é o banco que o /api/notify consulta pra saber pra onde mandar. Os dois
+// descasam em dois caminhos reais:
+//   1. o `subscribe()` funciona mas a RPC de salvar falha depois (rede/sessão);
+//   2. o /api/notify APAGA a row quando o serviço de push devolve 404/410
+//      (assinatura morta), e o aparelho continua com o objeto dele.
+// Nos dois casos o resultado era o mesmo e mudo: a faixa via "já tem assinatura"
+// e sumia pra sempre, enquanto nenhum push chegava. Ninguém ficava sabendo.
+//
+// Esta função reenvia a assinatura do aparelho pro banco. A RPC é idempotente
+// (`on conflict (endpoint) do update`), então rodar à toa não custa nada nem
+// duplica device. Best-effort: falhou, devolve false e a faixa continua o fluxo.
+export async function syncPushSubscription(): Promise<boolean> {
+  try {
+    if (!pushSupported()) return false
+    if (Notification.permission !== 'granted') return false
+    const reg = await navigator.serviceWorker.getRegistration()
+    const sub = await reg?.pushManager.getSubscription()
+    if (!sub) return false
+
+    const json = sub.toJSON()
+    if (!json.keys?.p256dh || !json.keys?.auth) return false
+
+    const sb = createClient()
+    const { error } = await sb.rpc('salvar_push_subscription', {
+      p_endpoint: sub.endpoint,
+      p_p256dh: json.keys.p256dh,
+      p_auth: json.keys.auth,
+      p_user_agent: navigator.userAgent.slice(0, 300),
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+// Estado real deste aparelho, olhando os DOIS lados. Usado pela tela fixa de
+// Notificações (Configurações), que precisa dizer a verdade pro dono — e não
+// só "some quando parece ok", que era o comportamento da faixa.
+export type PushDeviceState =
+  | 'ativo'          // permissão dada, assinatura no aparelho E salva no banco
+  | 'desligado'      // suporta, mas nunca ativou aqui
+  | 'bloqueado'      // permissão negada — só o dono reativa nos ajustes do aparelho
+  | 'ios-sem-app'    // iPhone no Safari: precisa instalar na tela de início antes
+  | 'sem-suporte'
+
+export async function pushDeviceState(): Promise<PushDeviceState> {
+  if (typeof window === 'undefined') return 'sem-suporte'
+  const ua = navigator.userAgent
+  const isIOS = /iphone|ipad|ipod/i.test(ua)
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true
+
+  if (!pushSupported()) return isIOS && !isStandalone ? 'ios-sem-app' : 'sem-suporte'
+  if (Notification.permission === 'denied') return 'bloqueado'
+  if (Notification.permission !== 'granted') return 'desligado'
+
+  // Permissão dada: só é "ativo" se a assinatura estiver TAMBÉM no banco. Como
+  // a RPC é idempotente, garantir isso é mais barato (e mais honesto) do que
+  // consultar e depois consertar.
+  const ok = await syncPushSubscription()
+  return ok ? 'ativo' : 'desligado'
+}

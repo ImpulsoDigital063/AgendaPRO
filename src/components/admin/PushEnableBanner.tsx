@@ -7,7 +7,7 @@
 //  - null          → some (já ativo · dispensado · não suportado · permissão negada)
 // Dismissível: guarda em localStorage pra não incomodar quem fechou.
 import { useEffect, useState } from 'react'
-import { registerPush, pushSupported, hasActivePushSubscription, type PushResult } from '@/lib/push'
+import { registerPush, pushSupported, syncPushSubscription, type PushResult } from '@/lib/push'
 
 // Dispensa temporária: guarda o timestamp e volta a oferecer depois de 7 dias
 // (antes era permanente · um "agora não" matava o banner pra sempre → adoção baixa).
@@ -33,7 +33,7 @@ function IconShare({ size = 16 }: { size?: number }) {
   )
 }
 
-type Mode = 'enable' | 'ios-install' | null
+type Mode = 'enable' | 'ios-install' | 'blocked' | null
 
 export default function PushEnableBanner() {
   const [mode, setMode] = useState<Mode>(null)
@@ -45,8 +45,6 @@ export default function PushEnableBanner() {
     let alive = true
     ;(async () => {
       if (typeof window === 'undefined') return
-      const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || 0)
-      if (dismissedAt && Date.now() - dismissedAt < DISMISS_DAYS * 86400000) return
 
       const ua = navigator.userAgent
       const isIOS = /iphone|ipad|ipod/i.test(ua)
@@ -54,15 +52,33 @@ export default function PushEnableBanner() {
         window.matchMedia('(display-mode: standalone)').matches ||
         (window.navigator as unknown as { standalone?: boolean }).standalone === true
 
+      const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || 0)
+      const dispensada = dismissedAt && Date.now() - dismissedAt < DISMISS_DAYS * 86400000
+
       if (!pushSupported()) {
         // iPhone no Safari (não instalado) não expõe PushManager — o push só
         // liga depois de "Adicionar à Tela de Início". Aí mostramos a dica.
-        if (isIOS && !isStandalone && alive) setMode('ios-install')
+        if (isIOS && !isStandalone && alive && !dispensada) setMode('ios-install')
         return
       }
 
-      if (Notification.permission === 'denied') return // não dá pra re-pedir por código
-      if (await hasActivePushSubscription()) return // já ativo neste aparelho
+      // REPARO SILENCIOSO (06/08 · caso Olímpio) — roda ANTES de qualquer
+      // dispensa. Se o aparelho tem assinatura, reenvia pro banco: se a row
+      // tinha sumido (RPC falhou na hora, ou o /api/notify apagou por 404/410),
+      // volta sozinha. Antes a faixa via "tem assinatura no navegador", sumia,
+      // e o dono ficava sem push sem ninguém saber. É idempotente.
+      const temNoAparelho = Notification.permission === 'granted' && (await syncPushSubscription())
+      if (temNoAparelho) return // agora "ativo" quer dizer ativo NOS DOIS lados
+
+      if (dispensada) return
+
+      // Permissão negada NÃO some mais em silêncio: o código não consegue
+      // re-pedir, então a única saída é o dono liberar nos ajustes do aparelho —
+      // e pra isso ele precisa saber que está bloqueado.
+      if (Notification.permission === 'denied') {
+        if (alive) setMode('blocked')
+        return
+      }
 
       if (alive) setMode('enable')
     })()
@@ -148,6 +164,38 @@ export default function PushEnableBanner() {
               Compartilhar <IconShare size={13} />
             </span>{' '}
             (embaixo, no Safari) e depois em <strong>&ldquo;Adicionar à Tela de Início&rdquo;</strong>. Abra o app por lá e a opção de ativar aparece aqui.
+          </p>
+        </div>
+        <button
+          onClick={dismiss}
+          className="flex-shrink-0 text-xs font-semibold px-2 py-1 rounded-lg"
+          style={{ color: 'var(--admin-text-faded)' }}
+          aria-label="Dispensar"
+        >
+          ✕
+        </button>
+      </div>
+    )
+  }
+
+  // Permissão negada neste aparelho. Não dá pra re-pedir por código — some o
+  // botão, entra a instrução. Antes essa faixa simplesmente não aparecia, e o
+  // dono achava que o sistema é que não avisava.
+  if (mode === 'blocked') {
+    const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
+    return (
+      <div className={wrap} style={wrapStyle}>
+        {iconBox}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+            Notificações bloqueadas neste aparelho
+          </p>
+          <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+            {isIOS ? (
+              <>Você não vai ser avisado de agendamento novo. Pra liberar: <strong>Ajustes</strong> → <strong>Notificações</strong> → <strong>AgendaPRO</strong> → ligar <strong>&ldquo;Permitir notificações&rdquo;</strong>, e volte aqui.</>
+            ) : (
+              <>Você não vai ser avisado de agendamento novo. Pra liberar: toque no <strong>cadeado</strong> ao lado do endereço → <strong>Notificações</strong> → <strong>Permitir</strong>, e recarregue a página.</>
+            )}
           </p>
         </div>
         <button

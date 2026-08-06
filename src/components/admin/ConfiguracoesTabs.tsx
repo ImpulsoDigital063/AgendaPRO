@@ -19,8 +19,9 @@ import ImportarView from './ImportarView'
 import MaquininhasTab from './MaquininhasTab'
 import BloqueiosTab from './BloqueiosTab'
 import FichasModeloTab from './FichasModeloTab'
+import NotificacoesTab from './NotificacoesTab'
 
-type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas' | 'bloqueios' | 'fichas-modelo' | 'mensagens'
+type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas' | 'bloqueios' | 'fichas-modelo' | 'mensagens' | 'notificacoes'
 
 // Alias retrocompat: URLs antigas com ?tab=whatsapp continuam funcionando.
 const TAB_ALIASES: Record<string, Tab> = {
@@ -55,7 +56,7 @@ export default function ConfiguracoesTabs({
 
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo', 'mensagens']
+  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo', 'mensagens', 'notificacoes']
   // Resolve alias antes de validar (ex: ?tab=whatsapp → 'qr-code')
   const resolvedTab = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null
   const safeResolvedTab = resolvedTab === 'plano' && hidePlanoForBusiness ? 'negocio' : resolvedTab
@@ -223,6 +224,10 @@ export default function ConfiguracoesTabs({
       {activeTab === 'fichas-modelo' && <FichasModeloTab />}
 
       {activeTab === 'mensagens' && <MensagensTab businessName={business.name ?? 'Seu Negócio'} />}
+
+      {/* Lugar fixo pra ver/ligar notificacao — a faixa se esconde sozinha, essa
+          tela nao (06/08). */}
+      {activeTab === 'notificacoes' && <NotificacoesTab />}
     </div>
   )
 }

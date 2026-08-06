@@ -129,6 +129,7 @@ export default function AdminMobileTopBar({
         { label: 'Aparência', href: '/admin/configuracoes?tab=aparencia', Icon: IconSparkles },
         { label: 'QR Code', href: '/admin/configuracoes?tab=qr-code', Icon: IconSettings },
         { label: 'Mensagens', href: '/admin/configuracoes?tab=mensagens', Icon: IconWhatsapp },
+        { label: 'Notificações', href: '/admin/configuracoes?tab=notificacoes', Icon: IconClock },
         { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', Icon: IconTrendingUp },
         { label: 'Plano', href: '/admin/configuracoes?tab=plano', Icon: IconDollar },
         { label: 'Importar', href: '/admin/configuracoes?tab=importar', Icon: IconUser },

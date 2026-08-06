@@ -20,6 +20,7 @@ const CONFIG_TAB_LABELS: Record<string, string> = {
   divulgacao: 'Divulgação',
   plano: 'Plano',
   importar: 'Importar',
+  notificacoes: 'Notificações',
 }
 
 export default async function ConfiguracoesPage({

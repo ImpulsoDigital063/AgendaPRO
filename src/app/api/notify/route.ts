@@ -123,13 +123,22 @@ export async function POST(req: NextRequest) {
   // Destinatário = mesma lógica do email: profissional designado → dono.
   // As assinaturas ficam em push_subscriptions (uma por device); envia pra
   // todas e limpa as mortas (404/410). No-op se ninguém ativou / sem VAPID.
-  const recipientUserId = prof?.auth_user_id ?? appointment.business.owner_id
-  if (recipientUserId) {
+  // 06/08: era UM destinatário (profissional designado OU dono). Na barbearia
+  // do Olímpio isso quer dizer que os agendamentos do Luiz junior (31 dos 181
+  // do mês) avisavam só o Luiz — o dono não ficava sabendo do movimento da
+  // própria casa nem depois de ativar. Agora vai pros DOIS, deduplicado (quando
+  // o dono é o profissional do agendamento, é o mesmo user_id e não duplica).
+  // O EMAIL continua com um destinatário só, de propósito: caixa de entrada
+  // dobrada é spam; a notificação do celular é que precisa alcançar os dois.
+  const recipientUserIds = [...new Set(
+    [prof?.auth_user_id, appointment.business.owner_id].filter(Boolean) as string[]
+  )]
+  if (recipientUserIds.length > 0) {
     try {
       const { data: subs } = await admin
         .from('push_subscriptions')
         .select('endpoint, p256dh, auth')
-        .eq('user_id', recipientUserId)
+        .in('user_id', recipientUserIds)
 
       if (subs && subs.length > 0) {
         const hora = appointment.start_time.slice(0, 5)

@@ -17,6 +17,7 @@ import RecepAniversariantesCard from '@/components/recepcao/RecepAniversariantes
 import RecepQRCodeCard from '@/components/recepcao/RecepQRCodeCard'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import { todayBR } from '@/lib/date-br'
+import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import { Suspense } from 'react'
 import {
   IconCalendar,
@@ -159,6 +160,16 @@ export default async function RecepcaoAgendaPage({
           className="absolute top-[40%] -right-24 w-72 h-72 rounded-full blur-[80px]"
           style={{ background: 'var(--admin-bg-orb-2)' }}
         />
+      </div>
+
+      {/* Ativar notificação no aparelho da recepção (06/08 · "tem que estar
+          ativo pra todo mundo"). Fica FORA dos blocos md:/md:hidden de
+          propósito: é o mesmo convite nas duas experiências, tablet e celular.
+          Vale mesmo pra quem não recebe push de agendamento (o aviso de
+          agendamento vai pro profissional e pro dono) — é por esse device que
+          chega o aviso de novidade do sistema. Some sozinha quando já ativo. */}
+      <div className="relative px-4 md:px-6 pt-5 md:pt-6">
+        <PushEnableBanner />
       </div>
 
       {/* ════════════════════════════════════════════════════
