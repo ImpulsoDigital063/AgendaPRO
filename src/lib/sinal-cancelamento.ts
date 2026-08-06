@@ -95,17 +95,73 @@ export async function preverDecisao(
 }
 
 /**
+ * De onde veio o dinheiro do sinal: quanto entrou em PIX e quanto foi
+ * crédito que a cliente já tinha.
+ *
+ * Achado no teste do Eduardo em 06/08: ele cancelou marcando "já devolvi o
+ * dinheiro" um sinal de R$ 18 que tinha sido pago COM CRÉDITO. O salão nunca
+ * recebeu esse dinheiro — e a cliente perdeu os R$ 18 de saldo. A dona tirou
+ * do caixa um valor que nunca entrou.
+ *
+ * Crédito que a cliente já tinha nunca foi dinheiro novo no caixa, então ele
+ * volta sempre. A escolha da dona (guardar ou devolver) só faz sentido sobre
+ * a parte que entrou de verdade, em PIX.
+ */
+export async function composicaoDoSinal(
+  db: SupabaseClient,
+  appointmentId: string,
+): Promise<{ total: number; emCredito: number; emDinheiro: number }> {
+  const { data: appt } = await db
+    .from('appointments')
+    .select('sinal_valor, sinal_pago_at')
+    .eq('id', appointmentId)
+    .maybeSingle()
+
+  const total = appt?.sinal_pago_at ? Number(appt.sinal_valor ?? 0) : 0
+  if (total <= 0) return { total: 0, emCredito: 0, emDinheiro: 0 }
+
+  // Créditos consumidos por este agendamento, menos a sobra que ele devolveu.
+  const { data: consumidos } = await db
+    .from('customer_credits')
+    .select('amount, notes')
+    .eq('used_in_appointment_id', appointmentId)
+
+  const { data: sobras } = await db
+    .from('customer_credits')
+    .select('amount')
+    .eq('notes', `Sobra de crédito usado no sinal ${appointmentId}`)
+
+  const usado = (consumidos ?? []).reduce((s, c) => s + Number(c.amount ?? 0), 0)
+  const devolvido = (sobras ?? []).reduce((s, c) => s + Number(c.amount ?? 0), 0)
+
+  const emCredito = Math.min(total, Math.max(0, Math.round((usado - devolvido) * 100) / 100))
+  return {
+    total,
+    emCredito,
+    emDinheiro: Math.round((total - emCredito) * 100) / 100,
+  }
+}
+
+/**
  * Aplica a regra: cria o crédito quando é o caso. Idempotente — se já
  * existe crédito gerado por este cancelamento, não cria outro (cancelar
  * duas vezes por duplo clique não pode virar dinheiro dobrado).
+ *
+ * `apenasValor` limita o crédito gerado a uma parte do sinal — usado quando a
+ * dona devolve em dinheiro só o que entrou em dinheiro, e o resto (que era
+ * crédito dela) volta pra ficha de qualquer jeito.
  */
 export async function aplicarRegraDoSinal(
   db: SupabaseClient,
   appointmentId: string,
-  opcoes: { porDono?: boolean } = {},
+  opcoes: { porDono?: boolean; apenasValor?: number } = {},
 ): Promise<DecisaoSinal | null> {
   const decisao = await preverDecisao(db, appointmentId, opcoes)
   if (!decisao || !decisao.temSinal || !decisao.viraCredito) return decisao
+
+  const valorCredito =
+    opcoes.apenasValor === undefined ? decisao.valor : Math.round(opcoes.apenasValor * 100) / 100
+  if (valorCredito <= 0) return { ...decisao, valor: 0 }
 
   const { data: appt } = await db
     .from('appointments')
@@ -147,7 +203,7 @@ export async function aplicarRegraDoSinal(
     .insert({
       business_id: appt.business_id,
       customer_id: appt.customer_id,
-      amount: decisao.valor,
+      amount: valorCredito,
       origin: 'sinal_cancelado',
       date: appt.appointment_date,
       expires_at: expira,
@@ -161,5 +217,5 @@ export async function aplicarRegraDoSinal(
     throw new Error(`credito_nao_gravou: ${error?.message ?? 'sem retorno do banco'}`)
   }
 
-  return { ...decisao, expiraEm: expira }
+  return { ...decisao, valor: valorCredito, expiraEm: expira }
 }

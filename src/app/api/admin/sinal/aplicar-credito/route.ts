@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       origin: 'sinal',
       date: appt.appointment_date,
       expires_at: sobra.expira,
-      notes: 'Sobra de crédito usado no sinal',
+      notes: `Sobra de crédito usado no sinal ${appointmentId}`,
     })
     if (sobraErr) {
       await db.from('customer_credits').update({ used_in_appointment_id: null }).in('id', usados)

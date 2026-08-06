@@ -316,6 +316,7 @@ export default function AppointmentActions({
       {Number(sinalPago ?? 0) > 0 ? (
         <CancelarComSinalModal
           open={confirmCancel}
+          appointmentId={appointmentId}
           clientName={customerName}
           sinalPago={Number(sinalPago)}
           loading={loading}

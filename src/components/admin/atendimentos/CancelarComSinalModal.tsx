@@ -23,6 +23,8 @@ export type DestinoSinal = 'credito' | 'devolucao'
 
 type Props = {
   open: boolean
+  /** Pra buscar a composição do sinal (quanto foi PIX, quanto foi crédito). */
+  appointmentId: string
   clientName: string
   sinalPago: number
   loading?: boolean
@@ -34,6 +36,7 @@ const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', curren
 
 export default function CancelarComSinalModal({
   open,
+  appointmentId,
   clientName,
   sinalPago,
   loading = false,
@@ -42,7 +45,22 @@ export default function CancelarComSinalModal({
 }: Props) {
   const [destino, setDestino] = useState<DestinoSinal>('credito')
   const [portalReady, setPortalReady] = useState(false)
+  /* Composição do sinal: quanto entrou em PIX e quanto foi crédito que a
+     cliente já tinha. Sem isso a dona escolhe às cegas — e no teste do
+     Eduardo ela "devolveu em dinheiro" R$ 18 que nunca entraram no caixa,
+     porque o sinal tinha sido quitado com o crédito do próprio cliente. */
+  const [comp, setComp] = useState<{ total: number; emCredito: number; emDinheiro: number } | null>(null)
   useEffect(() => { setPortalReady(true) }, [])
+
+  useEffect(() => {
+    if (!open || !appointmentId) return
+    let vivo = true
+    fetch(`/api/admin/appointments/${appointmentId}/sinal-preview`)
+      .then((r) => r.json())
+      .then((d) => { if (vivo && typeof d?.total === 'number') setComp(d) })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [open, appointmentId])
 
   useEffect(() => {
     if (!open) return
@@ -61,6 +79,13 @@ export default function CancelarComSinalModal({
 
   const primeiroNome = (clientName || 'A cliente').split(' ')[0]
 
+  /* Só houve PIX se alguma parte do sinal entrou em dinheiro. Quando o sinal
+     saiu inteiro do crédito da cliente, não existe o que devolver — o valor
+     volta pra ficha dela e ponto. */
+  const emDinheiro = comp ? comp.emDinheiro : sinalPago
+  const emCredito = comp ? comp.emCredito : 0
+  const houvePix = emDinheiro > 0.001
+
   const OPCOES: { valor: DestinoSinal; titulo: string; texto: string }[] = [
     {
       valor: 'credito',
@@ -69,8 +94,11 @@ export default function CancelarComSinalModal({
     },
     {
       valor: 'devolucao',
-      titulo: 'Já devolvi o dinheiro',
-      texto: 'Você acertou com ela por fora. Fica registrado no histórico do atendimento, sem virar saldo na ficha.',
+      titulo: `Já devolvi ${houvePix && emCredito > 0 ? `os ${brl(emDinheiro)}` : 'o dinheiro'}`,
+      texto:
+        emCredito > 0
+          ? `Você acertou por fora só a parte que ela pagou no PIX. Os ${brl(emCredito)} que eram crédito voltam pra ficha dela de qualquer jeito.`
+          : 'Você acertou com ela por fora. Fica registrado no histórico do atendimento, sem virar saldo na ficha.',
     },
   ]
 
@@ -118,13 +146,24 @@ export default function CancelarComSinalModal({
             <p className="text-sm" style={{ color: 'var(--admin-text, #0F172A)' }}>
               {primeiroNome} já pagou <b>{brl(sinalPago)}</b> de sinal.
             </p>
+            {/* Só abre a composição quando ela muda a decisão — sinal 100% em
+                PIX não precisa de explicação nenhuma. */}
+            {emCredito > 0 && (
+              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-2, #475569)' }}>
+                {houvePix
+                  ? `${brl(emDinheiro)} entraram no PIX e ${brl(emCredito)} saíram do crédito que ela já tinha.`
+                  : 'Esse valor saiu do crédito que ela já tinha — não entrou dinheiro novo no seu caixa.'}
+              </p>
+            )}
           </div>
           <p className="text-xs mt-3 mb-2" style={{ color: 'var(--admin-text-mute, #64748B)' }}>
-            O que fazer com esse valor?
+            {houvePix ? 'O que fazer com esse valor?' : 'O crédito volta pra ficha dela.'}
           </p>
         </div>
 
-        <div className="px-5 pb-4 space-y-2">
+        {/* Sem PIX não há escolha a fazer: não existe dinheiro pra devolver.
+            Mostrar duas opções aqui seria oferecer um erro. */}
+        <div className="px-5 pb-4 space-y-2" style={{ display: houvePix ? undefined : 'none' }}>
           {OPCOES.map((o) => {
             const ativa = destino === o.valor
             return (

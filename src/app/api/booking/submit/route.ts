@@ -429,7 +429,7 @@ export async function POST(req: NextRequest) {
         origin: 'sinal',
         date: appointmentDate,
         expires_at: sobra.expira,
-        notes: 'Sobra de crédito usado no sinal',
+        notes: `Sobra de crédito usado no sinal ${appointment.id}`,
       })
       if (sobraErr) {
         console.error('booking submit · sobra de crédito NÃO gravou · devolvendo o crédito original:', sobraErr.message)

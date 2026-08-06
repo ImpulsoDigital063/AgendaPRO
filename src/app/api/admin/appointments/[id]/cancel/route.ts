@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { aplicarRegraDoSinal } from '@/lib/sinal-cancelamento'
+import { aplicarRegraDoSinal, composicaoDoSinal } from '@/lib/sinal-cancelamento'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
@@ -97,18 +97,31 @@ export async function POST(
   const corpo = await req.json().catch(() => ({}))
   const destinoSinal = corpo?.destinoSinal === 'devolucao' ? 'devolucao' : 'credito'
 
-  /* Sinal vira credito ANTES do cancelamento, enquanto o atendimento ainda
-     tem os dados. Cancelado pelo painel = sempre credito, qualquer prazo: se
-     quem desmarcou foi a dona, a cliente nao pode perder dinheiro.
+  /* Tudo isto roda ANTES do cancelamento, enquanto o atendimento ainda tem os
+     dados. Cancelado pelo painel vira crédito em qualquer prazo: se quem
+     desmarcou foi a dona, a cliente não pode perder dinheiro.
 
-     O erro NÃO é engolido: até 06/08 este insert era recusado pelo CHECK de
+     O erro NÃO é engolido: até 06/08 o insert era recusado pelo CHECK de
      customer_credits.origin e ninguém ficava sabendo — a tela dizia
      "cancelado" e o dinheiro da cliente sumia. Se o crédito não gravar, o
-     cancelamento PARA aqui: melhor a dona ver um erro e tentar de novo do
-     que ela achar que a cliente tem saldo que não existe. */
-  if (destinoSinal === 'credito') {
+     cancelamento PARA: melhor a dona ver erro e tentar de novo do que achar
+     que a cliente tem saldo que não existe.
+
+     O sinal pode ter sido pago em PIX, em crédito que a cliente já tinha, ou
+     nos dois. Só a parte em PIX é dinheiro que entrou no caixa — e é só sobre
+     ela que faz sentido a dona escolher entre guardar e devolver.
+
+     A parte paga com crédito volta pra ficha SEMPRE. Foi assim que o teste do
+     Eduardo em 06/08 pegou dinheiro sumindo: um sinal de R$ 18 quitado com o
+     crédito dele foi cancelado como "já devolvi em dinheiro". O salão nunca
+     tinha recebido esses R$ 18, e mesmo assim a cliente ficou sem eles. */
+  const composicao = await composicaoDoSinal(supabase, id)
+  const valorPraCreditar =
+    destinoSinal === 'credito' ? composicao.total : composicao.emCredito
+
+  if (valorPraCreditar > 0) {
     try {
-      await aplicarRegraDoSinal(supabase, id, { porDono: true })
+      await aplicarRegraDoSinal(supabase, id, { porDono: true, apenasValor: valorPraCreditar })
     } catch (err) {
       console.error('cancel · crédito do sinal falhou:', err)
       return NextResponse.json({
@@ -116,22 +129,30 @@ export async function POST(
         detail: 'Não consegui registrar o crédito do sinal na ficha da cliente. O atendimento NÃO foi cancelado — tente de novo.',
       }, { status: 500 })
     }
-  } else {
-    /* Devolvido em dinheiro: não vira saldo na ficha (ela já recebeu). Fica o
-       registro no atendimento, que é o que a dona vai querer consultar depois
-       — e o que responde "e o sinal da fulana?" três semanas depois. */
+  }
+
+  /* Devolvido em dinheiro: fica o registro no atendimento, que é o que
+     responde "e o sinal da fulana?" três semanas depois. Só a parte em PIX
+     entra no carimbo — devolver o que era crédito seria tirar do caixa um
+     valor que nunca entrou. */
+  if (destinoSinal === 'devolucao' && composicao.emDinheiro > 0) {
     const { data: comSinal } = await supabase
       .from('appointments')
-      .select('sinal_valor, sinal_pago_at, notes')
+      .select('notes')
       .eq('id', id)
       .maybeSingle()
-    if (comSinal?.sinal_pago_at && Number(comSinal.sinal_valor ?? 0) > 0) {
-      const carimbo = `Sinal de R$ ${Number(comSinal.sinal_valor).toFixed(2).replace('.', ',')} devolvido em dinheiro no cancelamento (${new Date().toLocaleDateString('pt-BR')}).`
-      await supabase
-        .from('appointments')
-        .update({ notes: comSinal.notes ? `${comSinal.notes}\n${carimbo}` : carimbo })
-        .eq('id', id)
-    }
+    const emReais = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`
+    const parteCredito =
+      composicao.emCredito > 0
+        ? ` Os outros ${emReais(composicao.emCredito)} eram crédito dela e voltaram pra ficha.`
+        : ''
+    const carimbo =
+      `Sinal: ${emReais(composicao.emDinheiro)} devolvidos em dinheiro no cancelamento ` +
+      `(${new Date().toLocaleDateString('pt-BR')}).${parteCredito}`
+    await supabase
+      .from('appointments')
+      .update({ notes: comSinal?.notes ? `${comSinal.notes}\n${carimbo}` : carimbo })
+      .eq('id', id)
   }
 
   const { error: updateErr } = await supabase
