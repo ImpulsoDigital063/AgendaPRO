@@ -92,9 +92,91 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_professional' }, { status: 400 })
   }
 
+  /* PREÇO VEM DO BANCO, NÃO DO NAVEGADOR (auditoria 05/08).
+     ─────────────────────────────────────────────────────────────────
+     Esta rota é PÚBLICA e sem login. Até aqui ela gravava price, duração
+     e pontos exatamente como o corpo do POST mandava — e é esse valor que
+     vira a comanda que o dono cobra. Qualquer um com o link podia postar
+     um R$ 250 como R$ 0 e o salão só descobriria na cadeira, com a
+     cliente na frente e a comanda dizendo zero.
+
+     Não havia nem checagem de que o serviço é DESTE negócio: dava pra
+     pendurar serviço de outro salão no agendamento.
+
+     Agora: relê os serviços no banco por id, exige que sejam do negócio e
+     estejam ativos, e usa os valores de lá. O que o navegador mandou vira
+     só uma lista de ids.
+
+     O fim do horário também é recalculado — antes vinha pronto do corpo,
+     então dava pra reservar 5 minutos de um serviço de 1h e deixar o
+     profissional em cima de outro agendamento. */
+  const idsPedidos = services.map((s) => s.id).filter((id) => typeof id === 'string' && id)
+  let servicosDb: { id: string; name: string; price: number | null; duration_minutes: number | null; points: number | null }[] = []
+
+  if (idsPedidos.length > 0) {
+    const { data: encontrados } = await db
+      .from('services')
+      .select('id, name, price, duration_minutes, points, business_id, active')
+      .in('id', idsPedidos)
+      .eq('business_id', businessId)
+
+    const porId = new Map((encontrados ?? []).map((s) => [s.id as string, s]))
+    for (const id of idsPedidos) {
+      const s = porId.get(id)
+      if (!s || s.active === false) {
+        return NextResponse.json({ error: 'invalid_service' }, { status: 400 })
+      }
+    }
+    // Preserva a ordem que a cliente escolheu (o primeiro vira o service_name).
+    servicosDb = idsPedidos.map((id) => {
+      const s = porId.get(id)!
+      return {
+        id: s.id as string,
+        name: s.name as string,
+        price: s.price === null || s.price === undefined ? null : Number(s.price),
+        duration_minutes: s.duration_minutes === null ? null : Number(s.duration_minutes),
+        points: s.points === null || s.points === undefined ? 0 : Number(s.points),
+      }
+    })
+  }
+
+  // Total e fim do horário, ambos derivados do banco.
+  const precos = servicosDb.map((s) => s.price).filter((p): p is number => p !== null)
+  const temPrecoReal = precos.length > 0 && precos.length === servicosDb.length
+  const totalServer = temPrecoReal ? Math.round(precos.reduce((a, b) => a + b, 0) * 100) / 100 : null
+
+  /* Divergência entre o que a tela mostrou e o que o banco diz. Normalmente é
+     inocente (a dona mudou o preço enquanto a cliente escolhia); se aparecer
+     muito no log, é sinal de payload forjado. O banco manda de qualquer jeito. */
+  if (hasPrice && totalPrice !== null && totalServer !== null && Math.abs(totalPrice - totalServer) > 0.01) {
+    console.warn(
+      `booking submit · preço divergente · negócio ${businessId} · tela R$ ${totalPrice} × banco R$ ${totalServer}`,
+    )
+  }
+
+  const duracaoTotal = servicosDb.reduce((a, s) => a + (s.duration_minutes ?? 0), 0)
+  let endTimeServer = endTime
+  if (duracaoTotal > 0) {
+    const [hh, mm] = startTime.split(':').map(Number)
+    const fim = hh * 60 + mm + duracaoTotal
+    endTimeServer = `${String(Math.floor(fim / 60)).padStart(2, '0')}:${String(fim % 60).padStart(2, '0')}:00`
+  }
+
   // 1. Criar ou recuperar cliente global (clients) — match por phone trim,
   //    igual ao handleSubmit original.
-  let clientId: string | null = returningClientId
+  /* clientId vem do corpo (cliente reconhecida pelo telefone na tela anterior).
+     Auditoria 05/08: era aceito sem conferir. Um id de outra pessoa penduraria
+     o atendimento na ficha dela. Confere que o telefone bate; se não bate,
+     ignora e cai no caminho normal de busca por telefone. */
+  let clientId: string | null = null
+  if (returningClientId) {
+    const { data: dono } = await db
+      .from('clients')
+      .select('id, phone')
+      .eq('id', returningClientId)
+      .maybeSingle()
+    if (dono && (dono.phone || '').trim() === phone) clientId = dono.id
+  }
   if (!clientId) {
     const { data: existing } = await db.from('clients').select('id').eq('phone', phone).maybeSingle()
     if (existing) {
@@ -151,7 +233,7 @@ export async function POST(req: NextRequest) {
     .eq('professional_id', professionalId)
     .eq('appointment_date', appointmentDate)
     .in('status', ['pending', 'confirmed'])
-    .lt('start_time', endTime)
+    .lt('start_time', endTimeServer)
     .gt('end_time', startTime)
     .limit(1)
     .maybeSingle()
@@ -181,11 +263,11 @@ export async function POST(req: NextRequest) {
   const exigeSinal =
     negocio?.sinal_enabled === true &&
     !!negocio?.pix_key &&
-    hasPrice &&
-    !!totalPrice &&
-    totalPrice > 0
+    temPrecoReal &&
+    !!totalServer &&
+    totalServer > 0
   const sinalCheio = exigeSinal
-    ? calcularSinal(totalPrice as number, Number(negocio?.sinal_percent ?? 0))
+    ? calcularSinal(totalServer as number, Number(negocio?.sinal_percent ?? 0))
     : null
 
   /* CRÉDITO ABATE O SINAL (v113 · decisão do Eduardo, 05/08).
@@ -237,22 +319,37 @@ export async function POST(req: NextRequest) {
   const sinalQuitadoPorCredito = !!sinalCheio && creditoAplicado >= sinalCheio
 
   // 3. Criar agendamento
-  const firstService = services[0] ?? null
+  const firstService = servicosDb[0] ?? null
   const { data: appointment, error: apptErr } = await db
     .from('appointments')
     .insert({
       business_id: businessId,
       professional_id: professionalId,
       client_id: clientId,
+      /* customer_id (auditoria 05/08) · faltava desde sempre. O customer é
+         criado/recuperado logo acima, mas o vínculo nunca era gravado no
+         agendamento — 396 dos 1.272 da base ficaram órfãos.
+
+         Não é detalhe de schema, quebra três coisas de verdade:
+         · crédito de cancelamento (sinal-cancelamento.ts sai fora sem isto)
+           — justo pra quem cancela PELO LINK, que é o caso todo
+         · ficha da cliente no drawer, que só abre com customer_id
+         · card de reativação, que conta última visita por customer_id: quem
+           só marca por link nunca contava como "veio", então aparecia como
+           sumida tendo vindo semana passada
+
+         Pontos NÃO estavam nesse pacote: o trigger v15 resolve o customer por
+         business+phone, então continuou creditando (155 de 158 conferidos). */
+      customer_id: customerId,
       client_name: name,
       client_phone: phone,
       client_email: email,
       service_id: firstService?.id ?? null,
       service_name: firstService?.name ?? null,
-      total_price: hasPrice ? totalPrice : null,
+      total_price: temPrecoReal ? totalServer : null,
       appointment_date: appointmentDate,
       start_time: startTime,
-      end_time: endTime,
+      end_time: endTimeServer,
       // Crédito cobriu tudo: confirma direto. Sobrou diferença: fica reservado.
       status: valorSinal && valorSinal > 0 ? 'pending' : 'confirmed',
       // sinal_valor guarda o SINAL CHEIO (o que a comanda vai abater depois),
@@ -299,9 +396,9 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. Serviços do agendamento
-  if (services.length > 0) {
+  if (servicosDb.length > 0) {
     await db.from('appointment_services').insert(
-      services.map((s) => ({
+      servicosDb.map((s) => ({
         appointment_id: appointment.id,
         service_id: s.id,
         service_name: s.name,
@@ -325,7 +422,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 6. Pontos que o cliente VAI ganhar (creditados pelo trigger SQL no completed)
-  const pointsEarned = services.reduce((sum, s) => sum + (s.points ?? 0), 0)
+  const pointsEarned = servicosDb.reduce((sum, s) => sum + (s.points ?? 0), 0)
 
   /* Devolve o PIX pronto quando há sinal. O BR Code é montado no servidor
      porque a chave e o nome do recebedor não devem trafegar antes da hora —
