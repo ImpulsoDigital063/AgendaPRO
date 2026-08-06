@@ -22,6 +22,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { gerarBRCode } from '@/lib/pix-brcode'
+import { generateSinalToken } from '@/lib/token'
+import { SITE_URL } from '@/lib/site-url'
 import { todayBR } from '@/lib/date-br'
 import { limparSinaisVencidos, minutosRestantes, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 
@@ -64,6 +66,17 @@ export async function GET() {
     /* Quanto falta pro horário ser solto. A dona precisa disso pra saber se
        ainda vale a pena cobrar ou se já era — cobrar alguém cujo horário
        vence em 3 minutos é pior que não cobrar. */
+    /* Nome do salão, link da página de pagamento e horário-limite acompanham
+       cada pendente: é o que a mensagem de cobrança precisa, e montar isso na
+       tela exigiria o token HMAC, que não sai do servidor. */
+    nomeNegocio: negocio?.name ?? null,
+    linkPagamento: `${SITE_URL}/sinal?id=${a.id}&token=${generateSinalToken(a.id as string)}`,
+    horaLimite: negocio?.sinal_enabled
+      ? new Date(new Date(a.created_at as string).getTime() + expiraMin * 60_000).toLocaleTimeString(
+          'pt-BR',
+          { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' },
+        )
+      : null,
     minutosPraVencer: negocio?.sinal_enabled
       ? minutosRestantes(
           a as unknown as {

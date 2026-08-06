@@ -235,7 +235,7 @@ export default function AgendarModal({
      morrer. Antes disto a tela só dizia "criado com sucesso" e ela ia embora
      sem saber que havia cobrança a fazer (Eduardo, 06/08). */
   const [cobrarSinal, setCobrarSinal] = useState<
-    { valor: number; link: string | null; copiaECola: string; minutosPraVencer: number | null } | null
+    { valor: number; link: string | null; linkPagamento: string | null; minutosPraVencer: number | null } | null
   >(null)
   const [copiouPix, setCopiouPix] = useState(false)
 
@@ -756,7 +756,7 @@ export default function AgendarModal({
           setCobrarSinal({
             valor: Number(cd.valor),
             link: cd.link ?? null,
-            copiaECola: cd.copiaECola,
+            linkPagamento: cd.linkPagamento ?? null,
             minutosPraVencer: typeof cd.minutosPraVencer === 'number' ? cd.minutosPraVencer : null,
           })
         }
@@ -1025,13 +1025,13 @@ export default function AgendarModal({
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard?.writeText(cobrarSinal.copiaECola)
+                      navigator.clipboard?.writeText(cobrarSinal.linkPagamento ?? '')
                       setCopiouPix(true)
                     }}
                     className="mt-2.5 block w-full rounded-xl py-2.5 text-center text-xs font-bold"
                     style={{ background: 'var(--admin-accent)', color: '#fff' }}
                   >
-                    {copiouPix ? 'Código copiado' : 'Copiar código PIX'}
+                    {copiouPix ? 'Link copiado' : 'Copiar link de pagamento'}
                   </button>
                 )}
               </div>

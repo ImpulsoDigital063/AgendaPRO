@@ -33,6 +33,9 @@ type Pendente = {
   sinal_valor: number | null
   copiaECola: string | null
   minutosPraVencer: number | null
+  nomeNegocio: string | null
+  linkPagamento: string | null
+  horaLimite: string | null
 }
 
 type Config = {
@@ -139,6 +142,9 @@ export default function SinalView() {
       valorSinal: Number(p.sinal_valor ?? 0),
       copiaECola: p.copiaECola,
       minutosPraVencer: p.minutosPraVencer,
+      nomeNegocio: p.nomeNegocio,
+      linkPagamento: p.linkPagamento,
+      horaLimite: p.horaLimite,
     })
   }
 

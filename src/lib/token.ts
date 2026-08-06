@@ -25,6 +25,25 @@ export function verifyActionToken(appointmentId: string, action: string, token: 
   }
 }
 
+/* Token da página de pagamento do sinal. Separado do de cancelamento de
+   propósito: o link do sinal vai por WhatsApp e pode ser reencaminhado, e
+   quem o recebe não pode ganhar o poder de cancelar o horário de alguém.
+   A página do sinal só lê e mostra o PIX. */
+export function generateSinalToken(appointmentId: string): string {
+  return createHmac('sha256', getSecret())
+    .update(`sinal:${appointmentId}`)
+    .digest('hex')
+}
+
+export function verifySinalToken(appointmentId: string, token: string): boolean {
+  const expected = generateSinalToken(appointmentId)
+  try {
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(token))
+  } catch {
+    return false
+  }
+}
+
 /** Gera token HMAC para cancelamento pelo cliente */
 export function generateCancelToken(appointmentId: string): string {
   return createHmac('sha256', getSecret())

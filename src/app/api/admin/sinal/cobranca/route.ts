@@ -22,6 +22,8 @@ import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { gerarBRCode } from '@/lib/pix-brcode'
 import { linkCobrancaWhatsApp, montarMensagemCobranca } from '@/lib/sinal-cobranca'
 import { minutosRestantes, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
+import { generateSinalToken } from '@/lib/token'
+import { SITE_URL } from '@/lib/site-url'
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
@@ -76,6 +78,12 @@ export async function GET(req: NextRequest) {
       )
     : null
 
+  // Horário-limite: não envelhece como "faltam 2h" quando ela abre depois.
+  const limite = new Date(new Date(appt.created_at as string).getTime() + expiraMin * 60_000)
+  const horaLimite = negocio.sinal_enabled
+    ? limite.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+    : null
+
   const dados = {
     clienteNome: appt.client_name as string | null,
     clienteTelefone: appt.client_phone as string | null,
@@ -85,6 +93,9 @@ export async function GET(req: NextRequest) {
     valorSinal: valor,
     copiaECola,
     minutosPraVencer: restam,
+    nomeNegocio: negocio.name as string | null,
+    linkPagamento: `${SITE_URL}/sinal?id=${appt.id}&token=${generateSinalToken(appt.id as string)}`,
+    horaLimite,
   }
 
   return NextResponse.json({
@@ -94,5 +105,9 @@ export async function GET(req: NextRequest) {
     minutosPraVencer: restam,
     mensagem: montarMensagemCobranca(dados),
     link: linkCobrancaWhatsApp(dados),
+    // Sem telefone da cliente não há wa.me — a dona copia ESTE link e manda
+    // pelo canal que usar com ela. Copiar o BR Code cru serviria de menos:
+    // a página tem QR e botão, o código sozinho não.
+    linkPagamento: dados.linkPagamento,
   })
 }
