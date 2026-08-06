@@ -62,6 +62,28 @@ type PointsTransaction = {
   appointment_id: string | null
 }
 
+type CreditoLinha = {
+  id: string
+  amount: number
+  origin: string
+  date: string
+  expires_at: string | null
+  usado: boolean
+  vencido: boolean
+  notes: string | null
+}
+
+/* Nome de gente pro que o banco chama de origin. "sinal_cancelado" não
+   significa nada pra quem está com a cliente na frente. */
+const ORIGEM_CREDITO: Record<string, string> = {
+  advance: 'Pagamento adiantado',
+  other: 'Outros',
+  sinal: 'Sobra de sinal',
+  sinal_cancelado: 'Sinal de atendimento cancelado',
+}
+
+const brlCredito = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
 const REASON_LABEL: Record<PointsTransaction['reason'], string> = {
   service: 'Atendimento',
   referral: 'Indicação',
@@ -104,6 +126,8 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [history, setHistory] = useState<Appointment[]>([])
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([])
+  const [creditos, setCreditos] = useState<CreditoLinha[]>([])
+  const [creditBalance, setCreditBalance] = useState(0)
   const [activeCoupon, setActiveCoupon] = useState<{
     code: string
     discount_type: 'percent' | 'amount'
@@ -140,6 +164,8 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
         setCustomer(data.customer)
         setHistory(data.history || [])
         setPointsHistory(data.pointsHistory || [])
+        setCreditos(data.credits || [])
+        setCreditBalance(Number(data.creditBalance ?? 0))
         setActiveCoupon(data.activeCoupon ?? null)
         setRewards(data.rewards ?? [])
         setEditName(data.customer.name)
@@ -607,6 +633,55 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                 </p>
                 <FichasTab customerId={customerId} />
               </div>
+
+              {/* SALDO EM DINHEIRO (06/08) · faltava, e é o primeiro lugar
+                  onde a dona olha depois de cancelar um atendimento com sinal
+                  pago. Só aparece quando existe crédito — ficha de cliente que
+                  nunca teve não precisa carregar bloco vazio. */}
+              {creditos.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+                    Crédito
+                  </p>
+                  <div
+                    className="p-4 rounded-2xl"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))',
+                      border: '1px solid rgba(16,185,129,0.20)',
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#059669' }}>
+                        Disponível pra usar
+                      </span>
+                      <span className="text-2xl font-extrabold tabular-nums" style={{ color: '#059669' }}>
+                        {brlCredito(creditBalance)}
+                      </span>
+                    </div>
+                    <div className="mt-3 space-y-1.5">
+                      {creditos.map((c) => (
+                        <div key={c.id} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="min-w-0 truncate" style={{ color: 'var(--admin-text-2)' }}>
+                            {ORIGEM_CREDITO[c.origin] ?? c.origin}
+                            {c.expires_at && !c.usado && (
+                              <span style={{ color: c.vencido ? '#DC2626' : 'var(--admin-text-faded)' }}>
+                                {c.vencido ? ' · venceu' : ` · vale até ${c.expires_at.slice(0, 10).split('-').reverse().join('/')}`}
+                              </span>
+                            )}
+                          </span>
+                          <span
+                            className="tabular-nums font-semibold flex-shrink-0"
+                            style={{ color: c.usado || c.vencido ? 'var(--admin-text-faded)' : '#059669' }}
+                          >
+                            {brlCredito(c.amount)}
+                            {c.usado && <span className="font-normal"> · usado</span>}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Histórico */}
               <div className="space-y-2">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { variacoesDeTelefone } from '@/lib/phone-variants'
 
 // Valida que a string é uma data ISO REAL (não só "regex passa").
 // "2024-02-30" passa no regex YYYY-MM-DD mas não existe — Date corrige
@@ -76,24 +77,34 @@ export async function GET(
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  // Match com client universal pelo phone (pra puxar appointments)
-  const { data: client } = await supabase
+  /* HISTÓRICO (corrigido 06/08) · antes isto casava o client universal com
+     `.eq('phone', customer.phone)` exato e puxava os agendamentos só por
+     client_id. Duas falhas em série:
+
+     · o telefone está gravado em formatos diferentes conforme a porta de
+       entrada, então a ficha casava com um client e os agendamentos estavam
+       pendurados em outro. O Edu apareceu com "0 agendamentos" tendo dois.
+     · appointments.customer_id passou a ser sempre preenchido (correção de
+       05/08), e ele é o vínculo direto — não precisava do desvio por clients.
+
+     Agora casa pelos dois caminhos: customer_id direto, mais os client_id de
+     qualquer formato do mesmo número. */
+  const { data: clientsDoTelefone } = await supabase
     .from('clients')
     .select('id')
-    .eq('phone', customer.phone)
-    .maybeSingle()
+    .in('phone', variacoesDeTelefone(customer.phone))
 
-  // Histórico de agendamentos — limit 20 últimos, ordenado desc
-  const { data: appointments } = client
-    ? await supabase
-        .from('appointments')
-        .select('id, appointment_date, start_time, service_name, total_price, status, professional_id')
-        .eq('business_id', customer.business_id)
-        .eq('client_id', client.id)
-        .order('appointment_date', { ascending: false })
-        .order('start_time', { ascending: false })
-        .limit(20)
-    : { data: [] }
+  const filtros = [`customer_id.eq.${customer.id}`]
+  for (const c of clientsDoTelefone ?? []) filtros.push(`client_id.eq.${c.id}`)
+
+  const { data: appointments } = await supabase
+    .from('appointments')
+    .select('id, appointment_date, start_time, service_name, total_price, status, professional_id')
+    .eq('business_id', customer.business_id)
+    .or(filtros.join(','))
+    .order('appointment_date', { ascending: false })
+    .order('start_time', { ascending: false })
+    .limit(20)
 
   // Pega nomes dos profissionais distintos pra display (1 query)
   const profIds = Array.from(
@@ -138,6 +149,40 @@ export async function GET(
     appointment_id: t.appointment_id,
   }))
 
+  /* SALDO EM CRÉDITO (06/08) · faltava aqui, e é justamente onde a dona
+     olha depois de cancelar um atendimento com sinal pago. Ela cancelou,
+     abriu a ficha e não viu nada — nem soube dizer se a cliente tinha o
+     dinheiro guardado.
+
+     Disponível = não usado em comanda, não usado em sinal, dentro da
+     validade. Mesma régua das telas de pagamento. */
+  const agoraIso = new Date().toISOString()
+  const { data: creditos } = await supabase
+    .from('customer_credits')
+    .select('id, amount, origin, date, expires_at, used_in_invoice_id, used_in_appointment_id, notes')
+    .eq('customer_id', customer.id)
+    .eq('business_id', customer.business_id)
+    .order('date', { ascending: false })
+    .limit(50)
+
+  const disponiveis = (creditos ?? []).filter(
+    (c) =>
+      !c.used_in_invoice_id &&
+      !c.used_in_appointment_id &&
+      (!c.expires_at || c.expires_at >= agoraIso),
+  )
+  const creditBalance = disponiveis.reduce((s, c) => s + Number(c.amount ?? 0), 0)
+  const creditList = (creditos ?? []).map((c) => ({
+    id: c.id,
+    amount: Number(c.amount ?? 0),
+    origin: c.origin as string,
+    date: c.date as string,
+    expires_at: c.expires_at as string | null,
+    usado: !!(c.used_in_invoice_id || c.used_in_appointment_id),
+    vencido: !!c.expires_at && c.expires_at < agoraIso,
+    notes: c.notes as string | null,
+  }))
+
   // Cupom ativo do cliente (CIC NB-5: badge so aparecia no card externo,
   // dentro do modal sumia). Pega o primeiro nao-usado e nao-expirado.
   const nowIso = new Date().toISOString()
@@ -178,6 +223,8 @@ export async function GET(
     },
     history,
     pointsHistory,
+    creditBalance,
+    credits: creditList,
     activeCoupon: activeCoupon ?? null,
     rewards: rewards ?? [],
   })

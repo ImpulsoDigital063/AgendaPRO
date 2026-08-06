@@ -8,6 +8,7 @@ import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails }
 import FaturarComandaModal from '@/components/admin/comandas/FaturarComandaModal'
 import EditServicesModal from '@/components/admin/EditServicesModal'
 import RemarcarModal from '@/components/admin/atendimentos/RemarcarModal'
+import CancelarComSinalModal, { type DestinoSinal } from '@/components/admin/atendimentos/CancelarComSinalModal'
 
 type Props = {
   appointmentId: string
@@ -144,7 +145,7 @@ export default function AppointmentActions({
     else router.refresh()
   }
 
-  async function cancelar() {
+  async function cancelar(destinoSinal: DestinoSinal = 'credito') {
     setLoading(true)
     setError(null)
     // Rota server-side com read-after-write · não dá pra confiar em supabase
@@ -152,6 +153,7 @@ export default function AppointmentActions({
     const res = await fetch(`/api/admin/appointments/${appointmentId}/cancel`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ destinoSinal }),
     })
     setLoading(false)
     if (!res.ok) {
@@ -308,17 +310,31 @@ export default function AppointmentActions({
       </button>
       )}
 
-      <ConfirmActionModal
-        open={confirmCancel}
-        title="Cancelar este atendimento?"
-        message="O cliente vai ver como cancelado. Você pode reverter mudando o status manualmente depois."
-        confirmLabel="Sim, cancelar"
-        cancelLabel="Voltar"
-        tone="danger"
-        loading={loading}
-        onConfirm={cancelar}
-        onClose={() => setConfirmCancel(false)}
-      />
+      {/* Com sinal pago, o modal genérico não serve: some com o dinheiro da
+          cliente da conversa. O específico mostra o valor e deixa a dona
+          escolher o destino (Eduardo, testando 06/08). */}
+      {Number(sinalPago ?? 0) > 0 ? (
+        <CancelarComSinalModal
+          open={confirmCancel}
+          clientName={customerName}
+          sinalPago={Number(sinalPago)}
+          loading={loading}
+          onConfirm={(destino) => cancelar(destino)}
+          onClose={() => setConfirmCancel(false)}
+        />
+      ) : (
+        <ConfirmActionModal
+          open={confirmCancel}
+          title="Cancelar este atendimento?"
+          message="O cliente vai ver como cancelado. Você pode reverter mudando o status manualmente depois."
+          confirmLabel="Sim, cancelar"
+          cancelLabel="Voltar"
+          tone="danger"
+          loading={loading}
+          onConfirm={() => cancelar()}
+          onClose={() => setConfirmCancel(false)}
+        />
+      )}
 
       <PaymentMethodModal
         open={paymentOpen}

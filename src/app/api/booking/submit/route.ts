@@ -415,9 +415,14 @@ export async function POST(req: NextRequest) {
       .update({ used_in_appointment_id: appointment.id })
       .in('id', creditosUsados)
 
-    // Sobra volta como crédito novo, com a mesma validade do original.
+    /* Sobra volta como crédito novo, com a mesma validade do original.
+       Se ESTE insert falhar, a cliente perde a diferença: o crédito antigo já
+       foi marcado como usado logo acima. Por isso o erro é tratado — e a
+       reação é devolver o crédito original ao estado anterior, que é melhor
+       do que ela ficar sem nada. Foi assim que a v113 sangrava: o CHECK de
+       origin não conhecia 'sinal' e o insert morria calado. */
     if (sobra && sobra.valor > 0) {
-      await db.from('customer_credits').insert({
+      const { error: sobraErr } = await db.from('customer_credits').insert({
         business_id: businessId,
         customer_id: customerId,
         amount: sobra.valor,
@@ -426,6 +431,17 @@ export async function POST(req: NextRequest) {
         expires_at: sobra.expira,
         notes: 'Sobra de crédito usado no sinal',
       })
+      if (sobraErr) {
+        console.error('booking submit · sobra de crédito NÃO gravou · devolvendo o crédito original:', sobraErr.message)
+        await db
+          .from('customer_credits')
+          .update({ used_in_appointment_id: null })
+          .in('id', creditosUsados)
+        await db
+          .from('appointments')
+          .update({ sinal_valor: sinalCheio, sinal_pago_at: null, status: 'pending' })
+          .eq('id', appointment.id)
+      }
     }
   }
 

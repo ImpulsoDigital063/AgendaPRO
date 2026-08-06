@@ -99,8 +99,10 @@ export async function POST(req: NextRequest) {
     .in('id', usados)
   if (usoErr) return NextResponse.json({ error: usoErr.message }, { status: 500 })
 
+  /* Se a sobra não gravar, a cliente perde a diferença — o crédito original
+     já saiu como usado. Desfaz e avisa, em vez de deixar sumir. */
   if (sobra && sobra.valor > 0) {
-    await db.from('customer_credits').insert({
+    const { error: sobraErr } = await db.from('customer_credits').insert({
       business_id: businessId,
       customer_id: appt.customer_id,
       amount: sobra.valor,
@@ -109,6 +111,13 @@ export async function POST(req: NextRequest) {
       expires_at: sobra.expira,
       notes: 'Sobra de crédito usado no sinal',
     })
+    if (sobraErr) {
+      await db.from('customer_credits').update({ used_in_appointment_id: null }).in('id', usados)
+      return NextResponse.json(
+        { error: 'sobra_nao_gravou', detail: sobraErr.message, aplicado: 0 },
+        { status: 500 },
+      )
+    }
   }
 
   // Crédito cobriu o sinal inteiro: nada de PIX, o horário nasce confirmado.

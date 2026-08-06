@@ -137,15 +137,29 @@ export async function aplicarRegraDoSinal(
 
   const expira = creditoOrigem?.expires_at ?? decisao.expiraEm
 
-  await db.from('customer_credits').insert({
-    business_id: appt.business_id,
-    customer_id: appt.customer_id,
-    amount: decisao.valor,
-    origin: 'sinal_cancelado',
-    date: appt.appointment_date,
-    expires_at: expira,
-    notes: `Sinal do agendamento ${appointmentId}`,
-  })
+  /* O erro NÃO pode ser engolido. Era assim que a v113 falhava: o CHECK de
+     customer_credits.origin não conhecia 'sinal_cancelado', o insert era
+     recusado, e como ninguém olhava o retorno a tela dizia "cancelado" com o
+     dinheiro da cliente sumindo no caminho. Quem chama decide o que fazer,
+     mas fica sabendo. λ.prova-na-fonte */
+  const { data: criado, error } = await db
+    .from('customer_credits')
+    .insert({
+      business_id: appt.business_id,
+      customer_id: appt.customer_id,
+      amount: decisao.valor,
+      origin: 'sinal_cancelado',
+      date: appt.appointment_date,
+      expires_at: expira,
+      notes: `Sinal do agendamento ${appointmentId}`,
+    })
+    .select('id')
+    .maybeSingle()
+
+  if (error || !criado) {
+    console.error('sinal→crédito NÃO gravou · agendamento', appointmentId, error?.message)
+    throw new Error(`credito_nao_gravou: ${error?.message ?? 'sem retorno do banco'}`)
+  }
 
   return { ...decisao, expiraEm: expira }
 }

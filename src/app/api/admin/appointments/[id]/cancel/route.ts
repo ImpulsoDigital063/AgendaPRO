@@ -85,11 +85,54 @@ export async function POST(
     }, { status: 403 })
   }
 
-  // UPDATE → status=cancelled + zera paid_at + solta invoice_item_id
+  /* DESTINO DO SINAL (06/08) · quem cancela pelo painel é a dona, e o motivo
+     varia: a cliente pediu, ela não vai conseguir atender, deu problema na
+     agenda. Às vezes o certo é guardar como crédito; às vezes ela já
+     devolveu o PIX na hora e só quer registrar. Decidir por ela erraria
+     metade das vezes, então a tela pergunta e a resposta chega aqui.
+
+     Default 'credito' porque é o que protege as duas — e porque chamada
+     antiga sem o campo (algum caminho que eu não mapeei) continua fazendo o
+     que fazia antes. */
+  const corpo = await req.json().catch(() => ({}))
+  const destinoSinal = corpo?.destinoSinal === 'devolucao' ? 'devolucao' : 'credito'
+
   /* Sinal vira credito ANTES do cancelamento, enquanto o atendimento ainda
      tem os dados. Cancelado pelo painel = sempre credito, qualquer prazo: se
-     quem desmarcou foi a dona, a cliente nao pode perder dinheiro. */
-  await aplicarRegraDoSinal(supabase, id, { porDono: true })
+     quem desmarcou foi a dona, a cliente nao pode perder dinheiro.
+
+     O erro NÃO é engolido: até 06/08 este insert era recusado pelo CHECK de
+     customer_credits.origin e ninguém ficava sabendo — a tela dizia
+     "cancelado" e o dinheiro da cliente sumia. Se o crédito não gravar, o
+     cancelamento PARA aqui: melhor a dona ver um erro e tentar de novo do
+     que ela achar que a cliente tem saldo que não existe. */
+  if (destinoSinal === 'credito') {
+    try {
+      await aplicarRegraDoSinal(supabase, id, { porDono: true })
+    } catch (err) {
+      console.error('cancel · crédito do sinal falhou:', err)
+      return NextResponse.json({
+        error: 'credito_nao_gravou',
+        detail: 'Não consegui registrar o crédito do sinal na ficha da cliente. O atendimento NÃO foi cancelado — tente de novo.',
+      }, { status: 500 })
+    }
+  } else {
+    /* Devolvido em dinheiro: não vira saldo na ficha (ela já recebeu). Fica o
+       registro no atendimento, que é o que a dona vai querer consultar depois
+       — e o que responde "e o sinal da fulana?" três semanas depois. */
+    const { data: comSinal } = await supabase
+      .from('appointments')
+      .select('sinal_valor, sinal_pago_at, notes')
+      .eq('id', id)
+      .maybeSingle()
+    if (comSinal?.sinal_pago_at && Number(comSinal.sinal_valor ?? 0) > 0) {
+      const carimbo = `Sinal de R$ ${Number(comSinal.sinal_valor).toFixed(2).replace('.', ',')} devolvido em dinheiro no cancelamento (${new Date().toLocaleDateString('pt-BR')}).`
+      await supabase
+        .from('appointments')
+        .update({ notes: comSinal.notes ? `${comSinal.notes}\n${carimbo}` : carimbo })
+        .eq('id', id)
+    }
+  }
 
   const { error: updateErr } = await supabase
     .from('appointments')
