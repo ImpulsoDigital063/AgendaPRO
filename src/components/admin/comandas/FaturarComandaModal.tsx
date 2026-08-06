@@ -784,6 +784,9 @@ export default function FaturarComandaModal({
         open={paymentOpen}
         clientName={customerName}
         totalPrice={total}
+        // A comanda acima já mostra "falta receber R$ 40,00"; o passo do
+        // método perguntava por R$ 50,00. Agora os dois falam do mesmo valor.
+        sinalPago={sinalPago}
         businessId={businessId}
         loading={submitting}
         onChoose={(method, card) => {

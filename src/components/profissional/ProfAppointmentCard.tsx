@@ -20,6 +20,9 @@ type Props = {
     status: string
     service_name?: string | null
     total_price?: number | null
+    /** Sinal já pago · o modal pergunta pelo que falta receber (06/08). */
+    sinal_valor?: number | null
+    sinal_pago_at?: string | null
     paid_at?: string | null
     payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
     punctuality_awarded?: boolean
@@ -357,6 +360,7 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
         open={paymentModal}
         clientName={appointment.client_name}
         totalPrice={appointment.total_price}
+        sinalPago={appointment.sinal_pago_at ? Number(appointment.sinal_valor ?? 0) : 0}
         withPunctualityBonus={withPunctuality}
         punctualityPoints={punctualityBonus}
         loading={loading}

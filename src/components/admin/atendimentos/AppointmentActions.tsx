@@ -341,6 +341,7 @@ export default function AppointmentActions({
         open={paymentOpen}
         clientName={customerName}
         totalPrice={totalPrice}
+        sinalPago={Number(sinalPago ?? 0)}
         permiteEditarValor={podeEditarValor}
         businessId={businessId}
         loading={loading}

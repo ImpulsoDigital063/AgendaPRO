@@ -43,6 +43,11 @@ type Props = {
     is_package?: boolean
     /** Nome do combo de origem · card mostra selo "Combo · nome". */
     combo_name?: string | null
+    /** Sinal já pago (PIX ou crédito). O modal de pagamento pergunta pelo que
+     *  FALTA, não pelo total — Eduardo pegou em 06/08: serviço de R$ 50 com
+     *  R$ 10 de sinal perguntava "como pagou R$ 50,00" quando entram R$ 40. */
+    sinal_valor?: number | null
+    sinal_pago_at?: string | null
   }
   showDate?: boolean
   nextUp?: boolean
@@ -656,6 +661,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         open={paymentModal}
         clientName={appointment.client_name}
         totalPrice={valorCobrado}
+        sinalPago={appointment.sinal_pago_at ? Number(appointment.sinal_valor ?? 0) : 0}
         withPunctualityBonus={withPunctuality}
         punctualityPoints={punctualityBonus}
         loading={loading}

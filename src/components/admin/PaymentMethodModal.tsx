@@ -27,6 +27,17 @@ type Props = {
   open: boolean
   clientName: string
   totalPrice?: number | null
+  /**
+   * Sinal já pago (PIX ou crédito) que NÃO entra agora.
+   *
+   * Eduardo, 06/08: serviço de R$ 50 com sinal de R$ 10 já pago — a comanda
+   * dizia "falta receber R$ 40,00" e o passo seguinte perguntava "Como Edu
+   * pagou? R$ 50,00". Quem está com a cliente na frente recebe R$ 40 na mão e
+   * registra R$ 50 no método escolhido. O total da venda continua R$ 50 (isso
+   * está certo e é o que vai pro relatório), mas ESTA tela pergunta sobre o
+   * que entra agora — e é ela que a dona usa pra fechar o caixa.
+   */
+  sinalPago?: number
   /** Quando fornecido, ao escolher 'card' abre step de detalhes (maquininha + bandeira). */
   businessId?: string
   /** Modo "Atendi +bonus" altera o copy e a cor do header. */
@@ -74,6 +85,7 @@ export default function PaymentMethodModal({
   open,
   clientName,
   totalPrice,
+  sinalPago = 0,
   permiteEditarValor = false,
   businessId,
   withPunctualityBonus = false,
@@ -156,7 +168,12 @@ export default function PaymentMethodModal({
     onChoose(method, undefined, campoValor ? valorEfetivo ?? undefined : undefined)
   }
 
-  const priceLabel = formatPrice(totalPrice)
+  /* O que entra AGORA, na mão de quem está no balcão. O sinal já entrou antes
+     e por outro meio; somar os dois aqui faria a dona conferir o caixa com um
+     valor que não existe. */
+  const aReceberAgora =
+    sinalPago > 0 && totalPrice != null ? Math.max(0, Math.round((totalPrice - sinalPago) * 100) / 100) : totalPrice
+  const priceLabel = formatPrice(aReceberAgora)
 
   return createPortal(
     <div
@@ -179,7 +196,9 @@ export default function PaymentMethodModal({
         {cardStep && businessId ? (
           <CardStep
             businessId={businessId}
-            totalPrice={totalPrice}
+            // Taxa da maquininha incide sobre o que passa NA maquininha: o
+            // sinal já entrou por PIX e não paga taxa de cartão.
+            totalPrice={aReceberAgora}
             clientName={clientName}
             loading={loading}
             onBack={() => setCardStep(false)}
@@ -205,12 +224,21 @@ export default function PaymentMethodModal({
                   {heading ?? `Como ${clientName} pagou?`}
                 </h3>
                 {priceLabel && !campoValor && (
-                  <p
-                    className="text-sm font-semibold mt-1.5 tabular-nums"
-                    style={{ color: 'var(--admin-text-2, #475569)' }}
-                  >
-                    {priceLabel}
-                  </p>
+                  <>
+                    <p
+                      className="text-sm font-semibold mt-1.5 tabular-nums"
+                      style={{ color: 'var(--admin-text-2, #475569)' }}
+                    >
+                      {priceLabel}
+                    </p>
+                    {/* Dizer só "R$ 40,00" onde o serviço é R$ 50 levanta a
+                        pergunta na hora errada. A conta aparece resolvida. */}
+                    {sinalPago > 0 && (
+                      <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--admin-text-faded, #94A3B8)' }}>
+                        {formatPrice(totalPrice)} no total · {formatPrice(sinalPago)} já pagos no sinal
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
               <button
