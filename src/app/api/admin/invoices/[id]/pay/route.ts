@@ -103,11 +103,22 @@ export async function POST(
     if (!invoice.customer_id) {
       return NextResponse.json({ error: 'no_customer_for_credit', detail: 'Comanda sem cliente · crédito exige cliente vinculado' }, { status: 400 })
     }
+    /* v113 · dois filtros novos, e o primeiro fechava um buraco de dinheiro:
+       · used_in_appointment_id — crédito já gasto pra pagar o SINAL de um
+         agendamento continuava aparecendo como disponível aqui. A cliente
+         ganharia o mesmo desconto duas vezes: uma no sinal, outra na comanda.
+       · expires_at — crédito de cancelamento vale N dias; sem o filtro, o
+         prazo que a tela promete pra cliente não valeria na hora de usar.
+       Crédito antigo (anterior à v113) tem expires_at nulo e segue valendo
+       pra sempre, como sempre valeu. */
+    const agoraIso = new Date().toISOString()
     const { data: credits } = await admin
       .from('customer_credits')
       .select('id, amount')
       .eq('customer_id', invoice.customer_id)
       .is('used_in_invoice_id', null)
+      .is('used_in_appointment_id', null)
+      .or(`expires_at.is.null,expires_at.gte.${agoraIso}`)
       .order('date', { ascending: true }) // FIFO · mais antigos primeiro
     const available = (credits ?? []).reduce((s, c) => s + Number(c.amount ?? 0), 0)
     if (available < creditTotal - 0.01) {

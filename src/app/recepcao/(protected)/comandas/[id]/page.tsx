@@ -68,6 +68,11 @@ export default async function RecepcaoComandaDetalhePage({ params }: { params: P
       .select('amount')
       .eq('customer_id', invoice.customer_id)
       .is('used_in_invoice_id', null)
+      // v113 · credito gasto no SINAL de um agendamento nao esta disponivel
+      // aqui, e credito vencido tambem nao. Sem isso a tela promete saldo
+      // que o pagamento vai recusar.
+      .is('used_in_appointment_id', null)
+      .or('expires_at.is.null,expires_at.gte.' + new Date().toISOString())
     availableCredit = (credits ?? []).reduce((s, c) => s + Number(c.amount ?? 0), 0)
   }
 

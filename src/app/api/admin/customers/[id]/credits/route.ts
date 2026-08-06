@@ -70,13 +70,15 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const admin = getAdmin()
   const { data: c } = await admin
     .from('customer_credits')
-    .select('id, business_id, customer_id, used_in_invoice_id')
+    .select('id, business_id, customer_id, used_in_invoice_id, used_in_appointment_id')
     .eq('id', creditId)
     .maybeSingle()
   if (!c || c.business_id !== businessId || c.customer_id !== customerId) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 })
   }
-  if (c.used_in_invoice_id) {
+  // v113 · credito ja gasto no SINAL tambem nao pode ser apagado: apagar
+  // desfaria o pagamento de um horario que esta reservado por causa dele.
+  if (c.used_in_invoice_id || c.used_in_appointment_id) {
     return NextResponse.json({ error: 'credit_used' }, { status: 400 })
   }
   await admin.from('customer_credits').delete().eq('id', creditId)

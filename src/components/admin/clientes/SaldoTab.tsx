@@ -13,6 +13,8 @@ type Credit = {
   origin: string
   payment_method: string | null
   used_in_invoice_id: string | null
+  used_in_appointment_id?: string | null
+  expires_at?: string | null
   notes: string | null
   professional: { name: string } | null
 }
@@ -55,7 +57,7 @@ export default function SaldoTab({ customerId, customerName, businessId }: Props
     const sb = createClient()
     const { data } = await sb
       .from('customer_credits')
-      .select('id, date, amount, origin, payment_method, used_in_invoice_id, notes, professional:professionals(name)')
+      .select('id, date, amount, origin, payment_method, used_in_invoice_id, used_in_appointment_id, expires_at, notes, professional:professionals(name)')
       .eq('customer_id', customerId)
       .order('date', { ascending: false })
     const normalized: Credit[] = (data ?? []).map((row) => {
@@ -66,6 +68,8 @@ export default function SaldoTab({ customerId, customerName, businessId }: Props
         origin: string
         payment_method: string | null
         used_in_invoice_id: string | null
+        used_in_appointment_id: string | null
+        expires_at: string | null
         notes: string | null
         professional: { name: string } | { name: string }[] | null
       }
@@ -77,6 +81,8 @@ export default function SaldoTab({ customerId, customerName, businessId }: Props
         origin: r.origin,
         payment_method: r.payment_method,
         used_in_invoice_id: r.used_in_invoice_id,
+        used_in_appointment_id: r.used_in_appointment_id ?? null,
+        expires_at: r.expires_at ?? null,
         notes: r.notes,
         professional: prof,
       }
@@ -90,8 +96,14 @@ export default function SaldoTab({ customerId, customerName, businessId }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId])
 
-  const totalDisponivel = credits.filter((c) => !c.used_in_invoice_id).reduce((s, c) => s + Number(c.amount), 0)
-  const totalUsado = credits.filter((c) => c.used_in_invoice_id).reduce((s, c) => s + Number(c.amount), 0)
+  /* v113 · disponivel = nao usado em comanda NEM em sinal, e dentro da
+     validade. Antes contava credito ja gasto no sinal e credito vencido —
+     a dona via saldo que o pagamento ia recusar. */
+  const agora = Date.now()
+  const estaDisponivel = (c: { used_in_invoice_id: string | null; used_in_appointment_id?: string | null; expires_at?: string | null }) =>
+    !c.used_in_invoice_id && !c.used_in_appointment_id && (!c.expires_at || new Date(c.expires_at).getTime() >= agora)
+  const totalDisponivel = credits.filter(estaDisponivel).reduce((s, c) => s + Number(c.amount), 0)
+  const totalUsado = credits.filter((c) => c.used_in_invoice_id || c.used_in_appointment_id).reduce((s, c) => s + Number(c.amount), 0)
 
   return (
     <div className="space-y-4">
