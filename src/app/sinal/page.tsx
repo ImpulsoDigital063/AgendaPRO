@@ -20,6 +20,7 @@ import Link from 'next/link'
 import { verifySinalToken } from '@/lib/token'
 import { gerarBRCode } from '@/lib/pix-brcode'
 import { sinalVencido, minutosRestantes, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
+import { valorAindaDevido, rotuloLimite } from '@/lib/sinal-saldo'
 import { IconCalendar, IconClock, IconCheck } from '@/components/ui/Icon'
 import CopiarPix from './CopiarPix'
 
@@ -50,7 +51,8 @@ export async function generateMetadata({
   const generico = { title: 'Sinal do agendamento', robots: { index: false, follow: false } }
   if (!id || !token || !verifySinalToken(id, token)) return generico
 
-  const { data } = await getAdminClient()
+  const db = getAdminClient()
+  const { data } = await db
     .from('appointments')
     .select('sinal_valor, appointment_date, start_time, business:businesses(name)')
     .eq('id', id)
@@ -59,7 +61,9 @@ export async function generateMetadata({
   if (!data) return generico
 
   const nome = (data.business as unknown as { name: string } | null)?.name ?? 'Agendamento'
-  const valor = Number(data.sinal_valor ?? 0)
+  /* Mesmo valor da página: com crédito parcial, a prévia dizia R$18 e a tela
+     R$8 — a cliente via dois preços antes mesmo de abrir o link. */
+  const valor = await valorAindaDevido(db, id, data.sinal_valor as number | null)
   const [, mes, dia] = String(data.appointment_date).split('-')
   const quando = `${dia}/${mes} às ${String(data.start_time).slice(0, 5)}`
   const descricao =
@@ -129,7 +133,10 @@ export default async function SinalPage({
   const surface = isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF'
   const border = isDark ? 'rgba(255,255,255,0.10)' : '#E2E8F0'
 
-  const valor = Number(appt.sinal_valor ?? 0)
+  /* O que ela ainda deve EM DINHEIRO — não o sinal cheio. Se o crédito dela
+     cobriu parte, essa parte já foi debitada na hora de marcar; pedir o cheio
+     aqui cobrava duas vezes o mesmo pedaço (auditoria 06/08). */
+  const valor = await valorAindaDevido(supabase, appt.id as string, appt.sinal_valor as number | null)
   const [ano, mes, dia] = String(appt.appointment_date).split('-')
   const dataLonga = new Date(Number(ano), Number(mes) - 1, Number(dia)).toLocaleDateString('pt-BR', {
     weekday: 'long',
@@ -151,12 +158,10 @@ export default async function SinalPage({
 
   // Horário-limite em vez de "faltam 2h": a mensagem foi lida agora, mas pode
   // ser aberta daqui a uma hora — e aí "2h" já é mentira.
+  /* Leva o DIA junto quando não é hoje: a dona pode dar até 2 dias de prazo, e
+     "até as 18:00" faz a cliente entender hoje quando é amanhã. */
   const limite = new Date(new Date(appt.created_at as string).getTime() + expiraMin * 60_000)
-  const horaLimite = limite.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
-  })
+  const horaLimite = rotuloLimite(limite)
 
   const pago = !!appt.sinal_pago_at
   const cancelado = appt.status === 'cancelled' || vencido
@@ -280,7 +285,7 @@ export default async function SinalPage({
               </p>
               {restam > 0 && (
                 <p className="text-xs" style={{ color: mute }}>
-                  Guardamos seu horário até as <strong>{horaLimite}</strong>
+                  Guardamos seu horário até <strong>{horaLimite}</strong>
                 </p>
               )}
             </div>

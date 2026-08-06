@@ -26,6 +26,7 @@ import { generateSinalToken } from '@/lib/token'
 import { SITE_URL } from '@/lib/site-url'
 import { todayBR } from '@/lib/date-br'
 import { limparSinaisVencidos, minutosRestantes, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
+import { creditoAplicadoEmLote, rotuloLimite } from '@/lib/sinal-saldo'
 
 export async function GET() {
   const supabase = await createClient()
@@ -61,8 +62,27 @@ export async function GET() {
      passa a receber o código novo. Guardar o código junto do atendimento
      deixaria cobrança antiga apontando pra chave velha. */
   const expiraMin = Number(negocio?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN)
+
+  /* Quanto de cada sinal já foi quitado com crédito da própria cliente. Sem
+     isto a aba cobrava o sinal CHEIO de quem já tinha pago parte com crédito —
+     e o crédito já tinha sido debitado na hora de marcar (auditoria 06/08). */
+  const creditos = await creditoAplicadoEmLote(
+    supabase,
+    (pendentes ?? []).map((a) => a.id as string),
+  )
+
   const lista = (pendentes ?? []).map((a) => ({
     ...a,
+    /* sinal_valor sai daqui como o que FALTA receber, não o cheio: é o número
+       que a dona cobra, que vai na mensagem e dentro do QR. O cheio continua
+       no banco pra comanda abater depois — e vai junto como sinalCheio pra
+       tela poder explicar "R$ 18, sendo R$ 10 de crédito". */
+    sinal_valor: Math.max(
+      0,
+      Math.round((Number(a.sinal_valor ?? 0) - (creditos.get(a.id as string) ?? 0)) * 100) / 100,
+    ),
+    sinalCheio: Number(a.sinal_valor ?? 0),
+    creditoAplicado: creditos.get(a.id as string) ?? 0,
     /* Quanto falta pro horário ser solto. A dona precisa disso pra saber se
        ainda vale a pena cobrar ou se já era — cobrar alguém cujo horário
        vence em 3 minutos é pior que não cobrar. */
@@ -71,11 +91,10 @@ export async function GET() {
        tela exigiria o token HMAC, que não sai do servidor. */
     nomeNegocio: negocio?.name ?? null,
     linkPagamento: `${SITE_URL}/sinal?id=${a.id}&token=${generateSinalToken(a.id as string)}`,
+    /* Com o dia junto quando nao for hoje: a dona escolhe ate 2 dias de prazo,
+       e "ate as 18:00" faz a cliente entender hoje quando e amanha. */
     horaLimite: negocio?.sinal_enabled
-      ? new Date(new Date(a.created_at as string).getTime() + expiraMin * 60_000).toLocaleTimeString(
-          'pt-BR',
-          { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' },
-        )
+      ? rotuloLimite(new Date(new Date(a.created_at as string).getTime() + expiraMin * 60_000))
       : null,
     minutosPraVencer: negocio?.sinal_enabled
       ? minutosRestantes(
@@ -95,7 +114,11 @@ export async function GET() {
             chave: negocio.pix_key,
             nomeRecebedor: negocio.pix_receiver_name || negocio.name || 'RECEBEDOR',
             cidade: negocio.pix_city || 'BRASIL',
-            valor: Number(a.sinal_valor),
+            /* O QR cobra o que FALTA, nao o cheio (ver acima). */
+            valor: Math.max(
+              0,
+              Math.round((Number(a.sinal_valor ?? 0) - (creditos.get(a.id as string) ?? 0)) * 100) / 100,
+            ),
             identificador: a.id.replace(/-/g, '').slice(0, 25),
           })
         : null,

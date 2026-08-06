@@ -51,7 +51,7 @@ export function montarMensagemCobranca(d: DadosCobranca): string {
   /* Horário-limite em vez de "faltam 2h": a mensagem é escrita agora e pode
      ser lida daqui a uma hora, quando "2h" já virou mentira. */
   const prazo = d.horaLimite
-    ? `Consigo segurar até as ${d.horaLimite} — depois disso o horário volta pra agenda.\n\n`
+    ? `Consigo segurar até ${d.horaLimite} — depois disso o horário volta pra agenda.\n\n`
     : typeof d.minutosPraVencer === 'number' && d.minutosPraVencer > 0
       ? `Consigo segurar por mais ${textoPrazo(d.minutosPraVencer)} — depois disso o horário volta pra agenda.\n\n`
       : ''

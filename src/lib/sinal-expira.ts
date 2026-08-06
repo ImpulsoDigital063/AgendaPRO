@@ -86,13 +86,25 @@ export async function limparSinaisVencidos(
 
   /* Cancela só o que ainda está pending e sem pagamento: se o PIX caiu e a
      dona marcou "recebi" entre a leitura e a escrita, o horário fica. */
-  const { data: soltos } = await db
-    .from('appointments')
-    .update({ status: 'cancelled' })
-    .in('id', vencidos.map((a) => a.id))
-    .eq('status', 'pending')
-    .is('sinal_pago_at', null)
-    .select('id')
+  /* Marca a ORIGEM: horário solto por falta de pagamento não é desistência, e
+     sem essa marca os dois viravam a mesma linha de "cancelado" no relatório
+     (v117). O status continua 'cancelled' de propósito — pra agenda o horário
+     está livre do mesmo jeito. */
+  const alvo = vencidos.map((a) => a.id)
+  const aplicar = (campos: Record<string, unknown>) =>
+    db.from('appointments').update(campos)
+      .in('id', alvo).eq('status', 'pending').is('sinal_pago_at', null).select('id')
+
+  let { data: soltos, error } = await aplicar({
+    status: 'cancelled',
+    sinal_expirado_at: new Date().toISOString(),
+  })
+
+  /* Tolera o banco sem a v117 aplicada ainda: solta o horário do mesmo jeito,
+     só sem a marca. Deploy e migration não precisam entrar na mesma ordem. */
+  if (error?.code === '42703') {
+    ;({ data: soltos } = await aplicar({ status: 'cancelled' }))
+  }
 
   return (soltos ?? []).length
 }
