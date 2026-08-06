@@ -523,7 +523,18 @@ export async function POST(req: NextRequest) {
     referralCode: referralCodeOut,
     pointsEarned,
     pix,
-    // A tela precisa saber pra dizer 'crédito aplicado' em vez de sumir com o valor.
-    credito: creditoAplicado > 0 ? { aplicado: creditoAplicado, sinalCheio, quitado: sinalQuitadoPorCredito } : null,
+    /* A tela precisa saber pra dizer 'crédito aplicado' em vez de sumir com o
+       valor — e precisa da SOBRA: cliente que gastou R$ 18 de um crédito de
+       R$ 23 e não vê os R$ 5 na tela acha que perdeu, e quem ouve isso depois
+       é o salão. */
+    credito:
+      creditoAplicado > 0
+        ? {
+            aplicado: creditoAplicado,
+            sinalCheio,
+            quitado: sinalQuitadoPorCredito,
+            sobra: sobra?.valor ?? 0,
+          }
+        : null,
   })
 }

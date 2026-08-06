@@ -272,7 +272,7 @@ export default function BookingFlow({
   // v112 · sinal: o server devolve o PIX pronto quando o negocio exige
   const [pixSinal, setPixSinal] = useState<{ valor: number; copiaECola: string } | null>(null)
   // v113 · credito abatido do sinal. Sem mostrar, o valor "some" e ela estranha.
-  const [creditoSinal, setCreditoSinal] = useState<{ aplicado: number; sinalCheio: number | null; quitado: boolean } | null>(null)
+  const [creditoSinal, setCreditoSinal] = useState<{ aplicado: number; sinalCheio: number | null; quitado: boolean; sobra: number } | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   // Razão do "vazio" — usada pra diagnóstico inteligente em vez de
@@ -1010,7 +1010,10 @@ export default function BookingFlow({
     }
 
     if (res.pix) setPixSinal(res.pix as { valor: number; copiaECola: string })
-    if (res.credito) setCreditoSinal(res.credito as { aplicado: number; sinalCheio: number | null; quitado: boolean })
+    if (res.credito) {
+      const c = res.credito as { aplicado: number; sinalCheio: number | null; quitado: boolean; sobra?: number }
+      setCreditoSinal({ ...c, sobra: Number(c.sobra ?? 0) })
+    }
 
     // appointmentId alimenta cupom/notify abaixo.
     const appointment = { id: res.appointmentId as string }
@@ -1130,13 +1133,26 @@ export default function BookingFlow({
             style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.3)' }}
           >
             <span className="text-lg leading-none mt-0.5">🎁</span>
+            {/* Dizia "você tinha R$ 18 de crédito" quando ela tinha R$ 23 e
+                gastou 18 — e calava sobre o troco. Cliente com R$ 5 sobrando
+                que não vê o valor na tela acha que perdeu, e quem ouve isso é
+                o salão. Agora fala o que saiu e o que ficou. */}
             <p className="text-xs leading-relaxed" style={{ color: C.text }}>
-              Você tinha{' '}
+              Usamos{' '}
               <strong>
                 {creditoSinal.aplicado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </strong>{' '}
-              de crédito, e ele foi usado no sinal.{' '}
+              do seu crédito no sinal.{' '}
               {creditoSinal.quitado ? 'Não precisa pagar nada agora.' : 'Falta só a diferença abaixo.'}
+              {creditoSinal.sobra > 0 && (
+                <>
+                  {' '}Ainda sobraram{' '}
+                  <strong>
+                    {creditoSinal.sobra.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </strong>{' '}
+                  na sua ficha pra usar no próximo.
+                </>
+              )}
             </p>
           </div>
         )}
