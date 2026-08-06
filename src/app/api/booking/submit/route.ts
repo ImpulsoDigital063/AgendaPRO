@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { calcularSinal, gerarBRCode } from '@/lib/pix-brcode'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
@@ -453,6 +453,32 @@ export async function POST(req: NextRequest) {
         }),
       }
     : null
+
+  /* AVISO NÃO DEPENDE MAIS DO NAVEGADOR (auditoria 05/08).
+     ─────────────────────────────────────────────────────────────────
+     Quem avisava a dona era o navegador da cliente: o BookingFlow chamava
+     /api/notify depois que esta rota respondia. Se o 4G caísse nesse
+     intervalo — ou ela fechasse a aba na hora — o agendamento existia e
+     ninguém era avisado. Em salão isso é horário perdido, e a dona só
+     descobria abrindo a agenda.
+
+     after() roda depois da resposta ir embora, então não custa nada pra
+     cliente esperando a tela de sucesso. A chamada do navegador continua
+     lá como segunda tentativa: desde a v114 a rota é idempotente
+     (notified_at), quem chegar primeiro avisa e o outro só devolve o
+     link de cancelamento. Sem risco de mandar dois emails. */
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.agendapro.net.br'
+  after(async () => {
+    try {
+      await fetch(`${baseUrl}/api/notify`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ appointmentId: appointment.id }),
+      })
+    } catch (err) {
+      console.error('booking submit · aviso do servidor falhou (o navegador ainda tenta):', err)
+    }
+  })
 
   return NextResponse.json({
     ok: true,

@@ -51,6 +51,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'agendamento antigo', cancelUrl })
   }
 
+  /* Idempotência de verdade (v114) · antes a única trava era a janela de 10
+     min acima, o que deixava dois POSTs seguidos mandarem dois emails. Isso
+     impedia o servidor de avisar também — e o aviso dependia do navegador da
+     cliente sobreviver ao pós-agendamento, que em 4G ruim não sobrevive.
+
+     Agora quem chega primeiro (servidor ou navegador) marca e envia; o outro
+     só devolve o cancelUrl. A marcação vem ANTES dos envios de propósito: em
+     empate, prefiro não avisar duas vezes a avisar duas. */
+  const { data: marcou, error: marcaErr } = await admin
+    .from('appointments')
+    .update({ notified_at: new Date().toISOString() })
+    .eq('id', appointmentId)
+    .is('notified_at', null)
+    .select('id')
+
+  /* Se a v114 ainda não rodou, a coluna não existe e o update dá erro. Nesse
+     caso segue e envia: sem a coluna o comportamento volta a ser o de antes
+     (janela de 10 min), o que é ruim mas não é ficar mudo. Deploy chegando
+     antes da migration não pode calar a notificação do salão. */
+  if (!marcaErr && (!marcou || marcou.length === 0)) {
+    return NextResponse.json({ ok: true, reason: 'ja notificado', cancelUrl })
+  }
+  if (marcaErr) console.warn('[notify] sem coluna notified_at (rodar v114?) · enviando assim mesmo')
+
   // Notificação vai pro PROFISSIONAL designado (pedido Olímpio 05/06 — antes
   // ia sempre pro dono). Resolve o email: coluna professionals.email →
   // email do auth user do profissional → (fallback) dono, pra notificação
