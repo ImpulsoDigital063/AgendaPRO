@@ -410,6 +410,26 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                   >
                     Recebi o sinal — confirmar horário
                   </button>
+                  {/* DISPENSAR (v118) · sem esta opção a dona usaria o botão de
+                      cima como atalho pra não cobrar da cliente de confiança —
+                      e aí a comanda abateria um sinal que nunca entrou, fazendo
+                      ela cobrar a menos sem perceber. Aqui o horário confirma e
+                      o sinal some de verdade. */}
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Confirmar o horário sem cobrar o sinal?')) return
+                      const r = await fetch('/api/admin/sinal', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ appointmentId, acao: 'dispensar' }),
+                      }).then((x) => x.json()).catch(() => null)
+                      if (r?.ok) onClose(true)
+                    }}
+                    className="w-full py-2 rounded-lg text-[11px] font-semibold mt-1.5"
+                    style={{ background: 'transparent', color: '#B45309' }}
+                  >
+                    Não vou cobrar dessa cliente
+                  </button>
                 </div>
               )}
 

@@ -128,6 +128,10 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([])
   const [creditos, setCreditos] = useState<CreditoLinha[]>([])
   const [creditBalance, setCreditBalance] = useState(0)
+  /* Isenção de sinal (v118) · o toggle só aparece em negócio que cobra sinal;
+     em quem não cobra seria um botão sem sentido na ficha. */
+  const [isento, setIsento] = useState(false)
+  const [sinalAtivoNoNegocio, setSinalAtivoNoNegocio] = useState(false)
   const [activeCoupon, setActiveCoupon] = useState<{
     code: string
     discount_type: 'percent' | 'amount'
@@ -166,6 +170,8 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
         setPointsHistory(data.pointsHistory || [])
         setCreditos(data.credits || [])
         setCreditBalance(Number(data.creditBalance ?? 0))
+        setIsento(data.customer?.sinal_isento === true)
+        setSinalAtivoNoNegocio(data.sinalAtivo === true)
         setActiveCoupon(data.activeCoupon ?? null)
         setRewards(data.rewards ?? [])
         setEditName(data.customer.name)
@@ -690,6 +696,55 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* ISENTA DE SINAL (v118) · só aparece pra negócio que cobra
+                  sinal — em quem não cobra seria um botão sem sentido. É a
+                  cliente antiga que nunca falta: a dona não quer constranger
+                  cobrando toda vez, e sem esta opção ela usaria "Recebi o
+                  sinal" sem receber, o que faz a comanda cobrar a menos. */}
+              {sinalAtivoNoNegocio && (
+                <div
+                  className="rounded-2xl p-4 flex items-start justify-between gap-3"
+                  style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                      Não cobrar sinal
+                    </p>
+                    <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                      Cliente de confiança: agenda sem precisar pagar antecipado.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const novo = !isento
+                      setIsento(novo)
+                      const res = await fetch(`/api/admin/customers/${customerId}`, {
+                        method: 'PATCH',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ sinal_isento: novo }),
+                      })
+                      // λ.prova-na-fonte: se o banco recusou, a tela volta.
+                      if (!res.ok) setIsento(!novo)
+                    }}
+                    role="switch"
+                    aria-checked={isento}
+                    aria-label="Não cobrar sinal desta cliente"
+                    className="relative flex-shrink-0 rounded-full transition-colors"
+                    style={{
+                      width: 46,
+                      height: 26,
+                      background: isento ? '#10B981' : 'var(--admin-border)',
+                    }}
+                  >
+                    <span
+                      className="absolute top-[3px] rounded-full bg-white transition-all"
+                      style={{ width: 20, height: 20, left: isento ? 23 : 3 }}
+                    />
+                  </button>
                 </div>
               )}
 

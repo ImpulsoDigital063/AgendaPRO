@@ -156,6 +156,12 @@ export async function GET(
 
      Disponível = não usado em comanda, não usado em sinal, dentro da
      validade. Mesma régua das telas de pagamento. */
+  const { data: negocioSinal } = await supabase
+    .from('businesses')
+    .select('sinal_enabled')
+    .eq('id', customer.business_id)
+    .maybeSingle()
+
   const agoraIso = new Date().toISOString()
   const { data: creditos } = await supabase
     .from('customer_credits')
@@ -220,9 +226,14 @@ export async function GET(
       notes: customer.notes ?? null,
       import_source: customer.import_source ?? null,
       imported_at: customer.imported_at ?? null,
+      // v118 · não cobra sinal dessa cliente
+      sinal_isento: customer.sinal_isento === true,
     },
     history,
     pointsHistory,
+    /* O toggle de isenção só faz sentido em negócio que cobra sinal — na ficha
+       de quem não cobra seria um botão sem efeito nenhum. */
+    sinalAtivo: negocioSinal?.sinal_enabled === true,
     creditBalance,
     credits: creditList,
     activeCoupon: activeCoupon ?? null,
@@ -285,6 +296,12 @@ export async function PATCH(
     } else if (typeof v === 'string') {
       updates.notes = v.trim().slice(0, 1000)
     }
+  }
+
+  /* Isenta de sinal (v118) · cliente de confiança que a dona não quer
+     constranger cobrando toda vez. Vale nos dois caminhos de agendamento. */
+  if ('sinal_isento' in body) {
+    updates.sinal_isento = body.sinal_isento === true
   }
 
   // Campos novos v56 · todos texto livre (trim + cap 500 por campo) ou null

@@ -641,8 +641,22 @@ export default function AgendarModal({
       .select('sinal_enabled, sinal_percent, pix_key')
       .eq('id', businessId)
       .maybeSingle()
+    /* Cliente de confiança não paga sinal (v118) · marcado na ficha dela.
+       Sem isto a dona teria que dispensar na mão toda vez que marcasse a
+       mesma cliente antiga — e o atalho que ela ia achar sozinha era clicar
+       em "Recebi o sinal" sem receber, que faz a comanda cobrar a menos. */
+    let clienteIsenta = false
+    if (!avulso && cliente?.id) {
+      const { data: fichaIsenta } = await supabase
+        .from('customers')
+        .select('sinal_isento')
+        .eq('id', cliente.id)
+        .maybeSingle()
+      clienteIsenta = fichaIsenta?.sinal_isento === true
+    }
+
     const cobraSinal =
-      cfgSinal?.sinal_enabled === true && !!cfgSinal?.pix_key && !avulso && valorTotal > 0
+      cfgSinal?.sinal_enabled === true && !!cfgSinal?.pix_key && !avulso && !clienteIsenta && valorTotal > 0
     const valorSinal = cobraSinal
       ? Math.round(valorTotal * (Number(cfgSinal?.sinal_percent ?? 0) / 100) * 100) / 100
       : null

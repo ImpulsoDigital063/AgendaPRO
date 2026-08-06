@@ -294,9 +294,25 @@ export async function POST(req: NextRequest) {
     .eq('id', businessId)
     .maybeSingle()
 
+  /* Cliente de confiança não paga sinal (v118). A dona marca isso na ficha e
+     vale também aqui, no link público — a cliente antiga que marca sozinha
+     pelo link é justamente quem ela não quer constranger com cobrança.
+     Coluna nova: se a v118 ainda não rodou, o erro é ignorado e o sinal segue
+     como antes, em vez de derrubar o agendamento. */
+  let clienteIsenta = false
+  if (customerId) {
+    const { data: fichaIsenta } = await db
+      .from('customers')
+      .select('sinal_isento')
+      .eq('id', customerId)
+      .maybeSingle()
+    clienteIsenta = fichaIsenta?.sinal_isento === true
+  }
+
   const exigeSinal =
     negocio?.sinal_enabled === true &&
     !!negocio?.pix_key &&
+    !clienteIsenta &&
     temPrecoReal &&
     !!totalServer &&
     totalServer > 0

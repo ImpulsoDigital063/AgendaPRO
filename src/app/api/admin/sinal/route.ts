@@ -197,7 +197,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const id = typeof body.appointmentId === 'string' ? body.appointmentId : ''
-  const acao = body.acao === 'cancelar' ? 'cancelar' : 'recebi'
+  const acao: 'cancelar' | 'recebi' | 'dispensar' =
+    body.acao === 'cancelar' ? 'cancelar' : body.acao === 'dispensar' ? 'dispensar' : 'recebi'
   if (!id) return NextResponse.json({ error: 'sem_id' }, { status: 400 })
 
   // Confere que o atendimento é deste negócio antes de mexer.
@@ -210,24 +211,58 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'nao_encontrado' }, { status: 404 })
   }
 
+  /* DISPENSAR (v118) · a dona resolveu não cobrar dessa cliente.
+     ─────────────────────────────────────────────────────────────────
+     Zera o sinal em vez de marcá-lo como pago. A diferença é dinheiro: se
+     ela usasse "Recebi" como atalho pra dispensar — que é o que ia
+     acontecer, por falta de opção — a comanda depois abateria um sinal que
+     nunca entrou e ela cobraria a menos.
+
+     Se o crédito da cliente já tinha sido consumido pra pagar esse sinal, o
+     crédito VOLTA. Dispensar não pode custar o saldo dela. */
+  if (acao === 'dispensar') {
+    const { data: usados } = await supabase
+      .from('customer_credits')
+      .select('id')
+      .eq('used_in_appointment_id', id)
+    if ((usados ?? []).length > 0) {
+      await supabase
+        .from('customer_credits')
+        .update({ used_in_appointment_id: null })
+        .in('id', (usados ?? []).map((c) => c.id))
+      // A sobra gerada por esse consumo some junto, senão o saldo dobra.
+      await supabase
+        .from('customer_credits')
+        .delete()
+        .eq('notes', `Sobra de crédito usado no sinal ${id}`)
+    }
+  }
+
   /* "Recebi" confirma o horário — é o único caminho do pending pro
      confirmed quando há sinal. Read-after-write porque isso é dinheiro:
      a resposta só volta ok se o banco confirmar (λ.prova-na-fonte). */
   const updates =
     acao === 'cancelar'
       ? { status: 'cancelled' }
-      : { sinal_pago_at: new Date().toISOString(), status: 'confirmed' }
+      : acao === 'dispensar'
+        ? { sinal_valor: null, sinal_pago_at: null, status: 'confirmed' }
+        : { sinal_pago_at: new Date().toISOString(), status: 'confirmed' }
 
   const { data: salvo, error } = await supabase
     .from('appointments')
     .update(updates)
     .eq('id', id)
-    .select('id, status, sinal_pago_at')
+    .select('id, status, sinal_pago_at, sinal_valor')
     .maybeSingle()
 
   if (error || !salvo) return NextResponse.json({ error: 'nao_salvou' }, { status: 500 })
   if (acao === 'recebi' && !salvo.sinal_pago_at) {
     return NextResponse.json({ error: 'nao_confirmado_pelo_banco' }, { status: 500 })
+  }
+  // λ.prova-na-fonte também aqui: dispensar que não zerou é sinal fantasma
+  // esperando pra abater da comanda.
+  if (acao === 'dispensar' && salvo.sinal_valor !== null) {
+    return NextResponse.json({ error: 'nao_dispensou_pelo_banco' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true, status: salvo.status })

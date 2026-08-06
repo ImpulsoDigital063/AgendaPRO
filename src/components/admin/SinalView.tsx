@@ -116,7 +116,7 @@ export default function SinalView() {
     carregar()
   }
 
-  async function agir(id: string, acao: 'recebi' | 'cancelar') {
+  async function agir(id: string, acao: 'recebi' | 'cancelar' | 'dispensar') {
     setAgindo(id)
     const r = await fetch('/api/admin/sinal', {
       method: 'POST',
@@ -274,6 +274,22 @@ export default function SinalView() {
                       Recebi
                     </button>
                   </div>
+                  {/* Dispensar (v118) · discreto, mas presente. Sem ele a dona
+                      clicaria em "Recebi" pra não cobrar da cliente de
+                      confiança, e a comanda depois abateria um sinal que nunca
+                      entrou — ela cobraria a menos sem perceber. */}
+                  <button
+                    onClick={() => {
+                      if (confirm(`Confirmar o horário de ${p.client_name ?? 'a cliente'} sem cobrar o sinal?`)) {
+                        agir(p.id, 'dispensar')
+                      }
+                    }}
+                    disabled={agindo === p.id}
+                    className="w-full mt-2 py-2 rounded-lg text-[11px] font-semibold disabled:opacity-50"
+                    style={{ background: 'transparent', color: 'var(--admin-text-faded)' }}
+                  >
+                    Não vou cobrar dessa cliente
+                  </button>
                 </div>
               )
             })}
