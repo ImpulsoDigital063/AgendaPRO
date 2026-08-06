@@ -17,6 +17,7 @@
 // convite toda vez que abrir a agenda.
 import { useEffect, useState } from 'react'
 import { registerPush, pushSupported, syncPushSubscription, contarDevicesRegistrados, type PushResult } from '@/lib/push'
+import { anunciarFaixaPush } from '@/lib/aviso-push-bus'
 
 // Dispensa temporária: guarda o timestamp e volta a oferecer depois de 7 dias
 // (antes era permanente · um "agora não" matava o banner pra sempre → adoção baixa).
@@ -88,7 +89,9 @@ export default function PushEnableBanner() {
       if (!pushSupported()) {
         // iPhone no Safari (não instalado) não expõe PushManager — o push só
         // liga depois de "Adicionar à Tela de Início". Aí mostramos a dica.
-        if (isIOS && !isStandalone && alive && !dispensada) setMode('ios-install')
+        const vaiMostrar = isIOS && !isStandalone && !dispensada
+        if (vaiMostrar && alive) setMode('ios-install')
+        anunciarFaixaPush(vaiMostrar)
         return
       }
 
@@ -98,19 +101,21 @@ export default function PushEnableBanner() {
       // volta sozinha. Antes a faixa via "tem assinatura no navegador", sumia,
       // e o dono ficava sem push sem ninguém saber. É idempotente.
       const temNoAparelho = Notification.permission === 'granted' && (await syncPushSubscription())
-      if (temNoAparelho) return // agora "ativo" quer dizer ativo NOS DOIS lados
+      if (temNoAparelho) { anunciarFaixaPush(false); return } // ativo NOS DOIS lados
 
-      if (dispensada) return
+      if (dispensada) { anunciarFaixaPush(false); return }
 
       // Permissão negada NÃO some mais em silêncio: o código não consegue
       // re-pedir, então a única saída é o dono liberar nos ajustes do aparelho —
       // e pra isso ele precisa saber que está bloqueado.
       if (Notification.permission === 'denied') {
         if (alive) setMode('blocked')
+        anunciarFaixaPush(true)
         return
       }
 
       if (alive) setMode('enable')
+      anunciarFaixaPush(true)
     })()
     return () => {
       alive = false
@@ -125,6 +130,9 @@ export default function PushEnableBanner() {
       else localStorage.setItem(DISMISS_KEY, String(Date.now()))
     } catch {}
     setMode(null)
+    /* Fechou a faixa: o card de novidade pode falar agora, sem esperar a
+       proxima visita. */
+    anunciarFaixaPush(false)
   }
 
   async function ativar() {
@@ -152,6 +160,25 @@ export default function PushEnableBanner() {
       'linear-gradient(135deg, color-mix(in srgb, var(--admin-accent) 12%, var(--admin-surface)) 0%, var(--admin-surface) 70%)',
     border: '1px solid var(--admin-border)',
   } as const
+  /* ✕ visível (Eduardo, 06/08): antes era um caractere solto em cinza-apagado,
+     que no celular ninguém achava. Agora tem borda, fundo e área de toque de
+     28px — dá pra fechar sem procurar. */
+  const botaoFechar = (
+    <button
+      onClick={dismiss}
+      className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[13px] leading-none transition-colors"
+      style={{
+        color: 'var(--admin-text-mute)',
+        background: 'var(--admin-surface)',
+        border: '1px solid var(--admin-border)',
+      }}
+      aria-label="Fechar aviso"
+      title="Fechar"
+    >
+      ✕
+    </button>
+  )
+
   const iconBox = (
     <span
       className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -199,14 +226,7 @@ export default function PushEnableBanner() {
             (embaixo, no Safari) e depois em <strong>&ldquo;Adicionar à Tela de Início&rdquo;</strong>. Abra o app por lá e a opção de ativar aparece aqui.
           </p>
         </div>
-        <button
-          onClick={dismiss}
-          className="flex-shrink-0 text-xs font-semibold px-2 py-1 rounded-lg"
-          style={{ color: 'var(--admin-text-faded)' }}
-          aria-label="Dispensar"
-        >
-          ✕
-        </button>
+        {botaoFechar}
       </div>
     )
   }
@@ -231,14 +251,7 @@ export default function PushEnableBanner() {
             )}
           </p>
         </div>
-        <button
-          onClick={dismiss}
-          className="flex-shrink-0 text-xs font-semibold px-2 py-1 rounded-lg"
-          style={{ color: 'var(--admin-text-faded)' }}
-          aria-label="Dispensar"
-        >
-          ✕
-        </button>
+        {botaoFechar}
       </div>
     )
   }
@@ -281,6 +294,7 @@ export default function PushEnableBanner() {
           </button>
         </div>
       </div>
+      {botaoFechar}
     </div>
   )
 }

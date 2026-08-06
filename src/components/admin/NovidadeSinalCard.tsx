@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { ouvirFaixaPush } from '@/lib/aviso-push-bus'
 
 const DISMISS_KEY = 'ap_novidade_sinal_dismissed'
 /* Depois disso o card não aparece mais pra ninguém, mesmo sem dispensar.
@@ -41,7 +42,22 @@ export default function NovidadeSinalCard({ sinalAtivo }: { sinalAtivo: boolean 
     try {
       if (localStorage.getItem(DISMISS_KEY) === '1') return
     } catch {}
-    setMostrar(true)
+
+    /* UM AVISO POR VEZ (06/08). A faixa de notificação tem prioridade: ela é
+       operação — a dona perde agendamento sem saber. Esta aqui é convite e
+       pode esperar. Empilhados, os dois comiam metade da primeira dobra no
+       celular antes da agenda aparecer.
+
+       A faixa avisa de forma assíncrona (consulta o banco antes de decidir);
+       se em 2s ela não falou, é porque não está nesta tela — aí este card
+       aparece. Fechar a faixa dispara `false` e este card entra na hora. */
+    let vivo = true
+    const parar = ouvirFaixaPush((faixaVisivel) => {
+      if (vivo) setMostrar(!faixaVisivel)
+    })
+    const semResposta = setTimeout(() => { if (vivo) setMostrar(true) }, 2000)
+
+    return () => { vivo = false; clearTimeout(semResposta); parar() }
   }, [sinalAtivo])
 
   if (!mostrar) return null
@@ -96,22 +112,21 @@ export default function NovidadeSinalCard({ sinalAtivo }: { sinalAtivo: boolean 
           >
             Ver como funciona
           </Link>
-          <button
-            type="button"
-            onClick={dispensar}
-            className="rounded-lg px-3 py-2 text-xs font-semibold"
-            style={{ color: 'var(--admin-text-faded)' }}
-          >
-            Agora não
-          </button>
         </div>
       </div>
 
+      {/* ✕ visível: borda, fundo e 28px de área de toque. O "Agora não" saiu —
+          com o ✕ à mostra, dois botões de fechar viravam ruído. */}
       <button
         onClick={dispensar}
-        className="flex-shrink-0 text-xs font-semibold px-2 py-1 rounded-lg"
-        style={{ color: 'var(--admin-text-faded)' }}
-        aria-label="Dispensar"
+        className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[13px] leading-none"
+        style={{
+          color: 'var(--admin-text-mute)',
+          background: 'var(--admin-surface)',
+          border: '1px solid var(--admin-border)',
+        }}
+        aria-label="Fechar aviso"
+        title="Fechar"
       >
         ✕
       </button>

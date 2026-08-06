@@ -345,9 +345,13 @@ export default function SinalView() {
           {/* Regra de cancelamento (v113). Os números vêm da Wanessa — 24h e 30
               dias — mas são dela: clínica de procedimento caro pode querer 48h,
               barbearia pode querer 2h. */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="admin-label">Cancelar sem perder o sinal até</label>
+          {/* items-end + label ocupando a altura toda: no celular o rótulo da
+              esquerda quebra em duas linhas e o da direita não, e sem isso os
+              dois campos ficavam em alturas diferentes (auditoria visual
+              06/08). Assim os inputs alinham pela base em qualquer largura. */}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1 flex flex-col h-full">
+              <label className="admin-label flex-1">Cancelar sem perder o sinal até</label>
               <div className="relative">
                 <input
                   type="text"
@@ -363,8 +367,8 @@ export default function SinalView() {
                 </span>
               </div>
             </div>
-            <div className="flex-1">
-              <label className="admin-label">Crédito vale por</label>
+            <div className="flex-1 flex flex-col h-full">
+              <label className="admin-label flex-1">Crédito vale por</label>
               <div className="relative">
                 <input
                   type="text"
