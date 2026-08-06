@@ -30,6 +30,52 @@ function getAdminClient() {
   )
 }
 
+/* PRÉVIA DO LINK NO WHATSAPP (06/08).
+   ───────────────────────────────────────────────────────────────────
+   Sem isto o WhatsApp puxava a metadata global do site e a cliente do
+   Studio Marcela recebia uma cobrança com o card do AgendaPRO em cima:
+   "Agenda inteligente pro seu negócio crescer sozinho · a partir de
+   R$ 67/mês". Ela podia entender que os R$ 67 são pra ela, e a dona
+   ficava com o fornecedor dela exposto numa conversa que é dela com a
+   cliente. O card tem que ser do salão.
+
+   Nada de nome da cliente aqui: a prévia aparece na lista de conversas
+   e em notificação de tela bloqueada. */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string; token?: string }>
+}) {
+  const { id, token } = await searchParams
+  const generico = { title: 'Sinal do agendamento', robots: { index: false, follow: false } }
+  if (!id || !token || !verifySinalToken(id, token)) return generico
+
+  const { data } = await getAdminClient()
+    .from('appointments')
+    .select('sinal_valor, appointment_date, start_time, business:businesses(name)')
+    .eq('id', id)
+    .single()
+
+  if (!data) return generico
+
+  const nome = (data.business as unknown as { name: string } | null)?.name ?? 'Agendamento'
+  const valor = Number(data.sinal_valor ?? 0)
+  const [, mes, dia] = String(data.appointment_date).split('-')
+  const quando = `${dia}/${mes} às ${String(data.start_time).slice(0, 5)}`
+  const descricao =
+    valor > 0
+      ? `Sinal de ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} pra confirmar seu horário de ${quando}.`
+      : `Confirme seu horário de ${quando}.`
+
+  return {
+    title: `Confirmar horário · ${nome}`,
+    description: descricao,
+    // Link de cobrança não entra em buscador.
+    robots: { index: false, follow: false },
+    openGraph: { title: `Confirmar horário · ${nome}`, description: descricao, type: 'website' },
+  }
+}
+
 export default async function SinalPage({
   searchParams,
 }: {
