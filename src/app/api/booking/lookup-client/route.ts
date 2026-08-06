@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { variacoesDeTelefone } from '@/lib/phone-variants'
 
 /**
  * GET /api/booking/lookup-client?phone=<raw>
@@ -32,20 +33,17 @@ export async function GET(req: NextRequest) {
     { auth: { persistSession: false } }
   )
 
-  let { data } = await db
+  /* Antes tentava digits e, se raw fosse diferente, o raw. Isso reconhecia
+     quem digitava com máscara e o banco tinha dígitos — mas NÃO o contrário,
+     que é o caso mais comum (o link grava com máscara). Agora procura todos os
+     formatos do mesmo número de uma vez. Auditoria 05/08. */
+  const { data: achados } = await db
     .from('clients')
     .select('id, name, phone, email, created_at')
-    .eq('phone', digits)
-    .maybeSingle()
-
-  if (!data && raw !== digits) {
-    const r = await db
-      .from('clients')
-      .select('id, name, phone, email, created_at')
-      .eq('phone', raw)
-      .maybeSingle()
-    data = r.data
-  }
+    .in('phone', variacoesDeTelefone(raw))
+    .order('created_at', { ascending: true })
+    .limit(1)
+  const data = achados?.[0] ?? null
 
   return NextResponse.json({ client: data ?? null })
 }

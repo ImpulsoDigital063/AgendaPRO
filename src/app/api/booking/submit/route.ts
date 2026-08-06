@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { calcularSinal, gerarBRCode } from '@/lib/pix-brcode'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { variacoesDeTelefone } from '@/lib/phone-variants'
 
 /**
  * POST /api/booking/submit
@@ -178,7 +179,14 @@ export async function POST(req: NextRequest) {
     if (dono && (dono.phone || '').trim() === phone) clientId = dono.id
   }
   if (!clientId) {
-    const { data: existing } = await db.from('clients').select('id').eq('phone', phone).maybeSingle()
+    // Casa por qualquer formato do mesmo número (ver phone-variants.ts).
+    const { data: achados } = await db
+      .from('clients')
+      .select('id, created_at')
+      .in('phone', variacoesDeTelefone(phone))
+      .order('created_at', { ascending: true })
+      .limit(1)
+    const existing = achados?.[0] ?? null
     if (existing) {
       clientId = existing.id
       await db.from('clients').update({ name, email }).eq('id', clientId)
@@ -193,12 +201,17 @@ export async function POST(req: NextRequest) {
   }
 
   // 1b. Criar ou recuperar customer do business (pontos/fidelidade)
-  const { data: existingCustomer } = await db
+  /* Mesmo motivo do clients acima: o fluxo de avaliação grava o telefone só
+     em dígitos e o link grava com máscara. Com `.eq` exato a mesma pessoa
+     ganhava segunda ficha — e o crédito dela ficava na ficha errada. */
+  const { data: customersAchados } = await db
     .from('customers')
-    .select('id, total_points, birthday')
+    .select('id, total_points, birthday, created_at')
     .eq('business_id', businessId)
-    .eq('phone', phone)
-    .maybeSingle()
+    .in('phone', variacoesDeTelefone(phone))
+    .order('created_at', { ascending: true })
+    .limit(1)
+  const existingCustomer = customersAchados?.[0] ?? null
 
   let customerId: string | null = existingCustomer?.id ?? null
   let referralCodeOut: string | null = null
