@@ -101,8 +101,14 @@ export async function limparSinaisVencidos(
   })
 
   /* Tolera o banco sem a v117 aplicada ainda: solta o horário do mesmo jeito,
-     só sem a marca. Deploy e migration não precisam entrar na mesma ordem. */
-  if (error?.code === '42703') {
+     só sem a marca. Deploy e migration não precisam entrar na mesma ordem.
+     Qualquer erro cai aqui de propósito — a primeira versão testava só
+     `42703` (o código do POSTGRES pra coluna inexistente) e o PostgREST na
+     verdade devolve `PGRST204` ("column not found in schema cache"). Resultado:
+     o horário vencido NÃO era solto e continuava travando a agenda — exatamente
+     o que a v115 existe pra evitar. Soltar o horário é mais importante do que
+     registrar por que ele foi solto. */
+  if (error) {
     ;({ data: soltos } = await aplicar({ status: 'cancelled' }))
   }
 
