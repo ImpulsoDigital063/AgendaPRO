@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { sinalVencido, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 
 /**
  * GET /api/booking/availability?business=<id>&professional=<id>&date=YYYY-MM-DD
@@ -52,13 +53,23 @@ export async function GET(req: NextRequest) {
 
   // No modo intervalo o appointment_date volta junto — o client precisa saber
   // a qual dia cada agendamento pertence pra montar o mapa de dias lotados.
+  /* v115 · sinal vencido não ocupa horário. Aqui só ESCONDE — quem cancela de
+     verdade é a rota de marcar (limparSinaisVencidos), porque escrever numa
+     rota pública de leitura, chamada a cada troca de dia, sairia caro e daria
+     brecha pra forçar cancelamento em massa batendo na URL.
+     Esconder aqui e cancelar lá dá o mesmo resultado pra cliente: ela vê o
+     horário livre e consegue marcar. */
   const qAppointments = db
     .from('appointments')
-    .select(modoIntervalo ? 'appointment_date, start_time, end_time' : 'start_time, end_time')
+    .select(
+      modoIntervalo
+        ? 'appointment_date, start_time, end_time, status, sinal_valor, sinal_pago_at, created_at'
+        : 'start_time, end_time, status, sinal_valor, sinal_pago_at, created_at',
+    )
     .eq('professional_id', professionalId)
     .in('status', ['pending', 'confirmed', 'completed'])
 
-  const [{ data: appointments }, { data: blocks }] = await Promise.all([
+  const [{ data: appointments }, { data: blocks }, { data: negocio }] = await Promise.all([
     modoIntervalo
       ? qAppointments.gte('appointment_date', from).lte('appointment_date', to)
       : qAppointments.eq('appointment_date', date),
@@ -68,7 +79,35 @@ export async function GET(req: NextRequest) {
       .eq('business_id', businessId)
       .eq('active', true)
       .or(`professional_id.eq.${professionalId},professional_id.is.null`),
+    db
+      .from('businesses')
+      .select('sinal_enabled, sinal_expira_minutos')
+      .eq('id', businessId)
+      .maybeSingle(),
   ])
 
-  return NextResponse.json({ appointments: appointments ?? [], blocks: blocks ?? [] })
+  type ApptRow = {
+    id: string
+    appointment_date?: string
+    start_time: string
+    end_time: string
+    status: string | null
+    sinal_valor: number | string | null
+    sinal_pago_at: string | null
+    created_at: string
+  }
+
+  const minutos = Number(negocio?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN)
+  const ocupados = ((appointments ?? []) as unknown as ApptRow[]).filter(
+    (a) => !(negocio?.sinal_enabled && sinalVencido(a, minutos)),
+  )
+
+  // O client só usa horário; os campos do sinal ficam no servidor.
+  const limpos = ocupados.map((a) =>
+    modoIntervalo
+      ? { appointment_date: a.appointment_date, start_time: a.start_time, end_time: a.end_time }
+      : { start_time: a.start_time, end_time: a.end_time },
+  )
+
+  return NextResponse.json({ appointments: limpos, blocks: blocks ?? [] })
 }

@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { variacoesDeTelefone } from '@/lib/phone-variants'
 import { todayBR } from '@/lib/date-br'
+import { limparSinaisVencidos } from '@/lib/sinal-expira'
 
 /**
  * POST /api/booking/submit
@@ -252,6 +253,12 @@ export async function POST(req: NextRequest) {
       await db.from('customers').update({ birthday: validBirthday }).eq('id', customerId)
     }
   }
+
+  /* Solta os horários cujo sinal venceu antes de conferir conflito (v115).
+     Tem que ser ANTES: a constraint no_overlap do banco conta pending como
+     ocupado, então sem isto a cliente tomaria erro num horário que a tela
+     mostrou livre. Escopo estreito — só este profissional, só este dia. */
+  await limparSinaisVencidos(db, { businessId, professionalId, date: appointmentDate })
 
   // 2. Conflito de horário (proteção pré-insert; a constraint v40 é a final)
   const { data: conflict } = await db

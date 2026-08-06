@@ -35,6 +35,12 @@ export async function GET(req: NextRequest) {
     .select('*, business:businesses(name)')
     .eq('appointment_date', tomorrowStr)
     .in('status', ['pending', 'confirmed'])
+    /* v115 · quem tem sinal em aberto não recebe "seu horário é amanhã" como
+       se estivesse tudo certo. O horário dela não está garantido: ou o PIX
+       cai, ou ele volta pra agenda. Mandar lembrete aqui seria prometer o que
+       o sistema não vai cumprir. A cobrança do sinal tem canal próprio, o
+       botão da aba Sinal. */
+    .or('sinal_valor.is.null,sinal_pago_at.not.is.null')
     .eq('reminded_1d', false)
 
   if (!appointments || appointments.length === 0) {

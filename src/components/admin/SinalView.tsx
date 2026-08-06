@@ -31,6 +31,7 @@ type Pendente = {
   total_price: number | null
   sinal_valor: number | null
   copiaECola: string | null
+  minutosPraVencer: number | null
 }
 
 type Config = {
@@ -41,10 +42,32 @@ type Config = {
   percentual: number
   cancelHoras: number
   creditoDias: number
+  expiraMinutos: number
   nomeNegocio: string
 }
 
+/* Prazo em minutos no banco, mas a dona escolhe em linguagem de gente.
+   Pedir "digite os minutos" pra quem quer dizer "duas horas" é fazer a
+   pessoa fazer conta à toa. */
+const PRAZOS = [
+  { min: 30, label: '30 minutos' },
+  { min: 60, label: '1 hora' },
+  { min: 120, label: '2 horas' },
+  { min: 240, label: '4 horas' },
+  { min: 720, label: '12 horas' },
+  { min: 1440, label: '24 horas' },
+  { min: 2880, label: '2 dias' },
+]
+
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+/** "45 min", "2h", "1h20" — ninguém lê "137 minutos" e entende de cara. */
+function textoPrazo(min: number): string {
+  if (min < 60) return `${min} min`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`
+}
 const dataCurta = (ymd: string) => ymd.split('-').reverse().slice(0, 2).join('/')
 
 export default function SinalView() {
@@ -107,6 +130,11 @@ export default function SinalView() {
       `dia ${dataCurta(p.appointment_date)} às ${p.start_time.slice(0, 5)} está reservado.\n\n` +
       `Pra confirmar, é só pagar o sinal de ${brl(Number(p.sinal_valor))} no PIX abaixo — ` +
       `copia o código e cola no seu banco:\n\n${p.copiaECola}\n\n` +
+      /* O prazo entra na mensagem porque é ele que faz a pessoa pagar agora em
+         vez de "depois eu vejo". E é honesto: o horário vai ser solto mesmo. */
+      (typeof p.minutosPraVencer === 'number' && p.minutosPraVencer > 0
+        ? `Consigo segurar por mais ${textoPrazo(p.minutosPraVencer)} — depois disso o horário volta pra agenda.\n\n`
+        : '') +
       `Assim que cair eu confirmo aqui. Qualquer coisa me chama!`
     return `https://wa.me/${tel.startsWith('55') ? tel : '55' + tel}?text=${encodeURIComponent(texto)}`
   }
@@ -156,6 +184,19 @@ export default function SinalView() {
                       <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
                         {p.service_name || 'Atendimento'} · {dataCurta(p.appointment_date)} às {p.start_time.slice(0, 5)}
                       </p>
+                      {/* Quanto o horário ainda aguenta. Cobrar quem vence em 4
+                          minutos é pior que não cobrar — a cliente paga e o
+                          horário já foi. Vermelho a partir de 30 min. */}
+                      {typeof p.minutosPraVencer === 'number' && (
+                        <p
+                          className="text-[11px] mt-1 font-semibold"
+                          style={{ color: p.minutosPraVencer <= 30 ? '#DC2626' : 'var(--admin-text-faded)' }}
+                        >
+                          {p.minutosPraVencer <= 0
+                            ? 'Prazo vencido — o horário será liberado'
+                            : `Segura o horário por mais ${textoPrazo(p.minutosPraVencer)}`}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-base font-black tabular-nums" style={{ color: '#F59E0B' }}>
@@ -301,6 +342,28 @@ export default function SinalView() {
               </div>
             </div>
           </div>
+          {/* Prazo pra pagar (v115). Sem isto o horário ficava reservado pra
+              sempre esperando um PIX que talvez nunca venha — e o sinal, que
+              existe pra proteger a agenda, acabava travando ela. */}
+          <div>
+            <label className="admin-label">Segurar o horário esperando o PIX por</label>
+            <select
+              value={String(cfg.expiraMinutos ?? 120)}
+              onChange={(e) => setCfg({ ...cfg, expiraMinutos: Number(e.target.value) })}
+              className="admin-input w-full px-3 py-2.5 text-sm"
+            >
+              {PRAZOS.map((p) => (
+                <option key={p.min} value={p.min}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+              Passou desse tempo sem o sinal cair, o horário volta a ficar livre pra outra cliente
+              marcar. Ninguém segura sua agenda sem pagar.
+            </p>
+          </div>
+
           <p className="text-[11px] -mt-1" style={{ color: 'var(--admin-text-faded)' }}>
             Cancelando <b>antes</b> desse prazo, o sinal vira crédito na ficha da cliente e ela usa
             em outro horário. Cancelando <b>depois</b>, o sinal fica com você. Quando <b>você</b>{' '}

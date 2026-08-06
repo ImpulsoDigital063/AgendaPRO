@@ -73,6 +73,8 @@ export async function GET(req: NextRequest) {
     `)
     .eq('appointment_date', today)
     .in('status', ['pending', 'confirmed'])
+    // v115 · sinal em aberto não recebe lembrete (ver reminders/route.ts)
+    .or('sinal_valor.is.null,sinal_pago_at.not.is.null')
     .eq('reminded_3h', false)
     .gte('start_time', minTimeStr)
     .lte('start_time', maxTimeStr)
