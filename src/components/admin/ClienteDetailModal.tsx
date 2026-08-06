@@ -76,10 +76,10 @@ type CreditoLinha = {
 /* Nome de gente pro que o banco chama de origin. "sinal_cancelado" não
    significa nada pra quem está com a cliente na frente. */
 const ORIGEM_CREDITO: Record<string, string> = {
-  advance: 'Pagamento adiantado',
+  advance: 'Adiantamento',
   other: 'Outros',
   sinal: 'Sobra de sinal',
-  sinal_cancelado: 'Sinal de atendimento cancelado',
+  sinal_cancelado: 'Sinal cancelado',
 }
 
 const brlCredito = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -660,15 +660,25 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                     </div>
                     <div className="mt-3 space-y-1.5">
                       {creditos.map((c) => (
-                        <div key={c.id} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="min-w-0 truncate" style={{ color: 'var(--admin-text-2)' }}>
+                        /* A validade fica em span próprio e sem encolher: no
+                           iPhone ela era o pedaço cortado ("vale até 05/…"),
+                           e é justamente o dado que decide se o crédito ainda
+                           serve. Quem trunca é a origem, que a dona já
+                           entende pela metade. */
+                        <div key={c.id} className="flex items-center gap-2 text-xs">
+                          <span className="min-w-0 flex-1 truncate" style={{ color: 'var(--admin-text-2)' }}>
                             {ORIGEM_CREDITO[c.origin] ?? c.origin}
-                            {c.expires_at && !c.usado && (
-                              <span style={{ color: c.vencido ? '#DC2626' : 'var(--admin-text-faded)' }}>
-                                {c.vencido ? ' · venceu' : ` · vale até ${c.expires_at.slice(0, 10).split('-').reverse().join('/')}`}
-                              </span>
-                            )}
                           </span>
+                          {c.expires_at && !c.usado && (
+                            <span
+                              className="flex-shrink-0"
+                              style={{ color: c.vencido ? '#DC2626' : 'var(--admin-text-faded)' }}
+                            >
+                              {c.vencido
+                                ? 'venceu'
+                                : `até ${c.expires_at.slice(0, 10).split('-').reverse().slice(0, 2).join('/')}`}
+                            </span>
+                          )}
                           <span
                             className="tabular-nums font-semibold flex-shrink-0"
                             style={{ color: c.usado || c.vencido ? 'var(--admin-text-faded)' : '#059669' }}
