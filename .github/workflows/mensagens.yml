@@ -1,0 +1,37 @@
+name: mensagens
+
+# Varredura das mensagens automaticas, de hora em hora.
+#
+# Por que aqui e nao no vercel.json: no Hobby o cron da Vercel roda 1x/dia.
+# E cron diario NAO consegue avisar "3 horas antes" de horarios espalhados
+# das 8h as 19h - medido em 07/08: os crons reminder-1h e reminder-3h
+# marcaram ZERO agendamentos em 14 dias, porque as 6h da manha quase nenhum
+# atendimento esta a uma hora de distancia. Nunca funcionaram.
+#
+# Custo: 24 execucoes/dia. O GitHub arredonda cada job pro minuto, entao da
+# ~720 min/mes dos 2.000 gratuitos de repo privado. Cabe, mas nao e de graca
+# - por isso 1x/hora e nao a cada 15 min.
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  varrer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: varrer e esvaziar a fila
+        run: |
+          # A rota manda um LOTE por chamada (a funcao tem 60s de teto no
+          # Hobby) e devolve quantos restam. Repete ate zerar, com limite de
+          # 10 voltas pra um bug de contagem nunca virar loop infinito.
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /tmp/out -w "%{http_code}" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              "https://www.agendapro.net.br/api/mensagens/varrer")
+            echo "volta $i · HTTP $code"
+            cat /tmp/out; echo
+            test "$code" = "200" || exit 1
+            restam=$(grep -o '"restam":[0-9]*' /tmp/out | head -1 | cut -d: -f2)
+            [ "${restam:-0}" -gt 0 ] || break
+          done
