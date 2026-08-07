@@ -6,40 +6,59 @@
    espalhados das 8h às 19h. Medido em 07/08: nos últimos 14 dias, os crons
    `reminder-1h` e `reminder-3h` marcaram ZERO agendamentos — às 6h da
    manhã, quando rodam, quase nenhum atendimento está a uma hora de
-   distância. Eles nunca funcionaram na vida real. Só o da véspera (diário
-   por natureza) entrega.
-   No Hobby não existe cron de hora em hora, então quem chama é o GitHub
-   Action que já roda o monitor. Custo zero.
+   distância. Nunca funcionaram na vida real. No Hobby não existe cron
+   horário, então quem chama é o GitHub Action, como já acontece com o
+   monitor. Custo zero.
 
-   LOTE FIXO por invocação, e isso não é detalhe: a função tem 10s de
-   padrão e 60s de teto no Hobby. Mandar 50 mensagens em sequência estoura
-   e morre no meio — metade da fila sem enviar, ninguém sabendo. Aqui cada
-   chamada manda até LOTE e devolve `restam`; quem chama repete até zerar.
-   Escala por número de chamadas, não por duração.
+   LOTE FIXO por invocação: a função tem 10s de padrão e 60s de teto no
+   Hobby. Mandar 50 mensagens em sequência estoura e morre no meio — metade
+   da fila sem enviar, ninguém sabendo. Cada chamada manda até LOTE e
+   devolve quantas restam; quem chama repete até zerar. Escala por número de
+   chamadas, não por duração.
+
+   PRIMEIRA CONSULTA É A DAS REGRAS, e ela decide se o resto acontece.
+   Hoje ninguém ligou nada: a varredura faz UMA consulta por hora e volta.
+   Sem isso, seriam dezenas de leituras por hora pra descobrir que não há
+   nada a fazer — que é exatamente o tipo de desperdício que consome cota
+   de plano free sem entregar nada.
    ═══════════════════════════════════════════════════════════════ */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { enviar, regraDe } from '@/lib/mensagens/enviar'
-import { chaveIdempotencia, type TipoMensagem } from '@/lib/mensagens/tipos'
+import { enviar } from '@/lib/mensagens/enviar'
+import { chaveIdempotencia, PADRAO, type Regra, type TipoMensagem } from '@/lib/mensagens/tipos'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const LOTE = 20
+/* Janela de 2h, não de 1h, mesmo rodando de hora em hora: o cron do GitHub
+   atrasa e às vezes pula execução. Com janela justa, o atraso faz o lembrete
+   NÃO SAIR e ninguém percebe; com folga ele sai um pouco atrasado, que é
+   sempre melhor. Mandar duas vezes não é risco: a chave é UNIQUE. */
+const JANELA = 2 * 60 * 60 * 1000
 
-/** Instante do atendimento em UTC a partir da data e hora locais (BR, −03). */
 function instanteDo(data: string, hora: string): number {
   return new Date(`${data}T${(hora || '00:00').slice(0, 5)}:00-03:00`).getTime()
 }
 
-/** "sex, 08/08" — como a cliente lê, não como o banco guarda. */
 function dataCurta(ymd: string): string {
   const [y, m, d] = ymd.split('-').map(Number)
   const dt = new Date(y, m - 1, d, 12)
   const semana = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
   return `${semana}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
+}
+
+type Tarefa = {
+  tipo: TipoMensagem
+  businessId: string
+  chave: string
+  telefone: string | null
+  email: string | null
+  appointmentId?: string
+  customerId?: string
+  variaveis: Parameters<typeof enviar>[1]['variaveis']
 }
 
 export async function GET(req: NextRequest) {
@@ -54,70 +73,108 @@ export async function GET(req: NextRequest) {
   )
 
   const agora = Date.now()
-  /* Janela de 2h, não de 1h, mesmo rodando de hora em hora: o cron do
-     GitHub atrasa alguns minutos com frequência e às vezes pula execução.
-     Com janela justa, um atraso faz o lembrete NÃO SAIR — e ninguém
-     percebe. Com folga ele sai um pouco atrasado, que é sempre melhor. Não
-     há risco de mandar duas vezes: a chave em message_log é UNIQUE. */
-  const JANELA = 2 * 60 * 60 * 1000
+  const horaBR = Number(new Date(agora - 3 * 3600_000).toISOString().slice(11, 13))
 
-  /* Só os dois dias que interessam. Lembrete da véspera olha amanhã, o do
-     dia olha hoje — varrer a agenda inteira toda hora seria desperdício de
-     leitura pra achar as mesmas dezenas de linhas. */
+  /* TODAS as regras ligadas, de uma vez. A versão anterior consultava a
+     regra dentro do laço, por agendamento e por tipo — N+1 clássico, que
+     numa varredura de hora em hora vira milhares de leituras por dia pra
+     ler sempre as mesmas poucas linhas. */
+  const { data: regrasDb, error: errRegras } = await db
+    .from('message_rules')
+    .select('business_id, tipo, enabled, offset_minutos, hora_do_dia, retorno_dias, template')
+    .eq('enabled', true)
+  if (errRegras) return NextResponse.json({ error: errRegras.message }, { status: 500 })
+
+  const regras = new Map<string, Regra>()
+  for (const r of regrasDb ?? []) {
+    regras.set(`${r.business_id}:${r.tipo}`, {
+      tipo: r.tipo as TipoMensagem,
+      enabled: true,
+      offsetMinutos: Number(r.offset_minutos ?? PADRAO[r.tipo as TipoMensagem].offsetMinutos),
+      horaDoDia: String(r.hora_do_dia ?? '09:00').slice(0, 5),
+      retornoDias: r.retorno_dias ?? null,
+      template: r.template ?? null,
+    })
+  }
+
+  if (regras.size === 0) {
+    return NextResponse.json({ ok: true, sem_regra_ligada: true, candidatos: 0, restam: 0 })
+  }
+
+  const negociosCom = (tipo: TipoMensagem) =>
+    [...regras.keys()].filter((k) => k.endsWith(`:${tipo}`)).map((k) => k.split(':')[0])
+
+  const fila: Tarefa[] = []
   const hoje = todayBR()
   const amanha = addDaysBR(hoje, 1)
 
-  const { data: appts, error } = await db
-    .from('appointments')
-    .select(`
-      id, business_id, appointment_date, start_time, status, client_name, client_phone,
-      client_email, service_name, customer_id,
-      business:businesses(name, phone),
-      professional:professionals(name)
-    `)
-    .in('appointment_date', [hoje, amanha])
-    .in('status', ['pending', 'confirmed'])
+  // ── LEMBRETES (véspera e do dia) ──────────────────────────────
+  const negLembrete = [...new Set([...negociosCom('lembrete_vespera'), ...negociosCom('lembrete_dia')])]
+  if (negLembrete.length > 0) {
+    const { data: appts } = await db
+      .from('appointments')
+      .select(`id, business_id, appointment_date, start_time, client_name, client_phone,
+               client_email, service_name, customer_id,
+               business:businesses(name, phone), professional:professionals(name)`)
+      .in('business_id', negLembrete)
+      .in('appointment_date', [hoje, amanha])
+      .in('status', ['pending', 'confirmed'])
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    for (const a of appts ?? []) {
+      const negocio = a.business as unknown as { name: string; phone: string | null } | null
+      const prof = a.professional as unknown as { name: string } | null
+      const quando = instanteDo(a.appointment_date as string, a.start_time as string)
 
-  type Tarefa = {
-    tipo: TipoMensagem
-    appt: NonNullable<typeof appts>[number]
-  }
-  const fila: Tarefa[] = []
+      for (const tipo of ['lembrete_vespera', 'lembrete_dia'] as const) {
+        const regra = regras.get(`${a.business_id}:${tipo}`)
+        if (!regra) continue
+        const alvo = quando + regra.offsetMinutos * 60_000
+        if (!(alvo <= agora && agora < alvo + JANELA)) continue
 
-  for (const a of appts ?? []) {
-    const quando = instanteDo(a.appointment_date as string, a.start_time as string)
-
-    for (const tipo of ['lembrete_vespera', 'lembrete_dia'] as const) {
-      const regra = await regraDe(db, a.business_id as string, tipo)
-      if (!regra.enabled) continue
-
-      /* Momento de disparar = horário do atendimento + offset (negativo).
-         Manda se esse momento já passou e ainda está dentro da janela desta
-         varredura. Fora da janela, deixa passar: lembrete atrasado de 6h é
-         pior que lembrete nenhum — a cliente já saiu de casa ou já perdeu. */
-      const alvo = quando + regra.offsetMinutos * 60_000
-      if (alvo <= agora && agora < alvo + JANELA) fila.push({ tipo, appt: a })
+        fila.push({
+          tipo, businessId: a.business_id as string,
+          chave: chaveIdempotencia(tipo, a.id as string),
+          telefone: a.client_phone as string | null,
+          email: a.client_email as string | null,
+          appointmentId: a.id as string,
+          customerId: (a.customer_id as string) ?? undefined,
+          variaveis: {
+            cliente: (a.client_name as string) || 'Cliente',
+            salao: negocio?.name ?? 'seu salão',
+            data: dataCurta(a.appointment_date as string),
+            hora: String(a.start_time).slice(0, 5),
+            servico: (a.service_name as string) || 'seu atendimento',
+            telefoneSalao: negocio?.phone ?? null,
+            profissional: prof?.name,
+          },
+        })
+      }
     }
   }
 
-  const lote = fila.slice(0, LOTE)
-  let enviados = 0, ignorados = 0, falhas = 0
+  // ── CONFIRMAÇÃO e AVISO PRO DONO (agendamento novo) ───────────
+  //
+  // Pela varredura, e não por chamada na hora de marcar, de propósito: o
+  // painel insere o agendamento direto do navegador (AgendarModal), e ~90%
+  // dos agendamentos da base são o próprio dono marcando. Pendurar o aviso
+  // no navegador é o erro que já foi corrigido uma vez aqui — se ele fecha
+  // a tela, ninguém é avisado. Varrendo por `created_at`, todo caminho de
+  // criação fica coberto sem tocar em nenhum deles.
+  const negNovo = [...new Set([...negociosCom('confirmacao'), ...negociosCom('dono_novo_agendamento')])]
+  if (negNovo.length > 0) {
+    const { data: novos } = await db
+      .from('appointments')
+      .select(`id, business_id, appointment_date, start_time, client_name, client_phone,
+               client_email, service_name, customer_id,
+               business:businesses(name, phone, owner_id), professional:professionals(name)`)
+      .in('business_id', negNovo)
+      .gte('created_at', new Date(agora - JANELA).toISOString())
+      .in('status', ['pending', 'confirmed'])
 
-  for (const t of lote) {
-    const a = t.appt
-    const negocio = a.business as unknown as { name: string; phone: string | null } | null
-    const prof = a.professional as unknown as { name: string } | null
-
-    const r = await enviar(db, {
-      businessId: a.business_id as string,
-      tipo: t.tipo,
-      chave: chaveIdempotencia(t.tipo, a.id as string),
-      destino: { telefone: a.client_phone as string | null, email: a.client_email as string | null },
-      appointmentId: a.id as string,
-      customerId: (a.customer_id as string) ?? null,
-      variaveis: {
+    for (const a of novos ?? []) {
+      const negocio = a.business as unknown as { name: string; phone: string | null } | null
+      const prof = a.professional as unknown as { name: string } | null
+      const v = {
         cliente: (a.client_name as string) || 'Cliente',
         salao: negocio?.name ?? 'seu salão',
         data: dataCurta(a.appointment_date as string),
@@ -125,9 +182,81 @@ export async function GET(req: NextRequest) {
         servico: (a.service_name as string) || 'seu atendimento',
         telefoneSalao: negocio?.phone ?? null,
         profissional: prof?.name,
-      },
-    })
+      }
 
+      if (regras.has(`${a.business_id}:confirmacao`)) {
+        fila.push({
+          tipo: 'confirmacao', businessId: a.business_id as string,
+          chave: chaveIdempotencia('confirmacao', a.id as string),
+          telefone: a.client_phone as string | null,
+          email: a.client_email as string | null,
+          appointmentId: a.id as string,
+          customerId: (a.customer_id as string) ?? undefined,
+          variaveis: v,
+        })
+      }
+      /* O aviso pro dono vai pro telefone do NEGÓCIO. Quem já ativou o push
+         não entra aqui — receber a mesma coisa por dois canais faz o dono
+         desligar os dois. Esse filtro entra junto com o canal ligado. */
+      if (regras.has(`${a.business_id}:dono_novo_agendamento`) && negocio?.phone) {
+        fila.push({
+          tipo: 'dono_novo_agendamento', businessId: a.business_id as string,
+          chave: chaveIdempotencia('dono_novo_agendamento', a.id as string),
+          telefone: negocio.phone, email: null,
+          appointmentId: a.id as string,
+          variaveis: v,
+        })
+      }
+    }
+  }
+
+  // ── ANIVERSÁRIO ───────────────────────────────────────────────
+  const negAniversario = negociosCom('aniversario').filter((b) => {
+    const r = regras.get(`${b}:aniversario`)!
+    return Number(r.horaDoDia.slice(0, 2)) === horaBR
+  })
+  if (negAniversario.length > 0) {
+    const [, mes, dia] = hoje.split('-')
+    const ano = hoje.slice(0, 4)
+    const { data: clientes } = await db
+      .from('customers')
+      .select('id, name, phone, email, birthday, business_id, business:businesses(name, phone)')
+      .in('business_id', negAniversario)
+      .not('birthday', 'is', null)
+
+    for (const c of clientes ?? []) {
+      const b = String(c.birthday)
+      if (b.slice(5, 7) !== mes || b.slice(8, 10) !== dia) continue
+      const negocio = c.business as unknown as { name: string; phone: string | null } | null
+      fila.push({
+        tipo: 'aniversario', businessId: c.business_id as string,
+        // Uma vez por ano por cliente — a chave carrega o ano.
+        chave: chaveIdempotencia('aniversario', c.id as string, ano),
+        telefone: c.phone as string | null,
+        email: c.email as string | null,
+        customerId: c.id as string,
+        variaveis: {
+          cliente: (c.name as string) || 'Cliente',
+          salao: negocio?.name ?? 'seu salão',
+          data: dataCurta(hoje), hora: '', servico: '',
+          telefoneSalao: negocio?.phone ?? null,
+        },
+      })
+    }
+  }
+
+  // ── ENVIO (lote) ──────────────────────────────────────────────
+  const lote = fila.slice(0, LOTE)
+  let enviados = 0, ignorados = 0, falhas = 0
+
+  for (const t of lote) {
+    const r = await enviar(db, {
+      businessId: t.businessId, tipo: t.tipo, chave: t.chave,
+      destino: { telefone: t.telefone, email: t.email },
+      appointmentId: t.appointmentId ?? null,
+      customerId: t.customerId ?? null,
+      variaveis: t.variaveis,
+    })
     if (r.status === 'enviado') enviados++
     else if (r.status === 'ignorado') ignorados++
     else falhas++
@@ -136,13 +265,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     hora_br: new Date(agora - 3 * 3600_000).toISOString().slice(0, 16).replace('T', ' '),
+    regras_ligadas: regras.size,
     candidatos: fila.length,
     processados: lote.length,
-    enviados,
-    ignorados,
-    falhas,
-    /* Quem chamou repete enquanto isto for > 0. É assim que a operação
-       cresce sem a invocação ficar mais longa. */
+    enviados, ignorados, falhas,
     restam: Math.max(0, fila.length - lote.length),
   })
 }
