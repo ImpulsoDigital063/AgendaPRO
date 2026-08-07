@@ -28,7 +28,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { normalizarTelefone } from '@/lib/mensagens/canal-whatsapp'
+import { normalizarTelefone, credencialDoSistema, enviarTexto } from '@/lib/mensagens/canal-whatsapp'
 import { todayBR } from '@/lib/date-br'
 
 export const runtime = 'nodejs'
@@ -68,7 +68,35 @@ export async function POST(req: NextRequest) {
     : texto === 'pare' || texto === 'parar' || texto === 'sair' ? 'pare'
     : null
 
-  if (!acao) return NextResponse.json({ ok: true, ignorado: 'sem_acao' })
+  /* Responder de verdade, e nao so devolver o texto no JSON: o provedor nao
+     envia a resposta por ti, e o aparelho do numero remetente vive
+     DESLIGADO (Eduardo, 07/08) - ou seja, ninguem vai ler o que a cliente
+     escrever. Sem resposta automatica, o numero vira "aquele que manda e
+     nao responde", que e o perfil que rende denuncia de spam. */
+  const responder = async (texto: string) => {
+    const cred = credencialDoSistema()
+    if (!cred) return false
+    const r = await enviarTexto(cred, fone, texto)
+    return r.ok
+  }
+
+  if (!acao) {
+    /* Qualquer outra coisa que ela escreva: orienta pra onde ir. Uma vez a
+       cada 12h por telefone, pra conversa nao virar ping-pong com robo -
+       a trava e a mesma chave UNIQUE do message_log. */
+    const janela = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 13)
+    const { error: repetido } = await db.from('message_log').insert({
+      chave: `auto_resposta:${fone}:${janela}`, tipo: 'confirmacao',
+      canal: 'whatsapp', destino: fone, status: 'enviado',
+    })
+    if (!repetido) {
+      await responder(
+        'Este numero so envia avisos automaticos e nao e lido. ' +
+        'Para remarcar ou tirar duvida, fale direto com o salao pelo telefone que aparece na mensagem do seu horario.',
+      )
+    }
+    return NextResponse.json({ ok: true, ignorado: 'sem_acao', respondeu: !repetido })
+  }
 
   if (acao === 'pare') {
     /* Opt-out global (business_id null): ela pediu pra parar de receber, e
@@ -96,18 +124,19 @@ export async function POST(req: NextRequest) {
   )
   if (!alvo) return NextResponse.json({ ok: true, ignorado: 'sem_agendamento' })
 
+  const negocio = alvo.business as unknown as { phone: string | null; name: string } | null
+
   if (acao === 'confirmar') {
     await db.from('appointments').update({ status: 'confirmed' }).eq('id', alvo.id)
+    await responder(`Presenca confirmada! Ate breve, ${negocio?.name ?? 'te esperamos'}.`)
     return NextResponse.json({ ok: true, acao: 'confirmado', appointmentId: alvo.id })
   }
 
-  // remarcar: devolve o contato do salão. Quem remarca é a dona, não o robô.
-  const negocio = alvo.business as unknown as { phone: string | null; name: string } | null
-  return NextResponse.json({
-    ok: true,
-    acao: 'remarcar',
-    responder: negocio?.phone
-      ? `Sem problema! Pra remarcar, fale com ${negocio.name}: ${negocio.phone}`
-      : `Sem problema! Fale com ${negocio?.name ?? 'o salão'} para remarcar.`,
-  })
+  // remarcar: manda o contato do salao. Quem remarca e a dona, nao o robo.
+  await responder(
+    negocio?.phone
+      ? `Sem problema! Para remarcar, fale com ${negocio.name}: ${negocio.phone}`
+      : `Sem problema! Fale com ${negocio?.name ?? 'o salao'} para remarcar.`,
+  )
+  return NextResponse.json({ ok: true, acao: 'remarcar' })
 }

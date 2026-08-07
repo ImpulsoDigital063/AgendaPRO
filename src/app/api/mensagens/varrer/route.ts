@@ -28,6 +28,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { enviar } from '@/lib/mensagens/enviar'
 import { chaveIdempotencia, PADRAO, type Regra, type TipoMensagem } from '@/lib/mensagens/tipos'
 import { todayBR, addDaysBR } from '@/lib/date-br'
+import { sendAlert } from '@/lib/alert'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -260,6 +261,23 @@ export async function GET(req: NextRequest) {
     if (r.status === 'enviado') enviados++
     else if (r.status === 'ignorado') ignorados++
     else falhas++
+  }
+
+  /* SESSAO CAIDA AVISA. O aparelho do numero remetente vive desligado e vai
+     ser ligado ~1x por semana (Eduardo, 07/08). O WhatsApp derruba a sessao
+     conectada se o aparelho principal nao aparecer em ~14 dias - e quando
+     isso acontece TODOS os envios passam a falhar em silencio. Ninguem
+     descobre ate uma cliente reclamar que nao foi avisada.
+
+     Regra: lote inteiro falhando = problema de canal, nao de destinatario.
+     Um numero errado falha sozinho; a sessao caida falha tudo. Vai pro
+     mesmo Telegram que ja recebe o monitor. */
+  if (lote.length >= 3 && falhas === lote.length) {
+    await sendAlert(
+      `🔴 MENSAGENS: ${falhas} envios falharam seguidos.
+` +
+      `Provavel sessao do WhatsApp caida — ligar o aparelho do numero remetente e reconectar no painel da W-API.`,
+    )
   }
 
   return NextResponse.json({
