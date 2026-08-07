@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { IconWhatsapp, IconCheck, IconClose } from '@/components/ui/Icon'
+import MensagensAutomaticasCard from './MensagensAutomaticasCard'
 import {
   TEMPLATE_VARIABLES,
   renderTemplate,
@@ -113,6 +114,13 @@ export default function MensagensTab({ businessName }: Props) {
 
   return (
     <div className="max-w-2xl space-y-4">
+      {/* O que o sistema manda SOZINHO vem primeiro: e a novidade e o que a
+          dona liga uma vez e esquece. O editor de texto abaixo continua
+          servindo pro que ela manda na mao. */}
+      <MensagensAutomaticasCard />
+
+      <div className="h-px" style={{ background: 'var(--admin-border)' }} />
+
       {/* Cabeçalho */}
       <div className="flex items-start gap-3">
         <span
