@@ -141,9 +141,21 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
                 {/* mobile: empilha · desktop: olhos + params lado a lado */}
                 <div className="flex flex-col lg:flex-row gap-4">
                   <div className="lg:flex-[1.4] min-w-0">
-                    <DrawCanvas background="eyes" value={str(section.drawName)} onChange={(v) => setVal(section.drawName, v)} disabled={saving} />
+                    <DrawCanvas background={section.background ?? 'eyes'} value={str(section.drawName)} onChange={(v) => setVal(section.drawName, v)} disabled={saving} />
                   </div>
-                  <div className="lg:flex-1 space-y-3">
+                  {/* Muitos parametros CURTOS viram grade, nao coluna. A ficha de
+                      toxina tem 16 musculos com uma unidade cada; empilhados em
+                      coluna unica davam um corredor de rolagem do tamanho da
+                      tela inteira, com um campo de 4 caracteres por linha
+                      (visto no print de 08/08). Ate 6 parametros segue em
+                      coluna, que e o caso das fichas antigas de cilios. */}
+                  <div
+                    className={
+                      section.params.length > 6
+                        ? 'lg:flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-x-3 gap-y-2'
+                        : 'lg:flex-1 space-y-3'
+                    }
+                  >
                     {section.params.map((p) => (
                       <ParamInput key={p.name} param={p} value={str(p.name)} onChange={(v) => setVal(p.name, v)} disabled={saving} />
                     ))}

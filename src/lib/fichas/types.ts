@@ -21,7 +21,10 @@ export type FichaSection =
   // Bloco de saúde em grade compacta (2 colunas · marcar o que se aplica)
   | { kind: 'health'; title: string; items: string[]; detailLabel?: string }
   // Mapeamento: 2 olhos pra desenhar + parâmetros ao lado
-  | { kind: 'mapping'; title: string; drawName: string; params: FichaParam[] }
+  /* `background` escolhe o desenho de fundo do mapeamento. Sem ele, TODA ficha
+     herdava os dois olhos do design de cilios — e a ficha de toxina abria com
+     desenho de extensao de cilios na frente da clinica (visto em 08/08). */
+  | { kind: 'mapping'; title: string; drawName: string; params: FichaParam[]; background?: 'blank' | 'eyes' | 'rosto' }
   // Campos livres extras (ex.: cola/lote, observações)
   | { kind: 'fields'; title: string; fields: FichaParam[] }
   // Termo de responsabilidade + aceites (checkbox)

@@ -22,7 +22,7 @@ type Props = {
   value?: string
   onChange: (dataUrl: string) => void
   disabled?: boolean
-  background?: 'blank' | 'eyes'
+  background?: 'blank' | 'eyes' | 'rosto'
 }
 
 function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, h: number, label: string) {
@@ -60,6 +60,72 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: numbe
   ctx.fillText(label, cx, cy + h / 2 + 28)
 }
 
+/* Rosto de frente pra marcar ponto de aplicacao (toxina, preenchimento,
+   bioestimulador, fios). Antes de existir, a ficha de toxina mostrava os DOIS
+   OLHOS do design de cilios — o unico fundo que havia — e uma clinica abria a
+   ficha de botox e via desenho de extensao de cilios.
+   Contorno simples de proposito: e guia pra marcacao a dedo, nao ilustracao
+   anatomica. Linha fina e cinza pra o desenho da profissional se destacar. */
+function drawRosto(ctx: CanvasRenderingContext2D) {
+  const cx = W / 2
+  ctx.strokeStyle = '#CBD5E1'
+  ctx.lineWidth = 2
+  ctx.setLineDash([])
+
+  // contorno do rosto
+  ctx.beginPath()
+  ctx.ellipse(cx, 175, 118, 155, 0, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // orelhas
+  for (const s of [-1, 1]) {
+    ctx.beginPath()
+    ctx.ellipse(cx + s * 118, 180, 14, 30, 0, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  // sobrancelhas
+  for (const s of [-1, 1]) {
+    ctx.beginPath()
+    ctx.moveTo(cx + s * 30, 130)
+    ctx.quadraticCurveTo(cx + s * 60, 118, cx + s * 88, 132)
+    ctx.stroke()
+  }
+
+  // olhos
+  for (const s of [-1, 1]) {
+    ctx.beginPath()
+    ctx.ellipse(cx + s * 58, 158, 30, 13, 0, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  // nariz
+  ctx.beginPath()
+  ctx.moveTo(cx, 160)
+  ctx.lineTo(cx - 12, 215)
+  ctx.quadraticCurveTo(cx, 225, cx + 12, 215)
+  ctx.stroke()
+
+  // boca
+  ctx.beginPath()
+  ctx.moveTo(cx - 42, 253)
+  ctx.quadraticCurveTo(cx, 240, cx + 42, 253)
+  ctx.quadraticCurveTo(cx, 272, cx - 42, 253)
+  ctx.stroke()
+
+  // tercos faciais — referencia de altura, tracejado bem leve
+  ctx.strokeStyle = '#E2E8F0'
+  ctx.lineWidth = 1
+  ctx.setLineDash([6, 6])
+  for (const y of [120, 205]) {
+    ctx.beginPath()
+    ctx.moveTo(cx - 130, y)
+    ctx.lineTo(cx + 130, y)
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+}
+
 export default function DrawCanvas({ value, onChange, disabled, background = 'blank' }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawing = useRef(false)
@@ -72,6 +138,7 @@ export default function DrawCanvas({ value, onChange, disabled, background = 'bl
       drawEye(ctx, 185, 150, 250, 100, 'Olho esquerdo')
       drawEye(ctx, 515, 150, 250, 100, 'Olho direito')
     }
+    if (background === 'rosto') drawRosto(ctx)
   }
 
   // Init: fundo (branco · ou olhos) + carrega desenho já salvo, se houver.

@@ -61,6 +61,7 @@ export const TOXINA_BOTULINICA_FICHA: NicheFicha = {
       kind: 'mapping',
       title: 'Pontos de aplicação',
       drawName: 'mapa_aplicacao',
+      background: 'rosto',
       params: [
         { name: 'un_frontal', label: 'Frontal (U)', type: 'text' },
         { name: 'un_procero', label: 'Prócero (U)', type: 'text' },
