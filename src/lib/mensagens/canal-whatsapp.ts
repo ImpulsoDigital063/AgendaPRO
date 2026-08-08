@@ -1,12 +1,17 @@
 /* ═══════════════════════════════════════════════════════════════
    CANAL WHATSAPP (W-API)
 
-   ⚠️ ENDPOINTS A CONFIRMAR NO PAINEL/DOC DA W-API.
-   A documentação deles é interativa (renderizada por JS) e não deu pra ler
-   de fora, e endpoint chutado é o tipo de erro que só aparece quando a
-   mensagem não chega. Por isso TODO o formato do request vive neste
-   arquivo, isolado: quando a conta existir, é aqui — e só aqui — que se
-   ajusta. Nada do motor depende desses detalhes.
+   FORMATO CONFIRMADO EM PRODUÇÃO (07/08), disparando de verdade:
+     POST https://api.w-api.app/v1/message/send-text?instanceId=<id>
+     Authorization: Bearer <token da instância>
+     { phone: "55DDDNUMERO", message: "..." }
+     → 200 { messageId, insertedId }
+
+   O caminho dos BOTÕES (`message/send-button-list`) existe e pede
+   `buttonId` + `buttonText.displayText`, mas recusou as variações
+   testadas — falta o exemplo da doc. Enquanto isso, o envio com botão cai
+   pra texto puro sozinho (ver enviarComBotoes): lembrete sem botão ainda
+   lembra; lembrete que não sai não serve pra nada.
 
    O que já está decidido e não muda:
    · a credencial vem do BANCO, não do .env — Fase 2 é cada negócio com a
@@ -88,9 +93,25 @@ export async function enviarComBotoes(
 ): Promise<ResultadoEnvio> {
   const fone = normalizarTelefone(telefone)
   if (!fone) return { ok: false, erro: 'telefone_invalido' }
-  return chamar(cred, 'message/send-button-list', {
+
+  const r = await chamar(cred, 'message/send-button-list', {
     phone: fone,
     message: texto,
-    buttonList: { buttons: botoes.map((b) => ({ id: b.id, label: b.texto })) },
+    buttons: botoes.map((b) => ({
+      buttonId: b.id,
+      buttonText: { displayText: b.texto },
+      type: 1,
+    })),
   })
+  if (r.ok) return r
+
+  /* Botão falhou → manda o texto puro. O botão é ganho (a cliente confirma
+     num toque e a agenda atualiza sozinha), não requisito: um lembrete sem
+     botão continua lembrando, e um lembrete que não sai não serve pra nada.
+     Sem isso, qualquer mudança no formato deles derrubaria TODOS os
+     lembretes de uma vez. */
+  const semBotao = await enviarTexto(cred, telefone, texto)
+  return semBotao.ok
+    ? { ...semBotao, erro: `botao_falhou_caiu_pra_texto: ${r.erro ?? ''}`.slice(0, 200) }
+    : r
 }
