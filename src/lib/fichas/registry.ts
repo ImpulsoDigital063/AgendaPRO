@@ -4,6 +4,7 @@ import { ESTETICA_FACIAL_FICHA } from './estetica-facial'
 import { CAPILAR_FICHA } from './capilar'
 import { HISTORICO_CLINICO_FICHA } from './historico-clinico'
 import { TOXINA_BOTULINICA_FICHA } from './toxina-botulinica'
+import { LOBULOPLASTIA_FICHA } from './lobuloplastia'
 
 /**
  * Registro de todas as fichas de nicho. Pra adicionar um nicho novo: cria a
@@ -19,4 +20,5 @@ export const NICHE_FICHAS: Record<string, NicheFicha> = {
      de cada uma entra pelo PDF, que ja e por negocio. */
   'historico-clinico': HISTORICO_CLINICO_FICHA,
   'toxina-botulinica': TOXINA_BOTULINICA_FICHA,
+  lobuloplastia: LOBULOPLASTIA_FICHA,
 }

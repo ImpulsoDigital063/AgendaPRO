@@ -23,6 +23,11 @@ type Props = {
   onChange: (dataUrl: string) => void
   disabled?: boolean
   background?: 'blank' | 'eyes' | 'rosto'
+  /* Diagrama do proprio negocio como fundo (perna, orelha, face, corpo).
+     Vence os fundos desenhados: e o desenho que a clinica ja usa no papel,
+     nao uma imitacao. A marcacao da profissional fica SEPARADA da imagem —
+     trocar o diagrama depois nao apaga marcacao nenhuma. */
+  backgroundUrl?: string | null
 }
 
 function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, h: number, label: string) {
@@ -126,7 +131,7 @@ function drawRosto(ctx: CanvasRenderingContext2D) {
   ctx.setLineDash([])
 }
 
-export default function DrawCanvas({ value, onChange, disabled, background = 'blank' }: Props) {
+export default function DrawCanvas({ value, onChange, disabled, background = 'blank', backgroundUrl }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawing = useRef(false)
   const last = useRef<{ x: number; y: number } | null>(null)
@@ -141,19 +146,43 @@ export default function DrawCanvas({ value, onChange, disabled, background = 'bl
     if (background === 'rosto') drawRosto(ctx)
   }
 
-  // Init: fundo (branco · ou olhos) + carrega desenho já salvo, se houver.
+  /* Init: fundo + marcacao ja salva por cima.
+     Com imagem, a ordem importa: a imagem tem que estar desenhada ANTES da
+     marcacao, senao a marcacao some embaixo dela quando a rede demora. Por
+     isso a marcacao e desenhada dentro do onload, e nao em paralelo. */
   useEffect(() => {
     const cv = canvasRef.current
     const ctx = cv?.getContext('2d')
     if (!cv || !ctx) return
-    paintBg(ctx)
-    if (value) {
-      const img = new Image()
-      img.onload = () => ctx.drawImage(img, 0, 0, W, H)
-      img.src = value
+
+    const porCima = () => {
+      if (!value) return
+      const marca = new Image()
+      marca.onload = () => ctx.drawImage(marca, 0, 0, W, H)
+      marca.src = value
     }
+
+    paintBg(ctx)
+
+    if (backgroundUrl) {
+      const fundo = new Image()
+      fundo.crossOrigin = 'anonymous'   // sem isto o canvas "suja" e nao exporta
+      fundo.onload = () => {
+        // contain: o diagrama nao pode distorcer — proporcao de anatomia importa
+        const escala = Math.min(W / fundo.width, H / fundo.height)
+        const w = fundo.width * escala
+        const h = fundo.height * escala
+        ctx.drawImage(fundo, (W - w) / 2, (H - h) / 2, w, h)
+        porCima()
+      }
+      fundo.onerror = porCima   // imagem fora do ar nao pode travar a ficha
+      fundo.src = backgroundUrl
+      return
+    }
+
+    porCima()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [backgroundUrl])
 
   function pos(e: React.PointerEvent<HTMLCanvasElement>) {
     const r = canvasRef.current!.getBoundingClientRect()
@@ -196,6 +225,20 @@ export default function DrawCanvas({ value, onChange, disabled, background = 'bl
   function clear() {
     const ctx = canvasRef.current!.getContext('2d')!
     paintBg(ctx)
+    /* "Limpar" apaga a MARCACAO, nao o diagrama. Sem redesenhar a imagem aqui,
+       a profissional limpa um erro e o desenho de fundo some junto — e ela
+       fica com uma folha branca no meio da ficha, sem entender. */
+    if (backgroundUrl) {
+      const fundo = new Image()
+      fundo.crossOrigin = 'anonymous'
+      fundo.onload = () => {
+        const escala = Math.min(W / fundo.width, H / fundo.height)
+        const w = fundo.width * escala
+        const h = fundo.height * escala
+        ctx.drawImage(fundo, (W - w) / 2, (H - h) / 2, w, h)
+      }
+      fundo.src = backgroundUrl
+    }
     onChange('')
   }
 

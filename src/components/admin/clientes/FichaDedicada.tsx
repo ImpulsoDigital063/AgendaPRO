@@ -30,6 +30,10 @@ type Props = {
   error?: string | null
   onSave: (values: FichaValues) => void | Promise<void>
   onCancel: () => void
+  /* Diagramas do proprio negocio (businesses.ficha_imagens), por chave. Quando
+     existe um pra este mapeamento, ele vence o desenho embutido: e o mesmo
+     desenho que a clinica ja usa no papel, nao uma imitacao nossa. */
+  fichaImagens?: Record<string, string> | null
 }
 
 const SECTION_TITLE = 'text-[11px] font-bold uppercase tracking-wider pb-1 mb-3'
@@ -63,7 +67,7 @@ function ParamInput({
   )
 }
 
-export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel }: Props) {
+export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel, fichaImagens }: Props) {
   const [values, setValues] = useState<FichaValues>(initialValues ?? {})
   const [pdfBusy, setPdfBusy] = useState(false)
   const setVal = (k: string, v: FichaValues[string]) => setValues((p) => ({ ...p, [k]: v }))
@@ -141,7 +145,10 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
                 {/* mobile: empilha · desktop: olhos + params lado a lado */}
                 <div className="flex flex-col lg:flex-row gap-4">
                   <div className="lg:flex-[1.4] min-w-0">
-                    <DrawCanvas background={section.background ?? 'eyes'} value={str(section.drawName)} onChange={(v) => setVal(section.drawName, v)} disabled={saving} />
+                    <DrawCanvas
+                      background={section.background ?? 'eyes'}
+                      backgroundUrl={section.imagemChave ? fichaImagens?.[section.imagemChave] ?? null : null}
+                      value={str(section.drawName)} onChange={(v) => setVal(section.drawName, v)} disabled={saving} />
                   </div>
                   {/* Muitos parametros CURTOS viram grade, nao coluna. A ficha de
                       toxina tem 16 musculos com uma unidade cada; empilhados em

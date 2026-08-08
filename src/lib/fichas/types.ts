@@ -24,7 +24,17 @@ export type FichaSection =
   /* `background` escolhe o desenho de fundo do mapeamento. Sem ele, TODA ficha
      herdava os dois olhos do design de cilios — e a ficha de toxina abria com
      desenho de extensao de cilios na frente da clinica (visto em 08/08). */
-  | { kind: 'mapping'; title: string; drawName: string; params: FichaParam[]; background?: 'blank' | 'eyes' | 'rosto' }
+  | {
+      kind: 'mapping'
+      title: string
+      drawName: string
+      params: FichaParam[]
+      background?: 'blank' | 'eyes' | 'rosto'
+      /* Chave em businesses.ficha_imagens: se o negocio tiver um diagrama
+         proprio cadastrado nessa chave, ele vira o fundo e vence o desenho
+         embutido. A funcionalidade e do sistema; a arte e de quem comprou. */
+      imagemChave?: string
+    }
   // Campos livres extras (ex.: cola/lote, observações)
   | { kind: 'fields'; title: string; fields: FichaParam[] }
   // Termo de responsabilidade + aceites (checkbox)
