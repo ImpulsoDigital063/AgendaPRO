@@ -91,8 +91,8 @@ export async function POST(req: NextRequest) {
     })
     if (!repetido) {
       await responder(
-        'Este numero so envia avisos automaticos e nao e lido. ' +
-        'Para remarcar ou tirar duvida, fale direto com o salao pelo telefone que aparece na mensagem do seu horario.',
+        'Este número só envia avisos automáticos e não é lido. ' +
+        'Para remarcar ou tirar dúvida, fale direto com o salão pelo telefone que aparece na mensagem do seu horário.',
       )
     }
     return NextResponse.json({ ok: true, ignorado: 'sem_acao', respondeu: !repetido })
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
 
   if (acao === 'confirmar') {
     await db.from('appointments').update({ status: 'confirmed' }).eq('id', alvo.id)
-    await responder(`Presenca confirmada! Ate breve, ${negocio?.name ?? 'te esperamos'}.`)
+    await responder(`Presença confirmada! Até breve, ${negocio?.name ?? 'te esperamos'}.`)
     return NextResponse.json({ ok: true, acao: 'confirmado', appointmentId: alvo.id })
   }
 
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
   await responder(
     negocio?.phone
       ? `Sem problema! Para remarcar, fale com ${negocio.name}: ${negocio.phone}`
-      : `Sem problema! Fale com ${negocio?.name ?? 'o salao'} para remarcar.`,
+      : `Sem problema! Fale com ${negocio?.name ?? 'o salão'} para remarcar.`,
   )
   return NextResponse.json({ ok: true, acao: 'remarcar' })
 }
