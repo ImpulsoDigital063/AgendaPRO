@@ -69,6 +69,60 @@ export async function regraDe(
   }
 }
 
+/**
+ * O negócio pode falar com a base dele agora?
+ *
+ * Três travas que vieram da auditoria de 07/08 sobre a base real:
+ *
+ * 1. DEMO NUNCA MANDA. As três contas de demonstração somam 479 agendamentos
+ *    em 30 dias — mais que a base pagante inteira — com telefones que não
+ *    são de clientes de verdade. Ligar mensagem numa demo dispara dezenas de
+ *    avisos pra números aleatórios, e mensagem pra quem não conhece o
+ *    remetente é exatamente o que vira denúncia e derruba o número.
+ *
+ * 2. NEGÓCIO BLOQUEADO NÃO FALA EM NOME DO SISTEMA. Dois negócios com
+ *    assinatura vencida ainda têm agendamento entrando (Amanda Freitas,
+ *    Lopes Studio). Continuar mandando WhatsApp em nome de quem não paga é
+ *    entregar serviço fora do contrato — e some com a razão de voltar.
+ *
+ * 3. SEM TELEFONE DO SALÃO, NÃO MANDA. A mensagem sai de um número que não
+ *    é lido; o telefone do salão no rodapé é o único caminho de volta da
+ *    cliente. Sem ele, ela recebe um aviso e não tem pra onde responder —
+ *    pior do que não receber. Achado na Barbearia Guia Lopes, telefone
+ *    inválido no cadastro.
+ */
+async function podeFalarPelo(
+  db: SupabaseClient,
+  businessId: string,
+): Promise<{ pode: boolean; motivo?: string }> {
+  const { data: neg } = await db
+    .from('businesses')
+    .select('phone')
+    .eq('id', businessId)
+    .maybeSingle()
+
+  const digitos = String(neg?.phone ?? '').replace(/\D/g, '')
+  const semDDI = digitos.startsWith('55') ? digitos.slice(2) : digitos
+  if (semDDI.length !== 10 && semDDI.length !== 11) {
+    return { pode: false, motivo: 'negocio_sem_telefone' }
+  }
+
+  const { data: ass } = await db
+    .from('subscriptions')
+    .select('status, permanent_courtesy, grace_ends_at')
+    .eq('business_id', businessId)
+    .maybeSingle()
+
+  if (ass?.permanent_courtesy === true) return { pode: false, motivo: 'conta_demo' }
+
+  const graceVenceu = ass?.grace_ends_at && new Date(ass.grace_ends_at) < new Date()
+  if (ass?.status === 'cancelled' || (ass?.status === 'past_due' && graceVenceu)) {
+    return { pode: false, motivo: 'assinatura_bloqueada' }
+  }
+
+  return { pode: true }
+}
+
 /** Credencial do negócio (Fase 2) ou a do sistema (Fase 1). */
 async function credencialDe(
   db: SupabaseClient,
@@ -121,6 +175,9 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
   }
 
   if (!regra.enabled) return { status: 'ignorado', motivo: 'regra_desligada' }
+
+  const permissao = await podeFalarPelo(db, p.businessId)
+  if (!permissao.pode) return { status: 'ignorado', motivo: permissao.motivo! }
 
   /* A trava de duplicidade vem ANTES de qualquer envio: tenta gravar a
      chave primeiro. Se o UNIQUE recusar, alguém já mandou — encerra sem
