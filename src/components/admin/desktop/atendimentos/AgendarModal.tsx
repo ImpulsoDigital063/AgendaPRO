@@ -174,6 +174,8 @@ export default function AgendarModal({
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  /* /admin ou /recepcao — o PDV vive nas duas areas e o caminho muda. */
+  const areaBase = pathname?.startsWith('/recepcao') ? '/recepcao' : '/admin'
   const areaPrefix = getAreaPrefix(pathname)
   const supabase = useMemo(() => createClient(), [])
 
@@ -1133,6 +1135,25 @@ export default function AgendarModal({
             <h3 id="agendar-title" className="text-lg font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
               {balcao ? 'Registrar venda' : 'Agendamento'}
             </h3>
+            {/* UMA PORTA, DOIS CAMINHOS (Eduardo 08/08).
+                A agenda tinha QUATRO botoes, e dois eram o mesmo verbo:
+                "Registrar venda" (atendimento + comanda, exige servico e
+                profissional) e "Vender produto" (PDV puro). O segundo nasceu
+                em 03/07 so pra contornar a exigencia de servico do primeiro -
+                botao novo pra tapar trava velha.
+                Agora a dona ve UM caminho. Por dentro seguem dois, porque sao
+                mesmo diferentes: atendimento gera comissao e conta na agenda;
+                venda de balcao nao. Fundir no banco mexeria em comanda,
+                comissao e relatorio dos 24 negocios de uma vez. */}
+            {balcao && (
+              <a
+                href={`${areaBase}/produtos/vender`}
+                className="text-[11px] font-semibold underline underline-offset-2 mt-0.5 inline-block"
+                style={{ color: 'var(--admin-text-mute)' }}
+              >
+                Vendendo só produto, sem atendimento? Abrir o PDV
+              </a>
+            )}
           </div>
           <button
             type="button"

@@ -215,27 +215,11 @@ export default function GradeTimelineHeader({
             num cel de 390px); no sm+ voltam a auto-width alinhados à direita.
             Registrar venda (balcão · verde) + Agendar (marca). Eduardo 09/06. */}
         <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto flex-wrap sm:flex-nowrap justify-end">
-          {/* Vender produto → PDV direto (sem serviço/profissional). Antes o único
-              caminho na agenda era "Registrar venda" (balcão), que exige serviço +
-              profissional e travava a venda só de produto (Eduardo 03/07). Desktop/
-              tablet só (mobile usa o atalho da tela Início). */}
-          {!hideCaixaActions && (
-          <Link
-            href={`${areaBasePath(pathname)}/produtos/vender`}
-            className="hidden sm:inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
-            style={{
-              minHeight: 44,
-              background: 'linear-gradient(180deg, #6366F1 0%, #4F46E5 100%)',
-              color: '#fff',
-              borderTop: '1px solid rgba(255,255,255,0.30)',
-              boxShadow: '0 8px 22px -8px rgba(79,70,229,0.55), 0 2px 4px rgba(0,0,0,0.08)',
-            }}
-            title="Vender produto (PDV) · balcão, sem serviço nem profissional"
-          >
-            <IconDollar size={14} /> Vender produto
-          </Link>
-          )}
-
+          {/* "Vender produto" SAIU do cabecalho (Eduardo 08/08): eram quatro
+              botoes e dois faziam o mesmo verbo. O PDV agora e alcancado de
+              dentro do "Registrar venda", que e onde a duvida aparece — e
+              continua no menu, em Produtos. Quatro botoes lado a lado viram
+              paralisia; a dona le todos antes de clicar em um. */}
           {/* Resgatar pacote → busca a cliente, mostra os pacotes ativos e abre o
               agendamento pré-preenchido (Eduardo 24/07). Gated pelo PACOTE_ENABLED. */}
           {PACOTE_ENABLED && !hideCaixaActions && (
