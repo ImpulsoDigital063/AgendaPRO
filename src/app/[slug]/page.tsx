@@ -55,7 +55,7 @@ export default async function BusinessPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, slug, description, address, phone, logo_url, cover_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url')
+    .select('id, name, slug, description, address, phone, logo_url, cover_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url, cta_usa_marca')
     .eq('slug', slug)
     .single()
 
@@ -135,6 +135,13 @@ export default async function BusinessPage({
   const b = business as Business & { category?: string }
   const primary = b.brand_primary || '#3B82F6'
   const secondary = b.brand_secondary || '#06B6D4'
+
+  /* Fundo do botao de agendar. Verde é o padrão e continua sendo pra 23 dos 24
+     negócios; quem liga `cta_usa_marca` recebe a própria cor em degradê, do tom
+     cheio pro mais escuro, pra manter o relevo do botão. */
+  const ctaFundo = b.cta_usa_marca
+    ? `linear-gradient(180deg, ${primary} 0%, color-mix(in srgb, ${primary} 78%, black) 100%)`
+    : 'linear-gradient(180deg, #22C55E 0%, #16A34A 100%)'
   const mode = b.brand_mode || 'light'
   const isDark = mode === 'dark'
 
@@ -513,13 +520,18 @@ export default async function BusinessPage({
           />
         )}
 
-        {/* CTA Agendar — SEMPRE verde + pulsando (padrão global, sobrepõe a cor
-            da marca neste botão pra conversão · pedido Eduardo 05/06) */}
+        {/* CTA Agendar — verde por padrão (decisão global de conversão, Eduardo
+            05/06: sobrepõe a cor da marca neste botão). `cta_usa_marca` deixa o
+            dono escolher a cor da marca quando o verde briga com a identidade —
+            caso da Serenity, clínica de oliva e off-white, em que o verde ficava
+            com cara de botão colado por cima da marca (Eduardo 08/08).
+            Coluna, e não regra automática: 11 dos 24 negócios têm cor própria, e
+            trocar todos de uma vez desfaria a decisão de junho sem ninguém pedir. */}
         <Link
           href={agendarHref}
           className="cta-pulse-green group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-[0.98] mb-3"
           style={{
-            background: 'linear-gradient(180deg, #22C55E 0%, #16A34A 100%)',
+            background: ctaFundo,
             color: 'white',
           }}
         >
@@ -751,7 +763,7 @@ export default async function BusinessPage({
           href={agendarHref}
           className="cta-pulse-green group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] mb-6"
           style={{
-            background: 'linear-gradient(180deg, #22C55E 0%, #16A34A 100%)',
+            background: ctaFundo,
             color: 'white',
           }}
         >
