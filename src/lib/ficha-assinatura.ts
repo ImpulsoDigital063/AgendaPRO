@@ -20,6 +20,17 @@
 
 import { createHash } from 'crypto'
 
+/* O instante entra no hash SEMPRE no mesmo formato.
+   Descoberto no teste de 08/08: gravamos "2026-08-08T20:15:33.123Z" e o
+   Postgres devolve "2026-08-08T20:15:33.123+00:00". Mesma data, texto
+   diferente, hash diferente - e TODA ficha legitima passava a ser acusada
+   de adulterada. Alarme que dispara sempre e pior que alarme nenhum:
+   ninguem confia nele quando importa. */
+function instante(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toISOString()
+}
+
 /** Ordena chaves recursivamente: JSON.stringify sem isso muda o hash à toa. */
 function canonico(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(canonico)
@@ -64,7 +75,7 @@ export function carimbar(params: {
     paciente: params.customerId,
     assinante: params.assinanteNome ?? null,
     cpf,
-    em: agora,
+    em: instante(agora),
   })
 
   return {
@@ -96,7 +107,7 @@ export function conferir(linha: {
     paciente: linha.customer_id,
     assinante: linha.assinante_nome ?? null,
     cpf: linha.assinante_cpf ?? null,
-    em: linha.assinado_em,
+    em: instante(linha.assinado_em),
   })
   const recalculado = createHash('sha256').update(base).digest('hex')
   return recalculado === linha.assinatura_hash
