@@ -157,14 +157,14 @@ export default function FichasTab({ customerId }: Props) {
   }
 
   // ── Fichas de nicho (dedicadas · ex.: cílios) ──────────────────────
-  async function saveNiche(values: FichaValues) {
+  async function saveNiche(values: FichaValues, opts?: { assinar?: boolean }) {
     if (!nicheState) return
     setSubmitting(true)
     setError(null)
     const res = await fetch(`/api/admin/customers/${customerId}/niche-ficha`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nicheSlug: nicheState.ficha.slug, values, responseId: nicheState.responseId }),
+      body: JSON.stringify({ nicheSlug: nicheState.ficha.slug, values, responseId: nicheState.responseId, assinar: opts?.assinar === true }),
     })
     setSubmitting(false)
     if (!res.ok) {

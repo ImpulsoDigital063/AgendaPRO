@@ -14,7 +14,7 @@
  * papel, bem mais rápido de tocar. Trocável se o Eduardo quiser Sim/Não.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { NicheFicha, FichaParam } from '@/lib/fichas/types'
 import DrawCanvas from './DrawCanvas'
 import { IconCheck, IconWhatsapp } from '@/components/ui/Icon'
@@ -28,7 +28,9 @@ type Props = {
   initialValues?: FichaValues
   saving?: boolean
   error?: string | null
-  onSave: (values: FichaValues) => void | Promise<void>
+  /* `assinar` separa rascunho de ato assinado: o servidor só carimba hash e
+     data quando vem true, e a partir daí o banco recusa alteração. */
+  onSave: (values: FichaValues, opts?: { assinar?: boolean }) => void | Promise<void>
   onCancel: () => void
   /* Diagramas do proprio negocio (businesses.ficha_imagens), por chave. Quando
      existe um pra este mapeamento, ele vence o desenho embutido: e o mesmo
@@ -81,6 +83,38 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
     setPdfBusy(true)
     const text = `Olá ${customer?.name ?? ''}, segue a sua ficha. Qualquer dúvida, estou à disposição.`
     try { await shareFichaPdf({ ficha, values, customer, text }) } finally { setPdfBusy(false) }
+  }
+
+  /* O que a ficha exige pra poder ser assinada: os aceites marcados como
+     obrigatórios na config e o campo de assinatura preenchido. Sai da própria
+     ficha em vez de ficar hard-coded aqui — cada protocolo tem os seus. */
+  const exigencias = useMemo(() => {
+    const consents: { name: string; label: string }[] = []
+    let assinaturaNome: string | null = null
+    for (const s of ficha.sections) {
+      if (s.kind === 'term') for (const c of s.consents) if (c.required) consents.push(c)
+      if (s.kind === 'signature') assinaturaNome = s.name
+    }
+    return { consents, assinaturaNome }
+  }, [ficha])
+
+  const [aviso, setAviso] = useState<string | null>(null)
+
+  function onAssinar() {
+    const faltando = exigencias.consents.filter((c) => values[c.name] !== true)
+    if (faltando.length) {
+      setAviso(`Falta marcar: ${faltando.map((c) => c.label).join(' · ')}`)
+      return
+    }
+    if (exigencias.assinaturaNome && !str(exigencias.assinaturaNome)) {
+      setAviso('A assinatura do paciente ainda está em branco.')
+      return
+    }
+    /* Confirmação explícita porque é o ponto sem volta: daqui pra frente uma
+       correção não edita, cria versão nova apontando pra esta. */
+    if (!confirm('Depois de assinada, esta ficha não pode mais ser alterada. Uma correção vira uma versão nova, e as duas ficam no histórico.\n\nConfirma a assinatura?')) return
+    setAviso(null)
+    onSave(values, { assinar: true })
   }
 
   return (
@@ -211,12 +245,32 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
         })}
       </div>
 
-      {/* Ações no rodapé · pra não precisar rolar de volta pro topo depois de assinar */}
-      <div className="flex items-center justify-end gap-2 pb-2 flex-wrap">
-        <button type="button" onClick={onExport} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{pdfBusy ? '…' : 'Exportar PDF'}</button>
-        <button type="button" onClick={onSend} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 disabled:opacity-50" style={{ background: '#25D366', color: '#fff' }}><IconWhatsapp size={14} /> Enviar</button>
-        <button type="button" onClick={onCancel} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Cancelar</button>
-        <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>{saving ? 'Salvando…' : 'Salvar Ficha'}</button>
+      {aviso && (
+        <p className="text-xs px-3 py-2 rounded-lg" style={{ color: 'var(--admin-danger,#EF4444)', background: 'rgba(239,68,68,.08)' }}>{aviso}</p>
+      )}
+
+      {/* Ações no rodapé · pra não precisar rolar de volta pro topo depois de assinar.
+          Separado em dois grupos: à esquerda o que gera documento (PDF/envio),
+          à direita o que decide o destino da ficha. Sem a separação vira uma
+          fileira de cinco botões iguais e a profissional erra no toque. */}
+      <div className="flex items-center justify-between gap-2 pb-2 flex-wrap">
+        <div className="flex gap-2">
+          <button type="button" onClick={onExport} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{pdfBusy ? '…' : 'Exportar PDF'}</button>
+          <button type="button" onClick={onSend} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 disabled:opacity-50" style={{ background: '#25D366', color: '#fff' }}><IconWhatsapp size={14} /> Enviar</button>
+        </div>
+        <div className="flex gap-2 items-center">
+          <button type="button" onClick={onCancel} disabled={saving} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Cancelar</button>
+          {/* Só ficha com campo de assinatura pode ser fechada. As outras (ex.:
+              evolução livre) continuam só salvando. */}
+          {exigencias.assinaturaNome ? (
+            <>
+              <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{saving ? '…' : 'Salvar'}</button>
+              <button type="button" onClick={onAssinar} disabled={saving} className="px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}><IconCheck size={14} /> {saving ? 'Salvando…' : 'Assinar e fechar'}</button>
+            </>
+          ) : (
+            <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>{saving ? 'Salvando…' : 'Salvar Ficha'}</button>
+          )}
+        </div>
       </div>
     </div>
   )
