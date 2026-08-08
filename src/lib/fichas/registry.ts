@@ -4,6 +4,9 @@ import { ESTETICA_FACIAL_FICHA } from './estetica-facial'
 import { CAPILAR_FICHA } from './capilar'
 import { HISTORICO_CLINICO_FICHA } from './historico-clinico'
 import { TOXINA_BOTULINICA_FICHA } from './toxina-botulinica'
+import { PREENCHIMENTO_FACIAL_FICHA } from './preenchimento-facial'
+import { BIOESTIMULADOR_COLAGENO_FICHA } from './bioestimulador-colageno'
+import { FIOS_PDO_FICHA } from './fios-pdo'
 import { LOBULOPLASTIA_FICHA } from './lobuloplastia'
 
 /**
@@ -20,5 +23,8 @@ export const NICHE_FICHAS: Record<string, NicheFicha> = {
      de cada uma entra pelo PDF, que ja e por negocio. */
   'historico-clinico': HISTORICO_CLINICO_FICHA,
   'toxina-botulinica': TOXINA_BOTULINICA_FICHA,
+  'preenchimento-facial': PREENCHIMENTO_FACIAL_FICHA,
+  'bioestimulador-colageno': BIOESTIMULADOR_COLAGENO_FICHA,
+  'fios-pdo': FIOS_PDO_FICHA,
   lobuloplastia: LOBULOPLASTIA_FICHA,
 }

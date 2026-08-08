@@ -68,7 +68,11 @@ export const HISTORICO_CLINICO_FICHA: NicheFicha = {
         'Usou Roacutan nos últimos 6 meses',
         'Tem ou já teve herpes',
         'Consome açúcar ou doces com frequência',
-        'Ingere menos de 2 litros de água por dia',
+        /* Enunciado da ficha de papel, mantido na positiva ("no mínimo") em vez
+           de invertido pra "menos de 2 litros": a profissional lê a linha em voz
+           alta pra paciente, e quem inverte a pergunta na hora colhe a resposta
+           trocada. */
+        'Ingere no mínimo 2 litros de água por dia',
       ],
     },
     {

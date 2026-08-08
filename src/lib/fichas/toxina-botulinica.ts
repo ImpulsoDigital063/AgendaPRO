@@ -92,19 +92,76 @@ export const TOXINA_BOTULINICA_FICHA: NicheFicha = {
       kind: 'term',
       title: 'Termo de consentimento livre e esclarecido',
       text:
-        'A toxina botulínica do tipo A é produzida pela bactéria Clostridium botulinum e, ' +
-        'industrializada e purificada, é utilizada em doses que não causam doença. Promove ' +
-        'efeito tensor sobre a pele e é usada, em geral, para suavizar rugas e linhas de ' +
-        'expressão da face.\n\n' +
-        'Fui informado(a) de que: a resposta ao tratamento é individual e não é possível ' +
-        'garantir percentual de melhora; podem ser necessárias mais de uma aplicação; a ' +
-        'duração média do efeito é de 3 a 6 meses; podem ocorrer sensação de corpo estranho, ' +
-        'coceira, inchaço, vermelhidão, equimose, dor de cabeça e hematomas; e que o resultado ' +
-        'pode ser influenciado por vacinas, medicamentos e características individuais.\n\n' +
-        'Declaro que respondi com veracidade às perguntas sobre minha saúde, que tive ' +
-        'oportunidade de tirar dúvidas e que fui esclarecido(a) sobre riscos, benefícios e ' +
-        'alternativas. Autorizo a realização do procedimento de forma livre e voluntária, e ' +
-        'compreendo que posso revogar este consentimento antes de sua realização.',
+        'A toxina botulínica do tipo A (TBA) é uma toxina produzida por uma bactéria chamada ' +
+        'Clostridium botulinum. É a mesma bactéria causadora da doença botulismo, mas a toxina ' +
+        'botulínica industrializada é purificada e utilizada em pequenas doses que não causam ' +
+        'a doença.\n\n' +
+        'As toxinas botulínicas industrializadas têm pequenas diferenças entre si e recebem ' +
+        'subnomes como: OnabotulinumtoxinA (Botox®), AbobotulinumtoxinA (Dysport®), ' +
+        'RimabotulinumtoxinB (Myobloc® - não disponível no Brasil), IncobotulinumtoxinA ' +
+        '(Xeomin®). É importante destacar que a toxina possui subtipos como A, B, C, sendo que ' +
+        'a utilizada na medicina e biomedicina é a do tipo A.\n\n' +
+        'A toxina promove o efeito tensor sob a pele, e seu uso estético se dá, em geral, para ' +
+        'suavizar rugas e linhas de expressão na região da face. Entre as linhas tratadas estão ' +
+        'as rugas da testa, a glabela (espaço entre as sobrancelhas), os pés de galinha (rugas ' +
+        'que se formam na região dos olhos), sorriso gengival e arqueamento de sobrancelhas.\n\n' +
+        'ORIENTAÇÕES E CUIDADOS PÓS PROCEDIMENTO TOXINA BOTULÍNICA TIPO A:\n' +
+        'As complicações mais frequentes são:\n' +
+        '• Sensação de corpo estranho, coceira, inchaço, vermelhidão e equimoses. Na ocorrência ' +
+        'de qualquer complicação mais grave, informe imediatamente ao profissional.\n' +
+        '• A resposta ao tratamento é individual. Não é possível garantir um percentual de ' +
+        'melhora.\n' +
+        '• Após o procedimento, pelo período de 24 (vinte e quatro) horas não é permitido pegar ' +
+        'sol e tampouco massagear o local de aplicação.\n' +
+        '• Sensações como dores de cabeça ou dores locais também podem ocorrer após a aplicação ' +
+        'da toxina botulínica, devido a tensão ocorrida durante a realização do procedimento, ' +
+        'desaparecendo em no máximo 24 horas. Evitar a ingestão de medicamentos para dores de ' +
+        'cabeça e/ou relaxantes musculares.\n' +
+        '• Poderão ser necessárias mais de uma aplicação, que será realizada no retorno agendado ' +
+        'no prazo de 15 (quinze) a 21 (vinte e um) dias da primeira aplicação.\n' +
+        '• A duração dos resultados do procedimento com a toxina botulínica é variável, ' +
+        'dependendo do metabolismo e hábitos de cada cliente, com duração média do efeito entre ' +
+        '3 (três) meses a 6 (seis) meses.\n' +
+        '• Níveis altos de hormônios masculinos (testosterona) e o uso de antiflamatórios e ' +
+        'antibióticos antes 7 dias da aplicação e 15 dias após podem afetar no efeito da toxina ' +
+        'botulínica.\n' +
+        '• Interferências no efeito por causa das vacinas contra o COVID, podendo diminuição do ' +
+        'efeito.\n\n' +
+        'Clientes em tratamento com antibióticos do tipo espectinomicina ou amino glicosídeos e ' +
+        'que possuem enfermidades neuromusculares, imunológicas e coagulopatias (ou ainda ' +
+        'pessoas que utilizem anticoagulantes, amino glicosídeos e drogas que interfiram na ' +
+        'transmissão neuromuscular), grávidas ou em fase de amamentação, com infecção ou sinais ' +
+        'de inflamação nos locais de aplicação não devem ser submetidos ao tratamento com a ' +
+        'toxina botulínica tipo A.\n\n' +
+        'A toxina botulínica tipo A, assim como todo medicamento, é contraindicado para clientes ' +
+        'que apresentam alergia a albumina (ovo) a qualquer componente de sua formulação.\n\n' +
+        'Hematomas (roxo) podem ocorrer naturalmente pela própria introdução da agulha que, em ' +
+        'seu trajeto, poderá perfurar vasos sanguíneos e promover pequenos e autolimitados ' +
+        'sangramentos locais.\n\n' +
+        'TERMO DE CONSENTIMENTO:\n' +
+        'Autorizo o(a) profissional acima identificado(a) a realizar o procedimento ' +
+        'supramencionado. O profissional explicou-me a utilização do tratamento, compreendi e ' +
+        'foram-me dadas oportunidades suficientes para tirar quaisquer dúvidas e/ou ' +
+        'preocupações, que confirmo terem sido satisfatoriamente abordadas.\n\n' +
+        'Declaro por este meio que respondi rigorosamente a todas as perguntas sobre a minha ' +
+        'saúde e quaisquer problemas médicos que me afetam. Confirmo que o meu estado físico e ' +
+        'mental é saudável e conducente ao prosseguimento do tratamento e que sou um(a) ' +
+        'candidato(a) adequado(a) para a realização do procedimento. Aceito inteiramente que o ' +
+        'meu pedido para realizar este tratamento é voluntário. Compreendo que a finalidade do ' +
+        'tratamento é melhorar a aparência e que há a possibilidade de os resultados não ' +
+        'corresponderem às minhas expectativas. Estou ciente que podem ocorrer complicações ' +
+        'gerais no procedimento como hiperpigmentação pós inflamatória, eritema, edema, infecção ' +
+        'ou reação alérgica, ptose da região.\n\n' +
+        'Foi explicado que os resultados do tratamento não são permanentes e também compreendo ' +
+        'que o tratamento poderá me afetar de forma diferente e que os resultados poderão durar ' +
+        'mais ou menos tempo do que o normal de acordo com a resposta do meu organismo e minha ' +
+        'colaboração como paciente pós procedimento.\n\n' +
+        'Reservo-me o direito de revogar minha assinatura abaixo apenas antes que o procedimento ' +
+        'se realize.\n\n' +
+        'O(a) profissional DECLARA que explicou detalhadamente para o cliente e/ou responsável o ' +
+        'propósito, os benefícios, os riscos e as alternativas para o procedimento acima ' +
+        'descrito, bem como que existiu tempo hábil para o cliente esclarecer suas dúvidas ou ' +
+        'procurar outra opinião profissional.',
       consents: [
         { name: 'ciente_riscos', label: 'Fui esclarecido(a) sobre riscos, benefícios e alternativas', required: true },
         { name: 'autoriza_procedimento', label: 'Autorizo a realização do procedimento', required: true },
@@ -112,21 +169,34 @@ export const TOXINA_BOTULINICA_FICHA: NicheFicha = {
     },
     {
       kind: 'term',
-      title: 'Orientações pós-procedimento',
+      title: 'Orientações pós-cuidados',
       text:
-        'NAS PRIMEIRAS 4 HORAS: não massagear, friccionar ou coçar as áreas tratadas; evitar ' +
-        'deitar-se ou inclinar a cabeça para frente; evitar bonés, faixas e óculos apertados; ' +
-        'evitar maquiagem na região.\n\n' +
-        'NAS PRIMEIRAS 24 HORAS: não realizar atividade física; não ingerir bebida alcoólica; ' +
-        'evitar sol, calor excessivo, sauna e banho quente prolongado; evitar outros ' +
-        'tratamentos estéticos no rosto.\n\n' +
-        'NAS PRIMEIRAS 48 A 72 HORAS: evitar procedimentos que gerem calor ou estimulação ' +
-        'elétrica no rosto; avisar o profissional antes de procedimento odontológico.\n\n' +
-        'O efeito começa entre 3 e 7 dias, com resultado completo em até 15 dias. Pode haver ' +
-        'dor leve, vermelhidão, inchaço ou pequenos hematomas, que desaparecem sozinhos. ' +
-        'O RETORNO PARA AVALIAÇÃO DEVE SER FEITO ENTRE 15 E 21 DIAS APÓS A APLICAÇÃO. ' +
-        'Em caso de dor intensa, assimetria acentuada ou efeito adverso incomum, entre em ' +
-        'contato imediatamente.',
+        'Para garantir a eficácia do tratamento e evitar possíveis intercorrências, siga ' +
+        'atentamente as orientações abaixo:\n\n' +
+        'NAS PRIMEIRAS 4 HORAS APÓS APLICAÇÃO\n' +
+        'Não massagear, friccionar ou coçar as áreas tratadas.\n' +
+        'Evitar deitar-se ou inclinar a cabeça para frente.\n' +
+        'Evitar uso de bonés, faixas, óculos de grau ou sol muito apertados (no caso de ' +
+        'aplicação na testa ou região glabelar).\n' +
+        'Evitar maquiagem na região aplicada.\n\n' +
+        'NAS PRIMEIRAS 24 HORAS\n' +
+        'Não realizar atividades físicas.\n' +
+        'Não ingerir bebidas alcoólicas.\n' +
+        'Evitar exposição ao sol, calor excessivo, sauna ou banho quente prolongado.\n' +
+        'Evitar tratamentos estéticos no rosto (como limpeza de pele, laser, peeling etc.).\n\n' +
+        'NAS PRIMEIRAS 48 A 72 HORAS\n' +
+        'Evitar qualquer procedimento que gere calor ou estimulação elétrica no rosto.\n' +
+        'Evitar procedimentos odontológicos (caso necessário, avisar o profissional que aplicou ' +
+        'a toxina).\n\n' +
+        'RECOMENDAÇÕES GERAIS\n' +
+        'O efeito da toxina começa a ser percebido entre 3 a 7 dias, com resultado completo em ' +
+        'até 15 dias.\n' +
+        'Pode haver dor leve, vermelhidão, inchaço ou pequenos hematomas nos pontos de ' +
+        'aplicação, que geralmente desaparecem espontaneamente.\n' +
+        'Evite comparar o resultado com outras pessoas, pois a resposta à toxina é individual.\n' +
+        'O retorno para avaliação deverá ser feito entre 15 e 21 dias após a aplicação.\n' +
+        'Em caso de dor intensa, assimetria acentuada ou qualquer efeito adverso incomum, entre ' +
+        'em contato imediatamente.',
       consents: [
         { name: 'recebeu_orientacoes', label: 'Recebi e compreendi as orientações pós-procedimento', required: true },
       ],
