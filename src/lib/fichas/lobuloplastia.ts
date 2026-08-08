@@ -44,6 +44,19 @@ export const LOBULOPLASTIA_FICHA: NicheFicha = {
       ],
     },
     {
+      kind: 'mapping',
+      title: 'Marcação — lobuloplastia',
+      drawName: 'mapa_lobulo',
+      /* Sem diagrama cadastrado, cai em folha branca: melhor uma folha limpa
+         do que um desenho de orelha mal feito por cima da anatomia. */
+      background: 'blank',
+      imagemChave: 'lobuloplastia.mapa_lobulo',
+      params: [
+        { name: 'lobulo_direita', label: 'Orelha direita — observações', type: 'textarea' },
+        { name: 'lobulo_esquerda', label: 'Orelha esquerda — observações', type: 'textarea' },
+      ],
+    },
+    {
       kind: 'fields',
       title: 'Furo humanizado da orelha',
       fields: [
@@ -51,17 +64,19 @@ export const LOBULOPLASTIA_FICHA: NicheFicha = {
         { name: 'expectativa', label: 'Qual a expectativa com o procedimento', type: 'textarea' },
       ],
     },
+    /* Duas marcações separadas, não uma só. No papel dela são dois pares de
+       orelhas em blocos distintos — e num celular de 393px as quatro juntas
+       num canvas viram miniatura: não dá pra marcar com o dedo onde está o
+       rasgo. Separado, cada par ocupa a largura inteira. */
     {
       kind: 'mapping',
-      title: 'Marcação nas orelhas',
-      drawName: 'mapa_orelhas',
-      /* Sem diagrama cadastrado, cai em folha branca: melhor uma folha limpa
-         do que um desenho de orelha mal feito por cima da anatomia. */
+      title: 'Marcação — furo humanizado',
+      drawName: 'mapa_furo',
       background: 'blank',
-      imagemChave: 'lobuloplastia.mapa_orelhas',
+      imagemChave: 'lobuloplastia.mapa_furo',
       params: [
-        { name: 'orelha_direita', label: 'Orelha direita — observações', type: 'textarea' },
-        { name: 'orelha_esquerda', label: 'Orelha esquerda — observações', type: 'textarea' },
+        { name: 'furo_direita', label: 'Orelha direita — observações', type: 'textarea' },
+        { name: 'furo_esquerda', label: 'Orelha esquerda — observações', type: 'textarea' },
       ],
     },
     {
