@@ -2,6 +2,18 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
+  /* Sem isto o next/image RECUSA qualquer imagem de fora e a logo do negocio
+     quebra na barra lateral do desktop - vale pra todo negocio que tenha logo,
+     nao so pra um. Apareceu em 08/08 na Serenity, primeira conta que ganhou
+     logo. O <img> comum continuava funcionando (a CSP ja libera supabase.co),
+     por isso a FOTO aparecia e a LOGO nao, no mesmo painel.
+     Storage publico do Supabase e o unico host de imagem do produto. */
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+    ],
+  },
+
   async headers() {
     return [
       // Rotas de auth/redirect-sensitive NÃO podem ser cacheadas pelo CDN
