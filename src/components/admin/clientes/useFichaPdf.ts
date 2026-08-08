@@ -51,7 +51,18 @@ function isImg(v: unknown): v is string {
   return typeof v === 'string' && (v.startsWith('data:image') || /\/storage\/v1\/object\//.test(v))
 }
 
-async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Customer, dateIso?: string) {
+/* Carimbo do ato, quando a ficha foi assinada. Vem do banco (v120), nunca
+   do navegador: data do servidor, hash do conteudo, IP e dispositivo. */
+export type CarimboPdf = {
+  assinado_em?: string | null
+  assinatura_hash?: string | null
+  assinatura_ip?: string | null
+  assinante_nome?: string | null
+  assinante_cpf?: string | null
+  versao?: number | null
+}
+
+async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Customer, dateIso?: string, carimbo?: CarimboPdf) {
   const { default: jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
   const W = doc.internal.pageSize.getWidth()
@@ -158,17 +169,45 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
     }
   }
 
+  /* ── RODAPE DE INTEGRIDADE ─────────────────────────────────────
+     E o PDF que ela apresenta se alguem questionar. De nada adianta o hash
+     ficar so no banco: quem recebe o papel precisa ter como conferir. Vai
+     em TODAS as paginas porque folha solta de PDF circula sozinha. */
+  if (carimbo?.assinado_em && carimbo?.assinatura_hash) {
+    const quando = new Date(carimbo.assinado_em)
+    const dataBR = quando.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    const linha1 =
+      `Documento assinado eletronicamente em ${dataBR}` +
+      (carimbo.assinante_nome ? ` por ${carimbo.assinante_nome}` : '') +
+      (carimbo.assinante_cpf ? ` (CPF ${carimbo.assinante_cpf})` : '') +
+      (carimbo.versao && carimbo.versao > 1 ? ` · versao ${carimbo.versao}` : '')
+    const linha2 =
+      `Verificacao (SHA-256): ${carimbo.assinatura_hash}` +
+      (carimbo.assinatura_ip ? ` · IP ${carimbo.assinatura_ip}` : '')
+
+    const total = doc.getNumberOfPages()
+    for (let p = 1; p <= total; p++) {
+      doc.setPage(p)
+      doc.setDrawColor(200, 200, 200)
+      doc.line(mX, H - 13, W - mX, H - 13)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(110, 110, 110)
+      doc.text(linha1, mX, H - 9.5)
+      doc.text(linha2, mX, H - 6.5)
+      doc.text(`${p}/${total}`, W - mX, H - 6.5, { align: 'right' })
+    }
+  }
+
   const slug = (customer?.name ?? 'cliente').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase().slice(0, 30)
   return { pdf: doc, filename: `ficha-${ficha.slug}-${slug}.pdf` }
 }
 
-export async function downloadFichaPdf(args: { ficha: NicheFicha; values: FichaValues; customer: Customer; dateIso?: string }) {
-  const { pdf, filename } = await buildPdf(args.ficha, args.values, args.customer, args.dateIso)
+export async function downloadFichaPdf(args: { ficha: NicheFicha; values: FichaValues; customer: Customer; dateIso?: string; carimbo?: CarimboPdf }) {
+  const { pdf, filename } = await buildPdf(args.ficha, args.values, args.customer, args.dateIso, args.carimbo)
   pdf.save(filename)
 }
 
-export async function shareFichaPdf(args: { ficha: NicheFicha; values: FichaValues; customer: Customer; dateIso?: string; text: string }) {
-  const { pdf, filename } = await buildPdf(args.ficha, args.values, args.customer, args.dateIso)
+export async function shareFichaPdf(args: { ficha: NicheFicha; values: FichaValues; customer: Customer; dateIso?: string; text: string; carimbo?: CarimboPdf }) {
+  const { pdf, filename } = await buildPdf(args.ficha, args.values, args.customer, args.dateIso, args.carimbo)
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       const blob = pdf.output('blob')
