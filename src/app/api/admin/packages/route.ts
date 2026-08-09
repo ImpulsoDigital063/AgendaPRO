@@ -30,6 +30,8 @@ type ItemInput = {
   product_id: string | null
   quantity: number
   unit_price?: number | null
+  /** v120 · itens com o mesmo grupo são ALTERNATIVAS (escolhe 1 ao aplicar). */
+  option_group?: string | null
 }
 
 // Cada item é serviço OU produto (exatamente um · XOR · espelha o CHECK do banco v84).
@@ -50,7 +52,15 @@ function validateItems(raw: unknown): ItemInput[] | null {
       if (!Number.isFinite(u) || u < 0) return null
       unit = u
     }
-    out.push({ service_id: svc, product_id: prod, quantity: qty, unit_price: unit })
+    // v120 · alternativas. Só faz sentido em PRODUTO: serviço do combo é o que
+    // define o atendimento, não é escolha de balcão.
+    let optionGroup: string | null = null
+    if (obj.option_group != null) {
+      if (typeof obj.option_group !== 'string' || !obj.option_group) return null
+      if (!prod) return null
+      optionGroup = obj.option_group
+    }
+    out.push({ service_id: svc, product_id: prod, quantity: qty, unit_price: unit, option_group: optionGroup })
   }
   return out
 }
@@ -69,7 +79,7 @@ export async function GET(request: Request) {
     .from('packages')
     .select(`
       id, name, price, kind, validity_kind, validity_value, active, description, created_at,
-      package_items (id, service_id, product_id, quantity, unit_price, services(name, price), products(name, price))
+      package_items (id, service_id, product_id, quantity, unit_price, option_group, services(name, price), products(name, price))
     `)
     .eq('business_id', businessId)
     .order('created_at', { ascending: false })
@@ -166,6 +176,7 @@ export async function POST(request: Request) {
     product_id: it.product_id,
     quantity: it.quantity,
     unit_price: it.unit_price,
+    option_group: it.option_group ?? null,
   }))
   const { error: itemsErr } = await admin.from('package_items').insert(itemsToInsert)
   if (itemsErr) {

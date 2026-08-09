@@ -8,7 +8,15 @@ import PacoteFormModal, { type PackageFormValue } from './PacoteFormModal'
 import VenderPacoteCardModal from './VenderPacoteCardModal'
 
 type Service = { id: string; name: string; price: number | null; active: boolean }
-type Product = { id: string; name: string; price: number | null }
+type Product = {
+  id: string
+  name: string
+  price: number | null
+  // Opcionais: só a tela de Combos carrega. A aba Pacotes não usa produto.
+  track_stock?: boolean | null
+  quantity?: number | null
+  unit?: string | null
+}
 
 type PackageItemRow = {
   id: string
@@ -16,6 +24,8 @@ type PackageItemRow = {
   product_id: string | null
   quantity: number
   unit_price: number | null
+  /** v120 · itens com o mesmo grupo são alternativas (escolhe 1 ao aplicar). */
+  option_group?: string | null
   services: { name: string; price: number | null } | null
   products: { name: string; price: number | null } | null
 }

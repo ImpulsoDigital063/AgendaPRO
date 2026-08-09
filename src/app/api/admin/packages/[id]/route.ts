@@ -80,7 +80,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   // Itens: substitui se vier · cada item é serviço OU produto (XOR · v84)
   if (Array.isArray(body.items)) {
-    type Item = { service_id: string | null; product_id: string | null; quantity: number; unit_price?: number | null }
+    type Item = { service_id: string | null; product_id: string | null; quantity: number; unit_price?: number | null; option_group?: string | null }
     const items = body.items as Array<Record<string, unknown>>
     if (items.length === 0) {
       return NextResponse.json({ error: 'items_empty', detail: 'Pacote precisa de ao menos 1 item' }, { status: 400 })
@@ -99,7 +99,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         if (!Number.isFinite(u) || u < 0) return NextResponse.json({ error: 'unit_price_invalid' }, { status: 400 })
         unit = u
       }
-      validated.push({ service_id: svc, product_id: prod, quantity: qty, unit_price: unit })
+      // v120 · alternativas do combo: itens com o mesmo grupo são opções entre
+      // si (escolhe 1 ao aplicar). Só em produto.
+      let optionGroup: string | null = null
+      if (it.option_group != null) {
+        if (typeof it.option_group !== 'string' || !it.option_group || !prod) {
+          return NextResponse.json({ error: 'option_group_invalid' }, { status: 400 })
+        }
+        optionGroup = it.option_group
+      }
+      validated.push({ service_id: svc, product_id: prod, quantity: qty, unit_price: unit, option_group: optionGroup })
     }
     // Valida services + products do business
     const svcIds = [...new Set(validated.map((i) => i.service_id).filter((x): x is string => !!x))]

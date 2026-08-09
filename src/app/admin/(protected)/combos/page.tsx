@@ -33,7 +33,7 @@ export default async function CombosPage() {
       .from('packages')
       .select(`
         id, name, price, kind, validity_kind, validity_value, active, description, created_at,
-        package_items (id, service_id, product_id, quantity, unit_price, services(name, price), products(name, price))
+        package_items (id, service_id, product_id, quantity, unit_price, option_group, services(name, price), products(name, price))
       `)
       .eq('business_id', business.id)
       .eq('kind', 'combo')
@@ -45,8 +45,11 @@ export default async function CombosPage() {
       .eq('active', true)
       .order('name'),
     admin
+      // track_stock/quantity/unit: o form do combo precisa avisar quando o
+      // material NÃO controla estoque (o 0,5 não baixaria nada) ou está zerado
+      // (a comanda recusaria com insufficient_stock).
       .from('products')
-      .select('id, name, price')
+      .select('id, name, price, track_stock, quantity, unit')
       .eq('business_id', business.id)
       .eq('active', true)
       .order('name'),

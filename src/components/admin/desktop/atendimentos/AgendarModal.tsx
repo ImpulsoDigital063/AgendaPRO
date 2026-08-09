@@ -40,8 +40,11 @@ type ComboItem = {
   product_id: string | null
   quantity: number
   unit_price: number | null
+  /** v120 · itens com o mesmo grupo são ALTERNATIVAS do mesmo material (o
+   *  cabelo em 3 cores). Escolhe-se UMA ao aplicar — as outras não entram. */
+  option_group?: string | null
   services: { id: string; name: string; price: number | null; duration_minutes: number | null } | null
-  products: { id: string; name: string; variant: string | null; price: number | null; commission_type: string | null; commission_value: number | null } | null
+  products: { id: string; name: string; variant: string | null; price: number | null; quantity: number | null; track_stock: boolean | null; commission_type: string | null; commission_value: number | null } | null
 }
 type ComboRow = {
   id: string
@@ -214,6 +217,10 @@ export default function AgendarModal({
   const [combos, setCombos] = useState<ComboRow[]>([])
   const [comboPickerOpen, setComboPickerOpen] = useState(false)
   const [comboAplicado, setComboAplicado] = useState<{ id: string; name: string; price: number } | null>(null)
+  // v120 · combo com material alternativo: guarda o combo aplicado inteiro e a
+  // cor escolhida por grupo, pra dar pra trocar sem reabrir o picker.
+  const [comboRef, setComboRef] = useState<ComboRow | null>(null)
+  const [comboEscolhas, setComboEscolhas] = useState<Record<string, string>>({})
 
   // RESGATE de pacote · por serviço, quando a cliente tem sessão ativa que cobre
   // aquele serviço. resgateOpts[serviceId] = pacote ativo. Ligar o resgate numa
@@ -319,7 +326,7 @@ export default function AgendarModal({
     if (!open) return
     supabase
       .from('packages')
-      .select('id, name, price, package_items (service_id, product_id, quantity, unit_price, services (id, name, price, duration_minutes), products (id, name, variant, price, commission_type, commission_value))')
+      .select('id, name, price, package_items (service_id, product_id, quantity, unit_price, option_group, services (id, name, price, duration_minutes), products (id, name, variant, price, quantity, track_stock, commission_type, commission_value))')
       .eq('business_id', businessId)
       .eq('active', true)
       .eq('kind', 'combo')
@@ -507,10 +514,49 @@ export default function AgendarModal({
    *
    * Substitui o que estiver preenchido (o combo define o atendimento inteiro).
    */
-  function aplicarCombo(combo: ComboRow) {
+  /**
+   * v120 · resolve os materiais ALTERNATIVOS do combo.
+   *
+   * Itens que compartilham `option_group` são o mesmo material em cores
+   * diferentes: entra UM só. Sem isso, um combo com 3 cores jogaria as 3 no
+   * carrinho e cobraria as 3. `escolhas` mapeia grupo → product_id; o que não
+   * estiver escolhido cai no default (a primeira cor COM saldo, senão a
+   * primeira da lista).
+   */
+  function resolverItensDoCombo(combo: ComboRow, escolhas: Record<string, string>): ComboItem[] {
+    const itens = combo.package_items ?? []
+    const out: ComboItem[] = []
+    const gruposJaResolvidos = new Set<string>()
+    for (const it of itens) {
+      const g = it.option_group
+      if (!g) { out.push(it); continue }
+      if (gruposJaResolvidos.has(g)) continue
+      gruposJaResolvidos.add(g)
+      const opcoes = itens.filter((x) => x.option_group === g)
+      const escolhido = escolhas[g] && opcoes.find((x) => x.product_id === escolhas[g])
+      const comSaldo = opcoes.find((x) => Number(x.products?.quantity ?? 0) > 0)
+      out.push(escolhido || comSaldo || opcoes[0])
+    }
+    return out
+  }
+
+  /** Grupos de opção do combo, na ordem em que aparecem. */
+  function gruposDeOpcao(combo: ComboRow): { group: string; opcoes: ComboItem[] }[] {
+    const itens = combo.package_items ?? []
+    const vistos: string[] = []
+    for (const it of itens) {
+      if (it.option_group && !vistos.includes(it.option_group)) vistos.push(it.option_group)
+    }
+    return vistos
+      .map((g) => ({ group: g, opcoes: itens.filter((x) => x.option_group === g) }))
+      .filter((x) => x.opcoes.length > 1)
+  }
+
+  function aplicarCombo(combo: ComboRow, escolhas: Record<string, string> = {}) {
+    const itensResolvidos = resolverItensDoCombo(combo, escolhas)
     const { servicos, produtos, somaServicos, restoBruto } = ratearCombo(
       Number(combo.price || 0),
-      combo.package_items ?? [],
+      itensResolvidos,
     )
     const novasLinhas: ServiceLine[] = servicos.map((s) => ({
       ...newLine(),
@@ -528,9 +574,18 @@ export default function AgendarModal({
       return
     }
 
+    // Guarda as escolhas efetivas (inclusive os defaults) pra o seletor de cor
+    // nascer marcando a opção que de fato entrou no carrinho.
+    const efetivas: Record<string, string> = { ...escolhas }
+    for (const it of itensResolvidos) {
+      if (it.option_group && it.product_id) efetivas[it.option_group] = it.product_id
+    }
+
     setServiceLines(novasLinhas)
     setProdCart(produtos)
     setComboAplicado({ id: combo.id, name: combo.name, price: Number(combo.price || 0) })
+    setComboEscolhas(efetivas)
+    setComboRef(combo)
     setComboPickerOpen(false)
 
     // Serviços já custam mais que o combo: o material sairia negativo. Não
@@ -545,9 +600,17 @@ export default function AgendarModal({
 
   function limparCombo() {
     setComboAplicado(null)
+    setComboRef(null)
+    setComboEscolhas({})
     setServiceLines([newLine()])
     setProdCart([])
     setError(null)
+  }
+
+  /** Troca a cor/opção de um material e refaz o rateio do combo inteiro. */
+  function trocarOpcaoDoCombo(group: string, productId: string) {
+    if (!comboRef) return
+    aplicarCombo(comboRef, { ...comboEscolhas, [group]: productId })
   }
 
   // Pega a comanda (invoice) ABERTA que o trigger v77 auto-criou pro atendimento.
@@ -1365,6 +1428,7 @@ export default function AgendarModal({
               Só aparece se o negócio cadastrou algum combo na aba Pacotes. */}
           {/* Combo aplicado · resumo (o botão "Combo" do row some quando aplicado) */}
           {comboAplicado && (
+            <div className="space-y-2">
               <div
                 className="rounded-xl p-3 flex items-center gap-3"
                 style={{
@@ -1388,6 +1452,53 @@ export default function AgendarModal({
                   Remover
                 </button>
               </div>
+
+              {/* v120 · o material tem cores: escolhe qual saiu neste
+                  atendimento. Trocar refaz o rateio na hora. */}
+              {comboRef && gruposDeOpcao(comboRef).map(({ group, opcoes }) => {
+                const escolhidoId = comboEscolhas[group] ?? opcoes[0]?.product_id
+                return (
+                  <div
+                    key={group}
+                    className="rounded-xl p-2.5"
+                    style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: '#9333EA' }}>
+                      Qual material saiu?
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {opcoes.map((o) => {
+                        const ativo = o.product_id === escolhidoId
+                        const saldo = Number(o.products?.quantity ?? 0)
+                        const controla = o.products?.track_stock === true
+                        const semSaldo = controla && saldo <= 0
+                        return (
+                          <button
+                            key={o.product_id}
+                            type="button"
+                            onClick={() => o.product_id && trocarOpcaoDoCombo(group, o.product_id)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-left"
+                            style={{
+                              background: ativo ? '#9333EA' : 'transparent',
+                              color: ativo ? '#fff' : 'var(--admin-text)',
+                              border: `1px solid ${ativo ? '#9333EA' : 'var(--admin-border)'}`,
+                              opacity: semSaldo && !ativo ? 0.55 : 1,
+                            }}
+                          >
+                            {o.products?.variant || o.products?.name || 'Material'}
+                            {controla && (
+                              <span className="block text-[10px] font-normal" style={{ opacity: 0.8 }}>
+                                {semSaldo ? 'sem saldo' : `${saldo.toLocaleString('pt-BR')} em estoque`}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
 
           {/* Seletor de combo · abre pelo botão "Combo" do row acima */}

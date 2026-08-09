@@ -6,7 +6,14 @@ import { IconClose, IconPlus, IconTrash } from '@/components/ui/Icon'
 import type { PackageRow } from './PacotesView'
 
 type Service = { id: string; name: string; price: number | null; active: boolean }
-type Product = { id: string; name: string; price: number | null }
+type Product = {
+  id: string
+  name: string
+  price: number | null
+  track_stock?: boolean | null
+  quantity?: number | null
+  unit?: string | null
+}
 
 type ItemForm = {
   uid: string
@@ -14,6 +21,13 @@ type ItemForm = {
   entity_id: string // service_id OU product_id conforme kind
   quantity: string
   unit_price: string // vazio = usa preço padrão
+  /**
+   * v120 · itens com o mesmo grupo são ALTERNATIVAS do mesmo material — o
+   * cabelo em 3 cores, por exemplo. Quem atende escolhe 1 ao aplicar o combo.
+   * A quantidade e o preço valem pro grupo inteiro (meio pacote é meio pacote,
+   * seja qual for a cor), então ficam na primeira linha e são propagados.
+   */
+  option_group?: string
 }
 
 export type PackageFormValue = {
@@ -22,7 +36,7 @@ export type PackageFormValue = {
   validity_kind: 'none' | 'days' | 'weeks' | 'months' | 'years'
   validity_value: number | null
   description: string | null
-  items: { service_id: string | null; product_id: string | null; quantity: number; unit_price: number | null }[]
+  items: { service_id: string | null; product_id: string | null; quantity: number; unit_price: number | null; option_group?: string | null }[]
 }
 
 type Props = {
@@ -67,11 +81,20 @@ export default function PacoteFormModal({ initial, services, products, loading, 
         entity_id: it.product_id ?? it.service_id ?? '',
         quantity: String(it.quantity),
         unit_price: it.unit_price?.toString() ?? '',
+        option_group: it.option_group ?? undefined,
       }))
     }
     return [{ uid: newUid(), kind: 'service', entity_id: '', quantity: '1', unit_price: '' }]
   })
   const [localError, setLocalError] = useState<string | null>(null)
+
+  // Estoque do material dentro do combo. `products` vem do server e não
+  // recarrega com o modal aberto, então o que for ligado aqui fica em estado
+  // local pro aviso sumir na hora.
+  const [saldoLocal, setSaldoLocal] = useState<Record<string, number>>({})
+  const [contagem, setContagem] = useState<Record<string, string>>({})
+  const [ligandoId, setLigandoId] = useState<string | null>(null)
+  const [estoqueErro, setEstoqueErro] = useState<string | null>(null)
 
   useEffect(() => { setPortalReady(true) }, [])
   useEffect(() => {
@@ -89,7 +112,130 @@ export default function PacoteFormModal({ initial, services, products, loading, 
     setItems((prev) => prev.length > 1 ? prev.filter((i) => i.uid !== uid) : prev)
   }
   function updateItem(uid: string, patch: Partial<ItemForm>) {
-    setItems((prev) => prev.map((i) => i.uid === uid ? { ...i, ...patch } : i))
+    setItems((prev) => {
+      const alvo = prev.find((i) => i.uid === uid)
+      const grupo = alvo?.option_group
+      return prev.map((i) => {
+        if (i.uid === uid) return { ...i, ...patch }
+        // Quantidade e preço valem pro grupo inteiro: meio pacote é meio pacote
+        // em qualquer cor. Só o produto escolhido difere entre as opções.
+        if (grupo && i.option_group === grupo) {
+          const compartilhado: Partial<ItemForm> = {}
+          if ('quantity' in patch) compartilhado.quantity = patch.quantity
+          if ('unit_price' in patch) compartilhado.unit_price = patch.unit_price
+          return Object.keys(compartilhado).length ? { ...i, ...compartilhado } : i
+        }
+        return i
+      })
+    })
+  }
+
+  /** Adiciona outra cor/opção ao MESMO material (mesmo option_group). */
+  function addOption(uid: string) {
+    setItems((prev) => {
+      const idx = prev.findIndex((i) => i.uid === uid)
+      if (idx < 0) return prev
+      const base = prev[idx]
+      const grupo = base.option_group ?? newUid()
+      const nova: ItemForm = {
+        uid: newUid(),
+        kind: 'product',
+        entity_id: '',
+        quantity: base.quantity,
+        unit_price: base.unit_price,
+        option_group: grupo,
+      }
+      // Entra logo depois da última linha do grupo, pra ficar tudo junto na tela
+      let fim = idx
+      while (fim + 1 < prev.length && prev[fim + 1].option_group === grupo) fim++
+      const out = [...prev]
+      out[idx] = { ...base, option_group: grupo }
+      out.splice(fim + 1, 0, nova)
+      return out
+    })
+  }
+
+  /** true quando a linha é a PRIMEIRA do seu grupo (ou não tem grupo). */
+  function ehPrimeiraDoGrupo(idx: number): boolean {
+    const it = items[idx]
+    if (!it.option_group) return true
+    return idx === 0 || items[idx - 1].option_group !== it.option_group
+  }
+
+  /** Quantas opções existem no grupo desta linha. */
+  function tamanhoDoGrupo(it: ItemForm): number {
+    if (!it.option_group) return 1
+    return items.filter((i) => i.option_group === it.option_group).length
+  }
+
+  /** true na ÚLTIMA linha do grupo — é onde mora o botão de adicionar cor. */
+  function ehUltimaDoGrupo(idx: number): boolean {
+    const it = items[idx]
+    if (!it.option_group) return true
+    return idx === items.length - 1 || items[idx + 1].option_group !== it.option_group
+  }
+
+  /**
+   * Estado do material escolhido, do ponto de vista do combo:
+   *  - 'sem-controle' → o 0,5 não sai do estoque (o combo promete e não cumpre)
+   *  - 'zerado'       → controla mas está sem saldo; a comanda recusa o
+   *                     lançamento com insufficient_stock
+   *  - 'ok'           → nada a avisar
+   */
+  function estadoEstoque(p: Product): 'sem-controle' | 'zerado' | 'ok' {
+    const saldo = saldoLocal[p.id] ?? Number(p.quantity ?? 0)
+    const controla = p.id in saldoLocal ? true : p.track_stock === true
+    if (!controla) return 'sem-controle'
+    if (saldo <= 0) return 'zerado'
+    return 'ok'
+  }
+
+  /**
+   * Lança a contagem informada e liga o controle de estoque do material.
+   *
+   * A ORDEM IMPORTA: primeiro entra o saldo, depois liga o controle. O inverso
+   * deixa o material controlado com saldo 0 — e aí `/api/admin/invoices` e
+   * `/invoices/[id]/items` passam a recusar o lançamento (insufficient_stock),
+   * travando o balcão de quem antes lançava normal.
+   */
+  async function ligarControle(p: Product) {
+    const bruto = String(contagem[p.id] ?? '').replace(',', '.')
+    const qtd = Number(bruto)
+    if (!bruto || !isFinite(qtd) || qtd <= 0) {
+      setEstoqueErro('Informe quantos você tem hoje (maior que zero).')
+      return
+    }
+    setLigandoId(p.id)
+    setEstoqueErro(null)
+    try {
+      const mov = await fetch(`/api/admin/products/${p.id}/movement`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'entry', quantity: qtd, reason: 'Contagem inicial · cadastro de combo' }),
+      })
+      if (!mov.ok) {
+        const j = await mov.json().catch(() => ({}))
+        throw new Error(j.error ?? 'não deu pra lançar a contagem')
+      }
+      if (p.track_stock !== true) {
+        const patch = await fetch(`/api/admin/products/${p.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ track_stock: true }),
+        })
+        if (!patch.ok) {
+          const j = await patch.json().catch(() => ({}))
+          throw new Error(j.error ?? 'não deu pra ligar o controle')
+        }
+      }
+      const anterior = saldoLocal[p.id] ?? Number(p.quantity ?? 0)
+      setSaldoLocal((prev) => ({ ...prev, [p.id]: anterior + qtd }))
+      setContagem((prev) => ({ ...prev, [p.id]: '' }))
+    } catch (e) {
+      setEstoqueErro(e instanceof Error ? e.message : 'não deu pra ligar o controle')
+    } finally {
+      setLigandoId(null)
+    }
   }
 
   function submit() {
@@ -126,7 +272,22 @@ export default function PacoteFormModal({ initial, services, products, loading, 
         product_id: it.kind === 'product' ? it.entity_id : null,
         quantity: q,
         unit_price: unit,
+        option_group: it.kind === 'product' ? it.option_group ?? null : null,
       })
+    }
+
+    // Mesma cor duas vezes no mesmo grupo: a escolha ficaria ambígua na hora
+    // de aplicar e o estoque baixaria da linha errada.
+    const porGrupo: Record<string, string[]> = {}
+    for (const it of items) {
+      if (!it.option_group || it.kind !== 'product') continue
+      ;(porGrupo[it.option_group] ??= []).push(it.entity_id)
+    }
+    for (const ids of Object.values(porGrupo)) {
+      if (new Set(ids).size !== ids.length) {
+        setLocalError('Tem material repetido nas opções. Cada opção precisa ser um produto diferente.')
+        return
+      }
     }
 
     onSubmit({
@@ -307,10 +468,20 @@ export default function PacoteFormModal({ initial, services, products, loading, 
               {items.map((it, idx) => {
                 const isProduct = it.kind === 'product'
                 const options = isProduct ? products : services
+                // v120 · linhas do mesmo option_group são a MESMA escolha de
+                // material. A primeira carrega quantidade e preço; as demais
+                // mostram só o produto, pra não repetir "0,5" três vezes.
+                const primeira = ehPrimeiraDoGrupo(idx)
+                const opcoesNoGrupo = tamanhoDoGrupo(it)
+                const ehOpcao = !!it.option_group && opcoesNoGrupo > 1
                 return (
                 <div key={it.uid}
-                  className="rounded-xl p-3 grid grid-cols-[1fr_88px_92px_auto] gap-2 items-end"
-                  style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
+                  className={`rounded-xl p-3 grid gap-2 items-end ${primeira ? 'grid-cols-[1fr_88px_92px_auto]' : 'grid-cols-[1fr_auto]'}`}
+                  style={{
+                    background: 'var(--admin-surface-hi)',
+                    border: '1px solid var(--admin-border)',
+                    ...(primeira ? {} : { marginTop: -6, borderTopLeftRadius: 0, borderTopRightRadius: 0 }),
+                  }}
                 >
                   <div>
                     <span
@@ -320,7 +491,11 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                         background: isProduct ? 'rgba(147,51,234,0.10)' : 'var(--admin-accent-bg)',
                       }}
                     >
-                      {isProduct ? 'Produto' : 'Serviço'}
+                      {!isProduct
+                        ? 'Serviço'
+                        : ehOpcao
+                          ? (primeira ? 'Material · a cliente escolhe' : 'ou')
+                          : 'Produto'}
                     </span>
                     <select
                       value={it.entity_id}
@@ -333,6 +508,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                       ))}
                     </select>
                   </div>
+                  {primeira && (
                   <div>
                     {/* Rótulo por LINHA · QTD significa coisas diferentes:
                         produto = quanto sai do estoque (aceita 0,5 = meio pacote);
@@ -355,6 +531,8 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                       {isProduct ? '0,5 = meio pacote' : isCombo ? 'ger. 1' : ''}
                     </span>
                   </div>
+                  )}
+                  {primeira && (
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider block leading-tight" style={{ color: 'var(--admin-text-faded)' }}>R$/un</span>
                     <input
@@ -367,6 +545,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                       className="admin-input w-full px-2 py-1.5 rounded-lg text-sm tabular-nums mt-0.5"
                     />
                   </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeItem(it.uid)}
@@ -377,6 +556,85 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                   >
                     <IconTrash size={12} />
                   </button>
+
+                  {/* v120 · adicionar outra cor/opção ao mesmo material. Só no
+                      combo e só em produto — serviço não é escolha de balcão. */}
+                  {isCombo && isProduct && ehUltimaDoGrupo(idx) && (
+                    <button
+                      type="button"
+                      onClick={() => addOption(it.uid)}
+                      className="col-span-full text-[11px] font-bold inline-flex items-center justify-center gap-1 py-1.5 rounded-lg"
+                      style={{
+                        color: '#9333EA',
+                        background: 'rgba(147,51,234,0.08)',
+                        border: '1px dashed rgba(147,51,234,0.4)',
+                      }}
+                    >
+                      <IconPlus size={11} /> {ehOpcao ? 'Outra cor / opção' : 'Esse material tem mais de uma cor?'}
+                    </button>
+                  )}
+
+                  {/* Aviso de estoque do material · só no combo, e só depois de
+                      escolher o produto. Sem isso a tela promete "sai do
+                      estoque" e o material sai sem nunca baixar. */}
+                  {isCombo && isProduct && (() => {
+                    const prod = products.find((p) => p.id === it.entity_id)
+                    if (!prod) return null
+                    const estado = estadoEstoque(prod)
+                    if (estado === 'ok') return null
+                    const semControle = estado === 'sem-controle'
+                    const un = prod.unit ?? 'un'
+                    return (
+                      <div
+                        className="col-span-full rounded-lg px-2.5 py-2 space-y-2"
+                        style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}
+                      >
+                        <p className="text-[11px] leading-snug" style={{ color: '#B45309' }}>
+                          {semControle ? (
+                            <>
+                              <strong>Esse material não controla estoque.</strong> O combo vai funcionar,
+                              mas os {it.quantity || '0,5'} {un} não vão baixar da sua prateleira.
+                            </>
+                          ) : (
+                            <>
+                              <strong>Esse material está zerado.</strong> Como ele controla estoque,
+                              lançar o combo na comanda vai ser recusado por falta de saldo.
+                            </>
+                          )}
+                        </p>
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider block leading-tight" style={{ color: '#B45309' }}>
+                              Quantos você tem hoje?
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step="any"
+                              value={contagem[prod.id] ?? ''}
+                              onChange={(e) => setContagem((prev) => ({ ...prev, [prod.id]: e.target.value }))}
+                              placeholder={`Ex: 10 ${un}`}
+                              className="admin-input w-full px-2 py-1.5 rounded-lg text-sm tabular-nums mt-0.5"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => ligarControle(prod)}
+                            disabled={ligandoId === prod.id}
+                            className="px-3 py-2 rounded-lg text-xs font-bold disabled:opacity-50"
+                            style={{ background: '#B45309', color: '#fff' }}
+                          >
+                            {ligandoId === prod.id
+                              ? 'Salvando...'
+                              : semControle ? 'Ligar controle' : 'Lançar entrada'}
+                          </button>
+                        </div>
+                        {estoqueErro && (
+                          <p className="text-[11px]" style={{ color: '#DC2626' }}>{estoqueErro}</p>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
                 )
               })}
