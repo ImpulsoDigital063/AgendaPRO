@@ -29,7 +29,7 @@ export type FichaSection =
       title: string
       drawName: string
       params: FichaParam[]
-      background?: 'blank' | 'eyes' | 'rosto'
+      background?: 'blank' | 'eyes' | 'rosto' | 'corpo'
       /* Chave em businesses.ficha_imagens: se o negocio tiver um diagrama
          proprio cadastrado nessa chave, ele vira o fundo e vence o desenho
          embutido. A funcionalidade e do sistema; a arte e de quem comprou. */

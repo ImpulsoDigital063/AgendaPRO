@@ -22,7 +22,7 @@ type Props = {
   value?: string
   onChange: (dataUrl: string) => void
   disabled?: boolean
-  background?: 'blank' | 'eyes' | 'rosto'
+  background?: 'blank' | 'eyes' | 'rosto' | 'corpo'
   /* Diagrama do proprio negocio como fundo (perna, orelha, face, corpo).
      Vence os fundos desenhados: e o desenho que a clinica ja usa no papel,
      nao uma imitacao. A marcacao da profissional fica SEPARADA da imagem —
@@ -131,6 +131,65 @@ function drawRosto(ctx: CanvasRenderingContext2D) {
   ctx.setLineDash([])
 }
 
+/* SILHUETA DE CORPO — frente e costas lado a lado.
+   Procedimento corporal (enzimas, criolipólise, drenagem, massagem modeladora)
+   não se marca num rosto, e marcar "abdômen" num campo de texto perde a
+   informação que importa: ONDE no abdômen, e de que lado. Duas figuras porque
+   metade das aplicações é em flanco e culote, que só aparecem de costas.
+   Contorno simples de propósito: é guia pra marcação a dedo. */
+function drawCorpoFigura(ctx: CanvasRenderingContext2D, cx: number, rotulo: string) {
+  ctx.strokeStyle = '#CBD5E1'
+  ctx.lineWidth = 2
+  ctx.setLineDash([])
+
+  // cabeça e pescoço
+  ctx.beginPath()
+  ctx.ellipse(cx, 40, 16, 20, 0, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(cx - 7, 59); ctx.lineTo(cx - 8, 70)
+  ctx.moveTo(cx + 7, 59); ctx.lineTo(cx + 8, 70)
+  ctx.stroke()
+
+  // tronco: ombro → tórax → cintura → quadril
+  ctx.beginPath()
+  ctx.moveTo(cx - 8, 70)
+  ctx.lineTo(cx - 44, 82)
+  ctx.quadraticCurveTo(cx - 42, 120, cx - 34, 146)
+  ctx.quadraticCurveTo(cx - 40, 175, cx - 42, 196)
+  ctx.lineTo(cx + 42, 196)
+  ctx.quadraticCurveTo(cx + 40, 175, cx + 34, 146)
+  ctx.quadraticCurveTo(cx + 42, 120, cx + 44, 82)
+  ctx.lineTo(cx + 8, 70)
+  ctx.stroke()
+
+  // braços
+  for (const s of [-1, 1]) {
+    ctx.beginPath()
+    ctx.moveTo(cx + s * 44, 82)
+    ctx.quadraticCurveTo(cx + s * 60, 130, cx + s * 62, 190)
+    ctx.stroke()
+  }
+
+  // pernas (externa + interna a partir da virilha)
+  for (const s of [-1, 1]) {
+    ctx.beginPath()
+    ctx.moveTo(cx + s * 42, 196)
+    ctx.quadraticCurveTo(cx + s * 40, 245, cx + s * 34, 294)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(cx + s * 5, 202)
+    ctx.quadraticCurveTo(cx + s * 12, 245, cx + s * 14, 294)
+    ctx.stroke()
+  }
+
+  ctx.fillStyle = '#94A3B8'
+  ctx.font = '11px system-ui, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(rotulo, cx, 312)
+  ctx.textAlign = 'start'
+}
+
 export default function DrawCanvas({ value, onChange, disabled, background = 'blank', backgroundUrl }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawing = useRef(false)
@@ -144,6 +203,10 @@ export default function DrawCanvas({ value, onChange, disabled, background = 'bl
       drawEye(ctx, 515, 150, 250, 100, 'Olho direito')
     }
     if (background === 'rosto') drawRosto(ctx)
+    if (background === 'corpo') {
+      drawCorpoFigura(ctx, 200, 'Frente')
+      drawCorpoFigura(ctx, 500, 'Costas')
+    }
   }
 
   /* Init: fundo + marcacao ja salva por cima.
