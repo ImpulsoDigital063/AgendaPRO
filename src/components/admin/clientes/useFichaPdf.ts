@@ -62,16 +62,54 @@ export type CarimboPdf = {
   versao?: number | null
 }
 
-async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Customer, dateIso?: string, carimbo?: CarimboPdf) {
+/* MARCA DO NEGÓCIO NO PDF.
+   A ficha impressa é documento que sai da clínica e vai pra mão da paciente —
+   e antes saía com cara de sistema, não da clínica. Tudo aqui vem do cadastro
+   do PRÓPRIO negócio: cada um imprime a marca dele, ninguém herda a de outro.
+
+   `rodapeLinha` e `rodapeNota` são texto livre por negócio porque a linha de
+   conformidade é específica da profissão (CFBio pra biomédica, CRO pra
+   dentista, nada pra barbearia) — cravar um texto único imprimiria conselho
+   errado no documento de alguém. */
+export type MarcaPdf = {
+  nome?: string | null
+  logoUrl?: string | null
+  corPrimaria?: string | null
+  telefone?: string | null
+  endereco?: string | null
+  rodapeLinha?: string | null
+  rodapeNota?: string | null
+}
+
+function hexToRgb(hex?: string | null): [number, number, number] | null {
+  if (!hex) return null
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Customer, dateIso?: string, carimbo?: CarimboPdf, marca?: MarcaPdf) {
   const { default: jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
   const W = doc.internal.pageSize.getWidth()
   const H = doc.internal.pageSize.getHeight()
   const mX = 14
   const cw = W - mX * 2
-  let y = 18
 
-  const ensure = (need: number) => { if (y + need > H - 14) { doc.addPage(); y = 18 } }
+  const cor = hexToRgb(marca?.corPrimaria)
+  /* Só vira documento de marca se houver o que mostrar. Negócio sem logo nem
+     cor cadastrada segue com o PDF limpo de antes, sem faixa vazia no topo. */
+  const temMarca = Boolean(marca && (marca.logoUrl || cor))
+  const FAIXA = 16
+  const topo = temMarca ? FAIXA + 10 : 18
+  /* Rodapé reserva mais espaço quando tem marca: são até 4 linhas embaixo
+     (contato, conformidade e as 2 do carimbo de integridade). Sem esta conta
+     o texto do corpo encosta no rodapé na última página. */
+  const rodapeAltura = (temMarca ? 22 : 14) + (carimbo?.assinado_em ? 7 : 0)
+  let y = topo
+
+  const ensure = (need: number) => { if (y + need > H - rodapeAltura) { doc.addPage(); y = topo } }
 
   // Cabeçalho
   doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(15, 23, 42)
@@ -169,6 +207,42 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
     }
   }
 
+  /* ── FAIXA DE MARCA + RODAPE DE CONTATO ────────────────────────
+     Pintado DEPOIS do conteúdo e página a página: o corpo já nasce abaixo da
+     faixa (topo) e acima do rodapé (rodapeAltura), então não há sobreposição —
+     e assim toda página sai com a marca, não só a primeira. Folha de ficha
+     circula solta. */
+  if (temMarca) {
+    const logo = marca?.logoUrl ? await toJpeg(marca.logoUrl) : null
+    const contato = marca?.rodapeLinha?.trim()
+      || [marca?.nome, marca?.telefone, marca?.endereco].filter(Boolean).join('  ·  ')
+    const total = doc.getNumberOfPages()
+    for (let p = 1; p <= total; p++) {
+      doc.setPage(p)
+      if (cor) {
+        doc.setFillColor(cor[0], cor[1], cor[2])
+        doc.rect(0, 0, W, FAIXA, 'F')
+      }
+      if (logo) {
+        const h = FAIXA - 3
+        const w = h * (logo.w / logo.h)
+        doc.addImage(logo.dataUrl, 'JPEG', (W - w) / 2, 1.5, w, h)
+      }
+      if (contato) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(90, 90, 90)
+        doc.text(contato, W / 2, H - (carimbo?.assinado_em ? 20 : 12), { align: 'center', maxWidth: cw })
+      }
+      if (marca?.rodapeNota) {
+        doc.setFontSize(5.5); doc.setTextColor(140, 140, 140)
+        doc.text(marca.rodapeNota, W / 2, H - (carimbo?.assinado_em ? 17 : 9), { align: 'center', maxWidth: cw })
+      }
+      if (cor) {
+        doc.setFillColor(cor[0], cor[1], cor[2])
+        doc.rect(0, H - 3, W, 3, 'F')
+      }
+    }
+  }
+
   /* ── RODAPE DE INTEGRIDADE ─────────────────────────────────────
      E o PDF que ela apresenta se alguem questionar. De nada adianta o hash
      ficar so no banco: quem recebe o papel precisa ter como conferir. Vai
@@ -201,13 +275,32 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
   return { pdf: doc, filename: `ficha-${ficha.slug}-${slug}.pdf` }
 }
 
-export async function downloadFichaPdf(args: { ficha: NicheFicha; values: FichaValues; customer: Customer; dateIso?: string; carimbo?: CarimboPdf }) {
-  const { pdf, filename } = await buildPdf(args.ficha, args.values, args.customer, args.dateIso, args.carimbo)
+export async function downloadFichaPdf(args: { ficha: NicheFicha; values: FichaValues; customer: Customer; dateIso?: string; carimbo?: CarimboPdf; marca?: MarcaPdf }) {
+  const { pdf, filename } = await buildPdf(args.ficha, args.values, args.customer, args.dateIso, args.carimbo, args.marca)
   pdf.save(filename)
 }
 
-export async function shareFichaPdf(args: { ficha: NicheFicha; values: FichaValues; customer: Customer; dateIso?: string; text: string; carimbo?: CarimboPdf }) {
-  const { pdf, filename } = await buildPdf(args.ficha, args.values, args.customer, args.dateIso, args.carimbo)
+/* IMPRIMIR. Antes só dava pra baixar o arquivo e achar ele depois pra mandar
+   pra impressora — no celular, que é onde ela atende, isso é um caminho que
+   ninguém percorre no meio do atendimento. Abre o PDF já no diálogo de
+   impressão. Se o navegador bloquear o popup, cai no download, que é o
+   comportamento antigo e nunca deixa a profissional sem saída. */
+export async function imprimirFichaPdf(args: { ficha: NicheFicha; values: FichaValues; customer: Customer; dateIso?: string; carimbo?: CarimboPdf; marca?: MarcaPdf }) {
+  const { pdf, filename } = await buildPdf(args.ficha, args.values, args.customer, args.dateIso, args.carimbo, args.marca)
+  try {
+    pdf.autoPrint()
+    const url = URL.createObjectURL(pdf.output('blob'))
+    const win = window.open(url, '_blank')
+    if (!win) { URL.revokeObjectURL(url); pdf.save(filename); return }
+    // libera o blob depois que o visualizador já leu
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch {
+    pdf.save(filename)
+  }
+}
+
+export async function shareFichaPdf(args: { ficha: NicheFicha; values: FichaValues; customer: Customer; dateIso?: string; text: string; carimbo?: CarimboPdf; marca?: MarcaPdf }) {
+  const { pdf, filename } = await buildPdf(args.ficha, args.values, args.customer, args.dateIso, args.carimbo, args.marca)
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       const blob = pdf.output('blob')

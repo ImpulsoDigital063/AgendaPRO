@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { IconPlus, IconTrash, IconCheck } from '@/components/ui/Icon'
 import DrawCanvas from './DrawCanvas'
 import FichaDedicada, { type FichaValues } from './FichaDedicada'
+import type { MarcaPdf } from './useFichaPdf'
 import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { fichasDisponiveis } from '@/lib/fichas/disponiveis'
 import type { NicheFicha } from '@/lib/fichas/types'
@@ -62,6 +63,7 @@ export default function FichasTab({ customerId }: Props) {
   const [nicheState, setNicheState] = useState<{ ficha: NicheFicha; responseId: string | null; initialValues?: FichaValues } | null>(null)
   const [businessCategory, setBusinessCategory] = useState<string | null>(null)
   const [businessSlug, setBusinessSlug] = useState<string | null>(null)
+  const [marca, setMarca] = useState<MarcaPdf | undefined>(undefined)
   const [nicheEnabled, setNicheEnabled] = useState<string[] | null>(null) // null = todas
   const [fichaImagens, setFichaImagens] = useState<Record<string, string> | null>(null)
 
@@ -75,14 +77,23 @@ export default function FichasTab({ customerId }: Props) {
         .select('id, template_id, data, created_at, niche_slug, template:client_form_templates(id, name, fields)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false }),
-      sb.from('customers').select('name, phone, birthday, business:businesses(slug, description, category, enabled_niche_fichas, ficha_imagens)').eq('id', customerId).maybeSingle(),
+      sb.from('customers').select('name, phone, birthday, business:businesses(slug, name, phone, address, brand_primary, brand_logo_url, ficha_rodape, description, category, enabled_niche_fichas, ficha_imagens)').eq('id', customerId).maybeSingle(),
     ])
-    type BizRow = { slug: string | null; description: string | null; category: string | null; enabled_niche_fichas: string[] | null; ficha_imagens: Record<string, string> | null }
+    type BizRow = { slug: string | null; name: string | null; phone: string | null; address: string | null; brand_primary: string | null; brand_logo_url: string | null; ficha_rodape: { linha?: string; nota?: string } | null; description: string | null; category: string | null; enabled_niche_fichas: string[] | null; ficha_imagens: Record<string, string> | null }
     const custRow = custRes.data as { name: string; phone: string | null; birthday: string | null; business?: BizRow | BizRow[] | null } | null
     setCustomer(custRow ? { name: custRow.name, phone: custRow.phone, birthday: custRow.birthday } : null)
     const biz = Array.isArray(custRow?.business) ? custRow?.business[0] : custRow?.business
     setBusinessCategory(biz?.category ?? biz?.description ?? null)
     setBusinessSlug(biz?.slug ?? null)
+    setMarca({
+      nome: biz?.name ?? null,
+      logoUrl: biz?.brand_logo_url ?? null,
+      corPrimaria: biz?.brand_primary ?? null,
+      telefone: biz?.phone ?? null,
+      endereco: biz?.address ?? null,
+      rodapeLinha: biz?.ficha_rodape?.linha ?? null,
+      rodapeNota: biz?.ficha_rodape?.nota ?? null,
+    })
     setNicheEnabled(biz?.enabled_niche_fichas ?? null)
     setFichaImagens(biz?.ficha_imagens ?? null)
     setTemplates((tplRes.data ?? []) as Template[])
@@ -195,6 +206,7 @@ export default function FichasTab({ customerId }: Props) {
     return (
       <FichaDedicada
         fichaImagens={fichaImagens}
+        marca={marca}
         ficha={nicheState.ficha}
         customer={customer}
         initialValues={nicheState.initialValues}

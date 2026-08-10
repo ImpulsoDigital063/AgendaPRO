@@ -18,7 +18,7 @@ import { useMemo, useState } from 'react'
 import type { NicheFicha, FichaParam } from '@/lib/fichas/types'
 import DrawCanvas from './DrawCanvas'
 import { IconCheck, IconWhatsapp } from '@/components/ui/Icon'
-import { downloadFichaPdf, shareFichaPdf } from './useFichaPdf'
+import { downloadFichaPdf, shareFichaPdf, imprimirFichaPdf, type MarcaPdf } from './useFichaPdf'
 
 export type FichaValues = Record<string, string | string[] | boolean>
 
@@ -32,6 +32,9 @@ type Props = {
      data quando vem true, e a partir daí o banco recusa alteração. */
   onSave: (values: FichaValues, opts?: { assinar?: boolean }) => void | Promise<void>
   onCancel: () => void
+  /* Marca do negócio pro PDF/impressão (logo, cor, rodapé). Vem do cadastro
+     dele — a tela não decide nada de identidade visual. */
+  marca?: MarcaPdf
   /* Diagramas do proprio negocio (businesses.ficha_imagens), por chave. Quando
      existe um pra este mapeamento, ele vence o desenho embutido: e o mesmo
      desenho que a clinica ja usa no papel, nao uma imitacao nossa. */
@@ -69,7 +72,7 @@ function ParamInput({
   )
 }
 
-export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel, fichaImagens }: Props) {
+export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel, fichaImagens, marca }: Props) {
   const [values, setValues] = useState<FichaValues>(initialValues ?? {})
   const [pdfBusy, setPdfBusy] = useState(false)
   const setVal = (k: string, v: FichaValues[string]) => setValues((p) => ({ ...p, [k]: v }))
@@ -77,12 +80,16 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
 
   async function onExport() {
     setPdfBusy(true)
-    try { await downloadFichaPdf({ ficha, values, customer }) } finally { setPdfBusy(false) }
+    try { await downloadFichaPdf({ ficha, values, customer, marca }) } finally { setPdfBusy(false) }
+  }
+  async function onImprimir() {
+    setPdfBusy(true)
+    try { await imprimirFichaPdf({ ficha, values, customer, marca }) } finally { setPdfBusy(false) }
   }
   async function onSend() {
     setPdfBusy(true)
     const text = `Olá ${customer?.name ?? ''}, segue a sua ficha. Qualquer dúvida, estou à disposição.`
-    try { await shareFichaPdf({ ficha, values, customer, text }) } finally { setPdfBusy(false) }
+    try { await shareFichaPdf({ ficha, values, customer, text, marca }) } finally { setPdfBusy(false) }
   }
 
   /* O que a ficha exige pra poder ser assinada: os aceites marcados como
@@ -255,7 +262,8 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
           fileira de cinco botões iguais e a profissional erra no toque. */}
       <div className="flex items-center justify-between gap-2 pb-2 flex-wrap">
         <div className="flex gap-2">
-          <button type="button" onClick={onExport} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{pdfBusy ? '…' : 'Exportar PDF'}</button>
+          <button type="button" onClick={onImprimir} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{pdfBusy ? '…' : 'Imprimir'}</button>
+          <button type="button" onClick={onExport} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{pdfBusy ? '…' : 'PDF'}</button>
           <button type="button" onClick={onSend} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 disabled:opacity-50" style={{ background: '#25D366', color: '#fff' }}><IconWhatsapp size={14} /> Enviar</button>
         </div>
         <div className="flex gap-2 items-center">
