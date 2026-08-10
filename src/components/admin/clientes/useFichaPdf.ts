@@ -29,7 +29,7 @@ function loadImg(src: string): Promise<HTMLImageElement> {
     img.src = src
   })
 }
-async function toJpeg(src: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
+async function toJpeg(src: string, opts?: { recortarMargem?: boolean }): Promise<{ dataUrl: string; w: number; h: number; corFundo?: string } | null> {
   try {
     const img = await loadImg(src)
     const w = img.naturalWidth || 1
@@ -41,9 +41,84 @@ async function toJpeg(src: string): Promise<{ dataUrl: string; w: number; h: num
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, w, h)
     ctx.drawImage(img, 0, 0)
-    return { dataUrl: canvas.toDataURL('image/jpeg', 0.9), w, h }
+    if (!opts?.recortarMargem) return { dataUrl: canvas.toDataURL('image/jpeg', 0.9), w, h }
+
+    /* RECORTE DA MARGEM SÓLIDA DA LOGO.
+       Logo de negócio quase sempre vem como quadrado com o desenho no meio e
+       uma borda enorme da cor de fundo. Encaixada crua numa faixa, ela vira
+       um selo minúsculo cercado de vazio — foi exatamente o que saiu no meu
+       primeiro PDF. Recortando a borda uniforme, o lockup enche a faixa.
+       De quebra a cor da borda É a cor da faixa, então marca sem cor
+       cadastrada ainda sai com a faixa certa. */
+    const d = ctx.getImageData(0, 0, w, h).data
+    const base = [d[0], d[1], d[2]]
+    const igual = (i: number) => Math.abs(d[i] - base[0]) < 14 && Math.abs(d[i + 1] - base[1]) < 14 && Math.abs(d[i + 2] - base[2]) < 14
+    const linhaLimpa = (yy: number) => { for (let x = 0; x < w; x++) if (!igual((yy * w + x) * 4)) return false; return true }
+    const colunaLimpa = (xx: number) => { for (let y = 0; y < h; y++) if (!igual((y * w + xx) * 4)) return false; return true }
+    let top = 0, bot = h - 1, left = 0, right = w - 1
+    while (top < bot && linhaLimpa(top)) top++
+    while (bot > top && linhaLimpa(bot)) bot--
+    while (left < right && colunaLimpa(left)) left++
+    while (right > left && colunaLimpa(right)) right--
+    const cw2 = right - left + 1
+    const ch2 = bot - top + 1
+    const corFundo = '#' + base.map((v) => v.toString(16).padStart(2, '0')).join('')
+    // margem sólida quase inexistente → devolve a imagem inteira
+    if (cw2 < w * 0.15 || ch2 < h * 0.05) return { dataUrl: canvas.toDataURL('image/jpeg', 0.9), w, h, corFundo }
+    const c2 = document.createElement('canvas')
+    c2.width = cw2
+    c2.height = ch2
+    const x2 = c2.getContext('2d')!
+    x2.drawImage(canvas, left, top, cw2, ch2, 0, 0, cw2, ch2)
+    return { dataUrl: c2.toDataURL('image/jpeg', 0.92), w: cw2, h: ch2, corFundo }
   } catch {
     return null
+  }
+}
+
+/* Montserrat é a fonte do kit de papel da clínica (lida direto do PDF dela).
+   Servida de /public e carregada só na hora de gerar o PDF: embutir em base64
+   no bundle somaria ~1,2 MB ao carregamento do painel inteiro, pra um recurso
+   que a maioria das telas nunca usa. Se a fonte não vier, cai em Helvetica e
+   o documento sai igual, só com a tipografia padrão. */
+let fontesProntas: string | null = null
+async function carregarFontes(doc: import('jspdf').jsPDF): Promise<string> {
+  if (fontesProntas !== null) {
+    if (fontesProntas === 'montserrat') {
+      // já registrada nesta sessão? jsPDF é por instância, então registra de novo
+      try {
+        const cache = (window as unknown as { __montserrat?: Record<string, string> }).__montserrat
+        if (cache) {
+          doc.addFileToVFS('Montserrat-Regular.ttf', cache.regular)
+          doc.addFont('Montserrat-Regular.ttf', 'Montserrat', 'normal')
+          doc.addFileToVFS('Montserrat-Bold.ttf', cache.bold)
+          doc.addFont('Montserrat-Bold.ttf', 'Montserrat', 'bold')
+          return 'Montserrat'
+        }
+      } catch { /* cai no helvetica */ }
+    }
+    return fontesProntas === 'montserrat' ? 'Montserrat' : 'helvetica'
+  }
+  try {
+    const b64 = async (u: string) => {
+      const r = await fetch(u)
+      if (!r.ok) throw new Error('404')
+      const buf = new Uint8Array(await r.arrayBuffer())
+      let s = ''
+      for (let i = 0; i < buf.length; i += 8192) s += String.fromCharCode(...buf.subarray(i, i + 8192))
+      return btoa(s)
+    }
+    const [regular, bold] = await Promise.all([b64('/fonts/Montserrat-Regular.ttf'), b64('/fonts/Montserrat-Bold.ttf')])
+    ;(window as unknown as { __montserrat?: Record<string, string> }).__montserrat = { regular, bold }
+    doc.addFileToVFS('Montserrat-Regular.ttf', regular)
+    doc.addFont('Montserrat-Regular.ttf', 'Montserrat', 'normal')
+    doc.addFileToVFS('Montserrat-Bold.ttf', bold)
+    doc.addFont('Montserrat-Bold.ttf', 'Montserrat', 'bold')
+    fontesProntas = 'montserrat'
+    return 'Montserrat'
+  } catch {
+    fontesProntas = 'helvetica'
+    return 'helvetica'
   }
 }
 
@@ -75,6 +150,10 @@ export type MarcaPdf = {
   nome?: string | null
   logoUrl?: string | null
   corPrimaria?: string | null
+  /* Cor da faixa impressa, quando o material de papel do negócio usa um tom
+     diferente do da marca digital. A clínica é o caso: o painel dela é
+     #6B6C55 e o kit impresso é #8A957F. */
+  corFaixa?: string | null
   telefone?: string | null
   endereco?: string | null
   rodapeLinha?: string | null
@@ -94,15 +173,55 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
   const W = doc.internal.pageSize.getWidth()
   const H = doc.internal.pageSize.getHeight()
+  /* margem do texto: 10,2 mm e a do kit dela; 14 mm segue como padrao
+     do sistema pra quem nao tem marca configurada */
   const mX = 14
-  const cw = W - mX * 2
+  let cw = W - mX * 2
 
-  const cor = hexToRgb(marca?.corPrimaria)
+  /* MEDIDAS TIRADAS DO KIT DE PAPEL DA CLÍNICA, não estimadas: li o PDF
+     original dela e converti de pt pra mm (A4 = 595,5 x 842,3 pt).
+       faixa verde do topo ... 91 pt   = 32,1 mm
+       linha dourada .......... 3,8 pt =  1,34 mm
+       barra de título ....... 25,6 pt =  9,0 mm
+       tira do rodapé ......... 8,8 pt =  3,1 mm
+       margem do texto ....... 29 pt   = 10,2 mm
+     O gradiente dourado também é o dela: #8F765A → #EEE9D7 → #8E765A. */
+  const FAIXA = 32.1
+  const OURO = 1.35
+  const TITULO_ALT = 9
+  const OURO_PARADAS = ['#8F765A', '#CABFA9', '#EEE9D7', '#CAC0A9', '#8E765A']
+
+  const logo = marca?.logoUrl ? await toJpeg(marca.logoUrl, { recortarMargem: true }) : null
+  /* Ordem da cor da faixa: a escolhida pra ficha vence; senão a cor da marca;
+     senão a própria borda da logo, que é de onde a faixa dela nasce. */
+  const cor = hexToRgb(marca?.corFaixa) ?? hexToRgb(marca?.corPrimaria) ?? hexToRgb(logo?.corFundo ?? null)
   /* Só vira documento de marca se houver o que mostrar. Negócio sem logo nem
      cor cadastrada segue com o PDF limpo de antes, sem faixa vazia no topo. */
-  const temMarca = Boolean(marca && (marca.logoUrl || cor))
-  const FAIXA = 16
-  const topo = temMarca ? FAIXA + 10 : 18
+  const temMarca = Boolean(marca && (logo || cor))
+  const fonte = temMarca ? await carregarFontes(doc) : 'helvetica'
+
+  /* jsPDF não tem gradiente: emula com fatias verticais interpoladas. 0,7 mm
+     por fatia é fino o bastante pra não aparecer degrau na impressão. */
+  const barraGradiente = (x: number, yy: number, larg: number, alt: number, paradas: string[]) => {
+    const rgb = paradas.map((p) => hexToRgb(p)!).filter(Boolean)
+    if (rgb.length < 2) return
+    const passo = 0.7
+    const n = Math.max(2, Math.ceil(larg / passo))
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1)
+      const seg = Math.min(rgb.length - 2, Math.floor(t * (rgb.length - 1)))
+      const tl = t * (rgb.length - 1) - seg
+      const c0 = rgb[seg], c1 = rgb[seg + 1]
+      doc.setFillColor(
+        Math.round(c0[0] + (c1[0] - c0[0]) * tl),
+        Math.round(c0[1] + (c1[1] - c0[1]) * tl),
+        Math.round(c0[2] + (c1[2] - c0[2]) * tl),
+      )
+      doc.rect(x + (i * larg) / n, yy, larg / n + 0.35, alt, 'F')
+    }
+  }
+
+  const topo = temMarca ? FAIXA + OURO + 6 : 18
   /* Rodapé reserva mais espaço quando tem marca: são até 4 linhas embaixo
      (contato, conformidade e as 2 do carimbo de integridade). Sem esta conta
      o texto do corpo encosta no rodapé na última página. */
@@ -112,41 +231,63 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
   const ensure = (need: number) => { if (y + need > H - rodapeAltura) { doc.addPage(); y = topo } }
 
   // Cabeçalho
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(15, 23, 42)
-  doc.text(ficha.name, mX, y)
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(107, 114, 128)
-  doc.text(fmtDataLonga(dateIso ? new Date(dateIso) : new Date()), W - mX, y, { align: 'right' })
-  y += 8
-  if (customer?.name) {
-    doc.setFontSize(12); doc.setTextColor(15, 23, 42)
-    doc.text(customer.name + (customer.phone ? `  ·  ${customer.phone}` : ''), mX, y)
+  if (temMarca) {
+    /* Título da ficha na barra dourada de largura inteira, como a folha dela:
+       texto creme, caixa alta, espaçado. */
+    barraGradiente(0, y, W, TITULO_ALT, OURO_PARADAS)
+    doc.setFont(fonte, 'bold'); doc.setFontSize(11); doc.setTextColor(255, 255, 255)
+    doc.text(ficha.name.toUpperCase(), W / 2, y + TITULO_ALT / 2 + 1.4, { align: 'center', maxWidth: cw })
+    y += TITULO_ALT + 6
+    /* Identificação em linhas de ficha, no lugar de nome solto. */
+    doc.setFont(fonte, 'normal'); doc.setFontSize(9.5); doc.setTextColor(40, 40, 40)
+    const dataTxt = fmtDataLonga(dateIso ? new Date(dateIso) : new Date())
+    doc.text(`Paciente: ${customer?.name ?? ''}`, mX, y)
+    doc.text(`Data: ${dataTxt}`, W - mX, y, { align: 'right' })
+    y += 5.5
+    if (customer?.phone || customer?.birthday) {
+      const nasc = customer?.birthday ? new Date(customer.birthday + 'T00:00:00').toLocaleDateString('pt-BR') : ''
+      doc.text(`Contato: ${customer?.phone ?? ''}`, mX, y)
+      if (nasc) doc.text(`Nascimento: ${nasc}`, W - mX, y, { align: 'right' })
+      y += 5.5
+    }
+    doc.setDrawColor(200, 196, 180); doc.setLineWidth(0.25); doc.line(mX, y, W - mX, y); y += 7
+  } else {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(15, 23, 42)
+    doc.text(ficha.name, mX, y)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(107, 114, 128)
+    doc.text(fmtDataLonga(dateIso ? new Date(dateIso) : new Date()), W - mX, y, { align: 'right' })
     y += 8
+    if (customer?.name) {
+      doc.setFontSize(12); doc.setTextColor(15, 23, 42)
+      doc.text(customer.name + (customer.phone ? `  ·  ${customer.phone}` : ''), mX, y)
+      y += 8
+    }
+    doc.setDrawColor(229, 231, 235); doc.setLineWidth(0.3); doc.line(mX, y, W - mX, y); y += 8
   }
-  doc.setDrawColor(229, 231, 235); doc.setLineWidth(0.3); doc.line(mX, y, W - mX, y); y += 8
 
   const sectionTitle = (t: string) => {
     ensure(12)
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 23, 42)
+    doc.setFont(fonte, 'bold'); doc.setFontSize(10); doc.setTextColor(15, 23, 42)
     doc.text(t.toUpperCase(), mX, y); y += 2
     doc.setDrawColor(229, 231, 235); doc.line(mX, y, W - mX, y); y += 6
   }
   const kv = (label: string, value: string) => {
     if (!value) return
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(107, 114, 128)
+    doc.setFont(fonte, 'bold'); doc.setFontSize(9); doc.setTextColor(107, 114, 128)
     // Rótulo largo (textarea de procedimento etc.) não cabe na coluna de 45mm →
     // empilha: rótulo em cima, valor embaixo. Rótulo curto = duas colunas.
     if (doc.getTextWidth(label) > 40) {
       const labelLines = doc.splitTextToSize(label, cw)
       ensure(labelLines.length * 4.5 + 5)
       doc.text(labelLines, mX, y); y += labelLines.length * 4.5 + 1
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(31, 41, 55)
+      doc.setFont(fonte, 'normal'); doc.setFontSize(10); doc.setTextColor(31, 41, 55)
       const lines = doc.splitTextToSize(value, cw)
       ensure(lines.length * 5)
       doc.text(lines, mX, y); y += lines.length * 5 + 2
     } else {
       ensure(7)
       doc.text(label, mX, y)
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(31, 41, 55)
+      doc.setFont(fonte, 'normal'); doc.setFontSize(10); doc.setTextColor(31, 41, 55)
       const lines = doc.splitTextToSize(value, cw - 45)
       doc.text(lines, mX + 45, y)
       y += Math.max(6, lines.length * 5)
@@ -155,7 +296,7 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
   const para = (txt: string, size = 9, color: [number, number, number] = [75, 85, 99]) => {
     const lines = doc.splitTextToSize(txt, cw)
     ensure(lines.length * 4 + 2)
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(size); doc.setTextColor(...color)
+    doc.setFont(fonte, 'normal'); doc.setFontSize(size); doc.setTextColor(...color)
     doc.text(lines, mX, y); y += lines.length * (size * 0.42) + 3
   }
   const image = async (src: string, maxW: number, maxH: number) => {
@@ -196,7 +337,7 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
         const yes = values[c.name] === true
         const lines = doc.splitTextToSize(`${yes ? '[X]' : '[   ]'}  ${c.label}`, cw)
         ensure(lines.length * 4.5 + 2)
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(31, 41, 55)
+        doc.setFont(fonte, 'normal'); doc.setFontSize(9); doc.setTextColor(31, 41, 55)
         doc.text(lines, mX, y); y += lines.length * 4.5 + 2
       }
       y += 2
@@ -213,32 +354,40 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
      e assim toda página sai com a marca, não só a primeira. Folha de ficha
      circula solta. */
   if (temMarca) {
-    const logo = marca?.logoUrl ? await toJpeg(marca.logoUrl) : null
     const contato = marca?.rodapeLinha?.trim()
-      || [marca?.nome, marca?.telefone, marca?.endereco].filter(Boolean).join('  ·  ')
+      || [marca?.nome, marca?.telefone, marca?.endereco].filter(Boolean).join('  |  ')
+    const yContato = H - (carimbo?.assinado_em ? 21 : 13)
     const total = doc.getNumberOfPages()
     for (let p = 1; p <= total; p++) {
       doc.setPage(p)
+
+      // faixa da marca + logo ocupando a altura útil dela
       if (cor) {
         doc.setFillColor(cor[0], cor[1], cor[2])
         doc.rect(0, 0, W, FAIXA, 'F')
       }
       if (logo) {
-        const h = FAIXA - 3
-        const w = h * (logo.w / logo.h)
-        doc.addImage(logo.dataUrl, 'JPEG', (W - w) / 2, 1.5, w, h)
+        const alvoH = FAIXA - 9
+        const alvoW = Math.min(W * 0.46, alvoH * (logo.w / logo.h))
+        const h2 = alvoW / (logo.w / logo.h)
+        doc.addImage(logo.dataUrl, 'JPEG', (W - alvoW) / 2, (FAIXA - h2) / 2, alvoW, h2)
       }
+      // fio dourado logo abaixo da faixa — a assinatura visual do material dela
+      barraGradiente(0, FAIXA, W, OURO, OURO_PARADAS)
+
       if (contato) {
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(90, 90, 90)
-        doc.text(contato, W / 2, H - (carimbo?.assinado_em ? 20 : 12), { align: 'center', maxWidth: cw })
+        doc.setFont(fonte, 'normal'); doc.setFontSize(6.8); doc.setTextColor(90, 90, 90)
+        doc.text(contato, W / 2, yContato, { align: 'center', maxWidth: cw })
       }
       if (marca?.rodapeNota) {
-        doc.setFontSize(5.5); doc.setTextColor(140, 140, 140)
-        doc.text(marca.rodapeNota, W / 2, H - (carimbo?.assinado_em ? 17 : 9), { align: 'center', maxWidth: cw })
+        doc.setFontSize(5.2); doc.setTextColor(150, 150, 150)
+        doc.text(marca.rodapeNota, W / 2, yContato + 3.2, { align: 'center', maxWidth: cw })
       }
+      // fio dourado + tira da marca fechando a página, como no rodapé dela
+      barraGradiente(0, H - 3.1 - OURO, W, OURO, OURO_PARADAS)
       if (cor) {
         doc.setFillColor(cor[0], cor[1], cor[2])
-        doc.rect(0, H - 3, W, 3, 'F')
+        doc.rect(0, H - 3.1, W, 3.1, 'F')
       }
     }
   }
@@ -264,7 +413,7 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
       doc.setPage(p)
       doc.setDrawColor(200, 200, 200)
       doc.line(mX, H - 13, W - mX, H - 13)
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(110, 110, 110)
+      doc.setFont(fonte, 'normal'); doc.setFontSize(6.5); doc.setTextColor(110, 110, 110)
       doc.text(linha1, mX, H - 9.5)
       doc.text(linha2, mX, H - 6.5)
       doc.text(`${p}/${total}`, W - mX, H - 6.5, { align: 'right' })

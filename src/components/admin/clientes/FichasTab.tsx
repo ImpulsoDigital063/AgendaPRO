@@ -79,7 +79,7 @@ export default function FichasTab({ customerId }: Props) {
         .order('created_at', { ascending: false }),
       sb.from('customers').select('name, phone, birthday, business:businesses(slug, name, phone, address, brand_primary, brand_logo_url, ficha_rodape, description, category, enabled_niche_fichas, ficha_imagens)').eq('id', customerId).maybeSingle(),
     ])
-    type BizRow = { slug: string | null; name: string | null; phone: string | null; address: string | null; brand_primary: string | null; brand_logo_url: string | null; ficha_rodape: { linha?: string; nota?: string } | null; description: string | null; category: string | null; enabled_niche_fichas: string[] | null; ficha_imagens: Record<string, string> | null }
+    type BizRow = { slug: string | null; name: string | null; phone: string | null; address: string | null; brand_primary: string | null; brand_logo_url: string | null; ficha_rodape: { linha?: string; nota?: string; logo?: string; cor?: string } | null; description: string | null; category: string | null; enabled_niche_fichas: string[] | null; ficha_imagens: Record<string, string> | null }
     const custRow = custRes.data as { name: string; phone: string | null; birthday: string | null; business?: BizRow | BizRow[] | null } | null
     setCustomer(custRow ? { name: custRow.name, phone: custRow.phone, birthday: custRow.birthday } : null)
     const biz = Array.isArray(custRow?.business) ? custRow?.business[0] : custRow?.business
@@ -87,8 +87,12 @@ export default function FichasTab({ customerId }: Props) {
     setBusinessSlug(biz?.slug ?? null)
     setMarca({
       nome: biz?.name ?? null,
-      logoUrl: biz?.brand_logo_url ?? null,
+      /* logo/cor DO IMPRESSO vencem as da marca digital: o material de
+         papel do negocio pode usar outra versao da logo e outro tom, que e o
+         caso da clinica (painel #6B6C55, kit impresso #8A957F). */
+      logoUrl: biz?.ficha_rodape?.logo ?? biz?.brand_logo_url ?? null,
       corPrimaria: biz?.brand_primary ?? null,
+      corFaixa: biz?.ficha_rodape?.cor ?? null,
       telefone: biz?.phone ?? null,
       endereco: biz?.address ?? null,
       rodapeLinha: biz?.ficha_rodape?.linha ?? null,
