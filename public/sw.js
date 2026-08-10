@@ -13,7 +13,11 @@
 // v3 (24/07): bump ao adicionar os handlers de Web Push (push +
 // notificationclick) — força os SWs instalados a pegar a versão que sabe
 // mostrar notificação de agendamento novo pro dono.
-const STATIC_CACHE_VERSION = 'agendapro-static-v3'
+// v4 (10/08): Olímpio abriu o app e viu a tela SEM CSS — HTML novo carregou
+// (não é cacheado) e o CSS novo do deploy morreu no caminho. O fetch abaixo
+// não tinha .catch(), então qualquer oscilação de rede matava o recurso em vez
+// de tentar o cache. Mesmo sintoma de 03/06, que na época pegou o JS.
+const STATIC_CACHE_VERSION = 'agendapro-static-v4'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
@@ -72,14 +76,27 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached
-        return fetch(request).then((response) => {
-          // So cacheia se a resposta foi OK e nao e opaca
-          if (response.ok && response.type === 'basic') {
-            const clone = response.clone()
-            caches.open(STATIC_CACHE_VERSION).then((cache) => cache.put(request, clone))
-          }
-          return response
-        })
+        return fetch(request)
+          .then((response) => {
+            // So cacheia se a resposta foi OK e nao e opaca
+            if (response.ok && response.type === 'basic') {
+              const clone = response.clone()
+              caches.open(STATIC_CACHE_VERSION).then((cache) => cache.put(request, clone))
+            }
+            return response
+          })
+          .catch(async () => {
+            // Rede falhou buscando um estatico. SEM este catch, a promise
+            // rejeitava e o recurso simplesmente nao chegava — foi assim que
+            // o Olimpio abriu o app sem CSS nenhum (10/08). Nao existe fallback
+            // possivel pra um chunk com hash novo, mas devolver uma resposta
+            // 504 explicita e melhor que rejeitar: o browser trata como erro de
+            // recurso e o proximo reload tenta de novo, em vez de ficar num
+            // estado quebrado com o SW no meio do caminho.
+            const ultimaChance = await caches.match(request, { ignoreSearch: true })
+            if (ultimaChance) return ultimaChance
+            return new Response('', { status: 504, statusText: 'asset offline' })
+          })
       })
     )
     return
