@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { carimbar, acharCpf, acharNome } from '@/lib/ficha-assinatura'
+import { fichaVisivelPara } from '@/lib/fichas/disponiveis'
 
 async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser()
@@ -45,6 +46,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => null)
   const nicheSlug = typeof body?.nicheSlug === 'string' ? body.nicheSlug : ''
   if (!NICHE_FICHAS[nicheSlug]) return NextResponse.json({ error: 'invalid_niche' }, { status: 400 })
+
+  /* Existir no registro não basta: a ficha tem que ser visível PRA ESTE
+     negócio. Com fichas exclusivas de um cliente, sem esta trava bastava
+     mandar o slug no payload pra usar a ficha de outro. */
+  const admin0 = getAdmin()
+  const { data: bizVis } = await admin0.from('businesses').select('slug, category, description').eq('id', businessId).maybeSingle()
+  if (!fichaVisivelPara(NICHE_FICHAS[nicheSlug], { categoria: bizVis?.category ?? bizVis?.description ?? null, slug: bizVis?.slug ?? null })) {
+    return NextResponse.json({ error: 'niche_not_available' }, { status: 403 })
+  }
   if (!body?.values || typeof body.values !== 'object') return NextResponse.json({ error: 'invalid_values' }, { status: 400 })
   const responseId = typeof body.responseId === 'string' ? body.responseId : null
 

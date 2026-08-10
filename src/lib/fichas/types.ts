@@ -46,7 +46,23 @@ export type NicheFicha = {
   slug: string
   name: string
   /** Categorias de negócio onde a ficha aparece (match case-insensitive contra
-   *  businesses.description). Vazio/ausente = aparece em todos. */
+   *  businesses.category, com fallback em description). Vazio/ausente =
+   *  aparece em todos. */
   segments?: string[]
+  /**
+   * EXCLUSIVIDADE POR NEGÓCIO. Lista de slugs onde esta ficha aparece — e
+   * SOMENTE neles. Ausente = vale a regra de segmento acima.
+   *
+   * Existe porque cliente pede mudança no padrão DELE, não no do sistema
+   * (regra cravada por Eduardo em 09/08/2026). Sem isso, ajustar a ficha de
+   * uma clínica ajustava a de todas as clínicas.
+   *
+   * A variante do cliente vive como ARQUIVO DE CÓDIGO, não como JSON no
+   * banco: assim ela é versionada, revisável e comentada igual ao resto. E
+   * quando a gente concluir que uma mudança serve pra todo mundo, o caminho é
+   * levar a mudança pra ficha base e apagar a variante — não manter duas
+   * verdades.
+   */
+  businessSlugs?: string[]
   sections: FichaSection[]
 }

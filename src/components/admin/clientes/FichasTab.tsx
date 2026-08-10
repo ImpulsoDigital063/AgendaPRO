@@ -9,6 +9,7 @@ import { IconPlus, IconTrash, IconCheck } from '@/components/ui/Icon'
 import DrawCanvas from './DrawCanvas'
 import FichaDedicada, { type FichaValues } from './FichaDedicada'
 import { NICHE_FICHAS } from '@/lib/fichas/registry'
+import { fichasDisponiveis } from '@/lib/fichas/disponiveis'
 import type { NicheFicha } from '@/lib/fichas/types'
 
 type FieldDef = {
@@ -60,6 +61,7 @@ export default function FichasTab({ customerId }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [nicheState, setNicheState] = useState<{ ficha: NicheFicha; responseId: string | null; initialValues?: FichaValues } | null>(null)
   const [businessCategory, setBusinessCategory] = useState<string | null>(null)
+  const [businessSlug, setBusinessSlug] = useState<string | null>(null)
   const [nicheEnabled, setNicheEnabled] = useState<string[] | null>(null) // null = todas
   const [fichaImagens, setFichaImagens] = useState<Record<string, string> | null>(null)
 
@@ -73,12 +75,14 @@ export default function FichasTab({ customerId }: Props) {
         .select('id, template_id, data, created_at, niche_slug, template:client_form_templates(id, name, fields)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false }),
-      sb.from('customers').select('name, phone, birthday, business:businesses(description, category, enabled_niche_fichas, ficha_imagens)').eq('id', customerId).maybeSingle(),
+      sb.from('customers').select('name, phone, birthday, business:businesses(slug, description, category, enabled_niche_fichas, ficha_imagens)').eq('id', customerId).maybeSingle(),
     ])
-    const custRow = custRes.data as { name: string; phone: string | null; birthday: string | null; business?: { description: string | null; category: string | null; enabled_niche_fichas: string[] | null; ficha_imagens: Record<string, string> | null } | { description: string | null; category: string | null; enabled_niche_fichas: string[] | null; ficha_imagens: Record<string, string> | null }[] | null } | null
+    type BizRow = { slug: string | null; description: string | null; category: string | null; enabled_niche_fichas: string[] | null; ficha_imagens: Record<string, string> | null }
+    const custRow = custRes.data as { name: string; phone: string | null; birthday: string | null; business?: BizRow | BizRow[] | null } | null
     setCustomer(custRow ? { name: custRow.name, phone: custRow.phone, birthday: custRow.birthday } : null)
     const biz = Array.isArray(custRow?.business) ? custRow?.business[0] : custRow?.business
     setBusinessCategory(biz?.category ?? biz?.description ?? null)
+    setBusinessSlug(biz?.slug ?? null)
     setNicheEnabled(biz?.enabled_niche_fichas ?? null)
     setFichaImagens(biz?.ficha_imagens ?? null)
     setTemplates((tplRes.data ?? []) as Template[])
@@ -210,12 +214,14 @@ export default function FichasTab({ customerId }: Props) {
     </div>
   ) : null
 
-  // Fichas de nicho disponíveis pra ESTE negócio (filtra por categoria/segmento)
-  const availableNiches = Object.values(NICHE_FICHAS).filter((nf) => {
-    const segOk = !nf.segments || nf.segments.length === 0 || nf.segments.some((s) => s.toLowerCase() === (businessCategory ?? '').toLowerCase())
-    // nicheEnabled null = todas do segmento; array = só as escolhidas
-    return segOk && (nicheEnabled === null || nicheEnabled.includes(nf.slug))
-  })
+  /* Fichas de nicho disponíveis pra ESTE negócio. A regra de visibilidade
+     (segmento + exclusividade por negócio) vive em lib/fichas/disponiveis.ts
+     e é a MESMA que a rota usa — antes estava duplicada aqui, e regra de
+     visibilidade duplicada é ficha aparecendo num lugar e sumindo no outro.
+     Aqui sobra só o filtro do que o dono ligou:
+     nicheEnabled null = todas as disponíveis; array = só as escolhidas. */
+  const availableNiches = fichasDisponiveis({ categoria: businessCategory, slug: businessSlug })
+    .filter((nf) => nicheEnabled === null || nicheEnabled.includes(nf.slug))
 
   // FORM ATIVO
   if (editingTemplate) {
