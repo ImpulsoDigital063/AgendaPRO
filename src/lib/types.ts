@@ -25,6 +25,11 @@ export type Business = {
      surpresa ruim (Eduardo, 05/08). */
   sinal_enabled?: boolean
   sinal_percent?: number
+  /* v113 · usados no aviso de política de cancelamento da página pública.
+     Regra ditada pela Wanessa (05/08): cancelou com folga vira crédito com
+     validade; em cima da hora, perde. Ver src/lib/sinal-cancelamento.ts */
+  sinal_cancel_horas?: number | null
+  sinal_credito_dias?: number | null
   brand_primary?: string | null
   brand_secondary?: string | null
   brand_mode?: 'dark' | 'light' | null

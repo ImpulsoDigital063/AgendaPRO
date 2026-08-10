@@ -2391,7 +2391,7 @@ export default function BookingFlow({
             {/* Aviso de transparência da política de no-show (v45 · 14/05/2026 · decisão 5 com Eduardo)
                 Só aparece se business tem punição ativa · cliente fica ciente antes de confirmar.
                 Padding e radius alinhados com o banner "Cupom aplicado" pra consistência. */}
-            {business.no_show_punishment_enabled && (
+            {(business.sinal_enabled || business.no_show_punishment_enabled) && (
               <div
                 className="rounded-2xl p-4 text-sm"
                 style={{
@@ -2402,8 +2402,23 @@ export default function BookingFlow({
               >
                 <strong style={{ color: C.text }}>Política de cancelamento</strong>
                 <br />
-                Se não puder ir, <strong>cancele até 3h antes</strong> pra não perder pontos.
-                Falta sem aviso pode descontar pontos do seu saldo.
+                {business.sinal_enabled ? (
+                  /* Com sinal, o que está em jogo é DINHEIRO — falar de ponto aqui
+                     confunde e some com a informação que importa. Texto espelha a
+                     regra real de src/lib/sinal-cancelamento.ts, ditada pela
+                     Wanessa em 05/08: com folga vira crédito, em cima da hora perde. */
+                  <>
+                    Se não puder ir, cancele com pelo menos{' '}
+                    <strong>{business.sinal_cancel_horas ?? 24}h de antecedência</strong> — o valor
+                    do sinal fica como crédito por {business.sinal_credito_dias ?? 30} dias pra você
+                    remarcar. Cancelando depois disso, o sinal não é devolvido.
+                  </>
+                ) : (
+                  <>
+                    Se não puder ir, <strong>cancele até 3h antes</strong> pra não perder pontos.
+                    Falta sem aviso pode descontar pontos do seu saldo.
+                  </>
+                )}
               </div>
             )}
 
