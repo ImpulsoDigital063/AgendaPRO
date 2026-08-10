@@ -156,7 +156,10 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
             return (
               <section key={idx}>
                 <h4 className={SECTION_TITLE} style={{ color: 'var(--admin-text)', borderBottom: '1px solid var(--admin-border)' }}>{section.title}</h4>
-                <div className="grid grid-cols-2 gap-1.5">
+                {/* 2 colunas no mobile (não mexer) · 3 de tablet pra cima:
+                    checklist de saúde com 30 itens em 2 colunas vira rolagem
+                    longa numa tela larga, com metade da linha vazia. */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
                   {section.items.map((item) => {
                     const on = marked.includes(item)
                     return (
@@ -200,7 +203,7 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
                   <div
                     className={
                       section.params.length > 6
-                        ? 'lg:flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-x-3 gap-y-2'
+                        ? 'lg:flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-x-3 gap-y-2'
                         : 'lg:flex-1 space-y-3'
                     }
                   >
@@ -216,7 +219,18 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
             return (
               <section key={idx}>
                 <h4 className={SECTION_TITLE} style={{ color: 'var(--admin-text)', borderBottom: '1px solid var(--admin-border)' }}>{section.title}</h4>
-                <div className="space-y-3">
+                {/* Mobile empilha (não mexer). De tablet pra cima vira grade —
+                    mas SÓ quando não há textarea no bloco: campo de texto longo
+                    espremido em meia largura é pior que empilhado. Blocos de
+                    perimetria e unidades, que são vários campos curtos, é onde
+                    a grade paga. */}
+                <div
+                  className={
+                    section.fields.length > 3 && section.fields.every((f) => f.type !== 'textarea')
+                      ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-3'
+                      : 'space-y-3'
+                  }
+                >
                   {section.fields.map((p) => (
                     <ParamInput key={p.name} param={p} value={str(p.name)} onChange={(v) => setVal(p.name, v)} disabled={saving} />
                   ))}
@@ -244,7 +258,10 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
           return (
             <section key={idx}>
               <h4 className={SECTION_TITLE} style={{ color: 'var(--admin-text)', borderBottom: '1px solid var(--admin-border)' }}>{section.label}</h4>
-              <div className="max-w-sm">
+              {/* Assinatura acompanha a largura disponível: no desktop a
+                  pessoa assina com o mouse ou caneta, e um campo de 384px é
+                  apertado pra isso. No mobile segue igual. */}
+              <div className="max-w-sm md:max-w-md xl:max-w-lg">
                 <DrawCanvas value={str(section.name)} onChange={(v) => setVal(section.name, v)} disabled={saving} />
               </div>
             </section>

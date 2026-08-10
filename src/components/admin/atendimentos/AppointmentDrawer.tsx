@@ -198,11 +198,16 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
         onClick={() => onClose(false)}
       />
 
-      {/* Drawer · 480px direita · padrão 3D premium */}
+      {/* Drawer lateral · padrão 3D premium.
+          LARGURA POR BREAKPOINT (AGENTS.md · isolamento mobile/desktop):
+          sem prefixo = min(520px,100vw), que num celular dá 100vw — ou seja,
+          MOBILE NÃO MUDA. De tablet pra cima ele abre, porque é ali que a
+          ficha do cliente é preenchida com teclado e mouse e 520px espremia
+          o formulário numa coluna estreita à toa (pedido do Eduardo 09/08).
+          O drawer de cliente já era 880px; este era o único ainda em 520. */}
       <div
-        className="absolute inset-y-0 right-0 flex flex-col"
+        className="absolute inset-y-0 right-0 flex flex-col w-[min(520px,100vw)] md:w-[min(720px,100vw)] xl:w-[min(880px,100vw)]"
         style={{
-          width: 'min(520px, 100vw)',
           background: 'var(--admin-surface)',
           boxShadow: '-12px 0 32px rgba(0,0,0,0.3)',
         }}
