@@ -593,7 +593,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                           {semControle ? (
                             <>
                               <strong>Esse material não controla estoque.</strong> O combo vai funcionar,
-                              mas os {it.quantity || '0,5'} {un} não vão baixar da sua prateleira.
+                              mas os {Number(it.quantity || 0).toLocaleString('pt-BR')} {un} não vão baixar da sua prateleira.
                             </>
                           ) : (
                             <>

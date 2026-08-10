@@ -69,16 +69,39 @@ function validityLabel(kind: PackageRow['validity_kind'], value: number | null):
 }
 
 // Só serviços contam como "sessões" (produto é entregue, não tem sessão)
+/** Decimal em pt-BR: 0,5 e não 0.5 (a dona lê "meio pacote"). */
+function qtd(n: number | string | null | undefined): string {
+  return Number(n ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+}
+
+/**
+ * v120 · itens que de fato entram no atendimento. Alternativas (mesmo
+ * `option_group`) são o MESMO material em cores diferentes: só uma sai por
+ * vez. Somar todas inflaria o valor cheio e a contagem de produto — um combo
+ * com 3 cores de meio pacote apareceria como "1,5 produtos" e R$442,20.
+ */
+function itensEfetivos(items: PackageItemRow[] | null): PackageItemRow[] {
+  const out: PackageItemRow[] = []
+  const grupos = new Set<string>()
+  for (const it of items ?? []) {
+    if (!it.option_group) { out.push(it); continue }
+    if (grupos.has(it.option_group)) continue
+    grupos.add(it.option_group)
+    out.push(it)
+  }
+  return out
+}
+
 function totalSessions(items: PackageItemRow[] | null): number {
-  return (items ?? []).filter((it) => it.service_id).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
+  return itensEfetivos(items).filter((it) => it.service_id).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
 }
 
 function totalProducts(items: PackageItemRow[] | null): number {
-  return (items ?? []).filter((it) => it.product_id).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
+  return itensEfetivos(items).filter((it) => it.product_id).reduce((s, it) => s + Number(it.quantity ?? 0), 0)
 }
 
 function sumItems(items: PackageItemRow[] | null): number {
-  return (items ?? []).reduce((s, it) => {
+  return itensEfetivos(items).reduce((s, it) => {
     const unit = it.unit_price ?? it.products?.price ?? it.services?.price ?? 0
     return s + Number(unit) * Number(it.quantity ?? 0)
   }, 0)
@@ -291,15 +314,25 @@ export default function PacotesView({ initialPackages, services, products, busin
 
                 {/* Itens do pacote */}
                 <ul className="text-sm space-y-1 mt-3 mb-3">
-                  {(pkg.package_items ?? []).map((it) => {
+                  {itensEfetivos(pkg.package_items).map((it) => {
                     const isProduct = !!it.product_id
                     const nome = isProduct ? (it.products?.name ?? 'Produto') : (it.services?.name ?? 'Serviço')
                     const preco = it.unit_price ?? (isProduct ? it.products?.price : it.services?.price) ?? 0
+                    // Quantas cores/opções esse material tem (a linha mostra uma
+                    // e avisa que existem outras — só uma sai por atendimento).
+                    const outrasOpcoes = it.option_group
+                      ? (pkg.package_items ?? []).filter((x) => x.option_group === it.option_group).length - 1
+                      : 0
                     return (
                       <li key={it.id} className="flex justify-between gap-2 items-center" style={{ color: 'var(--admin-text-2)' }}>
                         <span className="inline-flex items-center gap-1.5 min-w-0">
-                          <b>{it.quantity}x</b>
+                          <b>{qtd(it.quantity)}x</b>
                           <span className="truncate">{nome}</span>
+                          {outrasOpcoes > 0 && (
+                            <span className="text-[10px] flex-shrink-0" style={{ color: '#9333EA' }}>
+                              +{outrasOpcoes} {outrasOpcoes === 1 ? 'cor' : 'cores'}
+                            </span>
+                          )}
                           {isProduct && (
                             <span
                               className="text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded flex-shrink-0"
@@ -334,8 +367,8 @@ export default function PacotesView({ initialPackages, services, products, busin
                   </div>
                   <p className="text-[10px] mt-1.5 text-right" style={{ color: 'var(--admin-text-faded)' }}>
                     {[
-                      sessoes > 0 ? `${sessoes} ${sessoes === 1 ? 'sessão' : 'sessões'}` : null,
-                      produtos > 0 ? `${produtos} ${produtos === 1 ? 'produto' : 'produtos'}` : null,
+                      sessoes > 0 ? `${qtd(sessoes)} ${sessoes === 1 ? 'sessão' : 'sessões'}` : null,
+                      produtos > 0 ? `${qtd(produtos)} ${produtos === 1 ? 'produto' : 'produtos'}` : null,
                     ].filter(Boolean).join(' + ')} no total
                   </p>
                 </div>
