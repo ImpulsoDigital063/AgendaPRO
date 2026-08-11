@@ -246,6 +246,102 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  /* ── RETORNO POR PROCEDIMENTO ──────────────────────────────────
+     Especificação da clínica (10/08): cada procedimento tem um intervalo
+     mínimo próprio, e o aviso deve dizer a DATA do último procedimento e que
+     já pode repetir. Por isso o prazo mora em services.retorno_dias (v123) e
+     não em message_rules — um número por negócio não distingue toxina
+     (4 meses) de microagulhamento (15 dias).
+
+     Duas travas que evitam a mensagem constrangedora:
+     1. só dispara pra atendimento CONCLUÍDO — agendamento cancelado não gera
+        "já pode repetir" de um procedimento que não aconteceu;
+     2. some se a cliente JÁ voltou pra esse mesmo procedimento depois — nada
+        pior que cobrar retorno de quem acabou de sair de lá. */
+  const negRetorno = negociosCom('retorno').filter((b) => {
+    const r = regras.get(`${b}:retorno`)!
+    return Number(r.horaDoDia.slice(0, 2)) === horaBR
+  })
+  if (negRetorno.length > 0) {
+    const { data: servicos } = await db
+      .from('services')
+      .select('id, business_id, name, retorno_dias')
+      .in('business_id', negRetorno)
+      .not('retorno_dias', 'is', null)
+
+    const prazos = (servicos ?? []).filter((s) => Number(s.retorno_dias) > 0)
+    if (prazos.length > 0) {
+      // (serviço, data em que o intervalo fecha hoje)
+      const alvoPorServico = new Map<string, string>()
+      for (const s of prazos) alvoPorServico.set(s.id as string, addDaysBR(hoje, -Number(s.retorno_dias)))
+      const datas = [...new Set(alvoPorServico.values())]
+
+      const { data: feitos } = await db
+        .from('appointments')
+        .select(`id, business_id, appointment_date, client_name, client_phone, client_email,
+                 service_id, service_name, customer_id, business:businesses(name, phone)`)
+        .in('business_id', negRetorno)
+        .in('service_id', [...alvoPorServico.keys()])
+        .in('appointment_date', datas)
+        .eq('status', 'completed')
+
+      // só interessa quem casa serviço COM a data daquele serviço
+      const candidatos = (feitos ?? []).filter(
+        (a) => alvoPorServico.get(a.service_id as string) === a.appointment_date,
+      )
+
+      /* "já voltou?" numa consulta só, não uma por candidato: N+1 aqui
+         significa uma consulta por cliente todo dia, pra sempre.
+
+         GUARDA A DATA MAIS RECENTE, não um simples "existe". Com um corte
+         global (a data-alvo mais antiga entre todos os serviços) o próprio
+         atendimento candidato caía dentro da janela e se auto-suprimia: a
+         toxina, de 120 dias, escapava, e o microagulhamento, de 15, nunca
+         avisava. Comparar contra a data DO CANDIDATO resolve os dois. */
+      const ultimaVolta = new Map<string, string>()
+      if (candidatos.length > 0) {
+        const maisAntiga = datas.slice().sort()[0]
+        const { data: posteriores } = await db
+          .from('appointments')
+          .select('customer_id, service_id, appointment_date, status')
+          .in('business_id', negRetorno)
+          .in('service_id', [...alvoPorServico.keys()])
+          .gte('appointment_date', maisAntiga)
+          .in('status', ['completed', 'confirmed', 'pending'])
+        for (const p of posteriores ?? []) {
+          if (!p.customer_id) continue
+          const k = `${p.customer_id}:${p.service_id}`
+          const d = String(p.appointment_date)
+          if (!ultimaVolta.has(k) || d > ultimaVolta.get(k)!) ultimaVolta.set(k, d)
+        }
+      }
+
+      for (const a of candidatos) {
+        const ultima = a.customer_id ? ultimaVolta.get(`${a.customer_id}:${a.service_id}`) : undefined
+        if (ultima && ultima > String(a.appointment_date)) continue
+        const negocio = a.business as unknown as { name: string; phone: string | null } | null
+        fila.push({
+          tipo: 'retorno',
+          businessId: a.business_id as string,
+          // um aviso por atendimento concluído — nunca repete pro mesmo
+          chave: chaveIdempotencia('retorno', a.id as string),
+          telefone: a.client_phone as string | null,
+          email: a.client_email as string | null,
+          appointmentId: a.id as string,
+          customerId: (a.customer_id as string) ?? undefined,
+          variaveis: {
+            cliente: (a.client_name as string) || 'Cliente',
+            salao: negocio?.name ?? 'seu salão',
+            data: dataCurta(a.appointment_date as string),
+            hora: '',
+            servico: (a.service_name as string) || 'seu procedimento',
+            telefoneSalao: negocio?.phone ?? null,
+          },
+        })
+      }
+    }
+  }
+
   // ── ENVIO (lote) ──────────────────────────────────────────────
   const lote = fila.slice(0, LOTE)
   let enviados = 0, ignorados = 0, falhas = 0

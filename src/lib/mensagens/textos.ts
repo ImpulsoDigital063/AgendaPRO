@@ -65,10 +65,14 @@ const CORPO: Record<TipoMensagem, (v: Variaveis) => string> = {
     `Oi ${primeiroNome(v.cliente)}, feliz aniversário!\n` +
     `Que seu dia seja ótimo. Quando quiser se cuidar, é só chamar.`,
 
+  /* Texto pedido pela clínica: precisa dizer QUAL procedimento, QUANDO foi e
+     que já pode repetir. "Faz um tempo que você não vem" é cobrança; isto
+     aqui é informação clínica que a paciente quer receber — o intervalo do
+     procedimento dela fechou. */
   retorno: (v) =>
     `${v.salao}\n\n` +
-    `Oi ${primeiroNome(v.cliente)}! Já faz um tempo desde o seu último atendimento.\n` +
-    `Se quiser agendar, é só falar com a gente.`,
+    `Oi ${primeiroNome(v.cliente)}! Seu último ${v.servico} foi em ${v.data}.\n` +
+    `Já deu o intervalo para repetir — se quiser agendar, é só chamar.`,
 
   dono_novo_agendamento: (v) =>
     `Novo agendamento em ${v.salao}\n\n` +
