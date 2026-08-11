@@ -171,6 +171,11 @@ export type Service = {
    *  antes da migration não trazem o campo. */
   public_visible?: boolean
   points: number
+  /** v123 · dias até o cliente poder REPETIR este serviço. Passado o prazo,
+   *  ele recebe o aviso automático de retorno. null/ausente = sem aviso.
+   *  Nasceu de intervalo clínico (toxina 4 meses, peeling 21 dias), mas vale
+   *  igual pra corte de cabelo e retoque de cílios. */
+  retorno_dias?: number | null
 }
 
 export type Customer = {

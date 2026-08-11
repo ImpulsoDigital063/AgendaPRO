@@ -89,9 +89,10 @@ type FormState = {
   price: string
   duration_minutes: number
   points: string
+  retorno_dias: string
 }
 
-const emptyForm: FormState = { name: '', description: '', price: '', duration_minutes: 30, points: '' }
+const emptyForm: FormState = { name: '', description: '', price: '', duration_minutes: 30, points: '', retorno_dias: '' }
 
 const DESCRIPTION_MAX = 400
 
@@ -194,6 +195,9 @@ export default function ServicosTab({ businessId, initialServices, category }: P
         price: priceValue,
         duration_minutes: form.duration_minutes,
         points: form.points ? parseInt(form.points) : 0,
+        /* vazio = sem aviso de retorno. Zero nao serve como "desligado":
+           zero dia significaria avisar no mesmo dia do atendimento. */
+        retorno_dias: form.retorno_dias ? parseInt(form.retorno_dias) : null,
         active: true,
       })
       .select()
@@ -215,6 +219,7 @@ export default function ServicosTab({ businessId, initialServices, category }: P
       price: service.price ? String(service.price) : '',
       duration_minutes: service.duration_minutes,
       points: service.points ? String(service.points) : '',
+      retorno_dias: service.retorno_dias ? String(service.retorno_dias) : '',
     })
     setEditShowCustom(isCustomDuration(service.duration_minutes))
   }
@@ -234,6 +239,7 @@ export default function ServicosTab({ businessId, initialServices, category }: P
         price: priceValue,
         duration_minutes: editForm.duration_minutes,
         points: editForm.points ? parseInt(editForm.points) : 0,
+        retorno_dias: editForm.retorno_dias ? parseInt(editForm.retorno_dias) : null,
       })
       .eq('id', id)
 
@@ -248,6 +254,7 @@ export default function ServicosTab({ businessId, initialServices, category }: P
                 price: priceValue,
                 duration_minutes: editForm.duration_minutes,
                 points: editForm.points ? parseInt(editForm.points) : 0,
+                retorno_dias: editForm.retorno_dias ? parseInt(editForm.retorno_dias) : null,
               }
             : s
         )
@@ -563,6 +570,27 @@ export default function ServicosTab({ businessId, initialServices, category }: P
           </p>
         </div>
 
+        {/* QUANDO O CLIENTE PODE REPETIR ESTE SERVICO.
+            Nasceu de uma clinica de estetica, onde o intervalo e clinico:
+            toxina so depois de 4 meses, peeling depois de 21 dias. Mas serve
+            igual pra barbearia (corte a cada 21 dias) e pra salao (retoque de
+            cilios a cada 20) - por isso o campo e do sistema, nao dela. */}
+        <div>
+          <label className="admin-label">Dias para poder repetir</label>
+          <input
+            type="number"
+            value={form.retorno_dias}
+            onChange={(e) => setForm({ ...form, retorno_dias: e.target.value })}
+            placeholder="deixe vazio para nao avisar"
+            min="1"
+            max="1095"
+            className="admin-input w-full px-3 py-2.5 text-sm"
+          />
+          <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Passado esse tempo, o cliente recebe um aviso de que ja pode fazer de novo. Vazio = sem aviso.
+          </p>
+        </div>
+
         {/*
           Validacao de preco — bloqueia se preco estiver VAZIO. Permite
           digitar 0 explicitamente caso o serviço seja gratuito (ex:
@@ -790,6 +818,27 @@ function ServiceCard({
             className="admin-input w-full px-3 py-2.5 text-sm"
           />
         </div>
+
+        {/* QUANDO O CLIENTE PODE REPETIR ESTE SERVICO.
+            Nasceu de uma clinica de estetica, onde o intervalo e clinico:
+            toxina so depois de 4 meses, peeling depois de 21 dias. Mas serve
+            igual pra barbearia (corte a cada 21 dias) e pra salao (retoque de
+            cilios a cada 20) - por isso o campo e do sistema, nao dela. */}
+        <div>
+          <label className="admin-label">Dias para poder repetir</label>
+          <input
+            type="number"
+            value={editForm.retorno_dias}
+            onChange={(e) => setEditForm({ ...editForm, retorno_dias: e.target.value })}
+            placeholder="deixe vazio para nao avisar"
+            min="1"
+            max="1095"
+            className="admin-input w-full px-3 py-2.5 text-sm"
+          />
+          <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+            Passado esse tempo, o cliente recebe um aviso de que ja pode fazer de novo. Vazio = sem aviso.
+          </p>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={onSaveEdit}
@@ -901,6 +950,16 @@ function ServiceCard({
               </span>
             </>
           )}
+          {/* Sem isto o prazo so existiria no banco: a dona configura e nunca
+              mais consegue conferir o que configurou. */}
+          {service.retorno_dias ? (
+            <>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>
+                repete em {service.retorno_dias}d
+              </span>
+            </>
+          ) : null}
           {!service.active && (
             <span
               className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
