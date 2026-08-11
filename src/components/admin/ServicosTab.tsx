@@ -576,7 +576,20 @@ export default function ServicosTab({ businessId, initialServices, category }: P
             igual pra barbearia (corte a cada 21 dias) e pra salao (retoque de
             cilios a cada 20) - por isso o campo e do sistema, nao dela. */}
         <div>
-          <label className="admin-label">Dias para poder repetir</label>
+          <label className="admin-label flex items-center gap-2">
+            Dias para poder repetir
+            {/* O prazo JA e guardado e a varredura ja funciona (testada), mas o
+                canal de WhatsApp ainda esta na instancia de teste da W-API.
+                Sem este aviso a dona configura, espera o disparo e conclui que
+                o sistema falhou. Ja temos LP prometendo WhatsApp inexistente -
+                nao repetir isso dentro do produto. */}
+            <span
+              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+              style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
+            >
+              em breve
+            </span>
+          </label>
           <input
             type="number"
             value={form.retorno_dias}
@@ -587,7 +600,9 @@ export default function ServicosTab({ businessId, initialServices, category }: P
             className="admin-input w-full px-3 py-2.5 text-sm"
           />
           <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-            Passado esse tempo, o cliente recebe um aviso de que ja pode fazer de novo. Vazio = sem aviso.
+            Passado esse tempo, o cliente recebe um aviso de que já pode fazer de novo. Vazio = sem aviso.
+            <br />
+            O disparo automático está em teste final — por enquanto o prazo fica guardado e nada é enviado.
           </p>
         </div>
 
@@ -825,7 +840,20 @@ function ServiceCard({
             igual pra barbearia (corte a cada 21 dias) e pra salao (retoque de
             cilios a cada 20) - por isso o campo e do sistema, nao dela. */}
         <div>
-          <label className="admin-label">Dias para poder repetir</label>
+          <label className="admin-label flex items-center gap-2">
+            Dias para poder repetir
+            {/* O prazo JA e guardado e a varredura ja funciona (testada), mas o
+                canal de WhatsApp ainda esta na instancia de teste da W-API.
+                Sem este aviso a dona configura, espera o disparo e conclui que
+                o sistema falhou. Ja temos LP prometendo WhatsApp inexistente -
+                nao repetir isso dentro do produto. */}
+            <span
+              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+              style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
+            >
+              em breve
+            </span>
+          </label>
           <input
             type="number"
             value={editForm.retorno_dias}
@@ -836,7 +864,9 @@ function ServiceCard({
             className="admin-input w-full px-3 py-2.5 text-sm"
           />
           <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-            Passado esse tempo, o cliente recebe um aviso de que ja pode fazer de novo. Vazio = sem aviso.
+            Passado esse tempo, o cliente recebe um aviso de que já pode fazer de novo. Vazio = sem aviso.
+            <br />
+            O disparo automático está em teste final — por enquanto o prazo fica guardado e nada é enviado.
           </p>
         </div>
         <div className="flex gap-2">
