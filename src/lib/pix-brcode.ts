@@ -27,6 +27,67 @@
    de quem escreveu. Por isso truncamos e removemos acento aqui dentro.
    ═══════════════════════════════════════════════════════════════ */
 
+/* ── Normalização da chave (v114 · 11/08/2026) ────────────────────────
+   A Wanessa cadastrou o celular como "91991517429" e o Pix da paciente
+   dela morreu com "Conta de destinatário inexistente". No DICT, celular é
+   registrado em E.164 — `+5591991517429` — e o BR Code carrega a chave
+   CRUA: se não bater caractere por caractere, o banco não acha a conta.
+
+   Ninguém digita "+55" (o app do banco põe sozinho ao cadastrar a chave),
+   então o campo aberto sempre vai receber o número do jeito que a pessoa
+   escreve. Normalizar aqui é o que evita o erro chegar na paciente.        */
+
+export type TipoChavePix = 'celular' | 'cpf' | 'cnpj' | 'email' | 'aleatoria'
+
+/** CPF válido pelos dois dígitos verificadores. */
+function cpfValido(c: string): boolean {
+  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false
+  let s = 0
+  for (let i = 0; i < 9; i++) s += +c[i] * (10 - i)
+  let d1 = (s * 10) % 11
+  if (d1 === 10) d1 = 0
+  if (d1 !== +c[9]) return false
+  s = 0
+  for (let i = 0; i < 10; i++) s += +c[i] * (11 - i)
+  let d2 = (s * 10) % 11
+  if (d2 === 10) d2 = 0
+  return d2 === +c[10]
+}
+
+/**
+ * Adivinha o tipo pela cara da chave. 11 dígitos é ambíguo (CPF ou celular)
+ * — desempata pelo dígito verificador: se não é CPF válido, é telefone.
+ * Serve pra pré-selecionar o tipo de uma chave JÁ salva; na hora de gravar,
+ * quem manda é o tipo que a pessoa escolheu.
+ */
+export function detectarTipoChave(chave: string): TipoChavePix {
+  const v = String(chave || '').trim()
+  if (v.includes('@')) return 'email'
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) return 'aleatoria'
+  const d = v.replace(/\D/g, '')
+  if (v.startsWith('+') || d.length === 13) return 'celular'
+  if (d.length === 14) return 'cnpj'
+  if (d.length === 11) return cpfValido(d) ? 'cpf' : 'celular'
+  return 'aleatoria'
+}
+
+/**
+ * Devolve a chave no formato que o DICT espera. Celular sempre sai `+55…`,
+ * sem duplicar o 55 de quem já digitou com DDI.
+ */
+export function normalizarChavePix(chave: string, tipo?: TipoChavePix): string {
+  const v = String(chave || '').trim()
+  if (!v) return ''
+  const t = tipo || detectarTipoChave(v)
+  if (t === 'email') return v.toLowerCase()
+  if (t === 'aleatoria') return v
+  const d = v.replace(/\D/g, '')
+  if (t === 'cpf' || t === 'cnpj') return d
+  // celular: 11 dígitos locais, ou 13 já com DDI
+  const local = d.length === 13 && d.startsWith('55') ? d.slice(2) : d
+  return `+55${local}`
+}
+
 /** Monta um campo no formato ID + tamanho(2 dígitos) + valor. */
 function campo(id: string, valor: string): string {
   return id + String(valor.length).padStart(2, '0') + valor

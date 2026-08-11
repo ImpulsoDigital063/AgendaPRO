@@ -21,7 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
-import { gerarBRCode } from '@/lib/pix-brcode'
+import { gerarBRCode, normalizarChavePix } from '@/lib/pix-brcode'
 import { generateSinalToken } from '@/lib/token'
 import { SITE_URL } from '@/lib/site-url'
 import { todayBR } from '@/lib/date-br'
@@ -152,7 +152,12 @@ export async function PUT(req: NextRequest) {
   if (!businessId) return NextResponse.json({ error: 'sem_acesso' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
-  const pixKey = typeof body.pixKey === 'string' ? body.pixKey.trim() : ''
+  // v114 · normaliza ANTES de gravar. Celular vai pro banco em E.164 (+55…),
+  // que e o formato do DICT — sem isso o BR Code sai com uma chave que nao
+  // existe e a cliente ve "Conta de destinatario inexistente" (caso da
+  // Wanessa, 11/08). O tipo vem da tela; se nao vier, detecta pela chave.
+  const pixKeyBruta = typeof body.pixKey === 'string' ? body.pixKey.trim() : ''
+  const pixKey = pixKeyBruta ? normalizarChavePix(pixKeyBruta, body.tipoChave) : ''
   const percentual = Number(body.percentual)
 
   if (body.ativo === true && !pixKey) {

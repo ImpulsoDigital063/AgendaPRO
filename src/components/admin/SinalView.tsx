@@ -21,6 +21,7 @@
 
 import { useEffect, useState } from 'react'
 import { linkCobrancaWhatsApp, textoPrazo } from '@/lib/sinal-cobranca'
+import { detectarTipoChave, normalizarChavePix, type TipoChavePix } from '@/lib/pix-brcode'
 
 type Pendente = {
   id: string
@@ -80,6 +81,9 @@ export default function SinalView() {
      virava Number('') = 0 e o zero voltava sozinho — o dono não conseguia
      limpar pra digitar outro valor (Eduardo, 05/08, testando no iPhone). */
   const [percentTexto, setPercentTexto] = useState('')
+  /* Tipo da chave não tem coluna no banco — é derivado do que já está salvo
+     e serve pra normalizar na hora de gravar. Evita migration só pra isso. */
+  const [tipoChave, setTipoChave] = useState<TipoChavePix>('celular')
 
   async function carregar() {
     const r = await fetch('/api/admin/sinal').then((x) => x.json()).catch(() => null)
@@ -87,6 +91,10 @@ export default function SinalView() {
       setCfg(r.config)
       setPercentTexto(String(r.config.percentual ?? ''))
       setPendentes(r.pendentes ?? [])
+      // Pré-seleciona o tipo pela cara da chave já salva (11 dígitos desempata
+      // pelo dígito verificador de CPF). Sem chave, começa em celular, que é o
+      // caso mais comum e o único que precisa de prefixo.
+      if (r.config.pixKey) setTipoChave(detectarTipoChave(r.config.pixKey))
     }
     setCarregando(false)
   }
@@ -99,7 +107,7 @@ export default function SinalView() {
     const r = await fetch('/api/admin/sinal', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...cfg, percentual: Number(percentTexto) }),
+      body: JSON.stringify({ ...cfg, percentual: Number(percentTexto), tipoChave }),
     }).then((x) => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { setErro(r?.error || 'Não consegui salvar.'); return }
@@ -315,14 +323,61 @@ export default function SinalView() {
             />
           </label>
 
+          {/* v114 · o tipo vem ANTES da chave. Celular precisa ir pro banco como
+              +55DDDNUMERO (padrão do DICT) e ninguém digita assim — o app do
+              banco põe sozinho no cadastro. Sem perguntar o tipo, "91991517429"
+              era gravado cru e o Pix da cliente dava "conta inexistente". */}
+          <div>
+            <label className="admin-label">Tipo da chave PIX</label>
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+              {([
+                { id: 'celular', rotulo: 'Celular' },
+                { id: 'cpf', rotulo: 'CPF' },
+                { id: 'cnpj', rotulo: 'CNPJ' },
+                { id: 'email', rotulo: 'E-mail' },
+                { id: 'aleatoria', rotulo: 'Aleatória' },
+              ] as const).map((op) => {
+                const ativo = tipoChave === op.id
+                return (
+                  <button
+                    key={op.id}
+                    type="button"
+                    onClick={() => setTipoChave(op.id)}
+                    className="px-2 py-2 rounded-xl text-xs font-bold transition-colors"
+                    style={
+                      ativo
+                        ? { background: 'var(--admin-accent)', color: '#fff', border: '1px solid var(--admin-accent)' }
+                        : { background: 'var(--admin-surface)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }
+                    }
+                  >
+                    {op.rotulo}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <div>
             <label className="admin-label">Chave PIX</label>
             <input
               value={cfg.pixKey}
               onChange={(e) => setCfg({ ...cfg, pixKey: e.target.value })}
-              placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+              inputMode={tipoChave === 'email' || tipoChave === 'aleatoria' ? 'text' : 'numeric'}
+              placeholder={
+                tipoChave === 'celular' ? '(00) 00000-0000'
+                : tipoChave === 'cpf' ? '000.000.000-00'
+                : tipoChave === 'cnpj' ? '00.000.000/0000-00'
+                : tipoChave === 'email' ? 'seu@email.com'
+                : 'chave aleatória do banco'
+              }
               className="admin-input w-full px-3 py-2.5 text-sm"
             />
+            {tipoChave === 'celular' && cfg.pixKey.replace(/\D/g, '').length >= 10 && (
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-2)' }}>
+                Vai ser salva como <strong>{normalizarChavePix(cfg.pixKey, 'celular')}</strong> — é o
+                formato que o banco usa. Precisa ser o mesmo número que você registrou como chave.
+              </p>
+            )}
             <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
               O dinheiro cai direto na sua conta. O AgendaPRO não recebe nada e não cobra taxa.
             </p>
