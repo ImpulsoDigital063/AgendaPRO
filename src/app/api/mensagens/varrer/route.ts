@@ -345,6 +345,14 @@ export async function GET(req: NextRequest) {
   // ── ENVIO (lote) ──────────────────────────────────────────────
   const lote = fila.slice(0, LOTE)
   let enviados = 0, ignorados = 0, falhas = 0
+  /* POR QUE FOI IGNORADO. As travas mais duras (conta demo, assinatura
+     bloqueada, regra desligada) devolvem ANTES de gravar no message_log — de
+     propósito, pra não encher a tabela de linha de mensagem que nunca teve
+     chance. O efeito colateral é que a conta bloqueada para de avisar as
+     clientes dela e não sobra rastro nenhum: o dono reclama que "o sistema
+     parou" e ninguém consegue dizer por quê. O motivo agregado sai aqui, que
+     é o que o monitor lê. */
+  const motivos: Record<string, number> = {}
 
   for (const t of lote) {
     const r = await enviar(db, {
@@ -355,8 +363,8 @@ export async function GET(req: NextRequest) {
       variaveis: t.variaveis,
     })
     if (r.status === 'enviado') enviados++
-    else if (r.status === 'ignorado') ignorados++
-    else falhas++
+    else if (r.status === 'ignorado') { ignorados++; motivos[r.motivo ?? 'sem_motivo'] = (motivos[r.motivo ?? 'sem_motivo'] ?? 0) + 1 }
+    else { falhas++; const q = 'erro' in r ? r.erro : 'falha'; motivos[q] = (motivos[q] ?? 0) + 1 }
   }
 
   /* SESSAO CAIDA AVISA. O aparelho do numero remetente vive desligado e vai
@@ -383,6 +391,7 @@ export async function GET(req: NextRequest) {
     candidatos: fila.length,
     processados: lote.length,
     enviados, ignorados, falhas,
+    motivos,
     restam: Math.max(0, fila.length - lote.length),
   })
 }
