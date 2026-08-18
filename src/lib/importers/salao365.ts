@@ -80,11 +80,16 @@ export function parseSalao365(input: ConnectorInput): CanonicalImport {
           }
           const phone = normalizePhoneBR(rawPhone)
           if (!phone) {
+            // Telefone é obrigatório no cadastro (unique business+phone no
+            // banco), então a linha não entra. Avisar POR NOME — sem isso a
+            // dona não sabe quem ficou de fora pra cadastrar na mão.
             warnings.push({
               row: rowNum,
               field: 'phone',
               level: 'skip',
-              message: `Telefone inválido: "${rawPhone}"`,
+              message: rawPhone?.trim()
+                ? `"${rawName.trim()}" ficou de fora — telefone inválido ("${rawPhone.trim()}"). Precisa de DDD + número.`
+                : `"${rawName.trim()}" ficou de fora — está sem telefone na planilha.`,
             })
             return
           }
@@ -106,7 +111,7 @@ export function parseSalao365(input: ConnectorInput): CanonicalImport {
                 row: rowNum,
                 field: 'birthday',
                 level: 'fix',
-                message: `Aniversário ilegível ignorado: "${row[bdayCol]}"`,
+                message: `"${rawName.trim()}" entrou sem aniversário — data ilegível ("${row[bdayCol]}").`,
               })
             }
           }

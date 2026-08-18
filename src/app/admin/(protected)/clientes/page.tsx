@@ -1,8 +1,10 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ClientesView from '@/components/admin/ClientesView'
+import { IconUpload } from '@/components/ui/Icon'
 import { todayBR } from '@/lib/date-br'
 
 export default async function ClientesPage() {
@@ -161,6 +163,22 @@ export default async function ClientesPage() {
         <SubPageHeader
           title="Clientes"
           subtitle={`${todosClientes.length} cadastrado${todosClientes.length !== 1 ? 's' : ''}`}
+          right={
+            /* Único caminho pra /admin/importar no painel inteiro — sem esse
+               atalho a tela de importação só existia pra quem digitava a URL. */
+            <Link
+              href="/admin/importar"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-transform hover:scale-105"
+              style={{
+                background: 'var(--admin-surface)',
+                border: '1px solid var(--admin-border)',
+                color: 'var(--admin-text-2)',
+              }}
+            >
+              <IconUpload size={14} />
+              Importar
+            </Link>
+          }
         />
         <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-7xl lg:px-8">
           <ClientesView

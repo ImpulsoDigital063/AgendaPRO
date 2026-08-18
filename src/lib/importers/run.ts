@@ -111,7 +111,25 @@ async function importClients(
   const toInsert: Array<Record<string, unknown>> = []
   const toUpdate: Array<{ id: string; patch: Record<string, unknown> }> = []
 
+  // Dedupe DENTRO do próprio arquivo. O banco tem unique (business_id, phone):
+  // duas linhas com o mesmo telefone no mesmo arquivo faziam o INSERT do lote
+  // inteiro falhar — 1 linha repetida derrubava os outros 500. Última linha
+  // vence (é a mais recente na planilha).
+  const inFile = new Map<string, CanonicalClient>()
   for (const c of clients) {
+    const dup = inFile.get(c.phone)
+    if (dup) {
+      warnings.push({
+        level: 'fix',
+        field: 'phone',
+        message: `Telefone repetido no arquivo ("${dup.name}" e "${c.name}") — mantido só o último.`,
+      })
+      report.skipped++
+    }
+    inFile.set(c.phone, c)
+  }
+
+  for (const c of inFile.values()) {
     // Decide se é update, skip ou insert
     let matchId: string | null = null
 
@@ -141,16 +159,25 @@ async function importClients(
   if (opts.dryRun) return report
 
   // INSERT em batches de 500 — Supabase aceita até ~1000, deixar margem.
+  // Se o lote falhar, NÃO descarta os 500: repete linha a linha pra que só a
+  // linha problemática caia. Cliente prefere 499 importados a 0.
   for (let i = 0; i < toInsert.length; i += 500) {
     const batch = toInsert.slice(i, i + 500)
     const { error } = await opts.supabase.from('customers').insert(batch)
-    if (error) {
-      warnings.push({
-        level: 'skip',
-        message: `Erro no batch de INSERT (registros ${i}-${i + batch.length}): ${error.message}`,
-      })
-      report.invalid += batch.length
-      report.inserted -= batch.length
+    if (!error) continue
+
+    report.inserted -= batch.length
+    for (const row of batch) {
+      const { error: rowErr } = await opts.supabase.from('customers').insert(row)
+      if (rowErr) {
+        warnings.push({
+          level: 'skip',
+          message: `"${row.name}" não entrou: ${rowErr.message}`,
+        })
+        report.invalid++
+      } else {
+        report.inserted++
+      }
     }
   }
 

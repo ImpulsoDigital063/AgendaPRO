@@ -61,11 +61,17 @@ export function normalizeEmail(raw: string | null | undefined): string | null {
  *   "2024-05-13"
  *   "13/05/2024"
  *   "13-05-2024"
- *   "05/13/2024" (assumido US se primeiro número > 12)
+ *   "05/13/2024" (assumido US só quando o 2º número não pode ser mês)
  *
  * Retorna ISO 8601 (YYYY-MM-DD) ou null.
  *
  * Default BR (DD/MM/YYYY) — sistemas brasileiros priorizam esse formato.
+ * Bug corrigido em 18/08/2026: a heurística invertia BR e derrubava TODA data
+ * com dia > 12 ("20/05/1994" virava mês 20 → null). 73 dos 127 aniversários
+ * do arquivo real da Wanessa caíam nisso.
+ *
+ * Ano fora de 1900–2100 = null (typo de digitação, ex "18/03/0984") — melhor
+ * avisar do que gravar data absurda no cadastro.
  */
 export function parseDateFlexible(raw: string | null | undefined): string | null {
   if (!raw) return null
@@ -85,13 +91,15 @@ export function parseDateFlexible(raw: string | null | undefined): string | null
     let month = parseInt(p2, 10)
     let year = parseInt(p3, 10)
 
-    // Se primeiro > 12, assume US (MM/DD)
-    if (day > 12 && month <= 12) {
+    // BR (DD/MM) é o default. Só troca quando o 2º número NÃO pode ser mês —
+    // aí o arquivo só pode estar em MM/DD (ex "05/13/2024").
+    if (month > 12 && day <= 12) {
       ;[day, month] = [month, day]
     }
     if (year < 100) year += year < 50 ? 2000 : 1900
 
     if (month < 1 || month > 12 || day < 1 || day > 31) return null
+    if (year < 1900 || year > 2100) return null
 
     return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
   }
