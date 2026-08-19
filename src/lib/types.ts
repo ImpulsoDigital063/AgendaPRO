@@ -2,6 +2,9 @@ export type Business = {
   id: string
   name: string
   description: string | null
+  /** Segmento do negócio (lista fechada em lib/segmento). Decide os exemplos
+   *  do painel. Separado da `description`, que é texto livre e público. */
+  category?: string | null
   phone: string | null
   address: string | null
   logo_url: string | null

@@ -1,5 +1,7 @@
 'use client'
 
+import { resolveCategoria } from '@/lib/segmento'
+
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import type { Business, Professional, Service, WorkingHours, Reward, Customer } from '@/lib/types'
@@ -102,6 +104,10 @@ export default function ConfiguracoesTabs({
   }, [safeResolvedTab])
 
 
+  // Nicho vem de `category` (lista fechada), com fallback pra descrição só
+  // quando ela ainda é literalmente uma categoria antiga. Ver lib/segmento.
+  const categoriaDoNegocio = resolveCategoria(business)
+
   return (
     <div>
       {/* Navegação das seções (mobile/tablet) vem do drawer hambúrguer;
@@ -129,7 +135,7 @@ export default function ConfiguracoesTabs({
         <ServicosTab
           businessId={business.id}
           initialServices={initialServices}
-          category={business.description ?? null}
+          category={categoriaDoNegocio}
         />
       )}
 
@@ -150,7 +156,7 @@ export default function ConfiguracoesTabs({
       {activeTab === 'fidelidade' && (
         <>
           <FidelidadeOnboardingCard
-            category={business.description ?? null}
+            category={categoriaDoNegocio}
             initialDismissed={business.fidelidade_dica_lida ?? false}
           />
           <FidelidadeTab
@@ -223,7 +229,9 @@ export default function ConfiguracoesTabs({
 
       {activeTab === 'fichas-modelo' && <FichasModeloTab />}
 
-      {activeTab === 'mensagens' && <MensagensTab businessName={business.name ?? 'Seu Negócio'} />}
+      {activeTab === 'mensagens' && (
+        <MensagensTab businessName={business.name ?? 'Seu Negócio'} category={categoriaDoNegocio} />
+      )}
 
       {/* Lugar fixo pra ver/ligar notificacao — a faixa se esconde sozinha, essa
           tela nao (06/08). */}

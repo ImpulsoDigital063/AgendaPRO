@@ -3,6 +3,7 @@
 import { useRef, useState, useMemo } from 'react'
 import type { Business } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { CATEGORIAS } from '@/lib/segmento'
 import { compressImage } from '@/lib/compress-image'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
 import {
@@ -38,6 +39,10 @@ export default function NegocioTab({ business }: Props) {
   const [phone, setPhone] = useState(maskPhoneProgressive(business.phone || ''))
   const [address, setAddress] = useState(business.address || '')
   const [description, setDescription] = useState(business.description || '')
+  // Segmento: campo próprio (lista fechada). É o que decide os exemplos que o
+  // dono vê no painel — serviços, recompensas, preview de mensagem. Antes isso
+  // saía da descrição livre e quebrava assim que ele reescrevia o texto.
+  const [category, setCategory] = useState(business.category || '')
   const [googleMapsUrl, setGoogleMapsUrl] = useState(business.google_place_id || '')
   const [googleRating, setGoogleRating] = useState(business.google_rating ? String(business.google_rating) : '')
   const [googleReviewsCount, setGoogleReviewsCount] = useState(business.google_reviews_count ? String(business.google_reviews_count) : '')
@@ -63,6 +68,7 @@ export default function NegocioTab({ business }: Props) {
     phone: maskPhoneProgressive(business.phone || ''),
     address: business.address || '',
     description: business.description || '',
+    category: business.category || '',
     googleMapsUrl: business.google_place_id || '',
     googleRating: business.google_rating ? String(business.google_rating) : '',
     googleReviewsCount: business.google_reviews_count ? String(business.google_reviews_count) : '',
@@ -79,6 +85,7 @@ export default function NegocioTab({ business }: Props) {
       phone !== snapshot.phone ||
       address !== snapshot.address ||
       description !== snapshot.description ||
+      category !== snapshot.category ||
       googleMapsUrl !== snapshot.googleMapsUrl ||
       googleRating !== snapshot.googleRating ||
       googleReviewsCount !== snapshot.googleReviewsCount ||
@@ -87,7 +94,7 @@ export default function NegocioTab({ business }: Props) {
       facebookUrl !== snapshot.facebookUrl ||
       tiktokUrl !== snapshot.tiktokUrl ||
       websiteUrl !== snapshot.websiteUrl,
-    [name, phone, address, description, googleMapsUrl, googleRating, googleReviewsCount, pointsForReview, instagramUrl, facebookUrl, tiktokUrl, websiteUrl, snapshot]
+    [name, phone, address, description, category, googleMapsUrl, googleRating, googleReviewsCount, pointsForReview, instagramUrl, facebookUrl, tiktokUrl, websiteUrl, snapshot]
   )
 
   async function handleUploadLogo(file: File) {
@@ -165,6 +172,7 @@ export default function NegocioTab({ business }: Props) {
         phone: phoneDigits || null,
         address: address.trim() || null,
         description: description.trim() || null,
+        category: category || null,
         // Limpa o link de review (dono às vezes cola "Nome https://..." ou sem
         // https). Guarda a URL extraída; se não achar, mantém o que digitou.
         google_place_id: extractGoogleReviewUrl(googleMapsUrl) ?? (googleMapsUrl.trim() || null),
@@ -188,6 +196,7 @@ export default function NegocioTab({ business }: Props) {
         phone,
         address: address.trim(),
         description: description.trim(),
+        category,
         googleMapsUrl: googleMapsUrl.trim(),
         googleRating,
         googleReviewsCount,
@@ -327,8 +336,25 @@ export default function NegocioTab({ business }: Props) {
 
       {/* Sub-card 3: Sobre o negócio */}
       <Section title="Sobre o negócio" subtitle="Aparece como subtítulo na sua página pública">
+        <div className="mb-4">
+          <label className="admin-label">Segmento</label>
+          <select
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+            className="admin-input w-full px-3 py-2.5 text-sm"
+          >
+            <option value="">Selecione o segmento</option>
+            {CATEGORIAS.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+            Define os exemplos que o sistema te mostra (serviços, recompensas, mensagens).
+            Não aparece pra sua cliente.
+          </p>
+        </div>
         <div>
-          <label className="admin-label">Categoria ou descrição curta</label>
+          <label className="admin-label">Descrição curta</label>
           <textarea
             value={description}
             onChange={e => setDescription(e.target.value)}

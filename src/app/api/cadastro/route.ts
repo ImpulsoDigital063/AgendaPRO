@@ -149,7 +149,8 @@ export async function POST(req: NextRequest) {
     .insert({
       name: businessName,
       slug,
-      description: category || null,  // reutiliza campo description para a categoria
+      description: category || null,  // legado: já era gravado aqui, mantido pra não mudar página pública de quem existe
+      category: category || null,     // campo próprio — é o que o painel lê (lib/segmento)
       phone: phone || null,
       address: address || null,
       owner_id: ownerId,

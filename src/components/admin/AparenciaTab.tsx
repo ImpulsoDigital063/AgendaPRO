@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import type { Business, Service } from '@/lib/types'
+import { resolveCategoria, servicosDeExemplo } from '@/lib/segmento'
 import {
   IconCheck,
   IconChevronDown,
@@ -76,6 +77,9 @@ export default function AparenciaTab({ business, services = [], onNavigateToNego
   const initialSecondary = business.brand_secondary || DEFAULT_SECONDARY
   const initialMode = (business.brand_mode || DEFAULT_MODE) as 'dark' | 'light'
   const initialCover = business.cover_url || null
+  // Nicho do negócio — vem de `category`, não da descrição livre (que o dono
+  // edita e derrubava o match). Ver src/lib/segmento.ts.
+  const businessCategory = resolveCategoria(business)
 
   const [primary, setPrimary] = useState(initialPrimary)
   const [secondary, setSecondary] = useState(initialSecondary)
@@ -191,12 +195,15 @@ export default function AparenciaTab({ business, services = [], onNavigateToNego
       .filter((s) => s.active && (s.price ?? 0) > 0)
       .slice(0, 2)
     if (filtered.length > 0) return filtered
-    // Fallback se não tem serviços
+    // Fallback quando o negócio ainda não cadastrou serviço: exemplo do NICHO
+    // dele. Antes vinha "Corte masculino"/"Barba" fixo — clínica via preview de
+    // barbearia da própria marca.
+    const [ex1, ex2] = servicosDeExemplo(businessCategory)
     return [
-      { id: 'mock1', name: 'Corte masculino', price: 50, duration_minutes: 30 } as Service,
-      { id: 'mock2', name: 'Barba', price: 30, duration_minutes: 20 } as Service,
+      { id: 'mock1', name: ex1.nome, price: ex1.preco, duration_minutes: ex1.minutos } as Service,
+      { id: 'mock2', name: ex2.nome, price: ex2.preco, duration_minutes: ex2.minutos } as Service,
     ]
-  }, [services])
+  }, [services, businessCategory])
 
   function formatPrice(price: number | null) {
     if (!price) return ''
@@ -209,7 +216,6 @@ export default function AparenciaTab({ business, services = [], onNavigateToNego
     return m === 0 ? `${h}h` : `${h}h ${m}min`
   }
 
-  const businessCategory = business.description ?? null
 
   const previewBg = mode === 'dark' ? '#050713' : '#F8FAFC'
   const previewCardBg = mode === 'dark' ? 'rgba(15,25,56,0.55)' : '#FFFFFF'

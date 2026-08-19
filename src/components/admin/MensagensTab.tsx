@@ -9,19 +9,22 @@ import {
   DEFAULT_REMINDER_TEMPLATE,
   type TemplateVars,
 } from '@/lib/message-templates'
+import { sugestoesDeServico } from '@/lib/segmento'
 
-type Props = { businessName: string }
+type Props = { businessName: string; category?: string | null }
 
-const PREVIEW_VARS = (negocio: string): TemplateVars => ({
+/* O serviço do preview segue o NICHO do negócio: clínica lendo "Corte + Escova"
+   no exemplo da própria mensagem parece sistema de salão adaptado. */
+const PREVIEW_VARS = (negocio: string, categoria: string | null): TemplateVars => ({
   cliente: 'Maria Silva',
-  servico: 'Corte + Escova',
+  servico: sugestoesDeServico(categoria)[0],
   data: '19/06/2026',
   hora: '14:30',
   negocio: negocio || 'Seu Negócio',
   profissional: 'Ana',
 })
 
-export default function MensagensTab({ businessName }: Props) {
+export default function MensagensTab({ businessName, category = null }: Props) {
   const [reminder, setReminder] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -98,7 +101,7 @@ export default function MensagensTab({ businessName }: Props) {
     }
   }
 
-  const pv = PREVIEW_VARS(businessName)
+  const pv = PREVIEW_VARS(businessName, category)
   const preview = renderTemplate(reminder || DEFAULT_REMINDER_TEMPLATE, pv)
 
   if (loading) {

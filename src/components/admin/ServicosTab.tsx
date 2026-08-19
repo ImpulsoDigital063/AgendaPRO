@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Service } from '@/lib/types'
+import { sugestoesDeServico } from '@/lib/segmento'
 import {
   IconCheck,
   IconClose,
@@ -32,29 +33,9 @@ type Props = {
 
 const DURATIONS = [15, 20, 30, 40, 45, 60, 75, 90, 120]
 
-/**
- * Sugestões de serviço por categoria. Pensado em uso em massa: 100
- * cadastros de nichos diferentes recebem 5 sugestões CASADAS com o
- * que cada nicho realmente oferece — barbearia nunca vai ver
- * "Manicure" como sugestão.
- */
-const SUGGESTIONS_BY_CATEGORY: Record<string, string[]> = {
-  'Barbearia':            ['Corte simples', 'Corte + Barba', 'Barba', 'Pezinho', 'Sobrancelha'],
-  'Salão de beleza':      ['Escova', 'Corte feminino', 'Coloração', 'Hidratação', 'Manicure'],
-  'Estúdio de tatuagem':  ['Tatuagem pequena', 'Tatuagem média', 'Sessão de retoque', 'Cover up', 'Piercing'],
-  'Clínica estética':     ['Limpeza de pele', 'Drenagem linfática', 'Peeling', 'Microagulhamento', 'Massagem relaxante'],
-  'Nail designer':        ['Esmaltação simples', 'Gel', 'Fibra de vidro', 'Alongamento', 'Manutenção'],
-  'Manicure':             ['Mão', 'Pé', 'Mão e pé', 'Esmaltação em gel', 'Spa dos pés'],
-  'Psicólogo / Terapeuta': ['Sessão individual', 'Sessão online', 'Avaliação inicial', 'Sessão de casal', 'Sessão familiar'],
-  'Personal trainer':     ['Avaliação física', 'Sessão individual', 'Pacote 4 sessões', 'Pacote 8 sessões', 'Treino online'],
-}
-
-const DEFAULT_SUGGESTIONS = ['Corte masculino', 'Manicure', 'Limpeza de pele', 'Massagem', 'Sobrancelha']
-
-function getSuggestions(category: string | null): string[] {
-  if (!category) return DEFAULT_SUGGESTIONS
-  return SUGGESTIONS_BY_CATEGORY[category] ?? DEFAULT_SUGGESTIONS
-}
+/* Sugestões de serviço por nicho vivem em `src/lib/segmento.ts` — uma fonte só
+   pra serviços, fidelidade e telas de preview. Sem nicho definido, as sugestões
+   são NEUTRAS: clínica não pode abrir o painel e ler "Corte masculino". */
 
 function formatDuration(min: number) {
   if (min < 60) return `${min}min`
@@ -99,10 +80,10 @@ const DESCRIPTION_MAX = 400
 type Filter = 'active' | 'inactive' | 'all'
 
 export default function ServicosTab({ businessId, initialServices, category }: Props) {
-  const suggestions = useMemo(() => getSuggestions(category), [category])
+  const suggestions = useMemo(() => sugestoesDeServico(category), [category])
   // Placeholder do input — usa primeira sugestão da categoria pra dar
   // exemplo casado com o nicho do cliente
-  const placeholderExample = suggestions[0] ?? 'Corte masculino'
+  const placeholderExample = suggestions[0] ?? 'Atendimento'
   const [services, setServices] = useState(initialServices)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [showCustomDuration, setShowCustomDuration] = useState(false)

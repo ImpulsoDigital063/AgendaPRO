@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Reward, Customer, Service } from '@/lib/types'
+import { sugestoesDeRecompensa } from '@/lib/segmento'
 import {
   IconAlert,
   IconCheck,
@@ -63,34 +64,10 @@ type Props = {
   initialLoyaltyEnabled: boolean
 }
 
-/**
- * Sugestões de recompensa por categoria. Pra barbearia, "Manicure
- * grátis" como sugestão é absurdo. Mesmo padrão das sugestões de
- * Serviços (ServicosTab).
- */
-const REWARD_SUGGESTIONS_BY_CATEGORY: Record<string, string[]> = {
-  'Barbearia':            ['Corte grátis', 'Barba grátis', 'Corte + Barba grátis', '20% off no próximo', 'Sobrancelha grátis'],
-  'Salão de beleza':      ['Escova grátis', 'Corte grátis', '20% off', 'Hidratação grátis', 'Manicure grátis'],
-  'Estúdio de tatuagem':  ['Sessão de retoque grátis', 'Piercing grátis', '15% off na próxima', 'Tatuagem pequena grátis', 'Cuidado pós-tattoo'],
-  'Clínica estética':     ['Limpeza de pele grátis', 'Drenagem grátis', '20% off em procedimento', 'Massagem grátis', 'Brinde de skincare'],
-  'Nail designer':        ['Esmaltação grátis', 'Nail art grátis', '20% off no próximo', 'Manutenção grátis', 'Spa das mãos'],
-  'Manicure':             ['Mão grátis', 'Pé grátis', '20% off no spa', 'Esmaltação em gel grátis', 'Mão e pé grátis'],
-  'Psicólogo / Terapeuta': ['Sessão grátis', '20% off no pacote', 'Avaliação grátis', 'Sessão online grátis', 'Sessão de bonus'],
-  'Personal trainer':     ['Sessão grátis', 'Avaliação física grátis', '20% off no pacote', 'Treino online grátis', '4 sessões pelo preço de 3'],
-}
-
-const DEFAULT_REWARD_SUGGESTIONS = [
-  'Corte grátis',
-  '10% off',
-  'Limpeza grátis',
-  'Sobrancelha grátis',
-  'Manicure grátis',
-]
-
-function getRewardSuggestions(category: string | null): string[] {
-  if (!category) return DEFAULT_REWARD_SUGGESTIONS
-  return REWARD_SUGGESTIONS_BY_CATEGORY[category] ?? DEFAULT_REWARD_SUGGESTIONS
-}
+/* Recompensas por nicho vivem em `src/lib/segmento.ts` (mesma fonte de
+   Serviços). Sem nicho definido, as sugestões são neutras — "Corte grátis"
+   como default fazia clínica e consultório lerem recompensa de salão. */
+const getRewardSuggestions = sugestoesDeRecompensa
 
 type RewardForm = {
   name: string

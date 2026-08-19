@@ -6,18 +6,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { gaCadastroConcluido } from '@/lib/ga-event'
+import { CATEGORIAS } from '@/lib/segmento'
 
-const CATEGORIES = [
-  'Barbearia',
-  'Salão de beleza',
-  'Estúdio de tatuagem',
-  'Clínica estética',
-  'Nail designer',
-  'Manicure',
-  'Psicólogo / Terapeuta',
-  'Personal trainer',
-  'Outro',
-]
+const CATEGORIES = CATEGORIAS
 
 function slugify(text: string) {
   return text
