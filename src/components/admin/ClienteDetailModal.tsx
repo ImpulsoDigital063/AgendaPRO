@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
 import { IconClose, IconWhatsapp, IconSparkles } from '@/components/ui/Icon'
 import FichasTab from './clientes/FichasTab'
+import AtendimentoHistoricoModal from './clientes/AtendimentoHistoricoModal'
 
 type Customer = {
   id: string
+  business_id: string
   name: string
   phone: string
   email: string | null
@@ -152,6 +154,10 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const [editBirthday, setEditBirthday] = useState('')
   const [editNotes, setEditNotes] = useState('')
 
+  // v121 · bump pra recarregar a ficha depois de lancar atendimento antigo
+  const [reloadKey, setReloadKey] = useState(0)
+  const [showHistorico, setShowHistorico] = useState(false)
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -187,7 +193,7 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
     }
     load()
     return () => { cancelled = true }
-  }, [customerId])
+  }, [customerId, reloadKey])
 
   async function adjustPoints(delta: number) {
     if (!customer || delta === 0) return
@@ -754,9 +760,20 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                   <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
                     Histórico
                   </p>
-                  <span className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
-                    {history.length === 20 ? '20 últimos' : `${history.length} agendamento${history.length !== 1 ? 's' : ''}`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                      {history.length === 20 ? '20 últimos' : `${history.length} agendamento${history.length !== 1 ? 's' : ''}`}
+                    </span>
+                    {/* v121 · mesma acao do FAB no desktop (ClienteDrawer) */}
+                    <button
+                      type="button"
+                      onClick={() => setShowHistorico(true)}
+                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg"
+                      style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+                    >
+                      + Antigo
+                    </button>
+                  </div>
                 </div>
 
                 {history.length === 0 ? (
@@ -866,6 +883,20 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
           ) : null}
         </div>
       </div>
+
+      {/* v121 · Atendimento Antigo · mesmo modal do desktop (ClienteDrawer) */}
+      {showHistorico && customer && (
+        <AtendimentoHistoricoModal
+          customerId={customer.id}
+          customerName={customer.name}
+          businessId={customer.business_id}
+          onClose={() => setShowHistorico(false)}
+          onSaved={() => {
+            setShowHistorico(false)
+            setReloadKey((k) => k + 1)
+          }}
+        />
+      )}
     </div>,
     document.body
   )

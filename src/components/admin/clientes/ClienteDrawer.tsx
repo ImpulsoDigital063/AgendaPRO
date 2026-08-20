@@ -9,6 +9,7 @@ import { IconClose, IconArrowLeft, IconPlus } from '@/components/ui/Icon'
 import ClienteAtividadesTab from './ClienteAtividadesTab'
 import SaldoTab from './SaldoTab'
 import AddCreditoModal from './AddCreditoModal'
+import AtendimentoHistoricoModal from './AtendimentoHistoricoModal'
 import ConfigClienteTab from './ConfigClienteTab'
 import GaleriaTab from './GaleriaTab'
 import FichasTab from './FichasTab'
@@ -86,6 +87,9 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
   const [loading, setLoading] = useState(true)
   const [fabOpen, setFabOpen] = useState(false)
   const [showAddCredito, setShowAddCredito] = useState(false)
+  const [showHistorico, setShowHistorico] = useState(false)
+  // Bump força o fetch do drawer de novo (contador + lista) · v121
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -133,7 +137,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
       setLoading(false)
     }
     load()
-  }, [customerId])
+  }, [customerId, reloadKey])
 
   const initial = (customer?.name ?? '?').slice(0, 1).toUpperCase()
   const hasHistory = counts.atendimentos > 0
@@ -305,6 +309,19 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                   >
                     Adicionar Crédito
                   </button>
+                  {/* v121 · o que a cliente ja fez ANTES do sistema. Registro
+                      de historico: nao cria comanda nem entra no financeiro. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFabOpen(false)
+                      setShowHistorico(true)
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-[var(--admin-surface-hi)]"
+                    style={{ color: 'var(--admin-text)' }}
+                  >
+                    Atendimento Antigo
+                  </button>
                 </div>
               )}
             </div>
@@ -398,6 +415,22 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {/* Modal Atendimento Antigo (do FAB) · v121 */}
+      {showHistorico && customer && (
+        <AtendimentoHistoricoModal
+          customerId={customer.id}
+          customerName={customer.name}
+          businessId={customer.business_id}
+          onClose={() => setShowHistorico(false)}
+          onSaved={() => {
+            setShowHistorico(false)
+            setTab('atividades')
+            setReloadKey((k) => k + 1)
+            router.refresh()
+          }}
+        />
+      )}
 
       {/* Modal Adicionar Crédito (do FAB) */}
       {showAddCredito && customer && (

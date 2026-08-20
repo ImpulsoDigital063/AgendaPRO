@@ -215,6 +215,8 @@ export async function GET(
   return NextResponse.json({
     customer: {
       id: customer.id,
+      // v121 · a ficha mobile precisa do tenant pra lancar atendimento antigo
+      business_id: customer.business_id,
       name: customer.name,
       phone: customer.phone,
       email: customer.email,

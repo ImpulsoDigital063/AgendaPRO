@@ -20,6 +20,8 @@ type Activity = {
   invoice_item_id: string | null
   professional: { name: string } | null
   professional_id: string | null
+  /** v121 · atendimento antigo lancado a mao na ficha (nao passou pelo sistema) */
+  historical: boolean | null
 }
 
 type InvoiceRef = {
@@ -90,7 +92,7 @@ export default function ClienteAtividadesTab({ customerId, customerName, custome
         .from('appointments')
         .select(`
           id, appointment_date, start_time, end_time, service_name, total_price,
-          status, paid_at, payment_method, invoice_item_id, professional_id,
+          status, paid_at, payment_method, invoice_item_id, professional_id, historical,
           professional:professionals(name)
         `)
         .eq('customer_id', customerId)
@@ -127,6 +129,10 @@ export default function ClienteAtividadesTab({ customerId, customerName, custome
 
   function describeStatus(a: Activity): { label: string; color: string } {
     if (a.status === 'cancelled') return { label: 'Cancelada', color: 'var(--admin-danger,#EF4444)' }
+    // v121 · lancamento retroativo nao tem comanda nem paid_at de proposito.
+    // Sem este atalho ele caía no "Pendente" do fim da função e parecia
+    // atendimento esperando cobrança — o oposto do que o registro significa.
+    if (a.historical) return { label: 'Concluído', color: '#10B981' }
     if (a.invoice_item_id) {
       const inv = invoicesById[a.invoice_item_id]
       if (inv?.invoice) {
@@ -321,6 +327,21 @@ export default function ClienteAtividadesTab({ customerId, customerName, custome
                     </td>
                     <td className="px-3 py-2 align-top text-sm" style={{ color: 'var(--admin-text)', textDecoration: isCancelled ? 'line-through' : 'none' }}>
                       {a.service_name ?? '—'}
+                      {/* v121 · registro antigo nao tem valor nem comanda de
+                          proposito — sem esse selo parece atendimento perdido. */}
+                      {a.historical && (
+                        <span
+                          className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider align-middle"
+                          style={{
+                            background: 'var(--admin-input-bg)',
+                            border: '1px solid var(--admin-border)',
+                            color: 'var(--admin-text-mute)',
+                          }}
+                          title="Lançado à mão na ficha · não gera comanda nem entra no financeiro"
+                        >
+                          Registro antigo
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 align-top text-sm" style={{ color: 'var(--admin-text-2)' }}>
                       {a.professional?.name ?? '—'}
