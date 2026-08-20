@@ -33,6 +33,8 @@ type Props = {
   /** Dono que TAMBÉM atende vê a aba "Eu" (ganhos próprios). Feature do
    *  agendapro que o Palace não tem — preservar no menu novo. */
   showOwnerTab?: boolean
+  /** businesses.convenios_enabled · mostra a entrada de Convênios */
+  convenios?: boolean
 }
 
 type NavItem = {
@@ -54,6 +56,7 @@ export default function AdminMobileTopBar({
   pendingAppointments = 0,
   pendingClaims = 0,
   showOwnerTab = false,
+  convenios = false,
 }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -84,6 +87,7 @@ export default function AdminMobileTopBar({
         ...(showOwnerTab ? [{ label: 'Eu (meus ganhos)', href: '/admin/eu', Icon: IconUser }] : []),
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
+        ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
         { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
       ],
     },

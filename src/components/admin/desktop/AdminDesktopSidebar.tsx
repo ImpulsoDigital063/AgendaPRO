@@ -57,9 +57,11 @@ type Props = {
   brand: Brand
   pendingAppointments?: number
   pendingClaims?: number
+  /** businesses.convenios_enabled · mostra a entrada de Convênios */
+  convenios?: boolean
 }
 
-export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0 }: Props) {
+export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab')
@@ -73,6 +75,8 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
+        // Convênio PJ · só existe pra quem tem businesses.convenios_enabled
+        ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
         { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
       ],
     },
