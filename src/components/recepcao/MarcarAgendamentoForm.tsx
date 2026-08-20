@@ -177,6 +177,25 @@ export default function MarcarAgendamentoForm({
      ocupar o horário. Bloqueio continua bloqueando. `ocupacao` guarda quantos
      já estão marcados só pra avisar, sem desabilitar o botão. */
   const [ocupacao, setOcupacao] = useState<Map<string, number>>(new Map())
+  /* Negócio que atende agora e recebe depois (convênio): pode lançar um
+     atendimento que JÁ aconteceu sem dizer que foi pago. Nasce concluído e a
+     comanda fica aberta — o valor aparece em "a receber" e quem fecha é o Adm
+     ou a recepção. Sem a chave, nada muda: o agendamento nasce confirmado. */
+  const [permiteEmAberto, setPermiteEmAberto] = useState(false)
+  const [jaAtendi, setJaAtendi] = useState(false)
+
+  useEffect(() => {
+    let cancelado = false
+    supabase
+      .from('businesses')
+      .select('convenios_enabled')
+      .eq('id', businessId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelado) setPermiteEmAberto(!!data?.convenios_enabled)
+      })
+    return () => { cancelado = true }
+  }, [supabase, businessId])
   useEffect(() => {
     if (step !== 'horario' || !prof || !date) return
     let cancelled = false
@@ -273,15 +292,35 @@ export default function MarcarAgendamentoForm({
       service_id: service.id,
       service_name: service.name,
       total_price: service.price,
+      /* SEMPRE nasce 'confirmed', mesmo quando o atendimento já aconteceu.
+         Motivo: a trigger auto_create_invoice_for_appointment só abre comanda
+         pra status pending/confirmed — atendimento inserido já como 'completed'
+         fica SEM comanda e nunca aparece em "a receber". O desktop já fazia
+         assim (nasce confirmado, o modal de pagamento conclui depois); aqui a
+         conclusão vem logo abaixo, no update. */
       status: 'confirmed',
       notes: area === 'profissional' ? 'Marcado pela profissional' : 'Marcado pela recepção',
     }).select('id').single()
 
-    setSaving(false)
     if (e) {
+      setSaving(false)
       setError(`Erro ao marcar: ${e.message}`)
       return
     }
+
+    // "Já aconteceu": conclui agora que a comanda já existe e fica ABERTA.
+    if (permiteEmAberto && jaAtendi && inserted?.id) {
+      const { error: concluirErr } = await supabase
+        .from('appointments')
+        .update({ status: 'completed' })
+        .eq('id', inserted.id)
+      if (concluirErr) {
+        setSaving(false)
+        setError(`Atendimento criado, mas não consegui marcar como concluído: ${concluirErr.message}`)
+        return
+      }
+    }
+    setSaving(false)
 
     // Log de atividade
     const { data: { user } } = await supabase.auth.getUser()
@@ -648,13 +687,37 @@ export default function MarcarAgendamentoForm({
               <Row label="Horário" value={time} />
             </div>
 
+            {permiteEmAberto && (
+              <label
+                className="admin-card p-3 flex items-start gap-2.5 cursor-pointer"
+                style={{ borderColor: jaAtendi ? 'var(--admin-accent)' : undefined }}
+              >
+                <input
+                  type="checkbox"
+                  checked={jaAtendi}
+                  onChange={(e) => setJaAtendi(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                    Esse atendimento já aconteceu
+                  </span>
+                  <span className="block text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                    Entra como concluído e fica em aberto pra receber depois. O pagamento é registrado
+                    pelo Adm ou pela recepção.
+                  </span>
+                </span>
+              </label>
+            )}
+
             <button
               onClick={handleConfirm}
               disabled={saving}
               className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-40 inline-flex items-center justify-center gap-2"
               style={{ background: 'var(--admin-accent)', color: '#fff' }}
             >
-              <IconCheck size={16} /> {saving ? 'Salvando…' : 'Confirmar agendamento'}
+              <IconCheck size={16} />{' '}
+              {saving ? 'Salvando…' : jaAtendi ? 'Lançar atendimento' : 'Confirmar agendamento'}
             </button>
           </>
         )}
