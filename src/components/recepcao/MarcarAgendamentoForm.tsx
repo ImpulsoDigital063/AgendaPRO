@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { resolveClientId } from '@/lib/clients'
+import RecurringBlock from '@/components/admin/RecurringBlock'
+import { buildRecurringDates, type FreqRecorrencia } from '@/lib/recorrencia'
 import { logActivity } from '@/lib/activity-log'
 import {
   IconArrowLeft,
@@ -183,6 +185,13 @@ export default function MarcarAgendamentoForm({
      ou a recepção. Sem a chave, nada muda: o agendamento nasce confirmado. */
   const [permiteEmAberto, setPermiteEmAberto] = useState(false)
   const [jaAtendi, setJaAtendi] = useState(false)
+  /* Repetir atendimento — mesma lib e mesmo bloco do desktop. Sessão de
+     fisioterapia é 2 ou 3 vezes por semana; marcar uma a uma comia o dia do
+     Gustavo. Repete SEMPRE no mesmo dia da semana: "quarta e sexta" são duas
+     séries, não uma. */
+  const [recorrente, setRecorrente] = useState(false)
+  const [recurFreq, setRecurFreq] = useState<FreqRecorrencia>('weekly')
+  const [recurCount, setRecurCount] = useState(4)
 
   useEffect(() => {
     let cancelado = false
@@ -279,14 +288,24 @@ export default function MarcarAgendamentoForm({
     // não aparece em /admin/clientes (que conta por client_id). Bug Rosy 23/06.
     const clientId = await resolveClientId(supabase, cliente.name, cliente.phone)
 
-    const { data: inserted, error: e } = await supabase.from('appointments').insert({
+    /* Série: gera as datas e insere uma linha por data, agrupadas por
+       recurring_group_id — mesmo formato do desktop, então a agenda, o
+       histórico e o cancelamento em série já sabem lidar. */
+    const datas = recorrente && !jaAtendi
+      ? buildRecurringDates(date, recurFreq, Math.max(1, Math.min(recurCount, 52)))
+      : [date]
+    const grupoId = datas.length > 1 && typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : null
+
+    const linhas = datas.map((d, idx) => ({
       business_id: businessId,
       professional_id: prof.id,
       customer_id: cliente.id,
       client_id: clientId,
       client_name: cliente.name,
       client_phone: cliente.phone,
-      appointment_date: date,
+      appointment_date: d,
       start_time: `${time}:00`,
       end_time: `${endTime}:00`,
       service_id: service.id,
@@ -300,11 +319,20 @@ export default function MarcarAgendamentoForm({
          conclusão vem logo abaixo, no update. */
       status: 'confirmed',
       notes: area === 'profissional' ? 'Marcado pela profissional' : 'Marcado pela recepção',
-    }).select('id').single()
+      recurring_group_id: grupoId,
+      recurring_index: grupoId ? idx + 1 : null,
+    }))
+
+    const { data: criados, error: e } = await supabase.from('appointments').insert(linhas).select('id')
+    const inserted = criados?.[0] ?? null
 
     if (e) {
       setSaving(false)
-      setError(`Erro ao marcar: ${e.message}`)
+      setError(
+        datas.length > 1
+          ? `Erro ao marcar a série: ${e.message}. Se algum horário estiver ocupado, o sistema barra a série inteira.`
+          : `Erro ao marcar: ${e.message}`
+      )
       return
     }
 
@@ -336,7 +364,7 @@ export default function MarcarAgendamentoForm({
         action: 'create_appointment',
         target_type: 'appointment',
         target_id: inserted?.id,
-        description: `${cliente.name} · ${service.name} · ${date} ${time} · com ${prof.name}`,
+        description: `${cliente.name} · ${service.name} · ${date} ${time} · com ${prof.name}${datas.length > 1 ? ` · série de ${datas.length}` : ''}`,
       })
     }
 
@@ -686,6 +714,18 @@ export default function MarcarAgendamentoForm({
               <Row label="Data" value={new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} />
               <Row label="Horário" value={time} />
             </div>
+
+            {!jaAtendi && (
+              <RecurringBlock
+                enabled={recorrente}
+                onToggle={setRecorrente}
+                freq={recurFreq}
+                onChangeFreq={setRecurFreq}
+                count={recurCount}
+                onChangeCount={setRecurCount}
+                startDate={date}
+              />
+            )}
 
             {permiteEmAberto && (
               <label
