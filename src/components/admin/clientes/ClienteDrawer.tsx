@@ -218,7 +218,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
           <button
             type="button"
             disabled
-            className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+            className="hidden sm:block px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50"
             style={{
               background: 'var(--admin-surface-hi)',
               color: 'var(--admin-text-mute)',
@@ -240,17 +240,17 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
         </div>
 
         {/* Conteúdo scrollável */}
-        <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
           {/* Avatar + contadores + FAB */}
           <div className="flex items-start gap-4 mb-5 relative">
             <span
-              className="flex-shrink-0 w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold"
+              className="flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-full flex items-center justify-center text-2xl sm:text-3xl font-bold"
               style={{ background: 'var(--admin-accent)', color: '#fff' }}
             >
               {initial}
             </span>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
+              <h1 className="text-lg sm:text-2xl font-bold leading-tight break-words" style={{ color: 'var(--admin-text)' }}>
                 {customer?.name ?? '—'}
               </h1>
               {customer?.created_at && (
@@ -434,7 +434,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
 
           {/* Tabs */}
           <div
-            className="flex flex-wrap gap-1 rounded-xl p-1 mb-5"
+            className="flex sm:flex-wrap gap-1 rounded-xl p-1 mb-5 overflow-x-auto scrollbar-hide"
             style={{
               background: 'var(--admin-surface)',
               border: '1px solid var(--admin-border)',
@@ -445,7 +445,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                 key={t.key}
                 type="button"
                 onClick={() => setTab(t.key)}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider"
+                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider"
                 style={{
                   background: tab === t.key ? 'var(--admin-accent)' : 'transparent',
                   color: tab === t.key ? '#fff' : 'var(--admin-text-mute)',

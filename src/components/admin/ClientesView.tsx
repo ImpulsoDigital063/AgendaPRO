@@ -161,6 +161,18 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
     return () => mq.removeEventListener('change', onChange)
   }, [])
 
+  /* FLAG DE TESTE (20/08/2026) · ?ficha=nova abre a ficha de abas
+     (ClienteDrawer) também no celular, pra conferir o layout em tela
+     estreita antes de trocar pra todo mundo. Sem a flag nada muda: quem
+     abrir a ficha no celular continua no ClienteDetailModal de sempre.
+     Lido de window.location e não de useSearchParams pra não depender de
+     Suspense nem re-renderizar a lista inteira a cada leitura de query. */
+  const [fichaNovaForcada, setFichaNovaForcada] = useState(false)
+  useEffect(() => {
+    setFichaNovaForcada(new URLSearchParams(window.location.search).get('ficha') === 'nova')
+  }, [])
+  const usaDrawer = isDesktop || fichaNovaForcada
+
   // Deep-link: abre drawer quando /admin/clientes?customer=<id> · usado pelo
   // botão Visualizar Cliente do AgendarModal pós-save. Limpa a query depois
   // de abrir pra URL não ficar suja se o usuário fechar e abrir outro.
@@ -632,13 +644,13 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
 
       {/* Render APENAS UM baseado em viewport · matchMedia (não Tailwind)
           porque createPortal escapa do wrapper responsive. */}
-      {detailCustomerId && isDesktop && (
+      {detailCustomerId && usaDrawer && (
         <ClienteDrawer
           customerId={detailCustomerId}
           onClose={() => setDetailCustomerId(null)}
         />
       )}
-      {detailCustomerId && !isDesktop && (
+      {detailCustomerId && !usaDrawer && (
         <ClienteDetailModal
           customerId={detailCustomerId}
           onClose={() => setDetailCustomerId(null)}

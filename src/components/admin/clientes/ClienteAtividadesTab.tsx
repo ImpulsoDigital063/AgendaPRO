@@ -233,7 +233,7 @@ export default function ClienteAtividadesTab({ customerId, customerName, custome
             ))}
           </select>
         )}
-        <p className="text-xs ml-auto" style={{ color: 'var(--admin-text-mute)' }}>
+        <p className="text-xs w-full sm:w-auto sm:ml-auto" style={{ color: 'var(--admin-text-mute)' }}>
           {filtered.length} {filtered.length === 1 ? 'atividade' : 'atividades'}
         </p>
       </div>
@@ -278,8 +278,87 @@ export default function ClienteAtividadesTab({ customerId, customerName, custome
           </p>
         </div>
       ) : (
+        <>
+        {/* CELULAR · cards */}
+        <ul className="sm:hidden space-y-2">
+          {filtered.map((a) => {
+            const st = describeStatus(a)
+            const isCancelled = a.status === 'cancelled'
+            return (
+              <li
+                key={a.id}
+                onClick={() => setSelectedId(selectedId === a.id ? null : a.id)}
+                className="rounded-2xl p-3"
+                style={{
+                  background: 'var(--admin-surface)',
+                  border: '1px solid var(--admin-border)',
+                  opacity: isCancelled ? 0.55 : 1,
+                }}
+              >
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: 'var(--admin-text)', textDecoration: isCancelled ? 'line-through' : 'none' }}
+                    >
+                      {a.service_name ?? '—'}
+                    </p>
+                    <p className="text-[11px] tabular-nums mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                      {formatDate(a.appointment_date)} · {a.start_time.slice(0, 5)}
+                      {a.professional?.name ? ' · ' + a.professional.name : ''}
+                    </p>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <KebabMenu
+                      activity={a}
+                      isPaid={!!a.paid_at}
+                      isCancelled={isCancelled}
+                      open={openKebab === a.id}
+                      onToggle={() => setOpenKebab(openKebab === a.id ? null : a.id)}
+                      onClose={() => setOpenKebab(null)}
+                      onTogglePaid={() => togglePaid(a)}
+                      onReagendar={() => reagendarVia(a)}
+                      onCancelar={() => setConfirmCancel(a.id)}
+                      onLembrete={() => { setSelectedId(a.id); setOpenKebab(null); setShowLembrete(true) }}
+                      disabled={statusUpdating === a.id}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                    style={{
+                      background: 'color-mix(in srgb, ' + st.color + ' 14%, transparent)',
+                      color: st.color,
+                      border: '1px solid color-mix(in srgb, ' + st.color + ' 30%, transparent)',
+                    }}
+                  >
+                    {st.label}
+                  </span>
+                  {a.historical && (
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider"
+                      style={{
+                        background: 'var(--admin-input-bg)',
+                        border: '1px solid var(--admin-border)',
+                        color: 'var(--admin-text-mute)',
+                      }}
+                    >
+                      Registro antigo
+                    </span>
+                  )}
+                  <span className="ml-auto text-sm font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                    {formatBRL(a.total_price)}
+                  </span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+
+        {/* COMPUTADOR · tabela */}
         <div
-          className="rounded-2xl overflow-hidden"
+          className="hidden sm:block rounded-2xl overflow-hidden"
           style={{
             background: 'var(--admin-surface)',
             border: '1px solid var(--admin-border)',
@@ -382,6 +461,7 @@ export default function ClienteAtividadesTab({ customerId, customerName, custome
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* Confirmação de cancelamento */}
