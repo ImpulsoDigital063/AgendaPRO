@@ -51,6 +51,12 @@ export default function TimeSlotPicker({
 }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const [busy, setBusy] = useState<BusyRange[]>([])
+  /* Negócio com atendimento simultâneo (fisioterapia, aula em grupo): outro
+     agendamento no mesmo horário NÃO ocupa o slot. Bloqueio e horário passado
+     continuam barrando — o dono quis atender junto, não furar a própria agenda.
+     Guardamos as ocupações só pra mostrar "já tem N" sem desabilitar. */
+  const [simultaneo, setSimultaneo] = useState(false)
+  const [ocupacoes, setOcupacoes] = useState<BusyRange[]>([])
   const [loading, setLoading] = useState(false)
   const [showCustom, setShowCustom] = useState(false)
 
@@ -64,7 +70,7 @@ export default function TimeSlotPicker({
     setLoading(true)
     async function load() {
       const dayOfWeek = new Date(date + 'T00:00:00').getDay()
-      const [{ data: appts }, { data: blocks }] = await Promise.all([
+      const [{ data: appts }, { data: blocks }, { data: biz }] = await Promise.all([
         supabase
           .from('appointments')
           .select('start_time, end_time, status, client_name')
@@ -78,17 +84,26 @@ export default function TimeSlotPicker({
           .select('professional_id, block_type, day_of_week, block_date, start_time, end_time, reason')
           .eq('business_id', businessId)
           .eq('active', true),
+        supabase
+          .from('businesses')
+          .select('agendamento_simultaneo')
+          .eq('id', businessId)
+          .maybeSingle(),
       ])
       if (cancelled) return
+      const permiteSimultaneo = !!biz?.agendamento_simultaneo
       const ranges: BusyRange[] = []
+      const ocupados: BusyRange[] = []
       for (const a of appts ?? []) {
         const s = (a.start_time as string).slice(0, 5)
         const e = (a.end_time as string).slice(0, 5)
-        ranges.push({
+        const faixa: BusyRange = {
           start: timeToMinutes(s),
           end: timeToMinutes(e),
           reason: a.client_name ? `Ocupado · ${a.client_name}` : 'Ocupado',
-        })
+        }
+        if (permiteSimultaneo) ocupados.push(faixa)
+        else ranges.push(faixa)
       }
       for (const b of blocks ?? []) {
         if (b.professional_id && b.professional_id !== profId) continue
@@ -103,6 +118,8 @@ export default function TimeSlotPicker({
         })
       }
       setBusy(ranges)
+      setOcupacoes(ocupados)
+      setSimultaneo(permiteSimultaneo)
       setLoading(false)
     }
     load()
@@ -116,6 +133,12 @@ export default function TimeSlotPicker({
       if (startMin < r.end && endMin > r.start) return r.reason
     }
     return null
+  }
+
+  /** Quantos já estão marcados nesse horário — aviso, não trava. */
+  function quantosNoHorario(startMin: number): number {
+    const endMin = startMin + Math.max(totalDuration, 1)
+    return ocupacoes.filter((r) => startMin < r.end && endMin > r.start).length
   }
 
   const selectedMin = value ? timeToMinutes(value) : null
@@ -169,13 +192,14 @@ export default function TimeSlotPicker({
                     const isSelected = selectedMin === m
                     const isBusy = !!conflict || isPast
                     const reason = isPast ? 'Horário já passou' : conflict
+                    const jaMarcados = simultaneo && !isBusy ? quantosNoHorario(m) : 0
                     return (
                       <button
                         key={m}
                         type="button"
                         onClick={() => !isBusy && onChange(time)}
                         disabled={isBusy}
-                        title={reason ?? `${time} · livre`}
+                        title={reason ?? (jaMarcados > 0 ? `${time} · ${jaMarcados} já agendado${jaMarcados > 1 ? 's' : ''} · atendimento simultâneo` : `${time} · livre`)}
                         className="px-2 py-1.5 rounded-lg text-xs font-semibold tabular-nums transition-all disabled:cursor-not-allowed"
                         style={
                           isSelected
@@ -195,14 +219,23 @@ export default function TimeSlotPicker({
                                   textDecoration: 'line-through',
                                   opacity: 0.55,
                                 }
-                              : {
-                                  background: 'var(--admin-input-bg)',
-                                  color: 'var(--admin-text)',
-                                  border: '1px solid var(--admin-border)',
-                                }
+                              : jaMarcados > 0
+                                ? {
+                                    background: 'var(--admin-input-bg)',
+                                    color: 'var(--admin-text)',
+                                    border: '1px dashed var(--admin-border)',
+                                  }
+                                : {
+                                    background: 'var(--admin-input-bg)',
+                                    color: 'var(--admin-text)',
+                                    border: '1px solid var(--admin-border)',
+                                  }
                         }
                       >
                         {time}
+                        {jaMarcados > 0 && (
+                          <span className="ml-1 opacity-60">·{jaMarcados}</span>
+                        )}
                       </button>
                     )
                   })}

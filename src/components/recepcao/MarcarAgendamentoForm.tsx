@@ -173,13 +173,17 @@ export default function MarcarAgendamentoForm({
   // Horários já ocupados pra esse profissional/dia (appointments + business_blocks)
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [blocked, setBlocked] = useState<Set<string>>(new Set())
+  /* Atendimento simultâneo (CAF · fisioterapia): agendamento existente deixa de
+     ocupar o horário. Bloqueio continua bloqueando. `ocupacao` guarda quantos
+     já estão marcados só pra avisar, sem desabilitar o botão. */
+  const [ocupacao, setOcupacao] = useState<Map<string, number>>(new Map())
   useEffect(() => {
     if (step !== 'horario' || !prof || !date) return
     let cancelled = false
     async function load() {
       const dayOfWeek = new Date(date + 'T00:00:00').getDay()
 
-      const [{ data: appts }, { data: blocks }] = await Promise.all([
+      const [{ data: appts }, { data: blocks }, { data: biz }] = await Promise.all([
         supabase
           .from('appointments')
           .select('start_time, end_time, status')
@@ -192,15 +196,24 @@ export default function MarcarAgendamentoForm({
           .select('professional_id, block_type, day_of_week, block_date, start_time, end_time')
           .eq('business_id', businessId)
           .eq('active', true),
+        supabase
+          .from('businesses')
+          .select('agendamento_simultaneo')
+          .eq('id', businessId)
+          .maybeSingle(),
       ])
       if (cancelled) return
 
+      const permiteSimultaneo = !!biz?.agendamento_simultaneo
+      const contagem = new Map<string, number>()
       const occ = new Set<string>()
       for (const a of appts ?? []) {
         const start = (a.start_time as string).slice(0, 5)
         const end = (a.end_time as string).slice(0, 5)
         for (const s of slots) {
-          if (s >= start && s < end) occ.add(s)
+          if (s < start || s >= end) continue
+          if (permiteSimultaneo) contagem.set(s, (contagem.get(s) ?? 0) + 1)
+          else occ.add(s)
         }
       }
 
@@ -221,6 +234,7 @@ export default function MarcarAgendamentoForm({
 
       setBusy(occ)
       setBlocked(blk)
+      setOcupacao(contagem)
     }
     load()
     return () => {
@@ -565,6 +579,7 @@ export default function MarcarAgendamentoForm({
               <div className="grid grid-cols-4 gap-1.5">
                 {slots.map((s) => {
                   const occupied = busy.has(s)
+                  const jaMarcados = ocupacao.get(s) ?? 0
                   const isBlocked = blocked.has(s)
                   const disabled = occupied || isBlocked
                   const selected = time === s
@@ -575,7 +590,7 @@ export default function MarcarAgendamentoForm({
                         if (!disabled) setTime(s)
                       }}
                       disabled={disabled}
-                      title={isBlocked ? 'Horário bloqueado' : occupied ? 'Horário ocupado' : ''}
+                      title={isBlocked ? 'Horário bloqueado' : occupied ? 'Horário ocupado' : jaMarcados > 0 ? `${jaMarcados} já agendado${jaMarcados > 1 ? 's' : ''} · atendimento simultâneo` : ''}
                       className="py-2 rounded-lg text-sm font-semibold tabular-nums disabled:opacity-30"
                       style={{
                         background: selected
@@ -586,17 +601,23 @@ export default function MarcarAgendamentoForm({
                               ? 'var(--admin-surface-hi)'
                               : 'var(--admin-surface)',
                         color: selected ? '#fff' : isBlocked ? 'var(--admin-danger,#EF4444)' : 'var(--admin-text)',
-                        border: selected ? 'none' : '1px solid var(--admin-border)',
+                        border: selected
+                          ? 'none'
+                          : jaMarcados > 0
+                            ? '1px dashed var(--admin-border)'
+                            : '1px solid var(--admin-border)',
                         textDecoration: disabled ? 'line-through' : 'none',
                       }}
                     >
                       {s}
+                      {jaMarcados > 0 && <span className="ml-0.5 opacity-60">·{jaMarcados}</span>}
                     </button>
                   )
                 })}
               </div>
               <p className="text-[10px] mt-2" style={{ color: 'var(--admin-text-faded)' }}>
                 Riscado em vermelho = bloqueado · Riscado cinza = ocupado
+                {ocupacao.size > 0 && ' · Tracejado com número = já tem atendimento no horário (dá pra marcar junto)'}
               </p>
             </div>
             <button
