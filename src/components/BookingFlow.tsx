@@ -47,11 +47,19 @@ function fromMinutes(n: number) {
 const BOOKING_BUFFER_MIN = 30
 
 /**
- * Janela padrão do link público: varre 14 dias CORRIDOS e descarta os que não
- * têm expediente. Num negócio seg-sex isso rende 10 cards — é o que todo mundo
- * enxerga hoje e NÃO muda sem a coluna `booking_days_with_service` preenchida.
+ * Janela padrão do link público: 30 dias COM ATENDIMENTO.
+ *
+ * Até 20/08/2026 o padrão era varrer 14 dias CORRIDOS e descartar os sem
+ * expediente — o que entregava quantidade desigual de opções: 6 cards pra quem
+ * atende 3x/semana e 14 pra quem atende todo dia. Justo quem tem menos data é
+ * quem menos pode perder card pra bloqueio: a Wanessa (ter/qui/sáb) viajou 5
+ * dias e a cliente abriu o link com 4 dos 6 cards em "ocupado".
+ *
+ * Promovido ao padrão geral depois de 3 semanas rodando só no DN Diogo
+ * Nogueira (v100). A coluna `booking_days_with_service` continua valendo como
+ * override por negócio — pra mais ou pra menos.
  */
-const BOOKING_DEFAULT_SPAN_DAYS = 14
+const BOOKING_DEFAULT_DAYS_WITH_SERVICE = 30
 
 /**
  * Teto de varredura quando o negócio pede N dias COM ATENDIMENTO.
@@ -366,15 +374,14 @@ export default function BookingFlow({
     return totalDuration > 0 ? totalDuration : getSlotStep(date)
   }
 
-  // Gera as datas disponíveis INCLUINDO hoje. Dois modos (v100 · 30/07/2026):
+  // Gera as datas disponíveis INCLUINDO hoje. Varre até juntar N dias COM
+  // ATENDIMENTO (v121 · 20/08/2026 — antes disso o padrão era 14 dias corridos):
   //
-  //  · booking_days_with_service NULL (padrão — todos os negócios hoje)
-  //    varre BOOKING_DEFAULT_SPAN_DAYS corridos e descarta os sem expediente.
-  //    Seg-sex ⇒ 10 cards. É o comportamento histórico, intocado.
+  //  · booking_days_with_service NULL ⇒ BOOKING_DEFAULT_DAYS_WITH_SERVICE (30)
+  //  · booking_days_with_service = N  ⇒ override do negócio
   //
-  //  · booking_days_with_service = N (pedido do DN Diogo Nogueira, N=30)
-  //    varre até juntar N dias COM ATENDIMENTO, parando no teto de scan.
-  //    Seg-sex ⇒ 30 cards ≈ 42 dias corridos.
+  // Seg-sex ⇒ 30 cards ≈ 42 dias corridos. Ter/qui/sáb ⇒ 30 cards ≈ 70 dias.
+  // O teto de scan corta quem atende pouquíssimo (1 dia/semana pararia em ~17).
   //
   // Pra hoje: só entra na lista se o expediente ainda tem janela válida
   // após o buffer de antecedência (BOOKING_BUFFER_MIN). Se tudo já passou,
@@ -390,8 +397,8 @@ export default function BookingFlow({
   const daysWithService =
     typeof rawWindow === 'number' && Number.isFinite(rawWindow) && rawWindow > 0
       ? Math.floor(rawWindow)
-      : null
-  const scanLimit = daysWithService ? BOOKING_SCAN_CAP_DAYS : BOOKING_DEFAULT_SPAN_DAYS
+      : BOOKING_DEFAULT_DAYS_WITH_SERVICE
+  const scanLimit = BOOKING_SCAN_CAP_DAYS
   const availableDates: Date[] = []
   // Flag: quando hoje seria valido (profissional trabalha) mas expediente
   // ja encerrou. Cliente que abre a pagina à noite ve "Hoje sumiu" e
@@ -414,30 +421,27 @@ export default function BookingFlow({
       }
     }
     availableDates.push(d)
-    // Modo "N dias com atendimento": para assim que junta o que foi pedido.
-    if (daysWithService && availableDates.length >= daysWithService) break
+    // Para assim que junta os N dias atendíveis da janela.
+    if (availableDates.length >= daysWithService) break
   }
 
-  // Agrupa por mês — SÓ na janela longa. Com 30 dias a lista cruza 3 meses e
+  // Agrupa por mês. A lista agora cruza 2-3 meses em qualquer negócio e
   // "3 ago" x "3 set" viram cards idênticos (o mês é a linha menor do card).
-  // Quem está no padrão continua com o grid corrido de sempre, sem cabeçalho.
   const anoAtual = today.getFullYear()
   const monthGroups: { key: string; label: string; dates: Date[] }[] = []
-  if (daysWithService) {
-    for (const d of availableDates) {
-      const key = `${d.getFullYear()}-${d.getMonth()}`
-      const ultimo = monthGroups[monthGroups.length - 1]
-      if (ultimo && ultimo.key === key) {
-        ultimo.dates.push(d)
-        continue
-      }
-      const mes = d.toLocaleDateString('pt-BR', { month: 'long' })
-      monthGroups.push({
-        key,
-        label: d.getFullYear() === anoAtual ? mes : `${mes} de ${d.getFullYear()}`,
-        dates: [d],
-      })
+  for (const d of availableDates) {
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    const ultimo = monthGroups[monthGroups.length - 1]
+    if (ultimo && ultimo.key === key) {
+      ultimo.dates.push(d)
+      continue
     }
+    const mes = d.toLocaleDateString('pt-BR', { month: 'long' })
+    monthGroups.push({
+      key,
+      label: d.getFullYear() === anoAtual ? mes : `${mes} de ${d.getFullYear()}`,
+      dates: [d],
+    })
   }
 
   // Descobre quais dias da janela já estão sem nenhum horário livre.
@@ -1941,10 +1945,7 @@ export default function BookingFlow({
               <p className="text-xs leading-relaxed" style={{ color: C.mute }}>
                 Já passou do expediente de hoje, ou nenhum profissional tem horários
                 cadastrados pra{' '}
-                {daysWithService
-                  ? `os próximos ${daysWithService} dias de atendimento`
-                  : `os próximos ${BOOKING_DEFAULT_SPAN_DAYS} dias`}
-                . Tente entrar em contato direto pelo WhatsApp do estabelecimento.
+                {`os próximos ${daysWithService} dias de atendimento`}. Tente entrar em contato direto pelo WhatsApp do estabelecimento.
               </p>
             </div>
           ) : (
@@ -1962,27 +1963,21 @@ export default function BookingFlow({
                   Próximas datas disponíveis abaixo.
                 </div>
               )}
-            {daysWithService ? (
-              <div className="flex flex-col gap-4">
-                {monthGroups.map((g) => (
-                  <div key={g.key}>
-                    <p
-                      className="text-[11px] font-semibold uppercase tracking-wider mb-2"
-                      style={{ color: C.mute }}
-                    >
-                      {g.label}
-                    </p>
-                    <div className="grid grid-cols-4 gap-2">
-                      {g.dates.map((date) => renderDateButton(date))}
-                    </div>
+            <div className="flex flex-col gap-4">
+              {monthGroups.map((g) => (
+                <div key={g.key}>
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-wider mb-2"
+                    style={{ color: C.mute }}
+                  >
+                    {g.label}
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {g.dates.map((date) => renderDateButton(date))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-4 gap-2">
-                {availableDates.map((date) => renderDateButton(date))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
             </>
           )}
         </section>
