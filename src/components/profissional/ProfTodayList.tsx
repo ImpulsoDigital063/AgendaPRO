@@ -10,6 +10,8 @@ type Props = {
   active: Appointment[]
   archived: Appointment[]
   punctualityBonus?: number
+  /** false = a profissional não escolhe forma de pagamento (Adm/recepção recebe) */
+  podeRegistrarPagamento?: boolean
   showDate?: boolean
 }
 
@@ -17,7 +19,7 @@ type Props = {
  *  profissional movimentado (até 30/dia em barbearia popular). */
 const VISIBLE_LIMIT = 10
 
-export default function ProfTodayList({ active, archived, punctualityBonus, showDate }: Props) {
+export default function ProfTodayList({ active, archived, punctualityBonus, podeRegistrarPagamento, showDate }: Props) {
   const [showArchived, setShowArchived] = useState(false)
   const [showAllActive, setShowAllActive] = useState(false)
 
@@ -40,6 +42,7 @@ export default function ProfTodayList({ active, archived, punctualityBonus, show
           key={a.id}
           appointment={a}
           punctualityBonus={punctualityBonus}
+          podeRegistrarPagamento={podeRegistrarPagamento}
           showDate={showDate}
         />
       ))}
@@ -91,7 +94,7 @@ export default function ProfTodayList({ active, archived, punctualityBonus, show
           {showArchived && (
             <div className="space-y-3 mt-3">
               {archived.map((a) => (
-                <ProfAppointmentCard key={a.id} appointment={a} punctualityBonus={punctualityBonus} />
+                <ProfAppointmentCard key={a.id} appointment={a} punctualityBonus={punctualityBonus} podeRegistrarPagamento={podeRegistrarPagamento} />
               ))}
             </div>
           )}

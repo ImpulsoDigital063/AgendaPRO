@@ -33,9 +33,21 @@ type Props = {
   }
   showDate?: boolean
   punctualityBonus?: number
+  /**
+   * false = neste negócio quem registra o pagamento é o Adm ou a recepção
+   * (CAF · decisão do Gustavo, 20/08). A profissional só marca que atendeu, e
+   * o atendimento fica em aberto pra receber depois. Default true: nenhum outro
+   * negócio muda.
+   */
+  podeRegistrarPagamento?: boolean
 }
 
-export default function ProfAppointmentCard({ appointment, showDate, punctualityBonus = 10 }: Props) {
+export default function ProfAppointmentCard({
+  appointment,
+  showDate,
+  punctualityBonus = 10,
+  podeRegistrarPagamento = true,
+}: Props) {
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
@@ -280,7 +292,11 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
 
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => setPaymentModal(true)}
+                onClick={() =>
+                  podeRegistrarPagamento
+                    ? setPaymentModal(true)
+                    : completeWithPayment(null, withPunctuality)
+                }
                 disabled={loading || !canComplete}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5 hover:translate-y-[-1px]"
                 style={{
@@ -289,12 +305,14 @@ export default function ProfAppointmentCard({ appointment, showDate, punctuality
                   boxShadow: '0 8px 20px rgba(16,185,129,0.3)',
                 }}
                 title={
-                  canComplete
-                    ? 'Conclui o atendimento e marca o pagamento agora.'
-                    : 'Disponível 15min antes do horário do agendamento'
+                  !canComplete
+                    ? 'Disponível 15min antes do horário do agendamento'
+                    : podeRegistrarPagamento
+                      ? 'Conclui o atendimento e marca o pagamento agora.'
+                      : 'Marca que você atendeu. O pagamento é registrado pelo Adm ou pela recepção.'
                 }
               >
-                <IconCheck size={14} /> Atendi e recebi
+                <IconCheck size={14} /> {podeRegistrarPagamento ? 'Atendi e recebi' : 'Atendi'}
               </button>
             </div>
             <div className="flex gap-2">

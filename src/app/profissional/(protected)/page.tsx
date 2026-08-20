@@ -41,7 +41,7 @@ export default async function ProfissionalPage({
   // Busca o profissional logado · inclui brand_logo_url pra header
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, business:businesses(id, name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda)')
+    .select('*, business:businesses(id, name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda, prof_registra_pagamento)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -57,8 +57,12 @@ export default async function ProfissionalPage({
     professionals_can_book_self?: boolean | null
     professionals_can_book_others?: boolean | null
     professionals_see_team_agenda?: boolean | null
+    /** false = quem registra pagamento é o Adm/recepção (CAF). Default true. */
+    prof_registra_pagamento?: boolean | null
   }
   const punctualityBonus = business.punctuality_bonus_points ?? 10
+  // Só false desliga. Null/undefined (negócio antigo) segue podendo receber.
+  const podeRegistrarPagamento = business.prof_registra_pagamento !== false
   const canBookSelf = business.professionals_can_book_self === true
   const canBookOthers = business.professionals_can_book_others === true
   const seeTeamAgenda = business.professionals_see_team_agenda === true
@@ -392,6 +396,7 @@ export default async function ProfissionalPage({
               active={list.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')}
               archived={list.filter((a) => a.status === 'cancelled' || a.status === 'no_show')}
               punctualityBonus={punctualityBonus}
+              podeRegistrarPagamento={podeRegistrarPagamento}
             />
           )}
         </section>
@@ -409,7 +414,7 @@ export default async function ProfissionalPage({
             </div>
             <div className="space-y-3">
               {upcoming.map((a) => (
-                <ProfAppointmentCard key={a.id} appointment={a} showDate punctualityBonus={punctualityBonus} />
+                <ProfAppointmentCard key={a.id} appointment={a} showDate punctualityBonus={punctualityBonus} podeRegistrarPagamento={podeRegistrarPagamento} />
               ))}
             </div>
           </section>

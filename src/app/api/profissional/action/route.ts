@@ -79,13 +79,25 @@ export async function POST(req: NextRequest) {
   // Verifica se o agendamento pertence a este profissional
   const { data: appointment } = await adminClient
     .from('appointments')
-    .select('*, business:businesses(name, slug)')
+    .select('*, business:businesses(name, slug, prof_registra_pagamento)')
     .eq('id', appointmentId)
     .eq('professional_id', professional.id)
     .single()
 
   if (!appointment) {
     return NextResponse.json({ error: 'Agendamento não encontrado.' }, { status: 404 })
+  }
+
+  /* Negócio que tirou o recebimento da mão da profissional (CAF · decisão do
+     Gustavo em 20/08): ela marca que atendeu, o dinheiro é registrado pelo Adm
+     ou pela recepção. A UI já esconde a escolha, mas quem manda é o servidor —
+     tela escondida não é regra, é sugestão. Default do campo é TRUE, então
+     nenhum outro negócio sente. */
+  if (paymentMethod != null && appointment.business?.prof_registra_pagamento === false) {
+    return NextResponse.json(
+      { error: 'Neste negócio o pagamento é registrado pelo Adm ou pela recepção.' },
+      { status: 403 }
+    )
   }
 
   // Bloqueia "completed" antes da janela de 15min pré-agendamento.
