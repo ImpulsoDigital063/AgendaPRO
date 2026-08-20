@@ -88,6 +88,18 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
   const [fabOpen, setFabOpen] = useState(false)
   const [showAddCredito, setShowAddCredito] = useState(false)
   const [showHistorico, setShowHistorico] = useState(false)
+  // Vindos da MESMA rota que alimenta a ficha do celular — até 20/08/2026
+  // cupom ativo e isenção de sinal só existiam lá.
+  const [activeCoupon, setActiveCoupon] = useState<{
+    code: string
+    discount_type: string
+    discount_value: number
+    // Dias já calculados na hora do fetch — contar no render usaria Date.now()
+    // durante a renderização, que o lint barra por impureza.
+    diasRestantes: number
+  } | null>(null)
+  const [sinalAtivoNoNegocio, setSinalAtivoNoNegocio] = useState(false)
+  const [isento, setIsento] = useState(false)
   // Bump força o fetch do drawer de novo (contador + lista) · v121
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -119,6 +131,29 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
           .order('appointment_date', { ascending: false }),
       ])
       if (cust) setCustomer(cust as Customer)
+      // Não bloqueia a ficha: se a rota falhar, o resto da tela abre igual.
+      fetch('/api/admin/customers/' + customerId, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!d) return
+          const cupom = d.activeCoupon ?? null
+          setActiveCoupon(
+            cupom
+              ? {
+                  code: cupom.code,
+                  discount_type: cupom.discount_type,
+                  discount_value: cupom.discount_value,
+                  diasRestantes: Math.max(
+                    0,
+                    Math.ceil((new Date(cupom.expires_at).getTime() - Date.now()) / 86400000),
+                  ),
+                }
+              : null,
+          )
+          setSinalAtivoNoNegocio(d.sinalAtivo === true)
+          setIsento(d.customer?.sinal_isento === true)
+        })
+        .catch(() => {})
       const list = appts ?? []
       // Contador "ATENDIMENTOS" só conta os REAIS (passados que aconteceram).
       // Exclui futuros agendados (recorrências importadas Salão99 inflavam o
@@ -326,6 +361,76 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
               )}
             </div>
           </div>
+
+          {/* CUPOM ATIVO · a dona precisa ver antes de fechar a comanda, senão
+              o desconto que ela mesma mandou não é aplicado. */}
+          {activeCoupon && (
+            <div
+              className="px-4 py-3 rounded-2xl flex items-center gap-3 mb-5"
+              style={{
+                background: 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))',
+                border: '1px solid rgba(16,185,129,0.35)',
+              }}
+            >
+              <span className="text-2xl flex-shrink-0">🎁</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold" style={{ color: '#10B981' }}>
+                  Cupom {activeCoupon.code} ativo
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                  {activeCoupon.discount_type === 'percent'
+                    ? activeCoupon.discount_value + '% off'
+                    : 'R$ ' + activeCoupon.discount_value.toFixed(2).replace('.', ',') + ' de desconto'}
+                  {' · vence em '}
+                  {activeCoupon.diasRestantes}
+                  {activeCoupon.diasRestantes === 1 ? ' dia' : ' dias'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* NÃO COBRAR SINAL (v118) · só em negócio que cobra sinal. É a
+              cliente antiga que nunca falta: sem esta opção a dona clicaria
+              em "Recebi o sinal" sem receber, e a comanda cobraria a menos. */}
+          {sinalAtivoNoNegocio && customer && (
+            <div
+              className="rounded-2xl p-4 flex items-start justify-between gap-3 mb-5"
+              style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                  Não cobrar sinal
+                </p>
+                <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  Cliente de confiança: agenda sem precisar pagar antecipado.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const novo = !isento
+                  setIsento(novo)
+                  const res = await fetch('/api/admin/customers/' + customerId, {
+                    method: 'PATCH',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ sinal_isento: novo }),
+                  })
+                  // λ.prova-na-fonte: banco recusou, a tela volta atrás.
+                  if (!res.ok) setIsento(!novo)
+                }}
+                role="switch"
+                aria-checked={isento}
+                aria-label="Não cobrar sinal desta cliente"
+                className="relative flex-shrink-0 rounded-full transition-colors"
+                style={{ width: 46, height: 26, background: isento ? '#10B981' : 'var(--admin-border)' }}
+              >
+                <span
+                  className="absolute top-[3px] rounded-full bg-white transition-all"
+                  style={{ width: 20, height: 20, left: isento ? 23 : 3 }}
+                />
+              </button>
+            </div>
+          )}
 
           {/* Tabs */}
           <div
@@ -770,10 +875,81 @@ function Field({ label, required, children }: { label: string; required?: boolea
   )
 }
 
+type Reward = { id: string; name: string; points_required: number }
+type PointTx = { id: string; points: number; reason: string; created_at: string }
+
+const REASON_LABEL: Record<string, string> = {
+  service: 'Atendimento',
+  referral: 'Indicação',
+  review: 'Avaliação',
+  manual: 'Manual',
+  punctuality: 'Pontualidade',
+  redemption: 'Resgate',
+}
+
+/**
+ * Fidelidade da ficha. Até 20/08/2026 só ajustava saldo — resgate de
+ * recompensa e extrato de pontos existiam SÓ na ficha do celular
+ * (ClienteDetailModal), e quem opera no computador ficava sem. São 8
+ * recompensas cadastradas (Olímpio, Rosy, Wanessa) e 379 transações na
+ * base: auditar saldo pelo desktop era impossível.
+ *
+ * Os dados vêm da MESMA rota que alimenta o celular e a escrita usa os
+ * MESMOS endpoints (/points e /redeem) — duas telas, uma verdade só.
+ */
 function FidelidadeTab({ customer, onRefresh }: { customer: Customer; onRefresh: () => void }) {
   const [delta, setDelta] = useState(10)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [rewards, setRewards] = useState<Reward[]>([])
+  const [history, setHistory] = useState<PointTx[]>([])
+  const [saldo, setSaldo] = useState<number>(customer.total_points ?? 0)
+  const [redeeming, setRedeeming] = useState(false)
+  const [sucesso, setSucesso] = useState<string | null>(null)
+  const [carregando, setCarregando] = useState(true)
+
+  // Bump depois de ajustar saldo ou resgatar — releitura vem do servidor,
+  // nunca de update otimista: o extrato logo abaixo tem que bater com o banco.
+  const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    let cancelado = false
+    async function load() {
+      const data = await fetch('/api/admin/customers/' + customer.id, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null)
+      if (cancelado) return
+      if (data) {
+        setRewards((data.rewards ?? []) as Reward[])
+        setHistory((data.pointsHistory ?? []) as PointTx[])
+        setSaldo(Number(data.customer?.total_points ?? 0))
+      }
+      setCarregando(false)
+    }
+    load()
+    return () => { cancelado = true }
+  }, [customer.id, reloadKey])
+
+  async function resgatar(rewardId: string, nome: string) {
+    setRedeeming(true)
+    setError(null)
+    setSucesso(null)
+    const res = await fetch('/api/admin/customers/' + customer.id + '/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reward_id: rewardId }),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setError(j.error ?? 'Não deu pra resgatar')
+      setRedeeming(false)
+      return
+    }
+    setSucesso(nome + ' resgatado!')
+    setRedeeming(false)
+    setReloadKey((k) => k + 1)
+    onRefresh()
+  }
 
   async function adjust(direction: 'add' | 'remove') {
     if (delta <= 0) return
@@ -793,6 +969,7 @@ function FidelidadeTab({ customer, onRefresh }: { customer: Customer; onRefresh:
       return
     }
     setSubmitting(false)
+    setReloadKey((k) => k + 1)
     onRefresh()
   }
 
@@ -808,7 +985,7 @@ function FidelidadeTab({ customer, onRefresh }: { customer: Customer; onRefresh:
         Saldo de Pontos
       </h3>
       <p className="text-3xl font-bold mb-4" style={{ color: 'var(--admin-accent)' }}>
-        {customer.total_points ?? 0}
+        {saldo}
       </p>
 
       <div className="flex gap-2 items-end">
@@ -853,9 +1030,101 @@ function FidelidadeTab({ customer, onRefresh }: { customer: Customer; onRefresh:
         </p>
       )}
 
-      <p className="text-[11px] mt-4" style={{ color: 'var(--admin-text-faded)' }}>
-        Resgate de recompensas e histórico de pontos no modal antigo (em breve unificado aqui).
-      </p>
+      {sucesso && (
+        <p className="text-xs mt-3" style={{ color: '#10B981' }}>🎁 {sucesso}</p>
+      )}
+
+      {/* RESGATE · o dono não precisa mais abater pontos na mão. Cada resgate
+          entra no extrato abaixo como "Resgate" (reason='redemption'). */}
+      <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--admin-border)' }}>
+        <h3 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+          Resgatar Recompensa
+        </h3>
+        {carregando ? (
+          <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Carregando…</p>
+        ) : rewards.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+            Nenhuma recompensa cadastrada. Crie em Configurações → Fidelidade.
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {rewards.map((r) => {
+              const pode = saldo >= r.points_required
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => resgatar(r.id, r.name)}
+                  disabled={!pode || redeeming}
+                  className="w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between disabled:opacity-40"
+                  style={{
+                    background: pode ? 'color-mix(in srgb, var(--admin-accent) 14%, transparent)' : 'var(--admin-input-bg)',
+                    color: pode ? 'var(--admin-accent)' : 'var(--admin-text-faded)',
+                    border: '1px solid ' + (pode ? 'color-mix(in srgb, var(--admin-accent) 30%, transparent)' : 'var(--admin-border)'),
+                  }}
+                >
+                  <span className="truncate">{r.name}</span>
+                  <span className="flex-shrink-0 ml-2">
+                    {r.points_required} pts{!pode && ' · faltam ' + (r.points_required - saldo)}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* EXTRATO · CIC rodada 4, bug #3: cliente com saldo inexplicável e dono
+          sem como auditar. Cada delta aparece com o motivo que o gerou. */}
+      <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--admin-border)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+            Histórico de Pontos
+          </h3>
+          <span className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+            {history.length === 50 ? '50 últimos' : history.length + (history.length === 1 ? ' transação' : ' transações')}
+          </span>
+        </div>
+        {carregando ? (
+          <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Carregando…</p>
+        ) : history.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+            Cliente ainda não acumulou pontos.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {history.map((tx) => {
+              const positivo = tx.points > 0
+              return (
+                <li
+                  key={tx.id}
+                  className="px-3 py-2 rounded-xl flex items-center gap-3"
+                  style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}
+                >
+                  <span
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0"
+                    style={{
+                      background: positivo ? 'rgba(16,185,129,0.18)' : 'rgba(239,68,68,0.18)',
+                      color: positivo ? '#10B981' : '#EF4444',
+                    }}
+                  >
+                    {REASON_LABEL[tx.reason] ?? tx.reason}
+                  </span>
+                  <span className="text-[11px] flex-1" style={{ color: 'var(--admin-text-faded)' }}>
+                    {new Date(tx.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </span>
+                  <span
+                    className="text-sm font-bold tabular-nums flex-shrink-0"
+                    style={{ color: positivo ? '#10B981' : '#EF4444' }}
+                  >
+                    {positivo ? '+' : ''}{tx.points} pts
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }
