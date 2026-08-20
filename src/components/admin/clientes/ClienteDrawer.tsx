@@ -278,8 +278,12 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                 ) : (
                   <>
                     <KPI label="Atendimentos" value={0} />
-                    <KPI label="Produtos Vendidos" value={0} />
-                    <KPI label="Pacotes Vendidos" value={0} />
+                    {/* Produtos e Pacotes ainda sao placeholder fixo em 0 (a
+                        contagem nao existe). No computador passam batido; em
+                        390px custavam duas linhas da primeira dobra pra dizer
+                        zero. Somem no celular ate terem dado real. */}
+                    <div className="hidden sm:block"><KPI label="Produtos Vendidos" value={0} /></div>
+                    <div className="hidden sm:block"><KPI label="Pacotes Vendidos" value={0} /></div>
                   </>
                 )}
               </div>
