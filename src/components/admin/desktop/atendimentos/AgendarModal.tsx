@@ -34,7 +34,7 @@ const NovoClienteModal = dynamic(() => import('@/components/admin/clientes/NovoC
   ssr: false,
 })
 
-type Customer = { id: string; name: string; phone: string; total_points: number | null }
+type Customer = { id: string; name: string; phone: string; total_points: number | null; company_id?: string | null }
 type Professional = { id: string; name: string }
 type Service = { id: string; name: string; price: number | null; duration_minutes: number | null }
 
@@ -159,6 +159,13 @@ export default function AgendarModal({
   // Form state · multi-serviços (V2)
   const [cliente, setCliente] = useState<Customer | null>(null)
   const [profId, setProfId] = useState<string>('')
+  /* CONVÊNIO (CAF · 21/08) — mesmo comportamento do formulário do mobile:
+     paciente que é funcionário de empresa conveniada faz o atendimento nascer
+     vinculado a ela, e a lista de profissionais mostra só quem atende por
+     aquela empresa. Sem convênio, nada muda. */
+  const [empresa, setEmpresa] = useState<{ id: string; name: string } | null>(null)
+  const [profsDaEmpresa, setProfsDaEmpresa] = useState<string[] | null>(null)
+  const [peloConvenio, setPeloConvenio] = useState(true)
   const [date, setDate] = useState<string>('')
   const [time, setTime] = useState<string>('')
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(() => [newLine()])
@@ -259,6 +266,7 @@ export default function AgendarModal({
     if (!open) return
     // Prefill de resgate de pacote (opcional) · cliente + serviço + resgate ligado.
     setCliente(initialCustomer ?? null)
+    carregarConvenio(initialCustomer ?? null)
     setProfId(defaultProfId ?? '')
     const svcPrefill = initialServiceId ? services.find((s) => s.id === initialServiceId) : null
     setServiceLines(svcPrefill
@@ -396,6 +404,37 @@ export default function AgendarModal({
     setServiceLines((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.uid !== uid)))
   }
 
+  /** Descobre a empresa do paciente e quem pode atender por ela. */
+  async function carregarConvenio(c: Customer | null) {
+    setEmpresa(null)
+    setProfsDaEmpresa(null)
+    setPeloConvenio(true)
+    if (!c?.company_id) return
+    const [{ data: emp }, { data: vinc }] = await Promise.all([
+      supabase.from('companies').select('id, name, ativo').eq('id', c.company_id).maybeSingle(),
+      supabase.from('company_professionals').select('professional_id').eq('company_id', c.company_id),
+    ])
+    if (!emp || emp.ativo === false) return
+    setEmpresa({ id: emp.id, name: emp.name })
+    setProfsDaEmpresa((vinc ?? []).map((v) => v.professional_id))
+  }
+
+  /* Quem pode atender: com convênio ativo, só os vinculados. */
+  const profissionaisVisiveis = useMemo(() => {
+    if (!empresa || !peloConvenio || profsDaEmpresa === null) return professionals
+    return professionals.filter((p) => profsDaEmpresa.includes(p.id))
+  }, [professionals, empresa, peloConvenio, profsDaEmpresa])
+
+  /* Achado 4 da auditoria: com profissional pré-escolhido (link da grade) dava
+     pra criar atendimento de convênio com alguém NÃO vinculado à empresa —
+     furando a regra do Gustavo. Se o escolhido não estiver na lista permitida,
+     a escolha é desfeita e ele precisa escolher de novo. */
+  useEffect(() => {
+    if (!profId) return
+    if (!empresa || !peloConvenio || profsDaEmpresa === null) return
+    if (!profsDaEmpresa.includes(profId)) setProfId('')
+  }, [profId, empresa, peloConvenio, profsDaEmpresa])
+
   // Busca cliente (debounced)
   useEffect(() => {
     if (!showClientPicker) return
@@ -410,7 +449,7 @@ export default function AgendarModal({
       const digits = term.replace(/\D/g, '')
       let query = supabase
         .from('customers')
-        .select('id, name, phone, total_points')
+        .select('id, name, phone, total_points, company_id')
         .eq('business_id', businessId)
         .limit(20)
       if (digits.length >= 3) {
@@ -443,6 +482,7 @@ export default function AgendarModal({
       .single()
     if (data) {
       setCliente(data as Customer)
+      carregarConvenio(data as Customer)
       setShowClientPicker(false)
     }
   }
@@ -727,6 +767,7 @@ export default function AgendarModal({
     const appointmentRows = allDates.map((d, idx) => ({
       business_id: businessId,
       professional_id: profId,
+      company_id: empresa && peloConvenio ? empresa.id : null,
       customer_id: avulso ? null : cliente!.id,
       client_id: clientId,
       client_name: avulso ? (avulsoName.trim() || 'Cliente avulso') : cliente!.name,
@@ -1257,7 +1298,7 @@ export default function AgendarModal({
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setCliente(null); setShowClientPicker(true) }}
+                  onClick={() => { setCliente(null); carregarConvenio(null); setShowClientPicker(true) }}
                   className="text-xs underline flex-shrink-0"
                   style={{ color: 'var(--admin-accent)' }}
                 >
@@ -1280,7 +1321,7 @@ export default function AgendarModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setAvulso(true); setCliente(null) }}
+                  onClick={() => { setAvulso(true); setCliente(null); carregarConvenio(null) }}
                   className="text-xs underline"
                   style={{ color: 'var(--admin-accent)' }}
                 >
@@ -1316,10 +1357,30 @@ export default function AgendarModal({
               }}
             >
               <option value="">Selecionar profissional</option>
-              {professionals.map((p) => (
+              {profissionaisVisiveis.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+            {empresa && (
+              <div className="mt-2 space-y-1.5">
+                {peloConvenio && (
+                  <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+                    Convênio <strong style={{ color: 'var(--admin-text)' }}>{empresa.name}</strong> ·
+                    {profissionaisVisiveis.length === 0
+                      ? ' nenhum profissional cadastrado nessa empresa (cadastre em Convênios ou desmarque abaixo).'
+                      : ' aparecem só os profissionais cadastrados nela.'}
+                  </p>
+                )}
+                <label className="flex items-start gap-2 text-[11px] cursor-pointer" style={{ color: 'var(--admin-text-2)' }}>
+                  <input
+                    type="checkbox"
+                    checked={peloConvenio}
+                    onChange={(e) => { setPeloConvenio(e.target.checked); setProfId('') }}
+                  />
+                  Cobrar do convênio {empresa.name} (desmarque se for atendimento particular)
+                </label>
+              </div>
+            )}
           </Field>
 
           {/* Linhas de serviço · multi-serviços inline (V2)
@@ -1923,6 +1984,7 @@ export default function AgendarModal({
                     type="button"
                     onClick={() => {
                       setCliente(c)
+                      carregarConvenio(c)
                       setShowClientPicker(false)
                       setSearch('')
                       setResults([])

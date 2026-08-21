@@ -229,6 +229,21 @@ export default function MarcarAgendamentoForm({
     return professionals.filter((p) => profsDaEmpresa.includes(p.id))
   }, [professionals, empresa, peloConvenio, profsDaEmpresa])
 
+  /* Achado 4 da auditoria (21/08): com o profissional já escolhido — link da
+     grade (defaultProfId) ou a própria fisioterapeuta na área dela (lockProf) —
+     o passo de escolher era pulado e dava pra criar atendimento de convênio com
+     quem NÃO está vinculado à empresa. Aqui a escolha cai quando ela não é
+     permitida; se nem existe passo de profissional, o convênio é desligado
+     (vira atendimento particular) em vez de gravar vínculo inválido. */
+  useEffect(() => {
+    if (!empresa || !peloConvenio || profsDaEmpresa === null) return
+    if (prof && !profsDaEmpresa.includes(prof.id)) {
+      if (lockProf) setPeloConvenio(false)
+      else { setProf(null); setStep('profissional') }
+    }
+  }, [prof, empresa, peloConvenio, profsDaEmpresa, lockProf])
+
+
 
   useEffect(() => {
     let cancelado = false
