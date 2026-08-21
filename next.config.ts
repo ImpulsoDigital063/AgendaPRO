@@ -41,7 +41,12 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              // Turnstile (anti-bot do cadastro) carrega script E renderiza iframe
+              // a partir de challenges.cloudflare.com. Sem os dois liberados o
+              // widget nao desenha, o formulario nunca recebe token e o cadastro
+              // fica pedindo "confirme que voce nao e um robo" pra sempre — sem
+              // ter o que clicar. Pego em 21/08 tentando cadastrar em localhost.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.supabase.co",
               "font-src 'self'",
@@ -51,6 +56,7 @@ const nextConfig: NextConfig = {
               // Sem isso, navegador bloqueia o worker e a compressão trava silenciosa.
               "worker-src 'self' blob:",
               "child-src 'self' blob:",
+              "frame-src https://challenges.cloudflare.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

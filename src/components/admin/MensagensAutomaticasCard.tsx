@@ -1,18 +1,26 @@
 'use client'
 
-/* Onde a dona liga e desliga cada aviso automático.
+/* Onde a dona liga, desliga e escreve cada aviso automático.
    ───────────────────────────────────────────────────────────────────
-   Duas decisões de tela que valem mais que o visual:
+   Decisões de tela que valem mais que o visual:
 
    1. TUDO NASCE DESLIGADO e ela liga um por um. Mensagem automática sai em
       nome dela, pra base dela — ligar por padrão é decidir no lugar dela e
       ela descobre pela cliente estranhando.
-   2. QUANDO NÃO HÁ CANAL, A TELA DIZ. Se o WhatsApp ainda não está
-      conectado, ligar não manda nada. Deixar ela descobrir sozinha uma
-      semana depois é o jeito mais rápido de queimar a confiança na
-      funcionalidade inteira. */
 
-import { useEffect, useState } from 'react'
+   2. O PREVIEW FICA SEMPRE À VISTA, escrito como a cliente vai ler, com
+      nome e data de exemplo. A primeira versão desta tela mostrava só o
+      interruptor e escondia o texto atrás de "Editar texto": a dona ligava
+      sem nunca ter visto o que sairia em nome dela. Ver a mensagem pronta é
+      o que faz ela confiar — ou querer mudar.
+
+   3. QUANDO NÃO HÁ CANAL, A TELA DIZ. Ligar sem canal não manda nada, e
+      descobrir isso uma semana depois queima a confiança na função inteira.
+*/
+
+import { useEffect, useRef, useState } from 'react'
+import { sugestoesDeServico } from '@/lib/segmento'
+import { IconWhatsapp } from '@/components/ui/Icon'
 
 type Regra = {
   tipo: string
@@ -20,43 +28,98 @@ type Regra = {
   offsetMinutos: number
   horaDoDia: string
   retornoDias: number | null
+  /** null = usa o texto do sistema. Preenchido = a dona escreveu o dela. */
+  template: string | null
+  /** O texto do sistema, com as variáveis à vista. Vem pronto da API. */
+  padrao: string
+  /** Lembrete sai com os botões Confirmo / Preciso remarcar. */
+  comBotao: boolean
 }
 
-const INFO: Record<string, { titulo: string; texto: string; quem: 'cliente' | 'você' }> = {
+const INFO: Record<string, { titulo: string; quando: string; porque: string }> = {
   confirmacao: {
     titulo: 'Confirmação do agendamento',
-    texto: 'Assim que o horário é marcado, a cliente recebe a confirmação com data, hora e serviço.',
-    quem: 'cliente',
+    quando: 'Na hora que marca',
+    porque: 'A cliente recebe por escrito o que ficou combinado.',
   },
   lembrete_vespera: {
     titulo: 'Lembrete na véspera',
-    texto: 'Um dia antes, com botão de confirmar presença. É o que mais reduz falta.',
-    quem: 'cliente',
+    quando: '1 dia antes',
+    porque: 'É o que mais reduz falta — dá tempo de remarcar em vez de sumir.',
   },
   lembrete_dia: {
     titulo: 'Lembrete no dia',
-    texto: 'Algumas horas antes do horário dela, não de manhã pra todo mundo.',
-    quem: 'cliente',
+    quando: 'Horas antes',
+    porque: 'Algumas horas antes do horário dela, não de manhã pra todo mundo.',
   },
   aniversario: {
     titulo: 'Aniversário',
-    texto: 'Uma mensagem no dia do aniversário da cliente. Uma vez por ano, sem promessa de brinde.',
-    quem: 'cliente',
-  },
-  dono_novo_agendamento: {
-    titulo: 'Avisar você de agendamento novo',
-    texto: 'Chega no WhatsApp do seu negócio quando entra horário novo.',
-    quem: 'você',
+    quando: 'No dia',
+    porque: 'Uma vez por ano. Sem prometer brinde que você não vai dar.',
   },
 }
 
-const HORAS_ANTES = [1, 2, 3, 4, 6, 12]
+const HORAS_ANTES = [1, 2, 3, 4, 6, 12, 24]
 
-export default function MensagensAutomaticasCard() {
+/* O valor gravado PRECISA existir na lista. Um <select> cujo value não bate
+   com nenhuma <option> não fica vazio: ele mostra a primeira opção. Foi o
+   que aconteceu com um registro de 24h — o chip dizia "24h antes", o seletor
+   dizia "1h antes", e o primeiro toque em qualquer outro campo salvaria 1h
+   que a dona nunca escolheu. */
+function opcoesHoras(atual: number): number[] {
+  return HORAS_ANTES.includes(atual) ? HORAS_ANTES : [...HORAS_ANTES, atual].sort((a, b) => a - b)
+}
+
+const VARIAVEIS = [
+  { chave: '{cliente}', label: 'nome da cliente' },
+  { chave: '{data}', label: 'data' },
+  { chave: '{hora}', label: 'hora' },
+  { chave: '{servico}', label: 'serviço' },
+  { chave: '{salao}', label: 'seu negócio' },
+]
+
+/* Exemplo reconhecível — sábado porque é quando lota. Mas o SERVIÇO segue
+   o nicho: clínica lendo "Corte Feminino" no próprio exemplo parece sistema
+   de salão adaptado às pressas, e é a primeira coisa que faz a dona
+   desconfiar de que o produto não é pra ela. */
+function exemplos(categoria: string | null): Record<string, string> {
+  return {
+    '{cliente}': 'Maria',
+    '{data}': 'sáb, 22/08',
+    '{hora}': '14:30',
+    '{servico}': sugestoesDeServico(categoria)[0],
+    '{profissional}': 'Ana',
+  }
+}
+
+function preencher(texto: string, salao: string, categoria: string | null): string {
+  let t = texto.replace(/{salao}/g, salao)
+  for (const [chave, valor] of Object.entries(exemplos(categoria))) t = t.split(chave).join(valor)
+  return t
+}
+
+function formatarTelefone(bruto: string): string {
+  const d = (bruto || '').replace(/\D/g, '')
+  const s = d.startsWith('55') && d.length > 11 ? d.slice(2) : d
+  if (s.length === 11) return `(${s.slice(0, 2)}) ${s.slice(2, 7)}-${s.slice(7)}`
+  if (s.length === 10) return `(${s.slice(0, 2)}) ${s.slice(2, 6)}-${s.slice(6)}`
+  return bruto
+}
+
+export default function MensagensAutomaticasCard({
+  businessName = 'seu negócio',
+  businessPhone = null,
+  category = null,
+}: {
+  businessName?: string
+  businessPhone?: string | null
+  category?: string | null
+}) {
   const [regras, setRegras] = useState<Regra[]>([])
   const [canalLigado, setCanalLigado] = useState(true)
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState<string | null>(null)
+  const [editando, setEditando] = useState<string | null>(null)
 
   async function carregar() {
     try {
@@ -89,16 +152,23 @@ export default function MensagensAutomaticasCard() {
     )
   }
 
+  const ligados = regras.filter((r) => r.enabled).length
+
   return (
     <div className="space-y-3">
-      <div>
-        <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
-          Mensagens automáticas
-        </p>
-        <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-          O sistema manda sozinho, em nome do seu negócio. Ligue só o que fizer sentido pra você —
-          tudo começa desligado.
-        </p>
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'var(--admin-text)' }}>
+            <IconWhatsapp className="w-4 h-4" style={{ color: '#25D366' }} />
+            Avisos automáticos
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+            O sistema manda sozinho, em nome do seu negócio.
+          </p>
+        </div>
+        <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+          {ligados === 0 ? 'nenhum ligado' : `${ligados} de ${regras.length} ligados`}
+        </span>
       </div>
 
       {!canalLigado && (
@@ -108,8 +178,8 @@ export default function MensagensAutomaticasCard() {
         >
           <strong style={{ color: 'var(--admin-text)' }}>O envio ainda não está ligado.</strong>{' '}
           <span style={{ color: 'var(--admin-text-mute)' }}>
-            Você já pode deixar escolhido o que quer mandar — assim que o canal for ativado, começa a
-            sair sem você precisar mexer aqui de novo.
+            Você já pode deixar tudo escolhido — quando o canal for ativado, começa a sair sem você
+            precisar voltar aqui.
           </span>
         </div>
       )}
@@ -117,11 +187,24 @@ export default function MensagensAutomaticasCard() {
       {regras.map((r) => {
         const info = INFO[r.tipo]
         if (!info) return null
+
         const horasAntes = Math.round(Math.abs(r.offsetMinutos) / 60)
+        const quando =
+          r.tipo === 'lembrete_dia' ? `${horasAntes}h antes`
+          : r.tipo === 'aniversario' ? `No dia, às ${r.horaDoDia}`
+          : info.quando
+
+        const textoAtual = r.template ?? r.padrao
+        const temBotao = r.tipo === 'lembrete_vespera' || r.tipo === 'lembrete_dia'
+        const aberto = editando === r.tipo
 
         return (
-          <div key={r.tipo} className="admin-card p-4">
-            <div className="flex items-start justify-between gap-3">
+          <div
+            key={r.tipo}
+            className="admin-card overflow-hidden transition-opacity"
+            style={{ opacity: r.enabled ? 1 : 0.72 }}
+          >
+            <div className="p-4 flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
@@ -130,15 +213,17 @@ export default function MensagensAutomaticasCard() {
                   <span
                     className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
                     style={{
-                      background: 'var(--admin-surface-2, rgba(0,0,0,0.05))',
-                      color: 'var(--admin-text-faded)',
+                      background: r.enabled
+                        ? 'rgba(34,197,94,0.14)'
+                        : 'var(--admin-surface-2, rgba(0,0,0,0.05))',
+                      color: r.enabled ? '#15803d' : 'var(--admin-text-faded)',
                     }}
                   >
-                    para {info.quem}
+                    {quando}
                   </span>
                 </div>
                 <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-                  {info.texto}
+                  {info.porque}
                 </p>
               </div>
 
@@ -159,45 +244,254 @@ export default function MensagensAutomaticasCard() {
               </button>
             </div>
 
-            {/* Ajuste fino só aparece quando o aviso está ligado — configuração
-                de coisa desligada é ruído na tela. */}
-            {r.enabled && r.tipo === 'lembrete_dia' && (
-              <div className="mt-3 flex items-center gap-2 flex-wrap">
-                <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>Mandar</span>
-                <select
-                  value={horasAntes}
-                  onChange={(e) => salvar(r, { offsetMinutos: -Number(e.target.value) * 60 })}
-                  className="admin-input px-2 py-1.5 text-xs"
-                >
-                  {HORAS_ANTES.map((h) => (
-                    <option key={h} value={h}>{h}h antes</option>
-                  ))}
-                </select>
-                <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-                  do horário dela
-                </span>
-              </div>
-            )}
-
-            {r.enabled && r.tipo === 'aniversario' && (
-              <div className="mt-3 flex items-center gap-2 flex-wrap">
-                <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>Mandar às</span>
-                <input
-                  type="time"
-                  value={r.horaDoDia}
-                  onChange={(e) => salvar(r, { horaDoDia: e.target.value })}
-                  className="admin-input px-2 py-1.5 text-xs"
+            <div className="px-4 pb-4" style={{ borderTop: '1px solid var(--admin-border)', paddingTop: 14 }}>
+              {aberto ? (
+                <Editor
+                  regra={r}
+                  onFechar={() => setEditando(null)}
+                  onSalvar={(t) => { void salvar(r, { template: t }); setEditando(null) }}
                 />
-              </div>
-            )}
+              ) : (
+                <>
+                  <Bolha
+                    texto={preencher(textoAtual, businessName, category)}
+                    salao={businessName}
+                    telefone={businessPhone}
+                    botoes={temBotao && r.comBotao}
+                  />
+
+                  {temBotao && (
+                    /* Só nos lembretes: é onde o botão existe. Oferecer isso
+                       na mensagem de aniversário seria prometer o que o motor
+                       não faz. */
+                    <label className="mt-2.5 flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={r.comBotao}
+                        onChange={(ev) => salvar(r, { comBotao: ev.target.checked })}
+                        className="mt-0.5"
+                      />
+                      <span className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                        Deixar a cliente confirmar pelo botão
+                        <span className="block text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+                          Ela toca em &quot;Confirmo&quot; e o agendamento é confirmado sozinho. Desligue se
+                          você prefere que ela não responda por aqui.
+                        </span>
+                      </span>
+                    </label>
+                  )}
+
+                  <div className="mt-2.5 flex items-center gap-3 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setEditando(r.tipo)}
+                      className="text-xs font-medium underline underline-offset-2"
+                      style={{ color: 'var(--admin-accent)' }}
+                    >
+                      Editar mensagem
+                    </button>
+
+                    {r.template && (
+                      <span className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+                        texto personalizado por você
+                      </span>
+                    )}
+
+                    {r.enabled && r.tipo === 'lembrete_dia' && (
+                      <select
+                        value={horasAntes}
+                        onChange={(e) => salvar(r, { offsetMinutos: -Number(e.target.value) * 60 })}
+                        className="admin-input px-2 py-1 text-xs ml-auto"
+                        aria-label="Horas antes"
+                      >
+                        {opcoesHoras(horasAntes).map((h) => (
+                          <option key={h} value={h}>{h}h antes</option>
+                        ))}
+                      </select>
+                    )}
+
+                    {r.enabled && r.tipo === 'aniversario' && (
+                      <input
+                        type="time"
+                        value={r.horaDoDia}
+                        onChange={(e) => salvar(r, { horaDoDia: e.target.value })}
+                        className="admin-input px-2 py-1 text-xs ml-auto"
+                        aria-label="Hora do envio"
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   A MENSAGEM COMO A CLIENTE VÊ
+
+   Bolha de WhatsApp, não caixa de texto: a dona reconhece o formato em meio
+   segundo e lê como quem recebe, não como quem configura. O rodapé aparece
+   em cinza porque é automático — sem mostrar isso, ela escreve o telefone
+   no texto e a cliente recebe duas vezes.
+   ═══════════════════════════════════════════════════════════════ */
+function Bolha({
+  texto,
+  salao,
+  telefone,
+  botoes = false,
+}: {
+  texto: string
+  salao: string
+  telefone: string | null
+  botoes?: boolean
+}) {
+  return (
+    <div
+      className="rounded-xl rounded-tl-sm px-3 py-2.5 text-xs leading-relaxed whitespace-pre-wrap"
+      style={{
+        background: 'rgba(34,197,94,0.08)',
+        border: '1px solid rgba(34,197,94,0.18)',
+        color: 'var(--admin-text)',
+      }}
+    >
+      {texto}
+      <span className="block mt-2" style={{ color: 'var(--admin-text-faded)' }}>
+        {telefone
+          ? `Para remarcar ou tirar dúvida, fale com ${salao}: ${formatarTelefone(telefone)}`
+          : `Para remarcar ou tirar dúvida, fale direto com ${salao}.`}
+      </span>
+
+      {botoes && (
+        /* Desenhados como o WhatsApp mostra — divisória em cima, texto
+           centralizado em verde. Ver o botão no preview é o que faz a dona
+           entender o que ele é sem precisar mandar um teste pra si mesma. */
+        <span className="block mt-2.5" style={{ borderTop: '1px solid rgba(34,197,94,0.25)' }}>
+          {['Confirmo', 'Preciso remarcar'].map((b, i) => (
+            <span
+              key={b}
+              className="block text-center py-1.5 text-xs font-medium"
+              style={{
+                color: '#15803d',
+                borderTop: i > 0 ? '1px solid rgba(34,197,94,0.25)' : undefined,
+              }}
+            >
+              {b}
+            </span>
+          ))}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EDITOR
+
+   Abre já com o texto atual — nunca em branco. Caixa vazia produz mensagem
+   pior que o padrão, ou ninguém mexe. As variáveis são chips clicáveis
+   porque digitar "{cliente}" na mão é onde nasce o "{client}" que não
+   substitui nada e chega assim na cliente.
+   ═══════════════════════════════════════════════════════════════ */
+function Editor({
+  regra,
+  onSalvar,
+  onFechar,
+}: {
+  regra: Regra
+  onSalvar: (t: string | null) => void
+  onFechar: () => void
+}) {
+  const [texto, setTexto] = useState(regra.template ?? regra.padrao)
+  const areaRef = useRef<HTMLTextAreaElement>(null)
+
+  const mudou = texto.trim() !== (regra.template ?? regra.padrao).trim()
+
+  function inserir(chave: string) {
+    const el = areaRef.current
+    if (!el) return
+    const ini = el.selectionStart ?? texto.length
+    const fim = el.selectionEnd ?? texto.length
+    setTexto(texto.slice(0, ini) + chave + texto.slice(fim))
+    /* devolve o cursor pra depois do que foi inserido, senão ela perde o
+       lugar e clica de novo achando que não funcionou */
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(ini + chave.length, ini + chave.length)
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      <textarea
+        ref={areaRef}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        rows={5}
+        maxLength={1000}
+        className="admin-input w-full px-3 py-2 text-xs leading-relaxed"
+        style={{ resize: 'vertical' }}
+        autoFocus
+      />
+
+      <div className="flex flex-wrap gap-1.5">
+        {VARIAVEIS.map((v) => (
+          <button
+            key={v.chave}
+            type="button"
+            onClick={() => inserir(v.chave)}
+            title={`Insere o ${v.label}`}
+            className="text-[10px] px-1.5 py-1 rounded font-mono"
+            style={{
+              background: 'var(--admin-surface-2, rgba(0,0,0,0.05))',
+              color: 'var(--admin-text-mute)',
+            }}
+          >
+            {v.chave}
+          </button>
+        ))}
+      </div>
 
       <p className="text-[11px] leading-relaxed" style={{ color: 'var(--admin-text-faded)' }}>
-        Toda mensagem leva o nome e o telefone do seu negócio, para a cliente saber de quem é e ter
-        para onde responder.
+        Onde você escrever {'{cliente}'} entra o nome dela. O telefone do seu negócio entra sozinho
+        no fim — não precisa escrever.
       </p>
+
+      <div className="flex items-center gap-3 flex-wrap pt-1">
+        <button
+          type="button"
+          onClick={() => onSalvar(texto)}
+          disabled={!mudou}
+          className="admin-btn-primary text-xs px-3 py-1.5 disabled:opacity-50"
+        >
+          Salvar
+        </button>
+
+        <button
+          type="button"
+          onClick={onFechar}
+          className="text-xs"
+          style={{ color: 'var(--admin-text-mute)' }}
+        >
+          Cancelar
+        </button>
+
+        {regra.template && (
+          /* Voltar ao padrão manda null — ela não precisa lembrar como era o
+             texto original pra poder se arrepender. */
+          <button
+            type="button"
+            onClick={() => onSalvar(null)}
+            className="text-xs underline underline-offset-2 ml-auto"
+            style={{ color: 'var(--admin-text-mute)' }}
+          >
+            Voltar ao texto do sistema
+          </button>
+        )}
+      </div>
     </div>
   )
 }

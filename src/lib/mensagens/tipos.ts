@@ -30,6 +30,8 @@ export type Regra = {
   retornoDias: number | null
   /** Texto próprio da dona. null = padrão do sistema. */
   template: string | null
+  /** Lembrete sai com os botões Confirmo/Preciso remarcar (v127). */
+  comBotao?: boolean
 }
 
 /** Quem é o destinatário — muda o canal e a régua de opt-out. */

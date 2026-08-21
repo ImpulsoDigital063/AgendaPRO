@@ -62,11 +62,32 @@ export async function POST(req: NextRequest) {
   )
 
   const texto = ev.texto.trim().toLowerCase()
+
+  /* RECONHECE PELO TEXTO, NAO SO PELO ID DO BOTAO.
+     ───────────────────────────────────────────────────────────────
+     Testado em 21/08: a cliente clicou no botao e o webhook caiu na
+     resposta generica ("este numero nao e lido") em vez de confirmar. O
+     clique chega como MENSAGEM DE TEXTO com o rotulo do botao — e o
+     formato interno do payload nao esta documentado em lugar nenhum.
+
+     Depender do campo certo do provedor e depender de algo que muda sem
+     aviso e que a gente nao consegue conferir. O rotulo, esse a gente
+     escolhe (textos.ts/botoesDe) e sabe qual e. Vale pra quem clica E pra
+     quem digita "confirmo" na mao, que e o que muita cliente faz. */
+  const ehConfirmar = texto === 'confirmo' || texto === 'confirmar' || texto === 'confirmado' || texto === 'sim'
+  const ehRemarcar = texto === 'remarcar' || texto === 'preciso remarcar' || texto === 'remarcar horario'
+
   const acao =
-    ev.botaoId === 'confirmar' ? 'confirmar'
-    : ev.botaoId === 'remarcar' ? 'remarcar'
+    ev.botaoId === 'confirmar' || ehConfirmar ? 'confirmar'
+    : ev.botaoId === 'remarcar' || ehRemarcar ? 'remarcar'
     : texto === 'pare' || texto === 'parar' || texto === 'sair' ? 'pare'
     : null
+
+  /* Payload que nao virou acao vai pro log com o corpo cru: e a unica
+     forma de descobrir o formato do provedor quando ele mudar. */
+  if (!acao && (ev.botaoId || texto)) {
+    console.log('[mensagens/webhook] nao reconhecido:', JSON.stringify(body).slice(0, 500))
+  }
 
   /* Responder de verdade, e nao so devolver o texto no JSON: o provedor nao
      envia a resposta por ti, e o aparelho do numero remetente vive
@@ -91,8 +112,11 @@ export async function POST(req: NextRequest) {
     })
     if (!repetido) {
       await responder(
+        /* Sem a palavra "salão": este mesmo texto chega pra cliente de
+           clínica, barbearia e estúdio. Nada faz a dona desconfiar mais
+           rápido de que o sistema não é pra ela. */
         'Este número só envia avisos automáticos e não é lido. ' +
-        'Para remarcar ou tirar dúvida, fale direto com o salão pelo telefone que aparece na mensagem do seu horário.',
+        'Para remarcar ou tirar dúvida, fale pelo telefone que aparece na mensagem do seu horário.',
       )
     }
     return NextResponse.json({ ok: true, ignorado: 'sem_acao', respondeu: !repetido })
@@ -128,7 +152,11 @@ export async function POST(req: NextRequest) {
 
   if (acao === 'confirmar') {
     await db.from('appointments').update({ status: 'confirmed' }).eq('id', alvo.id)
-    await responder(`Presença confirmada! Até breve, ${negocio?.name ?? 'te esperamos'}.`)
+    await responder(
+      negocio?.name
+        ? `Presença confirmada! Até breve, ${negocio.name}.`
+        : 'Presença confirmada! Até breve.',
+    )
     return NextResponse.json({ ok: true, acao: 'confirmado', appointmentId: alvo.id })
   }
 
@@ -136,7 +164,12 @@ export async function POST(req: NextRequest) {
   await responder(
     negocio?.phone
       ? `Sem problema! Para remarcar, fale com ${negocio.name}: ${negocio.phone}`
-      : `Sem problema! Fale com ${negocio?.name ?? 'o salão'} para remarcar.`,
+      : negocio?.name
+        ? `Sem problema! Fale com ${negocio.name} para remarcar.`
+        /* Sem nome do negócio, NÃO inventa categoria: 'o salão' chega
+           em cliente de clínica e barbearia igual. Aponta pro telefone,
+           que é o que ela precisa. */
+        : 'Sem problema! Fale pelo telefone que aparece na mensagem do seu horário para remarcar.',
   )
   return NextResponse.json({ ok: true, acao: 'remarcar' })
 }

@@ -5,18 +5,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
+import { corpoEditavel } from '@/lib/mensagens/textos'
 import { PADRAO, type TipoMensagem } from '@/lib/mensagens/tipos'
 import { credencialDoSistema } from '@/lib/mensagens/canal-whatsapp'
 
 /* Só os gatilhos que a varredura JÁ executa. Mostrar interruptor de coisa
    não implementada é prometer na tela o que o motor não faz — o dono liga,
    nada acontece, e ele para de confiar no resto que funciona. */
+/* SEM AVISO PRO DONO (Eduardo, 21/08). Ele ja recebe push do navegador
+   quando entra agendamento novo — mandar a mesma noticia por WhatsApp e
+   como se ensina o dono a desligar os dois canais. Os tipos dono_* seguem
+   no motor, so nao aparecem pra ligar. */
 const DISPONIVEIS: TipoMensagem[] = [
   'confirmacao',
   'lembrete_vespera',
   'lembrete_dia',
   'aniversario',
-  'dono_novo_agendamento',
 ]
 
 export async function GET() {
@@ -26,7 +30,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from('message_rules')
-    .select('tipo, enabled, offset_minutos, hora_do_dia, retorno_dias')
+    .select('tipo, enabled, offset_minutos, hora_do_dia, retorno_dias, template, com_botao')
     .eq('business_id', businessId)
 
   const porTipo = new Map((data ?? []).map((r) => [r.tipo, r]))
@@ -44,6 +48,12 @@ export async function GET() {
         offsetMinutos: Number(r?.offset_minutos ?? PADRAO[tipo].offsetMinutos),
         horaDoDia: String(r?.hora_do_dia ?? PADRAO[tipo].horaDoDia).slice(0, 5),
         retornoDias: r?.retorno_dias ?? PADRAO[tipo].retornoDias,
+        /* template = o que a dona escreveu; padrao = o que o sistema manda
+           quando ela nao escreveu nada. A tela mostra o padrao no editor
+           pra ela partir dele, e so grava template quando ela muda. */
+        template: (r?.template as string | null) ?? null,
+        padrao: corpoEditavel(tipo),
+        comBotao: r?.com_botao !== false,
       }
     }),
   })
@@ -59,6 +69,12 @@ export async function PUT(req: NextRequest) {
   if (!DISPONIVEIS.includes(tipo)) {
     return NextResponse.json({ error: 'tipo_invalido' }, { status: 400 })
   }
+
+  /* Texto proprio. Vazio ou igual ao padrao volta pra null: assim a dona
+     que apagou tudo recebe o texto do sistema de novo, em vez de mandar
+     mensagem em branco pra cliente dela. */
+  const bruto = typeof body?.template === 'string' ? body.template.trim() : null
+  const template = !bruto || bruto === corpoEditavel(tipo).trim() ? null : bruto.slice(0, 1000)
 
   const offset = Number(body?.offsetMinutos)
   const hora = typeof body?.horaDoDia === 'string' ? body.horaDoDia.slice(0, 5) : null

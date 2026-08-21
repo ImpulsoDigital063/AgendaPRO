@@ -89,6 +89,7 @@ export default function AdminMobileTopBar({
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
         ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
         { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
+        { label: 'WhatsApp', href: '/admin/whatsapp', Icon: IconWhatsapp },
       ],
     },
     {

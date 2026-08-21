@@ -29,12 +29,31 @@ export type Variaveis = {
   profissional?: string
 }
 
+/* O telefone sai formatado na HORA DE MONTAR, nao como foi salvo. No banco
+   ele aparece de todo jeito — "(63) 99955-2211", "63999552211",
+   "27997748518" — porque cada dono digita como quer e nenhuma tela obriga
+   mascara. Formatar aqui pega os tres casos de uma vez; arrumar no
+   cadastro so valeria pra quem cadastrasse depois.
+
+   O que nao for celular ou fixo brasileiro sai como veio: melhor mandar
+   "+1 305 555 0199" cru do que picotar numero estrangeiro. */
+export function formatarTelefone(bruto: string): string {
+  /* DDI explicito que nao seja o Brasil sai intocado: '+1 305 555 0199'
+     tem 11 digitos e passaria por celular brasileiro, virando
+     '(13) 05555-0199'. Pego no teste, nao na leitura. */
+  if (bruto.trim().startsWith('+') && !bruto.replace(/D/g, '').startsWith('55')) return bruto
+  const d = (bruto || '').replace(/D/g, '')
+  const semDDI = d.startsWith('55') && d.length > 11 ? d.slice(2) : d
+  if (semDDI.length === 11) return `(${semDDI.slice(0, 2)}) ${semDDI.slice(2, 7)}-${semDDI.slice(7)}`
+  if (semDDI.length === 10) return `(${semDDI.slice(0, 2)}) ${semDDI.slice(2, 6)}-${semDDI.slice(6)}`
+  return bruto
+}
 const primeiroNome = (nome: string) => (nome || '').trim().split(/\s+/)[0] || 'tudo bem'
 
 /** Rodapé: para onde responder, e como sair. */
 function rodape(v: Variaveis, promocional: boolean): string {
   const contato = v.telefoneSalao
-    ? `\n\nPara remarcar ou tirar dúvida, fale com ${v.salao}: ${v.telefoneSalao}`
+    ? `\n\nPara remarcar ou tirar dúvida, fale com ${v.salao}: ${formatarTelefone(v.telefoneSalao)}`
     : `\n\nPara remarcar ou tirar dúvida, fale direto com ${v.salao}.`
   /* Opt-out só nas promocionais. Oferecer "PARE" num lembrete do horário
      que ela marcou é convidar a cliente a desligar o aviso que ela quer —
@@ -91,6 +110,28 @@ const CORPO: Record<TipoMensagem, (v: Variaveis) => string> = {
  * dona pode remover o "de quem é" e o "como sair", que são o que mantêm o
  * número vivo.
  */
+/* O TEXTO PADRAO, DO JEITO QUE A DONA EDITA.
+   ─────────────────────────────────────────────────────────────────
+   A tela precisa mostrar o texto que o sistema manda hoje, com as
+   variaveis a vista — senao a dona comeca de uma caixa vazia e escreve
+   algo pior que o padrao, ou nem mexe.
+
+   Em vez de duplicar os textos aqui (duas fontes que divergem no primeiro
+   ajuste), roda o proprio CORPO passando os placeholders COMO valor:
+   {cliente} entra onde o nome entraria. O texto sai identico ao real,
+   com as chaves no lugar certo, e nunca sai de sincronia. */
+export function corpoEditavel(tipo: TipoMensagem): string {
+  return CORPO[tipo]({
+    cliente: '{cliente}',
+    salao: '{salao}',
+    data: '{data}',
+    hora: '{hora}',
+    servico: '{servico}',
+    profissional: '{profissional}',
+    telefoneSalao: null,
+  })
+}
+
 export function montarTexto(
   tipo: TipoMensagem,
   v: Variaveis,

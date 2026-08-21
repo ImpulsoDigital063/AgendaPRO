@@ -19,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { PADRAO, DESTINATARIO, EH_PROMOCIONAL, type Regra, type TipoMensagem } from './tipos'
 import { montarTexto, botoesDe, type Variaveis } from './textos'
 import {
-  credencialDoSistema, enviarTexto, enviarComBotoes, normalizarTelefone,
+  credencialDoSistema, enviarTexto, enviarComBotoes, normalizarTelefone, temWhatsapp,
   type CredencialWapp,
 } from './canal-whatsapp'
 
@@ -91,9 +91,35 @@ export async function regraDe(
  *    pior do que não receber. Achado na Barbearia Guia Lopes, telefone
  *    inválido no cadastro.
  */
+/* FURO DE TESTE, ESTREITO DE PROPOSITO.
+
+   Conta cortesia nao fala com ninguem (trava abaixo) — e é isso que impede
+   um teste de acordar cliente de verdade. Mas então NENHUMA conta demo
+   serve pra provar o canal ponta a ponta: o envio para antes da W-API.
+
+   A saida é furar a trava pelos DOIS lados ao mesmo tempo: o negocio TEM
+   que ser o da env E o destino TEM que ser o telefone da env. O
+   studio-marcela tem 59 clientes cadastrados com telefone de aparencia
+   real; se o furo fosse só por negocio, os 59 virariam destinatario valido.
+
+   Sem as duas envs isto é codigo morto — a trava original vale integral. */
+function ehTesteAutorizado(businessId: string, telefone?: string | null): boolean {
+  const bid = process.env.MENSAGENS_TESTE_BUSINESS_ID
+  const tel = process.env.MENSAGENS_TESTE_TELEFONE
+  if (!bid || !tel || businessId !== bid) return false
+  /* Mais de um numero, separado por virgula: durante o diagnostico a gente
+     precisa comparar um numero que comprovadamente recebe com um que nao
+     recebe, e trocar env a cada teste convida a errar justo o campo que
+     protege cliente real. */
+  const destino = normalizarTelefone(telefone ?? '')
+  if (!destino) return false
+  return tel.split(',').map((t) => normalizarTelefone(t.trim())).some((alvo) => !!alvo && alvo === destino)
+}
+
 async function podeFalarPelo(
   db: SupabaseClient,
   businessId: string,
+  telefoneDestino?: string | null,
 ): Promise<{ pode: boolean; motivo?: string }> {
   const { data: neg } = await db
     .from('businesses')
@@ -113,7 +139,9 @@ async function podeFalarPelo(
     .eq('business_id', businessId)
     .maybeSingle()
 
-  if (ass?.permanent_courtesy === true) return { pode: false, motivo: 'conta_demo' }
+  if (ass?.permanent_courtesy === true && !ehTesteAutorizado(businessId, telefoneDestino)) {
+    return { pode: false, motivo: 'conta_demo' }
+  }
 
   const graceVenceu = ass?.grace_ends_at && new Date(ass.grace_ends_at) < new Date()
   if (ass?.status === 'cancelled' || (ass?.status === 'past_due' && graceVenceu)) {
@@ -161,6 +189,53 @@ async function pediuPraSair(
  * inclusive o ignorado: sem registro do que não saiu, a primeira pergunta
  * do dono ("por que a fulana não recebeu?") não tem resposta.
  */
+/* MEMORIA DE NUMERO SEM WHATSAPP (v126)
+   ─────────────────────────────────────────────────────────────────
+   Sem isto, numero sem WhatsApp vira "enviado" no log e a dona acha que
+   avisou. Com isto, vira 'numero_sem_whatsapp' e ela pode corrigir o
+   cadastro. Sao 21 dos 718 clientes hoje (2,9%) — e esse numero so cresce,
+   porque telefone errado entra por digitacao e nunca sai sozinho.
+
+   Tres estados, e o do meio e o que importa:
+     true  → tem. Nao pergunta de novo: quem tem nao deixa de ter.
+     false → nao tinha NAQUELE DIA. Revalida em 30 dias, senao a cliente que
+             instalar o WhatsApp depois fica em silencio pra sempre.
+     null  → nao deu pra perguntar (rede, provedor fora). MANDA ASSIM MESMO:
+             na duvida, tentar entregar e melhor que engolir a mensagem. */
+const REVALIDA_APOS_DIAS = 30
+
+async function podeReceberWhatsapp(
+  db: SupabaseClient,
+  cred: CredencialWapp,
+  customerId: string | null | undefined,
+  telefone: string,
+): Promise<boolean> {
+  if (!customerId) return true // sem cadastro pra lembrar: tenta e segue
+
+  const { data: cli } = await db
+    .from('customers')
+    .select('whatsapp_valido, whatsapp_checado_em')
+    .eq('id', customerId)
+    .maybeSingle()
+
+  if (cli?.whatsapp_valido === true) return true
+  if (cli?.whatsapp_valido === false) {
+    const checado = cli.whatsapp_checado_em ? new Date(cli.whatsapp_checado_em).getTime() : 0
+    const venceu = Date.now() - checado > REVALIDA_APOS_DIAS * 864e5
+    if (!venceu) return false
+  }
+
+  const existe = await temWhatsapp(cred, telefone)
+  if (existe === null) return true // nao sei: manda
+
+  await db
+    .from('customers')
+    .update({ whatsapp_valido: existe, whatsapp_checado_em: new Date().toISOString() })
+    .eq('id', customerId)
+
+  return existe
+}
+
 export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida> {
   const regra = await regraDe(db, p.businessId, p.tipo)
 
@@ -176,7 +251,7 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
 
   if (!regra.enabled) return { status: 'ignorado', motivo: 'regra_desligada' }
 
-  const permissao = await podeFalarPelo(db, p.businessId)
+  const permissao = await podeFalarPelo(db, p.businessId, p.destino.telefone)
   if (!permissao.pode) return { status: 'ignorado', motivo: permissao.motivo! }
 
   /* A trava de duplicidade vem ANTES de qualquer envio: tenta gravar a
@@ -215,7 +290,13 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
   const cred = tel ? await credencialDe(db, p.businessId) : null
 
   if (cred && tel) {
-    const botoes = botoesDe(p.tipo)
+    if (!(await podeReceberWhatsapp(db, cred, p.customerId, tel))) {
+      await concluir('ignorado', 'whatsapp', tel, 'numero_sem_whatsapp')
+      return { status: 'ignorado', motivo: 'numero_sem_whatsapp' }
+    }
+    /* Botão é escolha do negócio (v127): quem não vai tratar a resposta
+       prefere aviso sem convite a responder. */
+    const botoes = regra.comBotao === false ? null : botoesDe(p.tipo)
     const r = botoes
       ? await enviarComBotoes(cred, tel, texto, botoes)
       : await enviarTexto(cred, tel, texto)

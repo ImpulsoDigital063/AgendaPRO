@@ -78,6 +78,10 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         // Convênio PJ · só existe pra quem tem businesses.convenios_enabled
         ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
         { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
+        /* WhatsApp no PAINEL, não em Configurações (Eduardo, 21/08): quando o
+           canal cai os avisos param em silêncio, e a dona precisa ver isso na
+           tela que ela abre todo dia — não a quatro cliques. */
+        { label: 'WhatsApp', href: '/admin/whatsapp', Icon: IconWhatsapp },
       ],
     },
     {
@@ -124,8 +128,11 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         { label: 'Bloqueios', href: '/admin/configuracoes?tab=bloqueios', tabMatch: 'bloqueios', Icon: IconClock },
         { label: 'Aparência', href: '/admin/configuracoes?tab=aparencia', tabMatch: 'aparencia', Icon: IconPalette },
         { label: 'Fichas Modelo', href: '/admin/configuracoes?tab=fichas-modelo', tabMatch: 'fichas-modelo', Icon: IconFile },
-        { label: 'WhatsApp', href: '/admin/configuracoes?tab=qr-code', tabMatch: 'qr-code', Icon: IconWhatsapp },
-        { label: 'Mensagens', href: '/admin/configuracoes?tab=mensagens', tabMatch: 'mensagens', Icon: IconWhatsapp },
+        /* Isto NUNCA foi conexão de WhatsApp: é o cartaz com QR Code do link
+           de agendamento, pra imprimir e colar no balcão. Com a central de
+           WhatsApp no Painel, manter o nome antigo aqui daria duas abas
+           "WhatsApp" que não têm nada a ver uma com a outra. */
+        { label: 'Cartaz de agendamento', href: '/admin/configuracoes?tab=qr-code', tabMatch: 'qr-code', Icon: IconShare },
         { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', tabMatch: 'divulgacao', Icon: IconShare },
         { label: 'Importar', href: '/admin/configuracoes?tab=importar', tabMatch: 'importar', Icon: IconUpload },
       ],

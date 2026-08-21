@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
      ler sempre as mesmas poucas linhas. */
   const { data: regrasDb, error: errRegras } = await db
     .from('message_rules')
-    .select('business_id, tipo, enabled, offset_minutos, hora_do_dia, retorno_dias, template')
+    .select('business_id, tipo, enabled, offset_minutos, hora_do_dia, retorno_dias, template, com_botao')
     .eq('enabled', true)
   if (errRegras) return NextResponse.json({ error: errRegras.message }, { status: 500 })
 
@@ -94,6 +94,7 @@ export async function GET(req: NextRequest) {
       offsetMinutos: Number(r.offset_minutos ?? PADRAO[r.tipo as TipoMensagem].offsetMinutos),
       horaDoDia: String(r.hora_do_dia ?? '09:00').slice(0, 5),
       retornoDias: r.retorno_dias ?? null,
+      comBotao: r.com_botao !== false,
       template: r.template ?? null,
     })
   }
@@ -141,7 +142,7 @@ export async function GET(req: NextRequest) {
           customerId: (a.customer_id as string) ?? undefined,
           variaveis: {
             cliente: (a.client_name as string) || 'Cliente',
-            salao: negocio?.name ?? 'seu salão',
+            salao: negocio?.name ?? 'seu negócio',
             data: dataCurta(a.appointment_date as string),
             hora: String(a.start_time).slice(0, 5),
             servico: (a.service_name as string) || 'seu atendimento',
@@ -177,7 +178,7 @@ export async function GET(req: NextRequest) {
       const prof = a.professional as unknown as { name: string } | null
       const v = {
         cliente: (a.client_name as string) || 'Cliente',
-        salao: negocio?.name ?? 'seu salão',
+        salao: negocio?.name ?? 'seu negócio',
         data: dataCurta(a.appointment_date as string),
         hora: String(a.start_time).slice(0, 5),
         servico: (a.service_name as string) || 'seu atendimento',
@@ -238,7 +239,7 @@ export async function GET(req: NextRequest) {
         customerId: c.id as string,
         variaveis: {
           cliente: (c.name as string) || 'Cliente',
-          salao: negocio?.name ?? 'seu salão',
+          salao: negocio?.name ?? 'seu negócio',
           data: dataCurta(hoje), hora: '', servico: '',
           telefoneSalao: negocio?.phone ?? null,
         },
@@ -331,7 +332,7 @@ export async function GET(req: NextRequest) {
           customerId: (a.customer_id as string) ?? undefined,
           variaveis: {
             cliente: (a.client_name as string) || 'Cliente',
-            salao: negocio?.name ?? 'seu salão',
+            salao: negocio?.name ?? 'seu negócio',
             data: dataCurta(a.appointment_date as string),
             hora: '',
             servico: (a.service_name as string) || 'seu procedimento',
@@ -353,6 +354,7 @@ export async function GET(req: NextRequest) {
      parou" e ninguém consegue dizer por quê. O motivo agregado sai aqui, que
      é o que o monitor lê. */
   const motivos: Record<string, number> = {}
+  const errosDeFalha: string[] = []
 
   for (const t of lote) {
     const r = await enviar(db, {
@@ -364,19 +366,37 @@ export async function GET(req: NextRequest) {
     })
     if (r.status === 'enviado') enviados++
     else if (r.status === 'ignorado') { ignorados++; motivos[r.motivo ?? 'sem_motivo'] = (motivos[r.motivo ?? 'sem_motivo'] ?? 0) + 1 }
-    else { falhas++; const q = 'erro' in r ? r.erro : 'falha'; motivos[q] = (motivos[q] ?? 0) + 1 }
+    else { falhas++; const q = 'erro' in r ? r.erro : 'falha'; motivos[q] = (motivos[q] ?? 0) + 1; errosDeFalha.push(q) }
   }
 
-  /* SESSAO CAIDA AVISA. O aparelho do numero remetente vive desligado e vai
-     ser ligado ~1x por semana (Eduardo, 07/08). O WhatsApp derruba a sessao
-     conectada se o aparelho principal nao aparecer em ~14 dias - e quando
-     isso acontece TODOS os envios passam a falhar em silencio. Ninguem
-     descobre ate uma cliente reclamar que nao foi avisada.
 
-     Regra: lote inteiro falhando = problema de canal, nao de destinatario.
-     Um numero errado falha sozinho; a sessao caida falha tudo. Vai pro
-     mesmo Telegram que ja recebe o monitor. */
-  if (lote.length >= 3 && falhas === lote.length) {
+  /* CANAL MORTO AVISA NA PRIMEIRA. Em 19/08 a instancia da W-API venceu
+     ("Para continuar usando essa instancia, voce deve assinar novamente") e
+     as mensagens falharam de hora em hora com HTTP 403 — uma por vez, lote
+     de 1. A regra de baixo (lote inteiro falhando) nunca fechou, entao o
+     Telegram ficou mudo por 6 dias com regra ligada em cliente REAL.
+
+     403/401 nao e problema de destinatario: numero errado da erro de
+     numero, nao de credencial. Uma unica falha dessas ja significa que
+     NENHUMA mensagem vai sair ate alguem mexer na conta — avisa na hora. */
+  const erroDeCanal = errosDeFalha.find((e) =>
+    /HTTP 40[13]|assinar novamente|unauthorized|invalid token|instance not found/i.test(e),
+  )
+  if (erroDeCanal) {
+    await sendAlert(
+      `🔴 MENSAGENS PARADAS: o canal da W-API recusou o envio.
+` +
+      `Nenhum aviso sai ate resolver na conta da W-API (assinatura/instancia).
+` +
+      `Erro: ${erroDeCanal.slice(0, 160)}
+Falharam agora: ${falhas} de ${lote.length}.`,
+    )
+  } else if (lote.length >= 3 && falhas === lote.length) {
+    /* SESSAO CAIDA. O aparelho do numero remetente vive desligado e e ligado
+       ~1x por semana (Eduardo, 07/08); o WhatsApp derruba a sessao se ele nao
+       aparecer em ~14 dias. Ai nao vem 403 — vem falha em TUDO. Lote inteiro
+       falhando = problema de canal, nao de destinatario: um numero errado
+       falha sozinho, a sessao caida falha tudo. */
     await sendAlert(
       `🔴 MENSAGENS: ${falhas} envios falharam seguidos.
 ` +
