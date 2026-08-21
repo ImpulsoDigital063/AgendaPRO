@@ -407,6 +407,20 @@ export default function MarcarAgendamentoForm({
       return
     }
 
+    /* CONFIRMAÇÃO NA HORA — esta tela serve /admin/marcar (o caminho do
+       celular) e /recepcao/marcar. Sem isto, marcar por aqui só avisaria a
+       cliente na varredura seguinte, até uma hora depois.
+
+       Sem await e com catch vazio: o horário já está salvo, e aviso que
+       falhou não pode desfazer agendamento. A varredura pega o que faltar. */
+    for (const row of criados ?? []) {
+      void fetch('/api/mensagens/agendou', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId: row.id }),
+      }).catch(() => {})
+    }
+
     // "Já aconteceu": conclui agora que a comanda já existe e fica ABERTA.
     if (permiteEmAberto && jaAtendi && inserted?.id) {
       const { error: concluirErr } = await supabase

@@ -127,6 +127,25 @@ export default function WhatsAppPainel({
         </p>
       </header>
 
+      {/* EM BREVE. O motor está pronto e testado, mas a entrega depende de a
+          cliente já ter mandado mensagem pro número da instância — e a cliente
+          do salão nunca mandou. Sem este aviso, a dona liga, o painel diz
+          "enviado" e ninguém recebe: falha silenciosa com cara de sucesso. */}
+      <section
+        className="rounded-xl px-4 py-3"
+        style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.30)' }}
+      >
+        <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+          Em ajustes finais — ainda não use com suas clientes
+        </p>
+        <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+          Estamos terminando de acertar a entrega das mensagens. Você pode olhar e deixar os textos
+          do seu jeito, mas ainda não ligue os avisos: nesta fase eles podem não chegar em quem
+          nunca conversou com o nosso número, e o painel mostraria como enviados. Avisamos assim que
+          estiver liberado.
+        </p>
+      </section>
+
       <section
         className="rounded-xl px-4 py-3"
         style={{ background: cor.fundo, border: `1px solid ${cor.borda}` }}

@@ -89,7 +89,12 @@ export default function AdminMobileTopBar({
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
         ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
         { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
-        { label: 'WhatsApp', href: '/admin/whatsapp', Icon: IconWhatsapp },
+        /* EM BREVE ate a entrega estar resolvida (21/08). O motor funciona,
+           mas o WhatsApp so entrega pra quem ja mandou mensagem pro numero
+           da instancia — a cliente do salao nunca mandou. Ligar hoje faria
+           a dona ver "enviado" no painel e a cliente nao receber nada, que
+           e a pior falha possivel: silenciosa e com cara de sucesso.
+           Este menu nao tem "em breve", entao sai da lista. Acessivel por URL direta pra continuar o teste. */
       ],
     },
     {
