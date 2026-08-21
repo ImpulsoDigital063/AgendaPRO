@@ -26,8 +26,18 @@ type Appt = {
   paid_at: string | null
   is_package?: boolean
   combo_name?: string | null
+  /** Convênio: atendimento feito PELA empresa (CAF · 21/08). */
+  company_id?: string | null
+  company?: { name: string } | { name: string }[] | null
 }
 type Service = { id: string; name: string; price: number | null; duration_minutes: number | null }
+
+/** O join `company:companies(name)` volta objeto ou array conforme o caso. */
+function nomeConvenio(a: Appt): string | null {
+  if (!a.company) return null
+  const c = Array.isArray(a.company) ? a.company[0] : a.company
+  return c?.name ?? null
+}
 
 type ColorMode = 'service' | 'professional' | 'progress' | 'payment'
 type Interval = 15 | 30 | 60
@@ -989,7 +999,7 @@ export default function TimelineGridInteractive({
                             opacity: isCancelled ? 0.55 : 1,
                             textDecoration: isCancelled ? 'line-through' : 'none',
                           }}
-                          title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}${isCancelled ? ' · CANCELADO · slot livre pra reagendar' : ''}`}
+                          title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}${nomeConvenio(a) ? ` · convênio ${nomeConvenio(a)}` : ''}${isCancelled ? ' · CANCELADO · slot livre pra reagendar' : ''}`}
                         >
                           {isTiny ? (
                             // 1 linha · horário pequeno + nome inline
@@ -1030,6 +1040,22 @@ export default function TimelineGridInteractive({
                               title="Sessão de pacote resgatada · não entra no caixa"
                             >
                               Pacote
+                            </span>
+                          )}
+                          {/* Convênio · o Eduardo prometeu no áudio de 20/08 (10:04)
+                              que o card diria a empresa. Sem isso o Gustavo não
+                              distingue no olho o que é particular do que é convênio. */}
+                          {!isTiny && nomeConvenio(a) && (
+                            <span
+                              className={`text-[9px] font-bold uppercase inline-block w-fit max-w-full truncate px-1.5 py-0.5 rounded ${isCompact ? 'mt-0.5' : 'mt-1'}`}
+                              style={{
+                                background: 'linear-gradient(180deg, #0EA5E9 0%, #0284C7 100%)',
+                                color: '#fff',
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25)',
+                              }}
+                              title={`Convênio: ${nomeConvenio(a)}`}
+                            >
+                              Convênio · {nomeConvenio(a)}
                             </span>
                           )}
                           {/* Combo · selo com o NOME do combo, pra diferenciar de um

@@ -21,6 +21,8 @@ type Customer = {
   name: string
   phone: string
   total_points?: number | null
+  /** Funcionário de empresa conveniada. Null = paciente particular. */
+  company_id?: string | null
 }
 
 type Professional = { id: string; name: string }
@@ -110,7 +112,7 @@ export default function MarcarAgendamentoForm({
       const digits = term.replace(/\D/g, '')
       let query = supabase
         .from('customers')
-        .select('id, name, phone, total_points')
+        .select('id, name, phone, total_points, company_id')
         .eq('business_id', businessId)
         .limit(20)
       if (digits.length >= 3) {
@@ -145,7 +147,7 @@ export default function MarcarAgendamentoForm({
     const { data, error: e } = await supabase
       .from('customers')
       .insert({ business_id: businessId, name: n, phone: p })
-      .select('id, name, phone, total_points')
+      .select('id, name, phone, total_points, company_id')
       .single()
     setSaving(false)
     if (e) {
@@ -159,7 +161,23 @@ export default function MarcarAgendamentoForm({
 
   function selectCliente(c: Customer) {
     setCliente(c)
+    carregarConvenio(c)
     setStep(lockProf ? 'servico' : 'profissional')
+  }
+
+  /** Descobre a empresa do paciente e quem atende por ela. */
+  async function carregarConvenio(c: Customer) {
+    setEmpresa(null)
+    setProfsDaEmpresa(null)
+    setPeloConvenio(true)
+    if (!c.company_id) return
+    const [{ data: emp }, { data: vinc }] = await Promise.all([
+      supabase.from('companies').select('id, name, ativo').eq('id', c.company_id).maybeSingle(),
+      supabase.from('company_professionals').select('professional_id').eq('company_id', c.company_id),
+    ])
+    if (!emp || emp.ativo === false) return
+    setEmpresa({ id: emp.id, name: emp.name })
+    setProfsDaEmpresa((vinc ?? []).map((v) => v.professional_id))
   }
 
   // Slots de horário · 08:00 às 20:00 a cada 30min (simples · não consulta working_hours)
@@ -196,6 +214,21 @@ export default function MarcarAgendamentoForm({
      negócio com businesses.recorrencia_dias_semana. */
   const [permiteDiasSemana, setPermiteDiasSemana] = useState(false)
   const [recurDias, setRecurDias] = useState<number[]>([])
+  /* CONVÊNIO · quando o paciente escolhido é funcionário de uma empresa, o
+     atendimento nasce vinculado a ela e a lista de profissionais filtra pra
+     quem atende por aquela empresa (regra do Gustavo, áudio 09:57). Ele pode
+     desmarcar quando o paciente vier como particular. */
+  const [empresa, setEmpresa] = useState<{ id: string; name: string } | null>(null)
+  const [profsDaEmpresa, setProfsDaEmpresa] = useState<string[] | null>(null)
+  const [peloConvenio, setPeloConvenio] = useState(true)
+
+  /* Quem pode atender: com convênio ativo, só os vinculados à empresa. Sem
+     convênio (ou desmarcado), a equipe inteira. */
+  const profissionaisVisiveis = useMemo(() => {
+    if (!empresa || !peloConvenio || profsDaEmpresa === null) return professionals
+    return professionals.filter((p) => profsDaEmpresa.includes(p.id))
+  }, [professionals, empresa, peloConvenio, profsDaEmpresa])
+
 
   useEffect(() => {
     let cancelado = false
@@ -327,6 +360,7 @@ export default function MarcarAgendamentoForm({
          conclusão vem logo abaixo, no update. */
       status: 'confirmed',
       notes: area === 'profissional' ? 'Marcado pela profissional' : 'Marcado pela recepção',
+      company_id: empresa && peloConvenio ? empresa.id : null,
       recurring_group_id: grupoId,
       recurring_index: grupoId ? idx + 1 : null,
     }))
@@ -571,7 +605,16 @@ export default function MarcarAgendamentoForm({
         {/* STEP PROFISSIONAL */}
         {step === 'profissional' && (
           <div className="space-y-2">
-            {professionals.map((p) => (
+            {empresa && peloConvenio && (
+              <div
+                className="rounded-xl px-3 py-2.5 text-xs"
+                style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)', color: 'var(--admin-text-2)' }}
+              >
+                Atendimento pelo convênio <strong style={{ color: 'var(--admin-text)' }}>{empresa.name}</strong>.
+                Aparecem só os profissionais cadastrados nela.
+              </div>
+            )}
+            {profissionaisVisiveis.map((p) => (
               <button
                 key={p.id}
                 onClick={() => {
@@ -588,10 +631,29 @@ export default function MarcarAgendamentoForm({
                 </p>
               </button>
             ))}
-            {professionals.length === 0 && (
+            {profissionaisVisiveis.length === 0 && (
               <p className="text-sm text-center py-6" style={{ color: 'var(--admin-text-mute)' }}>
-                Nenhum profissional cadastrado.
+                {empresa && peloConvenio
+                  ? `Nenhum profissional está cadastrado no convênio ${empresa.name}. Cadastre em Convênios, ou desmarque o convênio abaixo pra atender como particular.`
+                  : 'Nenhum profissional cadastrado.'}
               </p>
+            )}
+            {empresa && (
+              <label
+                className="flex items-start gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer"
+                style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={peloConvenio}
+                  onChange={(e) => { setPeloConvenio(e.target.checked); setProf(null) }}
+                  className="mt-0.5"
+                />
+                <span className="text-xs" style={{ color: 'var(--admin-text-2)' }}>
+                  Cobrar esse atendimento do convênio {empresa.name}. Desmarque se o paciente
+                  está vindo como particular.
+                </span>
+              </label>
             )}
           </div>
         )}
