@@ -5,6 +5,12 @@ export type Business = {
   /** Segmento do negócio (lista fechada em lib/segmento). Decide os exemplos
    *  do painel. Separado da `description`, que é texto livre e público. */
   category?: string | null
+  /* Chaves por negócio (CAF · 20-21/08/2026). Ver supabase/migrations/v124. */
+  agendamento_simultaneo?: boolean | null
+  convenios_enabled?: boolean | null
+  comissao_valor_fixo?: boolean | null
+  prof_registra_pagamento?: boolean | null
+  recorrencia_dias_semana?: boolean | null
   phone: string | null
   address: string | null
   logo_url: string | null
@@ -173,6 +179,10 @@ export type Service = {
    *  define se o serviço pode ser usado. Opcional porque linhas carregadas
    *  antes da migration não trazem o campo. */
   public_visible?: boolean
+  /* CAF · 21/08/2026 · só usados com as chaves do negócio ligadas. */
+  commission_amount?: number | null
+  convenio_price?: number | null
+  convenio_commission_amount?: number | null
   points: number
   /** v123 · dias até o cliente poder REPETIR este serviço. Passado o prazo,
    *  ele recebe o aviso automático de retorno. null/ausente = sem aviso.

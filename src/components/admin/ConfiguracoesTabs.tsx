@@ -136,6 +136,8 @@ export default function ConfiguracoesTabs({
           businessId={business.id}
           initialServices={initialServices}
           category={categoriaDoNegocio}
+          comissaoFixa={business.comissao_valor_fixo === true}
+          convenios={business.convenios_enabled === true}
         />
       )}
 

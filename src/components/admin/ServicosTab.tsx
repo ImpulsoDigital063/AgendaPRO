@@ -29,6 +29,10 @@ type Props = {
    * etc. Se null/vazio/desconhecido, mostra sugestões genéricas.
    */
   category: string | null
+  /** businesses.comissao_valor_fixo · mostra os campos de comissão em R$ */
+  comissaoFixa?: boolean
+  /** businesses.convenios_enabled · mostra o preço de convênio */
+  convenios?: boolean
 }
 
 const DURATIONS = [15, 20, 30, 40, 45, 60, 75, 90, 120]
@@ -71,15 +75,24 @@ type FormState = {
   duration_minutes: number
   points: string
   retorno_dias: string
+  /* CAF · 21/08. Só aparecem com as chaves do negócio ligadas:
+     comissaoFixa → quanto o profissional recebe (R$, não %)
+     convenio     → preço praticado no convênio + a comissão daquele atendimento
+     (que costuma ser IGUAL à do público: o dono absorve o desconto). */
+  commission_amount: string
+  convenio_price: string
+  convenio_commission_amount: string
 }
 
-const emptyForm: FormState = { name: '', description: '', price: '', duration_minutes: 30, points: '', retorno_dias: '' }
+const emptyForm: FormState = { name: '', description: '', price: '', duration_minutes: 30, points: '', retorno_dias: '', commission_amount: '', convenio_price: '', convenio_commission_amount: '' }
 
 const DESCRIPTION_MAX = 400
 
 type Filter = 'active' | 'inactive' | 'all'
 
-export default function ServicosTab({ businessId, initialServices, category }: Props) {
+export default function ServicosTab({ businessId, initialServices, category, comissaoFixa = false, convenios = false }: Props) {
+  /** "12,50" → 12.5 · vazio → null (campo não preenchido ≠ zero) */
+  const num = (v: string) => (v.trim() ? parseFloat(v.replace(',', '.')) : null)
   const suggestions = useMemo(() => sugestoesDeServico(category), [category])
   // Placeholder do input — usa primeira sugestão da categoria pra dar
   // exemplo casado com o nicho do cliente
@@ -174,6 +187,9 @@ export default function ServicosTab({ businessId, initialServices, category }: P
         name: form.name.trim(),
         description: form.description.trim() || null,
         price: priceValue,
+        commission_amount: comissaoFixa ? num(form.commission_amount) : null,
+        convenio_price: convenios ? num(form.convenio_price) : null,
+        convenio_commission_amount: convenios && comissaoFixa ? num(form.convenio_commission_amount) : null,
         duration_minutes: form.duration_minutes,
         points: form.points ? parseInt(form.points) : 0,
         /* vazio = sem aviso de retorno. Zero nao serve como "desligado":
@@ -198,6 +214,9 @@ export default function ServicosTab({ businessId, initialServices, category }: P
       name: service.name,
       description: service.description ?? '',
       price: service.price ? String(service.price) : '',
+      commission_amount: service.commission_amount != null ? String(service.commission_amount) : '',
+      convenio_price: service.convenio_price != null ? String(service.convenio_price) : '',
+      convenio_commission_amount: service.convenio_commission_amount != null ? String(service.convenio_commission_amount) : '',
       duration_minutes: service.duration_minutes,
       points: service.points ? String(service.points) : '',
       retorno_dias: service.retorno_dias ? String(service.retorno_dias) : '',
@@ -218,6 +237,9 @@ export default function ServicosTab({ businessId, initialServices, category }: P
         name: editForm.name.trim(),
         description,
         price: priceValue,
+        commission_amount: comissaoFixa ? num(editForm.commission_amount) : null,
+        convenio_price: convenios ? num(editForm.convenio_price) : null,
+        convenio_commission_amount: convenios && comissaoFixa ? num(editForm.convenio_commission_amount) : null,
         duration_minutes: editForm.duration_minutes,
         points: editForm.points ? parseInt(editForm.points) : 0,
         retorno_dias: editForm.retorno_dias ? parseInt(editForm.retorno_dias) : null,
@@ -418,6 +440,8 @@ export default function ServicosTab({ businessId, initialServices, category }: P
             onToggle={() => toggleActive(service)}
             onToggleVisivel={() => toggleVisivel(service)}
             onAskDelete={() => setConfirmDelete(service)}
+            comissaoFixa={comissaoFixa}
+            convenios={convenios}
             onUsoProdutos={() => setUsoProdutosFor(service)}
           />
         ))
@@ -519,6 +543,68 @@ export default function ServicosTab({ businessId, initialServices, category }: P
             </select>
           </div>
         </div>
+
+        {(comissaoFixa || convenios) && (
+          <div
+            className="rounded-xl p-3 space-y-2.5"
+            style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              Convênio e comissão
+            </p>
+            <div className="flex gap-2">
+              {comissaoFixa && (
+                <div className="flex-1">
+                  <label className="admin-label">Comissão (R$)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.commission_amount}
+                    onChange={(e) => setForm({ ...form, commission_amount: e.target.value })}
+                    placeholder="Ex: 40,00"
+                    className="admin-input w-full px-3 py-2.5 text-sm"
+                  />
+                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                    Valor que o profissional recebe por atendimento, em vez da porcentagem.
+                  </p>
+                </div>
+              )}
+              {convenios && (
+                <div className="flex-1">
+                  <label className="admin-label">Preço convênio (R$)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.convenio_price}
+                    onChange={(e) => setForm({ ...form, convenio_price: e.target.value })}
+                    placeholder="Ex: 90,00"
+                    className="admin-input w-full px-3 py-2.5 text-sm"
+                  />
+                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                    Vazio = convênio paga o preço normal.
+                  </p>
+                </div>
+              )}
+            </div>
+            {convenios && comissaoFixa && (
+              <div>
+                <label className="admin-label">Comissão no convênio (R$)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={form.convenio_commission_amount}
+                  onChange={(e) => setForm({ ...form, convenio_commission_amount: e.target.value })}
+                  placeholder="Normalmente igual à comissão normal"
+                  className="admin-input w-full px-3 py-2.5 text-sm"
+                />
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                  O desconto do convênio é seu, não do profissional: deixe o mesmo valor pra ele
+                  receber cheio. Vazio = usa a comissão normal.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {showCustomDuration && (
           <div>
@@ -693,6 +779,8 @@ function ServiceCard({
   onToggleVisivel,
   onAskDelete,
   onUsoProdutos,
+  comissaoFixa = false,
+  convenios = false,
 }: {
   service: Service
   isEditing: boolean
@@ -708,6 +796,8 @@ function ServiceCard({
   onToggleVisivel: () => void
   onAskDelete: () => void
   onUsoProdutos: () => void
+  comissaoFixa?: boolean
+  convenios?: boolean
 }) {
   const isLoading = loadingId === service.id
 
@@ -786,6 +876,68 @@ function ServiceCard({
             </select>
           </div>
         </div>
+
+        {(comissaoFixa || convenios) && (
+          <div
+            className="rounded-xl p-3 space-y-2.5"
+            style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              Convênio e comissão
+            </p>
+            <div className="flex gap-2">
+              {comissaoFixa && (
+                <div className="flex-1">
+                  <label className="admin-label">Comissão (R$)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editForm.commission_amount}
+                    onChange={(e) => setEditForm({ ...editForm, commission_amount: e.target.value })}
+                    placeholder="Ex: 40,00"
+                    className="admin-input w-full px-3 py-2.5 text-sm"
+                  />
+                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                    Valor que o profissional recebe por atendimento, em vez da porcentagem.
+                  </p>
+                </div>
+              )}
+              {convenios && (
+                <div className="flex-1">
+                  <label className="admin-label">Preço convênio (R$)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editForm.convenio_price}
+                    onChange={(e) => setEditForm({ ...editForm, convenio_price: e.target.value })}
+                    placeholder="Ex: 90,00"
+                    className="admin-input w-full px-3 py-2.5 text-sm"
+                  />
+                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                    Vazio = convênio paga o preço normal.
+                  </p>
+                </div>
+              )}
+            </div>
+            {convenios && comissaoFixa && (
+              <div>
+                <label className="admin-label">Comissão no convênio (R$)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={editForm.convenio_commission_amount}
+                  onChange={(e) => setEditForm({ ...editForm, convenio_commission_amount: e.target.value })}
+                  placeholder="Normalmente igual à comissão normal"
+                  className="admin-input w-full px-3 py-2.5 text-sm"
+                />
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                  O desconto do convênio é seu, não do profissional: deixe o mesmo valor pra ele
+                  receber cheio. Vazio = usa a comissão normal.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
         {editShowCustom && (
           <div>
             <label className="admin-label">Minutos personalizados</label>

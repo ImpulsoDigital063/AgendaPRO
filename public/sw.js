@@ -17,7 +17,7 @@
 // (não é cacheado) e o CSS novo do deploy morreu no caminho. O fetch abaixo
 // não tinha .catch(), então qualquer oscilação de rede matava o recurso em vez
 // de tentar o cache. Mesmo sintoma de 03/06, que na época pegou o JS.
-const STATIC_CACHE_VERSION = 'agendapro-static-v14'
+const STATIC_CACHE_VERSION = 'agendapro-static-v15'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

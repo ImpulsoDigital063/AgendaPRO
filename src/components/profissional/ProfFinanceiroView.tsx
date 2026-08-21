@@ -15,12 +15,17 @@ type AppointmentRow = {
   total_price: number | null
   paid_at: string | null
   payment_method: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
+  /** Foto do valor fixo de comissão (negócio com comissao_valor_fixo). */
+  commission_amount?: number | null
 }
 
 type Props = {
   appointments: AppointmentRow[]
   periodo: string
   commissionPercentage: number
+  /** businesses.comissao_valor_fixo · o valor vem gravado no atendimento e a
+   *  tela mostra só o GANHO dela, sem o valor cheio (item 5 do Gustavo). */
+  comissaoValorFixo?: boolean
 }
 
 function formatPrice(value: number) {
@@ -33,7 +38,7 @@ const PERIODO_LABEL: Record<string, string> = {
   mes: 'Este mês',
 }
 
-export default function ProfFinanceiroView({ appointments, periodo, commissionPercentage }: Props) {
+export default function ProfFinanceiroView({ appointments, periodo, commissionPercentage, comissaoValorFixo = false }: Props) {
   // Comissao SO sobre receita de fato (PIX/Dinheiro/Cartao).
   // Cortesia (brinde) NAO conta — bug historico (CIC rodada 4): profissional
   // ganhava comissao sobre cortesia (R$0 de receita gera R$X de obrigacao).
@@ -52,10 +57,17 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
   const totalGerado = ativos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const totalRealizado = pagos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
   const totalPendente = naoPagos.reduce((sum, a) => sum + (a.total_price ?? 0), 0)
-  // Comissao baseada em PAGOS (mesma semantica do admin)
-  const minhaComissao = totalRealizado * (commissionPercentage / 100)
+  /* Comissao baseada em PAGOS (mesma semantica do admin).
+     Com valor fixo, soma o que esta GRAVADO em cada atendimento — e o mesmo
+     numero que a dona ve em Remuneracoes. Sem a chave, segue a porcentagem. */
+  const soma = (lista: typeof appointments) =>
+    lista.reduce((s, a) => {
+      if (comissaoValorFixo && a.commission_amount != null) return s + Number(a.commission_amount)
+      return s + ((a.total_price ?? 0) * commissionPercentage) / 100
+    }, 0)
+  const minhaComissao = comissaoValorFixo ? soma(pagos) : totalRealizado * (commissionPercentage / 100)
   // Comissao "futura" — o que vai entrar quando o dono confirmar pagamento
-  const comissaoPendente = totalPendente * (commissionPercentage / 100)
+  const comissaoPendente = comissaoValorFixo ? soma(naoPagos) : totalPendente * (commissionPercentage / 100)
   const ticketMedio = ativos.length > 0 ? totalGerado / ativos.length : 0
 
   const rows: FinanceRow[] = appointments.map((a) => ({
@@ -102,7 +114,9 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
               {formatPrice(minhaComissao)}
             </p>
             <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
-              {commissionPercentage}% sobre {pagos.length} atendimento{pagos.length === 1 ? '' : 's'} pago{pagos.length === 1 ? '' : 's'}
+              {comissaoValorFixo
+                ? `${pagos.length} atendimento${pagos.length === 1 ? '' : 's'} pago${pagos.length === 1 ? '' : 's'}`
+                : `${commissionPercentage}% sobre ${pagos.length} atendimento${pagos.length === 1 ? '' : 's'} pago${pagos.length === 1 ? '' : 's'}`}
               {comissaoPendente > 0 && (
                 <span style={{ color: 'var(--admin-warn)' }}>
                   {' · '}+ {formatPrice(comissaoPendente)} pendente

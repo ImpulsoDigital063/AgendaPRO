@@ -98,7 +98,8 @@ export default async function RemuneracaoDetalhePage({
       client_name,
       payment_method,
       commission_payment_id,
-      invoice_item_id
+      invoice_item_id,
+      commission_amount
     `)
     .eq('business_id', business.id)
     .eq('professional_id', professionalId)
@@ -124,9 +125,14 @@ export default async function RemuneracaoDetalhePage({
   // getApptDiscountMap rateia de volta por appointment (Eduardo 04/07/2026).
   const apptDisc = await getApptDiscountMap(sb, (appts ?? []).map((a) => a.invoice_item_id))
 
+  /* COMISSÃO EM VALOR FIXO (CAF · 21/08/2026): quando o atendimento tem
+     commission_amount gravado, ELE manda — é a foto do valor combinado no dia
+     em que o atendimento nasceu. Null (todos os outros negócios) → segue a
+     porcentagem de sempre, sem mudar um centavo. */
   const rows: Row[] = (appts ?? []).map((a) => {
     const base = Math.max(0, Number(a.total_price ?? 0) - (apptDisc[a.id] ?? 0))
-    const remuneracao = (base * pct) / 100
+    const fixa = a.commission_amount == null ? null : Number(a.commission_amount)
+    const remuneracao = fixa ?? (base * pct) / 100
     const paid = a.commission_payment_id ? remuneracao : 0
     const pendente = remuneracao - paid
     return {

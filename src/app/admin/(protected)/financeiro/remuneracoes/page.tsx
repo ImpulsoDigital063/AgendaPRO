@@ -88,7 +88,7 @@ export default async function RemuneracoesPage({
       .order('name'),
     sb
       .from('appointments')
-      .select('id, professional_id, paid_at, total_price, invoice_item_id')
+      .select('id, professional_id, paid_at, total_price, invoice_item_id, commission_amount')
       .eq('business_id', business.id)
       .not('payment_method', 'in', '(courtesy,credit)') // cortesia não gera comissão
       .gte('paid_at', from)
@@ -184,8 +184,16 @@ export default async function RemuneracoesPage({
       : (paidAppts ?? [])
           .filter((a) => a.professional_id === p.id)
           .reduce((s, a) => s + Math.max(0, Number(a.total_price ?? 0) - (apptDiscMap[a.id] ?? 0)), 0)
-    // Comissão de serviço = só atendimentos pagos (sem o resgate de pacote).
-    const commissionFromAppts = isRecep ? 0 : (sumPaidAppts * pct) / 100
+    /* Comissão de serviço = só atendimentos pagos (sem o resgate de pacote).
+       Atendimento com commission_amount gravado usa o VALOR FIXO (CAF); os
+       demais entram na porcentagem. Os dois modelos podem conviver na mesma
+       lista sem se atrapalhar. */
+    const apptsDoProf = isRecep ? [] : (paidAppts ?? []).filter((a) => a.professional_id === p.id)
+    const commissionFromAppts = apptsDoProf.reduce((s, a) => {
+      if (a.commission_amount != null) return s + Number(a.commission_amount)
+      const base = Math.max(0, Number(a.total_price ?? 0) - (apptDiscMap[a.id] ?? 0))
+      return s + (base * pct) / 100
+    }, 0)
     // Comissão de RESGATE de pacote · linha própria (mesma %, base = valor/sessão).
     // Diferenciada do serviço porque nessa data NÃO há entrada de dinheiro (o
     // pacote foi pago na venda) · Eduardo 24/07.

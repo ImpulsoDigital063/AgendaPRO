@@ -17,7 +17,7 @@ export default async function ProfissionalFinanceiroPage({
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, name, commission_percentage, business_id, employment_type')
+    .select('id, name, commission_percentage, business_id, employment_type, business:businesses(comissao_valor_fixo)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -51,7 +51,7 @@ export default async function ProfissionalFinanceiroPage({
 
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('id, client_name, client_phone, appointment_date, start_time, status, service_name, total_price, paid_at, payment_method, invoice_item_id')
+    .select('id, client_name, client_phone, appointment_date, start_time, status, service_name, total_price, paid_at, payment_method, invoice_item_id, commission_amount')
     .eq('professional_id', professional.id)
     .gte('appointment_date', startDate)
     .lte('appointment_date', endDate)
@@ -102,6 +102,12 @@ export default async function ProfissionalFinanceiroPage({
             appointments={appointmentsLiquidos}
             periodo={periodo}
             commissionPercentage={professional.commission_percentage ?? 0}
+            comissaoValorFixo={
+              (Array.isArray(professional.business)
+                ? professional.business[0]
+                : professional.business
+              )?.comissao_valor_fixo === true
+            }
           />
         </div>
       </div>
