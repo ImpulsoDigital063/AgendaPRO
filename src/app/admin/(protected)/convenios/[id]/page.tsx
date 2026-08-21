@@ -3,11 +3,23 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import EmpresaDetalheView from '@/components/admin/convenios/EmpresaDetalheView'
+import ExtratoEmpresa, { type LinhaExtrato } from '@/components/admin/convenios/ExtratoEmpresa'
+import { monthBoundsBR, todayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
 
-export default async function EmpresaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EmpresaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ mes?: string }>
+}) {
   const { id } = await params
+  const { mes: mesParam } = await searchParams
+  // Competência = mês corrente em horário de Brasília, salvo escolha dele.
+  const mes = /^\d{4}-\d{2}$/.test(mesParam ?? '') ? mesParam! : todayBR().slice(0, 7)
+  const { start, end } = monthBoundsBR(mes)
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -43,10 +55,46 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
       .order('name'),
   ])
 
+  /* Extrato do mês: atendimentos feitos PELA empresa, com quem atendeu e se já
+     foi recebido. O invoice_item liga o atendimento à comanda, que é quem
+     recebe a baixa quando a empresa paga. */
+  const { data: atendimentos } = await supabase
+    .from('appointments')
+    .select('id, appointment_date, start_time, client_name, service_name, total_price, paid_at, invoice_item_id, professional:professionals(name)')
+    .eq('company_id', empresa.id)
+    .gte('appointment_date', start)
+    .lte('appointment_date', end)
+    .neq('status', 'cancelled')
+    .order('appointment_date')
+    .order('start_time')
+
+  const itemIds = (atendimentos ?? []).map((a) => a.invoice_item_id).filter(Boolean) as string[]
+  const { data: itens } = itemIds.length
+    ? await supabase.from('invoice_items').select('id, invoice_id').in('id', itemIds)
+    : { data: [] as { id: string; invoice_id: string }[] }
+  const comandaPorItem = new Map((itens ?? []).map((i) => [i.id, i.invoice_id]))
+
+  const linhas: LinhaExtrato[] = (atendimentos ?? []).map((a) => {
+    const prof = Array.isArray(a.professional) ? a.professional[0] : a.professional
+    return {
+      id: a.id,
+      data: a.appointment_date as string,
+      hora: (a.start_time as string).slice(0, 5),
+      funcionario: a.client_name ?? '—',
+      profissional: prof?.name ?? '—',
+      servico: a.service_name ?? '—',
+      valor: Number(a.total_price ?? 0),
+      pago: !!a.paid_at,
+      invoiceId: a.invoice_item_id ? comandaPorItem.get(a.invoice_item_id) ?? null : null,
+    }
+  })
+
   return (
     <>
       <SubPageHeader title={empresa.name} subtitle="Convênio" back="/admin/convenios" />
       <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8">
+        <ExtratoEmpresa empresaNome={empresa.name} mes={mes} linhas={linhas} />
+        <div className="h-5" />
         <EmpresaDetalheView
           businessId={business.id}
           empresa={empresa}
