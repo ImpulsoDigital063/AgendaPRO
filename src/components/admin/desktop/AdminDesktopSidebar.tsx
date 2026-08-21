@@ -87,7 +87,11 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
            a dona ver "enviado" no painel e a cliente nao receber nada, que
            e a pior falha possivel: silenciosa e com cara de sucesso.
            Acessivel por URL direta pra continuar o teste. */
-        { label: 'WhatsApp', Icon: IconWhatsapp, comingSoon: true },
+        /* Nem "em breve": FORA do menu. Item marcado como em breve gera a
+           pergunta "quando sai?" em todo cliente que abre o painel, e a
+           entrega ainda depende de trocar de canal — prazo que ninguem tem.
+           Volta pro menu quando estiver entregando de verdade.
+           A pagina /admin/whatsapp continua no ar pra seguir testando. */
       ],
     },
     {
