@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { resolveClientId } from '@/lib/clients'
 import RecurringBlock from '@/components/admin/RecurringBlock'
-import { buildRecurringDates, type FreqRecorrencia } from '@/lib/recorrencia'
+import { buildRecurringDates, buildRecurringDatesByWeekdays, type FreqRecorrencia } from '@/lib/recorrencia'
 import { logActivity } from '@/lib/activity-log'
 import {
   IconArrowLeft,
@@ -192,16 +192,22 @@ export default function MarcarAgendamentoForm({
   const [recorrente, setRecorrente] = useState(false)
   const [recurFreq, setRecurFreq] = useState<FreqRecorrencia>('weekly')
   const [recurCount, setRecurCount] = useState(4)
+  /* Vários dias da semana na mesma série (seg/qua/sex, 10 sessões) — só pra
+     negócio com businesses.recorrencia_dias_semana. */
+  const [permiteDiasSemana, setPermiteDiasSemana] = useState(false)
+  const [recurDias, setRecurDias] = useState<number[]>([])
 
   useEffect(() => {
     let cancelado = false
     supabase
       .from('businesses')
-      .select('convenios_enabled')
+      .select('convenios_enabled, recorrencia_dias_semana')
       .eq('id', businessId)
       .maybeSingle()
       .then(({ data }) => {
-        if (!cancelado) setPermiteEmAberto(!!data?.convenios_enabled)
+        if (cancelado) return
+        setPermiteEmAberto(!!data?.convenios_enabled)
+        setPermiteDiasSemana(!!data?.recorrencia_dias_semana)
       })
     return () => { cancelado = true }
   }, [supabase, businessId])
@@ -291,9 +297,11 @@ export default function MarcarAgendamentoForm({
     /* Série: gera as datas e insere uma linha por data, agrupadas por
        recurring_group_id — mesmo formato do desktop, então a agenda, o
        histórico e o cancelamento em série já sabem lidar. */
-    const datas = recorrente && !jaAtendi
-      ? buildRecurringDates(date, recurFreq, Math.max(1, Math.min(recurCount, 52)))
-      : [date]
+    const datas = !recorrente || jaAtendi
+      ? [date]
+      : permiteDiasSemana && recurDias.length > 0
+        ? buildRecurringDatesByWeekdays(date, recurDias, Math.max(1, Math.min(recurCount, 52)))
+        : buildRecurringDates(date, recurFreq, Math.max(1, Math.min(recurCount, 52)))
     const grupoId = datas.length > 1 && typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : null
@@ -724,6 +732,8 @@ export default function MarcarAgendamentoForm({
                 count={recurCount}
                 onChangeCount={setRecurCount}
                 startDate={date}
+                weekdays={permiteDiasSemana ? recurDias : undefined}
+                onChangeWeekdays={permiteDiasSemana ? setRecurDias : undefined}
               />
             )}
 

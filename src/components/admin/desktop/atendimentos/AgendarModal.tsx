@@ -12,7 +12,7 @@ import { textoPrazo as textoPrazoCobranca } from '@/lib/sinal-cobranca'
 // Recorrência mora em lib/componente próprios desde 20/08 — o formulário do
 // mobile usa o mesmo cálculo e o mesmo bloco de UI.
 import RecurringBlock from '@/components/admin/RecurringBlock'
-import { buildRecurringDates, type FreqRecorrencia } from '@/lib/recorrencia'
+import { buildRecurringDates, buildRecurringDatesByWeekdays, type FreqRecorrencia } from '@/lib/recorrencia'
 import {
   IconClose,
   IconSearch,
@@ -204,6 +204,9 @@ export default function AgendarModal({
   // V3: Repetir atendimento (recorrência)
   const [recurring, setRecurring] = useState<boolean>(false)
   const [recurFreq, setRecurFreq] = useState<FreqRecorrencia>('weekly')
+  /* Vários dias da semana na mesma série · só com a chave do negócio. */
+  const [permiteDiasSemana, setPermiteDiasSemana] = useState(false)
+  const [recurDias, setRecurDias] = useState<number[]>([])
   const [recurCount, setRecurCount] = useState<number>(4) // total de ocorrências (inclui a primeira)
 
   const [saving, setSaving] = useState(false)
@@ -234,6 +237,23 @@ export default function AgendarModal({
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
 
+  /* Chave do negócio pra escolher vários dias da semana na mesma série
+     (CAF · 21/08). Carrega uma vez por abertura do modal; sem a chave, o bloco
+     de recorrência fica exatamente como sempre foi. */
+  useEffect(() => {
+    if (!open || !businessId) return
+    let cancelado = false
+    supabase
+      .from('businesses')
+      .select('recorrencia_dias_semana')
+      .eq('id', businessId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelado) setPermiteDiasSemana(!!data?.recorrencia_dias_semana)
+      })
+    return () => { cancelado = true }
+  }, [supabase, businessId, open])
+
   // Reset ao abrir
   useEffect(() => {
     if (!open) return
@@ -257,6 +277,7 @@ export default function AgendarModal({
     setRecurring(false)
     setRecurFreq('weekly')
     setRecurCount(4)
+    setRecurDias([])
     setError(null)
     setCreatedId(null)
     setCreatedCustomerId(null)
@@ -656,9 +677,11 @@ export default function AgendarModal({
     const displayName = linesWithMeta.length === 1 ? first.name : `${first.name} +${linesWithMeta.length - 1}`
 
     // V3 · Repetir: gera N datas (ou 1 se sem recorrência)
-    const allDates = recurring && !jaConcluido && recurCount >= 1
-      ? buildRecurringDates(date, recurFreq, Math.max(1, Math.min(recurCount, 52)))
-      : [date]
+    const allDates = !(recurring && !jaConcluido && recurCount >= 1)
+      ? [date]
+      : permiteDiasSemana && recurDias.length > 0
+        ? buildRecurringDatesByWeekdays(date, recurDias, Math.max(1, Math.min(recurCount, 52)))
+        : buildRecurringDates(date, recurFreq, Math.max(1, Math.min(recurCount, 52)))
     const recurringGroupId = recurring && allDates.length > 1
       ? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : null)
       : null
@@ -1706,6 +1729,8 @@ export default function AgendarModal({
               count={recurCount}
               onChangeCount={setRecurCount}
               startDate={date}
+              weekdays={permiteDiasSemana ? recurDias : undefined}
+              onChangeWeekdays={permiteDiasSemana ? setRecurDias : undefined}
             />
           )}
 

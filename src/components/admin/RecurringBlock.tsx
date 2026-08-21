@@ -6,7 +6,7 @@
  * Aparência e comportamento idênticos ao original.
  */
 
-import { buildRecurringDates, type FreqRecorrencia } from '@/lib/recorrencia'
+import { buildRecurringDates, buildRecurringDatesByWeekdays, DIAS_SEMANA, type FreqRecorrencia } from '@/lib/recorrencia'
 
 export default function RecurringBlock({
   enabled,
@@ -16,6 +16,8 @@ export default function RecurringBlock({
   count,
   onChangeCount,
   startDate,
+  weekdays,
+  onChangeWeekdays,
 }: {
   enabled: boolean
   onToggle: (v: boolean) => void
@@ -24,10 +26,23 @@ export default function RecurringBlock({
   count: number
   onChangeCount: (n: number) => void
   startDate: string
+  /** Dias da semana escolhidos (0=dom … 6=sáb). undefined = recurso desligado
+   *  pra esse negócio, e o bloco nem mostra a opção. */
+  weekdays?: number[]
+  onChangeWeekdays?: (dias: number[]) => void
 }) {
+  const podeEscolherDias = Array.isArray(weekdays) && typeof onChangeWeekdays === 'function'
+  const porDiasDaSemana = podeEscolherDias && weekdays!.length > 0
   const dates = enabled && startDate
-    ? buildRecurringDates(startDate, freq, Math.max(1, Math.min(count, 52)))
+    ? porDiasDaSemana
+      ? buildRecurringDatesByWeekdays(startDate, weekdays!, Math.max(1, Math.min(count, 52)))
+      : buildRecurringDates(startDate, freq, Math.max(1, Math.min(count, 52)))
     : []
+
+  function alternarDia(d: number) {
+    if (!onChangeWeekdays || !weekdays) return
+    onChangeWeekdays(weekdays.includes(d) ? weekdays.filter((x) => x !== d) : [...weekdays, d].sort())
+  }
   return (
     <div
       className="rounded-2xl p-3 space-y-3"
@@ -55,8 +70,41 @@ export default function RecurringBlock({
 
       {enabled && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
+          {podeEscolherDias && (
             <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
+                Dias da semana
+              </label>
+              <div className="flex gap-1">
+                {DIAS_SEMANA.map((rotulo, dia) => {
+                  const on = weekdays!.includes(dia)
+                  return (
+                    <button
+                      key={dia}
+                      type="button"
+                      onClick={() => alternarDia(dia)}
+                      className="flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
+                      style={{
+                        background: on ? 'var(--admin-accent)' : 'var(--admin-input-bg)',
+                        color: on ? '#fff' : 'var(--admin-text-2)',
+                        border: '1px solid var(--admin-border)',
+                      }}
+                    >
+                      {rotulo}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[10px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                {porDiasDaSemana
+                  ? 'Marca nesses dias, sempre no mesmo horário, até fechar as sessões.'
+                  : 'Sem escolher dia, repete no mesmo dia da semana da primeira data.'}
+              </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <div style={{ display: porDiasDaSemana ? 'none' : undefined }}>
               <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
                 Frequência
               </label>
@@ -80,7 +128,7 @@ export default function RecurringBlock({
             </div>
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>
-                Quantidade (inclui hoje)
+                {porDiasDaSemana ? 'Total de sessões' : 'Quantidade (inclui hoje)'}
               </label>
               <input
                 type="number"
@@ -102,7 +150,7 @@ export default function RecurringBlock({
               }}
             >
               <p className="font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)', fontSize: 10 }}>
-                Vai criar {dates.length} agendamentos
+                Vai criar {dates.length} agendamento{dates.length !== 1 ? 's' : ''}
               </p>
               <p style={{ color: 'var(--admin-text-2)' }}>
                 {dates.slice(0, 6).map((d) => {

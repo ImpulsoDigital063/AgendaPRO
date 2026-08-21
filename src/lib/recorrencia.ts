@@ -41,3 +41,40 @@ export function buildRecurringDates(
   }
   return out
 }
+
+/**
+ * Série em VÁRIOS dias da semana, mesmo horário — pedido do Gustavo (CAF,
+ * 20/08/2026): "segunda, quarta e sexta às quatro, dez sessões, marco as dez
+ * de uma vez".
+ *
+ * `weekdays` usa a convenção do JS: 0=domingo … 6=sábado.
+ * A primeira sessão é SEMPRE a data que ele está agendando (mesmo que o dia
+ * dela não esteja marcado — é o atendimento que ele está criando agora). As
+ * seguintes caem nos dias escolhidos, em ordem, até fechar `count`.
+ */
+export function buildRecurringDatesByWeekdays(
+  startISO: string,
+  weekdays: number[],
+  count: number,
+): string[] {
+  if (weekdays.length === 0) return [startISO]
+  const alvo = new Set(weekdays)
+  const out: string[] = [startISO]
+  const cursor = new Date(startISO + 'T12:00:00') // meio-dia evita pulada de DST
+  // Teto de segurança: no pior caso (1 dia por semana) são 7 voltas por sessão.
+  const maxVoltas = Math.max(1, count) * 7 + 14
+  let voltas = 0
+  while (out.length < count && voltas < maxVoltas) {
+    cursor.setDate(cursor.getDate() + 1)
+    voltas++
+    if (!alvo.has(cursor.getDay())) continue
+    const y = cursor.getFullYear()
+    const m = String(cursor.getMonth() + 1).padStart(2, '0')
+    const d = String(cursor.getDate()).padStart(2, '0')
+    out.push(`${y}-${m}-${d}`)
+  }
+  return out
+}
+
+/** Rótulos curtos na ordem do getDay() do JS. */
+export const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const
