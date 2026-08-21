@@ -5,6 +5,9 @@ import { checkRateLimit } from '@/lib/rate-limit-api'
 import { variacoesDeTelefone } from '@/lib/phone-variants'
 import { todayBR } from '@/lib/date-br'
 import { limparSinaisVencidos } from '@/lib/sinal-expira'
+import { enviar } from '@/lib/mensagens/enviar'
+import { chaveIdempotencia } from '@/lib/mensagens/tipos'
+import { dataCurta } from '@/lib/mensagens/textos'
 
 /**
  * POST /api/booking/submit
@@ -530,6 +533,50 @@ export async function POST(req: NextRequest) {
       })
     } catch (err) {
       console.error('booking submit · aviso do servidor falhou (o navegador ainda tenta):', err)
+    }
+
+    /* CONFIRMAÇÃO PRA CLIENTE, NA HORA. A varredura horária continua sendo
+       a rede (chave UNIQUE impede envio dobrado), mas quem acabou de marcar
+       pelo link espera a confirmação AGORA — esperar até uma hora é o que
+       faz ela ligar pro negócio perguntando se deu certo.
+
+       Dentro do after() de propósito: a cliente não fica esperando a tela
+       de sucesso enquanto a gente fala com o WhatsApp. */
+    try {
+      const { data: a } = await db
+        .from('appointments')
+        .select(`id, business_id, appointment_date, start_time, client_name, client_phone,
+                 client_email, service_name, customer_id,
+                 business:businesses(name, phone), professional:professionals(name)`)
+        .eq('id', appointment.id)
+        .maybeSingle()
+
+      if (a) {
+        const neg = a.business as unknown as { name: string; phone: string | null } | null
+        const pro = a.professional as unknown as { name: string } | null
+        await enviar(db, {
+          businessId: a.business_id as string,
+          tipo: 'confirmacao',
+          chave: chaveIdempotencia('confirmacao', a.id as string),
+          destino: {
+            telefone: a.client_phone as string | null,
+            email: a.client_email as string | null,
+          },
+          appointmentId: a.id as string,
+          customerId: (a.customer_id as string) ?? null,
+          variaveis: {
+            cliente: (a.client_name as string) || 'Cliente',
+            salao: neg?.name ?? 'seu negócio',
+            data: dataCurta(a.appointment_date as string),
+            hora: String(a.start_time).slice(0, 5),
+            servico: (a.service_name as string) || 'seu atendimento',
+            telefoneSalao: neg?.phone ?? null,
+            profissional: pro?.name,
+          },
+        })
+      }
+    } catch (err) {
+      console.error('booking submit · confirmação por WhatsApp falhou (a varredura pega):', err)
     }
   })
 

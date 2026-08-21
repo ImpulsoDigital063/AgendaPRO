@@ -895,6 +895,22 @@ export default function AgendarModal({
       return
     }
 
+    /* CONFIRMAÇÃO NA HORA. Antes só a varredura horária mandava, então a
+       cliente marcava 18:13 e recebia 19:00 — tempo suficiente pra ela
+       ligar perguntando se deu certo.
+
+       Sem await e sem tratar erro de propósito: se a mensagem falhar, o
+       agendamento JÁ está salvo e não pode ser desfeito por causa de um
+       aviso. A varredura pega o que faltar na próxima passagem, e a chave
+       de idempotência impede envio dobrado. */
+    for (const row of insertedRows) {
+      void fetch('/api/mensagens/agendou', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId: row.id }),
+      }).catch(() => {})
+    }
+
     // Insert appointment_services pra TODAS as linhas × TODOS os appointments
     const servicesRows = insertedRows.flatMap((row) =>
       linesWithMeta.map((l) => ({

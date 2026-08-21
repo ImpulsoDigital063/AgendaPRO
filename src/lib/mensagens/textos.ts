@@ -37,6 +37,15 @@ export type Variaveis = {
 
    O que nao for celular ou fixo brasileiro sai como veio: melhor mandar
    "+1 305 555 0199" cru do que picotar numero estrangeiro. */
+/* "sáb, 22/08" — a data como a cliente lê. Vive aqui, e não em quem
+   dispara, porque hoje são dois caminhos (varredura horária e envio no
+   ato do agendamento) e dois formatadores divergem no primeiro ajuste. */
+export function dataCurta(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dt = new Date(y, m - 1, d, 12)
+  const semana = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+  return `${semana}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
+}
 export function formatarTelefone(bruto: string): string {
   /* DDI explicito que nao seja o Brasil sai intocado: '+1 305 555 0199'
      tem 11 digitos e passaria por celular brasileiro, virando

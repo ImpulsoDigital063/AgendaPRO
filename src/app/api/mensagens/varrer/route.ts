@@ -28,6 +28,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { enviar } from '@/lib/mensagens/enviar'
 import { chaveIdempotencia, PADRAO, type Regra, type TipoMensagem } from '@/lib/mensagens/tipos'
 import { todayBR, addDaysBR } from '@/lib/date-br'
+import { dataCurta } from '@/lib/mensagens/textos'
 import { sendAlert } from '@/lib/alert'
 
 export const runtime = 'nodejs'
@@ -42,13 +43,6 @@ const JANELA = 2 * 60 * 60 * 1000
 
 function instanteDo(data: string, hora: string): number {
   return new Date(`${data}T${(hora || '00:00').slice(0, 5)}:00-03:00`).getTime()
-}
-
-function dataCurta(ymd: string): string {
-  const [y, m, d] = ymd.split('-').map(Number)
-  const dt = new Date(y, m - 1, d, 12)
-  const semana = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
-  return `${semana}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
 }
 
 type Tarefa = {
