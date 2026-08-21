@@ -323,6 +323,7 @@ export default async function RemuneracoesPage({
           ) : (
             <RemuneracoesTable
               rows={rows}
+              comissaoValorFixo={business.comissao_valor_fixo === true}
               monthIso={`${year}-${String(month0 + 1).padStart(2, '0')}`}
               periodStart={fromDate}
               periodEnd={new Date(Date.UTC(year, month0 + 1, 0)).toISOString().slice(0, 10)}

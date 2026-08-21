@@ -27,6 +27,9 @@ export type ProfRow = {
 
 type Props = {
   rows: ProfRow[]
+  /** businesses.comissao_valor_fixo · o rótulo "Comissão X%" mente nesse caso:
+   *  a comissão vem em R$ por serviço, e o percentual do cadastro fica em 0. */
+  comissaoValorFixo?: boolean
   monthIso: string
   periodStart: string
   periodEnd: string
@@ -40,7 +43,7 @@ function formatBRL(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-export default function RemuneracoesTable({ rows, monthIso, periodStart, periodEnd }: Props) {
+export default function RemuneracoesTable({ rows, comissaoValorFixo = false, monthIso, periodStart, periodEnd }: Props) {
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [paymentFor, setPaymentFor] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -145,7 +148,9 @@ export default function RemuneracoesTable({ rows, monthIso, periodStart, periodE
                         <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
                           {r.is_receptionist
                             ? 'Sem comissão · cadastre salário no perfil'
-                            : `Comissão ${r.default_commission_percent}%`}
+                            : comissaoValorFixo
+                              ? 'Comissão em valor fixo por serviço'
+                              : `Comissão ${r.default_commission_percent}%`}
                         </p>
                       </div>
                     </div>

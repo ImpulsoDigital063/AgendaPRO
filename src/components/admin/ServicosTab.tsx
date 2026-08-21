@@ -1090,6 +1090,20 @@ function ServiceCard({
           </span>
           <span aria-hidden>·</span>
           <span className="tabular-nums">{formatDuration(service.duration_minutes)}</span>
+          {/* Sem isso ele configurava preço de convênio e comissão e não via em
+              lugar nenhum da lista se tinha ficado gravado. */}
+          {convenios && service.convenio_price != null && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">convênio {formatPrice(service.convenio_price)}</span>
+            </>
+          )}
+          {comissaoFixa && service.commission_amount != null && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">comissão {formatPrice(service.commission_amount)}</span>
+            </>
+          )}
           {/* v107 · estado que muda o que a CLIENTE vê não pode ficar escondido
               dentro do menu. Sem o selo, o dono não descobre que tirou o
               serviço do ar — foi assim que a Viva Cacheada ficou com 60min

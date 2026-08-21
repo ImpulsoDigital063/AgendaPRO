@@ -3,7 +3,17 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { IconCheck, IconPlus, IconTrash, IconSearch } from '@/components/ui/Icon'
+import { IconPlus, IconTrash, IconSearch } from '@/components/ui/Icon'
+
+/** Mesma máscara da tela de cadastro — sem isso o telefone aparece cru. */
+function mascaraTelefone(raw: string): string {
+  const d = (raw || '').replace(/\D/g, '').slice(0, 11)
+  if (!d) return ''
+  if (d.length <= 2) return `(${d}`
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+}
 
 type Empresa = {
   id: string
@@ -45,7 +55,7 @@ export default function EmpresaDetalheView({
   const [nome, setNome] = useState(empresa.name)
   const [cnpj, setCnpj] = useState(empresa.cnpj ?? '')
   const [contatoNome, setContatoNome] = useState(empresa.contato_nome ?? '')
-  const [contatoTelefone, setContatoTelefone] = useState(empresa.contato_telefone ?? '')
+  const [contatoTelefone, setContatoTelefone] = useState(mascaraTelefone(empresa.contato_telefone ?? ''))
   const [contatoEmail, setContatoEmail] = useState(empresa.contato_email ?? '')
   const [ativo, setAtivo] = useState(empresa.ativo)
   const [salvandoDados, setSalvandoDados] = useState(false)
@@ -159,7 +169,7 @@ export default function EmpresaDetalheView({
           </div>
           <div>
             <label className="admin-label">Telefone</label>
-            <input value={contatoTelefone} onChange={(e) => setContatoTelefone(e.target.value)} className="admin-input w-full px-3 py-2.5 text-sm" />
+            <input value={contatoTelefone} onChange={(e) => setContatoTelefone(mascaraTelefone(e.target.value))} className="admin-input w-full px-3 py-2.5 text-sm" placeholder="(00) 00000-0000" />
           </div>
           <div>
             <label className="admin-label">E-mail (pra mandar o extrato)</label>
@@ -286,8 +296,7 @@ export default function EmpresaDetalheView({
           )}
         </div>
         <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
-          <IconCheck size={11} /> Paciente que ainda não existe no sistema: cadastre em Clientes e depois
-          vincule aqui.
+          Paciente que ainda não existe no sistema: cadastre em Clientes e depois vincule aqui.
         </p>
       </section>
     </div>

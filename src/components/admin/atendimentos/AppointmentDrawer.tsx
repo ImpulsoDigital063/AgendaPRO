@@ -37,6 +37,9 @@ type ApptDetail = {
   service_name: string | null
   appointment_services: { service_name: string | null; price: number | null }[] | null
   professional: { id: string; name: string } | { id: string; name: string }[] | null
+  /** Convênio (CAF · 21/08): sem isso o dono abria o atendimento e não via de
+   *  qual empresa era — só o card da grade dizia. */
+  company: { id: string; name: string } | { id: string; name: string }[] | null
   customer: { id: string; name: string; phone: string; email: string | null } | { id: string; name: string; phone: string; email: string | null }[] | null
 }
 
@@ -118,6 +121,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
         service_name,
         appointment_services(service_name, price),
         professional:professionals(id, name),
+        company:companies(id, name),
         customer:customers(id, name, phone, email)
       `)
       .eq('id', appointmentId)
@@ -182,6 +186,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
   if (!appointmentId || !portalReady) return null
 
   const prof = data && (Array.isArray(data.professional) ? data.professional[0] : data.professional)
+  const empresaConvenio = data && (Array.isArray(data.company) ? data.company[0] : data.company)
   const customer = data && (Array.isArray(data.customer) ? data.customer[0] : data.customer)
   const status = data?.status ?? 'pending'
   const statusLabel = STATUS_LABEL[status] ?? status
@@ -297,6 +302,14 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                 <Row icon={<IconUser size={16} />} label="Cliente" value={data.client_name ?? customer?.name ?? '—'} sub={data.client_phone ?? customer?.phone ?? undefined} />
                 <Row icon={<IconCalendar size={16} />} label="Quando" value={<span className="capitalize">{formatDateLong(data.appointment_date)}</span>} sub={`${data.start_time.slice(0, 5)} até ${data.end_time.slice(0, 5)}`} />
                 <Row icon={<IconClock size={16} />} label="Profissional" value={prof?.name ?? '—'} />
+                {empresaConvenio && (
+                  <Row
+                    icon={<IconUser size={16} />}
+                    label="Convênio"
+                    value={empresaConvenio.name}
+                    sub="Quem paga é a empresa · não entra no caixa do dia"
+                  />
+                )}
                 {(() => {
                   // Valor exibido = o que a cliente PAGA (total da comanda).
                   // total_price sozinho é só o serviço — num combo isso mostrava

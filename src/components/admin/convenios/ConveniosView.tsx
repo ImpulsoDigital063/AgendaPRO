@@ -129,7 +129,7 @@ export default function ConveniosView({
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
                     {e.total_funcionarios} funcionário{e.total_funcionarios !== 1 ? 's' : ''} ·{' '}
-                    {e.total_profissionais} profissional{e.total_profissionais !== 1 ? 'is' : ''}
+                    {e.total_profissionais} {e.total_profissionais === 1 ? 'profissional' : 'profissionais'}
                     {e.contato_nome ? ` · ${e.contato_nome}` : ''}
                   </p>
                 </div>
