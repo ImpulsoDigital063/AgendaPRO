@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
       current_period_start, current_period_end,
       grace_ends_at, public_blocked_at, cancelled_at,
       provider, plan_modalidade, pago_ate,
-      permanent_courtesy, asaas_subscription_id, mp_subscription_id
+      permanent_courtesy, asaas_subscription_id, mp_subscription_id,
+      created_at
     `)
     .eq('business_id', business.id)
     .single()
@@ -122,6 +123,15 @@ export async function GET(req: NextRequest) {
       is_trial: isTrial,
       trial_days_left: trialDaysLeft,
       trial_ended: trialEnded,
+      /* Período CONCEDIDO (pago_ate − created_at). 7 dias = trial do cadastro;
+         mais que isso é bônus/cortesia e a tela para de chamar de "teste"
+         (Eduardo 24/08 · CAF fechou a compra, não está mais testando). */
+      trial_days_granted:
+        subscription.pago_ate && subscription.created_at
+          ? Math.max(0, Math.round(
+              (new Date(subscription.pago_ate).getTime() - new Date(subscription.created_at).getTime()) / 86400000
+            ))
+          : 0,
     },
   })
 }

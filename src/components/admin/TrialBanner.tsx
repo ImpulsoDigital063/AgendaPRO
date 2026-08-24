@@ -8,6 +8,12 @@
  * Só aparece pra TRIAL de verdade: subscription ativa, sem ciclo de cobrança
  * (plan_modalidade null), sem assinatura recorrente e sem cortesia vitalícia
  * (permanent_courtesy = demo, nunca vence). Mesmo critério do billing-check.
+ *
+ * PERÍODO LIBERADO ≠ TESTE (Eduardo, 24/08/2026): o trial do cadastro é de 7
+ * dias. Quando o dono ganha um período MAIOR — bônus por fechar negócio,
+ * cortesia, permuta — chamar aquilo de "teste" na cara dele está errado: ele
+ * já é cliente. Acima de 15 dias a faixa troca de palavra e para de dizer
+ * "depois é R$X/mês", que soa a cobrança de quem ainda não comprou.
  */
 
 import Link from 'next/link'
@@ -19,21 +25,26 @@ type Props = {
   /** true = teste JÁ venceu e está na carência de 3 dias (past_due). `diasRestantes`
    *  vira os dias que faltam pra bloquear. Faixa sempre vermelha. Eduardo 28/07. */
   vencido?: boolean
+  /** Período concedido (pago_ate − created_at, em dias). Acima de 15 não é
+   *  teste de cadastro: é acesso liberado por acordo. */
+  diasConcedidos?: number
 }
 
-export default function TrialBanner({ diasRestantes, plano, precoMes, vencido = false }: Props) {
+export default function TrialBanner({ diasRestantes, plano, precoMes, vencido = false, diasConcedidos = 0 }: Props) {
+  const ehTeste = diasConcedidos <= 15
   const urgente = vencido || diasRestantes <= 2
   const ultimoDia = !vencido && diasRestantes <= 0
 
+  const oQue = ehTeste ? 'teste' : 'acesso liberado'
   const texto = vencido
     ? diasRestantes <= 1
-      ? 'Seu teste terminou · último dia pra ativar antes de bloquear'
-      : `Seu teste terminou · ${diasRestantes} dias pra ativar antes de bloquear`
+      ? `Seu ${oQue} terminou · último dia pra ativar antes de bloquear`
+      : `Seu ${oQue} terminou · ${diasRestantes} dias pra ativar antes de bloquear`
     : ultimoDia
-      ? 'Seu teste termina hoje'
+      ? ehTeste ? 'Seu teste termina hoje' : 'Seu acesso liberado termina hoje'
       : diasRestantes === 1
-        ? 'Falta 1 dia do seu teste'
-        : `Faltam ${diasRestantes} dias do seu teste`
+        ? `Falta 1 dia do seu ${oQue}`
+        : `Faltam ${diasRestantes} dias do seu ${oQue}`
 
   return (
     <div
@@ -54,7 +65,9 @@ export default function TrialBanner({ diasRestantes, plano, precoMes, vencido = 
           <span className="text-slate-600 hidden sm:inline">
             {vencido
               ? `São ${precoMes}/mês no plano ${plano}. Sem fidelidade.`
-              : `Depois é ${precoMes}/mês no plano ${plano}. Sem fidelidade.`}
+              : ehTeste
+                ? `Depois é ${precoMes}/mês no plano ${plano}. Sem fidelidade.`
+                : `Plano ${plano} · ${precoMes}/mês quando o período acabar.`}
           </span>
         </span>
       </div>

@@ -38,7 +38,7 @@ export default async function AdminLayout({
   let pendingAppointments = 0
   let pendingClaims = 0
   let showOwnerTab = false
-  let trial: { diasRestantes: number; plano: string; precoMes: string; vencido?: boolean } | null = null
+  let trial: { diasRestantes: number; plano: string; precoMes: string; vencido?: boolean; diasConcedidos?: number } | null = null
   let cobranca: { diasAteVencer: number; status: 'active' | 'past_due' } | null = null
   let brand: {
     brand_primary?: string | null
@@ -132,10 +132,14 @@ export default async function AdminLayout({
 
     if (emTrial) {
       const restaMs = new Date(subscription.pago_ate!).getTime() - now.getTime()
+      /* Quanto foi CONCEDIDO (não quanto falta): 7 dias = trial do cadastro,
+         mais que isso = bônus/cortesia, e aí a faixa não chama de "teste". */
+      const concedidoMs = new Date(subscription.pago_ate!).getTime() - new Date(subscription.created_at).getTime()
       trial = {
         diasRestantes: Math.max(0, Math.ceil(restaMs / (24 * 60 * 60 * 1000))),
         plano: subscription.plan === 'equipe' ? 'Equipe' : 'Solo',
         precoMes: `R$ ${Math.round((subscription.price_cents ?? 6700) / 100)}`,
+        diasConcedidos: Math.max(0, Math.round(concedidoMs / (24 * 60 * 60 * 1000))),
       }
     }
 
@@ -234,6 +238,7 @@ export default async function AdminLayout({
               plano={trial.plano}
               precoMes={trial.precoMes}
               vencido={trial.vencido}
+              diasConcedidos={trial.diasConcedidos}
             />
           )}
           {cobranca && (

@@ -33,6 +33,8 @@ type Subscription = {
   /** trial grátis ativo (ainda não pagou) — server calcula em /api/billing/status */
   is_trial?: boolean
   trial_days_left?: number | null
+  /** Dias CONCEDIDOS (pago_ate − created_at). >15 = bônus/cortesia, não teste. */
+  trial_days_granted?: number | null
   /** trial JÁ vencido (pending_payment, nunca pagou) — mostra "teste acabou" + checkout */
   trial_ended?: boolean
 }
@@ -187,12 +189,22 @@ export default function PlanoCard() {
   // Fundo escuro porque o BillingPlanSelector foi estilizado pro paywall dark.
   if (sub.is_trial || sub.trial_ended) {
     const dias = sub.trial_days_left ?? 0
+    // Período maior que o trial de cadastro (7d) = bônus/cortesia: quem fechou
+    // negócio não está "testando". Mesma régua da faixa do topo.
+    const ehTeste = (sub.trial_days_granted ?? 0) <= 15
+    const oQue = ehTeste ? 'teste' : 'acesso liberado'
     const tituloTrial = sub.trial_ended
-      ? 'Seu teste acabou'
-      : dias <= 0 ? 'Seu teste termina hoje' : dias === 1 ? 'Falta 1 dia do seu teste' : `Faltam ${dias} dias do seu teste`
+      ? `Seu ${oQue} acabou`
+      : dias <= 0
+        ? `Seu ${oQue} termina hoje`
+        : dias === 1 ? `Falta 1 dia do seu ${oQue}` : `Faltam ${dias} dias do seu ${oQue}`
     const subtitulo = sub.trial_ended
-      ? 'Você aproveitou seus dias grátis — seus dados estão salvos. Pra continuar de onde parou, é só escolher seu plano abaixo.'
-      : 'Assine agora pra continuar usando sem interrupção. Sem fidelidade, cancela quando quiser.'
+      ? ehTeste
+        ? 'Você aproveitou seus dias grátis — seus dados estão salvos. Pra continuar de onde parou, é só escolher seu plano abaixo.'
+        : 'Seu período liberado acabou — seus dados estão salvos. Pra continuar de onde parou, é só escolher seu plano abaixo.'
+      : ehTeste
+        ? 'Assine agora pra continuar usando sem interrupção. Sem fidelidade, cancela quando quiser.'
+        : 'Quando o período acabar, é só escolher o plano aqui. Sem fidelidade, cancela quando quiser.'
     return (
       <div
         className="rounded-2xl p-5 space-y-4"
