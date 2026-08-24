@@ -41,11 +41,19 @@ export default function ExtratoEmpresa({
 
   const totais = useMemo(() => {
     const emAberto = linhas.filter((l) => !l.pago)
+    /* Só entra no "vai receber" o que TEM comanda — é a comanda que recebe a
+       baixa. Sem essa separação o botão prometia um total e recebia menos, sem
+       explicar a diferença (achado 3 da auditoria de 21/08). */
+    const recebivel = emAberto.filter((l) => l.invoiceId)
+    const semComanda = emAberto.filter((l) => !l.invoiceId)
     return {
       qtd: linhas.length,
       total: linhas.reduce((s, l) => s + (l.valor ?? 0), 0),
       aberto: emAberto.reduce((s, l) => s + (l.valor ?? 0), 0),
       qtdAberto: emAberto.length,
+      recebivel: recebivel.reduce((s, l) => s + (l.valor ?? 0), 0),
+      qtdRecebivel: recebivel.length,
+      qtdSemComanda: semComanda.length,
     }
   }, [linhas])
 
@@ -198,7 +206,14 @@ export default function ExtratoEmpresa({
             </button>
           </div>
 
-          {totais.qtdAberto > 0 && (
+          {totais.qtdSemComanda > 0 && (
+            <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+              {totais.qtdSemComanda} atendimento{totais.qtdSemComanda !== 1 ? 's' : ''} em aberto sem
+              comanda — não entra no recebimento em lote. Abra o atendimento pra fechar por lá.
+            </p>
+          )}
+
+          {totais.qtdRecebivel > 0 && (
             <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}>
               {!confirmando ? (
                 <button
@@ -206,13 +221,14 @@ export default function ExtratoEmpresa({
                   className="w-full py-2.5 rounded-xl text-sm font-bold"
                   style={{ background: 'var(--admin-accent)', color: '#fff' }}
                 >
-                  Registrar recebimento de {brl(totais.aberto)}
+                  Registrar recebimento de {brl(totais.recebivel)}
                 </button>
               ) : (
                 <>
                   <p className="text-xs" style={{ color: 'var(--admin-text-2)' }}>
-                    Vai marcar como pagos os <strong>{totais.qtdAberto}</strong> atendimentos em aberto de {mesBR},
-                    somando <strong>{brl(totais.aberto)}</strong>. Isso entra no seu caixa na data de hoje.
+                    Vai marcar como pagos <strong>{totais.qtdRecebivel}</strong> atendimento
+                    {totais.qtdRecebivel !== 1 ? 's' : ''} de {mesBR}, somando{' '}
+                    <strong>{brl(totais.recebivel)}</strong>. Isso entra no seu caixa na data de hoje.
                   </p>
                   <div className="flex gap-2">
                     {([['pix', 'PIX'], ['cash', 'Dinheiro'], ['card', 'Cartão']] as const).map(([v, rotulo]) => (

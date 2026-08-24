@@ -107,7 +107,11 @@ export default function EmpresaDetalheView({
   }
 
   async function buscarClientes() {
-    const termo = busca.trim()
+    /* Vírgula e parêntese quebram o filtro `or` do PostgREST (ele usa vírgula
+       pra separar condição). Buscar "Silva, Maria" derrubava a consulta inteira
+       com "failed to parse logic tree" e a tela não achava ninguém, sem dizer
+       por quê. Tiro os caracteres de controle antes de montar o filtro. */
+    const termo = busca.trim().replace(/[,()"\%]/g, ' ').replace(/\s+/g, ' ').trim()
     if (termo.length < 2) return
     setBuscando(true)
     const { data } = await supabase

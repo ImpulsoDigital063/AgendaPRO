@@ -61,6 +61,7 @@ export default async function EmpresaPage({
   const { data: atendimentos } = await supabase
     .from('appointments')
     .select('id, appointment_date, start_time, client_name, service_name, total_price, paid_at, invoice_item_id, professional:professionals(name)')
+    .eq('business_id', business.id) // defesa em profundidade: o RLS já barra, mas o extrato é dinheiro
     .eq('company_id', empresa.id)
     .gte('appointment_date', start)
     .lte('appointment_date', end)
