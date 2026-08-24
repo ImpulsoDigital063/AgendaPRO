@@ -752,3 +752,86 @@ export async function sendRefundFailedAlert({
     }),
   })
 }
+
+/**
+ * Extrato de convênio pro RH da empresa conveniada (CAF · 24/08/2026).
+ *
+ * O campo "e-mail pra mandar o extrato" existia no cadastro da empresa e não
+ * mandava nada — a interface prometia o que o produto não fazia. Isto liga.
+ *
+ * Vai como tabela no corpo do e-mail, não como anexo: o PDF é gerado no
+ * navegador (jspdf) e não existe no servidor. O RH consegue conferir linha a
+ * linha sem abrir arquivo, e o dono continua podendo mandar o PDF pelo WhatsApp
+ * se quiser.
+ */
+export async function enviarExtratoConvenio(p: {
+  para: string
+  empresaNome: string
+  contatoNome?: string | null
+  negocioNome: string
+  negocioTelefone?: string | null
+  competencia: string
+  numero: number
+  linhas: Array<{ data: string; hora: string; funcionario: string; profissional: string; servico: string; valor: number }>
+  total: number
+}): Promise<{ ok: true } | { ok: false; erro: string }> {
+  if (!process.env.RESEND_API_KEY) return { ok: false, erro: 'RESEND_API_KEY não configurada' }
+
+  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const dataBR = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`
+  const mesBR = `${p.competencia.slice(5, 7)}/${p.competencia.slice(0, 4)}`
+
+  const linhasHtml = p.linhas
+    .map(
+      (l) => `<tr>
+        <td style="padding:6px 8px;border-top:1px solid #e2e8f0">${dataBR(l.data)}</td>
+        <td style="padding:6px 8px;border-top:1px solid #e2e8f0">${l.hora}</td>
+        <td style="padding:6px 8px;border-top:1px solid #e2e8f0">${esc(l.funcionario)}</td>
+        <td style="padding:6px 8px;border-top:1px solid #e2e8f0">${esc(l.profissional)}</td>
+        <td style="padding:6px 8px;border-top:1px solid #e2e8f0">${esc(l.servico)}</td>
+        <td style="padding:6px 8px;border-top:1px solid #e2e8f0;text-align:right">${brl(l.valor)}</td>
+      </tr>`
+    )
+    .join('')
+
+  const body = `
+    ${p.contatoNome ? `Olá, ${esc(p.contatoNome)}.<br><br>` : ''}
+    Segue o extrato dos atendimentos dos funcionários da <strong>${esc(p.empresaNome)}</strong>
+    na competência <strong>${mesBR}</strong>.<br>
+    <span style="color:#64748b">Fatura nº ${p.numero} · ${p.linhas.length} atendimento${p.linhas.length !== 1 ? 's' : ''}</span>
+    <br><br>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="text-align:left;color:#64748b;font-size:11px;text-transform:uppercase">
+          <th style="padding:6px 8px">Data</th>
+          <th style="padding:6px 8px">Hora</th>
+          <th style="padding:6px 8px">Funcionário</th>
+          <th style="padding:6px 8px">Profissional</th>
+          <th style="padding:6px 8px">Serviço</th>
+          <th style="padding:6px 8px;text-align:right">Valor</th>
+        </tr>
+      </thead>
+      <tbody>${linhasHtml}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="padding:10px 8px;border-top:2px solid #0f172a;font-weight:700">TOTAL</td>
+          <td style="padding:10px 8px;border-top:2px solid #0f172a;font-weight:700;text-align:right">${brl(p.total)}</td>
+        </tr>
+      </tfoot>
+    </table>
+    <br>
+    Qualquer divergência, é só responder este e-mail${p.negocioTelefone ? ` ou chamar no ${esc(p.negocioTelefone)}` : ''}.
+  `
+
+  try {
+    await getResend().emails.send({
+      from: FROM_EMAIL,
+      to: p.para,
+      subject: `Extrato de atendimentos · ${p.empresaNome} · ${mesBR}`,
+      html: emailTemplate({ title: `${p.negocioNome} · extrato ${mesBR}`, body }),
+    })
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : String(e) }
+  }
+}

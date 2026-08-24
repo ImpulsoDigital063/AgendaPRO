@@ -25,7 +25,16 @@ export type EmpresaResumo = {
   ativo: boolean
   total_funcionarios: number
   total_profissionais: number
+  /** Quanto a empresa deve e há quantos dias está o atendimento mais antigo
+   *  sem receber. Valor parado em silêncio é dinheiro que ninguém cobra. */
+  aberto_valor: number
+  aberto_qtd: number
+  aberto_dias: number
 }
+
+const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+/** Acima disso a linha fica em destaque: é hora de cobrar. */
+const DIAS_PRA_COBRAR = 20
 
 /**
  * Lista de empresas conveniadas + cadastro.
@@ -94,6 +103,24 @@ export default function ConveniosView({
         <IconPlus size={16} /> Nova empresa
       </button>
 
+      {(() => {
+        const cobrar = empresas.filter((e) => e.aberto_valor > 0 && e.aberto_dias >= DIAS_PRA_COBRAR)
+        if (cobrar.length === 0) return null
+        const total = cobrar.reduce((s, e) => s + e.aberto_valor, 0)
+        return (
+          <div
+            className="rounded-xl px-3.5 py-3 text-sm"
+            style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)', color: 'var(--admin-text)' }}
+          >
+            <strong>{brl(total)} esperando cobrança.</strong>{' '}
+            {cobrar.length === 1
+              ? `A ${cobrar[0].name} tem atendimento de ${cobrar[0].aberto_dias} dias atrás ainda em aberto.`
+              : `${cobrar.length} empresas com atendimento parado há mais de ${DIAS_PRA_COBRAR} dias.`}{' '}
+            Feche a fatura do mês e mande pro RH.
+          </div>
+        )
+      })()}
+
       {empresas.length === 0 ? (
         <div
           className="rounded-xl p-6 text-center"
@@ -132,6 +159,15 @@ export default function ConveniosView({
                     {e.total_profissionais} {e.total_profissionais === 1 ? 'profissional' : 'profissionais'}
                     {e.contato_nome ? ` · ${e.contato_nome}` : ''}
                   </p>
+                  {e.aberto_valor > 0 && (
+                    <p
+                      className="text-xs mt-1 font-semibold"
+                      style={{ color: e.aberto_dias >= DIAS_PRA_COBRAR ? '#B45309' : 'var(--admin-text-2)' }}
+                    >
+                      {brl(e.aberto_valor)} em aberto
+                      {e.aberto_dias > 0 ? ` · mais antigo há ${e.aberto_dias} dia${e.aberto_dias !== 1 ? 's' : ''}` : ''}
+                    </p>
+                  )}
                 </div>
                 <span className="text-xs flex-shrink-0" style={{ color: 'var(--admin-text-faded)' }}>
                   ver

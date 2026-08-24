@@ -24,20 +24,68 @@ export type LinhaExtrato = {
  *
  * Exportação roda no navegador: `xlsx` e `jspdf` já são dependências do projeto.
  */
+export type FaturaResumo = {
+  id: string
+  numero: number
+  competencia: string
+  qtd: number
+  total: number
+  enviada_em: string | null
+  enviada_para: string | null
+  paga_em: string | null
+}
+
 export default function ExtratoEmpresa({
+  empresaId,
   empresaNome,
+  temEmail,
   mes,
   linhas,
+  faturas,
 }: {
+  empresaId: string
   empresaNome: string
+  /** Empresa sem e-mail não pode receber o extrato — o botão explica em vez de falhar. */
+  temEmail: boolean
   mes: string // YYYY-MM
   linhas: LinhaExtrato[]
+  faturas: FaturaResumo[]
 }) {
   const router = useRouter()
   const [baixando, setBaixando] = useState(false)
   const [metodo, setMetodo] = useState<'pix' | 'cash' | 'card'>('pix')
   const [confirmando, setConfirmando] = useState(false)
   const [resultado, setResultado] = useState<string | null>(null)
+  const [faturando, setFaturando] = useState(false)
+  const [faturaMsg, setFaturaMsg] = useState<string | null>(null)
+
+  /* Fechar a competência congela o que foi enviado. Sem isso, lançamento
+     retroativo muda o extrato DEPOIS de o RH ter recebido, e quem parece
+     errado é o dono da clínica. */
+  async function fecharFatura(enviarEmail: boolean) {
+    setFaturando(true)
+    setFaturaMsg(null)
+    const res = await fetch('/api/admin/convenios/faturar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyId: empresaId, competencia: mes, enviarEmail }),
+    })
+    const j = await res.json().catch(() => ({}))
+    setFaturando(false)
+    if (!res.ok) {
+      setFaturaMsg(
+        j.error === 'nada_a_faturar'
+          ? 'Nenhum atendimento novo pra faturar nesse mês — o que existe já entrou numa fatura.'
+          : `Não consegui fechar a fatura: ${j.error ?? res.status}`
+      )
+      return
+    }
+    setFaturaMsg(
+      `Fatura nº ${j.fatura.numero} fechada · ${j.fatura.qtd} atendimentos · ${brl(Number(j.fatura.total))}` +
+        (enviarEmail ? (j.emailEnviado ? ' · enviada por e-mail' : ` · e-mail NÃO saiu: ${j.emailErro}`) : '')
+    )
+    router.refresh()
+  }
 
   const totais = useMemo(() => {
     const emAberto = linhas.filter((l) => !l.pago)
@@ -205,6 +253,51 @@ export default function ExtratoEmpresa({
               <IconFile size={15} /> PDF
             </button>
           </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => fecharFatura(false)}
+              disabled={faturando}
+              className="flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
+              style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+            >
+              {faturando ? 'Fechando…' : 'Fechar fatura do mês'}
+            </button>
+            <button
+              onClick={() => fecharFatura(true)}
+              disabled={faturando || !temEmail}
+              title={temEmail ? undefined : 'Cadastre o e-mail da empresa abaixo pra poder enviar'}
+              className="flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-bold disabled:opacity-40"
+              style={{ background: 'var(--admin-accent)', color: '#fff' }}
+            >
+              Fechar e enviar por e-mail
+            </button>
+          </div>
+          <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+            Fechar congela esses atendimentos numa fatura numerada — o que você mandar pro RH não muda
+            depois. Lançamento novo no mesmo mês entra na próxima fatura.
+            {!temEmail && ' Pra enviar por e-mail, cadastre o e-mail da empresa aqui embaixo.'}
+          </p>
+          {faturaMsg && (
+            <p className="text-xs" style={{ color: 'var(--admin-text-2)' }}>{faturaMsg}</p>
+          )}
+
+          {faturas.length > 0 && (
+            <details>
+              <summary className="text-xs font-semibold cursor-pointer" style={{ color: 'var(--admin-text-2)' }}>
+                {faturas.length} fatura{faturas.length !== 1 ? 's' : ''} já fechada{faturas.length !== 1 ? 's' : ''}
+              </summary>
+              <ul className="mt-2 space-y-1 text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+                {faturas.map((f) => (
+                  <li key={f.id}>
+                    nº {f.numero} · {f.competencia.slice(5, 7)}/{f.competencia.slice(0, 4)} · {f.qtd} atend. ·{' '}
+                    {brl(Number(f.total))}
+                    {f.enviada_em ? ` · enviada pra ${f.enviada_para}` : ' · não enviada'}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           {totais.qtdSemComanda > 0 && (
             <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>

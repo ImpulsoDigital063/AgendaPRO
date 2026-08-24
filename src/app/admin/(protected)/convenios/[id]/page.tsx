@@ -75,6 +75,14 @@ export default async function EmpresaPage({
     : { data: [] as { id: string; invoice_id: string }[] }
   const comandaPorItem = new Map((itens ?? []).map((i) => [i.id, i.invoice_id]))
 
+  // Faturas já fechadas dessa empresa — o histórico do que foi enviado.
+  const { data: faturas } = await supabase
+    .from('company_invoices')
+    .select('id, numero, competencia, qtd, total, enviada_em, enviada_para, paga_em')
+    .eq('company_id', empresa.id)
+    .order('numero', { ascending: false })
+    .limit(24)
+
   const linhas: LinhaExtrato[] = (atendimentos ?? []).map((a) => {
     const prof = Array.isArray(a.professional) ? a.professional[0] : a.professional
     return {
@@ -94,7 +102,14 @@ export default async function EmpresaPage({
     <>
       <SubPageHeader title={empresa.name} subtitle="Convênio" back="/admin/convenios" />
       <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8">
-        <ExtratoEmpresa empresaNome={empresa.name} mes={mes} linhas={linhas} />
+        <ExtratoEmpresa
+          empresaId={empresa.id}
+          empresaNome={empresa.name}
+          temEmail={!!empresa.contato_email}
+          mes={mes}
+          linhas={linhas}
+          faturas={faturas ?? []}
+        />
         <div className="h-5" />
         <EmpresaDetalheView
           businessId={business.id}
