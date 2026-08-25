@@ -248,7 +248,25 @@ export default function AppointmentActions({
         {/* Convênio não passa pelo balcão: em vez de faturar, só registra que a
             paciente veio. A cobrança sai no extrato da empresa, no fim do mês.
             Particular segue igual: faturar (ou desmarcar, se já pago). */}
-        {ehConvenio ? (
+        {ehConvenio && isPaid ? (
+          /* Convênio que foi cobrado no balcão por engano (ou antes desta
+             regra existir) precisa de saída: sem isto o valor fica preso no
+             caixa do dia e o atendimento nunca volta pro "em aberto" da
+             empresa — a empresa deixaria de ser cobrada pra sempre. */
+          <button
+            type="button"
+            onClick={() => desmarcarPago()}
+            disabled={loading}
+            className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98] disabled:opacity-50"
+            style={{
+              background: 'var(--admin-surface)',
+              color: '#DC2626',
+              border: '1px solid rgba(239,68,68,0.35)',
+            }}
+          >
+            <IconClose size={16} /> Desfazer cobrança no balcão
+          </button>
+        ) : ehConvenio ? (
           <button
             type="button"
             onClick={() => marcarAtendido()}
@@ -320,9 +338,19 @@ export default function AppointmentActions({
           className="rounded-xl px-3 py-2.5 text-xs leading-relaxed"
           style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: 'var(--admin-text-mute)' }}
         >
-          Não cobre nada da paciente. Esse atendimento entra no extrato de{' '}
-          <strong style={{ color: 'var(--admin-text)' }}>{convenioNome}</strong> e é cobrado da empresa
-          no fechamento do mês, em Convênios.
+          {isPaid ? (
+            <>
+              Esse atendimento é de convênio e foi cobrado no balcão — o valor entrou no caixa do dia e{' '}
+              <strong style={{ color: 'var(--admin-text)' }}>{convenioNome}</strong> não vai ser cobrada
+              por ele. Desfaça a cobrança pra ele voltar pro extrato da empresa.
+            </>
+          ) : (
+            <>
+              Não cobre nada da paciente. Esse atendimento entra no extrato de{' '}
+              <strong style={{ color: 'var(--admin-text)' }}>{convenioNome}</strong> e é cobrado da
+              empresa no fechamento do mês, em Convênios.
+            </>
+          )}
         </div>
       )}
 
