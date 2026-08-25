@@ -464,6 +464,10 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                   totalPrice={data.total_price}
                   serviceName={data.service_name}
                   professionalId={prof?.id ?? null}
+                  // Convênio troca o "Faturar" por "Marcar como atendido": a
+                  // cobrança é da empresa, no extrato, nunca no balcão.
+                  convenioNome={empresaConvenio?.name ?? null}
+                  jaAtendido={status === 'completed'}
                   // Pagamento: avisa a grade e fecha SEM recarregar a pagina.
                   // Cancelar/remarcar mudam a posicao do card, entao esses
                   // continuam pedindo os dados do servidor (onDone padrao).

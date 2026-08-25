@@ -1055,7 +1055,12 @@ export default function TimelineGridInteractive({
                               }}
                               title={`Convênio: ${nomeConvenio(a)}`}
                             >
-                              Convênio · {nomeConvenio(a)}
+                              {/* Card dividido (dois atendimentos no mesmo horário)
+                                  truncava em "CONVÊ..." — gastava a largura toda pra
+                                  dizer o que o azul já diz, e escondia justamente a
+                                  empresa, que é o que o Gustavo precisa ler de longe.
+                                  Estreito: só o nome. Inteiro: rótulo completo. */}
+                              {lanes > 1 ? nomeConvenio(a) : `Convênio · ${nomeConvenio(a)}`}
                             </span>
                           )}
                           {/* Combo · selo com o NOME do combo, pra diferenciar de um

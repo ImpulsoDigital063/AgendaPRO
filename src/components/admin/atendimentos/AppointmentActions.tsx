@@ -51,6 +51,17 @@ type Props = {
   /** Quando existe, o sucesso do pagamento avisa por aqui em vez de recarregar
    *  a pagina inteira — a grade pinta o card localmente. */
   onPago?: (dados: { paid_at: string; total_price?: number | null }) => void
+  /**
+   * Nome da empresa conveniada, quando o atendimento é de convênio (25/08/2026).
+   *
+   * Convênio não se cobra no balcão: quem paga é a empresa, no fim do mês, pelo
+   * extrato. Enquanto isto não existia, o botão verde de faturar aparecia igual
+   * ao do particular — e clicar nele jogava no caixa do dia um dinheiro que
+   * ninguém pagou e ainda tirava a linha do que seria cobrado da empresa.
+   */
+  convenioNome?: string | null
+  /** Já marcado como concluído · troca o texto do botão de atendido. */
+  jaAtendido?: boolean
 }
 
 export default function AppointmentActions({
@@ -71,7 +82,10 @@ export default function AppointmentActions({
   podeEditarValor = false,
   sinalPago,
   onPago,
+  convenioNome,
+  jaAtendido = false,
 }: Props) {
+  const ehConvenio = !!convenioNome
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
@@ -105,6 +119,22 @@ export default function AppointmentActions({
   async function desmarcarPago() {
     const ok = await postPayment({ paid: false })
     if (!ok) return
+    if (onDone) onDone()
+    else router.refresh()
+  }
+
+  /* Convênio: registra que a paciente veio, sem abrir comanda nem tocar no
+     caixa. O dinheiro segue pelo extrato da empresa. */
+  async function marcarAtendido() {
+    setLoading(true)
+    setError(null)
+    const res = await fetch(`/api/admin/appointments/${appointmentId}/atendido`, { method: 'POST' })
+    setLoading(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error === 'nao_e_convenio' ? 'Esse atendimento não é de convênio.' : d.error || 'Erro ao marcar como atendido')
+      return
+    }
     if (onDone) onDone()
     else router.refresh()
   }
@@ -215,29 +245,56 @@ export default function AppointmentActions({
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {/* Faturar (abre modal de comanda com produtos) · ou desmarcar se já pago */}
-        <button
-          type="button"
-          onClick={() => (isPaid ? desmarcarPago() : setFaturarOpen(true))}
-          disabled={loading}
-          className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98] disabled:opacity-50"
-          style={
-            isPaid
-              ? {
-                  background: 'var(--admin-surface)',
-                  color: 'var(--admin-text-mute)',
-                  border: '1px solid var(--admin-border)',
-                }
-              : {
-                  background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
-                  color: '#fff',
-                  borderTop: '1px solid rgba(255,255,255,0.25)',
-                  boxShadow: '0 10px 24px -8px rgba(5,150,105,0.50), 0 2px 4px rgba(0,0,0,0.08)',
-                }
-          }
-        >
-          <IconCheck size={16} /> {isPaid ? 'Desmarcar pagamento' : 'Faturar atendimento'}
-        </button>
+        {/* Convênio não passa pelo balcão: em vez de faturar, só registra que a
+            paciente veio. A cobrança sai no extrato da empresa, no fim do mês.
+            Particular segue igual: faturar (ou desmarcar, se já pago). */}
+        {ehConvenio ? (
+          <button
+            type="button"
+            onClick={() => marcarAtendido()}
+            disabled={loading || jaAtendido}
+            className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
+            style={
+              jaAtendido
+                ? {
+                    background: 'var(--admin-surface)',
+                    color: 'var(--admin-text-mute)',
+                    border: '1px solid var(--admin-border)',
+                  }
+                : {
+                    background: 'linear-gradient(180deg, #3B82F6 0%, #2563EB 100%)',
+                    color: '#fff',
+                    borderTop: '1px solid rgba(255,255,255,0.25)',
+                    boxShadow: '0 10px 24px -8px rgba(37,99,235,0.50), 0 2px 4px rgba(0,0,0,0.08)',
+                  }
+            }
+          >
+            <IconCheck size={16} /> {jaAtendido ? 'Atendimento concluído' : 'Marcar como atendido'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => (isPaid ? desmarcarPago() : setFaturarOpen(true))}
+            disabled={loading}
+            className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.98] disabled:opacity-50"
+            style={
+              isPaid
+                ? {
+                    background: 'var(--admin-surface)',
+                    color: 'var(--admin-text-mute)',
+                    border: '1px solid var(--admin-border)',
+                  }
+                : {
+                    background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+                    color: '#fff',
+                    borderTop: '1px solid rgba(255,255,255,0.25)',
+                    boxShadow: '0 10px 24px -8px rgba(5,150,105,0.50), 0 2px 4px rgba(0,0,0,0.08)',
+                  }
+            }
+          >
+            <IconCheck size={16} /> {isPaid ? 'Desmarcar pagamento' : 'Faturar atendimento'}
+          </button>
+        )}
 
         {/* WhatsApp · um botão só (lembrete · modelo editável · envio manual) */}
         <button
@@ -255,6 +312,19 @@ export default function AppointmentActions({
           <IconWhatsapp size={16} /> {waLoading === 'reminder' ? 'Abrindo…' : 'Enviar WhatsApp'}
         </button>
       </div>
+
+      {/* Diz pra recepção onde o dinheiro desse atendimento vai aparecer — sem
+          isto, a ausência do botão de faturar parece defeito, não regra. */}
+      {ehConvenio && (
+        <div
+          className="rounded-xl px-3 py-2.5 text-xs leading-relaxed"
+          style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: 'var(--admin-text-mute)' }}
+        >
+          Não cobre nada da paciente. Esse atendimento entra no extrato de{' '}
+          <strong style={{ color: 'var(--admin-text)' }}>{convenioNome}</strong> e é cobrado da empresa
+          no fechamento do mês, em Convênios.
+        </div>
+      )}
 
       {/* Editar atendimento · adiciona/troca serviços no MESMO agendamento
           (mesma data) · agiliza quando o dono adiciona serviço durante o

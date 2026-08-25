@@ -17,7 +17,9 @@
 // (não é cacheado) e o CSS novo do deploy morreu no caminho. O fetch abaixo
 // não tinha .catch(), então qualquer oscilação de rede matava o recurso em vez
 // de tentar o cache. Mesmo sintoma de 03/06, que na época pegou o JS.
-const STATIC_CACHE_VERSION = 'agendapro-static-v20'
+// v21 (25/08): troca do botão de faturar por "Marcar como atendido" no
+// atendimento de convênio + selo do card dividido mostrando a empresa.
+const STATIC_CACHE_VERSION = 'agendapro-static-v21'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

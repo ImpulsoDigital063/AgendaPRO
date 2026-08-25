@@ -63,6 +63,7 @@ export default async function AppointmentDetailPage({
       appointment_services(service_name, price),
       professional_id,
       professional:professionals(id, name),
+      company:companies(id, name),
       customer:customers(id, name, phone, email)
     `)
     .eq('id', id)
@@ -79,6 +80,7 @@ export default async function AppointmentDetailPage({
 
   const prof = Array.isArray(appt.professional) ? appt.professional[0] : appt.professional
   const customer = Array.isArray(appt.customer) ? appt.customer[0] : appt.customer
+  const empresaConvenio = Array.isArray(appt.company) ? appt.company[0] : appt.company
   const status = appt.status as string
   const statusLabel = STATUS_LABEL[status] ?? status
   const statusColor = STATUS_COLOR[status] ?? '#94A3B8'
@@ -232,6 +234,8 @@ export default async function AppointmentDetailPage({
             totalPrice={valorCobrado}
             serviceName={appt.service_name as string | null}
             professionalId={prof?.id ?? null}
+            convenioNome={empresaConvenio?.name ?? null}
+            jaAtendido={appt.status === 'completed'}
             podeEditarValor
           />
         )}
