@@ -1047,7 +1047,9 @@ export default function TimelineGridInteractive({
                               distingue no olho o que é particular do que é convênio. */}
                           {!isTiny && nomeConvenio(a) && (
                             <span
-                              className={`text-[9px] font-bold uppercase inline-block w-fit max-w-full truncate px-1.5 py-0.5 rounded ${isCompact ? 'mt-0.5' : 'mt-1'}`}
+                              className={`font-bold uppercase inline-block w-fit max-w-full truncate py-0.5 rounded ${
+                                lanes > 1 ? 'text-[8px] px-1 tracking-tight' : 'text-[9px] px-1.5'
+                              } ${isCompact ? 'mt-0.5' : 'mt-1'}`}
                               style={{
                                 background: 'linear-gradient(180deg, #0EA5E9 0%, #0284C7 100%)',
                                 color: '#fff',
@@ -1055,12 +1057,12 @@ export default function TimelineGridInteractive({
                               }}
                               title={`Convênio: ${nomeConvenio(a)}`}
                             >
-                              {/* Card dividido (dois atendimentos no mesmo horário)
-                                  truncava em "CONVÊ..." — gastava a largura toda pra
-                                  dizer o que o azul já diz, e escondia justamente a
-                                  empresa, que é o que o Gustavo precisa ler de longe.
-                                  Estreito: só o nome. Inteiro: rótulo completo. */}
-                              {lanes > 1 ? nomeConvenio(a) : `Convênio · ${nomeConvenio(a)}`}
+                              {/* Card dividido não tem largura pra nome de empresa:
+                                  "Convênio · Prefeitura..." virava "CONVÊ..." e só a
+                                  empresa virava "PREFEIT...". Decisão do Eduardo
+                                  (25/08): o card diz QUE é convênio, o detalhe diz de
+                                  QUEM é. Fonte um passo menor pra caber inteiro. */}
+                              {lanes > 1 ? 'Convênio' : `Convênio · ${nomeConvenio(a)}`}
                             </span>
                           )}
                           {/* Combo · selo com o NOME do combo, pra diferenciar de um
