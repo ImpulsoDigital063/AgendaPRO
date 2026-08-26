@@ -50,7 +50,19 @@ export async function POST(req: NextRequest) {
   const { start, end } = monthBoundsBR(competencia)
 
   /* Só entra na fatura o atendimento que AINDA não foi faturado. Sem isso um
-     segundo fechamento do mesmo mês cobraria tudo de novo. */
+     segundo fechamento do mesmo mês cobraria tudo de novo.
+
+     E também só o que ainda não foi RECEBIDO (25/08/2026). A fatura é a conta
+     que vai pro RH — cobrar de novo algo que já entrou no caixa é o pior erro
+     possível nesse fluxo, porque quem descobre é o cliente da clínica, na
+     frente do RH dele. Acontece em dois caminhos reais:
+
+       · o dono registrou o recebimento antes de fechar a fatura (foi o que o
+         Eduardo fez testando em 25/08: baixou R$230 e só depois foi fechar);
+       · atendimento de convênio cobrado no balcão por engano, antes da regra
+         que tirou esse botão.
+
+     Em ambos o dinheiro já entrou. O que sobra pra cobrar é o não recebido. */
   const { data: atendimentos, error: errAppts } = await supabase
     .from('appointments')
     .select('id, appointment_date, start_time, client_name, service_name, total_price, professional:professionals(name)')
@@ -60,10 +72,16 @@ export async function POST(req: NextRequest) {
     .lte('appointment_date', end)
     .neq('status', 'cancelled')
     .is('company_invoice_id', null)
+    .is('paid_at', null)
     .order('appointment_date')
     .order('start_time')
   if (errAppts) return NextResponse.json({ error: errAppts.message }, { status: 500 })
   if (!atendimentos || atendimentos.length === 0) {
+    return NextResponse.json({ error: 'nada_a_faturar' }, { status: 400 })
+  }
+  const total = atendimentos.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  if (total <= 0) {
+    // Fatura de R$0 não é conta, é confusão na mesa do RH.
     return NextResponse.json({ error: 'nada_a_faturar' }, { status: 400 })
   }
 
@@ -78,7 +96,7 @@ export async function POST(req: NextRequest) {
       valor: Number(a.total_price ?? 0),
     }
   })
-  const total = linhas.reduce((s, l) => s + l.valor, 0)
+  // `total` já veio da validação acima — as linhas são os mesmos atendimentos.
 
   const { data: numeroRow } = await supabase.rpc('next_company_invoice_number', { p_business: business.id })
   const numero = Number(numeroRow ?? 1)

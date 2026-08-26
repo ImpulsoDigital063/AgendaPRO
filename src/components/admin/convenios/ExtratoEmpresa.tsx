@@ -75,7 +75,7 @@ export default function ExtratoEmpresa({
     if (!res.ok) {
       setFaturaMsg(
         j.error === 'nada_a_faturar'
-          ? 'Nenhum atendimento novo pra faturar nesse mês — o que existe já entrou numa fatura.'
+          ? 'Nada a cobrar nesse mês: o que existe aqui já foi recebido ou já entrou numa fatura anterior.'
           : `Não consegui fechar a fatura: ${j.error ?? res.status}`
       )
       return
@@ -274,8 +274,9 @@ export default function ExtratoEmpresa({
             </button>
           </div>
           <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
-            Fechar congela esses atendimentos numa fatura numerada — o que você mandar pro RH não muda
-            depois. Lançamento novo no mesmo mês entra na próxima fatura.
+            Fechar congela numa fatura numerada só o que ainda está <strong>em aberto</strong> — o que
+            você mandar pro RH não muda depois. Atendimento já recebido não entra (não se cobra duas
+            vezes), e lançamento novo no mesmo mês vai pra próxima fatura.
             {!temEmail && ' Pra enviar por e-mail, cadastre o e-mail da empresa aqui embaixo.'}
           </p>
           {faturaMsg && (
