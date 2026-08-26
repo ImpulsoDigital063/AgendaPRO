@@ -39,7 +39,11 @@ export type EmpresaResumo = {
     qtdFaturado: number
     dias: number
     emCurso: boolean
+    /** YYYY-MM-DD · null quando a empresa não tem prazo combinado. */
+    vencimento: string | null
+    atraso: number
   }[]
+  dia_vencimento: number | null
 }
 
 export type FaturaResumo = {
@@ -132,9 +136,17 @@ export default function ConveniosView({
           tela mandava fechar fatura pra sempre — inclusive do que já foi
           fechado (Eduardo, 25/08). */}
       {(() => {
-        const aFaturar = empresas.reduce((s, e) => s + e.competencias.reduce((t, c) => t + c.aFaturar, 0), 0)
+        /* O número grande é só o que ele PODE fechar hoje. Antes somava o mês
+           em curso junto — e aí o card prometia "feche o mês e mande pro RH"
+           pra um valor que inclui sessões que ainda vão acontecer. O mês em
+           curso continua visível, mas em letra menor, como o que é: acúmulo. */
+        const fechavel = empresas.reduce(
+          (s, e) => s + e.competencias.filter((c) => !c.emCurso).reduce((t, c) => t + c.aFaturar, 0), 0)
+        const emCurso = empresas.reduce(
+          (s, e) => s + e.competencias.filter((c) => c.emCurso).reduce((t, c) => t + c.aFaturar, 0), 0)
+        const aFaturar = fechavel
         const aguardando = empresas.reduce((s, e) => s + e.competencias.reduce((t, c) => t + c.faturado, 0), 0)
-        if (aFaturar === 0 && aguardando === 0) return null
+        if (aFaturar === 0 && aguardando === 0 && emCurso === 0) return null
         return (
           <div className="grid grid-cols-2 gap-2">
             <div
@@ -148,8 +160,13 @@ export default function ConveniosView({
                 {brl(aFaturar)}
               </p>
               <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                {aFaturar > 0 ? 'Feche o mês e mande pro RH' : 'Nada pendente de fatura'}
+                {aFaturar > 0 ? 'De meses fechados · mande pro RH' : 'Nenhum mês fechado a cobrar'}
               </p>
+              {emCurso > 0 && (
+                <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                  + {brl(emCurso)} acumulando no mês em curso
+                </p>
+              )}
             </div>
             <div
               className="rounded-xl px-3.5 py-3"
@@ -232,6 +249,18 @@ export default function ConveniosView({
                           {c.emCurso && (
                             <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'var(--admin-text-faded)' }}>
                               · mês em curso
+                            </span>
+                          )}
+                          {/* Prazo real da empresa · sem dia_vencimento cadastrado
+                              o sistema não afirma atraso, só cala. */}
+                          {!c.emCurso && c.vencimento && (
+                            <span
+                              className="ml-1.5 text-[10px] font-semibold"
+                              style={{ color: c.atraso > 0 ? '#DC2626' : 'var(--admin-text-faded)' }}
+                            >
+                              · {c.atraso > 0
+                                ? `venceu ${c.vencimento.slice(8)}/${c.vencimento.slice(5, 7)} · ${c.atraso} dia${c.atraso !== 1 ? 's' : ''} de atraso`
+                                : `vence ${c.vencimento.slice(8)}/${c.vencimento.slice(5, 7)}`}
                             </span>
                           )}
                         </p>

@@ -35,7 +35,7 @@ export default async function EmpresaPage({
 
   const { data: empresa } = await supabase
     .from('companies')
-    .select('id, business_id, name, cnpj, contato_nome, contato_telefone, contato_email, ativo')
+    .select('id, business_id, name, cnpj, contato_nome, contato_telefone, contato_email, ativo, dia_vencimento')
     .eq('id', id)
     .eq('business_id', business.id)
     .maybeSingle()

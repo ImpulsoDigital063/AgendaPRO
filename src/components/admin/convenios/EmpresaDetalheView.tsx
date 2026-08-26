@@ -23,6 +23,7 @@ type Empresa = {
   contato_nome: string | null
   contato_telefone: string | null
   contato_email: string | null
+  dia_vencimento: number | null
   ativo: boolean
 }
 
@@ -57,6 +58,7 @@ export default function EmpresaDetalheView({
   const [contatoNome, setContatoNome] = useState(empresa.contato_nome ?? '')
   const [contatoTelefone, setContatoTelefone] = useState(mascaraTelefone(empresa.contato_telefone ?? ''))
   const [contatoEmail, setContatoEmail] = useState(empresa.contato_email ?? '')
+  const [diaVencimento, setDiaVencimento] = useState(empresa.dia_vencimento != null ? String(empresa.dia_vencimento) : '')
   const [ativo, setAtivo] = useState(empresa.ativo)
   const [salvandoDados, setSalvandoDados] = useState(false)
   const [salvo, setSalvo] = useState(false)
@@ -79,6 +81,7 @@ export default function EmpresaDetalheView({
         contato_nome: contatoNome.trim() || null,
         contato_telefone: contatoTelefone.replace(/\D/g, '') || null,
         contato_email: contatoEmail.trim() || null,
+        dia_vencimento: diaVencimento.trim() ? Math.min(31, Math.max(1, parseInt(diaVencimento, 10))) : null,
         ativo,
       })
       .eq('id', empresa.id)
@@ -178,6 +181,26 @@ export default function EmpresaDetalheView({
           <div>
             <label className="admin-label">E-mail (pra mandar o extrato)</label>
             <input value={contatoEmail} onChange={(e) => setContatoEmail(e.target.value)} className="admin-input w-full px-3 py-2.5 text-sm" />
+          </div>
+          {/* Prazo real de pagamento (25/08). Sem isto os avisos de cobrança
+              usavam um limiar de 20 dias inventado — gritava dentro do prazo e
+              calava fora dele. */}
+          <div>
+            <label className="admin-label">Dia do pagamento</label>
+            <input
+              type="number"
+              min={1}
+              max={31}
+              value={diaVencimento}
+              onChange={(e) => setDiaVencimento(e.target.value.replace(/\D/g, '').slice(0, 2))}
+              className="admin-input w-full px-3 py-2.5 text-sm"
+              placeholder="ex: 10"
+            />
+            <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+              {diaVencimento
+                ? `A fatura de um mês vence no dia ${diaVencimento} do mês seguinte. Julho vence ${String(diaVencimento).padStart(2, '0')}/08.`
+                : 'Em branco, o sistema não avisa atraso dessa empresa — só mostra há quanto tempo está em aberto.'}
+            </p>
           </div>
         </div>
         <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--admin-text)' }}>

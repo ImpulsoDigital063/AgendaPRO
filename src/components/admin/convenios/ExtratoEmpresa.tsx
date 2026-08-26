@@ -105,10 +105,29 @@ export default function ExtratoEmpresa({
     }
   }, [linhas])
 
+  /** Já existe fatura fechada dessa competência? Define se "recebi" é o
+   *  próximo passo do fluxo ou um atalho fora de ordem. */
+  const temFaturaDoMes = faturas.some((f) => f.competencia === mes)
+
   const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   const dataBR = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`
   const mesBR = `${mes.slice(5, 7)}/${mes.slice(0, 4)}`
   const nomeArquivo = `extrato-${empresaNome.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${mes}`
+
+  /* Quem confere do outro lado é o RH da empresa, e a pergunta dele é "quantas
+     sessões o Leandro fez", não "o que aconteceu dia 14". O detalhe cronológico
+     continua — isto entra ANTES dele, como capa de conferência. */
+  const porFuncionario = useMemo(() => {
+    const m = new Map<string, { qtd: number; valor: number }>()
+    for (const l of linhas) {
+      const k = l.funcionario || '—'
+      if (!m.has(k)) m.set(k, { qtd: 0, valor: 0 })
+      const x = m.get(k)!
+      x.qtd++
+      x.valor += l.valor ?? 0
+    }
+    return [...m].sort((a, b) => b[1].valor - a[1].valor)
+  }, [linhas])
 
   async function exportarExcel() {
     const XLSX = await import('xlsx')
@@ -129,6 +148,18 @@ export default function ExtratoEmpresa({
     ws['!cols'] = [{ wch: 11 }, { wch: 8 }, { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 12 }, { wch: 11 }]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Atendimentos')
+
+    // Aba de conferência do RH · uma linha por servidor.
+    const resumo = porFuncionario.map(([nome, x]) => ({
+      Funcionário: nome,
+      Atendimentos: x.qtd,
+      Valor: x.valor,
+    }))
+    resumo.push({ Funcionário: 'TOTAL', Atendimentos: totais.qtd, Valor: totais.total })
+    const wsResumo = XLSX.utils.json_to_sheet(resumo)
+    wsResumo['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }]
+    XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo por funcionário')
+
     XLSX.writeFile(wb, `${nomeArquivo}.xlsx`)
   }
 
@@ -140,8 +171,26 @@ export default function ExtratoEmpresa({
     doc.text(`Extrato de atendimentos · ${empresaNome}`, 14, 15)
     doc.setFontSize(10)
     doc.text(`Competência ${mesBR} · ${totais.qtd} atendimento${totais.qtd !== 1 ? 's' : ''} · ${brl(totais.total)}`, 14, 22)
+
+    // Capa de conferência: quantas sessões cada servidor fez.
     autoTable(doc, {
       startY: 28,
+      head: [['Funcionário', 'Atendimentos', 'Valor']],
+      body: porFuncionario.map(([nome, x]) => [nome, String(x.qtd), brl(x.valor)]),
+      foot: [['TOTAL', String(totais.qtd), brl(totais.total)]],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [14, 165, 233] },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: 'bold' },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+      margin: { left: 14, right: 14 },
+      tableWidth: 130,
+    })
+
+    const apos = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 28
+    doc.setFontSize(11)
+    doc.text('Detalhamento dos atendimentos', 14, apos + 10)
+    autoTable(doc, {
+      startY: apos + 14,
       head: [['Data', 'Horário', 'Funcionário', 'Profissional', 'Serviço', 'Valor', 'Situação']],
       body: linhas.map((l) => [
         dataBR(l.data), l.hora, l.funcionario, l.profissional, l.servico, brl(l.valor), l.pago ? 'Pago' : 'Em aberto',
@@ -228,12 +277,41 @@ export default function ExtratoEmpresa({
                     <td className="py-1.5 pr-2">{l.profissional}</td>
                     <td className="py-1.5 pr-2">{l.servico}</td>
                     <td className="py-1.5 pr-2 text-right tabular-nums">{brl(l.valor)}</td>
-                    <td className="py-1.5" style={{ color: l.pago ? '#10B981' : 'var(--admin-text-mute)' }}>
-                      {l.pago ? 'Pago' : 'Em aberto'}
+                    {/* Só a exceção é escrita. Antes a coluna repetia "Em aberto"
+                        em todas as linhas — uma coluna inteira gasta dizendo a
+                        mesma palavra dezesseis vezes (Eduardo, 25/08). */}
+                    <td className="py-1.5" style={{ color: '#10B981' }}>
+                      {l.pago ? 'Pago' : ''}
                     </td>
                   </tr>
                 ))}
               </tbody>
+              {/* Total no rodapé · quem lê tabela procura a soma embaixo, e é
+                  onde o RH da empresa vai conferir quando isso virar PDF. */}
+              <tfoot>
+                <tr style={{ borderTop: '2px solid var(--admin-border)' }}>
+                  <td className="py-2 pr-2 font-bold" colSpan={4}>
+                    {linhas.length} atendimento{linhas.length !== 1 ? 's' : ''}
+                  </td>
+                  <td className="py-2 pr-2 text-right font-bold" style={{ color: 'var(--admin-text-mute)' }}>
+                    Total
+                  </td>
+                  <td className="py-2 pr-2 text-right font-black tabular-nums">{brl(totais.total)}</td>
+                  <td />
+                </tr>
+                {totais.aberto > 0 && totais.aberto !== totais.total && (
+                  <tr>
+                    <td className="py-1 pr-2" colSpan={4} />
+                    <td className="py-1 pr-2 text-right font-semibold" style={{ color: '#B45309' }}>
+                      A cobrar
+                    </td>
+                    <td className="py-1 pr-2 text-right font-black tabular-nums" style={{ color: '#B45309' }}>
+                      {brl(totais.aberto)}
+                    </td>
+                    <td />
+                  </tr>
+                )}
+              </tfoot>
             </table>
           </div>
 
@@ -310,13 +388,31 @@ export default function ExtratoEmpresa({
           {totais.qtdRecebivel > 0 && (
             <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}>
               {!confirmando ? (
-                <button
-                  onClick={() => setConfirmando(true)}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold"
-                  style={{ background: 'var(--admin-accent)', color: '#fff' }}
-                >
-                  Registrar recebimento de {brl(totais.recebivel)}
-                </button>
+                <>
+                  {/* Ordem certa: fechar → mandar pro RH → esperar → receber.
+                      Enquanto não existe fatura da competência, "recebi" NÃO é
+                      o próximo passo — e era, com o mesmo destaque do botão de
+                      cobrar. Foi assim que o Eduardo baixou R$230 antes de
+                      faturar em 25/08, e por causa disso a rota de faturar teve
+                      que ganhar trava pra não cobrar de novo do RH. */}
+                  {!temFaturaDoMes && (
+                    <p className="text-[11px]" style={{ color: '#B45309' }}>
+                      Você ainda não fechou a fatura de {mesBR}. O caminho normal é fechar, mandar pro
+                      RH e registrar o recebimento só quando a empresa pagar.
+                    </p>
+                  )}
+                  <button
+                    onClick={() => setConfirmando(true)}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold"
+                    style={
+                      temFaturaDoMes
+                        ? { background: 'var(--admin-accent)', color: '#fff' }
+                        : { background: 'var(--admin-surface)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
+                    }
+                  >
+                    Registrar recebimento de {brl(totais.recebivel)}
+                  </button>
+                </>
               ) : (
                 <>
                   <p className="text-xs" style={{ color: 'var(--admin-text-2)' }}>

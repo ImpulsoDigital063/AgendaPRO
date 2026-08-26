@@ -2,6 +2,7 @@ import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { todayBR } from '@/lib/date-br'
+import { vencimentoDaCompetencia, diasDeAtraso } from '@/lib/convenio-vencimento'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ConveniosView from '@/components/admin/convenios/ConveniosView'
 
@@ -41,7 +42,7 @@ export default async function ConveniosPage() {
 
   const { data: empresas } = await supabase
     .from('companies')
-    .select('id, name, cnpj, contato_nome, contato_telefone, ativo, created_at')
+    .select('id, name, cnpj, contato_nome, contato_telefone, ativo, created_at, dia_vencimento')
     .eq('business_id', business.id)
     .order('name')
 
@@ -129,7 +130,7 @@ export default async function ConveniosPage() {
   }
 
   const mesAtual = hoje.slice(0, 7)
-  const lista = (empresas ?? []).map((e) => ({
+  const listaSemOrdem = (empresas ?? []).map((e) => ({
     ...e,
     total_funcionarios: contagem.get(e.id)?.funcionarios ?? 0,
     total_profissionais: contagem.get(e.id)?.profissionais ?? 0,
@@ -139,16 +140,32 @@ export default async function ConveniosPage() {
     /* Mais antigo primeiro: é o que está atrasado e o que ele tem que fechar. */
     competencias: [...(porMes.get(e.id) ?? new Map())]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([comp, m]) => ({
-        competencia: comp,
-        aFaturar: m.aFaturar,
-        qtdAFaturar: m.qtdAFaturar,
-        faturado: m.faturado,
-        qtdFaturado: m.qtdFaturado,
-        dias: diasDesde(m.maisAntigo),
-        emCurso: comp === mesAtual,
-      })),
+      .map(([comp, m]) => {
+        const venc = vencimentoDaCompetencia(comp, e.dia_vencimento ?? null)
+        return {
+          competencia: comp,
+          aFaturar: m.aFaturar,
+          qtdAFaturar: m.qtdAFaturar,
+          faturado: m.faturado,
+          qtdFaturado: m.qtdFaturado,
+          dias: diasDesde(m.maisAntigo),
+          emCurso: comp === mesAtual,
+          vencimento: venc,
+          atraso: diasDeAtraso(venc, hoje),
+        }
+      }),
   }))
+
+  /* Ordem: quem está mais atrasado primeiro. Alfabético só serve pra lista de
+     cadastro — aqui a lista é de cobrança, e com 5 ou 10 empresas o que o dono
+     precisa ver no topo é quem está devendo há mais tempo (Eduardo, 25/08). */
+  const lista = listaSemOrdem.sort((a, b) => {
+    const atrasoA = Math.max(0, ...a.competencias.map((c) => c.atraso), a.competencias.some((c) => c.aFaturar > 0 && !c.emCurso) ? 1 : 0)
+    const atrasoB = Math.max(0, ...b.competencias.map((c) => c.atraso), b.competencias.some((c) => c.aFaturar > 0 && !c.emCurso) ? 1 : 0)
+    if (atrasoA !== atrasoB) return atrasoB - atrasoA
+    if (a.aberto_valor !== b.aberto_valor) return b.aberto_valor - a.aberto_valor
+    return a.name.localeCompare(b.name)
+  })
 
   const faturasPorEmpresa = new Map<string, FaturaRow[]>()
   for (const f of (faturas ?? []) as FaturaRow[]) {
