@@ -30,6 +30,35 @@ export type EmpresaResumo = {
   aberto_valor: number
   aberto_qtd: number
   aberto_dias: number
+  /** Quebra por mês · é por competência que se fecha fatura, nunca pelo total. */
+  competencias: {
+    competencia: string
+    aFaturar: number
+    qtdAFaturar: number
+    faturado: number
+    qtdFaturado: number
+    dias: number
+    emCurso: boolean
+  }[]
+}
+
+export type FaturaResumo = {
+  id: string
+  numero: number
+  competencia: string
+  qtd: number
+  total: number
+  enviada_em: string | null
+  paga_em: string | null
+  company_id: string
+}
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+/** '2026-07' → 'Julho' · a competência é como o RH chama o período. */
+function nomeMes(comp: string) {
+  const m = parseInt(comp.slice(5, 7), 10) - 1
+  const nome = MESES[m] ?? comp
+  return nome.charAt(0).toUpperCase() + nome.slice(1)
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -47,9 +76,11 @@ const DIAS_PRA_COBRAR = 20
 export default function ConveniosView({
   businessId,
   empresas,
+  faturas = [],
 }: {
   businessId: string
   empresas: EmpresaResumo[]
+  faturas?: FaturaResumo[]
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -95,28 +126,45 @@ export default function ConveniosView({
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={() => setNovaOpen(true)}
-        className="w-full py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
-        style={{ background: 'var(--admin-accent)', color: '#fff' }}
-      >
-        <IconPlus size={16} /> Nova empresa
-      </button>
-
+      {/* Dois números, não um. "A faturar" e "aguardando pagamento" são estados
+          com ações diferentes: no primeiro ele fecha a fatura, no segundo a
+          conta já está com o RH e a ação é esperar. Somados num total só, a
+          tela mandava fechar fatura pra sempre — inclusive do que já foi
+          fechado (Eduardo, 25/08). */}
       {(() => {
-        const cobrar = empresas.filter((e) => e.aberto_valor > 0 && e.aberto_dias >= DIAS_PRA_COBRAR)
-        if (cobrar.length === 0) return null
-        const total = cobrar.reduce((s, e) => s + e.aberto_valor, 0)
+        const aFaturar = empresas.reduce((s, e) => s + e.competencias.reduce((t, c) => t + c.aFaturar, 0), 0)
+        const aguardando = empresas.reduce((s, e) => s + e.competencias.reduce((t, c) => t + c.faturado, 0), 0)
+        if (aFaturar === 0 && aguardando === 0) return null
         return (
-          <div
-            className="rounded-xl px-3.5 py-3 text-sm"
-            style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)', color: 'var(--admin-text)' }}
-          >
-            <strong>{brl(total)} esperando cobrança.</strong>{' '}
-            {cobrar.length === 1
-              ? `A ${cobrar[0].name} tem atendimento de ${cobrar[0].aberto_dias} dias atrás ainda em aberto.`
-              : `${cobrar.length} empresas com atendimento parado há mais de ${DIAS_PRA_COBRAR} dias.`}{' '}
-            Feche a fatura do mês e mande pro RH.
+          <div className="grid grid-cols-2 gap-2">
+            <div
+              className="rounded-xl px-3.5 py-3"
+              style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}
+            >
+              <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#B45309' }}>
+                A faturar
+              </p>
+              <p className="text-lg font-black tabular-nums mt-0.5" style={{ color: '#B45309' }}>
+                {brl(aFaturar)}
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                {aFaturar > 0 ? 'Feche o mês e mande pro RH' : 'Nada pendente de fatura'}
+              </p>
+            </div>
+            <div
+              className="rounded-xl px-3.5 py-3"
+              style={{ background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.30)' }}
+            >
+              <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: '#0284C7' }}>
+                Aguardando pagamento
+              </p>
+              <p className="text-lg font-black tabular-nums mt-0.5" style={{ color: '#0284C7' }}>
+                {brl(aguardando)}
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                {aguardando > 0 ? 'Fatura já está com a empresa' : 'Nenhuma fatura em cobrança'}
+              </p>
+            </div>
           </div>
         )
       })()}
@@ -138,13 +186,15 @@ export default function ConveniosView({
       ) : (
         <div className="space-y-2">
           {empresas.map((e) => (
-            <Link
+            <div
               key={e.id}
-              href={`/admin/convenios/${e.id}`}
-              className="block rounded-xl p-3.5 transition-transform hover:-translate-y-px"
+              className="rounded-xl overflow-hidden"
               style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
             >
-              <div className="flex items-center justify-between gap-3">
+              <Link
+                href={`/admin/convenios/${e.id}`}
+                className="flex items-center justify-between gap-3 p-3.5 transition-colors hover:bg-[var(--admin-surface-hi)]"
+              >
                 <div className="min-w-0">
                   <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
                     {e.name}
@@ -159,24 +209,121 @@ export default function ConveniosView({
                     {e.total_profissionais} {e.total_profissionais === 1 ? 'profissional' : 'profissionais'}
                     {e.contato_nome ? ` · ${e.contato_nome}` : ''}
                   </p>
-                  {e.aberto_valor > 0 && (
-                    <p
-                      className="text-xs mt-1 font-semibold"
-                      style={{ color: e.aberto_dias >= DIAS_PRA_COBRAR ? '#B45309' : 'var(--admin-text-2)' }}
-                    >
-                      {brl(e.aberto_valor)} em aberto
-                      {e.aberto_dias > 0 ? ` · mais antigo há ${e.aberto_dias} dia${e.aberto_dias !== 1 ? 's' : ''}` : ''}
-                    </p>
-                  )}
                 </div>
                 <span className="text-xs flex-shrink-0" style={{ color: 'var(--admin-text-faded)' }}>
                   ver
                 </span>
-              </div>
-            </Link>
+              </Link>
+
+              {/* Uma linha por MÊS, com a ação daquele mês do lado. Antes o card
+                  mostrava só o total somado e o botão morava três cliques
+                  adiante, dentro da empresa, atrás do seletor de competência. */}
+              {e.competencias.length > 0 && (
+                <div style={{ borderTop: '1px solid var(--admin-divider)' }}>
+                  {e.competencias.map((c) => (
+                    <div
+                      key={c.competencia}
+                      className="flex items-center justify-between gap-3 px-3.5 py-2.5"
+                      style={{ borderTop: '1px solid var(--admin-divider)' }}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold" style={{ color: 'var(--admin-text)' }}>
+                          {nomeMes(c.competencia)}
+                          {c.emCurso && (
+                            <span className="ml-1.5 text-[10px] font-semibold" style={{ color: 'var(--admin-text-faded)' }}>
+                              · mês em curso
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                          {c.qtdAFaturar > 0 && (
+                            <span style={{ color: c.dias >= DIAS_PRA_COBRAR && !c.emCurso ? '#B45309' : undefined }}>
+                              {c.qtdAFaturar} atendimento{c.qtdAFaturar !== 1 ? 's' : ''} · {brl(c.aFaturar)} a faturar
+                            </span>
+                          )}
+                          {c.qtdAFaturar > 0 && c.qtdFaturado > 0 && ' · '}
+                          {c.qtdFaturado > 0 && (
+                            <span style={{ color: '#0284C7' }}>{brl(c.faturado)} faturado, aguardando</span>
+                          )}
+                        </p>
+                      </div>
+                      {c.aFaturar > 0 ? (
+                        <Link
+                          href={`/admin/convenios/${e.id}?mes=${c.competencia}`}
+                          className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg flex-shrink-0 whitespace-nowrap"
+                          style={{
+                            background: c.emCurso ? 'var(--admin-surface-hi)' : 'var(--admin-accent)',
+                            color: c.emCurso ? 'var(--admin-text-2)' : '#fff',
+                            border: c.emCurso ? '1px solid var(--admin-border)' : 'none',
+                          }}
+                        >
+                          {c.emCurso ? 'Ver mês' : 'Fechar e cobrar'}
+                        </Link>
+                      ) : (
+                        <span className="text-[11px] flex-shrink-0" style={{ color: '#0284C7' }}>
+                          já cobrado
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
+
+      {/* Faturas emitidas · não existiam em lugar nenhum da lista. Sem isso ele
+          não tem como saber o que já mandou pro RH sem entrar empresa por
+          empresa — e a metade de baixo da tela ficava vazia. */}
+      {faturas.length > 0 && (
+        <div className="pt-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
+            Faturas emitidas
+          </p>
+          <div className="rounded-xl overflow-hidden" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
+            {faturas.map((f, i) => {
+              const emp = empresas.find((e) => e.id === f.company_id)
+              return (
+                <Link
+                  key={f.id}
+                  href={`/admin/convenios/${f.company_id}?mes=${f.competencia}`}
+                  className="flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors hover:bg-[var(--admin-surface-hi)]"
+                  style={{ borderTop: i === 0 ? 'none' : '1px solid var(--admin-divider)' }}
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate" style={{ color: 'var(--admin-text)' }}>
+                      nº {f.numero} · {emp?.name ?? 'Empresa'}
+                    </p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                      {nomeMes(f.competencia)} · {f.qtd} atendimento{f.qtd !== 1 ? 's' : ''}
+                      {f.enviada_em ? ' · enviada por e-mail' : ' · não enviada'}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs font-black tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                      {brl(Number(f.total))}
+                    </p>
+                    <p className="text-[10px] font-bold uppercase" style={{ color: f.paga_em ? '#059669' : '#0284C7' }}>
+                      {f.paga_em ? 'paga' : 'aguardando'}
+                    </p>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Cadastrar empresa acontece uma vez por convênio · não é a ação do dia
+          a dia e não precisa do maior peso visual da tela (Eduardo, 25/08). */}
+      <button
+        onClick={() => setNovaOpen(true)}
+        className="w-full py-2.5 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors hover:bg-[var(--admin-surface-hi)]"
+        style={{ background: 'transparent', color: 'var(--admin-text-mute)', border: '1px dashed var(--admin-border)' }}
+      >
+        <IconPlus size={14} /> Nova empresa
+      </button>
 
       {novaOpen && (
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>

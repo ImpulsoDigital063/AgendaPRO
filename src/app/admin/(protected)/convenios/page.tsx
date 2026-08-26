@@ -7,6 +7,17 @@ import ConveniosView from '@/components/admin/convenios/ConveniosView'
 
 export const dynamic = 'force-dynamic'
 
+export type FaturaRow = {
+  id: string
+  numero: number
+  competencia: string
+  qtd: number
+  total: number
+  enviada_em: string | null
+  paga_em: string | null
+  company_id: string
+}
+
 /**
  * Convênios (empresas conveniadas) — CAF · Gustavo, 20/08/2026.
  *
@@ -36,7 +47,7 @@ export default async function ConveniosPage() {
 
   // Contagens por empresa numa query só — evita N+1 com muitas empresas.
   const ids = (empresas ?? []).map((e) => e.id)
-  const [{ data: funcionarios }, { data: vinculos }, { data: emAberto }] = await Promise.all([
+  const [{ data: funcionarios }, { data: vinculos }, { data: emAberto }, { data: faturas }] = await Promise.all([
     ids.length
       ? supabase.from('customers').select('id, company_id').in('company_id', ids)
       : Promise.resolve({ data: [] as { id: string; company_id: string }[] }),
@@ -49,24 +60,61 @@ export default async function ConveniosPage() {
     ids.length
       ? supabase
           .from('appointments')
-          .select('company_id, total_price, appointment_date')
+          .select('company_id, total_price, appointment_date, company_invoice_id')
           .eq('business_id', business.id)
           .in('company_id', ids)
           .is('paid_at', null)
           .neq('status', 'cancelled')
-      : Promise.resolve({ data: [] as { company_id: string; total_price: number | null; appointment_date: string }[] }),
+      : Promise.resolve({ data: [] as { company_id: string; total_price: number | null; appointment_date: string; company_invoice_id: string | null }[] }),
+    /* Faturas já emitidas · o que diferencia "preciso cobrar" de "já cobrei,
+       estou esperando". Sem isso a tela mandava fechar a fatura pra sempre,
+       inclusive depois de fechada (Eduardo, 25/08). */
+    ids.length
+      ? supabase
+          .from('company_invoices')
+          .select('id, numero, competencia, qtd, total, enviada_em, paga_em, company_id')
+          .eq('business_id', business.id)
+          .in('company_id', ids)
+          .order('numero', { ascending: false })
+          .limit(12)
+      : Promise.resolve({ data: [] as FaturaRow[] }),
   ])
 
   const contagem = new Map<string, { funcionarios: number; profissionais: number }>()
   for (const id of ids) contagem.set(id, { funcionarios: 0, profissionais: 0 })
   const aberto = new Map<string, { valor: number; qtd: number; maisAntigo: string | null }>()
   for (const id of ids) aberto.set(id, { valor: 0, qtd: 0, maisAntigo: null })
+
+  /* Quebra por COMPETÊNCIA (Eduardo, 25/08). O total agregado escondia a ação:
+     o card dizia "R$1.300 em aberto" na Prefeitura, que é julho (910) mais
+     agosto (390) somados — e ele nunca vai cobrar R$1.300, ele fecha JULHO.
+     Aqui cada mês vira uma linha com o seu próprio botão.
+
+     E cada mês nasce com dois valores separados, porque as ações são outras:
+       aFaturar  → atendimento sem fatura · ação: fechar e mandar pro RH
+       faturado  → fatura já emitida, dinheiro não entrou · ação: esperar */
+  const porMes = new Map<string, Map<string, { aFaturar: number; qtdAFaturar: number; faturado: number; qtdFaturado: number; maisAntigo: string | null }>>()
+  for (const id of ids) porMes.set(id, new Map())
   for (const a of emAberto ?? []) {
     const x = aberto.get(a.company_id)
     if (!x) continue
-    x.valor += Number(a.total_price ?? 0)
+    const valor = Number(a.total_price ?? 0)
+    x.valor += valor
     x.qtd++
     if (!x.maisAntigo || a.appointment_date < x.maisAntigo) x.maisAntigo = a.appointment_date
+
+    const comp = String(a.appointment_date).slice(0, 7)
+    const meses = porMes.get(a.company_id)!
+    if (!meses.has(comp)) meses.set(comp, { aFaturar: 0, qtdAFaturar: 0, faturado: 0, qtdFaturado: 0, maisAntigo: null })
+    const m = meses.get(comp)!
+    if (a.company_invoice_id) {
+      m.faturado += valor
+      m.qtdFaturado++
+    } else {
+      m.aFaturar += valor
+      m.qtdAFaturar++
+    }
+    if (!m.maisAntigo || a.appointment_date < m.maisAntigo) m.maisAntigo = a.appointment_date
   }
   const hoje = todayBR()
   const diasDesde = (d: string | null) =>
@@ -80,6 +128,7 @@ export default async function ConveniosPage() {
     if (c) c.profissionais++
   }
 
+  const mesAtual = hoje.slice(0, 7)
   const lista = (empresas ?? []).map((e) => ({
     ...e,
     total_funcionarios: contagem.get(e.id)?.funcionarios ?? 0,
@@ -87,7 +136,25 @@ export default async function ConveniosPage() {
     aberto_valor: aberto.get(e.id)?.valor ?? 0,
     aberto_qtd: aberto.get(e.id)?.qtd ?? 0,
     aberto_dias: diasDesde(aberto.get(e.id)?.maisAntigo ?? null),
+    /* Mais antigo primeiro: é o que está atrasado e o que ele tem que fechar. */
+    competencias: [...(porMes.get(e.id) ?? new Map())]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([comp, m]) => ({
+        competencia: comp,
+        aFaturar: m.aFaturar,
+        qtdAFaturar: m.qtdAFaturar,
+        faturado: m.faturado,
+        qtdFaturado: m.qtdFaturado,
+        dias: diasDesde(m.maisAntigo),
+        emCurso: comp === mesAtual,
+      })),
   }))
+
+  const faturasPorEmpresa = new Map<string, FaturaRow[]>()
+  for (const f of (faturas ?? []) as FaturaRow[]) {
+    if (!faturasPorEmpresa.has(f.company_id)) faturasPorEmpresa.set(f.company_id, [])
+    faturasPorEmpresa.get(f.company_id)!.push(f)
+  }
 
   return (
     <>
@@ -96,7 +163,7 @@ export default async function ConveniosPage() {
         subtitle={`${lista.length} empresa${lista.length !== 1 ? 's' : ''} cadastrada${lista.length !== 1 ? 's' : ''}`}
       />
       <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8">
-        <ConveniosView businessId={business.id} empresas={lista} />
+        <ConveniosView businessId={business.id} empresas={lista} faturas={(faturas ?? []) as FaturaRow[]} />
       </div>
     </>
   )
