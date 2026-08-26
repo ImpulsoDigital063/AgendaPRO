@@ -500,12 +500,11 @@ export default async function FluxoCaixaPage({
        Mesmo dinheiro cobrado em dois lugares com dois devedores diferentes. */
     sb
       .from('appointments')
-      .select('invoice_item_id')
+      .select('invoice_item_id, total_price, appointment_date, company_id, company:companies(name)')
       .eq('business_id', business.id)
       .neq('status', 'cancelled')
       .is('paid_at', null)
-      .not('company_id', 'is', null)
-      .not('invoice_item_id', 'is', null),
+      .not('company_id', 'is', null),
   ])
 
   const futuros = futurosRes.data ?? []
@@ -527,9 +526,20 @@ export default async function FluxoCaixaPage({
   )
   /* Itens de comanda que são de convênio · a empresa paga no fechamento do mês,
      então nunca são "cliente devendo". Ver a query convenioAbertoRes acima. */
+  const convenioAberto = convenioAbertoRes.data ?? []
   const idsItensConvenio = new Set(
-    (convenioAbertoRes.data ?? []).map((a) => a.invoice_item_id).filter(Boolean) as string[],
+    convenioAberto.map((a) => a.invoice_item_id).filter(Boolean) as string[],
   )
+
+  /* Card "a receber de convênios" (Eduardo, 26/08): tirar o convênio do bloco de
+     calote resolveu a mentira, mas deixou o dinheiro invisível — e ele existe. O
+     dono precisa bater o olho no Fluxo de Caixa e saber que tem receita presa em
+     empresa, sem ter que lembrar de abrir Convênios. */
+  const convenioTotal = convenioAberto.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  const convenioDesde = convenioAberto.length
+    ? convenioAberto.map((a) => String(a.appointment_date)).sort()[0]
+    : null
+  const convenioEmpresas = new Set(convenioAberto.map((a) => a.company_id)).size
   const devendo = (comandasAbertasRes.data ?? [])
     .filter((inv) => {
       const itens = (inv.invoice_items ?? []) as { id: string }[]
@@ -618,6 +628,9 @@ export default async function FluxoCaixaPage({
           <ProjecaoFluxo
             entradasPrevistas={semanas.reduce((t, x) => t + x.entradas, 0)}
             mediaMensal={mediaMensal}
+            convenioAberto={convenioTotal}
+            convenioDesde={convenioDesde}
+            convenioEmpresas={convenioEmpresas}
             devendo={totalDevendo}
             devendoDesde={devendo.length ? devendo.map((d) => d.desde).sort()[0] : null}
             devendoQtd={devendo.length}

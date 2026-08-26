@@ -41,6 +41,8 @@
    decide. O sistema não finge que sabe o futuro.
    ═══════════════════════════════════════════════════════════════ */
 
+import Link from 'next/link'
+
 export type LinhaProjecao = {
   data: string          // YYYY-MM-DD
   descricao: string
@@ -66,6 +68,9 @@ function dataCurta(ymd: string) {
 export default function ProjecaoFluxo({
   entradasPrevistas,
   mediaMensal,
+  convenioAberto = 0,
+  convenioDesde = null,
+  convenioEmpresas = 0,
   devendo,
   devendoDesde,
   devendoQtd,
@@ -86,6 +91,12 @@ export default function ProjecaoFluxo({
   mediaMensal: number
   /** Comanda aberta de atendimento que JA passou: cliente atendeu e nao pagou.
    *  Fica FORA do "vai entrar" — e cobranca, nao previsao. */
+  /** Atendimento de convênio já feito e ainda não recebido da empresa. Bloco
+   *  próprio: não é calote de paciente (ela não paga) nem receita futura — é
+   *  serviço entregue esperando a empresa fechar o mês. */
+  convenioAberto?: number
+  convenioDesde?: string | null
+  convenioEmpresas?: number
   devendo: number
   devendoDesde: string | null
   devendoQtd: number
@@ -196,6 +207,25 @@ export default function ProjecaoFluxo({
                 {brl(devendo)}
               </span>
             </div>
+          )}
+
+          {/* A receber de convênio · quem deve é a empresa, no fechamento do
+              mês. Fica fora do bloco de calote de propósito (o paciente não
+              deve nada) mas precisa ser visível: é receita entregue e presa. */}
+          {convenioAberto > 0 && (
+            <Link
+              href="/admin/convenios"
+              className="rounded-xl px-4 py-3 mt-2 flex items-center justify-between gap-3 transition-colors hover:brightness-95"
+              style={{ background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.28)' }}
+            >
+              <span className="text-xs font-semibold" style={{ color: 'var(--admin-text-2)' }}>
+                A receber de {convenioEmpresas === 1 ? 'convênio' : `${convenioEmpresas} convênios`}
+                {convenioDesde && <> · o mais antigo desde {dataCurta(convenioDesde)}</>}
+              </span>
+              <span className="text-sm font-black tabular-nums" style={{ color: '#0284C7' }}>
+                {brl(convenioAberto)}
+              </span>
+            </Link>
           )}
 
           {atrasadas > 0 && (
