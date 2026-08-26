@@ -436,7 +436,7 @@ export default async function FluxoCaixaPage({
   const mesAnterior = addMonthsBR(mesSel + '-01', -1).slice(0, 7)
   const mesProximo = addMonthsBR(mesSel + '-01', 1).slice(0, 7)
 
-  const [futurosRes, comandasAbertasRes, contasRes, mediaRes, futurosAbsolutosRes] = await Promise.all([
+  const [futurosRes, comandasAbertasRes, contasRes, mediaRes, futurosAbsolutosRes, convenioAbertoRes] = await Promise.all([
     /* Atendimento marcado e ainda não pago. NÃO filtra invoice_item_id
        (correção 04/08): a comanda aberta é só a forma como o valor está
        guardado — o compromisso continua sendo o atendimento, e é ele que
@@ -491,6 +491,21 @@ export default async function FluxoCaixaPage({
       .is('paid_at', null)
       .not('invoice_item_id', 'is', null)
       .gte('appointment_date', HOJE),
+    /* Atendimento de CONVÊNIO em aberto (25/08/2026).
+       A paciente do convênio não paga no balcão — quem paga é a empresa, no
+       fechamento do mês. A comanda dela fica aberta de propósito, e sem este
+       recorte ela caía em "clientes atendidas e não pagas": o Gustavo abriria o
+       Fluxo de Caixa e leria como calote de paciente uma conta que está no
+       prazo, com a empresa, e já contada em Convênios com o aviso de lá.
+       Mesmo dinheiro cobrado em dois lugares com dois devedores diferentes. */
+    sb
+      .from('appointments')
+      .select('invoice_item_id')
+      .eq('business_id', business.id)
+      .neq('status', 'cancelled')
+      .is('paid_at', null)
+      .not('company_id', 'is', null)
+      .not('invoice_item_id', 'is', null),
   ])
 
   const futuros = futurosRes.data ?? []
@@ -510,10 +525,15 @@ export default async function FluxoCaixaPage({
   const idsItensFuturos = new Set(
     (futurosAbsolutosRes.data ?? []).map((a) => a.invoice_item_id).filter(Boolean) as string[],
   )
+  /* Itens de comanda que são de convênio · a empresa paga no fechamento do mês,
+     então nunca são "cliente devendo". Ver a query convenioAbertoRes acima. */
+  const idsItensConvenio = new Set(
+    (convenioAbertoRes.data ?? []).map((a) => a.invoice_item_id).filter(Boolean) as string[],
+  )
   const devendo = (comandasAbertasRes.data ?? [])
     .filter((inv) => {
       const itens = (inv.invoice_items ?? []) as { id: string }[]
-      return !itens.some((it) => idsItensFuturos.has(it.id))
+      return !itens.some((it) => idsItensFuturos.has(it.id) || idsItensConvenio.has(it.id))
     })
     .map((inv) => ({ total: Number(inv.total ?? 0), desde: String(inv.created_at).slice(0, 10) }))
   const totalDevendo = devendo.reduce((s, d) => s + d.total, 0)

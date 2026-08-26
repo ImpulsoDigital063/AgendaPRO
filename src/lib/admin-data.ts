@@ -283,13 +283,20 @@ export const getFocoDoDia = unstable_cache(
         .select('id', { count: 'exact', head: true })
         .eq('business_id', businessId)
         .eq('status', 'pending'),
+      /* "Cliente atendido pendente de pagamento" no Foco do Dia.
+         company_id null exclui convênio (25/08/2026): ali a paciente não paga
+         nada no balcão — quem paga é a empresa, no fechamento do mês, e isso
+         já tem cobrança própria em Convênios. Sem o filtro, todo atendimento
+         de convênio concluído virava pendência de pagamento no painel do dono
+         no mesmo dia, com o nome da paciente errada no lugar do devedor. */
       admin
         .from('appointments')
         .select('total_price')
         .eq('business_id', businessId)
         .eq('appointment_date', todayStr)
         .eq('status', 'completed')
-        .is('paid_at', null),
+        .is('paid_at', null)
+        .is('company_id', null),
       admin
         .from('appointments')
         .select('client_id, appointment_date')
