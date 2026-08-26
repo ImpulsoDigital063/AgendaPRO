@@ -166,6 +166,15 @@ export default function AgendarModal({
   const [empresa, setEmpresa] = useState<{ id: string; name: string } | null>(null)
   const [profsDaEmpresa, setProfsDaEmpresa] = useState<string[] | null>(null)
   const [peloConvenio, setPeloConvenio] = useState(true)
+  /* Busca por convênio (Eduardo, 25/08): antes só dava pra achar o paciente
+     digitando o nome dele — e a recepção não tinha como saber que aquela
+     pessoa era da Prefeitura antes de clicar. Agora existe o caminho de quem
+     JÁ sabe: entra pela empresa e escolhe o funcionário na lista dela.
+     A lista de empresas vem do banco: negócio sem convênio tem zero, e aí o
+     botão nem aparece — nenhum outro cliente vê essa porta. */
+  const [empresasConv, setEmpresasConv] = useState<{ id: string; name: string }[]>([])
+  const [modoConvenio, setModoConvenio] = useState(false)
+  const [empresaFiltro, setEmpresaFiltro] = useState<{ id: string; name: string } | null>(null)
   const [date, setDate] = useState<string>('')
   const [time, setTime] = useState<string>('')
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(() => [newLine()])
@@ -297,6 +306,8 @@ export default function AgendarModal({
        novo, não.) */
     setCreditoNoSinal(null)
     setShowClientPicker(false)
+    setModoConvenio(false)
+    setEmpresaFiltro(null)
     setShowFullClientForm(false)
     setSearch('')
     setResults([])
@@ -404,6 +415,32 @@ export default function AgendarModal({
     setServiceLines((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.uid !== uid)))
   }
 
+  /* Empresas conveniadas ativas do negócio · define se o botão Convênio existe. */
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('companies')
+      .select('id, name')
+      .eq('business_id', businessId)
+      .eq('ativo', true)
+      .order('name')
+      .then(({ data }) => {
+        if (!cancelled) setEmpresasConv((data ?? []) as { id: string; name: string }[])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [businessId, supabase])
+
+  /** Sai do modo convênio e limpa o filtro de empresa. */
+  function fecharPicker() {
+    setShowClientPicker(false)
+    setModoConvenio(false)
+    setEmpresaFiltro(null)
+    setSearch('')
+    setResults([])
+  }
+
   /** Descobre a empresa do paciente e quem pode atender por ela. */
   async function carregarConvenio(c: Customer | null) {
     setEmpresa(null)
@@ -418,6 +455,21 @@ export default function AgendarModal({
     setEmpresa({ id: emp.id, name: emp.name })
     setProfsDaEmpresa((vinc ?? []).map((v) => v.professional_id))
   }
+
+  /** Nome da empresa conveniada de um paciente · pro selo da lista de busca. */
+  function nomeEmpresaDe(c: Customer): string | null {
+    if (!c.company_id) return null
+    return empresasConv.find((e) => e.id === c.company_id)?.name ?? null
+  }
+
+  /* Empresas que casam com o que foi digitado (a busca de empresa é local:
+     são poucas e já estão carregadas). Sem termo, mostra todas. */
+  const empresasConvFiltradas = useMemo(() => {
+    if (!modoConvenio) return []
+    const t = search.trim().toLowerCase()
+    if (t.length < 2) return empresasConv
+    return empresasConv.filter((e) => e.name.toLowerCase().includes(t))
+  }, [empresasConv, modoConvenio, search])
 
   /* Quem pode atender: com convênio ativo, só os vinculados. */
   const profissionaisVisiveis = useMemo(() => {
@@ -439,7 +491,10 @@ export default function AgendarModal({
   useEffect(() => {
     if (!showClientPicker) return
     const term = search.trim()
-    if (term.length < 2) {
+    /* Empresa escolhida = lista os funcionários dela sem precisar digitar nada.
+       É o caminho de quem já sabe que o agendamento é de convênio. */
+    const listandoEmpresa = modoConvenio && !!empresaFiltro
+    if (term.length < 2 && !listandoEmpresa) {
       setResults([])
       return
     }
@@ -451,11 +506,19 @@ export default function AgendarModal({
         .from('customers')
         .select('id, name, phone, total_points, company_id')
         .eq('business_id', businessId)
-        .limit(20)
-      if (digits.length >= 3) {
-        query = query.ilike('phone', `%${digits}%`)
-      } else {
-        query = query.ilike('name', `%${term}%`)
+        .limit(listandoEmpresa ? 200 : 20)
+      if (listandoEmpresa) {
+        query = query.eq('company_id', empresaFiltro!.id)
+      } else if (modoConvenio) {
+        // Modo convênio sem empresa escolhida: só paciente de alguma empresa.
+        query = query.not('company_id', 'is', null)
+      }
+      if (term.length >= 2) {
+        if (digits.length >= 3) {
+          query = query.ilike('phone', `%${digits}%`)
+        } else {
+          query = query.ilike('name', `%${term}%`)
+        }
       }
       const { data } = await query.order('name')
       if (!cancelled) {
@@ -467,7 +530,7 @@ export default function AgendarModal({
       cancelled = true
       clearTimeout(id)
     }
-  }, [search, showClientPicker, businessId, supabase])
+  }, [search, showClientPicker, businessId, supabase, modoConvenio, empresaFiltro])
 
   // V3: cadastro full-form usa NovoClienteModal · onSuccess devolve só o id
   // do customer criado · fazemos fetch dos campos básicos pra setar cliente
@@ -483,7 +546,7 @@ export default function AgendarModal({
     if (data) {
       setCliente(data as Customer)
       carregarConvenio(data as Customer)
-      setShowClientPicker(false)
+      fecharPicker()
     }
   }
 
@@ -1319,6 +1382,24 @@ export default function AgendarModal({
                 >
                   Selecionar cliente
                 </button>
+                {/* Atalho de quem JÁ sabe que o agendamento é de convênio:
+                    entra pela empresa em vez de adivinhar o nome do paciente.
+                    Só existe pra negócio com empresa conveniada cadastrada. */}
+                {empresasConv.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setModoConvenio(true); setEmpresaFiltro(null); setShowClientPicker(true) }}
+                    className="w-full px-3 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 transition-all hover:-translate-y-px active:scale-[0.99]"
+                    style={{
+                      background: 'linear-gradient(180deg, #0EA5E9 0%, #0284C7 100%)',
+                      color: '#fff',
+                      borderTop: '1px solid rgba(255,255,255,0.25)',
+                      boxShadow: '0 8px 20px -8px rgba(2,132,199,0.55)',
+                    }}
+                  >
+                    Convênio
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => { setAvulso(true); setCliente(null); carregarConvenio(null) }}
@@ -1919,7 +2000,7 @@ export default function AgendarModal({
         <div
           className="fixed inset-0 z-[310] flex items-start justify-center p-4 pt-20"
           style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setShowClientPicker(false)}
+          onClick={() => fecharPicker()}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1939,7 +2020,13 @@ export default function AgendarModal({
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar cliente por nome ou telefone"
+                placeholder={
+                  modoConvenio
+                    ? empresaFiltro
+                      ? `Buscar em ${empresaFiltro.name}`
+                      : 'Buscar empresa ou paciente do convênio'
+                    : 'Buscar cliente por nome ou telefone'
+                }
                 className="flex-1 bg-transparent text-sm outline-none"
                 style={{ color: 'var(--admin-text)' }}
               />
@@ -1955,7 +2042,7 @@ export default function AgendarModal({
               </button>
               <button
                 type="button"
-                onClick={() => setShowClientPicker(false)}
+                onClick={() => fecharPicker()}
                 aria-label="Fechar"
                 className="w-7 h-7 rounded-full flex items-center justify-center"
                 style={{ color: 'var(--admin-text-mute)' }}
@@ -1964,16 +2051,69 @@ export default function AgendarModal({
               </button>
             </div>
 
+            {/* Trilha da empresa escolhida · deixa claro onde a busca está
+                acontecendo e dá o caminho de volta. */}
+            {modoConvenio && empresaFiltro && (
+              <div
+                className="flex items-center justify-between gap-2 px-4 py-2 flex-shrink-0"
+                style={{ background: 'rgba(14,165,233,0.10)', borderBottom: '1px solid var(--admin-divider)' }}
+              >
+                <p className="text-xs font-bold truncate" style={{ color: '#0284C7' }}>{empresaFiltro.name}</p>
+                <button
+                  type="button"
+                  onClick={() => { setEmpresaFiltro(null); setSearch('') }}
+                  className="text-[11px] underline flex-shrink-0"
+                  style={{ color: 'var(--admin-text-mute)' }}
+                >
+                  trocar empresa
+                </button>
+              </div>
+            )}
+
             <div className="overflow-y-auto">
+                {/* Empresas · só no modo convênio e enquanto nenhuma foi escolhida. */}
+                {modoConvenio && !empresaFiltro && empresasConvFiltradas.length > 0 && (
+                  <>
+                    <p className="text-[10px] font-bold uppercase px-4 pt-3 pb-1" style={{ color: 'var(--admin-text-mute)' }}>
+                      Empresas
+                    </p>
+                    {empresasConvFiltradas.map((e) => (
+                      <button
+                        key={e.id}
+                        type="button"
+                        onClick={() => { setEmpresaFiltro(e); setSearch('') }}
+                        className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[var(--admin-surface-hi)]"
+                        style={{ borderBottom: '1px solid var(--admin-divider)' }}
+                      >
+                        <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{e.name}</p>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(14,165,233,0.15)', color: '#0284C7' }}>
+                          ver funcionários
+                        </span>
+                      </button>
+                    ))}
+                    {results.length > 0 && (
+                      <p className="text-[10px] font-bold uppercase px-4 pt-3 pb-1" style={{ color: 'var(--admin-text-mute)' }}>
+                        Pacientes de convênio
+                      </p>
+                    )}
+                  </>
+                )}
                 {searching && (
                   <p className="text-xs text-center py-4" style={{ color: 'var(--admin-text-mute)' }}>Buscando...</p>
                 )}
-                {!searching && results.length === 0 && search.trim().length >= 2 && (
+                {!searching && results.length === 0 && modoConvenio && empresaFiltro && (
                   <p className="text-xs text-center py-4" style={{ color: 'var(--admin-text-mute)' }}>
-                    Nenhum cliente encontrado. Clique no <strong>+</strong> pra criar novo.
+                    Nenhum funcionário vinculado a essa empresa ainda. Vincule em <strong>Convênios</strong>.
                   </p>
                 )}
-                {!searching && search.trim().length < 2 && (
+                {!searching && results.length === 0 && search.trim().length >= 2 && !empresaFiltro && (
+                  <p className="text-xs text-center py-4" style={{ color: 'var(--admin-text-mute)' }}>
+                    {modoConvenio
+                      ? 'Nenhuma empresa nem paciente de convênio com esse nome.'
+                      : <>Nenhum cliente encontrado. Clique no <strong>+</strong> pra criar novo.</>}
+                  </p>
+                )}
+                {!searching && search.trim().length < 2 && !modoConvenio && (
                   <p className="text-xs text-center py-4" style={{ color: 'var(--admin-text-mute)' }}>
                     Digite pelo menos 2 letras pra buscar
                   </p>
@@ -1985,9 +2125,7 @@ export default function AgendarModal({
                     onClick={() => {
                       setCliente(c)
                       carregarConvenio(c)
-                      setShowClientPicker(false)
-                      setSearch('')
-                      setResults([])
+                      fecharPicker()
                     }}
                     className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[var(--admin-surface-hi)]"
                     style={{ borderBottom: '1px solid var(--admin-divider)' }}
@@ -1996,11 +2134,22 @@ export default function AgendarModal({
                       <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{c.name}</p>
                       <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{c.phone}</p>
                     </div>
-                    {(c.total_points ?? 0) > 0 && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(245,158,11,0.15)', color: '#D97706' }}>
-                        {c.total_points} pts
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Diz que a pessoa é de convênio ANTES do clique — sem
+                          isto a recepção agendava no escuro e só descobria
+                          depois de escolher (ou nem descobria, e cobrava o
+                          preço particular). */}
+                      {!empresaFiltro && nomeEmpresaDe(c) && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full max-w-[130px] truncate" style={{ background: 'rgba(14,165,233,0.15)', color: '#0284C7' }} title={nomeEmpresaDe(c) ?? ''}>
+                          {nomeEmpresaDe(c)}
+                        </span>
+                      )}
+                      {(c.total_points ?? 0) > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#D97706' }}>
+                          {c.total_points} pts
+                        </span>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>
