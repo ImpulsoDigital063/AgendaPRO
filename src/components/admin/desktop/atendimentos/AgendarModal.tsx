@@ -36,7 +36,7 @@ const NovoClienteModal = dynamic(() => import('@/components/admin/clientes/NovoC
 
 type Customer = { id: string; name: string; phone: string; total_points: number | null; company_id?: string | null }
 type Professional = { id: string; name: string }
-type Service = { id: string; name: string; price: number | null; duration_minutes: number | null }
+type Service = { id: string; name: string; price: number | null; duration_minutes: number | null; convenio_price?: number | null }
 
 /** Combo (packages + package_items) · serviço(s) + produto(s) num preço fechado. */
 type ComboItem = {
@@ -393,6 +393,20 @@ export default function AgendarModal({
     setServiceLines((prev) => prev.map((l) => (l.uid === uid ? { ...l, ...partial } : l)))
   }
 
+  /**
+   * Preço que vale pro atendimento: com convênio ativo, o preço negociado com
+   * a empresa; sem, o de tabela.
+   *
+   * Bug achado pelo Eduardo em 25/08: o `convenio_price` existia no cadastro do
+   * serviço mas NENHUMA tela de agendamento lia ele — o convênio nascia sempre
+   * pelo preço cheio. A Prefeitura seria cobrada R$100 numa Reabilitação que
+   * está negociada por R$80.
+   */
+  function precoDoServico(s: Service): number {
+    if (empresa && peloConvenio && s.convenio_price != null) return Number(s.convenio_price)
+    return Number(s.price ?? 0)
+  }
+
   function handleServicePick(uid: string, newServiceId: string) {
     const s = services.find((x) => x.id === newServiceId)
     if (!s) {
@@ -402,10 +416,33 @@ export default function AgendarModal({
     updateLine(uid, {
       serviceId: newServiceId,
       duration: s.duration_minutes ?? 60,
-      price: Number(s.price ?? 0),
+      price: precoDoServico(s),
       resgateBalanceId: null, // troca de serviço zera o resgate (pode não ser coberto)
     })
   }
+
+  /* Escolher o paciente DEPOIS do serviço é o caminho normal de quem entra
+     pelo botão Convênio. Sem isto a linha ficaria com o preço de tabela que foi
+     posto antes de o sistema saber que era convênio. Só repreça a linha que
+     ainda está com o preço automático — valor digitado na mão é intenção
+     humana e não se sobrescreve. */
+  useEffect(() => {
+    setServiceLines((prev) =>
+      prev.map((l) => {
+        if (!l.serviceId) return l
+        const s = services.find((x) => x.id === l.serviceId)
+        if (!s || s.convenio_price == null) return l
+        const tabela = Number(s.price ?? 0)
+        const convenio = Number(s.convenio_price)
+        const atual = Number(l.price)
+        const alvo = empresa && peloConvenio ? convenio : tabela
+        const veioDoAutomatico = atual === tabela || atual === convenio
+        if (!veioDoAutomatico || atual === alvo) return l
+        return { ...l, price: alvo }
+      })
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresa, peloConvenio, services])
 
   function addLine() {
     setServiceLines((prev) => [...prev, newLine()])

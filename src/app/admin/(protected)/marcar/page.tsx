@@ -42,7 +42,7 @@ export default async function AdminMarcarPage({
       .order('name'),
     supabase
       .from('services')
-      .select('id, name, price, duration_minutes')
+      .select('id, name, price, duration_minutes, convenio_price')
       .eq('business_id', business.id)
       .eq('active', true)
       .order('name'),

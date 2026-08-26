@@ -89,7 +89,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .order('start_time'),
     sb
       .from('services')
-      .select('id, name, price, duration_minutes')
+      .select('id, name, price, duration_minutes, convenio_price')
       .eq('business_id', businessId)
       .eq('active', true)
       .order('name'),

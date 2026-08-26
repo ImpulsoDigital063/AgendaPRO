@@ -26,7 +26,7 @@ type Customer = {
 }
 
 type Professional = { id: string; name: string }
-type Service = { id: string; name: string; price: number | null; duration_minutes: number | null }
+type Service = { id: string; name: string; price: number | null; duration_minutes: number | null; convenio_price?: number | null }
 
 type Props = {
   businessId: string
@@ -222,6 +222,20 @@ export default function MarcarAgendamentoForm({
   const [profsDaEmpresa, setProfsDaEmpresa] = useState<string[] | null>(null)
   const [peloConvenio, setPeloConvenio] = useState(true)
 
+  /**
+   * Valor que vale pro atendimento: com convênio ativo, o preço negociado com
+   * a empresa; sem, o de tabela.
+   *
+   * Bug achado pelo Eduardo em 25/08: o `convenio_price` existia no cadastro do
+   * serviço mas nenhuma tela de agendamento lia ele — todo atendimento de
+   * convênio nascia pelo preço cheio e a empresa era cobrada a mais.
+   */
+  const valorDoAtendimento = useMemo(() => {
+    if (!service) return null
+    if (empresa && peloConvenio && service.convenio_price != null) return Number(service.convenio_price)
+    return service.price
+  }, [service, empresa, peloConvenio])
+
   /* Quem pode atender: com convênio ativo, só os vinculados à empresa. Sem
      convênio (ou desmarcado), a equipe inteira. */
   const profissionaisVisiveis = useMemo(() => {
@@ -366,7 +380,7 @@ export default function MarcarAgendamentoForm({
       end_time: `${endTime}:00`,
       service_id: service.id,
       service_name: service.name,
-      total_price: service.price,
+      total_price: valorDoAtendimento,
       /* SEMPRE nasce 'confirmed', mesmo quando o atendimento já aconteceu.
          Motivo: a trigger auto_create_invoice_for_appointment só abre comanda
          pra status pending/confirmed — atendimento inserido já como 'completed'
@@ -790,10 +804,10 @@ export default function MarcarAgendamentoForm({
               <Row label="Cliente" value={`${cliente.name} · ${cliente.phone}`} />
               <Row label="Profissional" value={prof.name} />
               <Row label="Serviço" value={service.name} />
-              {service.price != null && (
+              {valorDoAtendimento != null && (
                 <Row
                   label="Valor"
-                  value={service.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  value={valorDoAtendimento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 />
               )}
               <Row label="Data" value={new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} />
