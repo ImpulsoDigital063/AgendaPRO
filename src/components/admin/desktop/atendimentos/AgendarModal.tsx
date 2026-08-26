@@ -179,6 +179,16 @@ export default function AgendarModal({
   const [time, setTime] = useState<string>('')
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(() => [newLine()])
   const [notes, setNotes] = useState<string>('')
+  /* v131/v134 · sinal decidido POR AGENDAMENTO (pedido do Studio Isis Melo).
+     Só aparece pra quem tem businesses.sinal_por_agendamento; nos outros
+     negócios o sinal segue a regra do negócio + isenção por cliente. */
+  const [sinalCfg, setSinalCfg] = useState<{
+    porAgendamento: boolean
+    enabled: boolean
+    temPix: boolean
+    percent: number
+  } | null>(null)
+  const [sinalDecisao, setSinalDecisao] = useState(true)
   // Walk-in / avulso (sem cadastro) + horário fora do grid (Eduardo 05/06).
   // Universais — valem pro sistema todo, não só um negócio.
   const [avulso, setAvulso] = useState(false)
@@ -253,6 +263,28 @@ export default function AgendarModal({
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
 
+  // Config do sinal · só pra saber se PERGUNTA e quanto seria. A decisão de
+  // cobrar continua sendo recalculada no salvar, com o banco como fonte.
+  useEffect(() => {
+    if (!businessId) return
+    let vivo = true
+    supabase
+      .from('businesses')
+      .select('sinal_enabled, sinal_percent, pix_key, sinal_por_agendamento')
+      .eq('id', businessId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!vivo || !data) return
+        setSinalCfg({
+          porAgendamento: data.sinal_por_agendamento === true,
+          enabled: data.sinal_enabled === true,
+          temPix: !!data.pix_key,
+          percent: Number(data.sinal_percent ?? 0),
+        })
+      })
+    return () => { vivo = false }
+  }, [businessId, supabase])
+
   /* Chave do negócio pra escolher vários dias da semana na mesma série
      (CAF · 21/08). Carrega uma vez por abertura do modal; sem a chave, o bloco
      de recorrência fica exatamente como sempre foi. */
@@ -285,6 +317,7 @@ export default function AgendarModal({
     // Balcão: hora = agora (timestamp do registro · sem grade de horário).
     setTime(defaultTime ?? (balcao ? nowHHMM() : ''))
     setNotes('')
+    setSinalDecisao(true)
     setAvulso(false)
     setAvulsoName('')
     // Balcão lança hora livre (não slot da grade) e já entra como concluído.
@@ -840,7 +873,7 @@ export default function AgendarModal({
        o que reservar nem pra quem mandar cobranca. */
     const { data: cfgSinal } = await supabase
       .from('businesses')
-      .select('sinal_enabled, sinal_percent, pix_key')
+      .select('sinal_enabled, sinal_percent, pix_key, sinal_por_agendamento')
       .eq('id', businessId)
       .maybeSingle()
     /* Cliente de confiança não paga sinal (v118) · marcado na ficha dela.
@@ -857,8 +890,17 @@ export default function AgendarModal({
       clienteIsenta = fichaIsenta?.sinal_isento === true
     }
 
+    /* v134 · negócio que decide o sinal POR AGENDAMENTO respeita a escolha
+       feita no formulário. Sem a chave, `perguntaPorAgendamento` é false e a
+       conta fica idêntica à de sempre. */
+    const perguntaPorAgendamento = cfgSinal?.sinal_por_agendamento === true
     const cobraSinal =
-      cfgSinal?.sinal_enabled === true && !!cfgSinal?.pix_key && !avulso && !clienteIsenta && valorTotal > 0
+      cfgSinal?.sinal_enabled === true &&
+      !!cfgSinal?.pix_key &&
+      !avulso &&
+      !clienteIsenta &&
+      valorTotal > 0 &&
+      (!perguntaPorAgendamento || sinalDecisao)
     const valorSinal = cobraSinal
       ? Math.round(valorTotal * (Number(cfgSinal?.sinal_percent ?? 0) / 100) * 100) / 100
       : null
@@ -880,6 +922,7 @@ export default function AgendarModal({
       total_price: valorTotal,
       status: valorSinal ? 'pending' : 'confirmed',
       sinal_valor: valorSinal,
+      sinal_cobrar: perguntaPorAgendamento ? sinalDecisao : null,
       notes: notes.trim() || null,
       recurring_group_id: recurringGroupId,
       recurring_index: recurringGroupId ? idx + 1 : null,
@@ -1156,6 +1199,7 @@ export default function AgendarModal({
     setDate(todayISO())
     setTime('')
     setNotes('')
+    setSinalDecisao(true)
     setCreatedId(null)
     setCreatedCustomerId(null)
     setCreditoNoSinal(null)
@@ -1968,6 +2012,45 @@ export default function AgendarModal({
               </p>
             )}
           </Field>
+          )}
+
+          {/* v134 · pergunta do sinal · só com a chave ligada e quando ele se aplica */}
+          {sinalCfg?.porAgendamento && sinalCfg.enabled && sinalCfg.temPix && !avulso && valorTotal > 0 && (
+            <Field label="Cobrar sinal deste agendamento?">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSinalDecisao(true)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                  style={{
+                    background: sinalDecisao ? 'var(--admin-accent)' : 'transparent',
+                    color: sinalDecisao ? '#fff' : 'var(--admin-text-2)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                >
+                  Cobrar{' '}
+                  {(Math.round(valorTotal * (sinalCfg.percent / 100) * 100) / 100).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSinalDecisao(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                  style={{
+                    background: !sinalDecisao ? 'var(--admin-accent)' : 'transparent',
+                    color: !sinalDecisao ? '#fff' : 'var(--admin-text-2)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                >
+                  Não cobrar
+                </button>
+              </div>
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                Sem sinal, o horário já nasce confirmado.
+              </p>
+            </Field>
           )}
 
           {/* Observação */}

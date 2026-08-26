@@ -203,6 +203,20 @@ export default function MarcarAgendamentoForm({
      ou a recepção. Sem a chave, nada muda: o agendamento nasce confirmado. */
   const [permiteEmAberto, setPermiteEmAberto] = useState(false)
   const [jaAtendi, setJaAtendi] = useState(false)
+  /* SINAL no mobile e na recepção (26/08) · antes só o desktop e o link
+     público cobravam sinal: quem marcasse pelo celular nunca via a cobrança,
+     e a dona achava que o recurso não funcionava. Eduardo cravou que tudo
+     que existe no desktop tem que existir no mobile.
+     `porAgendamento` (Studio Isis Melo) é o que faz a PERGUNTA aparecer; sem
+     a chave, vale a regra do negócio, igual ao desktop. */
+  const [sinalCfg, setSinalCfg] = useState<{
+    porAgendamento: boolean
+    enabled: boolean
+    temPix: boolean
+    percent: number
+  } | null>(null)
+  const [sinalDecisao, setSinalDecisao] = useState(true)
+  const [clienteIsenta, setClienteIsenta] = useState(false)
   /* Repetir atendimento — mesma lib e mesmo bloco do desktop. Sessão de
      fisioterapia é 2 ou 3 vezes por semana; marcar uma a uma comia o dia do
      Gustavo. Repete SEMPRE no mesmo dia da semana: "quarta e sexta" são duas
@@ -263,16 +277,35 @@ export default function MarcarAgendamentoForm({
     let cancelado = false
     supabase
       .from('businesses')
-      .select('convenios_enabled, recorrencia_dias_semana')
+      .select('convenios_enabled, recorrencia_dias_semana, sinal_enabled, sinal_percent, pix_key, sinal_por_agendamento')
       .eq('id', businessId)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelado) return
         setPermiteEmAberto(!!data?.convenios_enabled)
         setPermiteDiasSemana(!!data?.recorrencia_dias_semana)
+        setSinalCfg({
+          porAgendamento: data?.sinal_por_agendamento === true,
+          enabled: data?.sinal_enabled === true,
+          temPix: !!data?.pix_key,
+          percent: Number(data?.sinal_percent ?? 0),
+        })
       })
     return () => { cancelado = true }
   }, [supabase, businessId])
+  // Cliente de confiança não paga sinal (v118 · marcado na ficha dela).
+  useEffect(() => {
+    let vivo = true
+    if (!cliente?.id) { setClienteIsenta(false); return }
+    supabase
+      .from('customers')
+      .select('sinal_isento')
+      .eq('id', cliente.id)
+      .maybeSingle()
+      .then(({ data }) => { if (vivo) setClienteIsenta(data?.sinal_isento === true) })
+    return () => { vivo = false }
+  }, [supabase, cliente?.id])
+
   useEffect(() => {
     if (step !== 'horario' || !prof || !date) return
     let cancelled = false
@@ -368,6 +401,22 @@ export default function MarcarAgendamentoForm({
       ? crypto.randomUUID()
       : null
 
+    /* SINAL · mesma conta do desktop (AgendarModal): negócio com sinal ligado,
+       chave PIX cadastrada, cliente não isenta e valor > 0. Atendimento que já
+       aconteceu (`jaAtendi`) não reserva nada, então fica de fora.
+       Com `porAgendamento`, respeita a escolha feita na tela. */
+    const perguntaPorAgendamento = sinalCfg?.porAgendamento === true
+    const cobraSinal =
+      sinalCfg?.enabled === true &&
+      sinalCfg.temPix &&
+      !clienteIsenta &&
+      !jaAtendi &&
+      Number(valorDoAtendimento ?? 0) > 0 &&
+      (!perguntaPorAgendamento || sinalDecisao)
+    const valorSinal = cobraSinal
+      ? Math.round(Number(valorDoAtendimento ?? 0) * (Number(sinalCfg?.percent ?? 0) / 100) * 100) / 100
+      : null
+
     const linhas = datas.map((d, idx) => ({
       business_id: businessId,
       professional_id: prof.id,
@@ -387,7 +436,11 @@ export default function MarcarAgendamentoForm({
          fica SEM comanda e nunca aparece em "a receber". O desktop já fazia
          assim (nasce confirmado, o modal de pagamento conclui depois); aqui a
          conclusão vem logo abaixo, no update. */
-      status: 'confirmed',
+      /* Com sinal a receber nasce 'pending', como no desktop: é o que segura o
+         horário até a cliente pagar. Sem sinal, segue 'confirmed' como sempre. */
+      status: valorSinal ? 'pending' : 'confirmed',
+      sinal_valor: valorSinal,
+      sinal_cobrar: perguntaPorAgendamento ? sinalDecisao : null,
       notes: area === 'profissional' ? 'Marcado pela profissional' : 'Marcado pela recepção',
       company_id: empresa && peloConvenio ? empresa.id : null,
       recurring_group_id: grupoId,
@@ -868,6 +921,53 @@ export default function MarcarAgendamentoForm({
                 </span>
               </label>
             )}
+
+            {/* Pergunta do sinal · só com a chave ligada e quando ele se aplica.
+                Fica logo acima do botão: é a última decisão antes de confirmar. */}
+            {sinalCfg?.porAgendamento &&
+              sinalCfg.enabled &&
+              sinalCfg.temPix &&
+              !clienteIsenta &&
+              !jaAtendi &&
+              Number(valorDoAtendimento ?? 0) > 0 && (
+                <div className="admin-card p-3">
+                  <p className="text-sm font-semibold mb-2" style={{ color: 'var(--admin-text)' }}>
+                    Cobrar sinal deste agendamento?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSinalDecisao(true)}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                      style={{
+                        background: sinalDecisao ? 'var(--admin-accent)' : 'transparent',
+                        color: sinalDecisao ? '#fff' : 'var(--admin-text-2)',
+                        border: '1px solid var(--admin-border)',
+                      }}
+                    >
+                      Cobrar{' '}
+                      {(
+                        Math.round(Number(valorDoAtendimento ?? 0) * (sinalCfg.percent / 100) * 100) / 100
+                      ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSinalDecisao(false)}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                      style={{
+                        background: !sinalDecisao ? 'var(--admin-accent)' : 'transparent',
+                        color: !sinalDecisao ? '#fff' : 'var(--admin-text-2)',
+                        border: '1px solid var(--admin-border)',
+                      }}
+                    >
+                      Não cobrar
+                    </button>
+                  </div>
+                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+                    Sem sinal, o horário já nasce confirmado.
+                  </p>
+                </div>
+              )}
 
             <button
               onClick={handleConfirm}
