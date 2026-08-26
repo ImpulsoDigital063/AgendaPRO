@@ -72,7 +72,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
   // idas ao banco por carregamento pra calcular número que ninguém vê —
   // Eduardo reportou lentidão em 30/07 e era isso somado ao resto.
   const vazio = Promise.resolve({ data: [] as never[] })
-  const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: blocksData }, { data: salesPaidDay }, { data: apptsPaidDay }, { data: salesPendingDay }] = await Promise.all([
+  const [{ data: profsData }, { data: apptsData }, { data: servicesData }, { data: blocksData }, { data: salesPaidDay }, { data: apptsPaidDay }, { data: salesPendingDay }, { data: bizFlags }] = await Promise.all([
     sb
       .from('professionals')
       .select('id, name, photo_url, is_receptionist, does_appointments')
@@ -134,6 +134,10 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .eq('type', 'product_sale')
       .eq('status', 'pending')
       .eq('sale_date', date),
+    /* Negócio que aceita dois atendimentos no mesmo horário (CAF) precisa que
+       a grade deixe uma faixa clicável ao lado do card — senão o horário fica
+       coberto e não tem por onde abrir o segundo agendamento. */
+    sb.from('businesses').select('agendamento_simultaneo').eq('id', businessId).maybeSingle(),
   ])
 
   // Grade só mostra QUEM ATENDE.
@@ -284,6 +288,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
         aReceberHoje={aReceberHoje}
         pendentesHoje={pendentesHoje}
         hideKpis={hideKpis}
+        permiteSimultaneo={bizFlags?.agendamento_simultaneo === true}
       />
     </div>
   )

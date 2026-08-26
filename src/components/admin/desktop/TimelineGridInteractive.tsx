@@ -60,6 +60,15 @@ type Props = {
   pendentesHoje?: number
   /** Esconde os MiniKPI internos (aba "Eu" tem KPIs próprios do dono acima) */
   hideKpis?: boolean
+  /**
+   * Negócio aceita dois atendimentos no mesmo horário (CAF · 25/08/2026).
+   *
+   * Sem isto o card ocupava a célula inteira e cobria o slot clicável que fica
+   * por baixo — o horário virava um beco: pra marcar o segundo paciente das
+   * 08:00 não havia onde clicar. Com a flag, o card cede uma faixa à direita e
+   * aquele pedaço continua abrindo o "Agendar" daquele profissional e hora.
+   */
+  permiteSimultaneo?: boolean
 }
 
 type PopoverState = {
@@ -198,6 +207,7 @@ export default function TimelineGridInteractive({
   aReceberHoje: aReceberDoServidor = 0,
   pendentesHoje = 0,
   hideKpis = false,
+  permiteSimultaneo = false,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -967,11 +977,16 @@ export default function TimelineGridInteractive({
                       const li = laneInfo[a.id]
                       const lanes = li?.lanes ?? 1
                       const lane = li?.lane ?? 0
+                      /* Faixa à direita que o card NÃO ocupa, deixando o slot de
+                         baixo clicável. Só em negócio com agendamento simultâneo:
+                         onde dois no mesmo horário são proibidos, "ocupado" é a
+                         resposta certa e a faixa só levaria a um erro de conflito. */
+                      const faixaLivre = permiteSimultaneo ? 22 : 0
                       const leftStyle = isCancelled
                         ? { left: 4, width: 10 } // só um "talinho" cinza de histórico
                         : {
                             left: `calc(${(lane / lanes) * 100}% + 4px)`,
-                            width: `calc(${(1 / lanes) * 100}% - 6px)`,
+                            width: `calc(${(1 / lanes) * 100}% - 6px - ${faixaLivre / lanes}px)`,
                           }
                       return (
                         <button
@@ -1142,6 +1157,51 @@ export default function TimelineGridInteractive({
                               )}
                             </span>
                           )}
+                        </button>
+                      )
+                    })}
+
+                    {/* Faixa "+" ao lado de cada card · só onde o negócio aceita
+                        dois no mesmo horário. É a porta pro segundo paciente:
+                        com o card ocupando a célula inteira, o horário cheio não
+                        tinha onde ser clicado (Eduardo, 25/08). */}
+                    {permiteSimultaneo && profAppts.map((a) => {
+                      if (a.status === 'cancelled') return null
+                      const li = laneInfo[a.id]
+                      const lanes = li?.lanes ?? 1
+                      const lane = li?.lane ?? 0
+                      const startMin = timeToMinutes(a.start_time)
+                      const endMin = timeToMinutes(a.end_time)
+                      const top = ((startMin - dayStartMin) / interval) * SLOT_HEIGHT
+                      const height = ((endMin - startMin) / interval) * SLOT_HEIGHT
+                      const hora = a.start_time.slice(0, 5)
+                      const largura = 22 / lanes
+                      return (
+                        <button
+                          key={`add-${a.id}`}
+                          type="button"
+                          data-slot-trigger
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openSlotPopover(e, p.id, p.name, hora)
+                          }}
+                          className="absolute rounded-r-lg flex items-start justify-center pt-1 transition-colors group/add"
+                          style={{
+                            left: `calc(${((lane + 1) / lanes) * 100}% - ${largura + 2}px)`,
+                            width: Math.max(largura - 2, 8),
+                            top,
+                            height: Math.max(height - 2, 22),
+                            zIndex: 6,
+                          }}
+                          title={`+ Agendar ${p.name} às ${hora} (mesmo horário)`}
+                          aria-label={`Agendar outro atendimento com ${p.name} às ${hora}`}
+                        >
+                          <span
+                            className="text-[13px] font-bold leading-none opacity-40 group-hover/add:opacity-100 transition-opacity"
+                            style={{ color: 'var(--admin-text-mute)' }}
+                          >
+                            +
+                          </span>
                         </button>
                       )
                     })}
