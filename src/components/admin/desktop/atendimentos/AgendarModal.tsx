@@ -1520,6 +1520,7 @@ export default function AgendarModal({
                   onChangePrice={(v) => updateLine(line.uid, { price: v })}
                   onChangeDiscount={(v) => updateLine(line.uid, { discount: v })}
                   onRemove={() => removeLine(line.uid)}
+                  peloConvenio={!!empresa && peloConvenio}
                 />
                 {resOpt && (
                   <button
@@ -2250,6 +2251,7 @@ function ServiceLineBlock({
   onChangePrice,
   onChangeDiscount,
   onRemove,
+  peloConvenio: linhaDeConvenio = false,
 }: {
   index: number
   line: ServiceLine
@@ -2260,6 +2262,10 @@ function ServiceLineBlock({
   onChangePrice: (v: number) => void
   onChangeDiscount: (v: number) => void
   onRemove: () => void
+  /** Atendimento sai pelo convênio · a lista mostra o preço negociado, não o de
+   *  tabela. Sem isto o seletor dizia "R$ 100,00" enquanto o campo abaixo dizia
+   *  80 — dois números discordando na mesma tela de dinheiro (Eduardo, 25/08). */
+  peloConvenio?: boolean
 }) {
   const lineTotal = Math.max(0, Number(line.price) - Number(line.discount))
   return (
@@ -2302,11 +2308,15 @@ function ServiceLineBlock({
         }}
       >
         <option value="">Selecionar serviço</option>
-        {services.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name} · {s.duration_minutes ?? 60}min · {(Number(s.price ?? 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </option>
-        ))}
+        {services.map((s) => {
+          const valor =
+            linhaDeConvenio && s.convenio_price != null ? Number(s.convenio_price) : Number(s.price ?? 0)
+          return (
+            <option key={s.id} value={s.id}>
+              {s.name} · {s.duration_minutes ?? 60}min · {valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </option>
+          )
+        })}
       </select>
 
       <div className="grid grid-cols-3 gap-2">

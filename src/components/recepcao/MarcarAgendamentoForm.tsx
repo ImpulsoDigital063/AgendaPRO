@@ -703,9 +703,13 @@ export default function MarcarAgendamentoForm({
                   <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
                     {s.name}
                   </p>
-                  {s.price != null && (
+                  {/* Com convênio ativo a lista já mostra o preço negociado —
+                      senão a recepção escolhe lendo um valor e confirma outro. */}
+                  {(empresa && peloConvenio && s.convenio_price != null ? s.convenio_price : s.price) != null && (
                     <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--admin-accent)' }}>
-                      {s.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {Number(
+                        empresa && peloConvenio && s.convenio_price != null ? s.convenio_price : s.price
+                      ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                   )}
                 </div>
