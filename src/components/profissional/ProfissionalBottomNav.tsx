@@ -14,11 +14,14 @@ import DockNav, { type DockTab } from '@/components/admin/DockNav'
 type Props = {
   employmentType?: 'commissioned' | 'employed'
   pendingAppointments?: number
+  /** v131 · false = negócio reservou a definição de horário pra dona e recepção */
+  podeEditarHorario?: boolean
 }
 
 export default function ProfissionalBottomNav({
   employmentType = 'commissioned',
   pendingAppointments = 0,
+  podeEditarHorario = true,
 }: Props) {
   const ALL_TABS: DockTab[] = [
     {
@@ -43,12 +46,18 @@ export default function ProfissionalBottomNav({
     },
   ]
 
+  const semHorario = ALL_TABS.filter((t) => t.href !== '/profissional/horarios')
+
+  // v131 · negócio que reservou o horário pra dona/recepção não mostra a aba.
+  // Default `true` → base inteira segue como sempre.
+  const base = podeEditarHorario ? ALL_TABS : semHorario
+
   const tabs =
     employmentType === 'employed'
-      ? ALL_TABS.filter(
+      ? base.filter(
           (t) => t.href !== '/profissional/horarios' && t.href !== '/profissional/financeiro'
         )
-      : ALL_TABS
+      : base
 
   return <DockNav tabs={tabs} />
 }

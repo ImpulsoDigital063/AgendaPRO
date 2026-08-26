@@ -25,7 +25,7 @@ export default async function RecepcaoLayout({
 
   const { data: professional, error: profError } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, is_receptionist, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral)')
+    .select('id, business_id, password_changed, is_receptionist, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, recep_edita_horario)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -77,7 +77,9 @@ export default async function RecepcaoLayout({
         <InstallBanner area="profissional" />
 
         {/* Sidebar tablet+desktop · fixa em ≥md · Letícia opera em iPad */}
+        {/* v133 · aba Horários só pra negócio que passou essa decisão pra recepção */}
         <RecepcaoDesktopSidebar
+          podeEditarHorario={(business as { recep_edita_horario?: boolean | null }).recep_edita_horario === true}
           brand={{
             business_name: business.name ?? null,
             business_slug: business.slug ?? null,
@@ -95,7 +97,9 @@ export default async function RecepcaoLayout({
 
         {/* Tab bar mobile · escondida em ≥md (sidebar substitui) */}
         <div className="md:hidden">
-          <RecepcaoBottomNav />
+          <RecepcaoBottomNav
+            podeEditarHorario={(business as { recep_edita_horario?: boolean | null }).recep_edita_horario === true}
+          />
         </div>
       </div>
     </AdminThemeProvider>

@@ -24,6 +24,7 @@ import {
   IconSearch,
   IconGift,
   IconWallet,
+  IconClock,
   IconUsers,
   IconFile,
   IconInbox,
@@ -54,9 +55,23 @@ const ITEMS: SidebarItem[] = [
   ...(PACOTE_ENABLED ? [{ label: 'Pacotes', href: '/recepcao/pacotes', Icon: IconGift }] as SidebarItem[] : []),
   { label: 'Cupons', href: '/recepcao/cupons', Icon: IconGift },
   { label: 'Caixa', href: '/recepcao/caixa', Icon: IconWallet },
+  // v133 · injetado em runtime quando o negócio passou o horário pra recepção
 ]
 
-export default function RecepcaoDesktopSidebar({ brand }: { brand: Brand }) {
+export default function RecepcaoDesktopSidebar({
+  brand,
+  podeEditarHorario = false,
+}: {
+  brand: Brand
+  /** v133 · negócio passou a definição de horário pra recepção */
+  podeEditarHorario?: boolean
+}) {
+  // v133 · o item só existe pra quem tem a chave; os outros negócios seguem
+  // com a mesma lista de sempre.
+  const items: SidebarItem[] = podeEditarHorario
+    ? [...ITEMS, { label: 'Horários', href: '/recepcao/horarios', Icon: IconClock }]
+    : ITEMS
+
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
 
@@ -141,7 +156,7 @@ export default function RecepcaoDesktopSidebar({ brand }: { brand: Brand }) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
-        {ITEMS.map((item) => {
+        {items.map((item) => {
           const active = isActive(item)
           const Icon = item.Icon
           return (

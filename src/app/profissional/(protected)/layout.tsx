@@ -38,7 +38,7 @@ export default async function ProfissionalLayout({
   // Verifica se e um profissional com auth_user_id · puxa brand do business
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, employment_type, is_receptionist, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral)')
+    .select('id, business_id, password_changed, employment_type, is_receptionist, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, prof_edita_horario)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -82,8 +82,13 @@ export default async function ProfissionalLayout({
     brand_secondary?: string | null
     brand_accent?: string | null
     brand_neutral?: string | null
+    prof_edita_horario?: boolean | null
   }
   const businessSlug = business.slug ?? null
+
+  // v131 · negócio pode reservar a definição de horário pra dona e recepção.
+  // Default `true` no banco → só some pra quem pediu (Studio Isis Melo).
+  const podeEditarHorario = business.prof_edita_horario !== false
 
   return (
     <AdminThemeProvider initial={initialTheme}>
@@ -101,6 +106,7 @@ export default async function ProfissionalLayout({
           businessName={business.name ?? null}
           brandLogoUrl={business.brand_logo_url ?? null}
           employmentType={employmentType}
+          podeEditarHorario={podeEditarHorario}
         />
         {/* DEPOIS da topbar de propósito (Eduardo 30/07, print do iPhone): a
             barra é `fixed` e quem empurra o conteúdo é o espaçador de 56px que
@@ -126,6 +132,7 @@ export default async function ProfissionalLayout({
         <ProfissionalBottomNav
           employmentType={employmentType}
           pendingAppointments={pendingCount ?? 0}
+          podeEditarHorario={podeEditarHorario}
         />
       </div>
     </AdminThemeProvider>

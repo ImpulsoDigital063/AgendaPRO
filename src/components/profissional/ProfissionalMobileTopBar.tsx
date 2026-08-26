@@ -25,6 +25,8 @@ type Props = {
   businessName: string | null
   brandLogoUrl: string | null
   employmentType: 'commissioned' | 'employed'
+  /** v131 · false = negócio reservou a definição de horário pra dona e recepção */
+  podeEditarHorario?: boolean
 }
 
 type NavItem = {
@@ -49,6 +51,7 @@ export default function ProfissionalMobileTopBar({
   businessName,
   brandLogoUrl,
   employmentType,
+  podeEditarHorario = true,
 }: Props) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -63,9 +66,14 @@ export default function ProfissionalMobileTopBar({
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
+  // v131 · sem a chave, a aba Horários some do menu. Default `true` → base intacta.
+  const base = podeEditarHorario
+    ? ALL_ITEMS
+    : ALL_ITEMS.filter((i) => i.href !== '/profissional/horarios')
+
   const items = employmentType === 'employed'
-    ? ALL_ITEMS.filter((i) => i.href !== '/profissional/horarios' && i.href !== '/profissional/financeiro')
-    : ALL_ITEMS
+    ? base.filter((i) => i.href !== '/profissional/horarios' && i.href !== '/profissional/financeiro')
+    : base
 
   function isActive(item: NavItem): boolean {
     if (item.exact) return pathname === item.href

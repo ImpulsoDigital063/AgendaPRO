@@ -22,6 +22,18 @@ export default async function ProfHorariosPage() {
   if (!professional) redirect('/profissional/login')
   if ((professional.employment_type ?? 'commissioned') === 'employed') redirect('/profissional')
 
+  // v131 · o negócio pode reservar a definição de horário pra dona e recepção
+  // (pedido do Studio Isis Melo). Default `true` → quem não mexeu na chave
+  // segue exatamente como sempre foi. A RLS (v132) barra do mesmo jeito, isto
+  // aqui é só pra ela não bater numa tela que não vai gravar.
+  const { data: biz } = await supabase
+    .from('businesses')
+    .select('prof_edita_horario')
+    .eq('id', professional.business_id)
+    .maybeSingle()
+
+  if (biz?.prof_edita_horario === false) redirect('/profissional')
+
   const { data: workingHours } = await supabase
     .from('working_hours')
     .select('*')

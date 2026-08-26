@@ -41,7 +41,7 @@ export default async function ProfissionalPage({
   // Busca o profissional logado · inclui brand_logo_url pra header
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, business:businesses(id, name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda, prof_registra_pagamento)')
+    .select('*, business:businesses(id, name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda, prof_registra_pagamento, prof_edita_horario)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -129,6 +129,11 @@ export default async function ProfissionalPage({
 
   const isEmployed = (professional.employment_type ?? 'commissioned') === 'employed'
 
+  // v131 · negócio pode reservar a definição de horário pra dona e recepção.
+  // Default `true` no banco → atalho segue aparecendo pra base inteira.
+  const podeEditarHorario =
+    (professional.business as { prof_edita_horario?: boolean | null } | null)?.prof_edita_horario !== false
+
   const stats = ([
     !isEmployed && {
       value: recebido > 0
@@ -178,7 +183,7 @@ export default async function ProfissionalPage({
       desc: 'Veja o horário das colegas',
       icon: IconUsers,
     },
-    !isEmployed && {
+    !isEmployed && podeEditarHorario && {
       href: '/profissional/horarios',
       label: 'Meus horários',
       desc: 'Dias e janelas de atendimento',
