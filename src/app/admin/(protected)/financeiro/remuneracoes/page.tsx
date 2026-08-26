@@ -75,6 +75,7 @@ export default async function RemuneracoesPage({
     { data: vouchers },
     { data: paidSales },
     { data: salaries },
+    { data: convenioAppts },
   ] = await Promise.all([
     sb
       .from('professionals')
@@ -93,7 +94,10 @@ export default async function RemuneracoesPage({
       .not('payment_method', 'in', '(courtesy,credit)') // cortesia não gera comissão
       .gte('paid_at', from)
       .lt('paid_at', to)
-      .not('paid_at', 'is', null),
+      .not('paid_at', 'is', null)
+      /* Convênio sai daqui e vai pra query própria abaixo: ele é ancorado na
+         data do ATENDIMENTO, não na do pagamento. */
+      .is('company_id', null),
     sb
       .from('commission_payments')
       .select('professional_id, paid_amount')
@@ -123,12 +127,37 @@ export default async function RemuneracoesPage({
       .eq('business_id', business.id)
       .gte('date', fromDate)
       .lt('date', toDate),
+    /* ─── COMISSÃO DE CONVÊNIO (Eduardo + Gustavo, 25/08/2026) ───────────
+       O resto da tela conta atendimento pela data do PAGAMENTO. Pra convênio
+       isso mentia: a fisio atende em agosto, a Prefeitura paga em setembro, e
+       agosto — o mês em que ela de fato trabalhou — aparecia zerado. Foi o que
+       o Eduardo viu com o Rafael Duarte em R$0 tendo feito duas sessões.
+
+       Aqui o recorte é a data do ATENDIMENTO, pago ou não. O que o pagamento
+       da empresa muda é a SITUAÇÃO da comissão, não o mês dela:
+         · empresa ainda não pagou → em aberto, não é sacável
+         · empresa pagou           → entra no pendente de pagamento
+
+       Gustavo (áudio 25/08): "o nosso contrato é pagar quando receber... a
+       prefeitura me paga dia 10, eu pago isso dia 12". Por isso em aberto
+       TRAVA: não é enfeite, é o combinado dele com a equipe. */
+    sb
+      .from('appointments')
+      .select('id, professional_id, paid_at, total_price, invoice_item_id, commission_amount')
+      .eq('business_id', business.id)
+      .not('company_id', 'is', null)
+      .neq('status', 'cancelled')
+      .gte('appointment_date', fromDate)
+      .lt('appointment_date', toDate),
   ])
 
   // λ.valor-liquido: comissão de serviço incide sobre o LÍQUIDO (cupom da
   // comanda já abatido), nunca sobre o bruto (Eduardo 04/07/2026). Mesmo
   // rateio do detalhe do profissional · usa invoice_item_id → invoices.discount.
-  const apptDiscMap = await getApptDiscountMap(sb, (paidAppts ?? []).map((a) => a.invoice_item_id))
+  const apptDiscMap = await getApptDiscountMap(sb, [
+    ...(paidAppts ?? []).map((a) => a.invoice_item_id),
+    ...(convenioAppts ?? []).map((a) => a.invoice_item_id),
+  ])
 
   // Comissão do RESGATE de pacote (base = valor/sessão pago) · somada à parte
   // porque o resgate entra R$0 na comanda (o total_price do atendimento é 0).
@@ -194,6 +223,22 @@ export default async function RemuneracoesPage({
       const base = Math.max(0, Number(a.total_price ?? 0) - (apptDiscMap[a.id] ?? 0))
       return s + (base * pct) / 100
     }, 0)
+    /* Convênio · mesma conta de comissão, separada por situação. O que a
+       empresa já pagou é sacável; o resto o profissional vê, mas não recebe
+       enquanto o dinheiro não entrar. */
+    const convenioDoProf = isRecep ? [] : (convenioAppts ?? []).filter((a) => a.professional_id === p.id)
+    const comissaoDe = (a: { id: string; total_price: number | null; commission_amount: number | null }) => {
+      if (a.commission_amount != null) return Number(a.commission_amount)
+      const base = Math.max(0, Number(a.total_price ?? 0) - (apptDiscMap[a.id] ?? 0))
+      return (base * pct) / 100
+    }
+    const convenioLiberado = convenioDoProf
+      .filter((a) => a.paid_at != null)
+      .reduce((s, a) => s + comissaoDe(a), 0)
+    const convenioEmAberto = convenioDoProf
+      .filter((a) => a.paid_at == null)
+      .reduce((s, a) => s + comissaoDe(a), 0)
+
     // Comissão de RESGATE de pacote · linha própria (mesma %, base = valor/sessão).
     // Diferenciada do serviço porque nessa data NÃO há entrada de dinheiro (o
     // pacote foi pago na venda) · Eduardo 24/07.
@@ -214,8 +259,16 @@ export default async function RemuneracoesPage({
       .filter((sa) => sa.professional_id === p.id && sa.paid === true)
       .reduce((s, sa) => s + Number(sa.amount ?? 0), 0)
 
-    // Valor Total = comissões (serviço + pacote + produto) + salário cadastrado
-    const valorTotal = commissionFromAppts + commissionFromPackages + commissionFromSales + salariosCadastrados
+    /* Valor Total = tudo que ele produziu no mês, convênio em aberto incluído —
+       é o retrato do trabalho dele. O que separa o sacável do preso é o
+       `pendente` logo abaixo, que desconta o em aberto. */
+    const valorTotal =
+      commissionFromAppts +
+      convenioLiberado +
+      convenioEmAberto +
+      commissionFromPackages +
+      commissionFromSales +
+      salariosCadastrados
 
     const pagoCommissoes = (payments ?? [])
       .filter((cp) => cp.professional_id === p.id)
@@ -232,12 +285,16 @@ export default async function RemuneracoesPage({
       default_commission_percent: pct,
       is_receptionist: isRecep,
       valorTotal,
-      commissionFromAppts,
+      commissionFromAppts: commissionFromAppts + convenioLiberado,
+      convenioEmAberto,
       commissionFromPackages,
       commissionFromSales,
       salarios: salariosCadastrados,
       pago,
-      pendente: Math.max(0, valorTotal - pago),
+      /* O em aberto de convênio NÃO entra no pendente: o Gustavo só paga a
+         equipe depois que a empresa paga ele. Sem esse desconto a tela
+         prometeria um saque que o caixa não tem. */
+      pendente: Math.max(0, valorTotal - pago - convenioEmAberto),
       valesPendentes,
     }
   })
@@ -249,7 +306,8 @@ export default async function RemuneracoesPage({
   const totalSalarios = rows.reduce((s, r) => s + r.salarios, 0)
   const totalPago = rows.reduce((s, r) => s + r.pago, 0)
   const totalValesPendentes = rows.reduce((s, r) => s + r.valesPendentes, 0)
-  const pendentePagamento = totalRemuneracoes - totalPago
+  const totalConvenioEmAberto = rows.reduce((s, r) => s + (r.convenioEmAberto ?? 0), 0)
+  const pendentePagamento = totalRemuneracoes - totalPago - totalConvenioEmAberto
 
   const prev = shiftMonth(year, month0, -1)
   const next = shiftMonth(year, month0, 1)
@@ -334,6 +392,13 @@ export default async function RemuneracoesPage({
           <p className="text-[11px] mt-1 text-center" style={{ color: 'var(--admin-text-faded)' }}>
             Comissão calculada no faturamento (% configurável por profissional) · Clique na linha pra abrir ações
           </p>
+          {/* Explica a coluna nova onde ela existe · sem isto "aguardando
+              convênio" parece dinheiro sumido em vez de dinheiro no prazo. */}
+          {totalConvenioEmAberto > 0 && (
+            <p className="text-[11px] mt-0.5 text-center" style={{ color: '#0284C7' }}>
+              Aguardando convênio = atendimento já feito pela empresa · libera pra pagamento quando ela pagar
+            </p>
+          )}
         </div>
       </div>
 
@@ -404,6 +469,14 @@ export default async function RemuneracoesPage({
                 {formatBRL(totalPago)}
               </span>
             </div>
+            {totalConvenioEmAberto > 0 && (
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--admin-text-mute)' }}>Aguardando convênio</span>
+                <span className="font-semibold tabular-nums" style={{ color: '#0284C7' }}>
+                  {formatBRL(totalConvenioEmAberto)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span style={{ color: 'var(--admin-text-mute)' }}>Vales Pendentes</span>
               <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-warning,#F59E0B)' }}>

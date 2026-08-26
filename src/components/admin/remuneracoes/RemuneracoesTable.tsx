@@ -14,6 +14,13 @@ export type ProfRow = {
   valorTotal: number
   /** Comissão originada de serviços (appointments pagos). */
   commissionFromAppts: number
+  /**
+   * Comissão de convênio cujo atendimento já foi feito e a EMPRESA ainda não
+   * pagou (25/08/2026). Conta no mês do atendimento, aparece pro profissional
+   * saber o que produziu — mas fica fora do "pendente de pagamento", porque o
+   * combinado do Gustavo com a equipe é pagar depois de receber.
+   */
+  convenioEmAberto?: number
   /** Comissão originada de resgate de pacote (base = valor/sessão · pago na venda). */
   commissionFromPackages: number
   /** Comissão originada de venda de produto (sales paid). */
@@ -47,6 +54,9 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [paymentFor, setPaymentFor] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  /* Coluna de convênio só existe onde há convênio esperando a empresa pagar.
+     Negócio sem isso não ganha uma coluna de zeros na tela. */
+  const temConvenioEmAberto = rows.some((r) => (r.convenioEmAberto ?? 0) > 0)
 
   // Fecha menu ao clicar fora
   useEffect(() => {
@@ -97,6 +107,13 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
                 <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
                   Valor Pago (R$)
                 </th>
+                {/* Só aparece pra quem tem convênio · negócio sem isso não
+                    ganha coluna vazia na tela. */}
+                {temConvenioEmAberto && (
+                  <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: '#0284C7' }}>
+                    Aguardando Convênio (R$)
+                  </th>
+                )}
                 <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
                   Pendente Pagamento (R$)
                 </th>
@@ -175,6 +192,15 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
                   <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: r.pago > 0 ? '#059669' : 'var(--admin-text-mute)' }}>
                     {formatBRL(r.pago)}
                   </td>
+                  {temConvenioEmAberto && (
+                    <td
+                      className="px-4 py-3 text-right tabular-nums font-semibold"
+                      style={{ color: (r.convenioEmAberto ?? 0) > 0 ? '#0284C7' : 'var(--admin-text-mute)' }}
+                      title="Atendimento de convênio já feito · libera pra pagamento quando a empresa pagar"
+                    >
+                      {formatBRL(r.convenioEmAberto ?? 0)}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-right tabular-nums font-bold" style={{ color: r.pendente > 0 ? 'var(--admin-accent)' : 'var(--admin-text-mute)' }}>
                     {formatBRL(r.pendente)}
                   </td>
