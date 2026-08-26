@@ -5,10 +5,15 @@ export type Business = {
   /** Segmento do negócio (lista fechada em lib/segmento). Decide os exemplos
    *  do painel. Separado da `description`, que é texto livre e público. */
   category?: string | null
+  /** v137 · CNPJ ou CPF. Só aparece em documento que sai pra terceiro
+   *  (extrato de convênio pro RH da empresa cliente). Nulo não imprime. */
+  cnpj?: string | null
   /* Chaves por negócio (CAF · 20-21/08/2026). Ver supabase/migrations/v124. */
   agendamento_simultaneo?: boolean | null
   convenios_enabled?: boolean | null
   comissao_valor_fixo?: boolean | null
+  /** v131 · % da comissão vem do serviço (Studio Isis Melo) */
+  comissao_por_servico?: boolean | null
   prof_registra_pagamento?: boolean | null
   recorrencia_dias_semana?: boolean | null
   phone: string | null
@@ -181,6 +186,8 @@ export type Service = {
   public_visible?: boolean
   /* CAF · 21/08/2026 · só usados com as chaves do negócio ligadas. */
   commission_amount?: number | null
+  /** v134 · % da profissional NESTE serviço · null = usa a do cadastro dela */
+  commission_percent?: number | null
   convenio_price?: number | null
   convenio_commission_amount?: number | null
   points: number

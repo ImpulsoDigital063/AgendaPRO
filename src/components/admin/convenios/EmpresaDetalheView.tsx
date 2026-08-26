@@ -24,6 +24,7 @@ type Empresa = {
   contato_telefone: string | null
   contato_email: string | null
   dia_vencimento: number | null
+  instrucoes_pagamento: string | null
   ativo: boolean
 }
 
@@ -59,6 +60,7 @@ export default function EmpresaDetalheView({
   const [contatoTelefone, setContatoTelefone] = useState(mascaraTelefone(empresa.contato_telefone ?? ''))
   const [contatoEmail, setContatoEmail] = useState(empresa.contato_email ?? '')
   const [diaVencimento, setDiaVencimento] = useState(empresa.dia_vencimento != null ? String(empresa.dia_vencimento) : '')
+  const [instrucoes, setInstrucoes] = useState(empresa.instrucoes_pagamento ?? '')
   const [ativo, setAtivo] = useState(empresa.ativo)
   const [salvandoDados, setSalvandoDados] = useState(false)
   const [salvo, setSalvo] = useState(false)
@@ -82,6 +84,7 @@ export default function EmpresaDetalheView({
         contato_telefone: contatoTelefone.replace(/\D/g, '') || null,
         contato_email: contatoEmail.trim() || null,
         dia_vencimento: diaVencimento.trim() ? Math.min(31, Math.max(1, parseInt(diaVencimento, 10))) : null,
+        instrucoes_pagamento: instrucoes.trim() || null,
         ativo,
       })
       .eq('id', empresa.id)
@@ -203,6 +206,22 @@ export default function EmpresaDetalheView({
             </p>
           </div>
         </div>
+        {/* Rodapé do PDF que vai pro RH · texto livre porque "como pagar" muda
+            por empresa: prefeitura tem empenho, transportadora paga PIX. */}
+        <div>
+          <label className="admin-label">Instruções de pagamento (saem no PDF)</label>
+          <textarea
+            value={instrucoes}
+            onChange={(e) => setInstrucoes(e.target.value)}
+            rows={2}
+            className="admin-input w-full px-3 py-2.5 text-sm"
+            placeholder="Ex: PIX CNPJ 00.000.000/0001-00 · Banco X, ag 0001, cc 12345-6"
+          />
+          <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+            Em branco, o PDF não mostra nada sobre pagamento.
+          </p>
+        </div>
+
         <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--admin-text)' }}>
           <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} />
           Convênio ativo

@@ -38,6 +38,11 @@ export type FaturaResumo = {
 export default function ExtratoEmpresa({
   empresaId,
   empresaNome,
+  empresaCnpj = null,
+  instrucoesPagamento = null,
+  clinicaNome,
+  clinicaTelefone = null,
+  clinicaCnpj = null,
   temEmail,
   mes,
   linhas,
@@ -45,6 +50,14 @@ export default function ExtratoEmpresa({
 }: {
   empresaId: string
   empresaNome: string
+  empresaCnpj?: string | null
+  /** Texto livre impresso no rodapé do PDF · vazio não imprime nada. */
+  instrucoesPagamento?: string | null
+  /** Quem está cobrando. O PDF saía sem isso: o RH recebia um anexo com o nome
+   *  de quem PAGA no título e nenhuma pista de quem mandou (Eduardo, 26/08). */
+  clinicaNome: string
+  clinicaTelefone?: string | null
+  clinicaCnpj?: string | null
   /** Empresa sem e-mail não pode receber o extrato — o botão explica em vez de falhar. */
   temEmail: boolean
   mes: string // YYYY-MM
@@ -107,7 +120,13 @@ export default function ExtratoEmpresa({
 
   /** Já existe fatura fechada dessa competência? Define se "recebi" é o
    *  próximo passo do fluxo ou um atalho fora de ordem. */
-  const temFaturaDoMes = faturas.some((f) => f.competencia === mes)
+  const faturaDoMes = faturas.find((f) => f.competencia === mes) ?? null
+  const temFaturaDoMes = !!faturaDoMes
+
+  /* Coluna Situação só existe se houver o que distinguir. Com tudo em aberto —
+     o caso normal de uma fatura — ela repetia a mesma palavra em toda linha, na
+     tela, no PDF e no Excel. */
+  const misturaSituacao = linhas.some((l) => l.pago) && linhas.some((l) => !l.pago)
 
   const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   const dataBR = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`
@@ -131,21 +150,37 @@ export default function ExtratoEmpresa({
 
   async function exportarExcel() {
     const XLSX = await import('xlsx')
-    const dados = linhas.map((l) => ({
-      Data: dataBR(l.data),
-      Horário: l.hora,
-      Funcionário: l.funcionario,
-      Profissional: l.profissional,
-      Serviço: l.servico,
-      Valor: l.valor,
-      Situação: l.pago ? 'Pago' : 'Em aberto',
-    }))
-    dados.push({
-      Data: '', Horário: '', Funcionário: '', Profissional: '',
-      Serviço: 'TOTAL', Valor: totais.total, Situação: '',
+    type Row = Record<string, string | number>
+    const dados: Row[] = linhas.map((l) => {
+      const r: Row = {
+        Data: dataBR(l.data),
+        Horário: l.hora,
+        Funcionário: l.funcionario,
+        Profissional: l.profissional,
+        Serviço: l.servico,
+        Valor: l.valor,
+      }
+      if (misturaSituacao) r['Situação'] = l.pago ? 'Pago' : 'Em aberto'
+      return r
     })
-    const ws = XLSX.utils.json_to_sheet(dados)
-    ws['!cols'] = [{ wch: 11 }, { wch: 8 }, { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 12 }, { wch: 11 }]
+    dados.push({ Data: '', Horário: '', Funcionário: '', Profissional: '', Serviço: 'TOTAL', Valor: totais.total })
+
+    /* Cabeçalho de identificação · a planilha abria direto na linha de títulos
+       e quem recebia não sabia de quem era sem olhar o nome do arquivo. */
+    const ws = XLSX.utils.aoa_to_sheet([
+      [clinicaNome + (clinicaCnpj ? ` · CNPJ ${clinicaCnpj}` : '')],
+      [`${faturaDoMes ? `Fatura nº ${faturaDoMes.numero} · ` : ''}${empresaNome} · competência ${mesBR}`],
+      [],
+    ])
+    XLSX.utils.sheet_add_json(ws, dados, { origin: 'A4' })
+    ws['!cols'] = [{ wch: 11 }, { wch: 8 }, { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 13 }, { wch: 11 }]
+    /* Valor como MOEDA, não número cru. Saía "45" numa planilha que vai pro
+       financeiro de outra empresa. */
+    const ref = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
+    for (let r = 4; r <= ref.e.r; r++) {
+      const cel = ws[XLSX.utils.encode_cell({ c: 5, r })]
+      if (cel && typeof cel.v === 'number') { cel.t = 'n'; cel.z = 'R$ #,##0.00' }
+    }
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Atendimentos')
 
@@ -158,6 +193,11 @@ export default function ExtratoEmpresa({
     resumo.push({ Funcionário: 'TOTAL', Atendimentos: totais.qtd, Valor: totais.total })
     const wsResumo = XLSX.utils.json_to_sheet(resumo)
     wsResumo['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }]
+    const refR = XLSX.utils.decode_range(wsResumo['!ref'] ?? 'A1')
+    for (let r = 1; r <= refR.e.r; r++) {
+      const cel = wsResumo[XLSX.utils.encode_cell({ c: 2, r })]
+      if (cel && typeof cel.v === 'number') { cel.t = 'n'; cel.z = 'R$ #,##0.00' }
+    }
     XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo por funcionário')
 
     XLSX.writeFile(wb, `${nomeArquivo}.xlsx`)
@@ -167,14 +207,36 @@ export default function ExtratoEmpresa({
     const { jsPDF } = await import('jspdf')
     const autoTable = (await import('jspdf-autotable')).default
     const doc = new jsPDF({ orientation: 'landscape' })
-    doc.setFontSize(14)
-    doc.text(`Extrato de atendimentos · ${empresaNome}`, 14, 15)
+
+    /* Quem cobra vem primeiro. Antes o documento abria com o nome da EMPRESA —
+       quem paga — e não dizia em lugar nenhum de quem era o anexo nem pra quem
+       responder. */
+    doc.setFontSize(13)
+    doc.text(clinicaNome, 14, 14)
+    doc.setFontSize(9)
+    doc.setTextColor(110)
+    const idClinica = [clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null, clinicaTelefone].filter(Boolean).join(' · ')
+    if (idClinica) doc.text(idClinica, 14, 19)
+    doc.setTextColor(20)
+
+    doc.setFontSize(13)
+    const titulo = faturaDoMes ? `Fatura nº ${faturaDoMes.numero}` : 'Extrato de atendimentos'
+    doc.text(titulo, 14, 29)
     doc.setFontSize(10)
-    doc.text(`Competência ${mesBR} · ${totais.qtd} atendimento${totais.qtd !== 1 ? 's' : ''} · ${brl(totais.total)}`, 14, 22)
+    doc.text(`${empresaNome}${empresaCnpj ? ` · CNPJ ${empresaCnpj}` : ''}`, 14, 35)
+    doc.setFontSize(9)
+    doc.setTextColor(110)
+    doc.text(
+      `Competência ${mesBR} · ${totais.qtd} atendimento${totais.qtd !== 1 ? 's' : ''} · ${brl(totais.total)}` +
+        `  |  emitido em ${dataBR(new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}`,
+      14,
+      40,
+    )
+    doc.setTextColor(20)
 
     // Capa de conferência: quantas sessões cada servidor fez.
     autoTable(doc, {
-      startY: 28,
+      startY: 46,
       head: [['Funcionário', 'Atendimentos', 'Valor']],
       body: porFuncionario.map(([nome, x]) => [nome, String(x.qtd), brl(x.valor)]),
       foot: [['TOTAL', String(totais.qtd), brl(totais.total)]],
@@ -189,17 +251,37 @@ export default function ExtratoEmpresa({
     const apos = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 28
     doc.setFontSize(11)
     doc.text('Detalhamento dos atendimentos', 14, apos + 10)
+    const cab = ['Data', 'Horário', 'Funcionário', 'Profissional', 'Serviço', 'Valor']
+    const rodape = ['', '', '', '', 'TOTAL', brl(totais.total)]
+    if (misturaSituacao) { cab.push('Situação'); rodape.push('') }
     autoTable(doc, {
       startY: apos + 14,
-      head: [['Data', 'Horário', 'Funcionário', 'Profissional', 'Serviço', 'Valor', 'Situação']],
-      body: linhas.map((l) => [
-        dataBR(l.data), l.hora, l.funcionario, l.profissional, l.servico, brl(l.valor), l.pago ? 'Pago' : 'Em aberto',
-      ]),
-      foot: [['', '', '', '', 'TOTAL', brl(totais.total), '']],
+      head: [cab],
+      body: linhas.map((l) => {
+        const linha = [dataBR(l.data), l.hora, l.funcionario, l.profissional, l.servico, brl(l.valor)]
+        if (misturaSituacao) linha.push(l.pago ? 'Pago' : 'Em aberto')
+        return linha
+      }),
+      foot: [rodape],
+      /* SÓ na última página. Repetindo em todas, a página 1 fechava com
+         "TOTAL R$910" e a página 2, com duas linhas, fechava com "TOTAL R$910"
+         de novo — quem lê no RH soma e entende R$1.820. Documento de cobrança
+         que sugere o dobro do valor (Eduardo, 26/08). */
+      showFoot: 'lastPage',
       styles: { fontSize: 9 },
       headStyles: { fillColor: [14, 165, 233] },
       footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: 'bold' },
     })
+
+    if (instrucoesPagamento?.trim()) {
+      const fim = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 60
+      doc.setFontSize(9)
+      doc.setTextColor(20)
+      doc.text('Pagamento', 14, fim + 10)
+      doc.setTextColor(90)
+      doc.text(doc.splitTextToSize(instrucoesPagamento.trim(), 250), 14, fim + 15)
+    }
+
     doc.save(`${nomeArquivo}.pdf`)
   }
 
@@ -265,7 +347,7 @@ export default function ExtratoEmpresa({
                   <th className="text-left py-1.5 pr-2 font-semibold">Profissional</th>
                   <th className="text-left py-1.5 pr-2 font-semibold">Serviço</th>
                   <th className="text-right py-1.5 pr-2 font-semibold">Valor</th>
-                  <th className="text-left py-1.5 font-semibold">Situação</th>
+                  {misturaSituacao && <th className="text-left py-1.5 font-semibold">Situação</th>}
                 </tr>
               </thead>
               <tbody>
@@ -280,9 +362,11 @@ export default function ExtratoEmpresa({
                     {/* Só a exceção é escrita. Antes a coluna repetia "Em aberto"
                         em todas as linhas — uma coluna inteira gasta dizendo a
                         mesma palavra dezesseis vezes (Eduardo, 25/08). */}
-                    <td className="py-1.5" style={{ color: '#10B981' }}>
-                      {l.pago ? 'Pago' : ''}
-                    </td>
+                    {misturaSituacao && (
+                      <td className="py-1.5" style={{ color: '#10B981' }}>
+                        {l.pago ? 'Pago' : ''}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -297,7 +381,7 @@ export default function ExtratoEmpresa({
                     Total
                   </td>
                   <td className="py-2 pr-2 text-right font-black tabular-nums">{brl(totais.total)}</td>
-                  <td />
+                  {misturaSituacao && <td />}
                 </tr>
                 {totais.aberto > 0 && totais.aberto !== totais.total && (
                   <tr>
@@ -308,7 +392,7 @@ export default function ExtratoEmpresa({
                     <td className="py-1 pr-2 text-right font-black tabular-nums" style={{ color: '#B45309' }}>
                       {brl(totais.aberto)}
                     </td>
-                    <td />
+                    {misturaSituacao && <td />}
                   </tr>
                 )}
               </tfoot>

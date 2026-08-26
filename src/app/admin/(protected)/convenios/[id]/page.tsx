@@ -27,7 +27,7 @@ export default async function EmpresaPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, convenios_enabled')
+    .select('id, name, phone, cnpj, convenios_enabled')
     .eq('owner_id', user.id)
     .single()
   if (!business) redirect(await destinoSemNegocio())
@@ -35,7 +35,7 @@ export default async function EmpresaPage({
 
   const { data: empresa } = await supabase
     .from('companies')
-    .select('id, business_id, name, cnpj, contato_nome, contato_telefone, contato_email, ativo, dia_vencimento')
+    .select('id, business_id, name, cnpj, contato_nome, contato_telefone, contato_email, ativo, dia_vencimento, instrucoes_pagamento')
     .eq('id', id)
     .eq('business_id', business.id)
     .maybeSingle()
@@ -105,6 +105,11 @@ export default async function EmpresaPage({
         <ExtratoEmpresa
           empresaId={empresa.id}
           empresaNome={empresa.name}
+          empresaCnpj={empresa.cnpj}
+          instrucoesPagamento={empresa.instrucoes_pagamento}
+          clinicaNome={business.name}
+          clinicaTelefone={business.phone}
+          clinicaCnpj={business.cnpj}
           temEmail={!!empresa.contato_email}
           mes={mes}
           linhas={linhas}

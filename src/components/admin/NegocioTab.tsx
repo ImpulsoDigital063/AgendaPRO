@@ -37,6 +37,9 @@ function maskPhoneProgressive(raw: string): string {
 export default function NegocioTab({ business }: Props) {
   const [name, setName] = useState(business.name)
   const [phone, setPhone] = useState(maskPhoneProgressive(business.phone || ''))
+  /* CNPJ/CPF · usado só em documento que sai pra terceiro (hoje, o extrato de
+     convênio que vai pro RH da empresa cliente). Vazio não imprime nada. */
+  const [cnpj, setCnpj] = useState(business.cnpj || '')
   const [address, setAddress] = useState(business.address || '')
   const [description, setDescription] = useState(business.description || '')
   // Segmento: campo próprio (lista fechada). É o que decide os exemplos que o
@@ -66,6 +69,7 @@ export default function NegocioTab({ business }: Props) {
   const [snapshot, setSnapshot] = useState({
     name: business.name,
     phone: maskPhoneProgressive(business.phone || ''),
+    cnpj: business.cnpj || '',
     address: business.address || '',
     description: business.description || '',
     category: business.category || '',
@@ -83,6 +87,7 @@ export default function NegocioTab({ business }: Props) {
     () =>
       name !== snapshot.name ||
       phone !== snapshot.phone ||
+      cnpj !== snapshot.cnpj ||
       address !== snapshot.address ||
       description !== snapshot.description ||
       category !== snapshot.category ||
@@ -94,7 +99,7 @@ export default function NegocioTab({ business }: Props) {
       facebookUrl !== snapshot.facebookUrl ||
       tiktokUrl !== snapshot.tiktokUrl ||
       websiteUrl !== snapshot.websiteUrl,
-    [name, phone, address, description, category, googleMapsUrl, googleRating, googleReviewsCount, pointsForReview, instagramUrl, facebookUrl, tiktokUrl, websiteUrl, snapshot]
+    [name, phone, cnpj, address, description, category, googleMapsUrl, googleRating, googleReviewsCount, pointsForReview, instagramUrl, facebookUrl, tiktokUrl, websiteUrl, snapshot]
   )
 
   async function handleUploadLogo(file: File) {
@@ -170,6 +175,7 @@ export default function NegocioTab({ business }: Props) {
       .update({
         name: name.trim(),
         phone: phoneDigits || null,
+        cnpj: cnpj.trim() || null,
         address: address.trim() || null,
         description: description.trim() || null,
         category: category || null,
@@ -194,6 +200,7 @@ export default function NegocioTab({ business }: Props) {
       setSnapshot({
         name: name.trim(),
         phone,
+        cnpj,
         address: address.trim(),
         description: description.trim(),
         category,
@@ -320,6 +327,21 @@ export default function NegocioTab({ business }: Props) {
             placeholder="(63) 99999-9999"
             maxLength={15}
           />
+        </div>
+
+        <div>
+          <label className="admin-label">CNPJ ou CPF</label>
+          <input
+            type="text"
+            value={cnpj}
+            onChange={e => setCnpj(e.target.value)}
+            className="admin-input w-full px-3 py-2.5 text-sm"
+            placeholder="00.000.000/0001-00"
+          />
+          <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+            Sai só em documento que você manda pra fora, como o extrato de convênio. Em branco, não
+            aparece em lugar nenhum.
+          </p>
         </div>
 
         <div>
