@@ -31,6 +31,8 @@ type Props = {
   category: string | null
   /** businesses.comissao_valor_fixo · mostra os campos de comissão em R$ */
   comissaoFixa?: boolean
+  /** v134 · businesses.comissao_por_servico · % da profissional NESTE serviço */
+  comissaoPorServico?: boolean
   /** businesses.convenios_enabled · mostra o preço de convênio */
   convenios?: boolean
 }
@@ -80,17 +82,18 @@ type FormState = {
      convenio     → preço praticado no convênio + a comissão daquele atendimento
      (que costuma ser IGUAL à do público: o dono absorve o desconto). */
   commission_amount: string
+  commission_percent: string
   convenio_price: string
   convenio_commission_amount: string
 }
 
-const emptyForm: FormState = { name: '', description: '', price: '', duration_minutes: 30, points: '', retorno_dias: '', commission_amount: '', convenio_price: '', convenio_commission_amount: '' }
+const emptyForm: FormState = { name: '', description: '', price: '', duration_minutes: 30, points: '', retorno_dias: '', commission_amount: '', commission_percent: '', convenio_price: '', convenio_commission_amount: '' }
 
 const DESCRIPTION_MAX = 400
 
 type Filter = 'active' | 'inactive' | 'all'
 
-export default function ServicosTab({ businessId, initialServices, category, comissaoFixa = false, convenios = false }: Props) {
+export default function ServicosTab({ businessId, initialServices, category, comissaoFixa = false, comissaoPorServico = false, convenios = false }: Props) {
   /** "12,50" → 12.5 · vazio → null (campo não preenchido ≠ zero) */
   const num = (v: string) => (v.trim() ? parseFloat(v.replace(',', '.')) : null)
   const suggestions = useMemo(() => sugestoesDeServico(category), [category])
@@ -188,6 +191,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
         description: form.description.trim() || null,
         price: priceValue,
         commission_amount: comissaoFixa ? num(form.commission_amount) : null,
+        commission_percent: comissaoPorServico ? num(form.commission_percent) : null,
         convenio_price: convenios ? num(form.convenio_price) : null,
         convenio_commission_amount: convenios && comissaoFixa ? num(form.convenio_commission_amount) : null,
         duration_minutes: form.duration_minutes,
@@ -215,6 +219,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
       description: service.description ?? '',
       price: service.price ? String(service.price) : '',
       commission_amount: service.commission_amount != null ? String(service.commission_amount) : '',
+      commission_percent: service.commission_percent != null ? String(service.commission_percent) : '',
       convenio_price: service.convenio_price != null ? String(service.convenio_price) : '',
       convenio_commission_amount: service.convenio_commission_amount != null ? String(service.convenio_commission_amount) : '',
       duration_minutes: service.duration_minutes,
@@ -238,6 +243,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
         description,
         price: priceValue,
         commission_amount: comissaoFixa ? num(editForm.commission_amount) : null,
+        commission_percent: comissaoPorServico ? num(editForm.commission_percent) : null,
         convenio_price: convenios ? num(editForm.convenio_price) : null,
         convenio_commission_amount: convenios && comissaoFixa ? num(editForm.convenio_commission_amount) : null,
         duration_minutes: editForm.duration_minutes,
@@ -441,6 +447,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
             onToggleVisivel={() => toggleVisivel(service)}
             onAskDelete={() => setConfirmDelete(service)}
             comissaoFixa={comissaoFixa}
+            comissaoPorServico={comissaoPorServico}
             convenios={convenios}
             onUsoProdutos={() => setUsoProdutosFor(service)}
           />
@@ -544,7 +551,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
           </div>
         </div>
 
-        {(comissaoFixa || convenios) && (
+        {(comissaoFixa || convenios || comissaoPorServico) && (
           <div
             className="rounded-xl p-3 space-y-2.5"
             style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
@@ -553,6 +560,22 @@ export default function ServicosTab({ businessId, initialServices, category, com
               Convênio e comissão
             </p>
             <div className="flex gap-2">
+              {comissaoPorServico && (
+                <div className="flex-1">
+                  <label className="admin-label">Comissão (%)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.commission_percent}
+                    onChange={(e) => setForm({ ...form, commission_percent: e.target.value })}
+                    placeholder="Ex: 50"
+                    className="admin-input w-full px-3 py-2.5 text-sm"
+                  />
+                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                    Porcentagem da profissional neste serviço. Em branco, vale a porcentagem do cadastro dela.
+                  </p>
+                </div>
+              )}
               {comissaoFixa && (
                 <div className="flex-1">
                   <label className="admin-label">Comissão (R$)</label>
@@ -780,6 +803,7 @@ function ServiceCard({
   onAskDelete,
   onUsoProdutos,
   comissaoFixa = false,
+  comissaoPorServico = false,
   convenios = false,
 }: {
   service: Service
@@ -797,6 +821,7 @@ function ServiceCard({
   onAskDelete: () => void
   onUsoProdutos: () => void
   comissaoFixa?: boolean
+  comissaoPorServico?: boolean
   convenios?: boolean
 }) {
   const isLoading = loadingId === service.id
@@ -1102,6 +1127,12 @@ function ServiceCard({
             <>
               <span aria-hidden>·</span>
               <span className="tabular-nums">comissão {formatPrice(service.commission_amount)}</span>
+            </>
+          )}
+          {comissaoPorServico && service.commission_percent != null && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">comissão {service.commission_percent}%</span>
             </>
           )}
           {/* v107 · estado que muda o que a CLIENTE vê não pode ficar escondido

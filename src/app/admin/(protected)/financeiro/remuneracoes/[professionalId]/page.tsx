@@ -99,7 +99,8 @@ export default async function RemuneracaoDetalhePage({
       payment_method,
       commission_payment_id,
       invoice_item_id,
-      commission_amount
+      commission_amount,
+      commission_percent
     `)
     .eq('business_id', business.id)
     .eq('professional_id', professionalId)
@@ -132,7 +133,10 @@ export default async function RemuneracaoDetalhePage({
   const rows: Row[] = (appts ?? []).map((a) => {
     const base = Math.max(0, Number(a.total_price ?? 0) - (apptDisc[a.id] ?? 0))
     const fixa = a.commission_amount == null ? null : Number(a.commission_amount)
-    const remuneracao = fixa ?? (base * pct) / 100
+    /* v134 · porcentagem por SERVIÇO (Studio Isis Melo): o trigger fotografa
+       commission_percent no dia. Null → porcentagem da pessoa, como sempre. */
+    const pctDoAppt = a.commission_percent != null ? Number(a.commission_percent) : pct
+    const remuneracao = fixa ?? (base * pctDoAppt) / 100
     const paid = a.commission_payment_id ? remuneracao : 0
     const pendente = remuneracao - paid
     return {

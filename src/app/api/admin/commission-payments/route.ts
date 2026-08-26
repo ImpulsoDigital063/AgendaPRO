@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   // Valida appointments e calcula total
   const { data: appts } = await admin
     .from('appointments')
-    .select('id, business_id, professional_id, total_price, commission_payment_id')
+    .select('id, business_id, professional_id, total_price, commission_payment_id, commission_amount, commission_percent')
     .in('id', body.appointmentIds)
 
   if (!appts || appts.length === 0) {
@@ -84,7 +84,17 @@ export async function POST(request: Request) {
     )
   }
 
-  const totalAmount = appts.reduce((s, a) => s + (Number(a.total_price ?? 0) * pct) / 100, 0)
+  /* v134 · a comissão pode estar fotografada no atendimento:
+       commission_amount (R$ · CAF) manda sobre tudo;
+       commission_percent (% · Studio Isis Melo) manda sobre o % da pessoa;
+       nenhum dos dois → porcentagem do cadastro, como sempre foi. */
+  const totalAmount = appts.reduce((s, a) => {
+    const fixa = (a as { commission_amount?: number | null }).commission_amount
+    if (fixa != null) return s + Number(fixa)
+    const pctAppt = (a as { commission_percent?: number | null }).commission_percent
+    const pctUsado = pctAppt != null ? Number(pctAppt) : pct
+    return s + (Number(a.total_price ?? 0) * pctUsado) / 100
+  }, 0)
 
   // Cria commission_payment
   const { data: payment, error: payErr } = await admin

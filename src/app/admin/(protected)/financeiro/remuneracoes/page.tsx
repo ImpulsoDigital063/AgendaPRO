@@ -89,7 +89,7 @@ export default async function RemuneracoesPage({
       .order('name'),
     sb
       .from('appointments')
-      .select('id, professional_id, paid_at, total_price, invoice_item_id, commission_amount')
+      .select('id, professional_id, paid_at, total_price, invoice_item_id, commission_amount, commission_percent')
       .eq('business_id', business.id)
       .not('payment_method', 'in', '(courtesy,credit)') // cortesia não gera comissão
       .gte('paid_at', from)
@@ -143,7 +143,7 @@ export default async function RemuneracoesPage({
        TRAVA: não é enfeite, é o combinado dele com a equipe. */
     sb
       .from('appointments')
-      .select('id, professional_id, paid_at, total_price, invoice_item_id, commission_amount')
+      .select('id, professional_id, paid_at, total_price, invoice_item_id, commission_amount, commission_percent')
       .eq('business_id', business.id)
       .not('company_id', 'is', null)
       .neq('status', 'cancelled')
@@ -218,19 +218,31 @@ export default async function RemuneracoesPage({
        demais entram na porcentagem. Os dois modelos podem conviver na mesma
        lista sem se atrapalhar. */
     const apptsDoProf = isRecep ? [] : (paidAppts ?? []).filter((a) => a.professional_id === p.id)
+    /* v134 · a porcentagem pode vir do SERVIÇO (Studio Isis Melo): o trigger
+       fotografa em appointments.commission_percent no dia do atendimento.
+       Null = negócio comum, vale a porcentagem da pessoa. O desconto continua
+       abatendo nos dois casos — é o que separa isto do valor fixo do CAF. */
+    const pctDoAppt = (a: { commission_percent?: number | null }) =>
+      a.commission_percent != null ? Number(a.commission_percent) : pct
+
     const commissionFromAppts = apptsDoProf.reduce((s, a) => {
       if (a.commission_amount != null) return s + Number(a.commission_amount)
       const base = Math.max(0, Number(a.total_price ?? 0) - (apptDiscMap[a.id] ?? 0))
-      return s + (base * pct) / 100
+      return s + (base * pctDoAppt(a)) / 100
     }, 0)
     /* Convênio · mesma conta de comissão, separada por situação. O que a
        empresa já pagou é sacável; o resto o profissional vê, mas não recebe
        enquanto o dinheiro não entrar. */
     const convenioDoProf = isRecep ? [] : (convenioAppts ?? []).filter((a) => a.professional_id === p.id)
-    const comissaoDe = (a: { id: string; total_price: number | null; commission_amount: number | null }) => {
+    const comissaoDe = (a: {
+      id: string
+      total_price: number | null
+      commission_amount: number | null
+      commission_percent?: number | null
+    }) => {
       if (a.commission_amount != null) return Number(a.commission_amount)
       const base = Math.max(0, Number(a.total_price ?? 0) - (apptDiscMap[a.id] ?? 0))
-      return (base * pct) / 100
+      return (base * pctDoAppt(a)) / 100
     }
     const convenioLiberado = convenioDoProf
       .filter((a) => a.paid_at != null)

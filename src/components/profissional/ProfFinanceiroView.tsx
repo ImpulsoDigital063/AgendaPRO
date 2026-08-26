@@ -63,11 +63,21 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
   const soma = (lista: typeof appointments) =>
     lista.reduce((s, a) => {
       if (comissaoValorFixo && a.commission_amount != null) return s + Number(a.commission_amount)
-      return s + ((a.total_price ?? 0) * commissionPercentage) / 100
+      /* v134 · porcentagem por SERVICO: o trigger fotografa commission_percent
+         no atendimento. Null = porcentagem do cadastro, como sempre. */
+      const pct =
+        (a as { commission_percent?: number | null }).commission_percent != null
+          ? Number((a as { commission_percent?: number | null }).commission_percent)
+          : commissionPercentage
+      return s + ((a.total_price ?? 0) * pct) / 100
     }, 0)
-  const minhaComissao = comissaoValorFixo ? soma(pagos) : totalRealizado * (commissionPercentage / 100)
+  /* Sem valor fixo a conta passa a ser POR ATENDIMENTO: com porcentagem
+     diferente por servico, multiplicar o total pelo percentual unico daria
+     numero errado. Negocio sem a coluna preenchida cai no mesmo resultado
+     de antes, porque todo atendimento usa a porcentagem da pessoa. */
+  const minhaComissao = soma(pagos)
   // Comissao "futura" — o que vai entrar quando o dono confirmar pagamento
-  const comissaoPendente = comissaoValorFixo ? soma(naoPagos) : totalPendente * (commissionPercentage / 100)
+  const comissaoPendente = soma(naoPagos)
   const ticketMedio = ativos.length > 0 ? totalGerado / ativos.length : 0
 
   const rows: FinanceRow[] = appointments.map((a) => ({
