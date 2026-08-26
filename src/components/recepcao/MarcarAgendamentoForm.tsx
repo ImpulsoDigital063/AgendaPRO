@@ -7,6 +7,7 @@ import { resolveClientId } from '@/lib/clients'
 import RecurringBlock from '@/components/admin/RecurringBlock'
 import { buildRecurringDates, buildRecurringDatesByWeekdays, type FreqRecorrencia } from '@/lib/recorrencia'
 import { logActivity } from '@/lib/activity-log'
+import { prazoSinalLabel, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 import {
   IconArrowLeft,
   IconCheck,
@@ -207,15 +208,18 @@ export default function MarcarAgendamentoForm({
      público cobravam sinal: quem marcasse pelo celular nunca via a cobrança,
      e a dona achava que o recurso não funcionava. Eduardo cravou que tudo
      que existe no desktop tem que existir no mobile.
-     `porAgendamento` (Studio Isis Melo) é o que faz a PERGUNTA aparecer; sem
-     a chave, vale a regra do negócio, igual ao desktop. */
+     v138 · a PERGUNTA passou a valer pra todo negócio com sinal ligado, e
+     `balcaoPadrao` guarda só qual lado já vem marcado — mesma regra do
+     desktop, porque duas telas que criam agendamento não podem divergir. */
   const [sinalCfg, setSinalCfg] = useState<{
-    porAgendamento: boolean
     enabled: boolean
     temPix: boolean
     percent: number
+    expiraMinutos: number
+    balcaoPadrao: boolean
   } | null>(null)
-  const [sinalDecisao, setSinalDecisao] = useState(true)
+  /* Começa em NÃO cobrar; sobe pra sim só se a config do negócio mandar. */
+  const [sinalDecisao, setSinalDecisao] = useState(false)
   const [clienteIsenta, setClienteIsenta] = useState(false)
   /* Repetir atendimento — mesma lib e mesmo bloco do desktop. Sessão de
      fisioterapia é 2 ou 3 vezes por semana; marcar uma a uma comia o dia do
@@ -277,7 +281,7 @@ export default function MarcarAgendamentoForm({
     let cancelado = false
     supabase
       .from('businesses')
-      .select('convenios_enabled, recorrencia_dias_semana, sinal_enabled, sinal_percent, pix_key, sinal_por_agendamento')
+      .select('convenios_enabled, recorrencia_dias_semana, sinal_enabled, sinal_percent, pix_key, sinal_expira_minutos, sinal_balcao_padrao')
       .eq('id', businessId)
       .maybeSingle()
       .then(({ data }) => {
@@ -285,11 +289,13 @@ export default function MarcarAgendamentoForm({
         setPermiteEmAberto(!!data?.convenios_enabled)
         setPermiteDiasSemana(!!data?.recorrencia_dias_semana)
         setSinalCfg({
-          porAgendamento: data?.sinal_por_agendamento === true,
           enabled: data?.sinal_enabled === true,
           temPix: !!data?.pix_key,
           percent: Number(data?.sinal_percent ?? 0),
+          expiraMinutos: Number(data?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN),
+          balcaoPadrao: data?.sinal_balcao_padrao === true,
         })
+        setSinalDecisao(data?.sinal_balcao_padrao === true)
       })
     return () => { cancelado = true }
   }, [supabase, businessId])
@@ -404,15 +410,14 @@ export default function MarcarAgendamentoForm({
     /* SINAL · mesma conta do desktop (AgendarModal): negócio com sinal ligado,
        chave PIX cadastrada, cliente não isenta e valor > 0. Atendimento que já
        aconteceu (`jaAtendi`) não reserva nada, então fica de fora.
-       Com `porAgendamento`, respeita a escolha feita na tela. */
-    const perguntaPorAgendamento = sinalCfg?.porAgendamento === true
+       v138 · a escolha da tela vale SEMPRE. */
     const cobraSinal =
       sinalCfg?.enabled === true &&
       sinalCfg.temPix &&
       !clienteIsenta &&
       !jaAtendi &&
       Number(valorDoAtendimento ?? 0) > 0 &&
-      (!perguntaPorAgendamento || sinalDecisao)
+      sinalDecisao
     const valorSinal = cobraSinal
       ? Math.round(Number(valorDoAtendimento ?? 0) * (Number(sinalCfg?.percent ?? 0) / 100) * 100) / 100
       : null
@@ -440,7 +445,7 @@ export default function MarcarAgendamentoForm({
          horário até a cliente pagar. Sem sinal, segue 'confirmed' como sempre. */
       status: valorSinal ? 'pending' : 'confirmed',
       sinal_valor: valorSinal,
-      sinal_cobrar: perguntaPorAgendamento ? sinalDecisao : null,
+      sinal_cobrar: sinalDecisao,
       notes: area === 'profissional' ? 'Marcado pela profissional' : 'Marcado pela recepção',
       company_id: empresa && peloConvenio ? empresa.id : null,
       recurring_group_id: grupoId,
@@ -922,10 +927,9 @@ export default function MarcarAgendamentoForm({
               </label>
             )}
 
-            {/* Pergunta do sinal · só com a chave ligada e quando ele se aplica.
+            {/* v138 · pergunta do sinal · vale pra todo negócio com sinal ligado.
                 Fica logo acima do botão: é a última decisão antes de confirmar. */}
-            {sinalCfg?.porAgendamento &&
-              sinalCfg.enabled &&
+            {sinalCfg?.enabled &&
               sinalCfg.temPix &&
               !clienteIsenta &&
               !jaAtendi &&
@@ -963,8 +967,18 @@ export default function MarcarAgendamentoForm({
                       Não cobrar
                     </button>
                   </div>
+                  {/* v138 · a regra escrita na hora de decidir, com o prazo real
+                      do negócio. Ver o mesmo bloco no AgendarModal. */}
                   <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-                    Sem sinal, o horário já nasce confirmado.
+                    {sinalDecisao ? (
+                      <>
+                        Se o sinal não cair em até{' '}
+                        <strong>{prazoSinalLabel(sinalCfg.expiraMinutos)}</strong>, o horário volta
+                        a ficar livre pra outra cliente marcar.
+                      </>
+                    ) : (
+                      <>Sem sinal, o horário já nasce confirmado e não vence.</>
+                    )}
                   </p>
                 </div>
               )}

@@ -48,6 +48,7 @@ type Config = {
   cancelHoras: number
   creditoDias: number
   expiraMinutos: number
+  balcaoPadrao: boolean
   nomeNegocio: string
   telefoneNegocio: string | null
 }
@@ -475,6 +476,41 @@ export default function SinalView() {
             <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
               Passou desse tempo sem o sinal cair, o horário volta a ficar livre pra outra cliente
               marcar. Ninguém segura sua agenda sem pagar.
+            </p>
+          </div>
+
+          {/* v138 · Quando é VOCÊ que marca o horário, o sinal é opcional.
+              Antes disso o sinal entrava sozinho em todo agendamento de balcão,
+              vencia no prazo acima e o horário sumia sem aviso — foi assim que
+              a Wanessa e a Lettícia perderam agendamento em 26/08. Agora a
+              pergunta aparece sempre na hora de marcar; aqui é só qual resposta
+              já vem escolhida. */}
+          <div>
+            <label className="admin-label">Quando VOCÊ marca o horário</label>
+            <div className="flex gap-2">
+              {[
+                { v: false, l: 'Não cobrar sinal' },
+                { v: true, l: 'Cobrar sinal' },
+              ].map((opt) => (
+                <button
+                  key={String(opt.v)}
+                  type="button"
+                  onClick={() => setCfg({ ...cfg, balcaoPadrao: opt.v })}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                  style={{
+                    background: cfg.balcaoPadrao === opt.v ? 'var(--admin-accent)' : 'transparent',
+                    color: cfg.balcaoPadrao === opt.v ? '#fff' : 'var(--admin-text-2)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                >
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+              Vale só pro agendamento que sai das suas mãos, no painel ou na recepção — dá pra
+              mudar em cada agendamento na hora de marcar. Quem agenda pelo seu link continua
+              pagando sinal sempre.
             </p>
           </div>
 

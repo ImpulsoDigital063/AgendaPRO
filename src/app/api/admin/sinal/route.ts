@@ -42,7 +42,7 @@ export async function GET() {
   const [{ data: negocio }, { data: pendentes }] = await Promise.all([
     supabase
       .from('businesses')
-      .select('pix_key, pix_receiver_name, pix_city, sinal_enabled, sinal_percent, sinal_cancel_horas, sinal_credito_dias, sinal_expira_minutos, name, phone')
+      .select('pix_key, pix_receiver_name, pix_city, sinal_enabled, sinal_percent, sinal_cancel_horas, sinal_credito_dias, sinal_expira_minutos, sinal_balcao_padrao, name, phone')
       .eq('id', businessId)
       .single(),
     supabase
@@ -134,6 +134,10 @@ export async function GET() {
       cancelHoras: negocio?.sinal_cancel_horas ?? 24,
       creditoDias: negocio?.sinal_credito_dias ?? 30,
       expiraMinutos: negocio?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN,
+      /* v138 · qual lado vem marcado na pergunta "cobrar sinal?" quando é a
+         própria dona (ou a recepção) que marca o horário. O link público não
+         pergunta nada — lá o sinal vale sempre que estiver ligado. */
+      balcaoPadrao: negocio?.sinal_balcao_padrao === true,
       nomeNegocio: negocio?.name ?? '',
       /* WhatsApp do NEGÓCIO (não da cliente). Sem ele a cliente que quer
          remarcar não tem pra onde ligar: o botão "Prefiro remarcar" na tela
@@ -188,6 +192,7 @@ export async function PUT(req: NextRequest) {
       sinal_cancel_horas: Number.isFinite(Number(body.cancelHoras)) ? Math.max(0, Math.round(Number(body.cancelHoras))) : 24,
       sinal_credito_dias: Number.isFinite(Number(body.creditoDias)) ? Math.max(1, Math.round(Number(body.creditoDias))) : 30,
       sinal_expira_minutos: Number.isFinite(expiraMinutos) ? Math.round(expiraMinutos) : SINAL_EXPIRA_PADRAO_MIN,
+      sinal_balcao_padrao: body.balcaoPadrao === true,
     })
     .eq('id', businessId)
 

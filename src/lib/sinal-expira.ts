@@ -37,6 +37,27 @@ export function sinalVencido(appt: ApptSinal, minutos: number, agora = Date.now(
   return agora > limite
 }
 
+/**
+ * O prazo escrito como a dona fala ("2 horas", "24 horas", "2 dias").
+ *
+ * Mora aqui porque a regra do sinal precisa aparecer NA HORA DE MARCAR, nas
+ * duas telas que criam agendamento (painel e recepção) — e o texto tem que
+ * dizer o prazo REAL do negócio, não um "2 horas" chumbado. A Wanessa
+ * descobriu a regra perdendo agendamento; nenhuma tela do painel dizia que o
+ * horário volta pra agenda se o sinal não cair (v138).
+ */
+export function prazoSinalLabel(minutos: number): string {
+  const m = Math.max(1, Math.round(Number(minutos) || SINAL_EXPIRA_PADRAO_MIN))
+  if (m < 60) return `${m} minutos`
+  if (m % 1440 === 0) {
+    const dias = m / 1440
+    return dias === 1 ? '1 dia' : `${dias} dias`
+  }
+  const horas = m / 60
+  if (Number.isInteger(horas)) return horas === 1 ? '1 hora' : `${horas} horas`
+  return `${Math.round(horas)} horas`
+}
+
 /** Quanto falta pro prazo acabar, em minutos. Negativo = já venceu. */
 export function minutosRestantes(appt: ApptSinal, minutos: number, agora = Date.now()): number {
   const limite = new Date(appt.created_at).getTime() + minutos * 60_000

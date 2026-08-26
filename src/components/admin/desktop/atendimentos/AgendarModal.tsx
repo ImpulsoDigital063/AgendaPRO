@@ -9,6 +9,7 @@ import { resolveClientId } from '@/lib/clients'
 import { logActivity } from '@/lib/activity-log'
 import { ratearCombo } from '@/lib/combo-rateio'
 import { textoPrazo as textoPrazoCobranca } from '@/lib/sinal-cobranca'
+import { prazoSinalLabel, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 // Recorrência mora em lib/componente próprios desde 20/08 — o formulário do
 // mobile usa o mesmo cálculo e o mesmo bloco de UI.
 import RecurringBlock from '@/components/admin/RecurringBlock'
@@ -180,15 +181,22 @@ export default function AgendarModal({
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(() => [newLine()])
   const [notes, setNotes] = useState<string>('')
   /* v131/v134 · sinal decidido POR AGENDAMENTO (pedido do Studio Isis Melo).
-     Só aparece pra quem tem businesses.sinal_por_agendamento; nos outros
-     negócios o sinal segue a regra do negócio + isenção por cliente. */
+     v138 · a pergunta passou a valer pra TODO negócio com sinal ligado, não só
+     pra quem tinha a chave. Ela existia mas ficava trancada, e o resultado foi
+     agendamento de balcão nascendo com sinal que a dona nunca pediu — vencia
+     no prazo e o horário voltava pra agenda calado (Wanessa e Lettícia,
+     26/08). `balcaoPadrao` guarda só qual lado já vem marcado. */
   const [sinalCfg, setSinalCfg] = useState<{
-    porAgendamento: boolean
     enabled: boolean
     temPix: boolean
     percent: number
+    expiraMinutos: number
+    balcaoPadrao: boolean
   } | null>(null)
-  const [sinalDecisao, setSinalDecisao] = useState(true)
+  /* Começa em NÃO cobrar e só sobe pra sim se a config do negócio mandar. Se a
+     config demorar ou falhar, o agendamento nasce sem sinal — errar pra cá
+     custa um clique, errar pro outro lado apaga agendamento. */
+  const [sinalDecisao, setSinalDecisao] = useState(false)
   // Walk-in / avulso (sem cadastro) + horário fora do grid (Eduardo 05/06).
   // Universais — valem pro sistema todo, não só um negócio.
   const [avulso, setAvulso] = useState(false)
@@ -270,20 +278,34 @@ export default function AgendarModal({
     let vivo = true
     supabase
       .from('businesses')
-      .select('sinal_enabled, sinal_percent, pix_key, sinal_por_agendamento')
+      .select('sinal_enabled, sinal_percent, pix_key, sinal_expira_minutos, sinal_balcao_padrao')
       .eq('id', businessId)
       .maybeSingle()
       .then(({ data }) => {
         if (!vivo || !data) return
         setSinalCfg({
-          porAgendamento: data.sinal_por_agendamento === true,
           enabled: data.sinal_enabled === true,
           temPix: !!data.pix_key,
           percent: Number(data.sinal_percent ?? 0),
+          expiraMinutos: Number(data.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN),
+          balcaoPadrao: data.sinal_balcao_padrao === true,
         })
+        /* A preferência do negócio só define o ESTADO INICIAL do botão. Depois
+           disso quem manda é o clique da dona — por isso setar aqui, na
+           resposta, e não a cada render. */
+        setSinalDecisao(data.sinal_balcao_padrao === true)
       })
     return () => { vivo = false }
   }, [businessId, supabase])
+
+  /* O modal não desmonta entre uma abertura e outra: sem este reset, a escolha
+     de sinal do agendamento ANTERIOR ficaria marcada no próximo. Ela cobraria
+     sinal de uma cliente por ter cobrado da anterior, sem reparar. Cada
+     agendamento começa do padrão do negócio. */
+  useEffect(() => {
+    if (!open || !sinalCfg) return
+    setSinalDecisao(sinalCfg.balcaoPadrao)
+  }, [open, sinalCfg])
 
   /* Chave do negócio pra escolher vários dias da semana na mesma série
      (CAF · 21/08). Carrega uma vez por abertura do modal; sem a chave, o bloco
@@ -873,7 +895,7 @@ export default function AgendarModal({
        o que reservar nem pra quem mandar cobranca. */
     const { data: cfgSinal } = await supabase
       .from('businesses')
-      .select('sinal_enabled, sinal_percent, pix_key, sinal_por_agendamento')
+      .select('sinal_enabled, sinal_percent, pix_key')
       .eq('id', businessId)
       .maybeSingle()
     /* Cliente de confiança não paga sinal (v118) · marcado na ficha dela.
@@ -890,17 +912,17 @@ export default function AgendarModal({
       clienteIsenta = fichaIsenta?.sinal_isento === true
     }
 
-    /* v134 · negócio que decide o sinal POR AGENDAMENTO respeita a escolha
-       feita no formulário. Sem a chave, `perguntaPorAgendamento` é false e a
-       conta fica idêntica à de sempre. */
-    const perguntaPorAgendamento = cfgSinal?.sinal_por_agendamento === true
+    /* v138 · a escolha do formulário vale SEMPRE. Antes disso, negócio sem a
+       chave `sinal_por_agendamento` cobrava sinal em tudo, ignorando qualquer
+       decisão — que é como a Wanessa e a Lettícia acabaram com sinal em
+       agendamento de balcão que elas nunca pediram. */
     const cobraSinal =
       cfgSinal?.sinal_enabled === true &&
       !!cfgSinal?.pix_key &&
       !avulso &&
       !clienteIsenta &&
       valorTotal > 0 &&
-      (!perguntaPorAgendamento || sinalDecisao)
+      sinalDecisao
     const valorSinal = cobraSinal
       ? Math.round(valorTotal * (Number(cfgSinal?.sinal_percent ?? 0) / 100) * 100) / 100
       : null
@@ -922,7 +944,7 @@ export default function AgendarModal({
       total_price: valorTotal,
       status: valorSinal ? 'pending' : 'confirmed',
       sinal_valor: valorSinal,
-      sinal_cobrar: perguntaPorAgendamento ? sinalDecisao : null,
+      sinal_cobrar: sinalDecisao,
       notes: notes.trim() || null,
       recurring_group_id: recurringGroupId,
       recurring_index: recurringGroupId ? idx + 1 : null,
@@ -1809,12 +1831,25 @@ export default function AgendarModal({
                   className="rounded-xl p-2.5 grid grid-cols-[1fr_90px_28px] gap-2 items-center"
                   style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}
                 >
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                      {Number(line.quantity ?? 1) !== 1 && (
+                        <span className="tabular-nums" style={{ color: 'var(--admin-accent)' }}>{line.quantity.toLocaleString('pt-BR')}× </span>
+                      )}
+                      {line.product_name}
+                    </p>
+                    {/* Fração (meio pacote de jumbo · Studio Mood) mostra o preço por unidade
+                        INTEIRA no input. Sem a conta explícita a pessoa lê R$209,80 e acha que
+                        é o que a cliente paga. Izanara perguntou isso em 26/08. */}
                     {Number(line.quantity ?? 1) !== 1 && (
-                      <span className="tabular-nums" style={{ color: 'var(--admin-accent)' }}>{line.quantity.toLocaleString('pt-BR')}× </span>
+                      <p className="text-[11px] tabular-nums mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+                        {line.quantity.toLocaleString('pt-BR')} × {formatBRL(Number(line.unit_price) || 0)} ={' '}
+                        <span className="font-bold" style={{ color: 'var(--admin-text)' }}>
+                          {formatBRL(Number(line.quantity ?? 1) * (Number(line.unit_price) || 0))}
+                        </span>
+                      </p>
                     )}
-                    {line.product_name}
-                  </p>
+                  </div>
                   <input
                     type="number"
                     min={0}
@@ -2014,8 +2049,10 @@ export default function AgendarModal({
           </Field>
           )}
 
-          {/* v134 · pergunta do sinal · só com a chave ligada e quando ele se aplica */}
-          {sinalCfg?.porAgendamento && sinalCfg.enabled && sinalCfg.temPix && !avulso && valorTotal > 0 && (
+          {/* v138 · pergunta do sinal · aparece pra TODO negócio com sinal
+              ligado. Antes ficava atrás de `sinal_por_agendamento` e o sinal
+              entrava sozinho em agendamento de balcão. */}
+          {sinalCfg?.enabled && sinalCfg.temPix && !avulso && valorTotal > 0 && (
             <Field label="Cobrar sinal deste agendamento?">
               <div className="flex gap-2">
                 <button
@@ -2047,8 +2084,20 @@ export default function AgendarModal({
                   Não cobrar
                 </button>
               </div>
+              {/* v138 · A REGRA, escrita na hora de decidir. Isto não existia em
+                  tela nenhuma do painel: a dona só descobria que o horário
+                  volta pra agenda quando o agendamento sumia. Prazo real do
+                  negócio, nunca um "2 horas" chumbado. */}
               <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-                Sem sinal, o horário já nasce confirmado.
+                {sinalDecisao ? (
+                  <>
+                    Se o sinal não cair em até{' '}
+                    <strong>{prazoSinalLabel(sinalCfg.expiraMinutos)}</strong>, o horário volta a
+                    ficar livre pra outra cliente marcar.
+                  </>
+                ) : (
+                  <>Sem sinal, o horário já nasce confirmado e não vence.</>
+                )}
               </p>
             </Field>
           )}
