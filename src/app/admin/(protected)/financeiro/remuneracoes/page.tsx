@@ -415,19 +415,26 @@ export default async function RemuneracoesPage({
 
           {/* Hint */}
           <p className="text-[11px] mt-1 text-center" style={{ color: 'var(--admin-text-faded)' }}>
-            Comissão calculada no faturamento (% configurável por profissional) · Clique na linha pra abrir ações
+            {business.comissao_valor_fixo === true
+              ? 'Comissão calculada no faturamento, pelo valor fixo de cada serviço · Clique na linha pra abrir ações'
+              : 'Comissão calculada no faturamento (% configurável por profissional) · Clique na linha pra abrir ações'}
           </p>
           {/* Explica a coluna nova onde ela existe · sem isto "aguardando
               convênio" parece dinheiro sumido em vez de dinheiro no prazo. */}
           {totalConvenioEmAberto > 0 && (
-            <p className="text-[11px] mt-0.5 text-center" style={{ color: '#0284C7' }}>
-              Aguardando convênio = atendimento já feito pela empresa · libera pra pagamento quando ela pagar
+            <p className="text-[11px] mt-0.5 text-center" style={{ color: '#B45309' }}>
+              Aguardando convênio = atendimento já feito para a empresa · libera pra pagamento quando ela pagar
             </p>
           )}
         </div>
       </div>
 
-      {/* Painel resumo flutuante · canto inferior direito (desktop) */}
+      {/* Painel resumo flutuante · canto inferior direito (desktop).
+          Espaçador antes dele: o card é `fixed` e cobria as duas linhas de
+          ajuda embaixo da tabela — inclusive a que explica o "aguardando
+          convênio", escrita justamente pra ninguém achar que sumiu dinheiro
+          (Eduardo, 27/08). */}
+      {rows.length > 0 && <div className="hidden lg:block" style={{ height: 220 }} />}
       {rows.length > 0 && (
         <div
           className="hidden lg:block fixed rounded-2xl p-4 z-30"
@@ -497,7 +504,7 @@ export default async function RemuneracoesPage({
             {totalConvenioEmAberto > 0 && (
               <div className="flex justify-between">
                 <span style={{ color: 'var(--admin-text-mute)' }}>Aguardando convênio</span>
-                <span className="font-semibold tabular-nums" style={{ color: '#0284C7' }}>
+                <span className="font-semibold tabular-nums" style={{ color: '#B45309' }}>
                   {formatBRL(totalConvenioEmAberto)}
                 </span>
               </div>

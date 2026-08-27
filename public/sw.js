@@ -19,7 +19,7 @@
 // de tentar o cache. Mesmo sintoma de 03/06, que na época pegou o JS.
 // v21 (25/08): troca do botão de faturar por "Marcar como atendido" no
 // atendimento de convênio + selo do card dividido mostrando a empresa.
-const STATIC_CACHE_VERSION = 'agendapro-static-v47'
+const STATIC_CACHE_VERSION = 'agendapro-static-v48'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

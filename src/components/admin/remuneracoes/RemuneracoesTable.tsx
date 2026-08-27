@@ -116,7 +116,7 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
                 {/* Só aparece pra quem tem convênio · negócio sem isso não
                     ganha coluna vazia na tela. */}
                 {temConvenioEmAberto && (
-                  <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: '#0284C7' }}>
+                  <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: '#B45309' }}>
                     Aguardando Convênio (R$)
                   </th>
                 )}
@@ -184,6 +184,12 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
                     {(() => {
                       const parts: string[] = []
                       if (r.commissionFromAppts > 0) parts.push(`serviços ${formatBRL(r.commissionFromAppts)}`)
+                      /* Sem esta parte o detalhe nao somava o Valor Total: a
+                         Ana Paula mostrava "serviços R$190" embaixo de um total
+                         de R$310 e os R$120 do convenio nao apareciam em lugar
+                         nenhum da linha (Eduardo, 27/08). Numa tela de dinheiro,
+                         numero que nao fecha faz duvidar dos outros. */
+                      if ((r.convenioEmAberto ?? 0) > 0) parts.push(`convênio ${formatBRL(r.convenioEmAberto ?? 0)}`)
                       if (r.commissionFromPackages > 0) parts.push(`pacotes ${formatBRL(r.commissionFromPackages)}`)
                       if (r.commissionFromSales > 0) parts.push(`produtos ${formatBRL(r.commissionFromSales)}`)
                       if (r.salarios > 0) parts.push(`salário ${formatBRL(r.salarios)}`)
@@ -209,7 +215,11 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
                   {temConvenioEmAberto && (
                     <td
                       className="px-4 py-3 text-right tabular-nums font-semibold"
-                      style={{ color: (r.convenioEmAberto ?? 0) > 0 ? '#0284C7' : 'var(--admin-text-mute)' }}
+                      /* Ambar, nao azul: "aguardando convenio" e "pendente
+                         pagamento" sao opostos — um o dono NAO pode pagar, o
+                         outro ele DEVE — e estavam na mesma cor. Trocar os dois
+                         de olho e o erro mais caro desta tela. */
+                      style={{ color: (r.convenioEmAberto ?? 0) > 0 ? '#B45309' : 'var(--admin-text-mute)' }}
                       title="Atendimento de convênio já feito · libera pra pagamento quando a empresa pagar"
                     >
                       {formatBRL(r.convenioEmAberto ?? 0)}
