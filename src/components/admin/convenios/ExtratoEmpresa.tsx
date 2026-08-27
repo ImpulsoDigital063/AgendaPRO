@@ -267,23 +267,33 @@ export default function ExtratoEmpresa({
        razão social, documento e endereço, o financeiro do outro lado não tem
        como lançar. */
     let topo = 14
+    let temLogo = false
     if (clinicaLogo) {
       try {
         const img = await carregarLogo(clinicaLogo)
         if (img) {
-          // Altura fixa, largura proporcional · logo deitada não deforma.
-          const alt = 14
-          const larg = Math.min(45, (img.w / img.h) * alt)
+          /* Encaixa numa caixa de 55x18mm respeitando a proporção: logo deitada
+             (a do CAF é 2:1) usa a largura, logo quadrada usa a altura. Nenhuma
+             das duas deforma. */
+          const MAX_L = 55, MAX_A = 18
+          const escala = Math.min(MAX_L / img.w, MAX_A / img.h)
+          const larg = img.w * escala
+          const alt = img.h * escala
           doc.addImage(img.dataUrl, 14, 10, larg, alt)
           topo = 10 + alt + 6
+          temLogo = true
         }
       } catch {
         // Logo é enfeite: se falhar, o documento sai igual, só sem ela.
       }
     }
 
+    /* Com logo, o nome sai menor: a marca já está desenhada acima e repetir o
+       mesmo nome em corpo 14 logo abaixo fica amador. Sem logo, ele é o
+       cabeçalho — e continua grande. O nome nunca some, porque tem logo que é
+       só símbolo, sem o nome escrito. */
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(14)
+    doc.setFontSize(temLogo ? 10 : 14)
     doc.text(clinicaNome, 14, topo)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
@@ -315,7 +325,10 @@ export default function ExtratoEmpresa({
       { align: 'right' },
     )
 
-    const yRegua = topo + 5 + Math.max(linhasClinica.length * 4.5, 14)
+    /* A régua desce abaixo do que for mais alto: o bloco da clínica à esquerda
+       ou o bloco de identificação do documento à direita (título + competência
+       + emissão ocupam ~14mm). */
+    const yRegua = topo + 4 + Math.max(linhasClinica.length * 4.5, 14)
     doc.setDrawColor(200)
     doc.line(14, yRegua, DIR, yRegua)
 
