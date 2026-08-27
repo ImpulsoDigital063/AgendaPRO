@@ -64,7 +64,7 @@ const PRESETS: Preset[] = [
   {
     category: 'Anamnese',
     name: 'Anamnese Completa · Esmalteria',
-    description: 'Ficha de saúde inicial · primeira visita da cliente · obrigatória pra procedimentos invasivos',
+    description: 'Ficha de saúde inicial · primeira visita do cliente · obrigatória pra procedimentos invasivos',
     fields: [
       { name: 'data_nascimento', label: 'Data de nascimento', type: 'date' },
       { name: 'telefone_emergencia', label: 'Telefone de emergência', type: 'text', helper: 'Contato pra acionar em caso de reação' },
@@ -112,7 +112,7 @@ const PRESETS: Preset[] = [
   {
     category: 'VIP',
     name: 'Ficha VIP · Preferências',
-    description: 'Registro de preferências da cliente fidelizada · agiliza atendimentos futuros',
+    description: 'Registro de preferências do cliente fidelizado · agiliza atendimentos futuros',
     fields: [
       { name: 'marca_esmalte', label: 'Marca de esmalte preferida', type: 'text', helper: 'Risqué · OPI · Vult · Dailus · etc' },
       { name: 'cor_favorita', label: 'Cor / tom favorito', type: 'text' },
@@ -142,7 +142,7 @@ const PRESETS: Preset[] = [
   {
     category: 'Avaliação',
     name: 'Avaliação Pós-Atendimento',
-    description: 'Feedback da cliente · NPS interno · base pra melhoria contínua',
+    description: 'Feedback do cliente · NPS interno · base pra melhoria contínua',
     fields: [
       { name: 'nota_geral', label: 'Nota geral (1 a 5)', type: 'number', required: true, helper: '1 = péssimo · 5 = excelente' },
       { name: 'gostou_mais', label: 'O que mais gostou', type: 'textarea' },

@@ -62,7 +62,7 @@ export default async function BloqueiosProfissionalPage() {
           Meus bloqueios
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-          Horários em que você não atende — almoço, folga, compromisso. A cliente
+          Horários em que você não atende — almoço, folga, compromisso. O cliente
           não consegue marcar neles.
         </p>
       </header>

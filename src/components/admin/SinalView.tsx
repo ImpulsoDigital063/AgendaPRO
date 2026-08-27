@@ -480,7 +480,7 @@ export default function SinalView() {
                 className="admin-input w-full px-3 py-2.5 text-sm"
               />
               <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-                É o nome que o cliente vê no app do banco dela. Use o titular da conta,
+                É o nome que o cliente vê no app do banco. Use o titular da conta,
                 não o nome do salão.
               </p>
             </div>
@@ -601,7 +601,7 @@ export default function SinalView() {
           </div>
 
           <p className="text-[11px] -mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-            Cancelando <b>antes</b> desse prazo, o sinal vira crédito na ficha do cliente e ela usa
+            Cancelando <b>antes</b> desse prazo, o sinal vira crédito na ficha do cliente e ele usa
             em outro horário. Cancelando <b>depois</b>, o sinal fica com você. Quando <b>você</b>{' '}
             cancela pelo painel, vira crédito sempre — o cliente não pode perder dinheiro por uma
             desmarcação sua.

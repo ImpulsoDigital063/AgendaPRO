@@ -198,7 +198,7 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
 
       <p className="text-[11px] text-center -mt-2" style={{ color: 'var(--admin-text-faded)' }}>
         Os três valores acima são a <strong>sua comissão</strong> ({commissionPercentage}%),
-        não o valor cobrado da cliente.
+        não o valor cobrado do cliente.
       </p>
 
       {/* Lista de agendamentos — readOnly (só dono confirma pagamento) */}

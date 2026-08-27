@@ -68,7 +68,7 @@ function PorQueEsseNumero() {
         seja seu.
       </p>
       <p>
-        <strong style={{ color: 'var(--admin-text)' }}>A cliente sabe de quem é.</strong>{' '}
+        <strong style={{ color: 'var(--admin-text)' }}>O cliente sabe de quem é.</strong>{' '}
         Toda mensagem começa com o nome do seu negócio e termina com o seu telefone, para ela
         remarcar ou tirar dúvida falando com você.
       </p>
@@ -123,7 +123,7 @@ export default function WhatsAppPainel({
           WhatsApp
         </h1>
         <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-          Os avisos que {businessName} manda sozinho para as clientes.
+          Os avisos que {businessName} manda sozinho para os clientes.
         </p>
       </header>
 

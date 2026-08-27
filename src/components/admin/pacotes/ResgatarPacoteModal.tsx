@@ -146,7 +146,7 @@ export default function ResgatarPacoteModal({ onClose, onResgatar }: Props) {
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Digite o nome da cliente..."
+                  placeholder="Digite o nome do cliente..."
                   className="admin-input w-full pl-9 pr-3 py-2.5 rounded-xl text-sm"
                 />
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--admin-accent)' }}><IconSearch size={15} /></span>
@@ -166,7 +166,7 @@ export default function ResgatarPacoteModal({ onClose, onResgatar }: Props) {
             )}
           </div>
 
-          {/* Pacotes ativos da cliente */}
+          {/* Pacotes ativos do cliente */}
           {customer && (
             <div>
               <label className="admin-label">Pacotes ativos</label>

@@ -220,7 +220,7 @@ export default function GradeTimelineHeader({
               dentro do "Registrar venda", que e onde a duvida aparece — e
               continua no menu, em Produtos. Quatro botoes lado a lado viram
               paralisia; a dona le todos antes de clicar em um. */}
-          {/* Resgatar pacote → busca a cliente, mostra os pacotes ativos e abre o
+          {/* Resgatar pacote → busca o cliente, mostra os pacotes ativos e abre o
               agendamento pré-preenchido (Eduardo 24/07). Gated pelo PACOTE_ENABLED. */}
           {PACOTE_ENABLED && !hideCaixaActions && (
             <Link
@@ -233,7 +233,7 @@ export default function GradeTimelineHeader({
                 borderTop: '1px solid rgba(255,255,255,0.30)',
                 boxShadow: '0 8px 22px -8px rgba(124,58,237,0.55), 0 2px 4px rgba(0,0,0,0.08)',
               }}
-              title="Resgatar sessão de pacote · busca a cliente e abre o agendamento pronto"
+              title="Resgatar sessão de pacote · busca o cliente e abre o agendamento pronto"
             >
               <IconGift size={14} /> Resgatar pacote
             </Link>

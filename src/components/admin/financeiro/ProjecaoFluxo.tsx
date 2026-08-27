@@ -200,7 +200,7 @@ export default function ProjecaoFluxo({
               style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.28)' }}
             >
               <span className="text-xs font-semibold" style={{ color: 'var(--admin-text-2)' }}>
-                {devendoQtd === 1 ? 'Cliente atendida e não paga' : `${devendoQtd} clientes atendidas e não pagas`}
+                {devendoQtd === 1 ? 'Cliente atendido e não pago' : `${devendoQtd} clientes atendidos e não pagos`}
                 {devendoDesde && <> · a mais antiga desde {dataCurta(devendoDesde)}</>}
               </span>
               <span className="text-sm font-black tabular-nums" style={{ color: '#B45309' }}>

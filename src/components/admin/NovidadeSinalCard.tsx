@@ -106,7 +106,7 @@ export default function NovidadeSinalCard({ sinalAtivo }: { sinalAtivo: boolean 
         <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
           Agora dá pra pedir um <strong>sinal por PIX</strong> pra confirmar o horário. O dinheiro cai
           direto na sua conta, sem taxa e sem intermediário — a gente só monta o código. Você escolhe
-          a porcentagem, o prazo pra pagar e o que acontece se a cliente cancelar. Já vem desligado:
+          a porcentagem, o prazo pra pagar e o que acontece se o cliente cancelar. Já vem desligado:
           só sente quem quiser usar.
         </p>
 

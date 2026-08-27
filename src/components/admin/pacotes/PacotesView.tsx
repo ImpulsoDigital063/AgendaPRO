@@ -203,7 +203,7 @@ export default function PacotesView({ initialPackages, services, products, busin
               color: '#fff',
               boxShadow: '0 4px 12px -4px rgba(124,58,237,0.5)',
             }}
-            title="Resgatar sessão de pacote de uma cliente"
+            title="Resgatar sessão de pacote de um cliente"
           >
             <IconGift size={14} /> Resgatar
           </button>
@@ -386,7 +386,7 @@ export default function PacotesView({ initialPackages, services, products, busin
                       boxShadow: '0 4px 12px -4px rgba(22,163,74,0.5)',
                     }}
                   >
-                    <IconGift size={14} /> Vender pra uma cliente
+                    <IconGift size={14} /> Vender pra um cliente
                   </button>
                 )}
 
@@ -417,7 +417,7 @@ export default function PacotesView({ initialPackages, services, products, busin
         />
       )}
 
-      {/* Modal vender pacote (parte do card · escolhe a cliente) */}
+      {/* Modal vender pacote (parte do card · escolhe o cliente) */}
       {selling && (
         <VenderPacoteCardModal
           packageId={selling.id}

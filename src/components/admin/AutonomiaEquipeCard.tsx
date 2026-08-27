@@ -114,7 +114,7 @@ export default function AutonomiaEquipeCard({
               Marcar na própria agenda
             </p>
             <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-              Ela agenda as clientes dela sem depender de você. Na agenda da colega,
+              Ela agenda os clientes dela sem depender de você. Na agenda da colega,
               não encosta.
             </p>
           </div>

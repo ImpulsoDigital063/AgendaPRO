@@ -385,7 +385,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
               className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums"
             />
             <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-              É o que a cliente paga. Deixe em branco pra cobrar a soma dos itens, ou coloque um valor menor pra dar desconto.
+              É o que o cliente paga. Deixe em branco pra cobrar a soma dos itens, ou coloque um valor menor pra dar desconto.
             </p>
           </div>
 
@@ -494,7 +494,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                       {!isProduct
                         ? 'Serviço'
                         : ehOpcao
-                          ? (primeira ? 'Material · a cliente escolhe' : 'ou')
+                          ? (primeira ? 'Material · o cliente escolhe' : 'ou')
                           : 'Produto'}
                     </span>
                     <select
@@ -649,7 +649,7 @@ export default function PacoteFormModal({ initial, services, products, loading, 
                 </>
               ) : (
                 <>
-                  <strong>Qtd = nº de sessões</strong> daquele serviço no pacote. Ex: <strong>4</strong> manutenções. A cliente resgata uma por vez, respeitando a validade.
+                  <strong>Qtd = nº de sessões</strong> daquele serviço no pacote. Ex: <strong>4</strong> manutenções. O cliente resgata uma por vez, respeitando a validade.
                   <br />
                   R$/un em branco = usa o preço padrão do serviço. O valor entra no caixa na venda; o resgate não re-entra, só registra a comissão.
                 </>

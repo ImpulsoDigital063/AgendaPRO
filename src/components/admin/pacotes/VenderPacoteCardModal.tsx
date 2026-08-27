@@ -114,7 +114,7 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, b
   // Chamado pelo PaymentMethodModal. method=null → "deixar em aberto" (recebe
   // depois no Caixa). Cartão vem com cardDetails (maquininha/tipo/bandeira/taxa).
   async function handlePay(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) {
-    if (!customer) { setError('Escolha a cliente'); setStep('client'); return }
+    if (!customer) { setError('Escolha o cliente'); setStep('client'); return }
     setError(null)
     setSubmitting(true)
     // 1) vende (cria customer_package + saldo + abre a comanda) · sem profissional:
@@ -168,11 +168,11 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, b
     return (
       <PaymentMethodModal
         open
-        clientName={customer?.name ?? 'a cliente'}
+        clientName={customer?.name ?? 'o cliente'}
         totalPrice={price}
         businessId={businessId}
         eyebrow={`Venda de pacote · ${packageName}`}
-        heading={`Como ${customer?.name ?? 'a cliente'} vai pagar?`}
+        heading={`Como ${customer?.name ?? 'o cliente'} vai pagar?`}
         deferLabel="Deixar em aberto (receber depois)"
         loading={submitting}
         onChoose={handlePay}
@@ -334,7 +334,7 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, b
           <div className="rounded-xl p-3 text-xs leading-relaxed"
             style={{ background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', color: 'var(--admin-text-2)' }}
           >
-            <b style={{ color: 'var(--admin-accent)' }}>Próximo passo:</b> escolher o pagamento — o pacote é <b>pago na venda</b> (entra no caixa de hoje). A cliente fica com o saldo de sessões pra <b>resgatar no agendamento</b>, e no resgate o serviço entra R$0 (já foi pago aqui).
+            <b style={{ color: 'var(--admin-accent)' }}>Próximo passo:</b> escolher o pagamento — o pacote é <b>pago na venda</b> (entra no caixa de hoje). O cliente fica com o saldo de sessões pra <b>resgatar no agendamento</b>, e no resgate o serviço entra R$0 (já foi pago aqui).
           </div>
 
           {error && (
@@ -358,7 +358,7 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, b
           </button>
           <button
             type="button"
-            onClick={() => { if (customer) { setError(null); setStep('payment') } else setError('Escolha a cliente') }}
+            onClick={() => { if (customer) { setError(null); setStep('payment') } else setError('Escolha o cliente') }}
             disabled={submitting || !customer}
             className="px-5 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
             style={{

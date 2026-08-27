@@ -40,7 +40,7 @@ const INFO: Record<string, { titulo: string; quando: string; porque: string }> =
   confirmacao: {
     titulo: 'Confirmação do agendamento',
     quando: 'Na hora que marca',
-    porque: 'A cliente recebe por escrito o que ficou combinado.',
+    porque: 'O cliente recebe por escrito o que ficou combinado.',
   },
   lembrete_vespera: {
     titulo: 'Lembrete na véspera',
@@ -71,7 +71,7 @@ function opcoesHoras(atual: number): number[] {
 }
 
 const VARIAVEIS = [
-  { chave: '{cliente}', label: 'nome da cliente' },
+  { chave: '{cliente}', label: 'nome do cliente' },
   { chave: '{data}', label: 'data' },
   { chave: '{hora}', label: 'hora' },
   { chave: '{servico}', label: 'serviço' },
@@ -272,7 +272,7 @@ export default function MensagensAutomaticasCard({
                         className="mt-0.5"
                       />
                       <span className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-                        Deixar a cliente confirmar pelo botão
+                        Deixar o cliente confirmar pelo botão
                         <span className="block text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
                           Ela toca em &quot;Confirmo&quot; e o agendamento é confirmado sozinho. Desligue se
                           você prefere que ela não responda por aqui.

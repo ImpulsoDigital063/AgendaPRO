@@ -126,7 +126,7 @@ export async function POST(
       console.error('cancel · crédito do sinal falhou:', err)
       return NextResponse.json({
         error: 'credito_nao_gravou',
-        detail: 'Não consegui registrar o crédito do sinal na ficha da cliente. O atendimento NÃO foi cancelado — tente de novo.',
+        detail: 'Não consegui registrar o crédito do sinal na ficha do cliente. O atendimento NÃO foi cancelado — tente de novo.',
       }, { status: 500 })
     }
   }

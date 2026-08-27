@@ -1128,7 +1128,7 @@ export default function BookingFlow({
         {/* SINAL (v112) · vem ANTES do hero: enquanto o PIX não cai, essa é a
             única coisa que importa na tela. Comemorar "agendado!" em cima de um
             horário que ainda pode cair seria mentir pra cliente. */}
-        {/* Crédito abatido (v113). Aparece MESMO quando quitou tudo: a cliente
+        {/* Crédito abatido (v113). Aparece MESMO quando quitou tudo: o cliente
             precisa entender por que não pediram PIX nenhum, senão acha que deu
             errado e vem perguntar pro salão. */}
         {creditoSinal && (

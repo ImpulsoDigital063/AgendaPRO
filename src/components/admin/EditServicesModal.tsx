@@ -313,7 +313,7 @@ export default function EditServicesModal({
               </p>
               <p>
                 Não dá pra mudar os serviços de uma comanda que já foi paga — os
-                valores não bateriam com o que a cliente pagou.
+                valores não bateriam com o que o cliente pagou.
               </p>
               <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
                 Pra ajustar: abra a comanda em <strong>Comandas</strong> e toque em{' '}

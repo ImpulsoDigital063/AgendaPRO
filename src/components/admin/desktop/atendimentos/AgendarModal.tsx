@@ -1348,12 +1348,12 @@ export default function AgendarModal({
                   {creditoNoSinal.quitado ? (
                     <>
                       O sinal já está <strong>quitado</strong> com{' '}
-                      <strong>{formatBRL(creditoNoSinal.aplicado)}</strong> de crédito da cliente.
+                      <strong>{formatBRL(creditoNoSinal.aplicado)}</strong> de crédito do cliente.
                       Não precisa cobrar.
                     </>
                   ) : (
                     <>
-                      <strong>{formatBRL(creditoNoSinal.aplicado)}</strong> de crédito da cliente
+                      <strong>{formatBRL(creditoNoSinal.aplicado)}</strong> de crédito do cliente
                       entraram no sinal. Cobre só a diferença na aba Sinal.
                     </>
                   )}

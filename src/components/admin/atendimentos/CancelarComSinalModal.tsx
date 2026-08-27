@@ -77,7 +77,7 @@ export default function CancelarComSinalModal({
 
   if (!open || !portalReady) return null
 
-  const primeiroNome = (clientName || 'A cliente').split(' ')[0]
+  const primeiroNome = (clientName || 'O cliente').split(' ')[0]
 
   /* Só houve PIX se alguma parte do sinal entrou em dinheiro. Quando o sinal
      saiu inteiro do crédito da cliente, não existe o que devolver — o valor

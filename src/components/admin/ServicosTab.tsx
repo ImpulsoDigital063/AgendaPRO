@@ -523,8 +523,8 @@ export default function ServicosTab({ businessId, initialServices, category, com
                 problema dele, e ainda assim ficou com 6 atendimentos zerados. */}
             <p className="text-[11px] mt-1.5 leading-snug" style={{ color: 'var(--admin-text-faded)' }}>
               {form.price.trim()
-                ? 'A cliente vê este valor na página de agendamento.'
-                : 'Deixe vazio se o valor depende do atendimento. A cliente vê “sob consulta” e você informa quanto foi ao fechar a comanda.'}
+                ? 'O cliente vê este valor na página de agendamento.'
+                : 'Deixe vazio se o valor depende do atendimento. O cliente vê “sob consulta” e você informa quanto foi ao fechar a comanda.'}
             </p>
           </div>
           <div className="flex-1">
@@ -891,8 +891,8 @@ function ServiceCard({
             />
             <p className="text-[11px] mt-1.5 leading-snug" style={{ color: 'var(--admin-text-faded)' }}>
               {editForm.price.trim()
-                ? 'A cliente vê este valor na página de agendamento.'
-                : 'Deixe vazio se o valor depende do atendimento. A cliente vê “sob consulta” e você informa quanto foi ao fechar a comanda.'}
+                ? 'O cliente vê este valor na página de agendamento.'
+                : 'Deixe vazio se o valor depende do atendimento. O cliente vê “sob consulta” e você informa quanto foi ao fechar a comanda.'}
             </p>
           </div>
           <div className="flex-1">
