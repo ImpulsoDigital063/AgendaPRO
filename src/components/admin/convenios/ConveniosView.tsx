@@ -93,6 +93,9 @@ export default function ConveniosView({
   const [cnpj, setCnpj] = useState('')
   const [contatoNome, setContatoNome] = useState('')
   const [contatoTelefone, setContatoTelefone] = useState('')
+  const [contatoEmail, setContatoEmail] = useState('')
+  const [diaVencimento, setDiaVencimento] = useState('')
+  const [instrucoes, setInstrucoes] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -111,6 +114,9 @@ export default function ConveniosView({
         cnpj: cnpj.trim() || null,
         contato_nome: contatoNome.trim() || null,
         contato_telefone: contatoTelefone.replace(/\D/g, '') || null,
+        contato_email: contatoEmail.trim() || null,
+        dia_vencimento: diaVencimento.trim() ? Math.min(31, Math.max(1, parseInt(diaVencimento, 10))) : null,
+        instrucoes_pagamento: instrucoes.trim() || null,
       })
       .select('id')
       .maybeSingle()
@@ -124,6 +130,9 @@ export default function ConveniosView({
     setCnpj('')
     setContatoNome('')
     setContatoTelefone('')
+    setContatoEmail('')
+    setDiaVencimento('')
+    setInstrucoes('')
     if (data?.id) router.push(`/admin/convenios/${data.id}`)
     else router.refresh()
   }
@@ -388,6 +397,51 @@ export default function ConveniosView({
                 onChange={(e) => setContatoTelefone(maskPhoneProgressive(e.target.value))}
                 className="admin-input w-full px-3 py-2.5 text-sm"
                 placeholder="(00) 00000-0000"
+              />
+            </div>
+
+            {/* Estes três nasceram só na edição (25-27/08) e faltavam aqui — o
+                dono cadastrava o convênio e depois tinha que entrar na empresa
+                pra completar. Pior no e-mail: sem ele o botão de enviar o
+                extrato já nasce desabilitado, sem dizer o motivo. */}
+            <div>
+              <label className="admin-label">E-mail do contato</label>
+              <input
+                type="email"
+                value={contatoEmail}
+                onChange={(e) => setContatoEmail(e.target.value)}
+                className="admin-input w-full px-3 py-2.5 text-sm"
+                placeholder="rh@empresa.com.br"
+              />
+              <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                É pra esse endereço que o extrato do mês é enviado.
+              </p>
+            </div>
+            <div>
+              <label className="admin-label">Dia do pagamento</label>
+              <input
+                type="number"
+                min={1}
+                max={31}
+                value={diaVencimento}
+                onChange={(e) => setDiaVencimento(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                className="admin-input w-full px-3 py-2.5 text-sm"
+                placeholder="ex: 10"
+              />
+              <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                {diaVencimento
+                  ? `A fatura de um mês vence no dia ${diaVencimento} do mês seguinte.`
+                  : 'Em branco, o sistema não avisa atraso dessa empresa.'}
+              </p>
+            </div>
+            <div>
+              <label className="admin-label">Instruções de pagamento</label>
+              <textarea
+                value={instrucoes}
+                onChange={(e) => setInstrucoes(e.target.value)}
+                rows={2}
+                className="admin-input w-full px-3 py-2.5 text-sm"
+                placeholder="PIX, banco ou nº de empenho · sai no rodapé do PDF"
               />
             </div>
 
