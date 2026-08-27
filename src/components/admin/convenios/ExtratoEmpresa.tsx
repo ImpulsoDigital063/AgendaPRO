@@ -605,7 +605,7 @@ export default function ExtratoEmpresa({
           </div>
           <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
             Fechar congela numa fatura numerada só o que ainda está <strong>em aberto</strong> — o que
-            você mandar pro RH não muda depois. Atendimento já recebido não entra (não se cobra duas
+            você mandar pra empresa não muda depois. Atendimento já recebido não entra (não se cobra duas
             vezes), e lançamento novo no mesmo mês vai pra próxima fatura.
             {!temEmail && ' Pra enviar por e-mail, cadastre o e-mail da empresa aqui embaixo.'}
           </p>
@@ -649,8 +649,8 @@ export default function ExtratoEmpresa({
                       que ganhar trava pra não cobrar de novo do RH. */}
                   {!temFaturaDoMes && (
                     <p className="text-[11px]" style={{ color: '#B45309' }}>
-                      Você ainda não fechou a fatura de {mesBR}. O caminho normal é fechar, mandar pro
-                      RH e registrar o recebimento só quando a empresa pagar.
+                      Você ainda não fechou a fatura de {mesBR}. O caminho normal é fechar, mandar pra
+                      empresa e registrar o recebimento só quando ela pagar.
                     </p>
                   )}
                   <button

@@ -796,7 +796,7 @@ export async function enviarExtratoConvenio(p: {
 
   const body = `
     ${p.contatoNome ? `Olá, ${esc(p.contatoNome)}.<br><br>` : ''}
-    Segue o extrato dos atendimentos dos funcionários da <strong>${esc(p.empresaNome)}</strong>
+    Segue o extrato dos atendimentos dos pacientes da <strong>${esc(p.empresaNome)}</strong>
     na competência <strong>${mesBR}</strong>.<br>
     <span style="color:#64748b">Fatura nº ${p.numero} · ${p.linhas.length} atendimento${p.linhas.length !== 1 ? 's' : ''}</span>
     <br><br>

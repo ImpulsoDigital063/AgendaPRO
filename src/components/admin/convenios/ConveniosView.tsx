@@ -169,7 +169,7 @@ export default function ConveniosView({
                 {brl(aFaturar)}
               </p>
               <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                {aFaturar > 0 ? 'De meses fechados · mande pro RH' : 'Nenhum mês fechado a cobrar'}
+                {aFaturar > 0 ? 'De meses fechados · mande pra empresa' : 'Nenhum mês fechado a cobrar'}
               </p>
               {emCurso > 0 && (
                 <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
