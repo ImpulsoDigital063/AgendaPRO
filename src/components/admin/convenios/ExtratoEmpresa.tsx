@@ -200,7 +200,7 @@ export default function ExtratoEmpresa({
       const r: Row = {
         Data: dataBR(l.data),
         Horário: l.hora,
-        Funcionário: l.funcionario,
+        Paciente: l.funcionario,
         Profissional: l.profissional,
         Serviço: l.servico,
         Valor: l.valor,
@@ -208,7 +208,7 @@ export default function ExtratoEmpresa({
       if (misturaSituacao) r['Situação'] = l.pago ? 'Pago' : 'Em aberto'
       return r
     })
-    dados.push({ Data: '', Horário: '', Funcionário: '', Profissional: '', Serviço: 'TOTAL', Valor: totais.total })
+    dados.push({ Data: '', Horário: '', Paciente: '', Profissional: '', Serviço: 'TOTAL', Valor: totais.total })
 
     /* Cabeçalho de identificação · a planilha abria direto na linha de títulos
        e quem recebia não sabia de quem era sem olhar o nome do arquivo. */
@@ -236,11 +236,11 @@ export default function ExtratoEmpresa({
 
     // Aba de conferência do RH · uma linha por servidor.
     const resumo = porFuncionario.map(([nome, x]) => ({
-      Funcionário: nome,
+      Paciente: nome,
       Atendimentos: x.qtd,
       Valor: x.valor,
     }))
-    resumo.push({ Funcionário: 'TOTAL', Atendimentos: totais.qtd, Valor: totais.total })
+    resumo.push({ Paciente: 'TOTAL', Atendimentos: totais.qtd, Valor: totais.total })
     const wsResumo = XLSX.utils.json_to_sheet(resumo)
     wsResumo['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }]
     const refR = XLSX.utils.decode_range(wsResumo['!ref'] ?? 'A1')
@@ -248,7 +248,7 @@ export default function ExtratoEmpresa({
       const cel = wsResumo[XLSX.utils.encode_cell({ c: 2, r })]
       if (cel && typeof cel.v === 'number') { cel.t = 'n'; cel.z = 'R$ #,##0.00' }
     }
-    XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo por funcionário')
+    XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo por paciente')
 
     XLSX.writeFile(wb, `${nomeArquivo}.xlsx`)
   }
@@ -375,7 +375,7 @@ export default function ExtratoEmpresa({
     // Capa de conferência: quantas sessões cada servidor fez.
     autoTable(doc, {
       startY: inicioTabela,
-      head: [['Funcionário', 'Atendimentos', 'Valor']],
+      head: [['Paciente', 'Atendimentos', 'Valor']],
       body: porFuncionario.map(([nome, x]) => [nome, String(x.qtd), brl(x.valor)]),
       foot: [['TOTAL', String(totais.qtd), brl(totais.total)]],
       styles: { fontSize: 9 },
@@ -389,7 +389,7 @@ export default function ExtratoEmpresa({
     const apos = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 28
     doc.setFontSize(11)
     doc.text('Detalhamento dos atendimentos', 14, apos + 10)
-    const cab = ['Data', 'Horário', 'Funcionário', 'Profissional', 'Serviço', 'Valor']
+    const cab = ['Data', 'Horário', 'Paciente', 'Profissional', 'Serviço', 'Valor']
     const rodape = ['', '', '', '', 'TOTAL', brl(totais.total)]
     if (misturaSituacao) { cab.push('Situação'); rodape.push('') }
     autoTable(doc, {
@@ -511,7 +511,7 @@ export default function ExtratoEmpresa({
                 <tr style={{ color: 'var(--admin-text-faded)' }}>
                   <th className="text-left py-1.5 pr-2 font-semibold">Data</th>
                   <th className="text-left py-1.5 pr-2 font-semibold">Hora</th>
-                  <th className="text-left py-1.5 pr-2 font-semibold">Funcionário</th>
+                  <th className="text-left py-1.5 pr-2 font-semibold">Paciente</th>
                   <th className="text-left py-1.5 pr-2 font-semibold">Profissional</th>
                   <th className="text-left py-1.5 pr-2 font-semibold">Serviço</th>
                   <th className="text-right py-1.5 pr-2 font-semibold">Valor</th>

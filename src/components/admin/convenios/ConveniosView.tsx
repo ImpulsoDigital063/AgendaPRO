@@ -205,7 +205,7 @@ export default function ConveniosView({
             Nenhuma empresa conveniada ainda
           </p>
           <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-            Cadastre a empresa, vincule os funcionários que ela cobre e escolha quais profissionais
+            Cadastre a empresa, vincule os pacientes que ela cobre e escolha quais profissionais
             atendem por ela.
           </p>
         </div>
@@ -231,7 +231,7 @@ export default function ConveniosView({
                     )}
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                    {e.total_funcionarios} funcionário{e.total_funcionarios !== 1 ? 's' : ''} ·{' '}
+                    {e.total_funcionarios} paciente{e.total_funcionarios !== 1 ? 's' : ''} ·{' '}
                     {e.total_profissionais} {e.total_profissionais === 1 ? 'profissional' : 'profissionais'}
                     {e.contato_nome ? ` · ${e.contato_nome}` : ''}
                   </p>

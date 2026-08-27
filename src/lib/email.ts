@@ -805,7 +805,7 @@ export async function enviarExtratoConvenio(p: {
         <tr style="text-align:left;color:#64748b;font-size:11px;text-transform:uppercase">
           <th style="padding:6px 8px">Data</th>
           <th style="padding:6px 8px">Hora</th>
-          <th style="padding:6px 8px">Funcionário</th>
+          <th style="padding:6px 8px">Paciente</th>
           <th style="padding:6px 8px">Profissional</th>
           <th style="padding:6px 8px">Serviço</th>
           <th style="padding:6px 8px;text-align:right">Valor</th>

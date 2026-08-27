@@ -271,11 +271,13 @@ export default function EmpresaDetalheView({
         </div>
       </section>
 
-      {/* Funcionários cobertos pelo convênio */}
+      {/* Pacientes cobertos pelo convênio · o Gustavo pediu "paciente" no lugar
+          de "funcionário" (27/08): na clínica dele a pessoa é paciente, e o
+          extrato ia pro RH falando outra língua. */}
       <section className="admin-card p-4 space-y-3">
         <div>
           <h2 className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
-            Funcionários da empresa ({funcionarios.length})
+            Pacientes cobertos ({funcionarios.length})
           </h2>
           <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
             Os atendimentos dessas pessoas entram na conta da empresa.
@@ -337,7 +339,7 @@ export default function EmpresaDetalheView({
           ))}
           {funcionarios.length === 0 && (
             <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-              Nenhum funcionário vinculado. Busque o paciente acima pra incluir.
+              Nenhum paciente vinculado. Busque acima pra incluir.
             </p>
           )}
         </div>
