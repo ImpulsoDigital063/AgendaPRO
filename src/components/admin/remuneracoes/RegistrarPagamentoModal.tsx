@@ -77,7 +77,7 @@ export default function RegistrarPagamentoModal({
       toEnd.setDate(toEnd.getDate() + 1)
       const { data, error: err } = await sb
         .from('appointments')
-        .select('id, paid_at, service_name, client_name, total_price')
+        .select('id, paid_at, service_name, client_name, total_price, commission_amount')
         .eq('professional_id', professionalId)
         .gte('paid_at', fromIso)
         .lt('paid_at', toEnd.toISOString())
@@ -97,7 +97,16 @@ export default function RegistrarPagamentoModal({
         service_name: a.service_name,
         client_name: a.client_name,
         total_price: a.total_price,
-        commissionValue: (Number(a.total_price ?? 0) * defaultCommissionPercent) / 100,
+        /* Valor FIXO fotografado no atendimento tem prioridade sobre a
+           porcentagem (27/08). Sem isto o modal calculava preço × % — e num
+           negócio de comissão fixa a % está em 0, então TODO item vinha R$0,00
+           e o total do pagamento também. Na prática era impossível registrar
+           pagamento de comissão pelo painel no CAF: o botão abria, somava zero
+           e recusava com "informe um valor maior que zero". */
+        commissionValue:
+          a.commission_amount != null
+            ? Number(a.commission_amount)
+            : (Number(a.total_price ?? 0) * defaultCommissionPercent) / 100,
       }))
 
       setItems(normalized)

@@ -72,6 +72,8 @@ export default async function ColaboradorPage({
         <SubPageHeader title="Colaborador" subtitle={prof.name} back="/admin/configuracoes?tab=profissionais" />
         <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8">
           <ColaboradorTabs
+            comissaoValorFixo={business.comissao_valor_fixo === true}
+            vendasBalcao={business.vendas_balcao_enabled !== false}
             prof={{
               id: prof.id,
               name: prof.name,

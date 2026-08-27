@@ -62,6 +62,13 @@ type Props = {
   initialVouchers: Voucher[]
   initialSalaries: Salary[]
   initialAppointments?: Appointment[]
+  /** businesses.comissao_valor_fixo · "Comissão 0%" no cabeçalho fazia parecer
+   *  que a profissional não ganha nada, quando na verdade ela ganha por valor
+   *  fixo de serviço e a porcentagem nem é usada (Eduardo, 27/08). */
+  comissaoValorFixo?: boolean
+  /** businesses.vendas_balcao_enabled · negócio que não vende produto não
+   *  mostra "Vende Produtos" no perfil de ninguém. */
+  vendasBalcao?: boolean
 }
 
 type TabKey = 'perfil' | 'configuracoes' | 'atividades' | 'salarios' | 'vales'
@@ -74,7 +81,7 @@ function formatDate(d: string): string {
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })
 }
 
-export default function ColaboradorTabs({ prof, initialVouchers, initialSalaries, initialAppointments = [] }: Props) {
+export default function ColaboradorTabs({ prof, initialVouchers, initialSalaries, initialAppointments = [], comissaoValorFixo = false, vendasBalcao = true }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('perfil')
   const [vouchers, setVouchers] = useState(initialVouchers)
@@ -160,7 +167,9 @@ export default function ColaboradorTabs({ prof, initialVouchers, initialSalaries
           <p className="text-xs mt-1" style={{ color: 'var(--admin-accent)' }}>
             {prof.is_receptionist
               ? 'Sem comissão · controle por salário fixo (aba Salários)'
-              : `Comissão ${prof.default_commission_percent}%`}
+              : comissaoValorFixo
+                ? 'Comissão em valor fixo por serviço'
+                : `Comissão ${prof.default_commission_percent}%`}
           </p>
         </div>
       </div>
@@ -202,7 +211,7 @@ export default function ColaboradorTabs({ prof, initialVouchers, initialSalaries
       )}
 
       {/* Conteúdo por tab */}
-      {tab === 'perfil' && <PerfilTab prof={prof} />}
+      {tab === 'perfil' && <PerfilTab prof={prof} vendasBalcao={vendasBalcao} />}
 
       {tab === 'configuracoes' && <ConfiguracoesTab prof={prof} />}
 
@@ -458,7 +467,7 @@ function cargosList(prof: Prof): string[] {
   return out
 }
 
-function PerfilTab({ prof }: { prof: Prof }) {
+function PerfilTab({ prof, vendasBalcao = true }: { prof: Prof; vendasBalcao?: boolean }) {
   const cargos = cargosList(prof)
   return (
     <div
@@ -472,7 +481,7 @@ function PerfilTab({ prof }: { prof: Prof }) {
       {/* Atribuições · check/X · esmaece quando false (igual Luana no Salão99) */}
       <div className="space-y-1.5">
         <Attribution label="Executa Atendimentos" enabled={prof.does_appointments !== false} />
-        <Attribution label="Vende Produtos" enabled={prof.sells_products !== false} />
+        {vendasBalcao && <Attribution label="Vende Produtos" enabled={prof.sells_products !== false} />}
         <Attribution label="Vende Pacotes" enabled={prof.sells_packages !== false} />
       </div>
 

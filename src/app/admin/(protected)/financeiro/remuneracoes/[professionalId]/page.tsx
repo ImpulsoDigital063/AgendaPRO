@@ -119,6 +119,8 @@ export default async function RemuneracaoDetalhePage({
     valorPago: number
     pagamentoPendente: number
     paymentMethod: string | null
+    veioDeValorFixo: boolean
+    percentUsado: number
   }
 
   // λ.valor-liquido: comissão incide sobre o valor LÍQUIDO (cupom da comanda
@@ -146,6 +148,11 @@ export default async function RemuneracaoDetalhePage({
       client: a.client_name ?? '—',
       valorBase: base,
       valorRemuneracao: remuneracao,
+      /* Pra tela não escrever "Cálculo: 0%" embaixo de uma comissão de R$45
+         que veio de valor fixo — parecia defeito, e num negócio de comissão
+         fixa isso acontecia em TODA linha (Eduardo, 27/08). */
+      veioDeValorFixo: fixa != null,
+      percentUsado: pctDoAppt,
       valorPago: paid,
       pagamentoPendente: pendente,
       paymentMethod: a.payment_method as string | null,
@@ -165,6 +172,8 @@ export default async function RemuneracaoDetalhePage({
       valorRemuneracao: remuneracao,
       valorPago: 0,
       pagamentoPendente: remuneracao,
+      veioDeValorFixo: false,
+      percentUsado: pct,
       paymentMethod: 'package',
     })
   }
@@ -181,6 +190,8 @@ export default async function RemuneracaoDetalhePage({
       valorRemuneracao: remuneracao,
       valorPago: 0,
       pagamentoPendente: remuneracao,
+      veioDeValorFixo: false,
+      percentUsado: pct,
       paymentMethod: 'gift_card',
     })
   }
@@ -279,13 +290,19 @@ export default async function RemuneracaoDetalhePage({
                                 {formatBRL(r.valorRemuneracao)}
                               </p>
                               <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
-                                Cálculo: {pct}% ·{' '}
-                                <DetalheCalculoLink
-                                  valorVenda={r.valorBase}
-                                  percent={pct}
-                                  valorBruto={r.valorRemuneracao}
-                                  valorTotal={r.valorRemuneracao}
-                                />
+                                {r.veioDeValorFixo ? (
+                                  'Valor fixo do serviço'
+                                ) : (
+                                  <>
+                                    Cálculo: {r.percentUsado}% ·{' '}
+                                    <DetalheCalculoLink
+                                      valorVenda={r.valorBase}
+                                      percent={r.percentUsado}
+                                      valorBruto={r.valorRemuneracao}
+                                      valorTotal={r.valorRemuneracao}
+                                    />
+                                  </>
+                                )}
                               </p>
                             </td>
                             <td className="px-4 py-3 text-right tabular-nums" style={{ color: r.valorPago > 0 ? '#059669' : 'var(--admin-text-mute)' }}>
