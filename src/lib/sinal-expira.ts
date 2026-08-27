@@ -26,7 +26,13 @@ type ApptSinal = {
   sinal_valor: number | string | null
   sinal_pago_at: string | null
   created_at: string
+  sinal_aviso_enviado_at?: string | null
 }
+
+/* Folga entre o aviso sair e o horário poder ser solto (v140). 30 min é o
+   tempo de ela ver a notificação, abrir o app e apertar "Recebi o sinal" —
+   não é pra ser generoso, é pra não ser impossível. */
+export const FOLGA_APOS_AVISO_MIN = 30
 
 /** Reservado, não pago e fora do prazo. */
 export function sinalVencido(appt: ApptSinal, minutos: number, agora = Date.now()): boolean {
@@ -35,6 +41,35 @@ export function sinalVencido(appt: ApptSinal, minutos: number, agora = Date.now(
   if (appt.sinal_pago_at) return false
   const limite = new Date(appt.created_at).getTime() + minutos * 60_000
   return agora > limite
+}
+
+/**
+ * v140 · O horário só é solto se a dona JÁ TIVER SIDO AVISADA e tiver passado
+ * uma folga desde o aviso.
+ *
+ * Por que isso existe: vencer não pode significar "some em silêncio". O caso
+ * que provou (Ariadne, 26/08) é o pior possível — a cliente PAGOU o PIX, a
+ * dona não marcou "Recebi" a tempo, e o sistema soltou o horário por cima de
+ * uma venda feita. Sem aviso registrado, ninguém teve chance de reagir.
+ *
+ * Efeito colateral proposital: se a varredura de aviso parar de rodar, o
+ * horário fica PRESO em vez de ser solto. O sistema erra segurando horário,
+ * nunca vendendo duas vezes o mesmo. É o lado certo pra errar.
+ *
+ * O que a marca garante: que o aviso foi TENTADO (push + e-mail). Não garante
+ * que ela viu — aparelho no silencioso, notificação nunca ativada. Garantir
+ * leitura é impossível; garantir que ninguém foi surpreendido sem o sistema ao
+ * menos tentar, é o que dá pra fazer.
+ */
+export function podeSoltarHorario(
+  appt: ApptSinal,
+  minutos: number,
+  agora = Date.now(),
+  folgaMin = FOLGA_APOS_AVISO_MIN,
+): boolean {
+  if (!sinalVencido(appt, minutos, agora)) return false
+  if (!appt.sinal_aviso_enviado_at) return false
+  return agora > new Date(appt.sinal_aviso_enviado_at).getTime() + folgaMin * 60_000
 }
 
 /**
@@ -93,7 +128,7 @@ export async function limparSinaisVencidos(
 
   let q = db
     .from('appointments')
-    .select('id, status, sinal_valor, sinal_pago_at, created_at')
+    .select('id, status, sinal_valor, sinal_pago_at, created_at, sinal_aviso_enviado_at')
     .eq('business_id', escopo.businessId)
     .eq('status', 'pending')
     .is('sinal_pago_at', null)
@@ -102,7 +137,11 @@ export async function limparSinaisVencidos(
   if (escopo.date) q = q.eq('appointment_date', escopo.date)
 
   const { data: candidatos } = await q
-  const vencidos = (candidatos ?? []).filter((a) => sinalVencido(a as ApptSinal, minutos as number))
+  /* v140 · vencer não basta: só cancela quem já foi AVISADO e teve a folga.
+     Antes disto, abrir a aba Sinal cancelava tudo que estava vencido de uma
+     vez — foi assim que a Wanessa perdeu três agendamentos às 12:51 do dia
+     26/08, um deles com o sinal já pago. */
+  const vencidos = (candidatos ?? []).filter((a) => podeSoltarHorario(a as ApptSinal, minutos as number))
   if (vencidos.length === 0) return 0
 
   /* Cancela só o que ainda está pending e sem pagamento: se o PIX caiu e a

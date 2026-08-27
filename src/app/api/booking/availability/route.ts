@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
-import { sinalVencido, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
+import { podeSoltarHorario, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 
 /**
  * GET /api/booking/availability?business=<id>&professional=<id>&date=YYYY-MM-DD
@@ -58,13 +58,17 @@ export async function GET(req: NextRequest) {
      rota pública de leitura, chamada a cada troca de dia, sairia caro e daria
      brecha pra forçar cancelamento em massa batendo na URL.
      Esconder aqui e cancelar lá dá o mesmo resultado pra cliente: ela vê o
-     horário livre e consegue marcar. */
+     horário livre e consegue marcar.
+     v140 · agora vencer não basta: só esconde depois que o aviso saiu e passou
+     a folga. `sinal_aviso_enviado_at` entra no SELECT por causa disso — a
+     regra mora em podeSoltarHorario e vale igual aqui e na limpeza, senão a
+     rota pública seguraria o horário enquanto a limpeza cancelaria por trás. */
   const qAppointments = db
     .from('appointments')
     .select(
       modoIntervalo
-        ? 'appointment_date, start_time, end_time, status, sinal_valor, sinal_pago_at, created_at'
-        : 'start_time, end_time, status, sinal_valor, sinal_pago_at, created_at',
+        ? 'appointment_date, start_time, end_time, status, sinal_valor, sinal_pago_at, created_at, sinal_aviso_enviado_at'
+        : 'start_time, end_time, status, sinal_valor, sinal_pago_at, created_at, sinal_aviso_enviado_at',
     )
     .eq('professional_id', professionalId)
     .in('status', ['pending', 'confirmed', 'completed'])
@@ -95,11 +99,16 @@ export async function GET(req: NextRequest) {
     sinal_valor: number | string | null
     sinal_pago_at: string | null
     created_at: string
+    sinal_aviso_enviado_at: string | null
   }
 
   const minutos = Number(negocio?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN)
+  /* v140 · o horário só some daqui depois que a dona foi AVISADA e teve folga
+     pra reagir. Antes bastava o prazo estourar, e o horário era oferecido pra
+     outra cliente sem ninguém saber — inclusive por cima de sinal já pago que
+     ela só não tinha marcado (caso Ariadne, 26/08). */
   const ocupados = ((appointments ?? []) as unknown as ApptRow[]).filter(
-    (a) => !(negocio?.sinal_enabled && sinalVencido(a, minutos)),
+    (a) => !(negocio?.sinal_enabled && podeSoltarHorario(a, minutos)),
   )
 
   // O client só usa horário; os campos do sinal ficam no servidor.
