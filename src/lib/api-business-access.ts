@@ -20,7 +20,11 @@ type ServerClient = Awaited<ReturnType<typeof createClient>>
  * Existe pra não repetir esse gate em cada rota: era copiado em 24 arquivos, e
  * cada capacidade nova dada à profissional estourava num deles, um de cada vez.
  */
-export async function resolveBusinessIdOperacao(supabase: ServerClient): Promise<string | null> {
+export async function resolveBusinessIdOperacao(
+  supabase: ServerClient,
+  /** v131 · aceita também a profissional que só pode ACRESCENTAR serviço na comanda */
+  permitirAdicionaServico = false,
+): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
@@ -44,9 +48,17 @@ export async function resolveBusinessIdOperacao(supabase: ServerClient): Promise
 
   const { data: biz } = await supabase
     .from('businesses')
-    .select('professionals_can_book_others')
+    .select('professionals_can_book_others, prof_adiciona_servico')
     .eq('id', prof.business_id)
     .maybeSingle()
 
-  return biz?.professionals_can_book_others === true ? prof.business_id : null
+  if (biz?.professionals_can_book_others === true) return prof.business_id
+
+  /* v131 · Studio Isis Melo separou as duas coisas que a flag acima juntava:
+     lá a profissional NÃO marca pra ninguém (chave desligada), mas PODE
+     acrescentar um serviço num atendimento que já existe. `permitirAdicionaServico`
+     só é pedido pelas rotas de item de comanda — nas demais nada muda. */
+  if (permitirAdicionaServico && biz?.prof_adiciona_servico === true) return prof.business_id
+
+  return null
 }

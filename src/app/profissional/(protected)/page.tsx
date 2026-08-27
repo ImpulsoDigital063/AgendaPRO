@@ -41,7 +41,7 @@ export default async function ProfissionalPage({
   // Busca o profissional logado · inclui brand_logo_url pra header
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, business:businesses(id, name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda, prof_registra_pagamento, prof_edita_horario)')
+    .select('*, business:businesses(id, name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda, prof_registra_pagamento, prof_edita_horario, prof_cancela_agendamento, prof_adiciona_servico)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -63,6 +63,15 @@ export default async function ProfissionalPage({
   const punctualityBonus = business.punctuality_bonus_points ?? 10
   // Só false desliga. Null/undefined (negócio antigo) segue podendo receber.
   const podeRegistrarPagamento = business.prof_registra_pagamento !== false
+  // v131 · Studio Isis Melo: profissional confirma e conclui, mas não desmarca.
+  // v131 · Studio Isis Melo: acrescenta serviço no atendimento, nunca remove.
+  const podeAdicionarServico =
+    (professional.business as { prof_adiciona_servico?: boolean | null } | null)
+      ?.prof_adiciona_servico === true
+
+  const podeCancelar =
+    (professional.business as { prof_cancela_agendamento?: boolean | null } | null)
+      ?.prof_cancela_agendamento !== false
   const canBookSelf = business.professionals_can_book_self === true
   const canBookOthers = business.professionals_can_book_others === true
   const seeTeamAgenda = business.professionals_see_team_agenda === true
@@ -419,7 +428,7 @@ export default async function ProfissionalPage({
             </div>
             <div className="space-y-3">
               {upcoming.map((a) => (
-                <ProfAppointmentCard key={a.id} appointment={a} showDate punctualityBonus={punctualityBonus} podeRegistrarPagamento={podeRegistrarPagamento} />
+                <ProfAppointmentCard key={a.id} appointment={a} showDate punctualityBonus={punctualityBonus} podeRegistrarPagamento={podeRegistrarPagamento} podeCancelar={podeCancelar} podeAdicionarServico={podeAdicionarServico} />
               ))}
             </div>
           </section>

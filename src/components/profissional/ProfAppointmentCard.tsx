@@ -6,6 +6,8 @@ import { IconWhatsapp, IconCheck, IconClose, IconClock } from '@/components/ui/I
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
 import { statusOf, canCompleteAppointment } from '@/lib/appointment-status'
+import { createClient } from '@/lib/supabase/client'
+import AdicionarServicoComandaModal from '@/components/admin/comandas/AdicionarServicoComandaModal'
 
 type Props = {
   appointment: {
@@ -24,6 +26,8 @@ type Props = {
     sinal_valor?: number | null
     sinal_pago_at?: string | null
     paid_at?: string | null
+    /** v131 · usado pra achar a comanda quando a profissional acrescenta serviço */
+    invoice_item_id?: string | null
     payment_method?: 'pix' | 'cash' | 'card' | 'courtesy' | 'credit' | null
     punctuality_awarded?: boolean
     /** Join com appointment_services · resolve B2 (sobrancelha somia
@@ -40,6 +44,10 @@ type Props = {
    * negócio muda.
    */
   podeRegistrarPagamento?: boolean
+  /** v131 · false = negócio reservou o cancelamento pra dona e recepção */
+  podeCancelar?: boolean
+  /** v131 · true = profissional pode ACRESCENTAR serviço no atendimento (nunca remover) */
+  podeAdicionarServico?: boolean
 }
 
 export default function ProfAppointmentCard({
@@ -47,10 +55,16 @@ export default function ProfAppointmentCard({
   showDate,
   punctualityBonus = 10,
   podeRegistrarPagamento = true,
+  podeCancelar = true,
+  podeAdicionarServico = false,
 }: Props) {
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
+  /* v131 · serviço extra na comanda (Studio Isis Melo). O invoice_id não vem
+     na listagem: buscamos no clique, a partir do invoice_item do atendimento. */
+  const [addServico, setAddServico] = useState<{ invoiceId: string; customerId: string | null } | null>(null)
+  const [abrindoAdd, setAbrindoAdd] = useState(false)
   const [paymentModal, setPaymentModal] = useState(false)
   const [withPunctuality, setWithPunctuality] = useState(false)
   const router = useRouter()
@@ -61,6 +75,26 @@ export default function ProfAppointmentCard({
     appointment.appointment_date,
     appointment.start_time
   )
+
+  /* Abre o "adicionar serviço": o card não carrega o invoice_id, então
+     resolvemos pelo invoice_item do próprio atendimento. Sem comanda aberta
+     não há o que acrescentar — a dona fatura e fecha. */
+  async function abrirAdicionarServico() {
+    setAbrindoAdd(true)
+    const sb = createClient()
+    const { data: item } = await sb
+      .from('invoice_items')
+      .select('invoice:invoices(id, status, customer_id)')
+      .eq('id', appointment.invoice_item_id ?? '')
+      .maybeSingle()
+    setAbrindoAdd(false)
+    const inv = (item?.invoice ?? null) as { id: string; status: string; customer_id: string | null } | null
+    if (!inv || inv.status !== 'open') {
+      alert('Essa comanda já foi fechada. Fale com a recepção.')
+      return
+    }
+    setAddServico({ invoiceId: inv.id, customerId: inv.customer_id })
+  }
 
   async function updateStatus(newStatus: 'confirmed' | 'cancelled' | 'completed' | 'no_show') {
     setLoading(true)
@@ -248,6 +282,8 @@ export default function ProfAppointmentCard({
             >
               <IconCheck size={14} /> Confirmar
             </button>
+            {/* v131 · negócio pode reservar o cancelamento pra dona e recepção */}
+            {podeCancelar && (
             <button
               onClick={() => setConfirm('cancelled')}
               disabled={loading}
@@ -259,6 +295,24 @@ export default function ProfAppointmentCard({
               }}
             >
               <IconClose size={14} /> Cancelar
+            </button>
+            )}
+          </div>
+        )}
+
+        {status === 'confirmed' && podeAdicionarServico && (
+          <div className="pl-[64px] pb-2">
+            <button
+              onClick={abrirAdicionarServico}
+              disabled={abrindoAdd}
+              className="w-full py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
+              style={{
+                background: 'var(--admin-surface-hi)',
+                color: 'var(--admin-text-2)',
+                border: '1px dashed var(--admin-border)',
+              }}
+            >
+              {abrindoAdd ? 'Abrindo…' : '+ Acrescentar serviço'}
             </button>
           </div>
         )}
@@ -329,22 +383,37 @@ export default function ProfAppointmentCard({
               >
                 Não veio
               </button>
-              <button
-                onClick={() => setConfirm('cancelled')}
-                disabled={loading}
-                className="flex-1 py-2 rounded-xl text-xs transition-colors disabled:opacity-40"
-                style={{
-                  background: 'var(--admin-surface-hi)',
-                  color: 'var(--admin-text-faded)',
-                  border: '1px solid var(--admin-border)',
-                }}
-              >
-                Cancelar
-              </button>
+              {podeCancelar && (
+                <button
+                  onClick={() => setConfirm('cancelled')}
+                  disabled={loading}
+                  className="flex-1 py-2 rounded-xl text-xs transition-colors disabled:opacity-40"
+                  style={{
+                    background: 'var(--admin-surface-hi)',
+                    color: 'var(--admin-text-faded)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                >
+                  Cancelar
+                </button>
+              )}
             </div>
           </div>
         )}
       </div>
+
+      {addServico && appointment.business_id && (
+        <AdicionarServicoComandaModal
+          invoiceId={addServico.invoiceId}
+          businessId={appointment.business_id}
+          customerId={addServico.customerId}
+          onClose={() => setAddServico(null)}
+          onAdded={() => {
+            setAddServico(null)
+            router.refresh()
+          }}
+        />
+      )}
 
       <ConfirmActionModal
         open={confirm === 'cancelled'}

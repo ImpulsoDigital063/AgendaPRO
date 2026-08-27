@@ -33,8 +33,12 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  // v98k · dono, recepção OU profissional (esta só com a flag de equipe ligada)
-  const businessId = await resolveBusinessIdOperacao(supabase)
+  /* v98k · dono, recepção OU profissional (com a flag de equipe ligada).
+     v131 · também entra a profissional de negócio com `prof_adiciona_servico`:
+     ela acrescenta serviço no atendimento, mas segue sem marcar pra ninguém.
+     Remover item continua fora do alcance dela — é o DELETE, que não passa
+     por aqui. */
+  const businessId = await resolveBusinessIdOperacao(supabase, true)
   if (!businessId) return NextResponse.json({ error: 'no_business' }, { status: 403 })
 
   const { id: invoiceId } = await params

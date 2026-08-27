@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
   // Verifica se o agendamento pertence a este profissional
   const { data: appointment } = await adminClient
     .from('appointments')
-    .select('*, business:businesses(name, slug, prof_registra_pagamento)')
+    .select('*, business:businesses(name, slug, prof_registra_pagamento, prof_cancela_agendamento)')
     .eq('id', appointmentId)
     .eq('professional_id', professional.id)
     .single()
@@ -96,6 +96,18 @@ export async function POST(req: NextRequest) {
   if (paymentMethod != null && appointment.business?.prof_registra_pagamento === false) {
     return NextResponse.json(
       { error: 'Neste negócio o pagamento é registrado pelo Adm ou pela recepção.' },
+      { status: 403 }
+    )
+  }
+
+  /* v131 · negócio que reservou o cancelamento pra dona e recepção (Studio
+     Isis Melo). Ela confirma e conclui, mas não desmarca — desmarcar mexe na
+     agenda de todo mundo e na fila de espera. Mesmo raciocínio do campo acima:
+     a UI esconde o botão, o servidor é quem recusa. Default TRUE, então
+     nenhum outro negócio sente. */
+  if (action === 'cancelled' && appointment.business?.prof_cancela_agendamento === false) {
+    return NextResponse.json(
+      { error: 'Neste negócio o cancelamento é feito pelo Adm ou pela recepção.' },
       { status: 403 }
     )
   }
