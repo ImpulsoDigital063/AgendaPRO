@@ -6,6 +6,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import DetalheCalculoLink from '@/components/admin/remuneracoes/DetalheCalculoLink'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getPackageSessionCommission } from '@/lib/queries/package-session-commission'
+import { getGiftCardSessionCommission } from '@/lib/queries/gift-card-session-commission'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 const METHOD_LABELS: Record<string, string> = {
@@ -167,6 +168,23 @@ export default async function RemuneracaoDetalhePage({
       paymentMethod: 'package',
     })
   }
+  /* v140 · resgate de cartão presente · mesma lógica do pacote: o atendimento
+     entra R$0 na comanda, então a comissão vem da base do vale. */
+  const giftComm = await getGiftCardSessionCommission(sb, business.id, from, to)
+  for (const l of (giftComm[professionalId]?.lines ?? [])) {
+    const remuneracao = (l.base * pct) / 100
+    rows.push({
+      date: l.date,
+      description: `${l.serviceName} · cartão presente`,
+      client: l.cardCode,
+      valorBase: l.base,
+      valorRemuneracao: remuneracao,
+      valorPago: 0,
+      pagamentoPendente: remuneracao,
+      paymentMethod: 'gift_card',
+    })
+  }
+
   rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
   const totalQty = rows.length

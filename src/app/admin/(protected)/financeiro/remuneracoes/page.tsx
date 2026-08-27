@@ -8,6 +8,7 @@ import { IconChevronLeft, IconChevronRight } from '@/components/ui/Icon'
 import RemuneracoesTable, { type ProfRow } from '@/components/admin/remuneracoes/RemuneracoesTable'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getPackageSessionCommission } from '@/lib/queries/package-session-commission'
+import { getGiftCardSessionCommission } from '@/lib/queries/gift-card-session-commission'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 function formatBRL(v: number): string {
@@ -100,7 +101,7 @@ export default async function RemuneracoesPage({
       .is('company_id', null),
     sb
       .from('commission_payments')
-      .select('professional_id, paid_amount')
+      .select('professional_id, paid_amount, bonus_amount')
       .eq('business_id', business.id)
       .gte('period_start', fromDate)
       .lt('period_start', toDate),
@@ -162,6 +163,12 @@ export default async function RemuneracoesPage({
   // Comissão do RESGATE de pacote (base = valor/sessão pago) · somada à parte
   // porque o resgate entra R$0 na comanda (o total_price do atendimento é 0).
   const sessionCommMap = await getPackageSessionCommission(sb, business.id, from, to)
+
+  /* v140 · MESMO furo do pacote, agora no cartão presente: o resgate nasce com
+     total_price 0 (já foi pago na venda do vale), então sem esta base a
+     profissional atenderia de graça. Modo serviços: valor pago ÷ sessões.
+     Modo valor: o que foi abatido no atendimento. */
+  const giftCommMap = await getGiftCardSessionCommission(sb, business.id, from, to)
 
   // BLOCO 3 · TODOS os profs aparecem · recep (contratada) sem comissão · só salário
 
@@ -255,7 +262,10 @@ export default async function RemuneracoesPage({
     // Diferenciada do serviço porque nessa data NÃO há entrada de dinheiro (o
     // pacote foi pago na venda) · Eduardo 24/07.
     const sessionBase = isRecep ? 0 : (sessionCommMap[p.id]?.base ?? 0)
-    const commissionFromPackages = isRecep ? 0 : (sessionBase * pct) / 100
+    const giftBase = isRecep ? 0 : (giftCommMap[p.id]?.base ?? 0)
+    /* Pacote e cartão presente entram na mesma linha: pros olhos da dona é a
+       mesma coisa — atendimento já pago antes, comissão devida agora. */
+    const commissionFromPackages = isRecep ? 0 : ((sessionBase + giftBase) * pct) / 100
     const commissionFromSales = isRecep
       ? 0
       : calcProductCommission(
@@ -282,10 +292,12 @@ export default async function RemuneracoesPage({
       commissionFromSales +
       salariosCadastrados
 
-    const pagoCommissoes = (payments ?? [])
-      .filter((cp) => cp.professional_id === p.id)
-      .reduce((s, cp) => s + Number(cp.paid_amount ?? 0), 0)
-    const pago = pagoCommissoes + salariosJaPagos
+    const meusPagamentos = (payments ?? []).filter((cp) => cp.professional_id === p.id)
+    const pagoCommissoes = meusPagamentos.reduce((s, cp) => s + Number(cp.paid_amount ?? 0), 0)
+    /* v141 · bônus sai do bolso junto com a comissão: entra no "pago" e
+       aparece destacado na coluna, pra dona saber quanto foi prêmio. */
+    const bonus = meusPagamentos.reduce((s, cp) => s + Number(cp.bonus_amount ?? 0), 0)
+    const pago = pagoCommissoes + bonus + salariosJaPagos
 
     const valesPendentes = (vouchers ?? [])
       .filter((v) => v.professional_id === p.id)
@@ -296,6 +308,7 @@ export default async function RemuneracoesPage({
       name: p.name,
       default_commission_percent: pct,
       is_receptionist: isRecep,
+      bonus,
       valorTotal,
       commissionFromAppts: commissionFromAppts + convenioLiberado,
       convenioEmAberto,

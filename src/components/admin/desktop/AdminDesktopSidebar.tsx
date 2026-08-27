@@ -59,9 +59,11 @@ type Props = {
   pendingClaims?: number
   /** businesses.convenios_enabled · mostra a entrada de Convênios */
   convenios?: boolean
+  /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
+  cartaoPresente?: boolean
 }
 
-export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false }: Props) {
+export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab')
@@ -120,6 +122,10 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         PACOTE_ENABLED
           ? { label: 'Pacotes', href: '/admin/pacotes', Icon: IconGift }
           : { label: 'Pacotes', Icon: IconGift, comingSoon: true },
+        // v140 · vale-presente · só pra quem contratou (chave por negócio)
+        ...(cartaoPresente
+          ? [{ label: 'Cartão Presente', href: '/admin/cartao-presente', Icon: IconGift }]
+          : []),
       ],
     },
     {

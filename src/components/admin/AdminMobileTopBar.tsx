@@ -35,6 +35,8 @@ type Props = {
   showOwnerTab?: boolean
   /** businesses.convenios_enabled · mostra a entrada de Convênios */
   convenios?: boolean
+  /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
+  cartaoPresente?: boolean
 }
 
 type NavItem = {
@@ -57,6 +59,7 @@ export default function AdminMobileTopBar({
   pendingClaims = 0,
   showOwnerTab = false,
   convenios = false,
+  cartaoPresente = false,
 }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -88,6 +91,8 @@ export default function AdminMobileTopBar({
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
         ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
+        // v140 · vale-presente · mesma paridade do desktop (regra do Eduardo, 26/08)
+        ...(cartaoPresente ? [{ label: 'Cartão Presente', href: '/admin/cartao-presente', Icon: IconGift }] : []),
         { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
         /* EM BREVE ate a entrega estar resolvida (21/08). O motor funciona,
            mas o WhatsApp so entrega pra quem ja mandou mensagem pro numero
