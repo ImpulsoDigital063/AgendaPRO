@@ -551,13 +551,17 @@ export default function ServicosTab({ businessId, initialServices, category, com
           </div>
         </div>
 
-        {(comissaoFixa || convenios || comissaoPorServico) && (
+        {/* COMISSÃO e CONVÊNIO em blocos separados (Eduardo, 27/08). Estavam
+            juntos sob o título "Convênio e comissão", o que fazia a comissão
+            parecer coisa de convênio — e ela vale pra todo atendimento, do
+            particular ao conveniado. */}
+        {(comissaoFixa || comissaoPorServico) && (
           <div
             className="rounded-xl p-3 space-y-2.5"
             style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
           >
             <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-              Convênio e comissão
+              Comissão do profissional
             </p>
             <div className="flex gap-2">
               {comissaoPorServico && (
@@ -588,10 +592,23 @@ export default function ServicosTab({ businessId, initialServices, category, com
                     className="admin-input w-full px-3 py-2.5 text-sm"
                   />
                   <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-                    Valor que o profissional recebe por atendimento, em vez da porcentagem.
+                    Vale pra qualquer atendimento deste serviço, particular ou de convênio.
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {convenios && (
+          <div
+            className="rounded-xl p-3 space-y-2.5"
+            style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              Convênio
+            </p>
+            <div className="flex gap-2">
               {convenios && (
                 <div className="flex-1">
                   <label className="admin-label">Preço convênio (R$)</label>
@@ -902,15 +919,36 @@ function ServiceCard({
           </div>
         </div>
 
-        {(comissaoFixa || convenios) && (
+        {/* Mesma separação da criação: comissão vale pra todo atendimento,
+            convênio é outro assunto. */}
+        {(comissaoFixa || comissaoPorServico) && (
           <div
             className="rounded-xl p-3 space-y-2.5"
             style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
           >
             <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-              Convênio e comissão
+              Comissão do profissional
             </p>
             <div className="flex gap-2">
+              {/* A edição salvava commission_percent mas não tinha campo pra
+                  ele: dava pra definir a porcentagem no cadastro e nunca mais
+                  mudar. Achado ao separar os blocos (27/08). */}
+              {comissaoPorServico && (
+                <div className="flex-1">
+                  <label className="admin-label">Comissão (%)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editForm.commission_percent}
+                    onChange={(e) => setEditForm({ ...editForm, commission_percent: e.target.value })}
+                    placeholder="Ex: 50"
+                    className="admin-input w-full px-3 py-2.5 text-sm"
+                  />
+                  <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                    Porcentagem da profissional neste serviço. Em branco, vale a do cadastro dela.
+                  </p>
+                </div>
+              )}
               {comissaoFixa && (
                 <div className="flex-1">
                   <label className="admin-label">Comissão (R$)</label>
@@ -923,10 +961,23 @@ function ServiceCard({
                     className="admin-input w-full px-3 py-2.5 text-sm"
                   />
                   <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-                    Valor que o profissional recebe por atendimento, em vez da porcentagem.
+                    Vale pra qualquer atendimento deste serviço, particular ou de convênio.
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {convenios && (
+          <div
+            className="rounded-xl p-3 space-y-2.5"
+            style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              Convênio
+            </p>
+            <div className="flex gap-2">
               {convenios && (
                 <div className="flex-1">
                   <label className="admin-label">Preço convênio (R$)</label>
