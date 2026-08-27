@@ -35,6 +35,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   taxes: 'Impostos',
   other: 'Outros',
   payment_fee: 'Taxa de Maquininha',
+  commission: 'Comissões pagas',
 }
 
 type ViewKind = 'daily' | 'weekly' | 'monthly' | 'yearly'
@@ -371,6 +372,31 @@ export default async function FluxoCaixaPage({
     const amt = Number(e.amount ?? 0)
     data[key].despesasByCategory[cat] = (data[key].despesasByCategory[cat] ?? 0) + amt
     data[key].despesasTotal += amt
+  }
+
+  /* v142 · comissão paga entra como saída, na categoria própria "commission"
+     (chave comissao_no_fluxo, default false). Sem a chave nada é buscado e o
+     gráfico fica idêntico ao de sempre. Salário cadastrado fica de fora: quem
+     usa já lança como despesa manual e somaria duas vezes. */
+  if ((business as { comissao_no_fluxo?: boolean | null }).comissao_no_fluxo === true) {
+    const { data: comissoes } = await sb
+      .from('commission_payments')
+      .select('paid_at, paid_amount, bonus_amount')
+      .eq('business_id', business.id)
+      .gte('paid_at', fullRangeFromDate)
+      .lt('paid_at', fullRangeToDate)
+
+    for (const c of comissoes ?? []) {
+      if (!c.paid_at) continue
+      const d = new Date(c.paid_at)
+      const key = keyForDate(view, d, cols)
+      if (!key || !data[key]) continue
+      const amt = Number(c.paid_amount ?? 0) + Number(c.bonus_amount ?? 0)
+      if (amt <= 0) continue
+      data[key].despesasByCategory.commission =
+        (data[key].despesasByCategory.commission ?? 0) + amt
+      data[key].despesasTotal += amt
+    }
   }
 
   // Descontos concedidos (cupom + manual) · invoices fechadas no período.

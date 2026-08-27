@@ -11,6 +11,9 @@ import type { Expense, ExpenseCategory } from '@/lib/types'
 
 type Props = {
   expenses: Expense[]
+  /** v142 · comissão paga no período (chave comissao_no_fluxo). Entra no total
+   *  do mês mas não vira linha editável: a fonte é commission_payments. */
+  comissoesPagas?: number
   /** v104 · contas vencidas e não pagas de períodos anteriores (sempre visíveis) */
   vencidas?: Expense[]
   periodo: string
@@ -136,7 +139,7 @@ function formatDate(dateStr: string) {
   })
 }
 
-export default function DespesasView({ expenses, vencidas = [], periodo, currentMonth, mesEspecifico }: Props) {
+export default function DespesasView({ expenses, vencidas = [], periodo, currentMonth, mesEspecifico, comissoesPagas = 0 }: Props) {
   const router = useRouter()
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -162,10 +165,12 @@ export default function DespesasView({ expenses, vencidas = [], periodo, current
 
   // O total do período continua sendo o REALIZADO. Conta que ainda vai ser paga
   // não pode inflar o gasto do mês — senão o número que ela usa pra decidir mente.
-  const total = useMemo(
+  const totalLancado = useMemo(
     () => pagas.reduce((sum, e) => sum + Number(e.amount || 0), 0),
     [pagas]
   )
+  // v142 · comissão paga sai do caixa igual: soma no total do período.
+  const total = totalLancado + comissoesPagas
   const totalProgramado = useMemo(
     () => programadas.reduce((sum, e) => sum + Number(e.amount || 0), 0),
     [programadas]
@@ -247,6 +252,11 @@ export default function DespesasView({ expenses, vencidas = [], periodo, current
             {pagas.length} despesa{pagas.length === 1 ? '' : 's'} paga{pagas.length === 1 ? '' : 's'}
             {programadas.length > 0 && ` · ${programadas.length} a pagar`}
           </p>
+          {comissoesPagas > 0 && (
+            <p className="text-[11px] mt-1.5 font-semibold" style={{ color: 'var(--admin-text-2)' }}>
+              inclui {formatPrice(comissoesPagas)} de comissão paga à equipe
+            </p>
+          )}
         </div>
       </div>
 

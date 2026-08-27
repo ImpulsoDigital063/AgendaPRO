@@ -76,6 +76,24 @@ export default async function DespesasPage({
     .lt('due_date', startDate)
     .order('due_date', { ascending: true })
 
+  /* v142 · comissao paga conta como despesa (chave comissao_no_fluxo).
+     Nao vira linha editavel: `commission_payments` continua sendo a fonte, e
+     a aba mostra o total num card proprio. Salario cadastrado fica de fora de
+     proposito — quem usa ja lanca como despesa manual e somaria dobrado. */
+  let comissoesPagas = 0
+  if ((business as { comissao_no_fluxo?: boolean | null }).comissao_no_fluxo === true) {
+    const { data: pagamentos } = await supabase
+      .from('commission_payments')
+      .select('paid_amount, bonus_amount')
+      .eq('business_id', business.id)
+      .gte('paid_at', startDate)
+      .lte('paid_at', endDate + 'T23:59:59')
+    comissoesPagas = (pagamentos ?? []).reduce(
+      (s, p) => s + Number(p.paid_amount ?? 0) + Number(p.bonus_amount ?? 0),
+      0
+    )
+  }
+
   const idsNoPeriodo = new Set((expenses || []).map((e) => e.id))
   const vencidas = (vencidasForaDoPeriodo || []).filter((e) => !idsNoPeriodo.has(e.id))
 
@@ -95,6 +113,7 @@ export default async function DespesasPage({
         <div className="max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8">
           <DespesasView
             expenses={(expenses || []) as Expense[]}
+            comissoesPagas={comissoesPagas}
             vencidas={vencidas as Expense[]}
             periodo={periodo}
             currentMonth={currentMonth}

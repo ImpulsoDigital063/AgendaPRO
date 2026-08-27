@@ -251,12 +251,40 @@ export default async function FinanceiroPage({
   const ticketMedio = qtdAtendimentos > 0 ? valorRecebido / qtdAtendimentos : 0
   const prevTicketMedio = prevQtdAtendimentos > 0 ? prevValorRecebido / prevQtdAtendimentos : 0
 
-  const despesasPagas = expenses
-    .filter((e) => e.paid_at)
-    .reduce((s, e) => s + Number(e.amount ?? 0), 0)
-  const prevDespesasPagas = prevExpenses
-    .filter((e) => e.paid_at)
-    .reduce((s, e) => s + Number(e.amount ?? 0), 0)
+  /* v142 · comissão paga à equipe sai do caixa e passa a contar como despesa
+     (chave comissao_no_fluxo, default false). Sem a chave, `comissoesPagas`
+     fica 0 e todo o financeiro fica idêntico ao de sempre. */
+  const usaComissaoNoFluxo =
+    (business as { comissao_no_fluxo?: boolean | null }).comissao_no_fluxo === true
+
+  const [{ data: comissoesPeriodo }, { data: comissoesPrev }] = usaComissaoNoFluxo
+    ? await Promise.all([
+        supabase
+          .from('commission_payments')
+          .select('paid_amount, bonus_amount')
+          .eq('business_id', business.id)
+          .gte('paid_at', startStr)
+          .lte('paid_at', endStr + 'T23:59:59'),
+        supabase
+          .from('commission_payments')
+          .select('paid_amount, bonus_amount')
+          .eq('business_id', business.id)
+          .gte('paid_at', prevStartStr)
+          .lte('paid_at', prevEndStr + 'T23:59:59'),
+      ])
+    : [{ data: [] }, { data: [] }]
+
+  const somaComissao = (linhas: { paid_amount: number | null; bonus_amount: number | null }[] | null) =>
+    (linhas ?? []).reduce((s, c) => s + Number(c.paid_amount ?? 0) + Number(c.bonus_amount ?? 0), 0)
+
+  const comissoesPagas = somaComissao(comissoesPeriodo)
+  const prevComissoesPagas = somaComissao(comissoesPrev)
+
+  const despesasPagas =
+    expenses.filter((e) => e.paid_at).reduce((s, e) => s + Number(e.amount ?? 0), 0) + comissoesPagas
+  const prevDespesasPagas =
+    prevExpenses.filter((e) => e.paid_at).reduce((s, e) => s + Number(e.amount ?? 0), 0) +
+    prevComissoesPagas
 
   const despesasPendentes = expenses
     .filter((e) => !e.paid_at)

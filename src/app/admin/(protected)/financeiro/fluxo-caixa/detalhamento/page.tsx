@@ -35,6 +35,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   taxes: 'Impostos',
   other: 'Outros',
   payment_fee: 'Taxa de Maquininha',
+  commission: 'Comissões pagas',
 }
 
 function formatBRL(v: number): string {
