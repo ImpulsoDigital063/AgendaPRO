@@ -137,7 +137,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     /* Negócio que aceita dois atendimentos no mesmo horário (CAF) precisa que
        a grade deixe uma faixa clicável ao lado do card — senão o horário fica
        coberto e não tem por onde abrir o segundo agendamento. */
-    sb.from('businesses').select('agendamento_simultaneo').eq('id', businessId).maybeSingle(),
+    sb.from('businesses').select('agendamento_simultaneo, vendas_balcao_enabled').eq('id', businessId).maybeSingle(),
   ])
 
   // Grade só mostra QUEM ATENDE.
@@ -273,6 +273,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
         pendentesHoje={pendentesHoje}
         hideKpis={true /* 28/05: KPIs migraram pra dentro da tabela */}
         hideCaixaActions={hideCaixaActions}
+        vendasBalcao={bizFlags?.vendas_balcao_enabled !== false}
       />
 
       <TimelineGridInteractive

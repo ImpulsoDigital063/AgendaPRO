@@ -25,6 +25,15 @@ type Props = {
    *  da profissional, que não opera caixa. Default false = admin e recepção
    *  seguem com todos os botões. */
   hideCaixaActions?: boolean
+  /**
+   * Negócio vende produto no balcão (v141 · 27/08/2026).
+   *
+   * FALSE esconde só o "Registrar venda" — clínica que presta serviço e não
+   * vende nada tinha um botão verde e grande oferecendo o que ela não faz.
+   * Pedido do Gustavo (CAF) via Eduardo. "Resgatar pacote" fica: ele não usa
+   * hoje mas pode passar a usar, e tem gate próprio.
+   */
+  vendasBalcao?: boolean
 }
 
 function formatBRL(v: number) {
@@ -66,6 +75,7 @@ export default function GradeTimelineHeader({
   pendentesHoje = 0,
   hideKpis = false,
   hideCaixaActions = false,
+  vendasBalcao = true,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -238,7 +248,7 @@ export default function GradeTimelineHeader({
               <IconGift size={14} /> Resgatar pacote
             </Link>
           )}
-          {!hideCaixaActions && (
+          {!hideCaixaActions && vendasBalcao && (
           <Link
             href={`?balcao=1&date=${date}`}
             className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
