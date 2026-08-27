@@ -835,3 +835,63 @@ export async function enviarExtratoConvenio(p: {
     return { ok: false, erro: e instanceof Error ? e.message : String(e) }
   }
 }
+
+/**
+ * v139 · Avisa a DONA que o sinal de um agendamento está pra vencer.
+ *
+ * Não é e-mail pra cliente: é pra quem vai perder o horário. Por isso o
+ * assunto já traz o nome e a hora — ela decide sem abrir.
+ *
+ * O link cai na AGENDA DO DIA, não na tela do atendimento: o botão "Recebi o
+ * sinal" mora no card da agenda (AppointmentDrawer), e a página
+ * /admin/atendimentos/[id] não tem esse bloco. Mandar pra lá seria avisar do
+ * problema e esconder a solução.
+ */
+export async function sendSinalVencendo({
+  donaEmail,
+  clientName,
+  businessName,
+  date,
+  startTime,
+  sinalValor,
+  minutosRestantes,
+}: {
+  donaEmail: string
+  clientName: string
+  businessName: string
+  date: string
+  startTime: string
+  sinalValor: number
+  minutosRestantes: number
+}) {
+  const [year, month, day] = date.split('-')
+  const dateFormatted = `${day}/${month}/${year}`
+  const valor = sinalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const prazo =
+    minutosRestantes > 0
+      ? `Faltam <strong>${minutosRestantes} minutos</strong> pro prazo acabar.`
+      : `O prazo <strong>já passou</strong> e o horário voltou a ficar livre pra outra cliente marcar.`
+
+  const body = `
+    O sinal de <strong>${esc(clientName)}</strong> ainda não foi marcado como recebido na <strong>${esc(businessName)}</strong>.<br><br>
+    💰 <strong>Sinal:</strong> ${valor}<br>
+    📅 <strong>Atendimento:</strong> ${dateFormatted} às ${startTime}<br><br>
+    ${prazo}<br><br>
+    <strong>Se o PIX já caiu</strong> e você só não marcou, abre a agenda do dia, toca no agendamento e clica em “Recebi o sinal”. O horário trava de novo na hora.
+  `
+
+  await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: donaEmail,
+    subject:
+      minutosRestantes > 0
+        ? `⏳ Sinal de ${esc(clientName)} vence em ${minutosRestantes} min — ${dateFormatted} às ${startTime}`
+        : `⚠️ Sinal de ${esc(clientName)} venceu — o horário de ${dateFormatted} às ${startTime} voltou pra agenda`,
+    html: emailTemplate({
+      title: minutosRestantes > 0 ? 'Sinal pra vencer' : 'Sinal vencido',
+      body,
+      actionUrl: `${APP_URL}/admin?date=${date}`,
+      actionLabel: 'Abrir a agenda do dia',
+    }),
+  })
+}

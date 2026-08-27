@@ -35,3 +35,23 @@ jobs:
             restam=$(grep -o '"restam":[0-9]*' /tmp/out | head -1 | cut -d: -f2)
             [ "${restam:-0}" -gt 0 ] || break
           done
+
+      # Aviso de sinal pra vencer (v139). Mesmo job de proposito: o GitHub
+      # cobra por minuto de JOB, entao pendurar aqui custa zero minuto a mais.
+      # Rota propria porque /api/mensagens/varrer sai cedo quando nenhuma regra
+      # esta ligada - o aviso morreria la sem nunca disparar.
+      #
+      # `|| exit 1` no final: se este passo falhar, o GitHub manda email. Aviso
+      # que falha calado e o mesmo defeito que estamos consertando.
+      - name: avisar sinal pra vencer
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /tmp/sinal -w "%{http_code}" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              "https://www.agendapro.net.br/api/cron/sinal-vencendo")
+            echo "volta $i · HTTP $code"
+            cat /tmp/sinal; echo
+            test "$code" = "200" || exit 1
+            restam=$(grep -o '"restam":[0-9]*' /tmp/sinal | head -1 | cut -d: -f2)
+            [ "${restam:-0}" -gt 0 ] || break
+          done
