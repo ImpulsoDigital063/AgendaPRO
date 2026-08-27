@@ -34,6 +34,9 @@ type Pendente = {
   sinal_valor: number | null
   copiaECola: string | null
   minutosPraVencer: number | null
+  /* v141 · o horário já foi solto pra outra cliente marcar. Não é o mesmo que
+     "vencido": entre vencer e soltar existe o aviso + a folga da v140. */
+  horarioLiberado: boolean
   nomeNegocio: string | null
   linkPagamento: string | null
   horaLimite: string | null
@@ -133,7 +136,10 @@ export default function SinalView() {
       body: JSON.stringify({ appointmentId: id, acao }),
     }).then((x) => x.json()).catch(() => null)
     setAgindo(null)
-    if (!r?.ok) { setErro('Não consegui atualizar. Tente de novo.'); return }
+    /* v141 · quando o servidor sabe o motivo (ex: o horário já foi tomado por
+       outra cliente), mostra o motivo. "Tente de novo" num caso desses manda
+       ela repetir uma ação que nunca vai funcionar. */
+    if (!r?.ok) { setErro(typeof r?.error === 'string' ? r.error : 'Não consegui atualizar. Tente de novo.'); return }
     setPendentes((lista) => lista.filter((p) => p.id !== id))
   }
 
@@ -235,7 +241,15 @@ export default function SinalView() {
                       {/* Quanto o horário ainda aguenta. Cobrar quem vence em 4
                           minutos é pior que não cobrar — a cliente paga e o
                           horário já foi. Vermelho a partir de 30 min. */}
-                      {typeof p.minutosPraVencer === 'number' && (
+                      {/* v141 · três estados, não dois. "Vencido" e "já foi
+                          solto" pedem decisões diferentes: no primeiro ainda dá
+                          pra cobrar e segurar, no segundo é resgate — o horário
+                          está aberto pra outra cliente marcar neste instante. */}
+                      {p.horarioLiberado ? (
+                        <p className="text-[11px] mt-1 font-bold" style={{ color: '#DC2626' }}>
+                          Venceu — o horário já voltou pra agenda
+                        </p>
+                      ) : typeof p.minutosPraVencer === 'number' ? (
                         <p
                           className="text-[11px] mt-1 font-semibold"
                           style={{ color: p.minutosPraVencer <= 30 ? '#DC2626' : 'var(--admin-text-faded)' }}
@@ -244,7 +258,7 @@ export default function SinalView() {
                             ? 'Prazo vencido — o horário será liberado'
                             : `Segura o horário por mais ${textoPrazo(p.minutosPraVencer)}`}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-base font-black tabular-nums" style={{ color: '#F59E0B' }}>

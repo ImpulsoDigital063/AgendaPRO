@@ -32,11 +32,16 @@ import { todayBR } from '@/lib/date-br'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-/* Avisa quando falta ISTO ou menos. Maior que a hora entre varreduras de
-   propósito: o cron do GitHub atrasa e às vezes pula execução. Com janela
-   justa, o atraso faz o aviso NÃO SAIR — e o silêncio é exatamente o defeito
-   que estamos consertando. Melhor avisar um pouco cedo. */
-const JANELA_MIN = 90
+/* Avisa quando falta ISTO ou menos.
+   A conta: a varredura roda de hora em hora, então o aviso sai no primeiro
+   passe em que o tempo restante cabe na janela. Isso dá uma antecedência
+   entre (JANELA - 60) e JANELA minutos. Com 90 o pior caso era avisar só 30
+   minutos antes — Eduardo cravou (27/08) que tem que ser pelo menos 1 hora,
+   porque ela pode estar com a mão na massa quando o aviso chega.
+   120 garante o piso de 1h, com teto de 2h. E a folga de 30min da trava
+   (v140) cabe inteira antes do prazo estourar, então o horário não fica preso
+   depois de vencido — vence e solta na hora certa. */
+const JANELA_MIN = 120
 
 /* Teto por invocação: a função morre em 60s no Hobby. Cada envio é push +
    e-mail; mandar tudo de uma vez estoura no meio e deixa metade avisada sem
@@ -143,9 +148,15 @@ export async function GET(req: NextRequest) {
           const payload = {
             titulo: faltam > 0 ? 'Sinal pra vencer' : 'Sinal vencido',
             corpo,
-            /* Agenda do DIA do atendimento, não a tela do atendimento: o botão
-               "Recebi o sinal" mora no card da agenda. */
-            url: `/admin?date=${appt.appointment_date}`,
+            /* v141 · leva pra ABA SINAL, não pra agenda do dia. O atendimento
+               costuma ser semanas à frente — a agenda abre no dia de hoje e ela
+               teria que navegar até lá pra achar o card. A aba lista todos os
+               pendentes de hoje em diante, com o botão "Recebi" em cada linha:
+               uma tocada e ela está na tela certa.
+               Só passou a ser seguro apontar pra cá depois que a aba parou de
+               cancelar os vencidos ao abrir (v141) — antes, o aviso mandava ela
+               justamente pra tela que apagava o que ele estava avisando. */
+            url: '/admin/financeiro/sinal',
           }
           const results = await Promise.all(subs.map((s) => sendWebPush(s, payload)))
           const mortas = subs.filter((_, i) => results[i]?.gone).map((s) => s.endpoint)

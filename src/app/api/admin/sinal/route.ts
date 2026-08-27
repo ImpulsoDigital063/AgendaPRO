@@ -25,7 +25,7 @@ import { gerarBRCode, normalizarChavePix } from '@/lib/pix-brcode'
 import { generateSinalToken } from '@/lib/token'
 import { SITE_URL } from '@/lib/site-url'
 import { todayBR } from '@/lib/date-br'
-import { limparSinaisVencidos, minutosRestantes, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
+import { minutosRestantes, podeSoltarHorario, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 import { creditoAplicadoEmLote, rotuloLimite } from '@/lib/sinal-saldo'
 
 export async function GET() {
@@ -33,11 +33,18 @@ export async function GET() {
   const businessId = await resolveBusinessIdOperacao(supabase)
   if (!businessId) return NextResponse.json({ error: 'sem_acesso' }, { status: 403 })
 
-  /* Abrir a aba limpa os vencidos (v115). É o outro momento em que a limpeza
-     precisa acontecer: quem olha a lista de quem está devendo não pode ver
-     horário que já morreu, e a agenda ao lado tem que refletir isso na hora.
-     A outra ponta é a rota de marcar horário. */
-  await limparSinaisVencidos(supabase, { businessId })
+  /* v141 · A LIMPEZA SAIU DAQUI. Abrir a aba cancelava os vencidos antes de
+     montar a tela, e isso destruía exatamente o que a dona vinha resolver:
+     em 26/08 a Wanessa abriu a aba às 12:51 e três agendamentos morreram no
+     mesmo segundo — um deles com o sinal JÁ PAGO, só não marcado.
+     A v140 estreitou a armadilha (só cancelava o que já tinha sido avisado),
+     mas o aviso é justamente o que traz a dona até aqui: ela chega DEPOIS do
+     aviso, ou seja, dentro da janela perigosa. As duas mudanças empurraram o
+     problema pra dentro do caminho dela.
+     Cancelar de verdade continua acontecendo onde é necessário: na rota de
+     marcar horário, quando outra cliente tenta pegar o slot — que é o único
+     momento em que a constraint no_overlap exige a linha fora do caminho.
+     Aqui a lista mostra o vencido com o estado escrito, e a dona decide. */
 
   const [{ data: negocio }, { data: pendentes }] = await Promise.all([
     supabase
@@ -47,7 +54,7 @@ export async function GET() {
       .single(),
     supabase
       .from('appointments')
-      .select('id, client_name, client_phone, service_name, appointment_date, start_time, total_price, sinal_valor, sinal_pago_at, status, created_at')
+      .select('id, client_name, client_phone, service_name, appointment_date, start_time, total_price, sinal_valor, sinal_pago_at, sinal_aviso_enviado_at, status, created_at')
       .eq('business_id', businessId)
       .not('sinal_valor', 'is', null)
       .is('sinal_pago_at', null)
@@ -108,6 +115,23 @@ export async function GET() {
           expiraMin,
         )
       : null,
+    /* v141 · o horário JÁ FOI SOLTO pra outra cliente marcar? Vencer não basta:
+       a trava da v140 exige aviso enviado + folga. Sem esta distinção a tela
+       trataria igual quem vence em 5 minutos e quem já perdeu o horário — e
+       são decisões diferentes: um ainda dá pra cobrar, o outro é resgate. */
+    horarioLiberado: negocio?.sinal_enabled
+      ? podeSoltarHorario(
+          a as unknown as {
+            id: string
+            status: string | null
+            sinal_valor: number | string | null
+            sinal_pago_at: string | null
+            created_at: string
+            sinal_aviso_enviado_at?: string | null
+          },
+          expiraMin,
+        )
+      : false,
     copiaECola:
       negocio?.pix_key && a.sinal_valor
         ? gerarBRCode({
@@ -265,6 +289,16 @@ export async function POST(req: NextRequest) {
     .select('id, status, sinal_pago_at, sinal_valor')
     .maybeSingle()
 
+  /* v141 · com o vencido ficando na lista, ela pode apertar "Recebi" num
+     horário que outra cliente JÁ TOMOU no meio tempo. O banco recusa pela
+     constraint no_overlap (23P01) e a tela dizia só "não consegui atualizar" —
+     mensagem que não ajuda a decidir nada. Aqui o motivo real sobe pra tela. */
+  if (error && (error.code === '23P01' || /no_overlap/i.test(error.message ?? ''))) {
+    return NextResponse.json(
+      { error: 'Esse horário já foi marcado por outra cliente. Remarque o atendimento antes de confirmar o sinal.' },
+      { status: 409 },
+    )
+  }
   if (error || !salvo) return NextResponse.json({ error: 'nao_salvou' }, { status: 500 })
   if (acao === 'recebi' && !salvo.sinal_pago_at) {
     return NextResponse.json({ error: 'nao_confirmado_pelo_banco' }, { status: 500 })

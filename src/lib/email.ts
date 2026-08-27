@@ -842,10 +842,9 @@ export async function enviarExtratoConvenio(p: {
  * Não é e-mail pra cliente: é pra quem vai perder o horário. Por isso o
  * assunto já traz o nome e a hora — ela decide sem abrir.
  *
- * O link cai na AGENDA DO DIA, não na tela do atendimento: o botão "Recebi o
- * sinal" mora no card da agenda (AppointmentDrawer), e a página
- * /admin/atendimentos/[id] não tem esse bloco. Mandar pra lá seria avisar do
- * problema e esconder a solução.
+ * v141 · o link cai na ABA SINAL, que lista todos os pendentes de hoje em
+ * diante com o botão "Recebi" em cada linha. O atendimento costuma ser semanas
+ * à frente, e mandar pra agenda faria ela navegar até o dia pra achar o card.
  */
 export async function sendSinalVencendo({
   donaEmail,
@@ -890,8 +889,8 @@ export async function sendSinalVencendo({
     html: emailTemplate({
       title: minutosRestantes > 0 ? 'Sinal pra vencer' : 'Sinal vencido',
       body,
-      actionUrl: `${APP_URL}/admin?date=${date}`,
-      actionLabel: 'Abrir a agenda do dia',
+      actionUrl: `${APP_URL}/admin/financeiro/sinal`,
+      actionLabel: 'Abrir a lista de sinais',
     }),
   })
 }
