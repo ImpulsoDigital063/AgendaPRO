@@ -8,6 +8,10 @@ export type Business = {
   /** v137 · CNPJ ou CPF. Só aparece em documento que sai pra terceiro
    *  (extrato de convênio pro RH da empresa cliente). Nulo não imprime. */
   cnpj?: string | null
+  /** v138 · razão social quando difere do nome fantasia, e e-mail de contato.
+   *  Mesma regra: só saem em documento que vai pra fora. */
+  razao_social?: string | null
+  email?: string | null
   /* Chaves por negócio (CAF · 20-21/08/2026). Ver supabase/migrations/v124. */
   agendamento_simultaneo?: boolean | null
   convenios_enabled?: boolean | null

@@ -40,6 +40,11 @@ export default function NegocioTab({ business }: Props) {
   /* CNPJ/CPF · usado só em documento que sai pra terceiro (hoje, o extrato de
      convênio que vai pro RH da empresa cliente). Vazio não imprime nada. */
   const [cnpj, setCnpj] = useState(business.cnpj || '')
+  /* Razão social e e-mail · só saem em documento que vai pra terceiro. No CAF a
+     marca ("CAF - Centro Avançado de Fisioterapia") difere da razão social
+     ("G.M.E. Saúde Ltda"), e o RH do cliente confere o papel contra o CNPJ. */
+  const [razaoSocial, setRazaoSocial] = useState(business.razao_social || '')
+  const [email, setEmail] = useState(business.email || '')
   const [address, setAddress] = useState(business.address || '')
   const [description, setDescription] = useState(business.description || '')
   // Segmento: campo próprio (lista fechada). É o que decide os exemplos que o
@@ -70,6 +75,8 @@ export default function NegocioTab({ business }: Props) {
     name: business.name,
     phone: maskPhoneProgressive(business.phone || ''),
     cnpj: business.cnpj || '',
+    razaoSocial: business.razao_social || '',
+    email: business.email || '',
     address: business.address || '',
     description: business.description || '',
     category: business.category || '',
@@ -88,6 +95,8 @@ export default function NegocioTab({ business }: Props) {
       name !== snapshot.name ||
       phone !== snapshot.phone ||
       cnpj !== snapshot.cnpj ||
+      razaoSocial !== snapshot.razaoSocial ||
+      email !== snapshot.email ||
       address !== snapshot.address ||
       description !== snapshot.description ||
       category !== snapshot.category ||
@@ -99,7 +108,7 @@ export default function NegocioTab({ business }: Props) {
       facebookUrl !== snapshot.facebookUrl ||
       tiktokUrl !== snapshot.tiktokUrl ||
       websiteUrl !== snapshot.websiteUrl,
-    [name, phone, cnpj, address, description, category, googleMapsUrl, googleRating, googleReviewsCount, pointsForReview, instagramUrl, facebookUrl, tiktokUrl, websiteUrl, snapshot]
+    [name, phone, cnpj, razaoSocial, email, address, description, category, googleMapsUrl, googleRating, googleReviewsCount, pointsForReview, instagramUrl, facebookUrl, tiktokUrl, websiteUrl, snapshot]
   )
 
   async function handleUploadLogo(file: File) {
@@ -176,6 +185,8 @@ export default function NegocioTab({ business }: Props) {
         name: name.trim(),
         phone: phoneDigits || null,
         cnpj: cnpj.trim() || null,
+        razao_social: razaoSocial.trim() || null,
+        email: email.trim() || null,
         address: address.trim() || null,
         description: description.trim() || null,
         category: category || null,
@@ -201,6 +212,8 @@ export default function NegocioTab({ business }: Props) {
         name: name.trim(),
         phone,
         cnpj,
+        razaoSocial,
+        email,
         address: address.trim(),
         description: description.trim(),
         category,
@@ -326,6 +339,28 @@ export default function NegocioTab({ business }: Props) {
             className="admin-input w-full px-3 py-2.5 text-sm"
             placeholder="(63) 99999-9999"
             maxLength={15}
+          />
+        </div>
+
+        <div>
+          <label className="admin-label">Razão social</label>
+          <input
+            type="text"
+            value={razaoSocial}
+            onChange={e => setRazaoSocial(e.target.value)}
+            className="admin-input w-full px-3 py-2.5 text-sm"
+            placeholder="Só se for diferente do nome acima"
+          />
+        </div>
+
+        <div>
+          <label className="admin-label">E-mail</label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="admin-input w-full px-3 py-2.5 text-sm"
+            placeholder="contato@suaclinica.com.br"
           />
         </div>
 

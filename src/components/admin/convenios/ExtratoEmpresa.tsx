@@ -78,6 +78,8 @@ export default function ExtratoEmpresa({
   clinicaCnpj = null,
   clinicaEndereco = null,
   clinicaLogo = null,
+  clinicaRazaoSocial = null,
+  clinicaEmail = null,
   temEmail,
   mes,
   linhas,
@@ -97,6 +99,10 @@ export default function ExtratoEmpresa({
   /** Logo do negócio · vira o timbre do documento quando existe. Falha ao
    *  carregar nunca impede o PDF de sair. */
   clinicaLogo?: string | null
+  /** Razão social, quando difere da marca · o RH confere o papel contra o CNPJ. */
+  clinicaRazaoSocial?: string | null
+  /** Via de resposta pro RH: pra onde ele manda dúvida e comprovante. */
+  clinicaEmail?: string | null
   /** Empresa sem e-mail não pode receber o extrato — o botão explica em vez de falhar. */
   temEmail: boolean
   mes: string // YYYY-MM
@@ -208,19 +214,20 @@ export default function ExtratoEmpresa({
        e quem recebia não sabia de quem era sem olhar o nome do arquivo. */
     const ws = XLSX.utils.aoa_to_sheet([
       [clinicaNome],
-      [[clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null, clinicaEndereco, clinicaTelefone].filter(Boolean).join(' · ')],
+      [[clinicaRazaoSocial, clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null].filter(Boolean).join(' · ')],
+      [[clinicaEndereco, clinicaTelefone, clinicaEmail].filter(Boolean).join(' · ')],
       [],
       [faturaDoMes ? `FATURA Nº ${faturaDoMes.numero}` : 'EXTRATO DE ATENDIMENTOS'],
       [`Cobrar de: ${empresaNome}${empresaCnpj ? ` · CNPJ ${empresaCnpj}` : ''}`],
       [`Competência ${mesBR} · emitido em ${dataBR(new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}`],
       [],
     ])
-    XLSX.utils.sheet_add_json(ws, dados, { origin: 'A8' })
+    XLSX.utils.sheet_add_json(ws, dados, { origin: 'A9' })
     ws['!cols'] = [{ wch: 11 }, { wch: 8 }, { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 13 }, { wch: 11 }]
     /* Valor como MOEDA, não número cru. Saía "45" numa planilha que vai pro
        financeiro de outra empresa. */
     const ref = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
-    for (let r = 8; r <= ref.e.r; r++) {
+    for (let r = 9; r <= ref.e.r; r++) {
       const cel = ws[XLSX.utils.encode_cell({ c: 5, r })]
       if (cel && typeof cel.v === 'number') { cel.t = 'n'; cel.z = 'R$ #,##0.00' }
     }
@@ -282,9 +289,11 @@ export default function ExtratoEmpresa({
     doc.setFontSize(9)
     doc.setTextColor(110)
     const linhasClinica = [
-      clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null,
+      /* Razão social primeiro: é o nome que bate com o CNPJ do cartão, e é
+         contra ele que o financeiro do outro lado confere o documento. */
+      [clinicaRazaoSocial, clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null].filter(Boolean).join(' · ') || null,
       clinicaEndereco,
-      clinicaTelefone,
+      [clinicaTelefone, clinicaEmail].filter(Boolean).join(' · ') || null,
     ].filter(Boolean) as string[]
     linhasClinica.forEach((t, i) => doc.text(t, 14, topo + 5 + i * 4.5))
 
