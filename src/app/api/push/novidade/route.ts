@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
     corpo?: string
     url?: string
     dry_run?: boolean
+    somenteSinal?: boolean
+    slug?: string
   }
   const titulo = body.titulo?.trim()
   const corpo = body.corpo?.trim()
@@ -39,15 +41,63 @@ export async function POST(req: NextRequest) {
     { auth: { persistSession: false } }
   )
 
-  const { data: subs, error } = await admin
+  const { data: todas, error } = await admin
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth, user_id')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  /* `somenteSinal` · novidade sobre sinal não interessa a quem não cobra sinal.
+     Sem esta mira, um aviso que vale pra 4 negócios chegaria no celular dos
+     ~29 — e notificação irrelevante ensina a pessoa a ignorar as próximas,
+     inclusive as que importam de verdade (a de sinal pra vencer).
+     O alcance sai de: dono do negócio + profissionais com login. */
+  let subs = todas ?? []
+
+  /* `slug` · manda pra UM negócio só. Serve pra ver como a notificação chega
+     antes de disparar pra base — texto de push não tem desfazer: chegou no
+     celular de 16 pessoas, chegou. Eduardo pediu isso em 27/08 depois de a
+     primeira versão chegar cortada no iPhone dele. */
+  if (body.slug) {
+    const { data: alvo } = await admin
+      .from('businesses')
+      .select('id, owner_id')
+      .eq('slug', body.slug)
+      .maybeSingle()
+    if (!alvo) return NextResponse.json({ error: 'negocio_nao_encontrado' }, { status: 404 })
+    const { data: profs } = await admin
+      .from('professionals')
+      .select('auth_user_id')
+      .eq('business_id', alvo.id)
+    const permitidos = new Set(
+      [alvo.owner_id as string | null, ...(profs ?? []).map((p) => p.auth_user_id)].filter(
+        Boolean,
+      ) as string[],
+    )
+    subs = subs.filter((s: { user_id: string }) => permitidos.has(s.user_id))
+  }
+
+  if (body.somenteSinal) {
+    const { data: negocios } = await admin
+      .from('businesses')
+      .select('id, owner_id')
+      .eq('sinal_enabled', true)
+    const ids = (negocios ?? []).map((n) => n.id as string)
+    const { data: profs } = ids.length
+      ? await admin.from('professionals').select('auth_user_id').in('business_id', ids)
+      : { data: [] as { auth_user_id: string | null }[] }
+    const permitidos = new Set(
+      [
+        ...(negocios ?? []).map((n) => n.owner_id as string | null),
+        ...(profs ?? []).map((p) => p.auth_user_id),
+      ].filter(Boolean) as string[],
+    )
+    subs = subs.filter((s: { user_id: string }) => permitidos.has(s.user_id))
+  }
+
   const devices = subs?.length ?? 0
   const pessoas = new Set((subs ?? []).map((s: { user_id: string }) => s.user_id)).size
 
-  if (body.dry_run) return NextResponse.json({ dry_run: true, devices, pessoas })
+  if (body.dry_run) return NextResponse.json({ dry_run: true, somenteSinal: !!body.somenteSinal, devices, pessoas })
   if (!subs || subs.length === 0) return NextResponse.json({ enviados: 0, devices: 0, pessoas: 0 })
 
   const results = await Promise.all(

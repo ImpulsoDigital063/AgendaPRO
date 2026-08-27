@@ -56,6 +56,11 @@ type Config = {
   telefoneNegocio: string | null
 }
 
+const NOVIDADE_KEY = 'ap_novidade_sinal_v141_dismissed'
+/* Um mês de validade. Depois disso não é mais novidade pra ninguém, e o
+   espaço volta a ser da lista, que é o que ela abre a tela pra fazer. */
+const NOVIDADE_ATE = new Date('2026-09-27T23:59:59-03:00').getTime()
+
 /* Prazo em minutos no banco, mas a dona escolhe em linguagem de gente.
    Pedir "digite os minutos" pra quem quer dizer "duas horas" é fazer a
    pessoa fazer conta à toa. */
@@ -81,6 +86,24 @@ export default function SinalView() {
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [agindo, setAgindo] = useState<string | null>(null)
+
+  /* v141 · aviso do que mudou. Mesmo padrão do NovidadeSinalCard: dispensa
+     guardada no aparelho e validade própria — anúncio que fica pra sempre vira
+     parte do cenário e some da atenção sem ninguém fechar. */
+  const [mostrarNovidade, setMostrarNovidade] = useState(false)
+  useEffect(() => {
+    if (Date.now() > NOVIDADE_ATE) return
+    try {
+      if (localStorage.getItem(NOVIDADE_KEY) === '1') return
+    } catch {}
+    setMostrarNovidade(true)
+  }, [])
+  function dispensarNovidade() {
+    setMostrarNovidade(false)
+    try {
+      localStorage.setItem(NOVIDADE_KEY, '1')
+    } catch {}
+  }
   /* Percentual guardado como TEXTO, não número. Com number, apagar o campo
      virava Number('') = 0 e o zero voltava sozinho — o dono não conseguia
      limpar pra digitar outro valor (Eduardo, 05/08, testando no iPhone). */
@@ -190,7 +213,7 @@ export default function SinalView() {
             Falta cadastrar o WhatsApp do seu negócio
           </p>
           <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
-            É por ele que a cliente fala com você pra remarcar. Sem o número, quem precisa mudar
+            É por ele que o cliente fala com você pra remarcar. Sem o número, quem precisa mudar
             o horário só tem a opção de cancelar — e aí o horário fica vago e você ainda devolve
             o sinal.
           </p>
@@ -202,6 +225,55 @@ export default function SinalView() {
             Cadastrar agora
           </a>
         </div>
+      )}
+
+      {/* v141 · O QUE MUDOU · o push de novidade chega cortado no iPhone (o
+          sistema operacional trunca e não dá pra controlar), e quem tocava nele
+          caía aqui sem encontrar o resto do texto — Eduardo viu isso no próprio
+          celular em 27/08. Notificação é isca; o conteúdo tem que estar do
+          outro lado. O card de lançamento (NovidadeSinalCard) não serve: ele
+          aparece só pra quem NÃO ligou o sinal, o público oposto deste aqui. */}
+      {mostrarNovidade && (
+        <section
+          className="rounded-2xl p-4 mb-4 relative"
+          style={{
+            background: 'color-mix(in srgb, var(--admin-accent) 7%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--admin-accent) 28%, transparent)',
+          }}
+        >
+          <button
+            onClick={dispensarNovidade}
+            aria-label="Fechar"
+            className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-[13px] leading-none"
+            style={{ color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
+          >
+            ✕
+          </button>
+          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
+            Novidade
+          </p>
+          <p className="text-sm font-bold mt-0.5 pr-8" style={{ color: 'var(--admin-text)' }}>
+            O Sinal ficou mais esperto
+          </p>
+          <ul className="text-xs mt-2 leading-relaxed space-y-1.5 pr-2" style={{ color: 'var(--admin-text-mute)' }}>
+            <li>
+              <strong>Você escolhe.</strong> Quando é você que marca o horário, o sistema pergunta se
+              quer cobrar sinal daquela cliente. Antes ele cobrava sempre.
+            </li>
+            <li>
+              <strong>Você é avisada.</strong> Chega notificação no celular pelo menos 1 hora antes do
+              prazo do sinal vencer, com um toque pra confirmar o pagamento.
+            </li>
+            <li>
+              <strong>O horário não some calado.</strong> Ele só volta pra agenda depois desse aviso,
+              com meia hora de folga pra você reagir.
+            </li>
+            <li>
+              <strong>Quem venceu fica aqui.</strong> Continua nesta lista, marcado, pra você cobrar
+              ou confirmar mesmo assim.
+            </li>
+          </ul>
+        </section>
       )}
 
       {/* ── A lista vem primeiro: é o que ela abre a tela pra fazer ── */}
@@ -303,7 +375,7 @@ export default function SinalView() {
                       entrou — ela cobraria a menos sem perceber. */}
                   <button
                     onClick={() => {
-                      if (confirm(`Confirmar o horário de ${p.client_name ?? 'a cliente'} sem cobrar o sinal?`)) {
+                      if (confirm(`Confirmar o horário de ${p.client_name ?? 'o cliente'} sem cobrar o sinal?`)) {
                         agir(p.id, 'dispensar')
                       }
                     }}
@@ -408,7 +480,7 @@ export default function SinalView() {
                 className="admin-input w-full px-3 py-2.5 text-sm"
               />
               <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-                É o nome que a cliente vê no app do banco dela. Use o titular da conta,
+                É o nome que o cliente vê no app do banco dela. Use o titular da conta,
                 não o nome do salão.
               </p>
             </div>
@@ -529,9 +601,9 @@ export default function SinalView() {
           </div>
 
           <p className="text-[11px] -mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-            Cancelando <b>antes</b> desse prazo, o sinal vira crédito na ficha da cliente e ela usa
+            Cancelando <b>antes</b> desse prazo, o sinal vira crédito na ficha do cliente e ela usa
             em outro horário. Cancelando <b>depois</b>, o sinal fica com você. Quando <b>você</b>{' '}
-            cancela pelo painel, vira crédito sempre — a cliente não pode perder dinheiro por uma
+            cancela pelo painel, vira crédito sempre — o cliente não pode perder dinheiro por uma
             desmarcação sua.
           </p>
 
