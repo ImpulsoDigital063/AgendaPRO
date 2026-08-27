@@ -256,7 +256,12 @@ export default function ExtratoEmpresa({
   async function exportarPDF() {
     const { jsPDF } = await import('jspdf')
     const autoTable = (await import('jspdf-autotable')).default
-    const doc = new jsPDF({ orientation: 'landscape' })
+    /* RETRATO (27/08). Em paisagem o extrato de julho quebrava em duas páginas
+       com dois terços da segunda em branco — parece rascunho num documento que
+       vai pro financeiro de outra empresa. Retrato dá ~100mm a mais de altura:
+       as mesmas 16 linhas passam a caber numa folha só. E é o formato de
+       fatura; deitado, o papel lê como planilha exportada. */
+    const doc = new jsPDF({ orientation: 'portrait' })
     const LARG = doc.internal.pageSize.getWidth()
     const DIR = LARG - 14
 
@@ -378,7 +383,7 @@ export default function ExtratoEmpresa({
       footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: 'bold' },
       columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
       margin: { left: 14, right: 14 },
-      tableWidth: 130,
+      tableWidth: 110,
     })
 
     const apos = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 28
@@ -401,19 +406,49 @@ export default function ExtratoEmpresa({
          de novo — quem lê no RH soma e entende R$1.820. Documento de cobrança
          que sugere o dobro do valor (Eduardo, 26/08). */
       showFoot: 'lastPage',
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [14, 165, 233] },
-      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: 'bold' },
+      /* Larguras fixas somando os 182mm úteis do retrato. Sem elas o autoTable
+         reparte pelo conteúdo e "Reabilitação Pós-cirúrgica" empurra as colunas
+         de data e valor pra fora do lugar a cada mês diferente. */
+      columnStyles: misturaSituacao
+        ? { 0: { cellWidth: 20 }, 1: { cellWidth: 14 }, 2: { cellWidth: 38 }, 3: { cellWidth: 36 }, 4: { cellWidth: 34 }, 5: { cellWidth: 20, halign: 'right' }, 6: { cellWidth: 20 } }
+        : { 0: { cellWidth: 22 }, 1: { cellWidth: 16 }, 2: { cellWidth: 44 }, 3: { cellWidth: 42 }, 4: { cellWidth: 36 }, 5: { cellWidth: 22, halign: 'right' } },
+      styles: { fontSize: 8, cellPadding: 1.6 },
+      headStyles: { fillColor: [14, 165, 233], fontSize: 8 },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: 'bold', fontSize: 8 },
+      margin: { left: 14, right: 14, bottom: 20 },
     })
 
     if (instrucoesPagamento?.trim()) {
       const fim = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 60
+      const texto = doc.splitTextToSize(instrucoesPagamento.trim(), 182)
+      /* Se a tabela terminou no pé da página, o bloco de pagamento cairia fora
+         do papel — e some justamente a instrução de como pagar. */
+      const alturaBloco = 10 + texto.length * 4.5
+      let y = fim
+      if (fim + alturaBloco > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage()
+        y = 20
+      }
       doc.setFontSize(9)
       doc.setTextColor(20)
-      doc.text('Pagamento', 14, fim + 10)
+      doc.text('Pagamento', 14, y + 10)
       doc.setTextColor(90)
-      doc.text(doc.splitTextToSize(instrucoesPagamento.trim(), 250), 14, fim + 15)
+      doc.text(texto, 14, y + 15)
+      doc.setTextColor(20)
     }
+
+    /* Numeração em toda página · documento de cobrança sem "página X de Y" e o
+       RH não sabe se recebeu tudo. Vai por último porque só agora o total de
+       páginas é conhecido. */
+    const paginas = doc.getNumberOfPages()
+    for (let p = 1; p <= paginas; p++) {
+      doc.setPage(p)
+      doc.setFontSize(8)
+      doc.setTextColor(140)
+      doc.text(clinicaNome, 14, doc.internal.pageSize.getHeight() - 10)
+      doc.text(`Página ${p} de ${paginas}`, DIR, doc.internal.pageSize.getHeight() - 10, { align: 'right' })
+    }
+    doc.setTextColor(20)
 
     doc.save(`${nomeArquivo}.pdf`)
   }
