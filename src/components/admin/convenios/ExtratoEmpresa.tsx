@@ -35,6 +35,39 @@ export type FaturaResumo = {
   paga_em: string | null
 }
 
+/**
+ * Baixa a logo e devolve em data URL, com as medidas pra não deformar.
+ *
+ * Timeout curto e nunca lança: a logo é o enfeite do timbre, e um PDF que não
+ * sai porque o Storage demorou é pior que um PDF sem logo. Quem chama trata
+ * `null` como "segue sem".
+ */
+async function carregarLogo(url: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
+  try {
+    const ctrl = new AbortController()
+    const t = setTimeout(() => ctrl.abort(), 4000)
+    const res = await fetch(url, { signal: ctrl.signal })
+    clearTimeout(t)
+    if (!res.ok) return null
+    const blob = await res.blob()
+    const dataUrl = await new Promise<string>((ok, err) => {
+      const fr = new FileReader()
+      fr.onload = () => ok(String(fr.result))
+      fr.onerror = () => err(new Error('leitura'))
+      fr.readAsDataURL(blob)
+    })
+    const { w, h } = await new Promise<{ w: number; h: number }>((ok, err) => {
+      const im = new Image()
+      im.onload = () => ok({ w: im.naturalWidth || 1, h: im.naturalHeight || 1 })
+      im.onerror = () => err(new Error('decode'))
+      im.src = dataUrl
+    })
+    return { dataUrl, w, h }
+  } catch {
+    return null
+  }
+}
+
 export default function ExtratoEmpresa({
   empresaId,
   empresaNome,
@@ -43,6 +76,8 @@ export default function ExtratoEmpresa({
   clinicaNome,
   clinicaTelefone = null,
   clinicaCnpj = null,
+  clinicaEndereco = null,
+  clinicaLogo = null,
   temEmail,
   mes,
   linhas,
@@ -58,6 +93,10 @@ export default function ExtratoEmpresa({
   clinicaNome: string
   clinicaTelefone?: string | null
   clinicaCnpj?: string | null
+  clinicaEndereco?: string | null
+  /** Logo do negócio · vira o timbre do documento quando existe. Falha ao
+   *  carregar nunca impede o PDF de sair. */
+  clinicaLogo?: string | null
   /** Empresa sem e-mail não pode receber o extrato — o botão explica em vez de falhar. */
   temEmail: boolean
   mes: string // YYYY-MM
@@ -168,16 +207,20 @@ export default function ExtratoEmpresa({
     /* Cabeçalho de identificação · a planilha abria direto na linha de títulos
        e quem recebia não sabia de quem era sem olhar o nome do arquivo. */
     const ws = XLSX.utils.aoa_to_sheet([
-      [clinicaNome + (clinicaCnpj ? ` · CNPJ ${clinicaCnpj}` : '')],
-      [`${faturaDoMes ? `Fatura nº ${faturaDoMes.numero} · ` : ''}${empresaNome} · competência ${mesBR}`],
+      [clinicaNome],
+      [[clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null, clinicaEndereco, clinicaTelefone].filter(Boolean).join(' · ')],
+      [],
+      [faturaDoMes ? `FATURA Nº ${faturaDoMes.numero}` : 'EXTRATO DE ATENDIMENTOS'],
+      [`Cobrar de: ${empresaNome}${empresaCnpj ? ` · CNPJ ${empresaCnpj}` : ''}`],
+      [`Competência ${mesBR} · emitido em ${dataBR(new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}`],
       [],
     ])
-    XLSX.utils.sheet_add_json(ws, dados, { origin: 'A4' })
+    XLSX.utils.sheet_add_json(ws, dados, { origin: 'A8' })
     ws['!cols'] = [{ wch: 11 }, { wch: 8 }, { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 13 }, { wch: 11 }]
     /* Valor como MOEDA, não número cru. Saía "45" numa planilha que vai pro
        financeiro de outra empresa. */
     const ref = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
-    for (let r = 4; r <= ref.e.r; r++) {
+    for (let r = 8; r <= ref.e.r; r++) {
       const cel = ws[XLSX.utils.encode_cell({ c: 5, r })]
       if (cel && typeof cel.v === 'number') { cel.t = 'n'; cel.z = 'R$ #,##0.00' }
     }
@@ -207,36 +250,104 @@ export default function ExtratoEmpresa({
     const { jsPDF } = await import('jspdf')
     const autoTable = (await import('jspdf-autotable')).default
     const doc = new jsPDF({ orientation: 'landscape' })
+    const LARG = doc.internal.pageSize.getWidth()
+    const DIR = LARG - 14
 
-    /* Quem cobra vem primeiro. Antes o documento abria com o nome da EMPRESA —
-       quem paga — e não dizia em lugar nenhum de quem era o anexo nem pra quem
-       responder. */
-    doc.setFontSize(13)
-    doc.text(clinicaNome, 14, 14)
+    /* ─── TIMBRE ───────────────────────────────────────────────────────────
+       Quem cobra vem primeiro, com identificação completa. O documento antes
+       abria com o nome da EMPRESA — quem paga — e não dizia de quem era o
+       anexo nem pra quem responder. Isto aqui circula entre dois CNPJs: sem
+       razão social, documento e endereço, o financeiro do outro lado não tem
+       como lançar. */
+    let topo = 14
+    if (clinicaLogo) {
+      try {
+        const img = await carregarLogo(clinicaLogo)
+        if (img) {
+          // Altura fixa, largura proporcional · logo deitada não deforma.
+          const alt = 14
+          const larg = Math.min(45, (img.w / img.h) * alt)
+          doc.addImage(img.dataUrl, 14, 10, larg, alt)
+          topo = 10 + alt + 6
+        }
+      } catch {
+        // Logo é enfeite: se falhar, o documento sai igual, só sem ela.
+      }
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(14)
+    doc.text(clinicaNome, 14, topo)
+    doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     doc.setTextColor(110)
-    const idClinica = [clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null, clinicaTelefone].filter(Boolean).join(' · ')
-    if (idClinica) doc.text(idClinica, 14, 19)
-    doc.setTextColor(20)
+    const linhasClinica = [
+      clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null,
+      clinicaEndereco,
+      clinicaTelefone,
+    ].filter(Boolean) as string[]
+    linhasClinica.forEach((t, i) => doc.text(t, 14, topo + 5 + i * 4.5))
 
-    doc.setFontSize(13)
-    const titulo = faturaDoMes ? `Fatura nº ${faturaDoMes.numero}` : 'Extrato de atendimentos'
-    doc.text(titulo, 14, 29)
-    doc.setFontSize(10)
-    doc.text(`${empresaNome}${empresaCnpj ? ` · CNPJ ${empresaCnpj}` : ''}`, 14, 35)
+    /* Título e identificação do documento, alinhados à direita — é onde o
+       financeiro procura número e data pra lançar. */
+    doc.setTextColor(20)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(15)
+    const titulo = faturaDoMes ? `FATURA Nº ${faturaDoMes.numero}` : 'EXTRATO DE ATENDIMENTOS'
+    doc.text(titulo, DIR, topo, { align: 'right' })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(110)
+    doc.text(`Competência ${mesBR}`, DIR, topo + 5, { align: 'right' })
+    doc.text(
+      `Emitido em ${dataBR(new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}`,
+      DIR,
+      topo + 9.5,
+      { align: 'right' },
+    )
+
+    const yRegua = topo + 5 + Math.max(linhasClinica.length * 4.5, 14)
+    doc.setDrawColor(200)
+    doc.line(14, yRegua, DIR, yRegua)
+
+    /* A quem se cobra · bloco separado, como em qualquer fatura. */
+    doc.setTextColor(140)
+    doc.setFontSize(8)
+    doc.text('COBRAR DE', 14, yRegua + 6)
+    doc.setTextColor(20)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.text(empresaNome, 14, yRegua + 12)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(110)
+    const linhasEmpresa = [empresaCnpj ? `CNPJ ${empresaCnpj}` : null].filter(Boolean) as string[]
+    linhasEmpresa.forEach((t, i) => doc.text(t, 14, yRegua + 17 + i * 4.5))
+
+    // Total em destaque no canto oposto: é o número que decide a ação.
+    doc.setTextColor(140)
+    doc.setFontSize(8)
+    doc.text('TOTAL DO PERÍODO', DIR, yRegua + 6, { align: 'right' })
+    doc.setTextColor(20)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(16)
+    doc.text(brl(totais.total), DIR, yRegua + 14, { align: 'right' })
+    doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     doc.setTextColor(110)
     doc.text(
-      `Competência ${mesBR} · ${totais.qtd} atendimento${totais.qtd !== 1 ? 's' : ''} · ${brl(totais.total)}` +
-        `  |  emitido em ${dataBR(new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}`,
-      14,
-      40,
+      `${totais.qtd} atendimento${totais.qtd !== 1 ? 's' : ''}`,
+      DIR,
+      yRegua + 19,
+      { align: 'right' },
     )
     doc.setTextColor(20)
 
+    const inicioTabela = yRegua + 17 + Math.max(linhasEmpresa.length * 4.5, 10) + 6
+
     // Capa de conferência: quantas sessões cada servidor fez.
     autoTable(doc, {
-      startY: 46,
+      startY: inicioTabela,
       head: [['Funcionário', 'Atendimentos', 'Valor']],
       body: porFuncionario.map(([nome, x]) => [nome, String(x.qtd), brl(x.valor)]),
       foot: [['TOTAL', String(totais.qtd), brl(totais.total)]],

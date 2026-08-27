@@ -27,7 +27,7 @@ export default async function EmpresaPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, phone, cnpj, convenios_enabled')
+    .select('id, name, phone, cnpj, address, logo_url, convenios_enabled')
     .eq('owner_id', user.id)
     .single()
   if (!business) redirect(await destinoSemNegocio())
@@ -110,6 +110,8 @@ export default async function EmpresaPage({
           clinicaNome={business.name}
           clinicaTelefone={business.phone}
           clinicaCnpj={business.cnpj}
+          clinicaEndereco={business.address}
+          clinicaLogo={business.logo_url}
           temEmail={!!empresa.contato_email}
           mes={mes}
           linhas={linhas}
