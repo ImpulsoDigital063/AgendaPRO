@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import RegistrarPagamentoModal from './RegistrarPagamentoModal'
+import DarBonusModal from './DarBonusModal'
 
 export type ProfRow = {
   id: string
@@ -28,6 +29,8 @@ export type ProfRow = {
   /** Salários cadastrados no mês (pagos + pendentes). */
   salarios: number
   pago: number
+  /** v141 · bônus pago no período (já dentro de `pago`, mostrado separado). */
+  bonus?: number
   pendente: number
   valesPendentes: number
 }
@@ -52,6 +55,8 @@ function formatBRL(v: number): string {
 
 export default function RemuneracoesTable({ rows, comissaoValorFixo = false, monthIso, periodStart, periodEnd }: Props) {
   const [menuFor, setMenuFor] = useState<string | null>(null)
+  /** v141 · bônus avulso · quem está recebendo */
+  const [bonusFor, setBonusFor] = useState<string | null>(null)
   const [paymentFor, setPaymentFor] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   /* Coluna de convênio só existe onde há convênio esperando a empresa pagar.
@@ -79,6 +84,7 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
 
   const selected = rows.find((r) => r.id === menuFor)
   const payingFor = rows.find((r) => r.id === paymentFor)
+  const bonusingFor = rows.find((r) => r.id === bonusFor)
 
   return (
     <>
@@ -191,6 +197,14 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold" style={{ color: r.pago > 0 ? '#059669' : 'var(--admin-text-mute)' }}>
                     {formatBRL(r.pago)}
+                    {(r.bonus ?? 0) > 0 && (
+                      <div
+                        className="text-[10px] mt-0.5 font-bold"
+                        style={{ color: 'var(--admin-warning,#F59E0B)' }}
+                      >
+                        inclui bônus {formatBRL(r.bonus ?? 0)}
+                      </div>
+                    )}
                   </td>
                   {temConvenioEmAberto && (
                     <td
@@ -241,6 +255,17 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
           periodStart={periodStart}
           periodEnd={periodEnd}
           onClose={() => setPaymentFor(null)}
+        />
+      )}
+
+      {/* v141 · bônus avulso */}
+      {bonusingFor && (
+        <DarBonusModal
+          professionalId={bonusingFor.id}
+          professionalName={bonusingFor.name}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          onClose={() => setBonusFor(null)}
         />
       )}
 
@@ -323,6 +348,22 @@ export default function RemuneracoesTable({ rows, comissaoValorFixo = false, mon
                   </svg>
                 </span>
                 Registrar Pagamento
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBonusFor(selected.id)
+                  setMenuFor(null)
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[var(--admin-surface-hi)]"
+                style={{ color: 'var(--admin-text)' }}
+              >
+                <span style={{ color: 'var(--admin-warning,#F59E0B)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </span>
+                Bônus
               </button>
               <Link
                 href={`/admin/financeiro/remuneracoes/${selected.id}/historico`}

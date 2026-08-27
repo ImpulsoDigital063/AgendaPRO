@@ -54,13 +54,17 @@ export default async function HistoricoPagamentosPage({
 
   const { data: payments, error: payErr } = await sb
     .from('commission_payments')
-    .select('id, period_start, period_end, total_amount, paid_amount, notes, paid_at, created_at')
+    .select('id, period_start, period_end, total_amount, paid_amount, bonus_amount, bonus_reason, notes, paid_at, created_at')
     .eq('professional_id', professionalId)
     .order('paid_at', { ascending: false })
 
   if (payErr) console.error('[historico] erro payments:', payErr.message)
 
-  const totalPago = (payments ?? []).reduce((s, p) => s + Number(p.paid_amount ?? 0), 0)
+  /* v141 · bônus entra no total pago: saiu do caixa junto com a comissão. */
+  const totalPago = (payments ?? []).reduce(
+    (s, p) => s + Number(p.paid_amount ?? 0) + Number(p.bonus_amount ?? 0),
+    0
+  )
 
   return (
     <main className="relative" style={{ minHeight: '100svh' }}>
@@ -149,7 +153,11 @@ export default async function HistoricoPagamentosPage({
                     {(payments ?? []).map((p, idx) => {
                       const total = Number(p.total_amount ?? 0)
                       const paid = Number(p.paid_amount ?? 0)
-                      const parcial = paid < total
+                      const bonus = Number(p.bonus_amount ?? 0)
+                      /* v141 · lançamento só de bônus (total 0, comissão 0) não é
+                         pagamento parcial — é prêmio. Sem esta guarda ele apareceria
+                         como "Parcial · faltam R$ 0,00". */
+                      const parcial = total > 0 && paid < total
                       return (
                         <tr
                           key={p.id}
@@ -169,8 +177,14 @@ export default async function HistoricoPagamentosPage({
                           </td>
                           <td className="px-4 py-3 text-right">
                             <p className="tabular-nums font-bold" style={{ color: '#059669' }}>
-                              {formatBRL(paid)}
+                              {formatBRL(paid + bonus)}
                             </p>
+                            {bonus > 0 && (
+                              <p className="text-[10px] font-bold" style={{ color: 'var(--admin-warning,#F59E0B)' }}>
+                                inclui bônus {formatBRL(bonus)}
+                                {p.bonus_reason ? ` · ${p.bonus_reason}` : ''}
+                              </p>
+                            )}
                             {parcial && (
                               <p className="text-[10px]" style={{ color: 'var(--admin-warning,#F59E0B)' }}>
                                 Parcial · faltam {formatBRL(total - paid)}
