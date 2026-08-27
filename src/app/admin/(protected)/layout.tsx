@@ -217,6 +217,7 @@ export default async function AdminLayout({
           pendingClaims={pendingClaims}
           convenios={business?.convenios_enabled === true}
           cartaoPresente={business?.cartao_presente_enabled === true}
+          vendasBalcao={business?.vendas_balcao_enabled !== false}
         />
         <div className="admin-shell-content relative z-10">
           {/* Topbar mobile (header + drawer agrupado) · só <lg · coexiste com BottomNav */}
@@ -227,7 +228,8 @@ export default async function AdminLayout({
             pendingClaims={pendingClaims}
             showOwnerTab={showOwnerTab}
             convenios={business?.convenios_enabled === true}
-          cartaoPresente={business?.cartao_presente_enabled === true}
+            cartaoPresente={business?.cartao_presente_enabled === true}
+            vendasBalcao={business?.vendas_balcao_enabled !== false}
           />
           {/* DEPOIS da topbar (mesmo motivo do painel da profissional · 30/07):
               a barra é fixed e o espaçador dela é quem empurra o conteúdo. Com

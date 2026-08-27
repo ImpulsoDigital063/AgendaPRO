@@ -35,6 +35,8 @@ type Props = {
   showOwnerTab?: boolean
   /** businesses.convenios_enabled · mostra a entrada de Convênios */
   convenios?: boolean
+  /** v141 · negócio que não vende produto não vê Produtos no menu (CAF). */
+  vendasBalcao?: boolean
   /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
   cartaoPresente?: boolean
 }
@@ -59,6 +61,7 @@ export default function AdminMobileTopBar({
   pendingClaims = 0,
   showOwnerTab = false,
   convenios = false,
+  vendasBalcao = true,
   cartaoPresente = false,
 }: Props) {
   const pathname = usePathname()
@@ -118,7 +121,7 @@ export default function AdminMobileTopBar({
       label: 'Catálogo',
       items: [
         { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', Icon: IconSparkles },
-        { label: 'Produtos', href: '/admin/produtos', Icon: IconGift },
+        ...(vendasBalcao ? [{ label: 'Produtos', href: '/admin/produtos', Icon: IconGift }] : []),
         // Combo (serviço + produto) · entrada própria abaixo de Produtos, igual
         // ao desktop (Eduardo 24/07/2026). Já em produção.
         { label: 'Combos', href: '/admin/combos', Icon: IconLayers },

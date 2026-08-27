@@ -59,11 +59,13 @@ type Props = {
   pendingClaims?: number
   /** businesses.convenios_enabled · mostra a entrada de Convênios */
   convenios?: boolean
+  /** v141 · negócio que não vende produto não vê Produtos no menu (CAF). */
+  vendasBalcao?: boolean
   /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
   cartaoPresente?: boolean
 }
 
-export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false }: Props) {
+export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab')
@@ -113,7 +115,9 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       label: 'Catálogo',
       items: [
         { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', tabMatch: 'servicos', Icon: IconSparkles },
-        { label: 'Produtos', href: '/admin/produtos', Icon: IconPackage },
+        // Clínica que só presta serviço não tem catálogo de produto: a entrada
+        // some junto com o botão de venda no balcão (Eduardo, 27/08).
+        ...(vendasBalcao ? [{ label: 'Produtos', href: '/admin/produtos', Icon: IconPackage }] : []),
         // Combo (serviço + produto vendidos juntos) · entrada própria abaixo de
         // Produtos (Eduardo 24/07/2026). Já está pronto e em produção.
         { label: 'Combos', href: '/admin/combos', Icon: IconLayers },
