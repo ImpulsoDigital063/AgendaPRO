@@ -70,6 +70,9 @@ export default async function RemuneracaoDetalhePage({
   const nextMM = String(month0 === 11 ? 1 : month0 + 2).padStart(2, '0')
   const from = startOfDayBR(`${year}-${mmBR}-01`)
   const to = startOfDayBR(`${nextYear}-${nextMM}-01`)
+  // Datas puras (YYYY-MM-DD) pro recorte por data do ATENDIMENTO no convênio.
+  const fromDate = `${year}-${mmBR}-01`
+  const toDate = `${nextYear}-${nextMM}-01`
 
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -101,14 +104,22 @@ export default async function RemuneracaoDetalhePage({
       commission_payment_id,
       invoice_item_id,
       commission_amount,
-      commission_percent
+      commission_percent,
+      appointment_date,
+      status,
+      company_id,
+      company:companies(name)
     `)
     .eq('business_id', business.id)
     .eq('professional_id', professionalId)
-    .gte('paid_at', from)
-    .lt('paid_at', to)
-    .not('paid_at', 'is', null)
-    .order('paid_at', { ascending: false })
+    /* Particular entra pela data do PAGAMENTO; convênio entra pela data do
+       ATENDIMENTO, pago ou não — mesma âncora da lista de Remunerações.
+       Sem os de convênio ainda em aberto, esta tela mostrava R$190 pra Ana
+       Paula enquanto a lista mostrava R$310 no mesmo mês: dois totais pra
+       mesma pessoa (Eduardo, 27/08). */
+    .or(`and(paid_at.gte.${from},paid_at.lt.${to},company_id.is.null),and(appointment_date.gte.${fromDate},appointment_date.lt.${toDate},company_id.not.is.null)`)
+    .neq('status', 'cancelled')
+    .order('appointment_date', { ascending: false })
 
   type Row = {
     date: string
@@ -121,6 +132,10 @@ export default async function RemuneracaoDetalhePage({
     paymentMethod: string | null
     veioDeValorFixo: boolean
     percentUsado: number
+    /** Nome da empresa quando o atendimento é de convênio · null = particular. */
+    convenio: string | null
+    /** Convênio já recebido da empresa? Define se a comissão está liberada. */
+    convenioRecebido: boolean
   }
 
   // λ.valor-liquido: comissão incide sobre o valor LÍQUIDO (cupom da comanda
@@ -153,6 +168,8 @@ export default async function RemuneracaoDetalhePage({
          fixa isso acontecia em TODA linha (Eduardo, 27/08). */
       veioDeValorFixo: fixa != null,
       percentUsado: pctDoAppt,
+      convenio: (Array.isArray(a.company) ? a.company[0] : a.company)?.name ?? null,
+      convenioRecebido: a.paid_at != null,
       valorPago: paid,
       pagamentoPendente: pendente,
       paymentMethod: a.payment_method as string | null,
@@ -174,6 +191,8 @@ export default async function RemuneracaoDetalhePage({
       pagamentoPendente: remuneracao,
       veioDeValorFixo: false,
       percentUsado: pct,
+      convenio: null,
+      convenioRecebido: true,
       paymentMethod: 'package',
     })
   }
@@ -192,6 +211,8 @@ export default async function RemuneracaoDetalhePage({
       pagamentoPendente: remuneracao,
       veioDeValorFixo: false,
       percentUsado: pct,
+      convenio: null,
+      convenioRecebido: true,
       paymentMethod: 'gift_card',
     })
   }
@@ -202,7 +223,13 @@ export default async function RemuneracaoDetalhePage({
   const totalBase = rows.reduce((s, r) => s + r.valorBase, 0)
   const totalComissoes = rows.reduce((s, r) => s + r.valorRemuneracao, 0)
   const totalPago = rows.reduce((s, r) => s + r.valorPago, 0)
-  const totalPendente = totalComissoes - totalPago
+  /* Convênio que a empresa ainda não pagou não é sacável — mesma regra da
+     lista: "pagar quando receber", combinado do Gustavo com a equipe. Sem
+     descontar aqui, o detalhe prometeria um saque que o caixa não tem. */
+  const totalAguardandoConvenio = rows
+    .filter((r) => r.convenio && !r.convenioRecebido)
+    .reduce((s, r) => s + r.valorRemuneracao, 0)
+  const totalPendente = Math.max(0, totalComissoes - totalPago - totalAguardandoConvenio)
 
   // Por forma de pagamento
   const byMethod: Record<string, number> = {}
@@ -279,8 +306,33 @@ export default async function RemuneracaoDetalhePage({
                               </p>
                               <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
                                 {r.client}
-                                {r.paymentMethod && ` · ${METHOD_LABELS[r.paymentMethod] ?? r.paymentMethod}`}
+                                {/* Forma de pagamento só faz sentido no particular: no
+                                    convênio quem paga é a empresa, em lote, e o método
+                                    é o do recebimento dela — não daquele atendimento. */}
+                                {!r.convenio && r.paymentMethod && ` · ${METHOD_LABELS[r.paymentMethod] ?? r.paymentMethod}`}
                               </p>
+                              {/* Diferencia convênio de particular na linha (Eduardo,
+                                  27/08). Sem isso as duas naturezas ficavam iguais, e
+                                  são pagas por caminhos diferentes: uma no balcão,
+                                  outra pelo extrato da empresa. */}
+                              {r.convenio && (
+                                <span
+                                  className="inline-block mt-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
+                                  style={
+                                    r.convenioRecebido
+                                      ? { background: 'rgba(14,165,233,0.14)', color: '#0284C7' }
+                                      : { background: 'rgba(245,158,11,0.16)', color: '#B45309' }
+                                  }
+                                  title={
+                                    r.convenioRecebido
+                                      ? `Convênio ${r.convenio} · já recebido da empresa`
+                                      : `Convênio ${r.convenio} · a empresa ainda não pagou`
+                                  }
+                                >
+                                  {r.convenio}
+                                  {!r.convenioRecebido && ' · aguardando'}
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-right tabular-nums" style={{ color: 'var(--admin-text)' }}>
                               {formatBRL(r.valorBase)}
@@ -404,6 +456,14 @@ export default async function RemuneracaoDetalhePage({
                   className="pt-2 mt-2 space-y-1.5"
                   style={{ borderTop: '1px solid var(--admin-divider)' }}
                 >
+                  {totalAguardandoConvenio > 0 && (
+                  <div className="flex justify-between text-[13px]">
+                    <span style={{ color: 'var(--admin-text-mute)' }}>Aguardando convênio</span>
+                    <span className="font-semibold tabular-nums" style={{ color: '#B45309' }}>
+                      {formatBRL(totalAguardandoConvenio)}
+                    </span>
+                  </div>
+                  )}
                   <div className="flex justify-between">
                     <span style={{ color: 'var(--admin-text-mute)' }}>Total Já Pago</span>
                     <span className="font-semibold tabular-nums" style={{ color: totalPago > 0 ? '#059669' : 'var(--admin-text-mute)' }}>
