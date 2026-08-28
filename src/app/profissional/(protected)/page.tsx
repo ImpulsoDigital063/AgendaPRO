@@ -65,6 +65,10 @@ export default async function ProfissionalPage({
   const podeRegistrarPagamento = business.prof_registra_pagamento !== false
   // v131 · Studio Isis Melo: profissional confirma e conclui, mas não desmarca.
   // v131 · Studio Isis Melo: acrescenta serviço no atendimento, nunca remove.
+  /* v144 · profissional sem grade (pedido da Isis pra quem entrou agora) não
+     tem o que ver aqui: a home É a agenda. Manda pro financeiro dela. */
+  if (professional.ve_agenda === false) redirect('/profissional/financeiro')
+
   const podeAdicionarServico =
     (professional.business as { prof_adiciona_servico?: boolean | null } | null)
       ?.prof_adiciona_servico === true

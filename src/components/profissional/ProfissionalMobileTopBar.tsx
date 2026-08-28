@@ -19,6 +19,7 @@ import {
   IconWallet,
   IconSettings,
   IconClose,
+  IconUsers,
 } from '@/components/ui/Icon'
 
 type Props = {
@@ -27,6 +28,10 @@ type Props = {
   employmentType: 'commissioned' | 'employed'
   /** v131 · false = negócio reservou a definição de horário pra dona e recepção */
   podeEditarHorario?: boolean
+  /** v144 · false = sem grade de agenda (só financeiro e conta) */
+  veAgenda?: boolean
+  /** v144 · true = também opera o balcão */
+  operaRecepcao?: boolean
 }
 
 type NavItem = {
@@ -52,6 +57,8 @@ export default function ProfissionalMobileTopBar({
   brandLogoUrl,
   employmentType,
   podeEditarHorario = true,
+  veAgenda = true,
+  operaRecepcao = false,
 }: Props) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -67,9 +74,19 @@ export default function ProfissionalMobileTopBar({
   }, [open])
 
   // v131 · sem a chave, a aba Horários some do menu. Default `true` → base intacta.
-  const base = podeEditarHorario
+  const semHorario = podeEditarHorario
     ? ALL_ITEMS
     : ALL_ITEMS.filter((i) => i.href !== '/profissional/horarios')
+
+  /* v144 · sem grade: saem Início, Atendimentos e Bloqueios — sobra o que é
+     dela (financeiro e conta). Com recepção acumulada, entra o atalho do balcão. */
+  const semAgenda = semHorario.filter(
+    (i) => i.href !== '/profissional' && i.href !== '/profissional/bloqueios'
+  )
+  const base = [
+    ...(veAgenda ? semHorario : semAgenda),
+    ...(operaRecepcao ? [{ label: 'Recepção', href: '/recepcao', Icon: IconUsers }] : []),
+  ]
 
   const items = employmentType === 'employed'
     ? base.filter((i) => i.href !== '/profissional/horarios' && i.href !== '/profissional/financeiro')

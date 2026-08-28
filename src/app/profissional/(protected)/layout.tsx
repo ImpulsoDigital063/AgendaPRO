@@ -38,7 +38,7 @@ export default async function ProfissionalLayout({
   // Verifica se e um profissional com auth_user_id · puxa brand do business
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, employment_type, is_receptionist, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, prof_edita_horario)')
+    .select('id, business_id, password_changed, employment_type, is_receptionist, does_appointments, ve_agenda, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, prof_edita_horario)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -52,8 +52,10 @@ export default async function ProfissionalLayout({
     redirect('/profissional/trocar-senha')
   }
 
-  // Recepcionista: tela própria, não atende
-  if (professional.is_receptionist) {
+  /* Recepção PURA vai pra tela dela. v144 · quem é recepção E atende (caso da
+     Josi) fica aqui: tem a agenda dela como profissional e alcança o balcão
+     pelo atalho do menu. Antes, marcar como recepção custava o painel inteiro. */
+  if (professional.is_receptionist && professional.does_appointments !== true) {
     redirect('/recepcao')
   }
 
@@ -90,6 +92,11 @@ export default async function ProfissionalLayout({
   // Default `true` no banco → só some pra quem pediu (Studio Isis Melo).
   const podeEditarHorario = business.prof_edita_horario !== false
 
+  /* v144 · quem entrou agora fica só com o financeiro (pedido da Isis), e quem
+     acumula recepção ganha o atalho pro balcão. */
+  const veAgenda = professional.ve_agenda !== false
+  const operaRecepcao = professional.is_receptionist === true
+
   return (
     <AdminThemeProvider initial={initialTheme}>
       <BrandThemeInjector brand={business} />
@@ -107,6 +114,8 @@ export default async function ProfissionalLayout({
           brandLogoUrl={business.brand_logo_url ?? null}
           employmentType={employmentType}
           podeEditarHorario={podeEditarHorario}
+          veAgenda={veAgenda}
+          operaRecepcao={operaRecepcao}
         />
         {/* DEPOIS da topbar de propósito (Eduardo 30/07, print do iPhone): a
             barra é `fixed` e quem empurra o conteúdo é o espaçador de 56px que
@@ -133,6 +142,8 @@ export default async function ProfissionalLayout({
           employmentType={employmentType}
           pendingAppointments={pendingCount ?? 0}
           podeEditarHorario={podeEditarHorario}
+          veAgenda={veAgenda}
+          operaRecepcao={operaRecepcao}
         />
       </div>
     </AdminThemeProvider>

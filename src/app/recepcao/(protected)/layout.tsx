@@ -36,6 +36,9 @@ export default async function RecepcaoLayout({
     redirect('/profissional/login')
   }
 
+  /* v144 · quem acumula recepção + atendimento (Josi) entra aqui pelo atalho do
+     painel dela. O gate segue sendo is_receptionist — o que mudou foi o painel
+     do profissional parar de expulsar quem tem os dois papéis. */
   if (!professional.is_receptionist) {
     console.log('[RECEPCAO-LAYOUT] redirect /profissional · not recep')
     redirect('/profissional')

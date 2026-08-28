@@ -4,6 +4,7 @@ import {
   IconCalendar,
   IconCalendarSolid,
   IconClock,
+  IconUsers,
   IconWallet,
   IconWalletSolid,
   IconSettings,
@@ -16,12 +17,18 @@ type Props = {
   pendingAppointments?: number
   /** v131 · false = negócio reservou a definição de horário pra dona e recepção */
   podeEditarHorario?: boolean
+  /** v144 · false = sem grade de agenda (só financeiro e conta) */
+  veAgenda?: boolean
+  /** v144 · true = também opera o balcão · ganha atalho pra /recepcao */
+  operaRecepcao?: boolean
 }
 
 export default function ProfissionalBottomNav({
   employmentType = 'commissioned',
   pendingAppointments = 0,
   podeEditarHorario = true,
+  veAgenda = true,
+  operaRecepcao = false,
 }: Props) {
   const ALL_TABS: DockTab[] = [
     {
@@ -52,12 +59,17 @@ export default function ProfissionalBottomNav({
   // Default `true` → base inteira segue como sempre.
   const base = podeEditarHorario ? ALL_TABS : semHorario
 
+  const semAgenda = base.filter((t) => t.href !== '/profissional')
+  const comRecepcao = operaRecepcao
+    ? [...(veAgenda ? base : semAgenda), { href: '/recepcao', label: 'Recepção', Icon: IconUsers }]
+    : veAgenda ? base : semAgenda
+
   const tabs =
     employmentType === 'employed'
-      ? base.filter(
+      ? comRecepcao.filter(
           (t) => t.href !== '/profissional/horarios' && t.href !== '/profissional/financeiro'
         )
-      : base
+      : comRecepcao
 
   return <DockNav tabs={tabs} />
 }
