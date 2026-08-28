@@ -408,6 +408,41 @@ export default function BookingFlow({
     return totalDuration > 0 ? totalDuration : getSlotStep(date)
   }
 
+  /* v122 · rotulo — "8h 30min" nao e como ninguem fala de um servico que toma
+     o dia (reporte do Eduardo, 28/08: "achei exagero ficar essas 8:30").
+     Mesma regra do janelasDoDia: o servico que nao cabe em periodo nenhum e o
+     que toma o dia, entao e ele que troca de rotulo. So onde a chave esta
+     ligada — sem ela esse servico nem gera horario, e chamar de "dia inteiro"
+     seria promessa que a tela nao cumpre. */
+  function rotuloDuracao(min: number): string {
+    if (business.servico_longo_atravessa_intervalo !== true) return formatDuration(min)
+    if (workingHours.length === 0) return formatDuration(min)
+
+    const maiorPeriodo = workingHours.reduce(
+      (max, w) => Math.max(max, toMinutes(w.end_time) - toMinutes(w.start_time)),
+      0
+    )
+    if (min <= maiorPeriodo) return formatDuration(min)
+
+    /* Diz a janela real ("08:30 às 17:00") em vez de "dia inteiro": o nome do
+       servico ja carrega essa expressao e repetir tres vezes no mesmo card nao
+       informa nada. So quando a janela e a MESMA em todos os dias configurados
+       — variando por dia, um horario fixo mentiria, entao volta pro generico. */
+    const porDia = new Map<number, { ini: string; fim: string }>()
+    for (const w of workingHours) {
+      const atual = porDia.get(w.day_of_week)
+      porDia.set(w.day_of_week, {
+        ini: !atual || w.start_time < atual.ini ? w.start_time : atual.ini,
+        fim: !atual || w.end_time > atual.fim ? w.end_time : atual.fim,
+      })
+    }
+    const janelas = [...porDia.values()]
+    const primeira = janelas[0]
+    const uniforme = janelas.every((j) => j.ini === primeira.ini && j.fim === primeira.fim)
+    if (!uniforme) return 'dia inteiro'
+    return `${primeira.ini.slice(0, 5)} às ${primeira.fim.slice(0, 5)}`
+  }
+
   // Gera as datas disponíveis INCLUINDO hoje. Varre até juntar N dias COM
   // ATENDIMENTO (v121 · 20/08/2026 — antes disso o padrão era 14 dias corridos):
   //
@@ -1858,7 +1893,7 @@ export default function BookingFlow({
                   >
                     <span className="inline-flex items-center gap-1">
                       <IconClock size={12} color="currentColor" />
-                      {formatDuration(service.duration_minutes)}
+                      {rotuloDuracao(service.duration_minutes)}
                     </span>
                     {service.points > 0 && (
                       <span
@@ -2523,7 +2558,9 @@ export default function BookingFlow({
                 <span>·</span>
                 <span className="inline-flex items-center gap-1">
                   <IconClock size={10} color="currentColor" />
-                  {formatDuration(totalDuration)}
+                  {selectedServices.length === 1
+                    ? rotuloDuracao(totalDuration)
+                    : formatDuration(totalDuration)}
                 </span>
                 {coupon && couponDiscount > 0 && (
                   <>
