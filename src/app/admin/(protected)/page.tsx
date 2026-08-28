@@ -81,13 +81,15 @@ export default async function AdminPage({
       )}
 
       {/* Onboarding checklist · só enquanto não completou tudo · acima da agenda */}
-      {!onboarding.done && (
+      {/* v143 · a dona pode fechar de vez (businesses.onboarding_dispensado) */}
+      {!onboarding.done && business.onboarding_dispensado !== true && (
         <div className="relative px-3 md:px-6 pt-3 md:pt-6">
           <OnboardingChecklist
             items={onboarding.items}
             percent={onboarding.percent}
             done={onboarding.done}
             slug={business.slug}
+            businessId={business.id}
           />
         </div>
       )}

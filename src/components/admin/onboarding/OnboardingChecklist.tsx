@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 import { CHECKLIST_ITEMS } from '@/lib/onboarding-content'
 import type { OnboardingChecklistKey } from '@/lib/admin-data'
 import InstallChecklistItem from './InstallChecklistItem'
@@ -18,14 +20,39 @@ type Props = {
   items: Record<OnboardingChecklistKey, boolean>
   percent: number
   done: boolean
+  /** v143 · pra dispensar o card de vez (negócio que já opera) */
+  businessId?: string
   /** Slug pra abrir página pública do business (passo "agendamento") */
   slug: string
 }
 
-export default function OnboardingChecklist({ items, percent, done, slug }: Props) {
+export default function OnboardingChecklist({ items, percent, done, slug, businessId }: Props) {
   const [expanded, setExpanded] = useState(true)
+  const [dispensando, setDispensando] = useState(false)
+  const [oculto, setOculto] = useState(false)
+  const router = useRouter()
 
-  if (done) return null
+  /* v143 · fechar de vez. Só quem já opera clica aqui — e pra essa dona o
+     checklist virou ruído, não ajuda. Volta a aparecer só se alguém desmarcar
+     a coluna no banco. */
+  async function dispensar() {
+    if (!businessId) return
+    setDispensando(true)
+    setOculto(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('businesses')
+      .update({ onboarding_dispensado: true })
+      .eq('id', businessId)
+    if (error) {
+      setOculto(false)
+      setDispensando(false)
+      return
+    }
+    router.refresh()
+  }
+
+  if (done || oculto) return null
 
   const doneCount = Object.values(items).filter(Boolean).length
   const total = Object.keys(items).length
@@ -33,7 +60,7 @@ export default function OnboardingChecklist({ items, percent, done, slug }: Prop
   return (
     <section className="relative max-w-lg mx-auto px-4 mb-6">
       <div
-        className="rounded-2xl overflow-hidden"
+        className="relative rounded-2xl overflow-hidden"
         style={{
           background:
             'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 10%, var(--admin-surface)) 0%, var(--admin-surface) 100%)',
@@ -94,6 +121,23 @@ export default function OnboardingChecklist({ items, percent, done, slug }: Prop
             </svg>
           </span>
         </button>
+
+        {businessId && (
+          <button
+            type="button"
+            onClick={dispensar}
+            disabled={dispensando}
+            className="absolute top-2 right-2 p-1.5 rounded-lg disabled:opacity-40"
+            style={{ color: 'var(--admin-text-faded)' }}
+            aria-label="Não mostrar mais"
+            title="Não mostrar mais"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
 
         {/* Progress bar · sempre visível */}
         <div className="px-4 pb-3">
