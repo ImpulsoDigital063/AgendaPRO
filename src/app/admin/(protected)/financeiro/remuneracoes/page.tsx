@@ -84,7 +84,7 @@ export default async function RemuneracoesPage({
       // Alias mantém o resto do código usando p.default_commission_percent, mas
       // com o valor REAL. Antes lia default_commission_percent (default fixo 40,
       // nunca atualizado) → pagava comissão errada (espelha fix Palace 3e069be).
-      .select('id, name, default_commission_percent:commission_percentage, is_receptionist, active')
+      .select('id, name, default_commission_percent:commission_percentage, is_receptionist, does_appointments, active')
       .eq('business_id', business.id)
       .eq('active', true)
       .order('name'),
@@ -212,7 +212,10 @@ export default async function RemuneracoesPage({
   // Calcula por prof · inclui recep como contratada (sem comissão)
   const rows: ProfRow[] = (profs ?? []).map((p) => {
     const pct = Number(p.default_commission_percent ?? 40)
-    const isRecep = p.is_receptionist === true
+    /* v144 · "recepção" aqui significa QUEM NÃO ATENDE — é isso que zera
+       comissão. Quem acumula balcão e atendimento (Josi) continua comissionada:
+       antes, marcar como recepção zerava o pagamento dela em silêncio. */
+    const isRecep = p.is_receptionist === true && p.does_appointments !== true
 
     // Recep não recebe comissão (contratada) · zera serviços/produtos
     const sumPaidAppts = isRecep

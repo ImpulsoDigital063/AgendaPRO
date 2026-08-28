@@ -27,7 +27,8 @@ export default async function AdminConsultasPage() {
     .select('id, name')
     .eq('business_id', business.id)
     .eq('active', true)
-    .eq('is_receptionist', false)
+    // v144 · quem atende entra na lista, mesmo acumulando recepção (Josi)
+    .eq('does_appointments', true)
     .order('name')
 
   return (

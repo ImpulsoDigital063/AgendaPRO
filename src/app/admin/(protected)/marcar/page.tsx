@@ -37,7 +37,9 @@ export default async function AdminMarcarPage({
       .select('id, name')
       .eq('business_id', business.id)
       .eq('active', true)
-      .eq('is_receptionist', false)
+      /* v144 · quem manda aqui é does_appointments. Filtrar por is_receptionist
+         sumia com quem acumula balcão e atendimento (Josi) — e aí ninguém
+         conseguia marcar com ela. */
       .eq('does_appointments', true)
       .order('name'),
     supabase
