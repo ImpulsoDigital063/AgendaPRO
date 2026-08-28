@@ -74,6 +74,7 @@ export type Business = {
   // juntar N dias atendíveis, limitado por BOOKING_SCAN_CAP_DAYS.
   // Fica NULL em todo mundo; só quem pedir recebe valor.
   booking_days_with_service?: number | null
+  servico_longo_atravessa_intervalo?: boolean | null
   // Punição por no-show (v45 · 14/05/2026)
   no_show_punishment_enabled?: boolean | null
   no_show_penalty_mode?: 'proportional' | 'fixed' | null

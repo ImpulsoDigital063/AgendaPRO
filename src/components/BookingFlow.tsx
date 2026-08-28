@@ -103,6 +103,40 @@ function generateSlots(
   return slots
 }
 
+/**
+ * v122 — em que janelas o serviço pode ser oferecido neste dia.
+ *
+ * Regra histórica: cada período é uma janela e o serviço tem que caber INTEIRO
+ * dentro de um deles (current + dur <= endMin no generateSlots). É daí que vem a
+ * trava: com expediente partido por almoço, nada atravessa o intervalo.
+ *
+ * Com `atravessa` ligado (businesses.servico_longo_atravessa_intervalo, false em
+ * todo mundo menos no DN), o serviço que NÃO CABE em período nenhum passa a ser
+ * oferecido na janela contínua do dia — do início do primeiro período ao fim do
+ * último. O serviço que cabe continua preso ao turno, então o intervalo segue
+ * protegido pra tudo que não precisa dele.
+ *
+ * Reporte do Diogo (DN, 21/08): instalação que toma o dia todo não podia ser
+ * marcada — a cliente pegava meio período e ele fechava o resto na mão.
+ *
+ * Derivada da DURAÇÃO, não de um campo por serviço: ele edita o próprio cadastro
+ * e já apagou/recriou um serviço em vez de editar (29/07). Campo invisível pra ele
+ * morreria em silêncio na recriação; a duração ele mesmo controla.
+ */
+function janelasDoDia(
+  periods: { start_time: string; end_time: string }[],
+  serviceDuration: number,
+  atravessa: boolean,
+): { start_time: string; end_time: string }[] {
+  if (!atravessa || periods.length < 2) return periods
+  const cabeEmAlgum = periods.some(
+    (p) => toMinutes(p.end_time) - toMinutes(p.start_time) >= serviceDuration
+  )
+  if (cabeEmAlgum) return periods
+  // periods ja vem ordenado por start_time nos dois pontos de uso.
+  return [{ start_time: periods[0].start_time, end_time: periods[periods.length - 1].end_time }]
+}
+
 /** Mesmo dia (ano/mês/dia coincidem)? — comparação local, sem timezone bug. */
 function isSameLocalDay(a: Date, b: Date): boolean {
   return (
@@ -515,7 +549,11 @@ export default function BookingFlow({
           ? agora.getHours() * 60 + agora.getMinutes() + BOOKING_BUFFER_MIN
           : undefined
 
-        const temLivre = periods.some((p) =>
+        const temLivre = janelasDoDia(
+          periods,
+          getServiceDuration(d),
+          business.servico_longo_atravessa_intervalo === true
+        ).some((p) =>
           generateSlots(
             p.start_time,
             p.end_time,
@@ -846,8 +884,17 @@ export default function BookingFlow({
       ? now.getHours() * 60 + now.getMinutes() + BOOKING_BUFFER_MIN
       : undefined
 
-    // Gera slots pra cada periodo do dia e concatena na ordem cronologica
-    const generated = periods.flatMap((p) =>
+    // Gera slots pra cada janela do dia e concatena na ordem cronologica.
+    // v122: normalmente uma janela por periodo; no negocio com a chave ligada,
+    // o servico que nao cabe em periodo nenhum recebe a janela continua do dia
+    // (atravessa o intervalo). MESMA funcao usada no veredito do card do dia —
+    // regra divergente faria o card dizer "ocupado" e o clique dizer "livre".
+    const janelas = janelasDoDia(
+      periods,
+      serviceDuration,
+      business.servico_longo_atravessa_intervalo === true
+    )
+    const generated = janelas.flatMap((p) =>
       generateSlots(p.start_time, p.end_time, step, serviceDuration, booked, minStartMin)
     )
 
@@ -856,7 +903,7 @@ export default function BookingFlow({
     // específica ("tira serviços ou outro dia"). Senão, é caso "lotado".
     if (generated.length === 0) {
       const maxPeriodLength = Math.max(
-        ...periods.map((p) => toMinutes(p.end_time) - toMinutes(p.start_time))
+        ...janelas.map((p) => toMinutes(p.end_time) - toMinutes(p.start_time))
       )
       setSlotsEmptyReason(serviceDuration > maxPeriodLength ? 'duration' : 'full')
     } else {
