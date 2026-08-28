@@ -29,7 +29,7 @@ export default async function VenderProdutoPage({
       .order('name'),
     supabase
       .from('professionals')
-      .select('id, name, is_receptionist')
+      .select('id, name, is_receptionist, does_appointments')
       .eq('business_id', business.id)
       .eq('active', true)
       .order('name'),
@@ -43,9 +43,15 @@ export default async function VenderProdutoPage({
 
   // Recep pode vender produto avulso (cenário Salão99: cliente compra esmalte na saída) ·
   // ordenar profs primeiro, recep no fim com label (recepção) visualmente diferente.
+  /* v144 · "recepção" aqui é quem NÃO atende. Quem acumula os dois papéis
+     (Josi) entra na lista como profissional mesmo — chamar de recepção quem
+     atende o dia todo confunde na hora de escolher quem vendeu. */
+  const soBalcao = (p: { is_receptionist?: boolean | null; does_appointments?: boolean | null }) =>
+    p.is_receptionist === true && p.does_appointments !== true
+
   const profs = [
-    ...(professionals ?? []).filter((p) => !p.is_receptionist),
-    ...(professionals ?? []).filter((p) => p.is_receptionist),
+    ...(professionals ?? []).filter((p) => !soBalcao(p)),
+    ...(professionals ?? []).filter((p) => soBalcao(p)),
   ]
 
   return (
@@ -66,7 +72,7 @@ export default async function VenderProdutoPage({
         }))}
         professionals={profs.map((p) => ({
           id: p.id,
-          name: p.is_receptionist ? `${p.name} (recepção)` : p.name,
+          name: soBalcao(p) ? `${p.name} (recepção)` : p.name,
         }))}
         defaultProfId={ownerProfData?.id ?? null}
         prefillProductId={prefillProductId}

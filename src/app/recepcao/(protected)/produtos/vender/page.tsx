@@ -33,15 +33,16 @@ export default async function RecepcaoVenderProdutoPage({
       .order('name'),
     supabase
       .from('professionals')
-      .select('id, name, is_receptionist')
+      .select('id, name, is_receptionist, does_appointments')
       .eq('business_id', recep.business_id)
       .eq('active', true)
       .order('name'),
   ])
 
   const profs = [
-    ...(professionals ?? []).filter((p) => !p.is_receptionist),
-    ...(professionals ?? []).filter((p) => p.is_receptionist),
+    // v144 · quem acumula recepção e atendimento entra como profissional
+    ...(professionals ?? []).filter((p) => !(p.is_receptionist === true && p.does_appointments !== true)),
+    ...(professionals ?? []).filter((p) => p.is_receptionist === true && p.does_appointments !== true),
   ]
 
   return (
@@ -62,7 +63,7 @@ export default async function RecepcaoVenderProdutoPage({
         }))}
         professionals={profs.map((p) => ({
           id: p.id,
-          name: p.is_receptionist ? `${p.name} (recepção)` : p.name,
+          name: p.is_receptionist === true && p.does_appointments !== true ? `${p.name} (recepção)` : p.name,
         }))}
         defaultProfId={recep.id ?? null}
         prefillProductId={prefillProductId}
