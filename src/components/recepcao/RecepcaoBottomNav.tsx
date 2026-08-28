@@ -17,11 +17,14 @@ type Props = {
   pendingAppointments?: number
   /** v133 · negócio passou a definição de horário pra recepção */
   podeEditarHorario?: boolean
+  /** v144 · recepção que também atende: atalho pro financeiro DELA */
+  tambemAtende?: boolean
 }
 
 export default function RecepcaoBottomNav({
   pendingAppointments = 0,
   podeEditarHorario = false,
+  tambemAtende = false,
 }: Props) {
   const tabs: DockTab[] = [
     {
@@ -59,6 +62,11 @@ export default function RecepcaoBottomNav({
   // continua com as mesmas 5 abas de sempre.
   if (podeEditarHorario) {
     tabs.push({ href: '/recepcao/horarios', label: 'Horários', Icon: IconClock })
+  }
+
+  // v144 · a própria comissão de quem acumula balcão e atendimento
+  if (tambemAtende) {
+    tabs.push({ href: '/profissional/financeiro', label: 'Meus ganhos', Icon: IconWallet })
   }
 
   return <DockNav tabs={tabs} />

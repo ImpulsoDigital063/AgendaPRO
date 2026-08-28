@@ -140,14 +140,13 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     sb.from('businesses').select('agendamento_simultaneo, vendas_balcao_enabled').eq('id', businessId).maybeSingle(),
   ])
 
-  // Grade só mostra QUEM ATENDE.
-  // Filtros (defensivos, em ordem):
-  //   - !is_receptionist     → recep não atende
-  //   - does_appointments !== false → owner/manager puro com toggle OFF some
-  //     (usa !== false em vez de === true pra não esconder registros antigos
-  //      com null antes do backfill da v79)
+  /* Grade só mostra QUEM ATENDE — e quem responde isso é does_appointments,
+     não is_receptionist. v144 · antes o filtro tirava toda recepção, e quem
+     acumula balcão e atendimento (Josi) sumia da própria grade: ninguém
+     conseguia marcar cliente pra ela, nem ela mesma.
+     `!== false` em vez de `=== true` pra não esconder registro antigo com null
+     (antes do backfill da v79). */
   const profs = (profsData ?? [])
-    .filter((p) => !p.is_receptionist)
     .filter((p) => p.does_appointments !== false)
     // Aba "Eu" do dono: só a coluna dele
     .filter((p) => !onlyProfessionalId || p.id === onlyProfessionalId)

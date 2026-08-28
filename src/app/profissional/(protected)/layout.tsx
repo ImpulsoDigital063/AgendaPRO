@@ -52,12 +52,11 @@ export default async function ProfissionalLayout({
     redirect('/profissional/trocar-senha')
   }
 
-  /* Recepção PURA vai pra tela dela. v144 · quem é recepção E atende (caso da
-     Josi) fica aqui: tem a agenda dela como profissional e alcança o balcão
-     pelo atalho do menu. Antes, marcar como recepção custava o painel inteiro. */
-  if (professional.is_receptionist && professional.does_appointments !== true) {
-    redirect('/recepcao')
-  }
+  /* v144 · O REDIRECT SAIU DAQUI de propósito. Recepção que também atende
+     (Josi) tem o balcão como tela principal, mas precisa alcançar o financeiro
+     DELA — e um redirect no layout barrava toda subrota junto. Agora quem
+     manda pro balcão é a home (/profissional/page.tsx), e as subrotas
+     (financeiro, conta) seguem abertas pra quem tem ficha de profissional. */
 
   // Sistema light-only (tema dark removido 03/06). Sem leitura de cookie de tema.
   const initialTheme = 'light' as const

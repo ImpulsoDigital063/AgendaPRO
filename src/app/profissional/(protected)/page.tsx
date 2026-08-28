@@ -65,8 +65,14 @@ export default async function ProfissionalPage({
   const podeRegistrarPagamento = business.prof_registra_pagamento !== false
   // v131 · Studio Isis Melo: profissional confirma e conclui, mas não desmarca.
   // v131 · Studio Isis Melo: acrescenta serviço no atendimento, nunca remove.
-  /* v144 · profissional sem grade (pedido da Isis pra quem entrou agora) não
-     tem o que ver aqui: a home É a agenda. Manda pro financeiro dela. */
+  /* v144 · quem opera o balcão tem o PAINEL DA RECEPÇÃO como tela principal —
+     no celular e no computador. Lá ela enxerga a agenda de todas (a dela
+     inclusive) e marca pra qualquer uma; aqui ela veria só a agenda dela.
+     O financeiro dela continua acessível pelo menu. */
+  if (professional.is_receptionist === true) redirect('/recepcao')
+
+  /* Profissional sem grade (pedido da Isis pra quem entrou agora) não tem o
+     que ver aqui: a home É a agenda. Manda pro financeiro dela. */
   if (professional.ve_agenda === false) redirect('/profissional/financeiro')
 
   const podeAdicionarServico =

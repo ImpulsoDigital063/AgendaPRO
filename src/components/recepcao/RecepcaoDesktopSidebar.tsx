@@ -61,16 +61,25 @@ const ITEMS: SidebarItem[] = [
 export default function RecepcaoDesktopSidebar({
   brand,
   podeEditarHorario = false,
+  tambemAtende = false,
 }: {
   brand: Brand
+  /** v144 · recepção que também atende: atalho pro financeiro DELA */
+  tambemAtende?: boolean
   /** v133 · negócio passou a definição de horário pra recepção */
   podeEditarHorario?: boolean
 }) {
   // v133 · o item só existe pra quem tem a chave; os outros negócios seguem
   // com a mesma lista de sempre.
-  const items: SidebarItem[] = podeEditarHorario
+  const base: SidebarItem[] = podeEditarHorario
     ? [...ITEMS, { label: 'Horários', href: '/recepcao/horarios', Icon: IconClock }]
     : ITEMS
+
+  /* v144 · quem acumula balcão e atendimento precisa alcançar a própria
+     comissão — o balcão mostra o dinheiro do salão, não o dela. */
+  const items: SidebarItem[] = tambemAtende
+    ? [...base, { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet }]
+    : base
 
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
