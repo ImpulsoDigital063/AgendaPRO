@@ -336,7 +336,7 @@ export default async function ProfissionalPage({
         <PushEnableBanner />
 
         {/* Boas-vindas · card de primeiro acesso (dispensável no X) */}
-        <WelcomeCard professionalName={professional.name} />
+        <WelcomeCard professionalName={professional.name} podeCancelar={podeCancelar} />
 
         {/* v98g · O botão "Marcar cliente" que existia aqui SAIU: era a mesma
             função do "+ Agendar" que a própria grade tem no header, e apontado

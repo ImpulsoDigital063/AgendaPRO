@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from 'react'
 
-export default function WelcomeCard({ professionalName }: { professionalName: string }) {
+export default function WelcomeCard({
+  professionalName,
+  podeCancelar = true,
+}: {
+  professionalName: string
+  /** v144 · negócio que reservou o cancelamento pra dona/recepção não promete
+   *  aqui o que a profissional não vai conseguir fazer. */
+  podeCancelar?: boolean
+}) {
   const [dismissed, setDismissed] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -66,7 +74,12 @@ export default function WelcomeCard({ professionalName }: { professionalName: st
           </span>
           <div>
             <p className="font-semibold" style={{ color: 'var(--admin-text)' }}>Sua agenda aqui</p>
-            <p>Os agendamentos dos seus clientes aparecem automaticamente. Você pode confirmar ou cancelar direto daqui.</p>
+            <p>
+              Os agendamentos dos seus clientes aparecem automaticamente.{' '}
+              {podeCancelar
+                ? 'Você pode confirmar ou cancelar direto daqui.'
+                : 'Você confirma e conclui por aqui; cancelamento é feito pela recepção ou pela administração.'}
+            </p>
           </div>
         </div>
 
