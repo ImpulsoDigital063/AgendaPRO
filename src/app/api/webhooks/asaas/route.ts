@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendPaymentConfirmed, sendRefundProcessed } from '@/lib/email'
 import { sendAlert } from '@/lib/alert'
+import { ativarPacote, trocarPacoteNoCiclo } from '@/lib/mensagens/franquia'
 
 // =====================================================================
 // POST /api/webhooks/asaas
@@ -144,7 +145,40 @@ async function handlePaymentConfirmed(
     return
   }
 
-  const [businessId, modalidade, coberturaStr] = externalRef.split('|')
+  /* ── COBRANÇA SÓ DOS AVISOS ──────────────────────────────────
+     Formato próprio: avisos-avulso|business|pacote|unidades|dias
+     É a primeira compra (proporcional aos dias que faltam pro vencimento
+     do plano) e o upgrade no meio do ciclo. Não mexe em `pago_ate` nem em
+     nada da assinatura — é outro produto, e tratar aqui como mensalidade
+     daria acesso de graça a quem só comprou mensagem.
+
+     `dias === 0` é o upgrade: troca o tamanho do balde e NÃO reinicia o
+     ciclo. Qualquer outro valor é ativação nova, que soma o saldo. */
+  if (externalRef.startsWith('avisos-avulso|')) {
+    const [, bid, pacoteId, unidadesStr, diasStr] = externalRef.split('|')
+    const unidades = parseInt(unidadesStr, 10)
+    const dias = parseInt(diasStr, 10)
+    if (!bid || !pacoteId || isNaN(unidades)) {
+      console.error('[Asaas Webhook] avisos-avulso malformado:', externalRef)
+      return
+    }
+    const r =
+      dias === 0
+        ? await trocarPacoteNoCiclo(admin, bid, pacoteId)
+        : await ativarPacote(admin, bid, pacoteId, { unidades, dias })
+    console.log(
+      r.ok
+        ? `[Asaas Webhook] avisos ${pacoteId} ativado pra ${bid} (${unidades}un/${dias}d)`
+        : `[Asaas Webhook] FALHA ao ativar avisos de ${bid}: ${r.erro}`
+    )
+    return
+  }
+
+  /* 4º campo (opcional): "avisos:<pacoteId>". Presente quando esta
+     cobrança também renova o pacote de mensagens — o cron e o pix-atual
+     somam o valor e marcam aqui. Cobranças antigas não têm o campo e
+     seguem funcionando igual. */
+  const [businessId, modalidade, coberturaStr, avisosRef] = externalRef.split('|')
   const coberturaMeses = parseInt(coberturaStr, 10)
 
   if (!businessId || !modalidade || isNaN(coberturaMeses)) {
@@ -200,6 +234,32 @@ async function handlePaymentConfirmed(
   console.log(
     `[Asaas Webhook] PIX confirmado pra ${businessId} (${modalidade}, ${coberturaMeses}m) — pago_ate=${novoPagoAte.toISOString()}`
   )
+
+  /* RENOVA O PACOTE DE AVISOS.
+     ─────────────────────────────────────────────────────────────
+     É AQUI que a franquia recarrega, e não quando ela clica em
+     "contratar": o pacote é pré-pago, então escolher não é pagar. Sem esta
+     chamada o dinheiro entra e nenhuma mensagem sai.
+
+     `ativarPacote` SOMA o saldo que sobrou do ciclo anterior — ela pagou
+     por aquelas mensagens e elas continuam dela.
+
+     Envolvido em try porque o pagamento da MENSALIDADE já foi gravado
+     acima: se a recarga falhar, o acesso dela não pode cair junto. O erro
+     vai pro log e o saldo é corrigido na mão. */
+  if (avisosRef?.startsWith('avisos:')) {
+    const pacoteId = avisosRef.slice('avisos:'.length)
+    try {
+      const r = await ativarPacote(admin, businessId, pacoteId)
+      console.log(
+        r.ok
+          ? `[Asaas Webhook] avisos ${pacoteId} recarregado pra ${businessId} — ${r.unidades} unidades`
+          : `[Asaas Webhook] FALHA ao recarregar avisos de ${businessId}: ${r.erro}`
+      )
+    } catch (e) {
+      console.error('[Asaas Webhook] erro ao recarregar avisos:', e)
+    }
+  }
 
   // Email branded "Pagamento recebido" — substitui o do Asaas (que mostraria
   // "64.585.949 EDUARDO BARROS CHAVES" no header).

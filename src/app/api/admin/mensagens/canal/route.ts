@@ -1,25 +1,27 @@
 /* ═══════════════════════════════════════════════════════════════
-   ESTADO DO CANAL DE WHATSAPP, PRA TELA DA DONA
+   SAÚDE DO CANAL — o que a dona vê no card do painel
 
-   Em 21/08 o canal ficou 6 dias fora do ar e ninguém soube: a assinatura
-   da instância venceu, os envios passaram a falhar com 403, e a única
-   pista estava numa coluna de erro do message_log que ninguém abre.
+   Na W-API a pergunta era "a sessão caiu?", e o /instance/status mentia:
+   respondia connected com a sessão morta. Só o /instance/device dizia a
+   verdade. Isso ACABOU — na Cloud API não existe sessão, não existe QR, não
+   existe instância pra reconectar. O número é registrado e fica.
 
-   Pior: durante o conserto, `connected: true` MENTIU — a API respondia
-   conectado com a sessão morta, aceitando mensagem e não entregando. Quem
-   sabia a verdade era o /instance/device, que devolve o número pareado.
-   Por isso esta rota olha os dois e só diz "no ar" quando o device
-   responde com número.
+   A pergunta certa agora é outra, e tem três respostas possíveis:
+   · o número existe e está verificado?
+   · qual a QUALIDADE dele? (GREEN / YELLOW / RED)
+   · quanto ele pode mandar? (a faixa de volume)
 
-   Não fica no GET das regras de propósito: aquele é o que desenha a tela,
-   e uma chamada externa lenta ali deixaria a página inteira esperando o
-   provedor. Aqui a tela pede em paralelo e preenche quando chegar.
+   `quality_rating` é o que substitui "conectado" como sinal de alarme. Ele
+   cai quando as pessoas bloqueiam ou denunciam, e RED significa que a Meta
+   está prestes a restringir o número — o aviso que a gente quer ver ANTES
+   dos lembretes pararem, não depois.
    ═══════════════════════════════════════════════════════════════ */
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
-import { credencialDoSistema } from '@/lib/mensagens/canal-whatsapp'
+import { credencialDoSistema } from '@/lib/mensagens/canal-cloud'
+import { consumoDoMes, resumoEmPortugues, type Consumo } from '@/lib/mensagens/franquia'
 
 export const runtime = 'nodejs'
 
@@ -28,12 +30,23 @@ type Estado = {
   no_ar: boolean
   numero: string | null
   detalhe: string
+  /** GREEN | YELLOW | RED | UNKNOWN — só existe na Cloud API. */
+  qualidade?: string | null
+  /* Consumo do pacote no mês. Vem junto de propósito: é a mesma tela e a
+     mesma pergunta da dona — "está funcionando e quanto já usei?". Duas
+     rotas pra isso seriam dois carregamentos e dois jeitos de falhar. */
+  consumo?: Consumo & { resumo: string }
 }
 
 export async function GET() {
   const supabase = await createClient()
   const businessId = await resolveBusinessIdOperacao(supabase)
   if (!businessId) return NextResponse.json({ error: 'sem_acesso' }, { status: 403 })
+
+  /* Lido antes do fetch na Meta: o consumo vem do NOSSO banco e não pode
+     ficar refém do tempo de resposta deles. */
+  const c = await consumoDoMes(supabase, businessId).catch(() => null)
+  const consumo = c ? { ...c, resumo: resumoEmPortugues(c) } : undefined
 
   const cred = credencialDoSistema()
   if (!cred) {
@@ -42,40 +55,62 @@ export async function GET() {
       no_ar: false,
       numero: null,
       detalhe: 'O envio automático ainda não está liberado para este negócio.',
+      consumo,
     })
   }
 
-  /* Timeout curto: a tela não pode ficar pendurada esperando o provedor —
-     foi exatamente assim que o diagnóstico travou no dia do incidente. */
+  /* Timeout curto: a tela não pode ficar pendurada esperando a Meta — foi
+     assim que o diagnóstico travou no dia do incidente. */
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), 8000)
 
+  const BASE = process.env.WHATSAPP_BASE_URL || 'https://graph.facebook.com/v21.0'
   try {
     const res = await fetch(
-      `https://api.w-api.app/v1/instance/device?instanceId=${cred.instanceId}`,
+      `${BASE}/${cred.phoneNumberId}?fields=display_phone_number,verified_name,quality_rating,code_verification_status`,
       { headers: { Authorization: `Bearer ${cred.token}` }, signal: ctrl.signal, cache: 'no-store' },
     )
 
     if (!res.ok) {
+      /* 190 = token morto. Na W-API isso virava "desconectado" e a dona ia
+         procurar QR que não existe mais; aqui é problema NOSSO, não dela. */
       return NextResponse.json<Estado>({
         configurado: true,
         no_ar: false,
         numero: null,
         detalhe:
-          res.status === 401
-            ? 'O WhatsApp foi desconectado. Os avisos param até reconectar.'
+          res.status === 401 || res.status === 403
+            ? 'O canal está com problema de acesso. Já estamos vendo isso — os avisos param até resolver.'
             : `O canal não respondeu (erro ${res.status}). Os avisos podem não estar saindo.`,
+        consumo,
       })
     }
 
     const j = await res.json()
-    const numero = typeof j?.connectedPhone === 'string' ? j.connectedPhone : null
+    const numero: string | null =
+      typeof j?.display_phone_number === 'string' ? j.display_phone_number : null
+    const qualidade: string | null = j?.quality_rating ?? null
+    const verificado = j?.code_verification_status === 'VERIFIED'
+
+    /* RED e YELLOW não impedem o envio hoje, mas são o aviso que antecede a
+       restrição. Falar disso pra dona em português, não em cor de API. */
+    const detalhe = !numero
+      ? 'Número ainda não registrado.'
+      : qualidade === 'RED'
+        ? 'Muita gente bloqueou os avisos. O envio pode ser limitado a qualquer momento — vale rever quem está recebendo.'
+        : qualidade === 'YELLOW'
+          ? 'Alguns clientes bloquearam os avisos. Ainda está enviando, mas de olho.'
+          : verificado
+            ? 'Enviando normalmente.'
+            : 'Registrado, mas ainda em verificação.'
 
     return NextResponse.json<Estado>({
       configurado: true,
-      no_ar: !!numero,
+      no_ar: !!numero && qualidade !== 'RED',
       numero,
-      detalhe: numero ? 'Enviando normalmente.' : 'Conectado, mas sem número pareado.',
+      detalhe,
+      qualidade,
+      consumo,
     })
   } catch {
     return NextResponse.json<Estado>({
@@ -83,6 +118,7 @@ export async function GET() {
       no_ar: false,
       numero: null,
       detalhe: 'Não deu para falar com o canal agora. Tente de novo em alguns minutos.',
+      consumo,
     })
   } finally {
     clearTimeout(t)

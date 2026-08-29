@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { corpoEditavel } from '@/lib/mensagens/textos'
 import { PADRAO, type TipoMensagem } from '@/lib/mensagens/tipos'
-import { credencialDoSistema } from '@/lib/mensagens/canal-whatsapp'
+import { credencialDoSistema } from '@/lib/mensagens/canal-cloud'
 
 /* Só os gatilhos que a varredura JÁ executa. Mostrar interruptor de coisa
    não implementada é prometer na tela o que o motor não faz — o dono liga,

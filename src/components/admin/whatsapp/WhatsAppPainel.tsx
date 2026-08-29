@@ -13,6 +13,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useEffect, useState } from 'react'
+import PacotesCard from './PacotesCard'
 import MensagensAutomaticasCard from '../MensagensAutomaticasCard'
 
 type Canal = {
@@ -20,6 +21,20 @@ type Canal = {
   no_ar: boolean
   numero: string | null
   detalhe: string
+  /* GREEN | YELLOW | RED. É o sinal que substituiu "a sessão caiu": na
+     Cloud API não existe sessão, existe reputação — e ela desce quando as
+     clientes bloqueiam. Cai ANTES da Meta restringir o número, que é o
+     único momento em que dá pra fazer alguma coisa. */
+  qualidade?: string | null
+  consumo?: {
+    usadas: number
+    aguardando: number
+    franquia: number
+    restantes: number
+    excedente: number
+    custoExcedente: number
+    resumo: string
+  }
 }
 
 /** 556381102355 → (63) 98110-2355. O número cru não diz nada pra dona. */
@@ -127,10 +142,14 @@ export default function WhatsAppPainel({
         </p>
       </header>
 
-      {/* EM BREVE. O motor está pronto e testado, mas a entrega depende de a
-          cliente já ter mandado mensagem pro número da instância — e a cliente
-          do salão nunca mandou. Sem este aviso, a dona liga, o painel diz
-          "enviado" e ninguém recebe: falha silenciosa com cara de sucesso. */}
+      {/* EM BREVE — e o MOTIVO mudou em 28/08.
+          Antes era a entrega: a W-API só entregava pra quem já tinha mandado
+          mensagem pro número, e a cliente do salão nunca mandou. Isso ACABOU
+          com a migração pra Cloud API oficial, provado no aparelho da mesma
+          destinatária que não recebia.
+          Agora o que falta é operacional: o número de produção ainda não
+          existe. Deixar o texto velho no ar seria mentir pra dona sobre uma
+          limitação que não existe mais. */}
       <section
         className="rounded-xl px-4 py-3"
         style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.30)' }}
@@ -139,10 +158,10 @@ export default function WhatsAppPainel({
           Em ajustes finais — ainda não use com suas clientes
         </p>
         <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-          Estamos terminando de acertar a entrega das mensagens. Você pode olhar e deixar os textos
-          do seu jeito, mas ainda não ligue os avisos: nesta fase eles podem não chegar em quem
-          nunca conversou com o nosso número, e o painel mostraria como enviados. Avisamos assim que
-          estiver liberado.
+          Estamos trocando o envio para o canal oficial do WhatsApp, e o número novo ainda está
+          sendo liberado. Você pode olhar e deixar os textos do seu jeito, mas ainda não ligue os
+          avisos: enquanto o número não está no ar, eles não saem. Avisamos assim que estiver
+          liberado.
         </p>
       </section>
 
@@ -178,6 +197,71 @@ export default function WhatsAppPainel({
           </p>
         )}
 
+        {/* QUALIDADE — o alarme que vem antes do problema.
+            YELLOW e RED não impedem o envio hoje, e é justamente por isso
+            que precisam aparecer: quando a Meta restringe, já passou da
+            hora. Em verde não mostra nada — informação boa demais vira
+            ruído e ela para de ler o card. */}
+        {canal?.qualidade === 'RED' && (
+          <p
+            className="text-xs mt-2 leading-relaxed rounded-lg px-3 py-2"
+            style={{ background: 'rgba(239,68,68,0.10)', color: 'var(--admin-text)' }}
+          >
+            <strong>Muita gente bloqueou os avisos.</strong> O WhatsApp pode limitar os envios a
+            qualquer momento. Vale rever quem está recebendo e desligar o que não for essencial.
+          </p>
+        )}
+        {canal?.qualidade === 'YELLOW' && (
+          <p
+            className="text-xs mt-2 leading-relaxed rounded-lg px-3 py-2"
+            style={{ background: 'rgba(245,158,11,0.10)', color: 'var(--admin-text)' }}
+          >
+            <strong>Alguns clientes bloquearam os avisos.</strong> Ainda está enviando normalmente,
+            mas é bom ficar de olho.
+          </p>
+        )}
+
+        {/* CONSUMO DO PACOTE.
+            Aparece antes da primeira fatura com excedente, não depois — a
+            frase vem pronta do servidor pra não existirem duas versões da
+            mesma conta, uma na tela e outra no faturamento. */}
+        {canal?.consumo && (
+          <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--admin-border)' }}>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+                Mensagens do mês
+              </p>
+              <p className="text-xs tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                <strong>{canal.consumo.usadas}</strong>
+                <span style={{ color: 'var(--admin-text-faded)' }}> / {canal.consumo.franquia}</span>
+              </p>
+            </div>
+            <div
+              className="mt-1.5 h-1.5 rounded-full overflow-hidden"
+              style={{ background: 'var(--admin-border)' }}
+            >
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.min(100, (canal.consumo.usadas / Math.max(1, canal.consumo.franquia)) * 100)}%`,
+                  background: canal.consumo.excedente > 0 ? '#f59e0b' : '#22c55e',
+                }}
+              />
+            </div>
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+              {canal.consumo.resumo}
+            </p>
+            {/* Enviadas sem confirmação de entrega ainda não são cobradas.
+                Dizer isso evita a pergunta "mandei 30 e só contou 24". */}
+            {canal.consumo.aguardando > 0 && (
+              <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                Mais {canal.consumo.aguardando} aguardando confirmação de entrega — só entram na
+                conta depois que o WhatsApp confirmar.
+              </p>
+            )}
+          </div>
+        )}
+
         {canal?.no_ar && <PorQueEsseNumero />}
 
         {canal && !canal.no_ar && canal.configurado && (
@@ -188,6 +272,10 @@ export default function WhatsAppPainel({
             sozinhos. Se demorar, fale com o suporte.
           </p>
         )}
+      </section>
+
+      <section>
+        <PacotesCard canalNoAr={!!canal?.no_ar} />
       </section>
 
       <section>

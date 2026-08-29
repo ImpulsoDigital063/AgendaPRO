@@ -1,114 +1,202 @@
 /* ═══════════════════════════════════════════════════════════════
-   WEBHOOK — o que a cliente responde volta pra cá
+   WEBHOOK — o que volta da Meta cai aqui
 
-   Faz três coisas, e cada uma resolve um problema real:
+   Reescrito em 28/08 pro formato da Cloud API. O anterior lia o payload da
+   W-API (`body.phone`, `buttonsResponseMessage`) — estrutura que não existe
+   mais. Aqui o corpo vem aninhado em `entry → changes → value`, e traz
+   DUAS listas independentes no mesmo POST:
 
-   1. BOTÃO "Confirmo" → marca o atendimento como confirmado na agenda da
-      dona, sozinho. É o que ataca a FALTA sem pedir dinheiro antecipado —
-      a mesma dor de R$ 5.395/30 dias que originou o sinal, por outro
-      caminho. A dona abre o painel e vê quem confirmou.
+   · `messages[]` — o que a cliente mandou (botão tocado ou texto digitado)
+   · `statuses[]` — o que aconteceu com o que NÓS mandamos
 
-   2. BOTÃO "Preciso remarcar" → responde na hora com o WhatsApp do salão.
-      Sem isso a cliente fica no vácuo num número que não atende, e quem
-      ouve a reclamação é a dona.
+   `statuses[]` é a novidade que muda o produto. Até agora `enviado` no
+   message_log significava "o provedor aceitou" e nada mais — em 21/08,
+   cinco mensagens foram aceitas e três nunca chegaram em aparelho nenhum.
+   Agora a entrega é fato gravado, não fé.
 
-   3. "PARE" → registra o opt-out. Respeitar isso é o que separa aviso de
-      spam pra quem recebe — e denúncia de spam é o que derruba número de
-      WhatsApp, não volume.
+   ─── O que ele faz, e por quê ─────────────────────────────────
+   1. BOTÃO "Confirmar presença" → confirma o atendimento na agenda sozinho.
+      É o que ataca a FALTA sem pedir dinheiro antecipado.
+   2. BOTÃO "Preciso remarcar" → devolve o WhatsApp do salão na hora. Sem
+      isso a cliente fica no vácuo e quem ouve a reclamação é a dona.
+   3. "PARE" → opt-out. Respeitar isso é o que separa aviso de spam — e
+      denúncia é o que derruba número, não volume.
+   4. STATUS → entregue / lido / falhou, com o código de erro da Meta.
 
-   ⚠️ O FORMATO DO PAYLOAD É DA W-API e está a confirmar no painel deles.
-   Por isso a leitura dos campos está isolada em `lerEvento()`: quando a
-   conta existir, ajusta ali e o resto continua valendo.
-
-   Sem autenticação por token porque webhook de provedor não manda header
-   custom: a proteção é não confiar em nada do corpo. Só age sobre
-   agendamento que ele mesmo achou pelo telefone, e a única escrita é
-   confirmar presença.
+   ─── Segurança ────────────────────────────────────────────────
+   Agora TEM autenticação, e precisa ter. A rota confirma presença em
+   agendamento: sem verificar assinatura, qualquer um que descubra a URL
+   confirma horário alheio. A Meta assina todo POST com HMAC-SHA256 do
+   corpo cru em `X-Hub-Signature-256`, e o GET de verificação responde o
+   desafio com o nosso verify token.
    ═══════════════════════════════════════════════════════════════ */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { normalizarTelefone, credencialDoSistema, enviarTexto } from '@/lib/mensagens/canal-whatsapp'
+import { createClient as createServiceClient, type SupabaseClient } from '@supabase/supabase-js'
+import crypto from 'node:crypto'
+import { normalizarTelefone, credencialDoSistema, enviarTexto } from '@/lib/mensagens/canal-cloud'
 import { todayBR } from '@/lib/date-br'
 
 export const runtime = 'nodejs'
 
-type Evento = { telefone: string | null; texto: string; botaoId: string | null }
-
-function lerEvento(body: Record<string, any>): Evento {
-  const telefone =
-    body?.phone ?? body?.sender?.id ?? body?.from ?? body?.data?.phone ?? null
-  const texto = String(
-    body?.text?.message ?? body?.message ?? body?.body ?? body?.data?.text ?? '',
-  )
-  const botaoId =
-    body?.buttonsResponseMessage?.buttonId ??
-    body?.buttonReply?.id ??
-    body?.selectedButtonId ??
-    null
-  return { telefone: telefone ? String(telefone) : null, texto, botaoId }
+/* ─── GET: a Meta assina a URL uma vez, no cadastro do webhook ─── */
+export async function GET(req: NextRequest) {
+  const p = req.nextUrl.searchParams
+  const esperado = process.env.WHATSAPP_VERIFY_TOKEN
+  if (p.get('hub.mode') === 'subscribe' && esperado && p.get('hub.verify_token') === esperado) {
+    /* Tem que voltar como texto puro. JSON aqui faz a Meta recusar a URL,
+       e o erro dela não diz por quê. */
+    return new NextResponse(p.get('hub.challenge') ?? '', {
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+    })
+  }
+  return new NextResponse('forbidden', { status: 403 })
 }
 
-export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}))
-  const ev = lerEvento(body)
-  const fone = ev.telefone ? normalizarTelefone(ev.telefone) : null
-  if (!fone) return NextResponse.json({ ok: true, ignorado: 'sem_telefone' })
+/**
+ * Confere a assinatura da Meta contra o corpo CRU.
+ *
+ * Tem que ser o corpo cru: `JSON.parse` seguido de `stringify` reordena
+ * chaves e muda espaço, e aí o hash nunca bate. Por isso o POST abaixo lê
+ * `req.text()` e só depois faz o parse.
+ */
+function assinaturaConfere(cru: string, header: string | null): boolean {
+  const segredo = process.env.WHATSAPP_APP_SECRET
+  if (!segredo) return false
+  if (!header?.startsWith('sha256=')) return false
+  const nosso = crypto.createHmac('sha256', segredo).update(cru).digest('hex')
+  const deles = header.slice('sha256='.length)
+  if (nosso.length !== deles.length) return false
+  // timingSafeEqual pra não vazar o hash pelo tempo de resposta.
+  return crypto.timingSafeEqual(Buffer.from(nosso), Buffer.from(deles))
+}
 
-  const db = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } },
-  )
+type Db = SupabaseClient
 
-  const texto = ev.texto.trim().toLowerCase()
+/* ═══ STATUS: o que aconteceu com o que a gente mandou ═══════════ */
 
-  /* RECONHECE PELO TEXTO, NAO SO PELO ID DO BOTAO.
-     ───────────────────────────────────────────────────────────────
-     Testado em 21/08: a cliente clicou no botao e o webhook caiu na
-     resposta generica ("este numero nao e lido") em vez de confirmar. O
-     clique chega como MENSAGEM DE TEXTO com o rotulo do botao — e o
-     formato interno do payload nao esta documentado em lugar nenhum.
+type StatusMeta = {
+  id?: string
+  status?: string
+  timestamp?: string
+  errors?: { code?: number; title?: string; message?: string }[]
+}
 
-     Depender do campo certo do provedor e depender de algo que muda sem
-     aviso e que a gente nao consegue conferir. O rotulo, esse a gente
-     escolhe (textos.ts/botoesDe) e sabe qual e. Vale pra quem clica E pra
-     quem digita "confirmo" na mao, que e o que muita cliente faz. */
-  const ehConfirmar = texto === 'confirmo' || texto === 'confirmar' || texto === 'confirmado' || texto === 'sim'
-  const ehRemarcar = texto === 'remarcar' || texto === 'preciso remarcar' || texto === 'remarcar horario'
+/**
+ * A Meta manda até três callbacks por mensagem (sent, delivered, read) e
+ * eles chegam FORA DE ORDEM. Por isso cada um escreve só o próprio campo,
+ * em vez de sobrescrever um campo único de "situação": um `sent` atrasado
+ * chegando depois do `delivered` apagaria a entrega.
+ */
+async function gravarStatus(db: Db, st: StatusMeta): Promise<string | null> {
+  if (!st.id || !st.status) return null
+  const quando = st.timestamp
+    ? new Date(Number(st.timestamp) * 1000).toISOString()
+    : new Date().toISOString()
 
-  const acao =
-    ev.botaoId === 'confirmar' || ehConfirmar ? 'confirmar'
-    : ev.botaoId === 'remarcar' || ehRemarcar ? 'remarcar'
-    : texto === 'pare' || texto === 'parar' || texto === 'sair' ? 'pare'
-    : null
-
-  /* Payload que nao virou acao vai pro log com o corpo cru: e a unica
-     forma de descobrir o formato do provedor quando ele mudar. */
-  if (!acao && (ev.botaoId || texto)) {
-    console.log('[mensagens/webhook] nao reconhecido:', JSON.stringify(body).slice(0, 500))
+  const campos: Record<string, unknown> = {}
+  if (st.status === 'delivered') {
+    campos.entregue_em = quando
+  } else if (st.status === 'read') {
+    campos.lido_em = quando
+    /* Lida implica entregue. A Meta às vezes só manda o `read` quando a
+       cliente abre rápido, e sem isso a linha ficaria "lida mas nunca
+       entregue" — que não faz sentido pra quem for ler o relatório. */
+    campos.entregue_em = quando
+  } else if (st.status === 'failed') {
+    const e = st.errors?.[0]
+    campos.falhou_em = quando
+    campos.falha_codigo = e?.code != null ? String(e.code) : null
+    campos.falha_motivo = (e?.message ?? e?.title ?? 'sem detalhe').slice(0, 300)
+    campos.status = 'falhou'
+  } else {
+    return st.status // 'sent' não muda nada: o insert do envio já cobre
   }
 
-  /* Responder de verdade, e nao so devolver o texto no JSON: o provedor nao
-     envia a resposta por ti, e o aparelho do numero remetente vive
-     DESLIGADO (Eduardo, 07/08) - ou seja, ninguem vai ler o que a cliente
-     escrever. Sem resposta automatica, o numero vira "aquele que manda e
-     nao responde", que e o perfil que rende denuncia de spam. */
+  await db.from('message_log').update(campos).eq('provider_id', st.id)
+  return st.status
+}
+
+/* ═══ MENSAGEM: o que a cliente mandou ═══════════════════════════ */
+
+type MsgMeta = {
+  from?: string
+  type?: string
+  text?: { body?: string }
+  button?: { payload?: string; text?: string }
+  interactive?: { button_reply?: { id?: string; title?: string } }
+}
+
+type Acao = { tipo: 'confirmar' | 'remarcar' | 'pare'; appointmentId: string | null } | null
+
+/**
+ * Lê a intenção sem depender de um campo só.
+ *
+ * O payload do botão de template chega em `button.payload` e carrega o id
+ * do agendamento — é a fonte boa, porque diz QUAL horário ela confirmou.
+ * Mas o reconhecimento por TEXTO continua valendo, e não é redundância:
+ * muita cliente digita "confirmo" em vez de tocar no botão, e em 21/08 o
+ * clique chegou como texto puro. Duas portas, uma decisão.
+ */
+function lerAcao(m: MsgMeta): Acao {
+  const payload = m.button?.payload ?? m.interactive?.button_reply?.id ?? ''
+  const [verbo, appt] = payload.split(':')
+  if (verbo === 'confirmar' || verbo === 'remarcar') {
+    return { tipo: verbo, appointmentId: appt || null }
+  }
+
+  const t = (m.text?.body ?? m.button?.text ?? m.interactive?.button_reply?.title ?? '')
+    .trim()
+    .toLowerCase()
+  if (['confirmo', 'confirmar', 'confirmado', 'sim', 'confirmar presença', 'confirmar presenca'].includes(t))
+    return { tipo: 'confirmar', appointmentId: null }
+  if (['remarcar', 'preciso remarcar', 'remarcar horario', 'remarcar horário'].includes(t))
+    return { tipo: 'remarcar', appointmentId: null }
+  if (['pare', 'parar', 'sair'].includes(t)) return { tipo: 'pare', appointmentId: null }
+  return null
+}
+
+const CAMPOS_APPT =
+  'id, business_id, client_phone, appointment_date, start_time, status, business:businesses(phone, name)'
+
+type Appt = {
+  id: string
+  business_id: string
+  client_phone: string | null
+  business: { phone: string | null; name: string } | null
+}
+
+async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
+  const fone = m.from ? normalizarTelefone(m.from) : null
+  if (!fone) return 'sem_telefone'
+
+  /* Responder de verdade, e não só devolver no JSON: a Meta não responde
+     por nós, e o número não é lido por ninguém. Número que manda e nunca
+     responde é o perfil que rende denúncia de spam.
+     Isto aqui é de graça: ela acabou de escrever, então a janela de 24h
+     está aberta e texto livre dentro da janela não entra na fatura. */
   const responder = async (texto: string) => {
     const cred = credencialDoSistema()
     if (!cred) return false
-    const r = await enviarTexto(cred, fone, texto)
-    return r.ok
+    return (await enviarTexto(cred, fone, texto)).ok
   }
 
+  const acao = lerAcao(m)
+
   if (!acao) {
-    /* Qualquer outra coisa que ela escreva: orienta pra onde ir. Uma vez a
-       cada 12h por telefone, pra conversa nao virar ping-pong com robo -
-       a trava e a mesma chave UNIQUE do message_log. */
-    const janela = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 13)
+    /* Uma resposta automática a cada 12h por telefone, pra conversa não
+       virar ping-pong com robô. A trava é a mesma chave UNIQUE do
+       message_log — sem estado extra em lugar nenhum.
+       (O código anterior dizia 12h no comentário mas a chave girava de
+       hora em hora. Agora o balde é de 12h de verdade.) */
+    const balde = Math.floor(Date.now() / (12 * 3600_000))
     const { error: repetido } = await db.from('message_log').insert({
-      chave: `auto_resposta:${fone}:${janela}`, tipo: 'confirmacao',
-      canal: 'whatsapp', destino: fone, status: 'enviado',
+      chave: `auto_resposta:${fone}:${balde}`,
+      tipo: 'confirmacao',
+      canal: 'whatsapp',
+      destino: fone,
+      status: 'enviado',
     })
     if (!repetido) {
       await responder(
@@ -116,60 +204,123 @@ export async function POST(req: NextRequest) {
            clínica, barbearia e estúdio. Nada faz a dona desconfiar mais
            rápido de que o sistema não é pra ela. */
         'Este número só envia avisos automáticos e não é lido. ' +
-        'Para remarcar ou tirar dúvida, fale pelo telefone que aparece na mensagem do seu horário.',
+          'Para remarcar ou tirar dúvida, fale pelo telefone que aparece na mensagem do seu horário.',
       )
     }
-    return NextResponse.json({ ok: true, ignorado: 'sem_acao', respondeu: !repetido })
+    return 'sem_acao'
   }
 
-  if (acao === 'pare') {
-    /* Opt-out global (business_id null): ela pediu pra parar de receber, e
-       ficar decidindo de qual salão é a mensagem pra continuar mandando das
+  if (acao.tipo === 'pare') {
+    /* Opt-out global (business_id null): ela pediu pra parar, e ficar
+       decidindo de qual salão era a mensagem pra continuar mandando das
        outras é o tipo de esperteza que rende denúncia. */
     await db.from('message_optout').insert({ telefone: fone, motivo: 'respondeu PARE' })
-    return NextResponse.json({ ok: true, acao: 'opt_out' })
+    return 'opt_out'
   }
 
-  /* Acha o agendamento futuro mais próximo desse telefone. Só os dígitos
-     finais são comparados porque o cadastro guarda em formatos diferentes
-     (com e sem DDI, com e sem máscara) — mesmo motivo do fix das fichas
-     duplicadas em 05/08. */
-  const ultimos8 = fone.slice(-8)
-  const { data: candidatos } = await db
-    .from('appointments')
-    .select('id, business_id, client_phone, appointment_date, start_time, status, business:businesses(phone, name)')
-    .gte('appointment_date', todayBR())
-    .in('status', ['pending', 'confirmed'])
-    .order('appointment_date')
-    .limit(200)
+  /* ACHAR O AGENDAMENTO.
+     Com o id no payload é leitura direta — acabou a adivinhação. O caminho
+     por telefone continua existindo pra quem DIGITA "confirmo", e é ele
+     que erra quando a cliente tem dois horários marcados: pega o mais
+     próximo, que é o melhor palpite possível, não uma certeza. */
+  let alvo: Appt | null = null
 
-  const alvo = (candidatos ?? []).find((a) =>
-    String(a.client_phone ?? '').replace(/\D/g, '').endsWith(ultimos8),
-  )
-  if (!alvo) return NextResponse.json({ ok: true, ignorado: 'sem_agendamento' })
+  if (acao.appointmentId) {
+    const { data } = await db
+      .from('appointments')
+      .select(CAMPOS_APPT)
+      .eq('id', acao.appointmentId)
+      .maybeSingle()
+    const a = data as unknown as Appt | null
+    /* Confere que o agendamento é MESMO de quem escreveu. Sem isso, quem
+       adivinhar um id confirma horário de terceiro. */
+    const doTelefone = String(a?.client_phone ?? '')
+      .replace(/\D/g, '')
+      .endsWith(fone.slice(-8))
+    if (a && doTelefone) alvo = a
+  }
 
-  const negocio = alvo.business as unknown as { phone: string | null; name: string } | null
+  if (!alvo) {
+    const { data: candidatos } = await db
+      .from('appointments')
+      .select(CAMPOS_APPT)
+      .gte('appointment_date', todayBR())
+      .in('status', ['pending', 'confirmed'])
+      .order('appointment_date')
+      .limit(200)
+    /* Só os dígitos finais são comparados porque o cadastro guarda em
+       formatos diferentes (com e sem DDI, com e sem máscara). */
+    alvo =
+      ((candidatos ?? []) as unknown as Appt[]).find((a) =>
+        String(a.client_phone ?? '')
+          .replace(/\D/g, '')
+          .endsWith(fone.slice(-8)),
+      ) ?? null
+  }
 
-  if (acao === 'confirmar') {
+  if (!alvo) return 'sem_agendamento'
+  const negocio = alvo.business
+
+  if (acao.tipo === 'confirmar') {
     await db.from('appointments').update({ status: 'confirmed' }).eq('id', alvo.id)
     await responder(
-      negocio?.name
-        ? `Presença confirmada! Até breve, ${negocio.name}.`
-        : 'Presença confirmada! Até breve.',
+      negocio?.name ? `Presença confirmada! Até breve, ${negocio.name}.` : 'Presença confirmada! Até breve.',
     )
-    return NextResponse.json({ ok: true, acao: 'confirmado', appointmentId: alvo.id })
+    return 'confirmado'
   }
 
-  // remarcar: manda o contato do salao. Quem remarca e a dona, nao o robo.
+  // remarcar: manda o contato do salão. Quem remarca é a dona, não o robô.
   await responder(
     negocio?.phone
       ? `Sem problema! Para remarcar, fale com ${negocio.name}: ${negocio.phone}`
       : negocio?.name
         ? `Sem problema! Fale com ${negocio.name} para remarcar.`
-        /* Sem nome do negócio, NÃO inventa categoria: 'o salão' chega
-           em cliente de clínica e barbearia igual. Aponta pro telefone,
-           que é o que ela precisa. */
-        : 'Sem problema! Fale pelo telefone que aparece na mensagem do seu horário para remarcar.',
+        : /* Sem nome do negócio, NÃO inventa categoria: 'o salão' chega em
+             cliente de clínica e barbearia igual. Aponta pro telefone. */
+          'Sem problema! Fale pelo telefone que aparece na mensagem do seu horário para remarcar.',
   )
-  return NextResponse.json({ ok: true, acao: 'remarcar' })
+  return 'remarcar'
+}
+
+/* ═══ POST: um evento traz várias mensagens E vários status ══════ */
+export async function POST(req: NextRequest) {
+  const cru = await req.text()
+  if (!assinaturaConfere(cru, req.headers.get('x-hub-signature-256'))) {
+    /* 403 sem detalhe: dizer POR QUE falhou ajuda quem está tentando. */
+    return new NextResponse('forbidden', { status: 403 })
+  }
+
+  let body: Record<string, unknown>
+  try {
+    body = JSON.parse(cru)
+  } catch {
+    return NextResponse.json({ ok: true, ignorado: 'corpo_invalido' })
+  }
+
+  const db = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+
+  const feito: string[] = []
+  /* Percorrer TUDO. Tratar só o primeiro e responder 200 faz a Meta achar
+     que foi tudo processado — e o resto some sem deixar rastro. */
+  for (const entry of (body?.entry as Record<string, unknown>[]) ?? []) {
+    for (const change of (entry?.changes as Record<string, unknown>[]) ?? []) {
+      const v = (change?.value as Record<string, unknown>) ?? {}
+      for (const st of (v.statuses as StatusMeta[]) ?? []) {
+        const r = await gravarStatus(db, st).catch(() => null)
+        if (r) feito.push(`status:${r}`)
+      }
+      for (const m of (v.messages as MsgMeta[]) ?? []) {
+        const r = await tratarMensagem(db, m).catch((e) => `erro:${String(e).slice(0, 80)}`)
+        feito.push(`msg:${r}`)
+      }
+    }
+  }
+
+  /* Sempre 200 quando a assinatura confere. Erro nosso não é motivo pra
+     Meta reenviar em loop — o que ela reenvia, ela reenvia por dias. */
+  return NextResponse.json({ ok: true, feito })
 }

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { calcularPreco, type ModalidadeKey, type PlanoTipo } from '@/config/pricing'
+import { adicionalDeAvisos } from '@/lib/mensagens/franquia'
 import {
   getPixQrCode,
   createPayment,
@@ -147,13 +148,25 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 2. Gerar cobrança nova (sem cobrança em aberto reaproveitável) ───
+  /* Mesmo somatório do cron — os dois pontos que criam cobrança precisam
+     chegar no mesmo valor, senão a dona vê um preço na tela e outro no
+     e-mail e para de confiar na conta. */
+  const avisos = await adicionalDeAvisos(admin, business.id).catch(
+    () => ({ valor: 0, pacote: null, descricao: null }),
+  )
+  const valorTotal = Number((preco.valorReais + avisos.valor).toFixed(2))
+
   const payRes = await createPayment({
     customer: asaasCustomerId,
     billingType: 'PIX',
-    value: preco.valorReais,
+    value: valorTotal,
     dueDate: getNextDueDate(1),
-    description: `AgendaPRO ${plan === 'solo' ? 'Solo' : 'Equipe'} — renovação ${modalidade}`,
-    externalReference: `${business.id}|${modalidade}|${preco.coberturaMeses}`,
+    description:
+      `AgendaPRO ${plan === 'solo' ? 'Solo' : 'Equipe'} — renovação ${modalidade}` +
+      (avisos.descricao ? ` + ${avisos.descricao}` : ''),
+    externalReference:
+      `${business.id}|${modalidade}|${preco.coberturaMeses}` +
+      (avisos.pacote ? `|avisos:${avisos.pacote.id}` : ''),
   })
 
   if (!payRes.ok || !payRes.data?.id) {

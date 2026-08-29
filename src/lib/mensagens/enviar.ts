@@ -17,11 +17,11 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { PADRAO, DESTINATARIO, EH_PROMOCIONAL, type Regra, type TipoMensagem } from './tipos'
-import { montarTexto, botoesDe, type Variaveis } from './textos'
-import {
-  credencialDoSistema, enviarTexto, enviarComBotoes, normalizarTelefone, temWhatsapp,
-  type CredencialWapp,
-} from './canal-whatsapp'
+import { type Variaveis } from './textos'
+import { credencialDoSistema, enviarTemplate, normalizarTelefone } from './canal-cloud'
+import { TEMPLATES, payloadsDosBotoes, unidadesDaFranquia } from './templates-cloud'
+import { podeEnviar } from './franquia'
+
 
 export type Destino = {
   telefone?: string | null
@@ -151,23 +151,6 @@ async function podeFalarPelo(
   return { pode: true }
 }
 
-/** Credencial do negócio (Fase 2) ou a do sistema (Fase 1). */
-async function credencialDe(
-  db: SupabaseClient,
-  businessId: string,
-): Promise<CredencialWapp | null> {
-  const { data } = await db
-    .from('businesses')
-    .select('wapp_instance_id, wapp_token')
-    .eq('id', businessId)
-    .maybeSingle()
-
-  if (data?.wapp_instance_id && data?.wapp_token) {
-    return { instanceId: data.wapp_instance_id, token: data.wapp_token }
-  }
-  return credencialDoSistema()
-}
-
 async function pediuPraSair(
   db: SupabaseClient,
   businessId: string,
@@ -202,39 +185,6 @@ async function pediuPraSair(
              instalar o WhatsApp depois fica em silencio pra sempre.
      null  → nao deu pra perguntar (rede, provedor fora). MANDA ASSIM MESMO:
              na duvida, tentar entregar e melhor que engolir a mensagem. */
-const REVALIDA_APOS_DIAS = 30
-
-async function podeReceberWhatsapp(
-  db: SupabaseClient,
-  cred: CredencialWapp,
-  customerId: string | null | undefined,
-  telefone: string,
-): Promise<boolean> {
-  if (!customerId) return true // sem cadastro pra lembrar: tenta e segue
-
-  const { data: cli } = await db
-    .from('customers')
-    .select('whatsapp_valido, whatsapp_checado_em')
-    .eq('id', customerId)
-    .maybeSingle()
-
-  if (cli?.whatsapp_valido === true) return true
-  if (cli?.whatsapp_valido === false) {
-    const checado = cli.whatsapp_checado_em ? new Date(cli.whatsapp_checado_em).getTime() : 0
-    const venceu = Date.now() - checado > REVALIDA_APOS_DIAS * 864e5
-    if (!venceu) return false
-  }
-
-  const existe = await temWhatsapp(cred, telefone)
-  if (existe === null) return true // nao sei: manda
-
-  await db
-    .from('customers')
-    .update({ whatsapp_valido: existe, whatsapp_checado_em: new Date().toISOString() })
-    .eq('id', customerId)
-
-  return existe
-}
 
 export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida> {
   const regra = await regraDe(db, p.businessId, p.tipo)
@@ -262,6 +212,11 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
     business_id: p.businessId, chave: p.chave, tipo: p.tipo,
     canal: 'pendente', destino: p.destino.telefone ?? p.destino.email ?? '-',
     status: 'processando',
+    /* Quanto essa mensagem consome da franquia. Gravado AQUI, no envio, e
+       não calculado na hora de faturar: a Meta pode reclassificar um
+       template aprovado de utilidade pra marketing, e isso mudaria o
+       passado se a conta fosse feita depois. */
+    unidades: unidadesDaFranquia(p.tipo),
     appointment_id: p.appointmentId ?? null, customer_id: p.customerId ?? null,
   })
   if (jaFoi) {
@@ -286,32 +241,72 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
     return { status: 'ignorado', motivo: 'opt_out' }
   }
 
-  const texto = montarTexto(p.tipo, p.variaveis, regra.template)
-  const cred = tel ? await credencialDe(db, p.businessId) : null
+  /* ─── CANAL NOVO: CLOUD API OFICIAL ──────────────────────────
+     Três coisas mudam de comportamento aqui, e nenhuma é opcional:
 
-  if (cred && tel) {
-    if (!(await podeReceberWhatsapp(db, cred, p.customerId, tel))) {
-      await concluir('ignorado', 'whatsapp', tel, 'numero_sem_whatsapp')
-      return { status: 'ignorado', motivo: 'numero_sem_whatsapp' }
+     · `regra.template` (o texto próprio da dona) é IGNORADO. Fora da janela
+       de 24h a Meta só entrega template aprovado por ela. A personalização
+       passa a viver nas variáveis, não no texto livre.
+     · Não checamos se o número tem WhatsApp. A Meta cobra por mensagem
+       ENTREGUE, então número inválido não gera custo — gera um `failed` no
+       webhook de status. Na W-API a checagem era obrigatória porque lá o
+       envio era aceito e contado do mesmo jeito.
+     · O payload do botão carrega o id do agendamento, então a confirmação
+       deixa de ser adivinhada pelo telefone. */
+  if (tel) {
+    /* PORTÃO DO MÓDULO — duas perguntas, as duas de dinheiro.
+       ─────────────────────────────────────────────────────────────
+       Tem saldo? A assinatura está em dia? A lógica das duas vive em
+       franquia.ts, não aqui: é lá que mora a conta do que ela pagou.
+
+       Não é hipótese. Em 24/08 o Studio Priscila Martins ligou as cinco
+       regras 52 minutos depois de se cadastrar, sozinho, sem contratar
+       nada. Naquele dia o canal era grátis. Hoje cada entrega tem custo
+       real na conta da Impulso.
+
+       Fica ANTES da credencial de propósito: o motivo devolvido diz a
+       verdade ('sem saldo', 'assinatura bloqueada') em vez de esconder uma
+       questão comercial atrás de um erro técnico. */
+    const portao = await podeEnviar(db, p.businessId)
+    if (!portao.pode) {
+      await concluir('ignorado', 'whatsapp', tel, portao.motivo)
+      return { status: 'ignorado', motivo: portao.motivo }
     }
-    /* Botão é escolha do negócio (v127): quem não vai tratar a resposta
-       prefere aviso sem convite a responder. */
-    const botoes = regra.comBotao === false ? null : botoesDe(p.tipo)
-    const r = botoes
-      ? await enviarComBotoes(cred, tel, texto, botoes)
-      : await enviarTexto(cred, tel, texto)
+
+    const credCloud = credencialDoSistema()
+    if (!credCloud) {
+      await concluir('ignorado', 'whatsapp', tel, 'sem_credencial_cloud')
+      return { status: 'ignorado', motivo: 'sem_credencial_cloud' }
+    }
+    const def = TEMPLATES[p.tipo]
+    if (!def) {
+      /* Tipo sem template aprovado não vira texto livre — vira nada, de
+         propósito. Mandar texto fora da janela volta 131047 e a dona veria
+         "falhou" sem entender. */
+      await concluir('ignorado', 'whatsapp', tel, 'sem_template_aprovado')
+      return { status: 'ignorado', motivo: 'sem_template_aprovado' }
+    }
+
+    const r = await enviarTemplate(credCloud, tel, {
+      nome: def.nome,
+      idioma: def.idioma,
+      params: def.params(p.variaveis),
+      payloadsBotoes:
+        regra.comBotao === false ? undefined : payloadsDosBotoes(p.tipo, p.appointmentId),
+    })
 
     if (r.ok) {
+      /* 'enviado' aqui segue significando "a Meta aceitou". Quem vai gravar
+         entrega de verdade é o webhook de status (sent/delivered/read). */
       await concluir('enviado', 'whatsapp', tel, undefined, r.providerId)
       return { status: 'enviado', canal: 'whatsapp' }
     }
-    /* Falhou o WhatsApp: cai pro email em vez de sumir. É exatamente o
-       cenário do aquecimento, quando a maioria dos negócios ainda não
-       está no canal novo. */
     if (p.enviarEmail && p.destino.email) {
       const ok = await p.enviarEmail()
       await concluir(ok ? 'enviado' : 'falhou', 'email', p.destino.email, r.erro)
-      return ok ? { status: 'enviado', canal: 'email' } : { status: 'falhou', erro: r.erro ?? 'email_falhou' }
+      return ok
+        ? { status: 'enviado', canal: 'email' }
+        : { status: 'falhou', erro: r.erro ?? 'email_falhou' }
     }
     await concluir('falhou', 'whatsapp', tel, r.erro)
     return { status: 'falhou', erro: r.erro ?? 'envio_falhou' }
@@ -319,7 +314,7 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
 
   if (p.enviarEmail && p.destino.email) {
     const ok = await p.enviarEmail()
-    await concluir(ok ? 'enviado' : 'falhou', 'email', p.destino.email, cred ? undefined : 'sem_whatsapp')
+    await concluir(ok ? 'enviado' : 'falhou', 'email', p.destino.email, 'sem_whatsapp')
     return ok ? { status: 'enviado', canal: 'email' } : { status: 'falhou', erro: 'email_falhou' }
   }
 

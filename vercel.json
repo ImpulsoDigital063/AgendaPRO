@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["pdx1"],
+  "regions": [
+    "pdx1"
+  ],
   "crons": [
     {
       "path": "/api/cron/reminders",
@@ -21,6 +23,10 @@
     {
       "path": "/api/cron/billing-push",
       "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/cron/avisos-consumo",
+      "schedule": "0 14 * * *"
     }
   ]
 }

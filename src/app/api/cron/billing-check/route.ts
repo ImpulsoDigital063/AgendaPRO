@@ -4,6 +4,7 @@ import { diasAteVencer } from '@/lib/billing'
 import { createPayment, getNextDueDate } from '@/lib/asaas'
 import { sendBillingReminderD3, sendBillingOverdue, sendTrialEndingSoon, sendTrialEnded } from '@/lib/email'
 import { calcularPreco, type ModalidadeKey, type PlanoTipo } from '@/config/pricing'
+import { adicionalDeAvisos } from '@/lib/mensagens/franquia'
 
 export const maxDuration = 60
 
@@ -105,13 +106,29 @@ export async function GET(req: NextRequest) {
           sub.plan_modalidade as ModalidadeKey
         )
 
+        /* AVISOS entram no MESMO PIX (28/08). Um boleto por mês: cada
+           cobrança separada é uma chance a mais de ela esquecer, atrasar, e
+           o pacote vencer sem perceber. Zero quando não há pacote — e o
+           adicional NUNCA pode derrubar a cobrança da mensalidade, por isso
+           a falha aqui é engolida e vira só mensalidade. */
+        const avisos = await adicionalDeAvisos(admin, business.id).catch(
+          () => ({ valor: 0, pacote: null, descricao: null }),
+        )
+        const valorTotal = Number((preco.valorReais + avisos.valor).toFixed(2))
+
         const payRes = await createPayment({
           customer: sub.asaas_customer_id,
           billingType: 'PIX',
-          value: preco.valorReais,
+          value: valorTotal,
           dueDate: getNextDueDate(3), // vence em 3 dias
-          description: `AgendaPRO ${sub.plan === 'solo' ? 'Solo' : 'Equipe'} — renovação ${sub.plan_modalidade}`,
-          externalReference: `${business.id}|${sub.plan_modalidade}|${preco.coberturaMeses}`,
+          description:
+            `AgendaPRO ${sub.plan === 'solo' ? 'Solo' : 'Equipe'} — renovação ${sub.plan_modalidade}` +
+            (avisos.descricao ? ` + ${avisos.descricao}` : ''),
+          /* O sufixo diz ao webhook que este pagamento também renova o
+             pacote. Sem ele, o dinheiro entra e a franquia não recarrega. */
+          externalReference:
+            `${business.id}|${sub.plan_modalidade}|${preco.coberturaMeses}` +
+            (avisos.pacote ? `|avisos:${avisos.pacote.id}` : ''),
         })
 
         if (!payRes.ok || !payRes.data?.invoiceUrl) {
