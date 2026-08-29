@@ -283,6 +283,10 @@ export default function MensagensAutomaticasCard({
               </button>
             </div>
 
+            {/* Só desenha a faixa de baixo quando ela tem conteúdo. Depois
+                que a bolha de prévia saiu, os avisos sem botão e sem ajuste
+                de horário ficavam com uma caixa cinza vazia embaixo. */}
+            {(aberto || temBotao || (r.enabled && (r.tipo === 'lembrete_dia' || r.tipo === 'aniversario'))) && (
             <div className="px-4 pb-4" style={{ borderTop: '1px solid var(--admin-border)', paddingTop: 14 }}>
               {aberto ? (
                 <Editor
@@ -357,6 +361,7 @@ export default function MensagensAutomaticasCard({
                 </>
               )}
             </div>
+            )}
           </div>
         )
       })}

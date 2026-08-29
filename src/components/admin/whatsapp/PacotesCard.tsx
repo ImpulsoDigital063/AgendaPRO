@@ -127,7 +127,15 @@ export default function PacotesCard({ canalNoAr }: { canalNoAr: boolean }) {
           {atual ? 'Seu pacote de avisos' : 'Ativar os avisos automáticos'}
         </h2>
         <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-          {d.movimento.projecaoHipotetica ? (
+          {/* Negócio sem movimento nos últimos 90 dias: "você atende cerca de
+              0 clientes por mês" é verdade e não ajuda em nada. Melhor dizer
+              que a conta aparece quando houver atendimento. */}
+          {d.movimento.atendimentosMes === 0 ? (
+            <>
+              Ainda não há atendimentos suficientes para estimar o seu consumo. Assim que a agenda
+              tiver movimento, mostramos aqui quantas mensagens cada pacote cobre no seu caso.
+            </>
+          ) : d.movimento.projecaoHipotetica ? (
             <>
               Você atende cerca de <strong>{d.movimento.atendimentosMes}</strong> clientes por mês.
               As contas abaixo consideram <strong>1 aviso por atendimento</strong> — o lembrete da
@@ -246,8 +254,8 @@ export default function PacotesCard({ canalNoAr }: { canalNoAr: boolean }) {
 
               {/* A legenda que faz a tela fazer sentido. */}
               <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-                Dá para <strong>{p.atendimentosQueCabem} atendimentos</strong> por mês, do jeito que
-                você manda hoje.
+                Dá para <strong>{p.atendimentosQueCabem} atendimentos</strong> por mês
+                {d.movimento.atendimentosMes > 0 && <>, do jeito que você manda hoje</>}.
               </p>
 
               {/* O preço real DELA neste pacote, com excedente. É o que
@@ -265,7 +273,7 @@ export default function PacotesCard({ canalNoAr }: { canalNoAr: boolean }) {
                     Seu pacote atual
                   </span>
                 )}
-                {!eAtual && eRecomendado && (
+                {!eAtual && eRecomendado && d.movimento.atendimentosMes > 0 && (
                   <span
                     className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded"
                     style={{ background: 'rgba(34,197,94,0.12)', color: '#16a34a' }}
@@ -273,7 +281,17 @@ export default function PacotesCard({ canalNoAr }: { canalNoAr: boolean }) {
                     Mais barato pra você
                   </span>
                 )}
-                {!eAtual && d.podeContratar && (
+                {/* 🔴 NAO DEIXA CONTRATAR ANTES DE LIBERAR.
+                    Ela pagaria por um canal que ainda nao envia — e o
+                    primeiro contato dela com o modulo seria uma cobranca sem
+                    entrega. Some o botao e explica, em vez de deixar clicar
+                    e falhar depois. */}
+                {!eAtual && d.podeContratar && !CANAL_LIBERADO && (
+                  <span className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
+                    Disponível assim que o canal for liberado
+                  </span>
+                )}
+                {!eAtual && d.podeContratar && CANAL_LIBERADO && (
                   confirmando === p.id ? (
                     <span className="flex items-center gap-2">
                       <button

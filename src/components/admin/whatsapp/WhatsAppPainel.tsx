@@ -217,7 +217,11 @@ export default function WhatsAppPainel({
 
         {canal?.numero && (
           <p className="text-xs mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-            Suas clientes recebem do número {formatarNumero(canal.numero)}.
+            {/* Futuro enquanto nao esta liberado: "recebem" no presente e
+                promessa de uma coisa que ainda nao acontece. */}
+            {CANAL_LIBERADO
+              ? `Suas clientes recebem do número ${formatarNumero(canal.numero)}.`
+              : `Quando liberar, suas clientes vão receber do número ${formatarNumero(canal.numero)}.`}
           </p>
         )}
 

@@ -113,6 +113,12 @@ export default function TextosCard() {
           Enquanto o seu texto está em análise, <strong>os avisos continuam saindo normalmente</strong>{' '}
           com o texto padrão. Ninguém fica sem lembrete esperando aprovação.
         </p>
+        {/* Uma vez, aqui em cima. Repetir embaixo de cada mensagem virava
+            ruído numa tela que ja tem muita coisa. */}
+        <p className="text-xs mt-2" style={{ color: 'var(--admin-text-faded)' }}>
+          Os textos abaixo aparecem preenchidos com uma cliente de exemplo chamada Maria. Nome,
+          dia, horário e serviço entram sozinhos na hora do envio.
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -166,10 +172,6 @@ export default function TextosCard() {
                     style={{ color: 'var(--admin-text-mute)' }}
                   >
                     {a.previa}
-                  </p>
-                  <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                    Exemplo com uma cliente chamada Maria. Nome, dia, horário e serviço entram
-                    sozinhos na hora do envio.
                   </p>
                   <button
                     type="button"
