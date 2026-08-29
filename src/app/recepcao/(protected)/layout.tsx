@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import InstallBanner from '@/components/admin/InstallBanner'
 import RecepcaoBottomNav from '@/components/recepcao/RecepcaoBottomNav'
+import RecepcaoMobileTopBar from '@/components/recepcao/RecepcaoMobileTopBar'
 import RecepcaoDesktopSidebar from '@/components/recepcao/RecepcaoDesktopSidebar'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
@@ -81,6 +82,14 @@ export default async function RecepcaoLayout({
 
         {/* Sidebar tablet+desktop · fixa em ≥md · Letícia opera em iPad */}
         {/* v133 · aba Horários só pra negócio que passou essa decisão pra recepção */}
+        {/* v144 · menu completo no celular: o dock cabe 5 itens e o balcão tem 11.
+            Sem isto, Comandas, Produtos e Pacotes eram inalcançáveis no mobile. */}
+        <RecepcaoMobileTopBar
+          businessName={business.name ?? null}
+          brandLogoUrl={business.brand_logo_url ?? null}
+          podeEditarHorario={(business as { recep_edita_horario?: boolean | null }).recep_edita_horario === true}
+          tambemAtende={professional.does_appointments === true}
+        />
         <RecepcaoDesktopSidebar
           tambemAtende={professional.does_appointments === true}
           podeEditarHorario={(business as { recep_edita_horario?: boolean | null }).recep_edita_horario === true}
