@@ -115,39 +115,7 @@ export default async function RecepcaoAgendaPage({
     month: 'long',
   })
 
-  const stats = [
-    {
-      label: 'Pendentes',
-      value: pending.length,
-      icon: IconClock,
-      color: 'var(--admin-warn)',
-      glow: 'rgba(245,158,11,0.18)',
-      pulse: pending.length > 0,
-    },
-    {
-      label: 'Confirmados',
-      value: confirmed.length,
-      icon: IconCheck,
-      color: 'var(--admin-accent)',
-      glow: 'rgba(59,130,246,0.18)',
-    },
-    {
-      label: 'Atendidos',
-      value: completed.length,
-      icon: IconCheck,
-      color: 'var(--admin-success)',
-      glow: 'rgba(16,185,129,0.18)',
-    },
-    {
-      label: 'Recebido',
-      value: recebidoTotal > 0
-        ? recebidoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
-        : 'R$0',
-      icon: IconDollar,
-      color: 'var(--admin-success)',
-      glow: 'rgba(16,185,129,0.18)',
-    },
-  ]
+  /* v144 · os KPIs do mobile saíram (a grade já os traz no topo). */
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
@@ -196,64 +164,10 @@ export default async function RecepcaoAgendaPage({
               COLUNA ESQUERDA (sidebar) · mobile = topo
               ════════════════════════════════════════════════════ */}
           <aside className="lg:sticky lg:top-7 lg:self-start space-y-5">
-            {/* Header */}
-            <header>
-              <div className="flex items-center justify-between mb-4">
-                <BrandHeaderLogo
-                  brandLogoUrl={business.brand_logo_url}
-                  businessName={business.name}
-                />
-                <div className="flex items-center gap-2">
-                  <ThemeToggle compact />
-                  <LogoutButton />
-                </div>
-              </div>
-              <p className="text-[13px] font-medium" style={{ color: 'var(--admin-text-faded)' }}>
-                <Greeting />, {firstName}
-              </p>
-              <p className="text-[11px] font-semibold uppercase tracking-widest mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                Recepção · {business.name}
-              </p>
-              <h1 className="text-[22px] lg:text-[26px] font-bold tracking-tight leading-tight mt-1" style={{ color: 'var(--admin-text)' }}>
-                Agenda do salão
-              </h1>
-              <p className="text-sm capitalize mt-1 inline-flex items-center gap-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-                <IconCalendar size={14} /> {todayFormatted}
-              </p>
-            </header>
-
-            {/* KPIs · 2x2 */}
-            <section>
-              <div className="grid grid-cols-2 gap-2.5">
-                {stats.map((s) => {
-                  const Icon = s.icon
-                  return (
-                    <div key={s.label} className="admin-card p-3 relative overflow-hidden">
-                      <div
-                        className="absolute -top-4 -right-4 w-14 h-14 rounded-full blur-2xl opacity-70 pointer-events-none"
-                        style={{ background: s.glow }}
-                      />
-                      <div className="relative flex items-start justify-between">
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-                            {s.label}
-                          </p>
-                          <p className="text-lg font-bold mt-1 leading-none tabular-nums" style={{ color: s.color }}>
-                            {typeof s.value === 'number' ? <CountUp value={s.value} duration={500} /> : s.value}
-                          </p>
-                        </div>
-                        <span
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${s.pulse ? 'admin-pulse-warn' : ''}`}
-                          style={{ background: s.glow, color: s.color }}
-                        >
-                          <Icon size={14} />
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
+            {/* v144 · Header e KPIs saíram daqui: a grade acima já traz data,
+                navegação e os números do dia. Com os dois na tela, o celular
+                mostrava dois cabeçalhos, dois conjuntos de KPIs e até duas
+                datas diferentes. Aqui embaixo fica só o que a grade não cobre. */}
 
             {/* Foco do Dia */}
             <RecepFocoDoDia businessId={business.id} todayAppts={list} />
