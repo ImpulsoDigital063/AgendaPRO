@@ -13,7 +13,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useState } from 'react'
-import { Balao, CabecalhoDetalhe, Chip, Toggle } from './ui'
+import { Balao, Chip } from './ui'
 
 export type Aviso = {
   tipo: string
@@ -41,22 +41,21 @@ const SELO: Record<string, { texto: string; tom: 'ok' | 'atencao' | 'erro' }> = 
   PAUSED: { texto: 'pausado pela Meta', tom: 'atencao' },
 }
 
+/**
+ * Sem cabeçalho próprio: o título, o voltar e o interruptor deste aviso vivem
+ * na barra grudada no topo, que é do painel. Um componente de conteúdo que
+ * desenha o próprio header acaba com dois títulos empilhados.
+ */
 export default function AvisoDetalhe({
   aviso,
-  onVoltar,
-  onToggle,
   onBotao,
   onHorario,
   onEnviarTexto,
-  salvando,
 }: {
   aviso: Aviso
-  onVoltar: () => void
-  onToggle: () => void
   onBotao: (v: boolean) => void
   onHorario: (horas: number) => void
   onEnviarTexto: (corpo: string) => Promise<string[] | null>
-  salvando: boolean
 }) {
   const [editando, setEditando] = useState(false)
   const [rascunho, setRascunho] = useState(aviso.meuTexto ?? aviso.corpoPadrao)
@@ -75,20 +74,7 @@ export default function AvisoDetalhe({
 
   return (
     <div className="pb-6">
-      <CabecalhoDetalhe
-        titulo={aviso.rotulo}
-        onVoltar={onVoltar}
-        direita={
-          <Toggle
-            ligado={aviso.enabled}
-            onChange={onToggle}
-            desabilitado={salvando}
-            rotulo={aviso.enabled ? 'Desligar aviso' : 'Ligar aviso'}
-          />
-        }
-      />
-
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+      <p className="text-[13px] leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
         {aviso.porque}
       </p>
       <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
@@ -114,7 +100,7 @@ export default function AvisoDetalhe({
           </p>
 
           {aviso.status === 'REJECTED' && (
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: '#b91c1c' }}>
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-danger)' }}>
               O WhatsApp não aprovou esse texto{aviso.motivo ? ` (${aviso.motivo})` : ''}. O aviso
               está saindo com o texto padrão. Edite e envie de novo.
             </p>
@@ -126,7 +112,7 @@ export default function AvisoDetalhe({
               setRascunho(aviso.meuTexto ?? aviso.corpoPadrao)
               setEditando(true)
             }}
-            className="text-xs underline underline-offset-2 mt-3"
+            className="text-[13px] font-semibold underline underline-offset-2 mt-3"
             style={{ color: 'var(--admin-accent)' }}
           >
             {aviso.meuTexto ? 'Editar meu texto' : 'Escrever meu próprio texto'}
@@ -155,7 +141,7 @@ export default function AvisoDetalhe({
             value={rascunho}
             onChange={(e) => setRascunho(e.target.value)}
             rows={9}
-            className="w-full text-xs rounded-xl px-3 py-2.5 leading-relaxed"
+            className="w-full text-[13px] rounded-xl px-3 py-2.5 leading-relaxed"
             style={{
               background: 'var(--admin-bg)',
               border: '1px solid var(--admin-border)',
@@ -178,7 +164,7 @@ export default function AvisoDetalhe({
           </div>
 
           {erros.length > 0 && (
-            <ul className="text-xs space-y-1" style={{ color: '#b91c1c' }}>
+            <ul className="text-xs space-y-1" style={{ color: 'var(--admin-danger)' }}>
               {erros.map((e, i) => (
                 <li key={i}>{e}</li>
               ))}
@@ -190,7 +176,7 @@ export default function AvisoDetalhe({
               type="button"
               disabled={enviando}
               onClick={enviar}
-              className="text-xs font-semibold px-3 py-2 rounded-lg disabled:opacity-60"
+              className="text-[13px] font-semibold px-4 py-2.5 rounded-xl disabled:opacity-60"
               style={{ background: 'var(--admin-accent)', color: '#fff' }}
             >
               {enviando ? 'Enviando…' : 'Enviar para aprovação'}
@@ -224,8 +210,7 @@ export default function AvisoDetalhe({
           a dona vem aqui pra ver a mensagem, não pra mexer em horário. */}
       {!editando && (aviso.temBotao || aviso.tipo === 'lembrete_dia') && (
         <div
-          className="mt-5 rounded-xl px-4 py-3 space-y-3"
-          style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+          className="admin-card mt-5 px-4 py-3.5 space-y-3"
         >
           {aviso.temBotao && (
             <label className="flex items-start gap-2.5 cursor-pointer">
@@ -235,7 +220,7 @@ export default function AvisoDetalhe({
                 onChange={(e) => onBotao(e.target.checked)}
                 className="mt-0.5"
               />
-              <span className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+              <span className="text-[13px] leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
                 <strong style={{ color: 'var(--admin-text)' }}>
                   Deixar a cliente confirmar pelo botão
                 </strong>

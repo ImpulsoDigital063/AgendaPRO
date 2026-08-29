@@ -3,24 +3,28 @@
 /* ═══════════════════════════════════════════════════════════════
    PEÇAS DA CENTRAL DE WHATSAPP
 
-   Três decisões que valem pra tela inteira e que estão aqui pra não se
-   perderem em cada arquivo:
+   Reescrito em 29/08 depois que Eduardo abriu a versão anterior: cinza sobre
+   cinza, tudo em 11px, nenhum ícone, e no desktop uma coluna de 672px colada
+   na esquerda. Parecia tela de configuração de sistema operacional, não uma
+   parte do AgendaPRO.
+
+   O erro de raiz não foi de gosto: a tela tinha inventado o próprio visual em
+   vez de usar o do sistema. Aqui as peças usam os tokens `--admin-*` e as
+   classes `admin-card` do globals.css, que é o que faz o resto do painel
+   parecer acabado.
+
+   Três decisões que valem pra tela inteira:
 
    1. LISTA AGRUPADA, NÃO CARD POR ITEM. Cinco cards com borda e sombra é o
-      que fazia tudo ter o mesmo peso — o Polaris (Shopify) chegou a
-      depreciar o componente de toggle "em caixinha" por isso. Um container,
-      divisores de 1px dentro.
+      que fazia tudo ter o mesmo peso. Um container, divisores por dentro.
 
-   2. HIERARQUIA POR ESTRUTURA, NÃO POR COR. Estado do sistema é FAIXA sem
-      card; configuração é lista agrupada; compra é outra tela. A cor de
-      destaque aparece no máximo duas vezes por tela.
+   2. O ÍCONE CARREGA O ESTADO. Ligado = ícone no tom do accent; desligado =
+      neutro. A linha inteira muda de cor com o interruptor, então dá pra ver
+      o que está ativo sem ler nada. Estado codificado na forma, não só na
+      posição de um toggle de 44px.
 
-   3. STATUS NUNCA SÓ POR COR. Bolinha verde sem palavra falha em
-      acessibilidade e não diz nada pra quem não conhece a convenção —
-      sempre bolinha + rótulo.
-
-   Mobile e desktop dividem tudo isso: o que muda é a largura máxima e o
-   grid, declarados com `sm:` onde precisa.
+   3. STATUS NUNCA SÓ POR COR. Bolinha verde sem palavra não diz nada pra
+      quem não conhece a convenção — sempre bolinha + rótulo.
    ═══════════════════════════════════════════════════════════════ */
 
 import type { ReactNode } from 'react'
@@ -34,54 +38,72 @@ export function Chip({
   tom?: 'neutro' | 'ok' | 'atencao' | 'erro'
 }) {
   const cores = {
-    neutro: { bg: 'var(--admin-surface-hi)', fg: 'var(--admin-text-mute)' },
-    ok: { bg: 'rgba(34,197,94,0.12)', fg: '#15803d' },
-    atencao: { bg: 'rgba(245,158,11,0.14)', fg: '#b45309' },
-    erro: { bg: 'rgba(239,68,68,0.12)', fg: '#b91c1c' },
+    neutro: { bg: 'var(--admin-input-bg)', fg: 'var(--admin-text-mute)', bd: 'var(--admin-border)' },
+    ok: { bg: 'rgba(5,150,105,0.10)', fg: 'var(--admin-success)', bd: 'rgba(5,150,105,0.22)' },
+    atencao: { bg: 'rgba(217,119,6,0.10)', fg: 'var(--admin-warn)', bd: 'rgba(217,119,6,0.24)' },
+    erro: { bg: 'rgba(220,38,38,0.10)', fg: 'var(--admin-danger)', bd: 'rgba(220,38,38,0.22)' },
   }[tom]
   return (
     <span
-      className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap"
-      style={{ background: cores.bg, color: cores.fg }}
+      className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap"
+      style={{ background: cores.bg, color: cores.fg, border: `1px solid ${cores.bd}` }}
     >
       {children}
     </span>
   )
 }
 
-/** Título de seção em varredura. Curto, caixa alta pequena, cor secundária. */
-export function TituloSecao({ children }: { children: ReactNode }) {
+/** Título de seção. Curto, caixa alta pequena, cor secundária. */
+export function TituloSecao({ children, acao }: { children: ReactNode; acao?: ReactNode }) {
   return (
-    <p
-      className="text-[11px] font-semibold uppercase tracking-wider mb-2 mt-5"
-      style={{ color: 'var(--admin-text-faded)' }}
-    >
-      {children}
-    </p>
-  )
-}
-
-/** O container das listas. Um card, divisores por dentro. */
-export function Lista({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
-    >
-      {children}
+    <div className="flex items-baseline justify-between gap-3 mb-2 mt-6 px-1">
+      <p
+        className="text-[11px] font-bold uppercase tracking-wider"
+        style={{ color: 'var(--admin-text-faded)' }}
+      >
+        {children}
+      </p>
+      {acao}
     </div>
   )
 }
 
+/** O container das listas. Um card do sistema, divisores por dentro. */
+export function Lista({ children }: { children: ReactNode }) {
+  return <div className="admin-card overflow-hidden">{children}</div>
+}
+
 /**
- * Uma linha da lista. Altura confortável pro polegar (44px é o mínimo de
- * alvo de toque; aqui fica acima disso com o padding).
+ * Ícone da linha. Quadrado arredondado com fundo suave — é ele que dá
+ * ancoragem visual pra varredura e que carrega o estado ligado/desligado.
+ */
+export function IconeAviso({ children, ativo }: { children: ReactNode; ativo: boolean }) {
+  return (
+    <span
+      className="flex-shrink-0 inline-flex items-center justify-center rounded-xl transition-colors"
+      style={{
+        width: 40,
+        height: 40,
+        background: ativo ? 'var(--admin-accent-bg)' : 'var(--admin-input-bg)',
+        border: `1px solid ${ativo ? 'var(--admin-accent-border)' : 'var(--admin-border)'}`,
+        color: ativo ? 'var(--admin-accent)' : 'var(--admin-text-faded)',
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
+/**
+ * Uma linha da lista. Alta o suficiente pro polegar (o alvo passa dos 44px
+ * mínimos com o padding).
  *
- * `onClick` na linha inteira e `acao` à direita convivem: o toggle é
- * acionável sem entrar no detalhe — obrigar a abrir a tela só pra desligar
- * um aviso seria trocar um toque por três.
+ * `onClick` na linha inteira e `acao` à direita convivem: o interruptor é
+ * acionável sem entrar no detalhe — obrigar a abrir a tela só pra desligar um
+ * aviso seria trocar um toque por três.
  */
 export function Linha({
+  icone,
   titulo,
   snippet,
   meta,
@@ -90,6 +112,7 @@ export function Linha({
   destaque,
   primeira,
 }: {
+  icone?: ReactNode
   titulo: ReactNode
   snippet?: string
   meta?: ReactNode
@@ -100,13 +123,14 @@ export function Linha({
 }) {
   const conteudo = (
     <>
+      {icone}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">{titulo}</div>
         {snippet && (
           /* UMA linha, truncada. Acordeão fechado sem resumo obriga abrir os
-             cinco pra achar um — a NN/g lista isso como o erro clássico. */
+             cinco pra achar um — é o erro clássico de lista sanfonada. */
           <p
-            className="text-xs mt-0.5 truncate"
+            className="text-[13px] mt-0.5 truncate"
             style={{ color: 'var(--admin-text-mute)' }}
             title={snippet}
           >
@@ -114,52 +138,34 @@ export function Linha({
           </p>
         )}
         {meta && (
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
+          <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
             {meta}
           </p>
         )}
       </div>
-      {acao && <div className="flex-shrink-0 flex items-center gap-2">{acao}</div>}
     </>
   )
 
   const estilo = {
-    borderTop: primeira ? 'none' : '1px solid var(--admin-border)',
-    background: destaque === 'atencao' ? 'rgba(245,158,11,0.06)' : undefined,
+    borderTop: primeira ? 'none' : '1px solid var(--admin-divider)',
+    background: destaque === 'atencao' ? 'rgba(217,119,6,0.06)' : undefined,
   }
 
-  if (!onClick) {
-    return (
-      <div className="flex items-center gap-3 px-4 py-3" style={estilo}>
-        {conteudo}
-      </div>
-    )
-  }
   return (
-    <div className="flex items-center gap-3 px-4 py-3" style={estilo}>
-      <button
-        type="button"
-        onClick={onClick}
-        className="flex items-center gap-3 flex-1 min-w-0 text-left"
-      >
-        {conteudo}
-      </button>
+    <div className="flex items-center gap-3 px-4 py-3.5" style={estilo}>
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          className="flex items-center gap-3 flex-1 min-w-0 text-left"
+        >
+          {conteudo}
+        </button>
+      ) : (
+        <div className="flex items-center gap-3 flex-1 min-w-0">{conteudo}</div>
+      )}
+      {acao && <div className="flex-shrink-0 flex items-center gap-2.5">{acao}</div>}
     </div>
-  )
-}
-
-/** Seta de "abre outra tela". Sempre acompanha linha clicável. */
-export function Seta() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M9 6l6 6-6 6"
-        stroke="var(--admin-text-faded)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   )
 }
 
@@ -183,91 +189,76 @@ export function Toggle({
       aria-label={rotulo}
       disabled={desabilitado}
       onClick={onChange}
-      className="flex-shrink-0 w-11 h-6 rounded-full transition-colors relative disabled:opacity-50"
-      style={{ background: ligado ? 'var(--admin-accent)' : 'var(--admin-border)' }}
+      className="flex-shrink-0 rounded-full transition-colors relative disabled:opacity-50"
+      style={{
+        width: 46,
+        height: 27,
+        background: ligado ? 'var(--admin-accent)' : 'var(--admin-border-hi)',
+        boxShadow: ligado ? '0 2px 8px -2px rgba(37,99,235,0.5)' : 'none',
+      }}
     >
       <span
-        className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white transition-all"
-        style={{ left: ligado ? 22 : 3 }}
+        className="absolute rounded-full bg-white transition-all"
+        style={{
+          top: 3,
+          width: 21,
+          height: 21,
+          left: ligado ? 22 : 3,
+          boxShadow: '0 1px 3px rgba(15,23,42,0.28)',
+        }}
       />
     </button>
   )
 }
 
 /**
- * Barra de consumo. Fina e neutra — barra grossa e colorida grita e compete
- * com o resto da tela. Vira âmbar só quando está acabando, que é quando ela
- * PRECISA chamar atenção.
+ * Barra de consumo. Vira âmbar só quando está acabando, que é quando ela
+ * PRECISA chamar atenção — barra colorida o tempo todo compete com o resto
+ * da tela e ninguém olha quando importa.
  */
 export function BarraConsumo({ usadas, total }: { usadas: number; total: number }) {
   const pct = total > 0 ? Math.min(100, (usadas / total) * 100) : 0
   const acabando = total > 0 && usadas / total >= 0.8
   return (
-    <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--admin-border)' }}>
+    <div
+      className="h-1.5 rounded-full overflow-hidden"
+      style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}
+    >
       <div
         className="h-full rounded-full transition-all"
-        style={{ width: `${pct}%`, background: acabando ? '#f59e0b' : 'var(--admin-accent)' }}
+        style={{
+          width: `${pct}%`,
+          background: acabando ? 'var(--admin-warn)' : 'var(--admin-accent)',
+        }}
       />
-    </div>
-  )
-}
-
-/** Cabeçalho das telas de dentro. X visível, não só o gesto de voltar. */
-export function CabecalhoDetalhe({
-  titulo,
-  onVoltar,
-  direita,
-}: {
-  titulo: string
-  onVoltar: () => void
-  direita?: ReactNode
-}) {
-  return (
-    <div className="flex items-center gap-3 mb-3">
-      <button
-        type="button"
-        onClick={onVoltar}
-        className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-        style={{ background: 'var(--admin-surface-hi)' }}
-        aria-label="Voltar"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M15 6l-6 6 6 6"
-            stroke="var(--admin-text)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      <h2 className="text-base font-semibold flex-1 min-w-0" style={{ color: 'var(--admin-text)' }}>
-        {titulo}
-      </h2>
-      {direita}
     </div>
   )
 }
 
 /**
  * Balão de WhatsApp. A dona não lê template — ela reconhece a bolha.
- * Por isso a prévia vem renderizada com nome e horário de verdade, nunca
- * com {{1}}: merge tag crua é o que faz o produto parecer ferramenta de TI.
+ * A prévia vem renderizada com nome e horário de verdade, nunca com {{1}}:
+ * merge tag crua é o que faz o produto parecer ferramenta de TI.
  */
 export function Balao({ texto, botoes }: { texto: string; botoes?: string[] }) {
   return (
     <div
-      className="rounded-xl rounded-tr-sm px-3 py-2.5 text-xs leading-relaxed whitespace-pre-line"
-      style={{ background: 'rgba(37,211,102,0.10)', color: 'var(--admin-text)' }}
+      className="rounded-2xl px-4 py-3 text-[13px] leading-relaxed whitespace-pre-line"
+      style={{
+        background: 'rgba(37,211,102,0.10)',
+        border: '1px solid rgba(37,211,102,0.22)',
+        borderTopLeftRadius: 6,
+        color: 'var(--admin-text)',
+      }}
     >
       {texto}
       {botoes?.length ? (
-        <div className="mt-2 -mx-1">
+        <div className="mt-2.5 -mx-1">
           {botoes.map((b) => (
             <div
               key={b}
-              className="text-center text-xs py-1.5 font-medium"
-              style={{ borderTop: '1px solid rgba(0,0,0,0.08)', color: '#1d9bf0' }}
+              className="text-center text-[13px] py-2 font-semibold"
+              style={{ borderTop: '1px solid rgba(15,23,42,0.08)', color: '#1d9bf0' }}
             >
               {b}
             </div>

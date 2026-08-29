@@ -21,7 +21,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useState } from 'react'
-import { CabecalhoDetalhe, Chip, Lista } from './ui'
+import { Chip, Lista } from './ui'
 
 export type PacoteTela = {
   id: string
@@ -41,7 +41,6 @@ export default function Recarga({
   temMovimento,
   podeContratar,
   liberado,
-  onVoltar,
   onContratar,
   salvando,
   erro,
@@ -52,7 +51,6 @@ export default function Recarga({
   temMovimento: boolean
   podeContratar: boolean
   liberado: boolean
-  onVoltar: () => void
   onContratar: (id: string) => void
   salvando: boolean
   erro: string | null
@@ -61,10 +59,8 @@ export default function Recarga({
   const p = pacotes.find((x) => x.id === escolhido)
 
   return (
-    <div className="pb-24">
-      <CabecalhoDetalhe titulo={atual ? 'Trocar de pacote' : 'Contratar avisos'} onVoltar={onVoltar} />
-
-      <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+    <div className="pb-24 sm:pb-0">
+      <p className="text-[13px] leading-relaxed mb-3" style={{ color: 'var(--admin-text-mute)' }}>
         {temMovimento
           ? 'Escolha quantas mensagens você quer por mês. Se passar, as extras saem por R$ 0,12 cada e os avisos não param.'
           : 'Escolha quantas mensagens você quer por mês. Quando a agenda tiver movimento, mostramos aqui qual pacote cobre o seu ritmo.'}
@@ -78,8 +74,8 @@ export default function Recarga({
               key={x.id}
               type="button"
               onClick={() => setEscolhido(x.id)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left"
-              style={{ borderTop: i === 0 ? 'none' : '1px solid var(--admin-border)' }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+              style={{ borderTop: i === 0 ? 'none' : '1px solid var(--admin-divider)' }}
             >
               <span
                 className="flex-shrink-0 w-[18px] h-[18px] rounded-full flex items-center justify-center"
@@ -97,7 +93,7 @@ export default function Recarga({
 
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                  <span className="text-[15px] font-bold" style={{ color: 'var(--admin-text)' }}>
                     {x.unidades} mensagens
                   </span>
                   {x.id === atual && <Chip tom="ok">seu pacote</Chip>}
@@ -111,7 +107,7 @@ export default function Recarga({
               </span>
 
               <span
-                className="flex-shrink-0 text-sm tabular-nums"
+                className="flex-shrink-0 text-[15px] font-semibold tabular-nums"
                 style={{ color: 'var(--admin-text)' }}
               >
                 {reais(x.preco)}
@@ -122,17 +118,17 @@ export default function Recarga({
       </Lista>
 
       {erro && (
-        <p className="text-xs mt-3" style={{ color: '#b91c1c' }}>
+        <p className="text-[13px] mt-3" style={{ color: 'var(--admin-danger)' }}>
           {erro}
         </p>
       )}
 
       {/* CTA fixo com o preço dentro. Ela nunca rola de volta pra conferir. */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-4 py-3 sm:static sm:px-0 sm:py-0 sm:mt-4"
+        className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 backdrop-blur-xl border-t sm:static sm:z-auto sm:px-0 sm:py-0 sm:mt-5 sm:backdrop-blur-none sm:border-0 sm:bg-transparent"
         style={{
-          background: 'var(--admin-bg)',
-          borderTop: '1px solid var(--admin-border)',
+          background: 'var(--admin-bottomnav-bg)',
+          borderColor: 'var(--admin-border)',
         }}
       >
         <div className="max-w-2xl mx-auto sm:mx-0">
@@ -149,8 +145,12 @@ export default function Recarga({
               type="button"
               disabled={salvando || !p}
               onClick={() => p && onContratar(p.id)}
-              className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-60"
-              style={{ background: 'var(--admin-accent)', color: '#fff' }}
+              className="w-full py-3.5 rounded-xl text-[15px] font-bold disabled:opacity-60 transition-transform hover:scale-[1.01]"
+              style={{
+                background: 'var(--admin-accent)',
+                color: '#fff',
+                boxShadow: '0 8px 20px -8px rgba(37,99,235,0.6)',
+              }}
             >
               {salvando
                 ? 'Gerando cobrança…'
