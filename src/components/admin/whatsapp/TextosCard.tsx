@@ -22,6 +22,8 @@ type Aviso = {
   tipo: string
   rotulo: string
   corpoPadrao: string
+  /** O texto já com os campos preenchidos — é o que a cliente vai ler. */
+  previa: string
   campos: string[]
   marketing: boolean
   meuTexto: string | null
@@ -157,11 +159,17 @@ export default function TextosCard() {
 
               {!editando && (
                 <>
+                  {/* A PRÉVIA, não o texto cru. "{{1}}" é código pra quem
+                      atende cliente; os campos só aparecem no editor. */}
                   <p
                     className="text-xs mt-2 leading-relaxed whitespace-pre-line"
                     style={{ color: 'var(--admin-text-mute)' }}
                   >
-                    {a.meuTexto ?? a.corpoPadrao}
+                    {a.previa}
+                  </p>
+                  <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                    Exemplo com uma cliente chamada Maria. Nome, dia, horário e serviço entram
+                    sozinhos na hora do envio.
                   </p>
                   <button
                     type="button"

@@ -110,10 +110,40 @@ async function sincronizarStatus(db: ReturnType<typeof admin>, businessId: strin
   }
 }
 
+/**
+ * Troca {{1}}, {{2}}... pelos valores de exemplo.
+ *
+ * Usa a MESMA função `params` que monta a mensagem de verdade — então a
+ * prévia não tem como divergir do que a cliente recebe. Montar o exemplo
+ * à parte foi exatamente o que criou dois textos diferentes na mesma tela.
+ */
+function comExemplo(tipo: TipoMensagem, corpo: string, salao: string, telefone: string): string {
+  const def = TEMPLATES[tipo]
+  if (!def) return corpo
+  const valores = def.params({
+    cliente: 'Maria',
+    salao,
+    data: 'sábado, 22/08',
+    hora: '14:30',
+    servico: 'Escova',
+    telefoneSalao: telefone,
+    profissional: 'Ana',
+  })
+  return corpo.replace(/\{\{(\d+)\}\}/g, (_, n) => valores[Number(n) - 1] ?? `{{${n}}}`)
+}
+
 export async function GET() {
   const r = await donoOuNada()
   if ('erro' in r) return r.erro
   const db = admin()
+
+  const { data: neg } = await db
+    .from('businesses')
+    .select('name, phone')
+    .eq('id', r.businessId)
+    .maybeSingle()
+  const nomeNegocio = (neg as { name?: string } | null)?.name ?? 'seu negócio'
+  const telNegocio = (neg as { phone?: string } | null)?.phone ?? ''
 
   await sincronizarStatus(db, r.businessId).catch(() => null)
 
@@ -135,6 +165,9 @@ export async function GET() {
         tipo,
         rotulo: ROTULO[tipo] ?? tipo,
         corpoPadrao: def.corpo,
+        /* O que a cliente REALMENTE vai ler. A tela mostra isto; os
+           {{1}}, {{2}} só aparecem quando ela abre o editor. */
+        previa: comExemplo(tipo, meu?.corpo ?? def.corpo, nomeNegocio, telNegocio),
         campos: def.campos,
         /* MARKETING avisa na tela: consome 7 do pacote em vez de 1. */
         marketing: def.categoria === 'MARKETING',

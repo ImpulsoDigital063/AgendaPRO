@@ -292,13 +292,14 @@ export default function MensagensAutomaticasCard({
                 />
               ) : (
                 <>
-                  <Bolha
-                    texto={preencher(textoAtual, businessName, category)}
-                    salao={businessName}
-                    telefone={businessPhone}
-                    botoes={temBotao && r.comBotao}
-                  />
-
+                  {/* A BOLHA DE PRÉVIA SAIU DAQUI (29/08).
+                      Ela renderizava o texto do textos.ts, que NÃO é mais o
+                      que a cliente recebe — o que vale agora é o template
+                      aprovado pela Meta. A tela mostrava os dois textos, um
+                      em cada seção, e a dona não tinha como saber qual valia.
+                      O texto agora tem um lugar só: "Os textos que suas
+                      clientes recebem", logo acima. Aqui ficam os
+                      interruptores e o que cada aviso custa do pacote. */}
                   {temBotao && (
                     /* Só nos lembretes: é onde o botão existe. Oferecer isso
                        na mensagem de aniversário seria prometer o que o motor

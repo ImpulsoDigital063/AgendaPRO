@@ -23,6 +23,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useEffect, useState } from 'react'
+import { CANAL_LIBERADO } from '@/lib/mensagens/liberado'
 
 type PacoteTela = {
   id: string
@@ -358,10 +359,11 @@ export default function PacotesCard({ canalNoAr }: { canalNoAr: boolean }) {
       )}
 
       {/* CANAL OFICIAL — só aparece quando é verdade.
-          Enquanto o número de produção não está no ar, dizer isso na tela
-          seria prometer o que ainda não existe, que foi o erro das LPs em
-          julho. O texto está pronto e o gate é o `canalNoAr`. */}
-      {canalNoAr && (
+          O gate é `CANAL_LIBERADO`, não a saúde do número: o número pode
+          estar perfeito e o canal ainda não liberado pras donas. Prender
+          isso em `canalNoAr` fazia a tela prometer entrega logo abaixo do
+          aviso "ainda não use com suas clientes". */}
+      {CANAL_LIBERADO && canalNoAr && (
         <p
           className="text-xs leading-relaxed rounded-xl px-4 py-3"
           style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)', color: 'var(--admin-text-mute)' }}

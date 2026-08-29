@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react'
 import PacotesCard from './PacotesCard'
 import TextosCard from './TextosCard'
+import { CANAL_LIBERADO } from '@/lib/mensagens/liberado'
 import MensagensAutomaticasCard from '../MensagensAutomaticasCard'
 
 type Canal = {
@@ -35,6 +36,7 @@ type Canal = {
     excedente: number
     custoExcedente: number
     resumo: string
+    pacote?: unknown
   }
   semTelefone?: { quantos: number; nomes: string[] }
 }
@@ -152,6 +154,7 @@ export default function WhatsAppPainel({
           Agora o que falta é operacional: o número de produção ainda não
           existe. Deixar o texto velho no ar seria mentir pra dona sobre uma
           limitação que não existe mais. */}
+      {!CANAL_LIBERADO && (
       <section
         className="rounded-xl px-4 py-3"
         style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.30)' }}
@@ -166,6 +169,7 @@ export default function WhatsAppPainel({
           liberado.
         </p>
       </section>
+      )}
 
       <section
         className="rounded-xl px-4 py-3"
@@ -175,11 +179,29 @@ export default function WhatsAppPainel({
           <span
             className="w-2 h-2 rounded-full flex-shrink-0"
             style={{
-              background: !canal ? '#9ca3af' : canal.no_ar ? '#22c55e' : '#f59e0b',
+              /* Cinza enquanto não é dela de verdade: verde é promessa. */
+              background:
+                !canal || !CANAL_LIBERADO || !canal.consumo?.pacote
+                  ? '#9ca3af'
+                  : canal.no_ar
+                    ? '#22c55e'
+                    : '#f59e0b',
             }}
           />
           <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
-            {!canal ? 'Verificando…' : canal.no_ar ? 'Enviando normalmente' : 'Os avisos não estão saindo'}
+            {!canal
+              ? 'Verificando…'
+              : /* O verde só quando os avisos DELA saem de verdade. Antes o
+                   card dizia "Enviando normalmente" e, três linhas abaixo,
+                   "não estão contratados para este negócio" — o estado era
+                   do número da plataforma, não do negócio dela. */
+                !CANAL_LIBERADO
+                ? 'Ainda não liberado'
+                : !canal.consumo?.pacote
+                  ? 'Disponível — você ainda não contratou'
+                  : canal.no_ar
+                    ? 'Enviando normalmente'
+                    : 'Os avisos não estão saindo'}
           </p>
         </div>
 
