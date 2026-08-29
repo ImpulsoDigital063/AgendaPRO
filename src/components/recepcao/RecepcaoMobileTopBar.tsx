@@ -26,6 +26,7 @@ import {
   IconGift,
   IconClose,
   IconUsers,
+  IconUser,
 } from '@/components/ui/Icon'
 
 type Props = {
@@ -33,8 +34,10 @@ type Props = {
   brandLogoUrl: string | null
   /** v133 · negócio passou a definição de horário pra recepção */
   podeEditarHorario?: boolean
-  /** v144 · recepção que também atende: atalho pro financeiro DELA */
+  /** v144 · recepção que também atende: agenda e ganhos dela */
   tambemAtende?: boolean
+  /** v141 · negócio que não vende produto não precisa da aba (Studio Isis Melo) */
+  vendeProduto?: boolean
 }
 
 type NavItem = {
@@ -44,23 +47,13 @@ type NavItem = {
   Icon: (p: { size?: number }) => React.ReactNode
 }
 
-const ALL_ITEMS: NavItem[] = [
-  { label: 'Agenda do salão', href: '/recepcao', exact: true, Icon: IconHome },
-  { label: 'Marcar', href: '/recepcao/marcar', Icon: IconCalendar },
-  { label: 'Comandas', href: '/recepcao/comandas', Icon: IconFile },
-  { label: 'Consultas', href: '/recepcao/consultas', Icon: IconSearch },
-  { label: 'Clientes', href: '/recepcao/clientes', Icon: IconUsers },
-  { label: 'Produtos', href: '/recepcao/produtos', Icon: IconInbox },
-  { label: 'Pacotes', href: '/recepcao/pacotes', Icon: IconGift },
-  { label: 'Cupons', href: '/recepcao/cupons', Icon: IconGift },
-  { label: 'Caixa', href: '/recepcao/caixa', Icon: IconWallet },
-]
 
 export default function RecepcaoMobileTopBar({
   businessName,
   brandLogoUrl,
   podeEditarHorario = false,
   tambemAtende = false,
+  vendeProduto = true,
 }: Props) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -75,22 +68,53 @@ export default function RecepcaoMobileTopBar({
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  // v131 · sem a chave, a aba Horários some do menu. Default `true` → base intacta.
-  const comHorario = podeEditarHorario
-    ? [...ALL_ITEMS, { label: 'Horários', href: '/recepcao/horarios', Icon: IconClock }]
-    : ALL_ITEMS
-
   /* v144 · quem acumula balcão e atendimento alcança a própria comissão por
      aqui — o balcão mostra o dinheiro do salão, não o dela. */
-  /* v144 · quem acumula balcão e atendimento tem a agenda DELA separada da do
-     salão (espelha a aba "Eu" da dona), e alcança a própria comissão. */
-  const items: NavItem[] = tambemAtende
-    ? [
-        ...comHorario,
-        { label: 'Meus atendimentos', href: '/recepcao/eu', Icon: IconCalendar },
-        { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet },
-      ]
-    : comHorario
+  /* v144 · menu por contexto, não uma lista de 12 linhas soltas: o que é do
+     dia, o que é da cliente, o dinheiro, o que é DELA e o ajuste do salão. */
+  const groups: { label: string; items: NavItem[] }[] = [
+    {
+      label: 'Dia a dia',
+      items: [
+        { label: 'Agenda do salão', href: '/recepcao', exact: true, Icon: IconHome },
+        { label: 'Marcar', href: '/recepcao/marcar', Icon: IconCalendar },
+        { label: 'Comandas', href: '/recepcao/comandas', Icon: IconFile },
+        { label: 'Consultas', href: '/recepcao/consultas', Icon: IconSearch },
+      ],
+    },
+    {
+      label: 'Clientes',
+      items: [
+        { label: 'Clientes', href: '/recepcao/clientes', Icon: IconUsers },
+        { label: 'Pacotes', href: '/recepcao/pacotes', Icon: IconInbox },
+        { label: 'Cupons', href: '/recepcao/cupons', Icon: IconGift },
+        ...(vendeProduto ? [{ label: 'Produtos', href: '/recepcao/produtos', Icon: IconFile }] : []),
+      ],
+    },
+    {
+      label: 'Dinheiro',
+      items: [{ label: 'Caixa', href: '/recepcao/caixa', Icon: IconWallet }],
+    },
+    ...(tambemAtende
+      ? [
+          {
+            label: 'Meu',
+            items: [
+              { label: 'Meus atendimentos', href: '/recepcao/eu', Icon: IconUser },
+              { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet },
+            ],
+          },
+        ]
+      : []),
+    ...(podeEditarHorario
+      ? [
+          {
+            label: 'Salão',
+            items: [{ label: 'Horários', href: '/recepcao/horarios', Icon: IconClock }],
+          },
+        ]
+      : []),
+  ]
 
   function isActive(item: NavItem): boolean {
     if (item.exact) return pathname === item.href
@@ -188,8 +212,17 @@ export default function RecepcaoMobileTopBar({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-              {items.map((item) => {
+            <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+              {groups.map((group) => (
+                <div key={group.label}>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-widest px-3 mb-1"
+                    style={{ color: 'var(--admin-text-faded)' }}
+                  >
+                    {group.label}
+                  </p>
+                  <div className="space-y-0.5">
+              {group.items.map((item) => {
                 const active = isActive(item)
                 return (
                   <Link
@@ -208,6 +241,9 @@ export default function RecepcaoMobileTopBar({
                   </Link>
                 )
               })}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--admin-divider)' }}>
