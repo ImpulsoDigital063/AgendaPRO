@@ -14,7 +14,7 @@ export default async function RecepcaoClientesPage() {
 
   const { data: recep } = await supabase
     .from('professionals')
-    .select('id, business:businesses(id, name)')
+    .select('id, name, business:businesses(id, name)')
     .eq('auth_user_id', user.id)
     .eq('is_receptionist', true)
     .single()
@@ -33,7 +33,7 @@ export default async function RecepcaoClientesPage() {
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <header className="relative max-w-lg md:max-w-7xl mx-auto px-4 md:px-6 pt-7 pb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--admin-text-faded)' }}>
-          {business.name}
+          {`${(recep.name as string) ?? ''} · ${business.name}`.replace(/^ · /, '')}
         </p>
         <div className="flex items-baseline justify-between">
           <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--admin-text)' }}>

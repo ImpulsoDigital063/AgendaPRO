@@ -61,8 +61,11 @@ export default function RecepcaoDesktopSidebar({
   brand,
   podeEditarHorario = false,
   tambemAtende = false,
+  pessoaNome,
 }: {
   brand: Brand
+  /** v144 · nome de quem está logada · a tela deixa de anunciar cargo */
+  pessoaNome?: string | null
   /** v144 · recepção que também atende: atalho pro financeiro DELA */
   tambemAtende?: boolean
   /** v133 · negócio passou a definição de horário pra recepção */
@@ -148,7 +151,7 @@ export default function RecepcaoDesktopSidebar({
                 className="block text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: 'var(--admin-accent)' }}
               >
-                {tambemAtende ? 'Painel do salão' : 'Painel da Recepção'}
+                {pessoaNome ?? (tambemAtende ? 'Painel do salão' : 'Painel da Recepção')}
               </span>
             </span>
           )}

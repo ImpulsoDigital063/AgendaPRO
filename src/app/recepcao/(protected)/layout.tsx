@@ -26,7 +26,7 @@ export default async function RecepcaoLayout({
 
   const { data: professional, error: profError } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, is_receptionist, does_appointments, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, recep_edita_horario, vendas_balcao_enabled)')
+    .select('id, business_id, password_changed, name, is_receptionist, does_appointments, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, recep_edita_horario, vendas_balcao_enabled)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -89,9 +89,11 @@ export default async function RecepcaoLayout({
           brandLogoUrl={business.brand_logo_url ?? null}
           podeEditarHorario={(business as { recep_edita_horario?: boolean | null }).recep_edita_horario === true}
           tambemAtende={professional.does_appointments === true}
+          pessoaNome={professional.name as string}
           vendeProduto={(business as { vendas_balcao_enabled?: boolean | null }).vendas_balcao_enabled !== false}
         />
         <RecepcaoDesktopSidebar
+          pessoaNome={professional.name as string}
           tambemAtende={professional.does_appointments === true}
           podeEditarHorario={(business as { recep_edita_horario?: boolean | null }).recep_edita_horario === true}
           brand={{

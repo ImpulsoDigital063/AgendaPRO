@@ -38,6 +38,8 @@ type Props = {
   tambemAtende?: boolean
   /** v141 · negócio que não vende produto não precisa da aba (Studio Isis Melo) */
   vendeProduto?: boolean
+  /** v144 · nome de quem está logada · a tela deixa de anunciar cargo */
+  pessoaNome?: string | null
 }
 
 type NavItem = {
@@ -54,6 +56,7 @@ export default function RecepcaoMobileTopBar({
   podeEditarHorario = false,
   tambemAtende = false,
   vendeProduto = true,
+  pessoaNome,
 }: Props) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -196,7 +199,7 @@ export default function RecepcaoMobileTopBar({
                     {businessName ?? 'Salão'}
                   </p>
                   <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-accent)' }}>
-                    {tambemAtende ? 'Painel do salão' : 'Painel da Recepção'}
+                    {pessoaNome ?? (tambemAtende ? 'Painel do salão' : 'Painel da Recepção')}
                   </p>
                 </div>
               </div>
