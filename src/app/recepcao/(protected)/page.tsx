@@ -14,7 +14,6 @@ import RecepFocoDoDia from '@/components/recepcao/RecepFocoDoDia'
 import RecepProximoAtendimento from '@/components/recepcao/RecepProximoAtendimento'
 import RecepCaixaQuick from '@/components/recepcao/RecepCaixaQuick'
 import RecepAniversariantesCard from '@/components/recepcao/RecepAniversariantesCard'
-import RecepQRCodeCard from '@/components/recepcao/RecepQRCodeCard'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import { todayBR } from '@/lib/date-br'
 import PushEnableBanner from '@/components/admin/PushEnableBanner'
@@ -178,8 +177,6 @@ export default async function RecepcaoAgendaPage({
             {/* Aniversariantes */}
             <RecepAniversariantesCard businessId={business.id} businessName={business.name} />
 
-            {/* QR Code */}
-            <RecepQRCodeCard slug={business.slug} />
           </aside>
 
           {/* ════════════════════════════════════════════════════

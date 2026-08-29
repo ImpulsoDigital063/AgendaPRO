@@ -82,8 +82,14 @@ export default function RecepcaoMobileTopBar({
 
   /* v144 · quem acumula balcão e atendimento alcança a própria comissão por
      aqui — o balcão mostra o dinheiro do salão, não o dela. */
+  /* v144 · quem acumula balcão e atendimento tem a agenda DELA separada da do
+     salão (espelha a aba "Eu" da dona), e alcança a própria comissão. */
   const items: NavItem[] = tambemAtende
-    ? [...comHorario, { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet }]
+    ? [
+        ...comHorario,
+        { label: 'Meus atendimentos', href: '/recepcao/eu', Icon: IconCalendar },
+        { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet },
+      ]
     : comHorario
 
   function isActive(item: NavItem): boolean {

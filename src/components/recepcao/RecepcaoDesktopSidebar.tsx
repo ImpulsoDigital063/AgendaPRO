@@ -78,7 +78,11 @@ export default function RecepcaoDesktopSidebar({
   /* v144 · quem acumula balcão e atendimento precisa alcançar a própria
      comissão — o balcão mostra o dinheiro do salão, não o dela. */
   const items: SidebarItem[] = tambemAtende
-    ? [...base, { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet }]
+    ? [
+        ...base,
+        { label: 'Meus atendimentos', href: '/recepcao/eu', Icon: IconCalendar },
+        { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet },
+      ]
     : base
 
   const pathname = usePathname()
