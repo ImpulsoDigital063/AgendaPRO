@@ -84,32 +84,32 @@ const INFO: Record<
 > = {
   confirmacao: {
     rotulo: 'Confirmação do agendamento',
-    quando: 'Na hora que marca',
-    porque: 'A cliente recebe por escrito o que ficou combinado.',
+    quando: 'Assim que ela marca',
+    porque: 'Manda pra cliente o dia, a hora e o serviço que ficaram marcados.',
     icone: <IconCalendar size={19} />,
   },
   lembrete_vespera: {
     rotulo: 'Lembrete na véspera',
-    quando: '1 dia antes',
-    porque: 'É o que mais reduz falta — dá tempo de remarcar em vez de sumir.',
+    quando: 'Um dia antes',
+    porque: 'Lembra a cliente na véspera. É o que mais reduz falta.',
     icone: <IconBell size={19} />,
   },
   lembrete_dia: {
     rotulo: 'Lembrete no dia',
     quando: 'Horas antes',
-    porque: 'Algumas horas antes do horário dela, não de manhã pra todo mundo.',
+    porque: 'Lembra poucas horas antes do horário dela, não de manhã pra todo mundo.',
     icone: <IconClock size={19} />,
   },
   aniversario: {
     rotulo: 'Aniversário',
     quando: 'No dia, de manhã',
-    porque: 'Uma vez por ano. Sem prometer brinde que você não vai dar.',
+    porque: 'Uma mensagem no aniversário da cliente. Uma vez por ano.',
     icone: <IconGift size={19} />,
   },
   retorno: {
     rotulo: 'Hora de voltar',
     quando: 'Quando fecha o intervalo',
-    porque: 'Avisa a cliente que já deu o prazo para repetir o procedimento.',
+    porque: 'Avisa a cliente que já deu o prazo de repetir o procedimento.',
     icone: <IconSparkles size={19} />,
   },
 }
@@ -416,7 +416,7 @@ export default function WhatsAppPainel({
     <>
       <Cabecalho
         titulo="WhatsApp"
-        subtitulo={`Avisos automáticos de ${businessName}`}
+        subtitulo="Mensagens que o sistema manda pras suas clientes"
         direita={!CANAL_LIBERADO ? <Chip tom="atencao">Beta</Chip> : undefined}
       />
 
@@ -497,8 +497,9 @@ export default function WhatsAppPainel({
                     <BarraConsumo usadas={c?.usadas ?? 0} total={c?.franquia ?? 0} />
                   </>
                 ) : (
-                  <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-                    Você ainda não tem pacote de mensagens.
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                    Cada mensagem enviada consome uma do pacote. Você ainda não tem pacote, então
+                    nada sai daqui.
                   </p>
                 )}
 
@@ -507,16 +508,16 @@ export default function WhatsAppPainel({
                   onClick={() => setVista({ tela: 'recarga' })}
                   className="w-full mt-3 py-2.5 rounded-xl text-[13px] font-semibold transition-transform hover:scale-[1.02]"
                   style={
-                    temPacote
-                      ? {
+                    CANAL_LIBERADO && !temPacote
+                      ? { background: 'var(--admin-accent)', color: '#fff' }
+                      : {
                           background: 'var(--admin-surface)',
                           border: '1px solid var(--admin-border)',
                           color: 'var(--admin-text-2)',
                         }
-                      : { background: 'var(--admin-accent)', color: '#fff' }
                   }
                 >
-                  {temPacote ? 'Trocar de pacote' : 'Ver pacotes'}
+                  {temPacote ? 'Trocar de pacote' : 'Ver pacotes e preços'}
                 </button>
               </div>
             </aside>
@@ -556,7 +557,17 @@ export default function WhatsAppPainel({
               </div>
             )}
 
-            <TituloSecao>Suas mensagens</TituloSecao>
+            {/* A tela precisa dizer, em uma frase, o que ela faz. Sem isso a
+                dona ve quatro linhas com interruptor desligado e nao entende
+                nem o que aquilo manda nem por que ligaria. */}
+            <TituloSecao>O que o sistema manda sozinho</TituloSecao>
+            <p
+              className="text-[13px] leading-relaxed mb-2.5 px-1"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              O AgendaPRO manda essas mensagens no WhatsApp da cliente sozinho — você não digita
+              nada. Ligue as que quiser que ela receba.
+            </p>
             <Lista>
               {avisos.map((a, i) => (
                 <Linha
@@ -576,7 +587,10 @@ export default function WhatsAppPainel({
                       {a.status === 'REJECTED' && <Chip tom="erro">reprovado</Chip>}
                     </>
                   }
-                  snippet={a.previa || undefined}
+                  /* A descricao, nao o comeco do texto: as quatro mensagens
+                     comecam com "Oi Maria, tudo bem?" e as linhas ficavam
+                     indistinguiveis. O texto de verdade mora no balao, dentro. */
+                  snippet={a.porque || undefined}
                   meta={
                     <>
                       {a.quando}
