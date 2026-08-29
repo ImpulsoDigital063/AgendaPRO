@@ -36,6 +36,7 @@ import { createClient as createServiceClient, type SupabaseClient } from '@supab
 import crypto from 'node:crypto'
 import { normalizarTelefone, credencialDoSistema, enviarTexto } from '@/lib/mensagens/canal-cloud'
 import { todayBR } from '@/lib/date-br'
+import { sendWebPush } from '@/lib/notify-push'
 
 export const runtime = 'nodejs'
 
@@ -158,13 +159,63 @@ function lerAcao(m: MsgMeta): Acao {
 }
 
 const CAMPOS_APPT =
-  'id, business_id, client_phone, appointment_date, start_time, status, business:businesses(phone, name)'
+  'id, business_id, client_name, client_phone, appointment_date, start_time, status, business:businesses(phone, name, owner_id)'
 
 type Appt = {
   id: string
   business_id: string
+  client_name: string | null
   client_phone: string | null
-  business: { phone: string | null; name: string } | null
+  business: { phone: string | null; name: string; owner_id: string | null } | null
+}
+
+/**
+ * Acha o agendamento futuro mais próximo desse telefone.
+ *
+ * Só os dígitos finais são comparados porque o cadastro guarda em formatos
+ * diferentes (com e sem DDI, com e sem máscara) — mesmo motivo do fix das
+ * fichas duplicadas em 05/08.
+ */
+async function acharPorTelefone(db: Db, fone: string): Promise<Appt | null> {
+  const { data } = await db
+    .from('appointments')
+    .select(CAMPOS_APPT)
+    .gte('appointment_date', todayBR())
+    .in('status', ['pending', 'confirmed'])
+    .order('appointment_date')
+    .limit(200)
+  return (
+    ((data ?? []) as unknown as Appt[]).find((a) =>
+      String(a.client_phone ?? '')
+        .replace(/\D/g, '')
+        .endsWith(fone.slice(-8)),
+    ) ?? null
+  )
+}
+
+/**
+ * Avisa a dona por PUSH que uma cliente respondeu.
+ *
+ * Push e não WhatsApp de propósito: mandar de volta pelo canal consumiria
+ * mensagem do pacote dela — e o aviso de que alguém escreveu não pode
+ * custar mais caro que a mensagem original.
+ */
+async function avisarDona(db: Db, businessId: string, ownerId: string | null, quem: string, texto: string) {
+  if (!ownerId) return
+  const { data: devices } = await db
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .eq('user_id', ownerId)
+  for (const d of (devices ?? []) as { endpoint: string; p256dh: string; auth: string }[]) {
+    await sendWebPush(
+      { endpoint: d.endpoint, p256dh: d.p256dh, auth: d.auth },
+      {
+        titulo: `${quem} respondeu o aviso`,
+        corpo: texto.slice(0, 140),
+        url: '/admin/whatsapp',
+      },
+    ).catch(() => null)
+  }
 }
 
 async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
@@ -185,6 +236,51 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
   const acao = lerAcao(m)
 
   if (!acao) {
+    /* A CLIENTE ESCREVEU ALGUMA COISA.
+       ─────────────────────────────────────────────────────────────
+       Antes isso morria aqui: respondia o automático e sumia. Na W-API
+       ainda chegava no aparelho de alguém; na Cloud API não chega em lugar
+       nenhum. E vai acontecer na primeira semana — ela recebe "seu horário
+       é amanhã às 14h" e responde "não vou poder ir". Do jeito que estava,
+       o horário ficava bloqueado na agenda e ninguém sabia por quê.
+
+       Guarda e avisa a dona por push. Sem dono identificado (telefone que
+       não bate com agendamento nenhum) fica sem business_id em vez de
+       sumir — alguém do suporte olha. */
+    const texto = (m.text?.body ?? '').trim()
+    const dono = texto ? await acharPorTelefone(db, fone).catch(() => null) : null
+
+    /* Guarda e avisa por PUSH — não cria caixa de entrada pra ela vigiar.
+       ─────────────────────────────────────────────────────────────
+       Decisão de Eduardo (29/08): inbox no painel AUMENTA a fricção. A dona
+       teria que lembrar de abrir, e um inbox que ninguém abre é pior que
+       nenhum — a cliente acha que avisou e o horário fica parado. É a mesma
+       armadilha do "enviado" que não entregou.
+
+       O push resolve sem fricção: chega no celular COM O TEXTO DENTRO da
+       notificação. Ela lê ali e responde pelo WhatsApp dela.
+
+       O registro fica no banco, invisível, só pra conseguir responder "a
+       cliente disse que avisou" quando der discussão. */
+    if (texto) {
+      await db.from('message_inbox').insert({
+        business_id: dono?.business_id ?? null,
+        telefone: fone,
+        cliente_nome: dono?.client_name ?? null,
+        texto: texto.slice(0, 2000),
+        appointment_id: dono?.id ?? null,
+      })
+      if (dono?.business_id) {
+        await avisarDona(
+          db,
+          dono.business_id,
+          dono.business?.owner_id ?? null,
+          dono.client_name ?? 'Uma cliente',
+          texto,
+        ).catch(() => null)
+      }
+    }
+
     /* Uma resposta automática a cada 12h por telefone, pra conversa não
        virar ping-pong com robô. A trava é a mesma chave UNIQUE do
        message_log — sem estado extra em lugar nenhum.
@@ -203,8 +299,11 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
         /* Sem a palavra "salão": este mesmo texto chega pra cliente de
            clínica, barbearia e estúdio. Nada faz a dona desconfiar mais
            rápido de que o sistema não é pra ela. */
-        'Este número só envia avisos automáticos e não é lido. ' +
-          'Para remarcar ou tirar dúvida, fale pelo telefone que aparece na mensagem do seu horário.',
+        /* Antes dizia só "não é lido", o que deixava a cliente no vácuo.
+           Agora a dona É avisada — então o texto pode dizer a verdade. */
+        'Recebemos a sua mensagem e avisamos o local do seu atendimento. ' +
+          'Este número é automático e não é acompanhado o tempo todo, então, ' +
+          'se for urgente, fale pelo telefone que aparece na mensagem do seu horário.',
       )
     }
     return 'sem_acao'
@@ -240,23 +339,7 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
     if (a && doTelefone) alvo = a
   }
 
-  if (!alvo) {
-    const { data: candidatos } = await db
-      .from('appointments')
-      .select(CAMPOS_APPT)
-      .gte('appointment_date', todayBR())
-      .in('status', ['pending', 'confirmed'])
-      .order('appointment_date')
-      .limit(200)
-    /* Só os dígitos finais são comparados porque o cadastro guarda em
-       formatos diferentes (com e sem DDI, com e sem máscara). */
-    alvo =
-      ((candidatos ?? []) as unknown as Appt[]).find((a) =>
-        String(a.client_phone ?? '')
-          .replace(/\D/g, '')
-          .endsWith(fone.slice(-8)),
-      ) ?? null
-  }
+  if (!alvo) alvo = await acharPorTelefone(db, fone)
 
   if (!alvo) return 'sem_agendamento'
   const negocio = alvo.business

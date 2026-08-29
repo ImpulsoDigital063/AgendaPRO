@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from 'react'
 import PacotesCard from './PacotesCard'
+import TextosCard from './TextosCard'
 import MensagensAutomaticasCard from '../MensagensAutomaticasCard'
 
 type Canal = {
@@ -276,6 +277,10 @@ export default function WhatsAppPainel({
 
       <section>
         <PacotesCard canalNoAr={!!canal?.no_ar} />
+      </section>
+
+      <section>
+        <TextosCard />
       </section>
 
       <section>

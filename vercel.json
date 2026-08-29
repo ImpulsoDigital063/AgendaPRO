@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/avisos-consumo",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/canal-saude",
+      "schedule": "0 13 * * *"
     }
   ]
 }

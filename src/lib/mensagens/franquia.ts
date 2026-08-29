@@ -34,6 +34,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { pacotePorId, PRECO_EXCEDENTE, type Pacote } from './pacotes'
+import { PADRAO } from './tipos'
 
 export { PRECO_EXCEDENTE }
 
@@ -264,7 +265,45 @@ export async function ativarPacote(
   const gravado = (data as { avisos_unidades?: number | null } | null)?.avisos_unidades
   if (gravado !== unidades) return { ok: false, unidades: 0, erro: 'nao_persistiu' }
 
+  await ligarReguaPadrao(db, businessId).catch(() => null)
   return { ok: true, unidades }
+}
+
+/**
+ * Liga confirmação + véspera na PRIMEIRA contratação.
+ *
+ * Duas mensagens por atendimento, decidido em 29/08. A terceira (lembrete do
+ * dia) traz R$4,47 de margem a mais e aumenta o volume em 50% — não paga o
+ * risco de bloqueio num número compartilhado.
+ *
+ * A confirmação fica porque, no nosso desenho, o número não é o do salão:
+ * ela é o que APRESENTA o número pra cliente. Sem ela, a véspera chega de um
+ * desconhecido.
+ *
+ * A véspera em vez do lembrete de 3h porque é a única que dá tempo de a dona
+ * vender o horário pra outra pessoa. Três horas antes o horário já morreu.
+ *
+ * 🔴 Só age quando ela NÃO TEM regra nenhuma. Quem já configurou escolheu —
+ * sobrescrever a escolha dela na renovação seria religar aviso que ela
+ * desligou de propósito.
+ */
+async function ligarReguaPadrao(db: SupabaseClient, businessId: string) {
+  const { count } = await db
+    .from('message_rules')
+    .select('id', { count: 'exact', head: true })
+    .eq('business_id', businessId)
+  if ((count ?? 0) > 0) return
+
+  await db.from('message_rules').insert(
+    (['confirmacao', 'lembrete_vespera'] as const).map((tipo) => ({
+      business_id: businessId,
+      tipo,
+      enabled: true,
+      offset_minutos: PADRAO[tipo].offsetMinutos,
+      hora_do_dia: PADRAO[tipo].horaDoDia,
+      com_botao: true,
+    })),
+  )
 }
 
 /**

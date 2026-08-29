@@ -19,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { PADRAO, DESTINATARIO, EH_PROMOCIONAL, type Regra, type TipoMensagem } from './tipos'
 import { type Variaveis } from './textos'
 import { credencialDoSistema, enviarTemplate, normalizarTelefone } from './canal-cloud'
-import { TEMPLATES, payloadsDosBotoes, unidadesDaFranquia } from './templates-cloud'
+import { resolverTemplate, payloadsDosBotoes, unidadesDaFranquia } from './templates-cloud'
 import { podeEnviar } from './franquia'
 
 
@@ -278,7 +278,10 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
       await concluir('ignorado', 'whatsapp', tel, 'sem_credencial_cloud')
       return { status: 'ignorado', motivo: 'sem_credencial_cloud' }
     }
-    const def = TEMPLATES[p.tipo]
+    /* O texto do NEGÓCIO quando ele tem um aprovado; o padrão quando não.
+       Template em análise ou reprovado cai no padrão — a dona não pode
+       ficar sem aviso porque o texto dela ainda não passou. */
+    const def = await resolverTemplate(db, p.businessId, p.tipo)
     if (!def) {
       /* Tipo sem template aprovado não vira texto livre — vira nada, de
          propósito. Mandar texto fora da janela volta 131047 e a dona veria

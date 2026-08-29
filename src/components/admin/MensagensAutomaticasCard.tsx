@@ -26,6 +26,10 @@ type Regra = {
   tipo: string
   enabled: boolean
   offsetMinutos: number
+  /** Quantas unidades do pacote este aviso consome por mês, no movimento real dela. */
+  unidadesPorMes?: number
+  /** true = marketing: cada mensagem gasta 7 do pacote em vez de 1. */
+  gasta7?: boolean
   horaDoDia: string
   retornoDias: number | null
   /** null = usa o texto do sistema. Preenchido = a dona escreveu o dela. */
@@ -115,6 +119,12 @@ export default function MensagensAutomaticasCard({
   businessPhone?: string | null
   category?: string | null
 }) {
+  const [consumo, setConsumo] = useState<{
+    usadas: number
+    franquia: number
+    saldo: number
+    temPacote: boolean
+  } | null>(null)
   const [regras, setRegras] = useState<Regra[]>([])
   const [canalLigado, setCanalLigado] = useState(true)
   const [carregando, setCarregando] = useState(true)
@@ -125,6 +135,7 @@ export default function MensagensAutomaticasCard({
     try {
       const r = await fetch('/api/admin/mensagens/regras').then((x) => x.json())
       setRegras(r.regras ?? [])
+      setConsumo(r.consumo ?? null)
       setCanalLigado(r.canal_ligado === true)
     } finally {
       setCarregando(false)
@@ -210,6 +221,20 @@ export default function MensagensAutomaticasCard({
                   <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
                     {info.titulo}
                   </p>
+                  {/* O QUE ESTE AVISO CUSTA DO PACOTE DELA.
+                      O consumo é dela; a conta tem que estar do lado do
+                      interruptor, não num documento que ela não vai ler.
+                      Sem isto, ela liga o aniversário sem saber que cada
+                      mensagem gasta 7 e descobre na fatura. */}
+                  {r.gasta7 && (
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(245,158,11,0.14)', color: '#b45309' }}
+                      title="Aniversário e retorno custam mais para o WhatsApp: cada mensagem gasta 7 do seu pacote"
+                    >
+                      gasta 7
+                    </span>
+                  )}
                   <span
                     className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
                     style={{
@@ -225,6 +250,20 @@ export default function MensagensAutomaticasCard({
                 <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
                   {info.porque}
                 </p>
+
+                {/* A CONTA, ao lado da decisão. Texto diferente conforme já
+                    esteja ligado ou não: ligado é "está consumindo", desligado
+                    é "vai adicionar". A dona decide sabendo. */}
+                {consumo?.temPacote && r.unidadesPorMes ? (
+                  <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                    {r.enabled
+                      ? `Consome cerca de ${r.unidadesPorMes} do seu pacote por mês.`
+                      : `Ligar adiciona cerca de ${r.unidadesPorMes} por mês ao seu consumo.`}
+                    {consumo.franquia > 0 && (
+                      <> Hoje: {consumo.usadas} de {consumo.franquia}.</>
+                    )}
+                  </p>
+                ) : null}
               </div>
 
               <button
@@ -282,20 +321,14 @@ export default function MensagensAutomaticasCard({
                   )}
 
                   <div className="mt-2.5 flex items-center gap-3 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setEditando(r.tipo)}
-                      className="text-xs font-medium underline underline-offset-2"
-                      style={{ color: 'var(--admin-accent)' }}
-                    >
-                      Editar mensagem
-                    </button>
-
-                    {r.template && (
-                      <span className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
-                        texto personalizado por você
-                      </span>
-                    )}
+                    {/* O EDITOR DE TEXTO SAIU DAQUI (29/08).
+                        Ele escrevia em `message_rules.template`, que o motor
+                        IGNORA desde a migração pra Cloud API: fora da janela
+                        de 24h o WhatsApp só entrega template aprovado pela
+                        Meta. Editar aqui salvava e não mudava nada — o pior
+                        tipo de erro, o que parece ter funcionado.
+                        Agora o texto se edita em "Os textos que suas clientes
+                        recebem", logo acima, que manda pra aprovação. */}
 
                     {r.enabled && r.tipo === 'lembrete_dia' && (
                       <select
