@@ -1,6 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+
+/* 28/08 · o + levava pro wizard /recepcao/marcar, um caminho paralelo ao da
+   grade. A Isis pediu pra tirar: marcar é tocar no horário da coluna ou usar
+   o Agendar. O botão continua, mas abrindo o MESMO modal da grade — um fluxo
+   só pra ensinar, e a cliente na frente não espera duas telas diferentes. */
 import { IconPlus } from '@/components/ui/Icon'
 
 type Props = {
@@ -10,7 +15,7 @@ type Props = {
 export default function RecepMarcarFAB({}: Props) {
   return (
     <Link
-      href="/recepcao/marcar"
+      href="/recepcao?agendar=1"
       aria-label="Marcar novo agendamento"
       style={{
         position: 'fixed',

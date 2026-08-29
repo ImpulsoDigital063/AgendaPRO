@@ -77,7 +77,6 @@ export default function RecepcaoMobileTopBar({
       label: 'Dia a dia',
       items: [
         { label: 'Agenda do salão', href: '/recepcao', exact: true, Icon: IconHome },
-        { label: 'Marcar', href: '/recepcao/marcar', Icon: IconCalendar },
         { label: 'Comandas', href: '/recepcao/comandas', Icon: IconFile },
         { label: 'Consultas', href: '/recepcao/consultas', Icon: IconSearch },
       ],
