@@ -176,14 +176,19 @@ export default async function RecepcaoAgendaPage({
           TABLET + DESKTOP (≥md · Letícia opera em iPad)
           Grade Timeline · padrão visual /admin
           ════════════════════════════════════════════════════ */}
-      <div className="hidden md:block relative px-4 md:px-6 pt-6 pb-8">
+      {/* v144 · a grade era `hidden md:block`: no celular a recepção via só
+          cards e NÃO enxergava a agenda de ninguém — sendo que o celular é o
+          aparelho dela no balcão. O /admin já é grade em todo breakpoint
+          (mobile rola na horizontal); o balcão passa a seguir o mesmo. */}
+      <div className="block relative px-4 md:px-6 pt-6 pb-8">
         <Suspense fallback={<div className="h-96 rounded-2xl" style={{ background: 'var(--admin-surface)' }} />}>
           <GradeTimeline businessId={business.id} date={gradeDate} />
         </Suspense>
       </div>
 
       {/* ════════════════════════════════════════════════════
-          MOBILE (<md) · dashboard atual da recep
+          MOBILE (<md) · caixa, QR, aniversariantes e pendências
+          Fica ABAIXO da grade (que agora aparece nos dois tamanhos).
           ════════════════════════════════════════════════════ */}
       <div className="md:hidden relative max-w-7xl mx-auto px-4 pt-7 pb-32">
         <div className="space-y-5">
