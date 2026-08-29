@@ -3,342 +3,466 @@
 /* ═══════════════════════════════════════════════════════════════
    CENTRAL DE WHATSAPP
 
-   A ordem da tela é a ordem da dúvida da dona:
-     1. "está mandando?"      → estado do canal, primeiro de tudo
-     2. "o que está indo?"    → os avisos, com o texto que ela pode mudar
+   Redesenhada em 29/08. A versão anterior empilhava quinze blocos de peso
+   visual idêntico — cinco pacotes, cinco textos abertos por inteiro, cinco
+   interruptores — e a dona rolava a tela toda pra achar qualquer coisa.
 
-   O estado do canal vem antes porque é a única pergunta que ela faz em
-   pânico. Em 21/08 o canal ficou 6 dias fora do ar e a única pista era uma
-   coluna de erro no banco — do lado de dentro. Do lado dela, silêncio.
+   ─── As três mudanças estruturais ─────────────────────────────
+
+   1. ÍNDICE COM UM NÍVEL DE PROFUNDIDADE, não tudo aberto.
+      A raiz é curta: faixa de estado, cinco linhas de aviso, uma linha de
+      ação. Cada aviso abre a própria tela.
+      Não é acordeão: com texto de 6-8 linhas por item, cinco acordeões
+      abertos dão a mesma parede de texto, com um clique a mais.
+      Não é tab: segmented control troca estado da MESMA coisa; aqui são
+      naturezas diferentes (estado, configuração, compra), e obrigaria a
+      dona a escolher a categoria certa antes de ver a lista.
+
+   2. O AVISO VIROU UMA COISA SÓ. Antes "Lembrete da véspera" existia em dois
+      blocos distantes: ela ligava embaixo e lia o texto em cima. Agora
+      interruptor, horário, custo e texto ficam no mesmo lugar.
+
+   3. COMPRAR SAIU DAQUI. Empilhar card de preço em celular funciona até
+      QUATRO planos — são cinco. A Fresha, mesmo público e mesmo problema,
+      não mostra plano na tela de automação: mostra SALDO, e a recarga é
+      fluxo à parte. É o que está aqui.
+
+   Hierarquia por estrutura, não por cor: estado é faixa sem card,
+   configuração é lista agrupada, compra é outra tela.
+
+   Mobile e desktop: a mesma tela, sem prefixo de breakpoint no que é
+   estrutural. O único ajuste responsivo vive no CTA da recarga, fixo no
+   rodapé no celular e estático no `sm:`.
    ═══════════════════════════════════════════════════════════════ */
 
-import { useEffect, useState } from 'react'
-import PacotesCard from './PacotesCard'
-import TextosCard from './TextosCard'
+import { useCallback, useEffect, useState } from 'react'
 import { CANAL_LIBERADO } from '@/lib/mensagens/liberado'
-import MensagensAutomaticasCard from '../MensagensAutomaticasCard'
+import { BarraConsumo, Chip, Linha, Lista, Seta, TituloSecao, Toggle } from './ui'
+import AvisoDetalhe, { type Aviso } from './AvisoDetalhe'
+import Recarga, { type PacoteTela } from './Recarga'
 
 type Canal = {
   configurado: boolean
   no_ar: boolean
   numero: string | null
   detalhe: string
-  /* GREEN | YELLOW | RED. É o sinal que substituiu "a sessão caiu": na
-     Cloud API não existe sessão, existe reputação — e ela desce quando as
-     clientes bloqueiam. Cai ANTES da Meta restringir o número, que é o
-     único momento em que dá pra fazer alguma coisa. */
   qualidade?: string | null
-  consumo?: {
-    usadas: number
-    aguardando: number
-    franquia: number
-    restantes: number
-    excedente: number
-    custoExcedente: number
-    resumo: string
-    pacote?: unknown
-  }
+  consumo?: { usadas: number; franquia: number; saldo: number; pacote?: unknown; resumo: string }
   semTelefone?: { quantos: number; nomes: string[] }
 }
 
-/** 556381102355 → (63) 98110-2355. O número cru não diz nada pra dona. */
+type Pacotes = {
+  atual: string | null
+  podeContratar: boolean
+  recomendado: string
+  movimento: { atendimentosMes: number; msgsPorAtendimento: number; projecaoHipotetica: boolean }
+  pacotes: PacoteTela[]
+}
+
+const INFO: Record<string, { rotulo: string; quando: string; porque: string }> = {
+  confirmacao: {
+    rotulo: 'Confirmação do agendamento',
+    quando: 'Na hora que marca',
+    porque: 'A cliente recebe por escrito o que ficou combinado.',
+  },
+  lembrete_vespera: {
+    rotulo: 'Lembrete na véspera',
+    quando: '1 dia antes',
+    porque: 'É o que mais reduz falta — dá tempo de remarcar em vez de sumir.',
+  },
+  lembrete_dia: {
+    rotulo: 'Lembrete no dia',
+    quando: 'Horas antes',
+    porque: 'Algumas horas antes do horário dela, não de manhã pra todo mundo.',
+  },
+  aniversario: {
+    rotulo: 'Aniversário',
+    quando: 'No dia, de manhã',
+    porque: 'Uma vez por ano. Sem prometer brinde que você não vai dar.',
+  },
+  retorno: {
+    rotulo: 'Hora de voltar',
+    quando: 'Quando fecha o intervalo',
+    porque: 'Avisa a cliente que já deu o prazo para repetir o procedimento.',
+  },
+}
+
+/** 556392846765 → (63) 9284-6765 */
 function formatarNumero(bruto: string): string {
   const d = bruto.replace(/\D/g, '')
   const s = d.startsWith('55') ? d.slice(2) : d
-  if (s.length === 11) return `(${s.slice(0, 2)}) ${s.slice(2, 7)}-${s.slice(7)}`
-  if (s.length === 10) return `(${s.slice(0, 2)}) ${s.slice(2, 6)}-${s.slice(6)}`
-  return bruto
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   POR QUE O AVISO NÃO SAI DO NÚMERO DELA
-
-   A dona vai reparar que o número é desconhecido e a primeira leitura dela
-   é ruim: "estão mandando mensagem pra minha cliente de um número que não é
-   o meu". Se ela descobre isso pela cliente perguntando, vira desconfiança.
-   Dito antes, vira proteção — que é o que de fato é.
-
-   Fica recolhido porque não é informação de operação diária; ela lê uma vez
-   e não precisa de novo.
-   ═══════════════════════════════════════════════════════════════ */
-function PorQueEsseNumero() {
-  const [aberto, setAberto] = useState(false)
-
-  if (!aberto) {
-    return (
-      <button
-        type="button"
-        onClick={() => setAberto(true)}
-        className="mt-2 text-xs underline underline-offset-2"
-        style={{ color: 'var(--admin-text-mute)' }}
-      >
-        Por que os avisos não saem do meu número?
-      </button>
-    )
-  }
-
-  return (
-    <div className="mt-2.5 space-y-2 text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-      <p>
-        <strong style={{ color: 'var(--admin-text)' }}>Para proteger o seu número.</strong>{' '}
-        Ligar o WhatsApp do seu negócio a um sistema de envio automático é o tipo de uso que o
-        WhatsApp bloqueia — e se bloquear, você perde o contato com as suas clientes, a lista de
-        conversas e os grupos. O aviso sai do nosso número justamente para que esse risco nunca
-        seja seu.
-      </p>
-      <p>
-        <strong style={{ color: 'var(--admin-text)' }}>O cliente sabe de quem é.</strong>{' '}
-        Toda mensagem começa com o nome do seu negócio e termina com o seu telefone, para ela
-        remarcar ou tirar dúvida falando com você.
-      </p>
-      <p>
-        <strong style={{ color: 'var(--admin-text)' }}>Se ela responder ali</strong>, recebe na hora
-        um aviso automático dizendo que aquele número só manda avisos e não é lido, e que para
-        falar com você é pelo telefone que aparece na mensagem do horário dela. Ninguém fica
-        esperando resposta que não vem.
-      </p>
-      <button
-        type="button"
-        onClick={() => setAberto(false)}
-        className="text-xs underline underline-offset-2"
-        style={{ color: 'var(--admin-text-faded)' }}
-      >
-        Fechar
-      </button>
-    </div>
-  )
+  if (s.length < 10) return bruto
+  return `(${s.slice(0, 2)}) ${s.slice(2, s.length - 4)}-${s.slice(-4)}`
 }
 
 export default function WhatsAppPainel({
   businessName,
-  businessPhone,
-  category,
 }: {
   businessName: string
-  category?: string | null
   businessPhone?: string | null
+  category?: string | null
 }) {
   const [canal, setCanal] = useState<Canal | null>(null)
+  const [pacotes, setPacotes] = useState<Pacotes | null>(null)
+  const [avisos, setAvisos] = useState<Aviso[]>([])
+  const [vista, setVista] = useState<
+    { tela: 'inicio' } | { tela: 'aviso'; tipo: string } | { tela: 'recarga' }
+  >({ tela: 'inicio' })
+  const [salvando, setSalvando] = useState(false)
+  const [erroCompra, setErroCompra] = useState<string | null>(null)
+  const [pix, setPix] = useState<{
+    valor: number
+    unidades: number
+    dias: number
+    copiaECola: string | null
+  } | null>(null)
 
-  useEffect(() => {
-    /* Falha de rede aqui não pode derrubar a tela: os avisos abaixo
-       continuam configuráveis mesmo sem saber o estado do canal. */
+  const carregar = useCallback(() => {
     void fetch('/api/admin/mensagens/canal')
       .then((r) => r.json())
-      .then((d) => setCanal(d?.error ? null : d))
-      .catch(() => setCanal(null))
-  }, [])
+      .then((j) => setCanal(j?.error ? null : j))
+      .catch(() => null)
+    void fetch('/api/admin/mensagens/pacotes')
+      .then((r) => r.json())
+      .then((j) => setPacotes(j?.error ? null : j))
+      .catch(() => null)
 
-  const cor = !canal
-    ? { fundo: 'rgba(120,120,120,0.08)', borda: 'rgba(120,120,120,0.25)' }
-    : canal.no_ar
-      ? { fundo: 'rgba(34,197,94,0.10)', borda: 'rgba(34,197,94,0.30)' }
-      : { fundo: 'rgba(245,158,11,0.10)', borda: 'rgba(245,158,11,0.30)' }
+    /* Regras e textos vêm de rotas diferentes e viram UM objeto por aviso:
+       é assim que a dona pensa, e era a divisão entre as duas que fazia o
+       mesmo aviso aparecer em dois blocos distantes da tela. */
+    void Promise.all([
+      fetch('/api/admin/mensagens/regras').then((r) => r.json()).catch(() => null),
+      fetch('/api/admin/mensagens/templates').then((r) => r.json()).catch(() => null),
+    ]).then(([reg, tpl]) => {
+      const textos = new Map<string, Record<string, unknown>>(
+        ((tpl?.avisos ?? []) as { tipo: string }[]).map((t) => [t.tipo, t as unknown as Record<string, unknown>]),
+      )
+      setAvisos(
+        ((reg?.regras ?? []) as Record<string, unknown>[]).map((r) => {
+          const tipo = String(r.tipo)
+          const t = textos.get(tipo) ?? {}
+          const info = INFO[tipo] ?? { rotulo: tipo, quando: '', porque: '' }
+          const horas = Math.round(Math.abs(Number(r.offsetMinutos ?? 0)) / 60)
+          return {
+            tipo,
+            rotulo: info.rotulo,
+            porque: info.porque,
+            quando: tipo === 'lembrete_dia' ? `${horas}h antes` : info.quando,
+            enabled: r.enabled === true,
+            comBotao: r.comBotao !== false,
+            temBotao: tipo === 'lembrete_vespera' || tipo === 'lembrete_dia',
+            offsetMinutos: Number(r.offsetMinutos ?? 0),
+            previa: String(t.previa ?? ''),
+            corpoPadrao: String(t.corpoPadrao ?? ''),
+            meuTexto: (t.meuTexto as string | null) ?? null,
+            campos: (t.campos as string[]) ?? [],
+            marketing: t.marketing === true,
+            unidadesPorMes: r.unidadesPorMes as number | undefined,
+            status: (t.status as string | null) ?? null,
+            motivo: (t.motivo as string | null) ?? null,
+          }
+        }),
+      )
+    })
+  }, [])
+  useEffect(carregar, [carregar])
+
+  async function salvarRegra(tipo: string, campos: Record<string, unknown>) {
+    setSalvando(true)
+    /* Otimista: o interruptor muda na hora e volta se falhar. Tela de toggle
+       não tem botão "Salvar" nem espera de rede pra mostrar o estado. */
+    setAvisos((as) => as.map((a) => (a.tipo === tipo ? { ...a, ...campos } : a)))
+    try {
+      const r = await fetch('/api/admin/mensagens/regras', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo, ...campos }),
+      })
+      if (!r.ok) throw new Error('falhou')
+    } catch {
+      carregar()
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function enviarTexto(tipo: string, corpo: string): Promise<string[] | null> {
+    const r = await fetch('/api/admin/mensagens/templates', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo, corpo }),
+    })
+    const j = await r.json().catch(() => null)
+    if (!r.ok) return (j?.erros as string[]) ?? [j?.titulo, j?.detalhe].filter(Boolean)
+    carregar()
+    return null
+  }
+
+  async function contratar(id: string) {
+    setSalvando(true)
+    setErroCompra(null)
+    try {
+      const r = await fetch('/api/admin/mensagens/pacotes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pacote: id }),
+      })
+      const j = await r.json()
+      if (j?.needs_customer_data) {
+        setErroCompra(
+          'Para a primeira cobrança precisamos do seu nome completo e CPF. Fale com o suporte para liberar.',
+        )
+        return
+      }
+      if (!r.ok || !j?.ok) throw new Error(String(j?.error ?? 'falhou'))
+      if (j.aguardandoPagamento) {
+        setPix({
+          valor: j.valor,
+          unidades: j.unidades,
+          dias: j.dias,
+          copiaECola: j.pixCopiaECola ?? null,
+        })
+        setVista({ tela: 'inicio' })
+      }
+      carregar()
+    } catch {
+      setErroCompra('Não deu para gerar a cobrança agora. Tente de novo em alguns instantes.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  // ── TELAS DE DENTRO ──────────────────────────────────────────
+  if (vista.tela === 'aviso') {
+    const a = avisos.find((x) => x.tipo === vista.tipo)
+    if (!a) return null
+    return (
+      <div className="max-w-2xl pb-8">
+        <AvisoDetalhe
+          aviso={a}
+          salvando={salvando}
+          onVoltar={() => setVista({ tela: 'inicio' })}
+          onToggle={() => salvarRegra(a.tipo, { enabled: !a.enabled })}
+          onBotao={(v) => salvarRegra(a.tipo, { comBotao: v })}
+          onHorario={(h) => salvarRegra(a.tipo, { offsetMinutos: -h * 60 })}
+          onEnviarTexto={(corpo) => enviarTexto(a.tipo, corpo)}
+        />
+      </div>
+    )
+  }
+
+  if (vista.tela === 'recarga' && pacotes) {
+    return (
+      <div className="max-w-2xl">
+        <Recarga
+          pacotes={pacotes.pacotes}
+          atual={pacotes.atual}
+          recomendado={pacotes.recomendado}
+          temMovimento={pacotes.movimento.atendimentosMes > 0}
+          podeContratar={pacotes.podeContratar}
+          liberado={CANAL_LIBERADO}
+          salvando={salvando}
+          erro={erroCompra}
+          onVoltar={() => setVista({ tela: 'inicio' })}
+          onContratar={contratar}
+        />
+      </div>
+    )
+  }
+
+  // ── RAIZ ─────────────────────────────────────────────────────
+  const temPacote = !!canal?.consumo?.pacote
+  const c = canal?.consumo
 
   return (
-    <div className="space-y-4 pb-8">
-      <header>
-        <h1 className="text-lg font-semibold" style={{ color: 'var(--admin-text)' }}>
-          WhatsApp
-        </h1>
-        <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-          Os avisos que {businessName} manda sozinho para os clientes.
+    <div className="max-w-2xl pb-8">
+      <header className="mb-4">
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold" style={{ color: 'var(--admin-text)' }}>
+            WhatsApp
+          </h1>
+          {/* Chip no lugar do banner fixo: banner que nunca sai treina
+              cegueira a banner, e some justamente o alerta que importa. */}
+          {!CANAL_LIBERADO && <Chip tom="atencao">Beta</Chip>}
+        </div>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+          Os avisos que {businessName} manda sozinho para as clientes.
         </p>
       </header>
 
-      {/* EM BREVE — e o MOTIVO mudou em 28/08.
-          Antes era a entrega: a W-API só entregava pra quem já tinha mandado
-          mensagem pro número, e a cliente do salão nunca mandou. Isso ACABOU
-          com a migração pra Cloud API oficial, provado no aparelho da mesma
-          destinatária que não recebia.
-          Agora o que falta é operacional: o número de produção ainda não
-          existe. Deixar o texto velho no ar seria mentir pra dona sobre uma
-          limitação que não existe mais. */}
       {!CANAL_LIBERADO && (
-      <section
-        className="rounded-xl px-4 py-3"
-        style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.30)' }}
-      >
-        <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
-          Em ajustes finais — ainda não use com suas clientes
+        <p
+          className="text-xs leading-relaxed rounded-xl px-3 py-2.5 mb-4"
+          style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)' }}
+        >
+          Estamos trocando o envio para o canal oficial do WhatsApp e o número novo ainda está
+          sendo liberado. Você pode deixar os textos do seu jeito — <strong>os avisos ainda não
+          saem</strong>. Avisamos quando estiver no ar.
         </p>
-        <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-          Estamos trocando o envio para o canal oficial do WhatsApp, e o número novo ainda está
-          sendo liberado. Você pode olhar e deixar os textos do seu jeito, mas ainda não ligue os
-          avisos: enquanto o número não está no ar, eles não saem. Avisamos assim que estiver
-          liberado.
-        </p>
-      </section>
       )}
 
-      <section
-        className="rounded-xl px-4 py-3"
-        style={{ background: cor.fundo, border: `1px solid ${cor.borda}` }}
-      >
-        <div className="flex items-center gap-2">
-          <span
-            className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{
-              /* Cinza enquanto não é dela de verdade: verde é promessa. */
-              background:
-                !canal || !CANAL_LIBERADO || !canal.consumo?.pacote
-                  ? '#9ca3af'
-                  : canal.no_ar
-                    ? '#22c55e'
-                    : '#f59e0b',
-            }}
-          />
-          <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
-            {!canal
-              ? 'Verificando…'
-              : /* O verde só quando os avisos DELA saem de verdade. Antes o
-                   card dizia "Enviando normalmente" e, três linhas abaixo,
-                   "não estão contratados para este negócio" — o estado era
-                   do número da plataforma, não do negócio dela. */
-                !CANAL_LIBERADO
+      {/* ESTADO — faixa, não card: é informação de sistema, não configuração. */}
+      {canal && (
+        <div className="rounded-xl px-4 py-3" style={{ background: 'var(--admin-surface-hi)' }}>
+          <div className="flex items-center gap-2">
+            {/* Cor + palavra, sempre. Bolinha sozinha não comunica nada pra
+                quem não conhece a convenção, e falha em acessibilidade. */}
+            <span
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{
+                background:
+                  !CANAL_LIBERADO || !temPacote
+                    ? 'var(--admin-text-faded)'
+                    : canal.no_ar
+                      ? '#22c55e'
+                      : '#f59e0b',
+              }}
+            />
+            <p className="text-xs font-semibold" style={{ color: 'var(--admin-text)' }}>
+              {!CANAL_LIBERADO
                 ? 'Ainda não liberado'
-                : !canal.consumo?.pacote
+                : !temPacote
                   ? 'Disponível — você ainda não contratou'
                   : canal.no_ar
                     ? 'Enviando normalmente'
                     : 'Os avisos não estão saindo'}
-          </p>
-        </div>
-
-        {/* Quando está tudo certo, o detalhe repetiria o título ("Enviando
-            normalmente" duas vezes). Aí só o número interessa — é a única
-            informação nova. O detalhe volta a aparecer quando há problema,
-            que é quando ela precisa saber o que houve. */}
-        {canal && !canal.no_ar && (
-          <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-            {canal.detalhe}
-          </p>
-        )}
-
-        {canal?.numero && (
-          <p className="text-xs mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-            {/* Futuro enquanto nao esta liberado: "recebem" no presente e
-                promessa de uma coisa que ainda nao acontece. */}
-            {CANAL_LIBERADO
-              ? `Suas clientes recebem do número ${formatarNumero(canal.numero)}.`
-              : `Quando liberar, suas clientes vão receber do número ${formatarNumero(canal.numero)}.`}
-          </p>
-        )}
-
-        {/* QUALIDADE — o alarme que vem antes do problema.
-            YELLOW e RED não impedem o envio hoje, e é justamente por isso
-            que precisam aparecer: quando a Meta restringe, já passou da
-            hora. Em verde não mostra nada — informação boa demais vira
-            ruído e ela para de ler o card. */}
-        {canal?.qualidade === 'RED' && (
-          <p
-            className="text-xs mt-2 leading-relaxed rounded-lg px-3 py-2"
-            style={{ background: 'rgba(239,68,68,0.10)', color: 'var(--admin-text)' }}
-          >
-            <strong>Muita gente bloqueou os avisos.</strong> O WhatsApp pode limitar os envios a
-            qualquer momento. Vale rever quem está recebendo e desligar o que não for essencial.
-          </p>
-        )}
-        {canal?.qualidade === 'YELLOW' && (
-          <p
-            className="text-xs mt-2 leading-relaxed rounded-lg px-3 py-2"
-            style={{ background: 'rgba(245,158,11,0.10)', color: 'var(--admin-text)' }}
-          >
-            <strong>Alguns clientes bloquearam os avisos.</strong> Ainda está enviando normalmente,
-            mas é bom ficar de olho.
-          </p>
-        )}
-
-        {/* CONSUMO DO PACOTE.
-            Aparece antes da primeira fatura com excedente, não depois — a
-            frase vem pronta do servidor pra não existirem duas versões da
-            mesma conta, uma na tela e outra no faturamento. */}
-        {canal?.consumo && (
-          <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--admin-border)' }}>
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-                Mensagens do mês
-              </p>
-              <p className="text-xs tabular-nums" style={{ color: 'var(--admin-text)' }}>
-                <strong>{canal.consumo.usadas}</strong>
-                <span style={{ color: 'var(--admin-text-faded)' }}> / {canal.consumo.franquia}</span>
-              </p>
-            </div>
-            <div
-              className="mt-1.5 h-1.5 rounded-full overflow-hidden"
-              style={{ background: 'var(--admin-border)' }}
-            >
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${Math.min(100, (canal.consumo.usadas / Math.max(1, canal.consumo.franquia)) * 100)}%`,
-                  background: canal.consumo.excedente > 0 ? '#f59e0b' : '#22c55e',
-                }}
-              />
-            </div>
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-              {canal.consumo.resumo}
             </p>
-            {/* Enviadas sem confirmação de entrega ainda não são cobradas.
-                Dizer isso evita a pergunta "mandei 30 e só contou 24". */}
-            {canal.consumo.aguardando > 0 && (
-              <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                Mais {canal.consumo.aguardando} aguardando confirmação de entrega — só entram na
-                conta depois que o WhatsApp confirmar.
-              </p>
+            {canal.numero && (
+              <span
+                className="text-[11px] ml-auto tabular-nums"
+                style={{ color: 'var(--admin-text-faded)' }}
+              >
+                {formatarNumero(canal.numero)}
+              </span>
             )}
           </div>
-        )}
 
-        {canal?.no_ar && <PorQueEsseNumero />}
+          {canal.qualidade === 'RED' && (
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: '#b91c1c' }}>
+              Muita gente bloqueou os avisos. O envio pode ser limitado — vale rever quem está
+              recebendo.
+            </p>
+          )}
 
-        {canal && !canal.no_ar && canal.configurado && (
-          /* Diz o que ELA faz, não o que aconteceu por dentro: "sessão caída
-             no provedor" não é acionável pra quem está atendendo cliente. */
-          <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-            Nada que você configurou foi perdido. Assim que o envio voltar, os avisos saem de novo
-            sozinhos. Se demorar, fale com o suporte.
-          </p>
-        )}
-      </section>
+          {/* CONSUMO em uma linha, com seta. Não é card de plano. */}
+          <button
+            type="button"
+            onClick={() => setVista({ tela: 'recarga' })}
+            className="w-full text-left mt-3"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+                {temPacote ? 'Mensagens do mês' : 'Avisos automáticos'}
+              </span>
+              <span
+                className="text-[11px] tabular-nums flex items-center gap-1"
+                style={{ color: 'var(--admin-text)' }}
+              >
+                {temPacote ? `${c?.usadas ?? 0} de ${c?.franquia ?? 0}` : 'ver pacotes'}
+                <Seta />
+              </span>
+            </div>
+            {temPacote && (
+              <div className="mt-1.5">
+                <BarraConsumo usadas={c?.usadas ?? 0} total={c?.franquia ?? 0} />
+              </div>
+            )}
+          </button>
+        </div>
+      )}
 
-      {/* QUEM NAO VAI RECEBER, E POR QUE.
-          O problema e de cadastro e existe desde antes do canal novo. Mas
-          ate ontem "nao recebeu" era normal; a partir do momento em que ela
-          PAGA por aviso, vira reclamacao. Melhor ela saber antes, com nome
-          e tudo, do que descobrir pela cliente. */}
-      {canal?.semTelefone && canal.semTelefone.quantos > 0 && (
-        <section
-          className="rounded-xl px-4 py-3"
+      {pix && (
+        <div
+          className="rounded-xl px-4 py-3 mt-3"
           style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.30)' }}
         >
           <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
-            {canal.semTelefone.quantos}{' '}
-            {canal.semTelefone.quantos === 1 ? 'cliente não vai receber' : 'clientes não vão receber'} aviso
+            Falta pagar para ativar
           </p>
-          <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-            {canal.semTelefone.quantos === 1 ? 'Tem horário marcado' : 'Têm horário marcado'} mas o
-            cadastro está sem telefone ou com o número incompleto:{' '}
-            <strong>{canal.semTelefone.nomes.join(', ')}</strong>
-            {canal.semTelefone.quantos > canal.semTelefone.nomes.length && (
-              <> e mais {canal.semTelefone.quantos - canal.semTelefone.nomes.length}</>
-            )}
-            . É só abrir a ficha e completar o telefone que o aviso passa a sair.
+          <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+            R$ {pix.valor.toFixed(2).replace('.', ',')} por {pix.unidades} mensagens
+            {pix.dias > 0 && <> válidas por {pix.dias} dias</>}. Os avisos começam assim que o
+            pagamento cair.
           </p>
-        </section>
+          {pix.copiaECola && (
+            <button
+              type="button"
+              onClick={() => void navigator.clipboard.writeText(pix.copiaECola ?? '')}
+              className="text-xs font-semibold px-3 py-1.5 rounded mt-2"
+              style={{ background: 'var(--admin-text)', color: 'var(--admin-bg)' }}
+            >
+              Copiar código PIX
+            </button>
+          )}
+        </div>
       )}
 
-      <section>
-        <PacotesCard canalNoAr={!!canal?.no_ar} />
-      </section>
+      {/* CONFIGURAÇÃO — lista agrupada, uma linha por aviso. */}
+      <TituloSecao>Suas mensagens</TituloSecao>
+      <Lista>
+        {avisos.map((a, i) => (
+          <Linha
+            key={a.tipo}
+            primeira={i === 0}
+            onClick={() => setVista({ tela: 'aviso', tipo: a.tipo })}
+            titulo={
+              <>
+                <span className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                  {a.rotulo}
+                </span>
+                {a.status === 'PENDING' && <Chip tom="atencao">em análise</Chip>}
+                {a.status === 'REJECTED' && <Chip tom="erro">reprovado</Chip>}
+              </>
+            }
+            snippet={a.previa || undefined}
+            meta={
+              <>
+                {a.quando}
+                {a.unidadesPorMes ? <> · ~{a.unidadesPorMes} por mês</> : null}
+                {a.marketing && <> · gasta 7 por envio</>}
+              </>
+            }
+            acao={
+              <>
+                {/* Acionável sem entrar: obrigar a abrir a tela só pra
+                    desligar um aviso trocaria um toque por três. */}
+                <Toggle
+                  ligado={a.enabled}
+                  onChange={() => salvarRegra(a.tipo, { enabled: !a.enabled })}
+                  desabilitado={salvando}
+                  rotulo={`${a.enabled ? 'Desligar' : 'Ligar'} ${a.rotulo}`}
+                />
+                <Seta />
+              </>
+            }
+          />
+        ))}
+      </Lista>
 
-      <section>
-        <TextosCard />
-      </section>
-
-      <section>
-        <MensagensAutomaticasCard businessName={businessName} businessPhone={businessPhone ?? null} category={category ?? null} />
-      </section>
+      {/* AÇÃO — aviso que resolve em um toque, não banner que só informa. */}
+      {canal?.semTelefone && canal.semTelefone.quantos > 0 && (
+        <div className="mt-3">
+          <Lista>
+            <Linha
+              primeira
+              destaque="atencao"
+              onClick={() => {
+                window.location.href = '/admin/clientes'
+              }}
+              titulo={
+                <span className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                  {canal.semTelefone.quantos}{' '}
+                  {canal.semTelefone.quantos === 1
+                    ? 'cliente sem telefone'
+                    : 'clientes sem telefone'}
+                </span>
+              }
+              meta={<>Não vão receber aviso: {canal.semTelefone.nomes.join(', ')}</>}
+              acao={<Seta />}
+            />
+          </Lista>
+        </div>
+      )}
     </div>
   )
 }
