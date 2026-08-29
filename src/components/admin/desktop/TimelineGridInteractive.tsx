@@ -53,6 +53,8 @@ type Props = {
   hourEnd: number
   /** Data da timeline (YYYY-MM-DD) · usado nos links do popover */
   date: string
+  /** v145 · false = grade só de leitura: clicar no slot não abre agendamento */
+  podeAgendar?: boolean
   /** KPIs do dia · renderizados acima da legenda só se date === HOJE
    *  (cravado 28/05: Eduardo pediu KPIs em cima da tabela, não no header) */
   recebidoHoje?: number
@@ -195,6 +197,7 @@ function formatBRL(v: number) {
 }
 
 export default function TimelineGridInteractive({
+  podeAgendar = true,
   businessId,
   profs,
   appts: apptsDoServidor,
@@ -1470,7 +1473,7 @@ export default function TimelineGridInteractive({
           CIC Onda 5B #10: onClose ia hardcoded pra /admin, perdia rota se
           aberto de /admin/inicio. Agora usa pathname dinâmico. */}
       <AgendarModal
-        open={searchParams.get('agendar') === '1'}
+        open={podeAgendar && searchParams.get('agendar') === '1'}
         businessId={businessId}
         professionals={profs}
         services={services}

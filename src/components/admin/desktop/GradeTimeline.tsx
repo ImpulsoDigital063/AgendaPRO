@@ -20,6 +20,9 @@ type Props = {
   /** v98d · esconde Vender produto / Resgatar pacote / Registrar venda do header.
    *  A profissional não opera caixa. Default false = admin e recepção iguais. */
   hideCaixaActions?: boolean
+  /** v145 · false = grade só de leitura: sem botão Agendar e sem abrir modal
+   *  no slot. Pra profissional que pode VER a agenda mas não marcar. */
+  podeAgendar?: boolean
   /** v98e · essa coluna vem PRIMEIRO (as outras seguem alfabéticas) e ganha o
    *  selo "(você)" no nome. No painel da profissional é a agenda dela — abre o
    *  app e a própria coluna já está na frente, sem rolar a sanfona no celular.
@@ -59,7 +62,7 @@ function hhmmParaMin(t: string | null | undefined): number | null {
   return h * 60 + m
 }
 
-export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds, hideCaixaActions = false, firstProfessionalId }: Props) {
+export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds, hideCaixaActions = false, podeAgendar = true, firstProfessionalId }: Props) {
   const excluded = new Set(excludeProfessionalIds ?? [])
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -272,10 +275,12 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
         pendentesHoje={pendentesHoje}
         hideKpis={true /* 28/05: KPIs migraram pra dentro da tabela */}
         hideCaixaActions={hideCaixaActions}
+        podeAgendar={podeAgendar}
         vendasBalcao={bizFlags?.vendas_balcao_enabled !== false}
       />
 
       <TimelineGridInteractive
+        podeAgendar={podeAgendar}
         businessId={businessId}
         profs={profs}
         appts={appts}

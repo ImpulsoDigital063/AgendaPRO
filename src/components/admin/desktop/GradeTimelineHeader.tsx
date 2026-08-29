@@ -25,6 +25,8 @@ type Props = {
    *  da profissional, que não opera caixa. Default false = admin e recepção
    *  seguem com todos os botões. */
   hideCaixaActions?: boolean
+  /** v145 · false = esconde o botão Agendar (grade só de leitura) */
+  podeAgendar?: boolean
   /**
    * Negócio vende produto no balcão (v141 · 27/08/2026).
    *
@@ -75,6 +77,7 @@ export default function GradeTimelineHeader({
   pendentesHoje = 0,
   hideKpis = false,
   hideCaixaActions = false,
+  podeAgendar = true,
   vendasBalcao = true,
 }: Props) {
   const router = useRouter()
@@ -265,7 +268,10 @@ export default function GradeTimelineHeader({
           </Link>
           )}
 
-          {/* Agendar · mantém a cor da marca (brand-primary) · só Registrar venda é verde. */}
+          {/* Agendar · mantém a cor da marca (brand-primary) · só Registrar venda é verde.
+              v145 · some quando a grade é só de leitura (profissional que vê a
+              agenda mas não marca — decisão do negócio). */}
+          {podeAgendar && (
           <Link
             href={`?agendar=1&date=${date}`}
             className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
@@ -279,6 +285,7 @@ export default function GradeTimelineHeader({
           >
             <IconPlus size={14} /> Agendar
           </Link>
+          )}
         </div>
       </div>
     </div>

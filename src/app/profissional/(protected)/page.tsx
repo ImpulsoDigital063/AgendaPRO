@@ -41,7 +41,7 @@ export default async function ProfissionalPage({
   // Busca o profissional logado · inclui brand_logo_url pra header
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, business:businesses(id, name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda, prof_registra_pagamento, prof_edita_horario, prof_cancela_agendamento, prof_adiciona_servico)')
+    .select('*, business:businesses(id, name, slug, punctuality_bonus_points, brand_logo_url, professionals_can_book_self, professionals_can_book_others, professionals_see_team_agenda, prof_grade_home, prof_registra_pagamento, prof_edita_horario, prof_cancela_agendamento, prof_adiciona_servico)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -57,6 +57,7 @@ export default async function ProfissionalPage({
     professionals_can_book_self?: boolean | null
     professionals_can_book_others?: boolean | null
     professionals_see_team_agenda?: boolean | null
+    prof_grade_home?: boolean | null
     /** false = quem registra pagamento é o Adm/recepção (CAF). Default true. */
     prof_registra_pagamento?: boolean | null
   }
@@ -90,7 +91,14 @@ export default async function ProfissionalPage({
   // da dona, que já é grade em todos os breakpoints (mobile = scroll horizontal).
   // Cravado por Eduardo 30/07: "é o que elas vão usar e precisar de verdade".
   // Sem autonomia, segue a lista antiga (negócio que não ligou não muda nada).
-  const homeEhGrade = canBookSelf
+  /* v145 · ver a agenda e poder marcar viraram decisões separadas. Antes a
+     grade dependia de canBookSelf: o Studio Isis Melo tirou o "marcar" e a
+     grade sumiu junto de quem tinha autorização pra ver. Com prof_grade_home,
+     quem tem ve_agenda enxerga a grade possa marcar ou não — sem os botões de
+     ação, quando não puder. Default false: a base segue como está. */
+  const homeEhGrade =
+    professional.ve_agenda !== false &&
+    (canBookSelf || business.prof_grade_home === true)
 
   // λ.fuso · servidor da Vercel roda em UTC · depois das 21h no Brasil o
   // toISOString cru já estava no dia seguinte e a lista dela pulava um dia
@@ -372,6 +380,9 @@ export default async function ProfissionalPage({
               // lugar certo pra essa decisão (não o cargo).
               onlyProfessionalId={canBookOthers ? undefined : professional.id}
               firstProfessionalId={professional.id}
+              /* v145 · ela vê o dia; marcar depende da decisão do negócio.
+                 Sem isso, a grade oferecia um botão que o servidor recusa. */
+              podeAgendar={canBookSelf}
             />
           </Suspense>
         )}
