@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { credencialDoSistema } from '@/lib/mensagens/canal-cloud'
 import { consumoDoMes, resumoEmPortugues, type Consumo } from '@/lib/mensagens/franquia'
+import { todayBR } from '@/lib/date-br'
 
 export const runtime = 'nodejs'
 
@@ -36,6 +37,9 @@ type Estado = {
      mesma pergunta da dona — "está funcionando e quanto já usei?". Duas
      rotas pra isso seriam dois carregamentos e dois jeitos de falhar. */
   consumo?: Consumo & { resumo: string }
+  /* Clientes com horário marcado que NÃO vão receber aviso porque o
+     cadastro está sem telefone ou com telefone incompleto. */
+  semTelefone?: { quantos: number; nomes: string[] }
 }
 
 export async function GET() {
@@ -48,6 +52,31 @@ export async function GET() {
   const c = await consumoDoMes(supabase, businessId).catch(() => null)
   const consumo = c ? { ...c, resumo: resumoEmPortugues(c) } : undefined
 
+  /* QUEM NÃO VAI RECEBER, E POR QUÊ.
+     ─────────────────────────────────────────────────────────────
+     Medido na base em 29/08: 8% dos agendamentos do mês (36 de 456) estão
+     sem telefone ou com telefone incompleto. Não é problema do canal — é
+     cadastro, e existe desde antes. Mas passa a doer agora: até ontem "não
+     recebeu" era normal; a partir do momento em que a dona PAGA por aviso,
+     vira reclamação.
+
+     Só os FUTUROS: passado não tem conserto, futuro ela ainda arruma. */
+  const { data: futuros } = await supabase
+    .from('appointments')
+    .select('client_name, client_phone')
+    .eq('business_id', businessId)
+    .gte('appointment_date', todayBR())
+    .in('status', ['pending', 'confirmed'])
+    .limit(300)
+  const ruins = ((futuros ?? []) as { client_name: string | null; client_phone: string | null }[])
+    .filter((a) => {
+      const d = String(a.client_phone ?? '').replace(/\D/g, '').replace(/^55/, '')
+      return d.length < 10
+    })
+  const semTelefone = ruins.length
+    ? { quantos: ruins.length, nomes: [...new Set(ruins.map((a) => a.client_name ?? 'sem nome'))].slice(0, 5) }
+    : undefined
+
   const cred = credencialDoSistema()
   if (!cred) {
     return NextResponse.json<Estado>({
@@ -56,6 +85,7 @@ export async function GET() {
       numero: null,
       detalhe: 'O envio automático ainda não está liberado para este negócio.',
       consumo,
+      semTelefone,
     })
   }
 
@@ -83,6 +113,7 @@ export async function GET() {
             ? 'O canal está com problema de acesso. Já estamos vendo isso — os avisos param até resolver.'
             : `O canal não respondeu (erro ${res.status}). Os avisos podem não estar saindo.`,
         consumo,
+        semTelefone,
       })
     }
 
@@ -111,6 +142,7 @@ export async function GET() {
       detalhe,
       qualidade,
       consumo,
+      semTelefone,
     })
   } catch {
     return NextResponse.json<Estado>({
@@ -119,6 +151,7 @@ export async function GET() {
       numero: null,
       detalhe: 'Não deu para falar com o canal agora. Tente de novo em alguns minutos.',
       consumo,
+      semTelefone,
     })
   } finally {
     clearTimeout(t)

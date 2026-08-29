@@ -364,37 +364,50 @@ export async function GET(req: NextRequest) {
   }
 
 
-  /* CANAL MORTO AVISA NA PRIMEIRA. Em 19/08 a instancia da W-API venceu
-     ("Para continuar usando essa instancia, voce deve assinar novamente") e
-     as mensagens falharam de hora em hora com HTTP 403 — uma por vez, lote
-     de 1. A regra de baixo (lote inteiro falhando) nunca fechou, entao o
-     Telegram ficou mudo por 6 dias com regra ligada em cliente REAL.
+  /* CANAL MORTO AVISA NA PRIMEIRA. A licao veio da W-API: em 19/08 a conta
+     venceu e as mensagens falharam de hora em hora, uma por vez, lote de 1.
+     A regra de baixo (lote inteiro falhando) nunca fechou, entao o Telegram
+     ficou mudo por 6 dias com regra ligada em cliente REAL.
 
-     403/401 nao e problema de destinatario: numero errado da erro de
-     numero, nao de credencial. Uma unica falha dessas ja significa que
-     NENHUMA mensagem vai sair ate alguem mexer na conta — avisa na hora. */
-  const erroDeCanal = errosDeFalha.find((e) =>
-    /HTTP 40[13]|assinar novamente|unauthorized|invalid token|instance not found/i.test(e),
+     Erro de CREDENCIAL nao e problema de destinatario: numero errado da erro
+     de numero. Uma unica falha dessas ja significa que NENHUMA mensagem sai
+     ate alguem mexer na conta — avisa na primeira.
+
+     Codigos da Cloud API que entram aqui: 190 (token invalido/expirado),
+     10 e 200 (permissao), 4 (limite da conta), 131042 (problema de forma de
+     pagamento) e qualquer HTTP 401/403. */
+  /* O formato do erro vem do canal-cloud.ts: "<code>/<subcode> <mensagem>".
+     Casar o codigo no INICIO evita falso alarme — "190" solto casaria com
+     qualquer id de mensagem que contenha esses digitos. */
+  const CODIGOS_DE_CANAL = ['190', '10', '200', '4', '131042', '131047']
+  const erroDeCanal = errosDeFalha.find(
+    (e) =>
+      CODIGOS_DE_CANAL.some((c) => e.startsWith(c + '/')) ||
+      /HTTP 40[13]|unauthorized|access token|payment method/i.test(e),
   )
+
   if (erroDeCanal) {
     await sendAlert(
-      `🔴 MENSAGENS PARADAS: o canal da W-API recusou o envio.
+      `🔴 MENSAGENS PARADAS: a Cloud API recusou o envio.
 ` +
-      `Nenhum aviso sai ate resolver na conta da W-API (assinatura/instancia).
+      `Nenhum aviso sai ate resolver. Ver token do usuario do sistema, permissoes ` +
+      `e forma de pagamento da conta do WhatsApp.
 ` +
       `Erro: ${erroDeCanal.slice(0, 160)}
 Falharam agora: ${falhas} de ${lote.length}.`,
     )
   } else if (lote.length >= 3 && falhas === lote.length) {
-    /* SESSAO CAIDA. O aparelho do numero remetente vive desligado e e ligado
-       ~1x por semana (Eduardo, 07/08); o WhatsApp derruba a sessao se ele nao
-       aparecer em ~14 dias. Ai nao vem 403 — vem falha em TUDO. Lote inteiro
-       falhando = problema de canal, nao de destinatario: um numero errado
-       falha sozinho, a sessao caida falha tudo. */
+    /* LOTE INTEIRO FALHANDO = problema de canal, nao de destinatario: um
+       numero errado falha sozinho.
+       Na Cloud API nao existe mais "sessao caida" — o numero e registrado e
+       fica. Mas o sintoma continua valendo pra outras causas: template
+       pausado, numero restringido por qualidade, ou limite de volume
+       estourado. Todas param tudo de uma vez. */
     await sendAlert(
       `🔴 MENSAGENS: ${falhas} envios falharam seguidos.
 ` +
-      `Provavel sessao do WhatsApp caida — ligar o aparelho do numero remetente e reconectar no painel da W-API.`,
+      `Falha em tudo e problema de canal. Ver no WhatsApp Manager: qualidade do ` +
+      `numero, template pausado, ou limite de volume atingido.`,
     )
   }
 

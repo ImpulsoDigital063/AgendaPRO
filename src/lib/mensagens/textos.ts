@@ -162,7 +162,7 @@ export function montarTexto(
 }
 
 /**
- * Botões (plano PRO da W-API). Só o lembrete os usa — é onde eles pagam:
+ * Botões de resposta rápida do template. Só o lembrete os usa — é onde eles pagam:
  * a cliente confirma num toque e a agenda da dona atualiza sozinha, sem
  * ninguém ligar pra ninguém. É a mesma dor do sinal (falta), resolvida
  * sem pedir dinheiro antecipado.

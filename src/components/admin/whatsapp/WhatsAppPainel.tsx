@@ -36,6 +36,7 @@ type Canal = {
     custoExcedente: number
     resumo: string
   }
+  semTelefone?: { quantos: number; nomes: string[] }
 }
 
 /** 556381102355 → (63) 98110-2355. O número cru não diz nada pra dona. */
@@ -274,6 +275,32 @@ export default function WhatsAppPainel({
           </p>
         )}
       </section>
+
+      {/* QUEM NAO VAI RECEBER, E POR QUE.
+          O problema e de cadastro e existe desde antes do canal novo. Mas
+          ate ontem "nao recebeu" era normal; a partir do momento em que ela
+          PAGA por aviso, vira reclamacao. Melhor ela saber antes, com nome
+          e tudo, do que descobrir pela cliente. */}
+      {canal?.semTelefone && canal.semTelefone.quantos > 0 && (
+        <section
+          className="rounded-xl px-4 py-3"
+          style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.30)' }}
+        >
+          <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+            {canal.semTelefone.quantos}{' '}
+            {canal.semTelefone.quantos === 1 ? 'cliente não vai receber' : 'clientes não vão receber'} aviso
+          </p>
+          <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+            {canal.semTelefone.quantos === 1 ? 'Tem horário marcado' : 'Têm horário marcado'} mas o
+            cadastro está sem telefone ou com o número incompleto:{' '}
+            <strong>{canal.semTelefone.nomes.join(', ')}</strong>
+            {canal.semTelefone.quantos > canal.semTelefone.nomes.length && (
+              <> e mais {canal.semTelefone.quantos - canal.semTelefone.nomes.length}</>
+            )}
+            . É só abrir a ficha e completar o telefone que o aviso passa a sair.
+          </p>
+        </section>
+      )}
 
       <section>
         <PacotesCard canalNoAr={!!canal?.no_ar} />

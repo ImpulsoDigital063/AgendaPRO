@@ -95,7 +95,7 @@ export async function regraDe(
 
    Conta cortesia nao fala com ninguem (trava abaixo) — e é isso que impede
    um teste de acordar cliente de verdade. Mas então NENHUMA conta demo
-   serve pra provar o canal ponta a ponta: o envio para antes da W-API.
+   serve pra provar o canal ponta a ponta: o envio para antes de chamar a Meta.
 
    A saida é furar a trava pelos DOIS lados ao mesmo tempo: o negocio TEM
    que ser o da env E o destino TEM que ser o telefone da env. O

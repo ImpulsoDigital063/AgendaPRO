@@ -685,11 +685,13 @@ export default function ServicosTab({ businessId, initialServices, category, com
         <div>
           <label className="admin-label flex items-center gap-2">
             Dias para poder repetir
-            {/* O prazo JA e guardado e a varredura ja funciona (testada), mas o
-                canal de WhatsApp ainda esta na instancia de teste da W-API.
+            {/* O prazo JA e guardado e a varredura ja funciona, mas o canal so
+                entrega quando o template de "retorno" estiver aprovado pela
+                Meta E o negocio tiver pacote contratado.
                 Sem este aviso a dona configura, espera o disparo e conclui que
                 o sistema falhou. Ja temos LP prometendo WhatsApp inexistente -
-                nao repetir isso dentro do produto. */}
+                nao repetir isso dentro do produto.
+                TIRAR o "em breve" quando o retorno estiver no ar. */}
             <span
               className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
               style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
@@ -1051,11 +1053,13 @@ function ServiceCard({
         <div>
           <label className="admin-label flex items-center gap-2">
             Dias para poder repetir
-            {/* O prazo JA e guardado e a varredura ja funciona (testada), mas o
-                canal de WhatsApp ainda esta na instancia de teste da W-API.
+            {/* O prazo JA e guardado e a varredura ja funciona, mas o canal so
+                entrega quando o template de "retorno" estiver aprovado pela
+                Meta E o negocio tiver pacote contratado.
                 Sem este aviso a dona configura, espera o disparo e conclui que
                 o sistema falhou. Ja temos LP prometendo WhatsApp inexistente -
-                nao repetir isso dentro do produto. */}
+                nao repetir isso dentro do produto.
+                TIRAR o "em breve" quando o retorno estiver no ar. */}
             <span
               className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
               style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
