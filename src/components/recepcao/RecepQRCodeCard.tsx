@@ -1,12 +1,18 @@
+import QRCode from 'react-qr-code'
 import { IconShare } from '@/components/ui/Icon'
 
 /**
  * Card compacto com QR code do booking público do salão.
- * Imagem servida pela api.qrserver.com — sem dependência nova.
+ *
+ * 28/08 · o QR vinha da api.qrserver.com e NUNCA aparecia: a CSP do projeto
+ * libera imagem só de 'self', data:, blob: e Supabase, então o navegador
+ * bloqueava a imagem externa e sobrava o texto alternativo na tela. Agora é
+ * gerado localmente com react-qr-code, que já estava no projeto — sem
+ * dependência de terceiro, sem CSP, e funciona mesmo com a internet do salão
+ * oscilando.
  */
 export default function RecepQRCodeCard({ slug }: { slug: string }) {
   const url = `https://www.agendapro.net.br/${slug}`
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&size=200x200&margin=4`
 
   return (
     <div className="admin-card p-4">
@@ -14,14 +20,12 @@ export default function RecepQRCodeCard({ slug }: { slug: string }) {
         <IconShare size={12} /> QR Code do salão
       </p>
       <div className="flex items-center gap-3">
-        <img
-          src={qrUrl}
-          alt="QR Code de agendamento"
-          width={88}
-          height={88}
+        <div
           className="rounded-lg flex-shrink-0"
-          style={{ background: '#fff', padding: 4 }}
-        />
+          style={{ background: '#fff', padding: 6, lineHeight: 0 }}
+        >
+          <QRCode value={url} size={88} level="M" />
+        </div>
         <div className="min-w-0">
           <p className="text-xs leading-tight" style={{ color: 'var(--admin-text-2)' }}>
             Cliente escaneia e cai direto na página de agendamento do salão.

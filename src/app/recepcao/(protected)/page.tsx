@@ -210,7 +210,7 @@ export default async function RecepcaoAgendaPage({
                 Recepção · {business.name}
               </p>
               <h1 className="text-[22px] lg:text-[26px] font-bold tracking-tight leading-tight mt-1" style={{ color: 'var(--admin-text)' }}>
-                Sua agenda hoje
+                Agenda do salão
               </h1>
               <p className="text-sm capitalize mt-1 inline-flex items-center gap-1.5" style={{ color: 'var(--admin-text-mute)' }}>
                 <IconCalendar size={14} /> {todayFormatted}
