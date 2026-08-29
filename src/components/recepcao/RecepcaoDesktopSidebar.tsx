@@ -148,7 +148,7 @@ export default function RecepcaoDesktopSidebar({
                 className="block text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: 'var(--admin-accent)' }}
               >
-                Painel da Recepção
+                {tambemAtende ? 'Painel do salão' : 'Painel da Recepção'}
               </span>
             </span>
           )}

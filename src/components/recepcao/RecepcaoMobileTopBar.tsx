@@ -156,7 +156,7 @@ export default function RecepcaoMobileTopBar({
             <Image src={brandLogoUrl} alt={businessName ?? ''} width={28} height={28} className="rounded" />
           ) : null}
           <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
-            {businessName ?? 'Recepção'}
+            {businessName ?? 'Salão'}
           </p>
         </div>
 
@@ -193,10 +193,10 @@ export default function RecepcaoMobileTopBar({
                 ) : null}
                 <div className="min-w-0">
                   <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
-                    {businessName ?? 'Recepção'}
+                    {businessName ?? 'Salão'}
                   </p>
                   <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-accent)' }}>
-                    Painel da Recepção
+                    {tambemAtende ? 'Painel do salão' : 'Painel da Recepção'}
                   </p>
                 </div>
               </div>
