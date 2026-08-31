@@ -50,7 +50,7 @@ import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import CountUp from '@/components/admin/CountUp'
 import { IconCheck, IconChevronRight, IconWhatsapp } from '@/components/ui/Icon'
-import { Lista, TituloSecao } from './ui'
+import { Lista, TituloSecao, WA } from './ui'
 import TelaWhatsApp from './TelaWhatsApp'
 
 export type PacoteTela = {
@@ -75,9 +75,9 @@ const reais = (n: number) => 'R$ ' + n.toFixed(2).replace('.', ',')
  *  quando o sistema pede menos movimento. */
 const entra = (ms: number) => ({ '--enter-delay': `${ms}ms` }) as CSSProperties
 
-/** Gradiente derivado do accent do negócio — nunca um roxo cravado. */
-const GRADIENTE_ACCENT =
-  'linear-gradient(135deg, color-mix(in srgb, var(--admin-accent) 82%, white) 0%, var(--admin-accent) 55%, color-mix(in srgb, var(--admin-accent) 88%, black) 100%)'
+/* O gradiente saia do `--admin-accent`, o que virava preto-sobre-preto em 6
+   negocios da base. Agora e o verde da feature — ver o bloco WA em ui.tsx. */
+const GRADIENTE_ACCENT = WA.gradiente
 
 function Numero({
   valor,
@@ -93,13 +93,16 @@ function Numero({
   delay: number
 }) {
   return (
-    <div className="admin-card admin-enter px-3.5 py-3" style={entra(delay)}>
-      <p className="text-[11px] font-semibold" style={{ color: 'var(--admin-text-mute)' }}>
+    <div
+      className="admin-enter rounded-2xl px-3.5 py-3"
+      style={{ ...entra(delay), background: WA.fundo, border: `1px solid ${WA.borda}` }}
+    >
+      <p className="text-[11px] font-bold" style={{ color: 'var(--admin-text-2)' }}>
         {rotulo}
       </p>
       <p
         className="text-[27px] leading-tight font-bold tabular-nums mt-0.5"
-        style={{ color: 'var(--admin-accent)' }}
+        style={{ color: WA.forte }}
       >
         {texto !== undefined ? texto : <CountUp value={valor ?? 0} localized />}
       </p>
@@ -179,7 +182,7 @@ export default function Oferta({
         </h2>
         <p
           className="admin-enter text-[15px] leading-relaxed mt-2.5 max-w-md"
-          style={{ ...entra(100), color: 'var(--admin-text-mute)' }}
+          style={{ ...entra(100), color: 'var(--admin-text-2)' }}
         >
           O AgendaPRO manda no WhatsApp dela na hora que marca e um dia antes. Você não digita
           nada, não salva contato, não abre o celular.
@@ -214,8 +217,8 @@ export default function Oferta({
                 mediu o que não mediu é o jeito mais rápido de perder a
                 confiança dela no resto da tela. */}
             <p
-              className="admin-enter text-[11px] leading-snug mt-2 max-w-md"
-              style={{ ...entra(240), color: 'var(--admin-text-faded)' }}
+              className="admin-enter text-[12px] leading-snug mt-2 max-w-md"
+              style={{ ...entra(240), color: 'var(--admin-text-mute)' }}
             >
               {movimento.projecaoHipotetica
                 ? `Os ${movimento.atendimentosMes} atendimentos são reais, média dos últimos 90 dias. As mensagens são estimativa: é o que sairia ligando a confirmação e o lembrete da véspera.`
@@ -305,8 +308,8 @@ export default function Oferta({
                   <IconCheck size={12} />
                 </span>
                 <span
-                  className="text-[13px] leading-relaxed"
-                  style={{ color: 'var(--admin-text-mute)' }}
+                  className="text-[13.5px] leading-relaxed"
+                  style={{ color: 'var(--admin-text-2)' }}
                 >
                   {t}
                 </span>
@@ -347,7 +350,7 @@ export default function Oferta({
               style={{
                 background: GRADIENTE_ACCENT,
                 color: '#fff',
-                boxShadow: '0 6px 16px -6px color-mix(in srgb, var(--admin-accent) 70%, transparent)',
+                boxShadow: '0 6px 16px -6px rgba(0,128,105,0.7)',
               }}
             >
               mais barato pra você
@@ -358,9 +361,7 @@ export default function Oferta({
             className="admin-card-deep p-5 pt-6"
             style={
               ehRecomendado
-                ? {
-                    borderColor: 'color-mix(in srgb, var(--admin-accent) 40%, var(--admin-border))',
-                  }
+                ? { borderColor: WA.borda, boxShadow: `0 18px 40px -22px rgba(0,128,105,0.55)` }
                 : undefined
             }
           >
@@ -372,7 +373,7 @@ export default function Oferta({
                 mensagens. É o número que decide a compra. */}
             <p
               className="text-[38px] leading-none font-bold tabular-nums tracking-tight mt-1"
-              style={{ color: 'var(--admin-accent)' }}
+              style={{ color: WA.forte }}
             >
               {reais(p.preco)}
             </p>
@@ -478,12 +479,7 @@ export default function Oferta({
                     onContratar(p.id, precisaDados ? { name: nome.trim(), cpfCnpj: cpf } : undefined)
                   }
                   className="w-full py-3.5 rounded-xl text-[15px] font-bold disabled:opacity-60 transition-all hover:-translate-y-0.5"
-                  style={{
-                    background: GRADIENTE_ACCENT,
-                    color: '#fff',
-                    boxShadow:
-                      '0 10px 24px -10px color-mix(in srgb, var(--admin-accent) 75%, transparent)',
-                  }}
+                  style={{ background: GRADIENTE_ACCENT, color: '#fff', boxShadow: WA.sombra }}
                 >
                   {salvando ? 'Gerando cobrança…' : `Contratar · ${reais(p.preco)} por mês`}
                 </button>
@@ -534,7 +530,7 @@ export default function Oferta({
                 </span>
                 <span
                   className="flex-shrink-0 text-[15px] font-bold tabular-nums"
-                  style={{ color: 'var(--admin-text-2)' }}
+                  style={{ color: WA.forte }}
                 >
                   {reais(x.preco)}
                 </span>

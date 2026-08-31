@@ -538,8 +538,8 @@ export default function WhatsAppPainel({
     <>
       <TituloSecao>O que o sistema manda sozinho</TituloSecao>
       <p
-        className="text-[13px] leading-relaxed mb-2.5 px-1"
-        style={{ color: 'var(--admin-text-mute)' }}
+        className="text-[13.5px] leading-relaxed mb-2.5 px-1"
+        style={{ color: 'var(--admin-text-2)' }}
       >
         {temPacote
           ? 'O AgendaPRO manda essas mensagens no WhatsApp da cliente sozinho \u2014 voc\u00ea n\u00e3o digita nada. Ligue as que quiser que ela receba.'

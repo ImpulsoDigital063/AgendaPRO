@@ -29,6 +29,40 @@
 
 import type { ReactNode } from 'react'
 
+/* ═══════════════════════════════════════════════════════════════
+   A COR DESTA FEATURE E VERDE, NAO O ACCENT DO NEGOCIO
+
+   Eduardo abriu a Marcela no celular: "essa tela esta morta, esse fundo
+   cinza, os textos em cinza". Fui medir e a causa nao era gosto — era o
+   accent dela. `brand_primary` da Marcela e #0F172A, luminancia 0,009:
+   preto. Numero grande, preco, botao e selo, tudo que eu tinha pintado com
+   `--admin-accent` saia PRETO.
+
+   E nao e caso isolado: 6 dos 29 negocios tem accent quase preto, e sao os
+   dois maiores da base (Marcela 105 atend/mes, Olimpio 163) mais Priscila,
+   Isis, Vitoria e Viva Cacheada. Amarrar a cor da feature a marca deixa um
+   quinto da base com tela cinza.
+
+   Entao a feature ganhou cor propria, e a honesta aqui e o verde do
+   WhatsApp: e a cor DA COISA, nao enfeite. Nao briga com marca nenhuma
+   porque le como "o modulo do WhatsApp", do mesmo jeito que o verde dentro
+   do mockup le como "tela do WhatsApp".
+
+   Tons escolhidos pelo contraste sobre branco, nao pelo brilho: #008069 (o
+   verde escuro oficial) passa em texto, o #00A884 so aparece em gradiente e
+   em fundo suave.
+   ═══════════════════════════════════════════════════════════════ */
+export const WA = {
+  /** Texto e numero. Escuro o bastante pra ler em corpo pequeno. */
+  forte: '#008069',
+  /** Botao principal e selo. */
+  gradiente: 'linear-gradient(135deg, #00A884 0%, #008069 100%)',
+  sombra: '0 10px 24px -10px rgba(0,128,105,0.65)',
+  /** Fundo suave de card destacado. */
+  fundo: 'rgba(0,168,132,0.09)',
+  borda: 'rgba(0,168,132,0.30)',
+} as const
+
 /** Chip discreto: "Beta", "Em análise", "No ar". Nunca só cor. */
 export function Chip({
   children,
@@ -57,9 +91,11 @@ export function Chip({
 export function TituloSecao({ children, acao }: { children: ReactNode; acao?: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3 mb-2 mt-6 px-1">
+      {/* Era `--admin-text-faded` (#94A3B8): sobre o fundo do painel o titulo
+          de secao praticamente sumia. Subiu pro tom de texto secundario. */}
       <p
         className="text-[11px] font-bold uppercase tracking-wider"
-        style={{ color: 'var(--admin-text-faded)' }}
+        style={{ color: 'var(--admin-text-mute)' }}
       >
         {children}
       </p>

@@ -48,7 +48,7 @@ import {
 } from '@/lib/message-templates'
 import { sugestoesDeServico } from '@/lib/segmento'
 import { IconCalendar, IconBell } from '@/components/ui/Icon'
-import { Chip, IconeAviso, Linha, Lista, TituloSecao } from './ui'
+import { Chip, IconeAviso, Linha, Lista, TituloSecao, WA } from './ui'
 import TelaWhatsApp from './TelaWhatsApp'
 
 export type Qual = 'confirmation' | 'reminder'
@@ -98,10 +98,11 @@ export function VoceMandaLista({
     <div className="mt-8">
       <TituloSecao acao={<Chip tom="ok">grátis</Chip>}>Você manda</TituloSecao>
       <p
-        className="text-[13px] leading-relaxed mb-2.5 px-1"
-        style={{ color: 'var(--admin-text-mute)' }}
+        className="text-[13.5px] leading-relaxed mb-2.5 px-1"
+        style={{ color: 'var(--admin-text-2)' }}
       >
-        No agendamento você toca em <strong>Enviar WhatsApp</strong> e ele abre com a mensagem
+        No agendamento você toca em{' '}
+        <strong style={{ color: WA.forte }}>Enviar WhatsApp</strong> e ele abre com a mensagem
         pronta — é só apertar enviar. Sai do <strong>seu</strong> número, com o seu nome.
       </p>
       <Lista>
@@ -206,7 +207,7 @@ export default function VoceManda({
 
   return (
     <div className="pb-6">
-      <p className="text-[13px] leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+      <p className="text-[13.5px] leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
         {info.porque}
       </p>
       <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
@@ -239,11 +240,7 @@ export default function VoceManda({
             type="button"
             onClick={() => inserir(v.token)}
             className="text-[12px] font-medium px-2.5 py-1.5 rounded-lg"
-            style={{
-              background: 'var(--admin-accent-bg)',
-              border: '1px solid var(--admin-accent-border)',
-              color: 'var(--admin-accent)',
-            }}
+            style={{ background: WA.fundo, border: `1px solid ${WA.borda}`, color: WA.forte }}
           >
             + {v.label}
           </button>
@@ -275,7 +272,7 @@ export default function VoceManda({
           disabled={salvando}
           onClick={salvar}
           className="text-[15px] font-bold px-5 py-3 rounded-xl disabled:opacity-60"
-          style={{ background: 'var(--admin-accent)', color: '#fff' }}
+          style={{ background: WA.gradiente, color: '#fff', boxShadow: WA.sombra }}
         >
           {salvando ? 'Salvando…' : salvo ? 'Salvo' : 'Salvar mensagem'}
         </button>
