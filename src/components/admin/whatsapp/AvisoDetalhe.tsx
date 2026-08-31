@@ -62,6 +62,12 @@ export default function AvisoDetalhe({
   const [erros, setErros] = useState<string[]>([])
   const [enviando, setEnviando] = useState(false)
   const selo = aviso.status ? SELO[aviso.status] : null
+  const horasAtuais = Math.round(Math.abs(aviso.offsetMinutos) / 60)
+  /* Uniao das opcoes padrao com o que esta gravado — o seletor nunca
+     renderiza vazio, e ela sempre ve o valor real. */
+  const opcoesDeHora = Array.from(new Set([1, 2, 3, 4, 6, 8, 12, horasAtuais])).sort(
+    (x, y) => x - y,
+  )
 
   async function enviar() {
     setEnviando(true)
@@ -232,26 +238,55 @@ export default function AvisoDetalhe({
           )}
 
           {aviso.tipo === 'lembrete_dia' && (
-            <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-              Enviar
-              <select
-                value={Math.round(Math.abs(aviso.offsetMinutos) / 60)}
-                onChange={(e) => onHorario(Number(e.target.value))}
-                className="rounded-lg px-2 py-1 text-xs"
-                style={{
-                  background: 'var(--admin-bg)',
-                  border: '1px solid var(--admin-border)',
-                  color: 'var(--admin-text)',
-                }}
+            <>
+              <label
+                className="flex items-center gap-2 text-[13px]"
+                style={{ color: 'var(--admin-text-mute)' }}
               >
-                {[1, 2, 3, 4, 6, 8, 12].map((h) => (
-                  <option key={h} value={h}>
-                    {h}h antes
-                  </option>
-                ))}
-              </select>
-              do horário dela
-            </label>
+                Enviar
+                <select
+                  value={horasAtuais}
+                  onChange={(e) => onHorario(Number(e.target.value))}
+                  className="rounded-lg px-2 py-1.5 text-[13px]"
+                  style={{
+                    background: 'var(--admin-bg)',
+                    border: '1px solid var(--admin-border)',
+                    color: 'var(--admin-text)',
+                  }}
+                >
+                  {/* O valor GRAVADO entra na lista mesmo se nao for uma das
+                      opcoes padrao. Sem isso, quem tem 24h no banco (veio do
+                      tab antigo, que oferece 24h) abre a tela e ve um seletor
+                      VAZIO — e nao consegue nem enxergar nem corrigir. */}
+                  {opcoesDeHora.map((h) => (
+                    <option key={h} value={h}>
+                      {h}h antes
+                    </option>
+                  ))}
+                </select>
+                do horário dela
+              </label>
+
+              {/* 24h antes E' a vespera. Os dois avisos sairiam no mesmo
+                  instante: a cliente recebe duas mensagens iguais em horario
+                  e o salao paga por duas. */}
+              {horasAtuais >= 24 && (
+                <p
+                  className="text-[13px] leading-relaxed rounded-xl px-3 py-2.5"
+                  style={{
+                    background: 'rgba(217,119,6,0.10)',
+                    border: '1px solid rgba(217,119,6,0.26)',
+                    color: 'var(--admin-text-mute)',
+                  }}
+                >
+                  <strong style={{ color: 'var(--admin-text)' }}>
+                    {horasAtuais}h antes é o mesmo horário do lembrete da véspera.
+                  </strong>{' '}
+                  Com os dois ligados, a cliente recebe duas mensagens quase iguais na mesma hora e
+                  você paga por duas. Escolha algumas horas antes — 3h é o mais comum.
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
