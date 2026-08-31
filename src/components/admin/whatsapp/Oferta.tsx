@@ -121,7 +121,7 @@ export default function Oferta({
             className="text-[11px] font-bold uppercase tracking-wider"
             style={{ color: 'var(--admin-text-faded)' }}
           >
-            O seu movimento
+            {temMovimento ? 'O seu movimento' : 'Qual pacote é o seu'}
           </p>
           {temMovimento ? (
             <>
@@ -152,9 +152,11 @@ export default function Oferta({
               </p>
             </>
           ) : (
+            /* Sem movimento a tela não acusa a dona de não ter agenda: promete
+               o cálculo pra quando tiver, e resolve o agora. */
             <p className="text-[13px] leading-relaxed mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-              Sua agenda ainda não tem movimento suficiente pra gente estimar. Comece pelo menor
-              pacote — dá pra trocar depois, sem multa.
+              Assim que sua agenda tiver movimento, a gente mostra aqui qual pacote sai mais barato
+              pra você. Pra começar, o menor já cobre bem — e dá pra trocar depois, sem multa.
             </p>
           )}
         </div>
