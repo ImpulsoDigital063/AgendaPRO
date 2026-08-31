@@ -3,14 +3,13 @@
 import { resolveCategoria } from '@/lib/segmento'
 
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Business, Professional, Service, WorkingHours, Reward, Customer } from '@/lib/types'
 import ProfissionaisTab from './ProfissionaisTab'
 import ServicosTab from './ServicosTab'
 import HorariosTab from './HorariosTab'
 import WhatsAppQRTab from './WhatsAppQRTab'
 import NegocioTab from './NegocioTab'
-import MensagensTab from './MensagensTab'
 import FidelidadeTab from './FidelidadeTab'
 import FidelidadeOnboardingCard from './onboarding/FidelidadeOnboardingCard'
 import OnboardingMarker from './onboarding/OnboardingMarker'
@@ -42,6 +41,19 @@ type Props = {
   extraProfessionalSlots?: number
 }
 
+/** Leva pra central de WhatsApp e nao deixa rastro no historico. */
+function RedirecionaParaWhatsApp() {
+  const router = useRouter()
+  useEffect(() => {
+    router.replace('/admin/whatsapp')
+  }, [router])
+  return (
+    <p className="text-sm px-1" style={{ color: 'var(--admin-text-mute)' }}>
+      As mensagens agora ficam na central de WhatsApp. Levando você para lá…
+    </p>
+  )
+}
+
 export default function ConfiguracoesTabs({
   business,
   initialProfessionals,
@@ -58,7 +70,7 @@ export default function ConfiguracoesTabs({
 
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo', 'mensagens', 'notificacoes']
+  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo', 'notificacoes']
   // Resolve alias antes de validar (ex: ?tab=whatsapp → 'qr-code')
   const resolvedTab = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null
   const safeResolvedTab = resolvedTab === 'plano' && hidePlanoForBusiness ? 'negocio' : resolvedTab
@@ -232,9 +244,15 @@ export default function ConfiguracoesTabs({
 
       {activeTab === 'fichas-modelo' && <FichasModeloTab />}
 
-      {activeTab === 'mensagens' && (
-        <MensagensTab businessName={business.name ?? 'Seu Negócio'} category={categoriaDoNegocio} />
-      )}
+      {/* A aba Mensagens virou redirect em 31/08. Ela empilhava DUAS coisas:
+          o card de avisos automaticos (duplicata da central, e a que ensinava
+          errado — dizia "em nome do seu negocio", mostrava tique de entrega
+          que nunca existiu, e era dela que saia o lembrete de 24h colidindo
+          com a vespera) e o editor do texto do wa.me, que e vivo e virou a
+          secao "Voce manda" em /admin/whatsapp.
+          Redirect e nao 404 porque o link antigo esta no menu de todo mundo,
+          em bookmark e em conversa de suporte. */}
+      {activeTab === 'mensagens' && <RedirecionaParaWhatsApp />}
 
       {/* Lugar fixo pra ver/ligar notificacao — a faixa se esconde sozinha, essa
           tela nao (06/08). */}

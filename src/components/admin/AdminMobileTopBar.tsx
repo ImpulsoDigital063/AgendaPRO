@@ -97,12 +97,13 @@ export default function AdminMobileTopBar({
         // v140 · vale-presente · mesma paridade do desktop (regra do Eduardo, 26/08)
         ...(cartaoPresente ? [{ label: 'Cartão Presente', href: '/admin/cartao-presente', Icon: IconGift }] : []),
         { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
-        /* EM BREVE ate a entrega estar resolvida (21/08). O motor funciona,
-           mas o WhatsApp so entrega pra quem ja mandou mensagem pro numero
-           da instancia — a cliente do salao nunca mandou. Ligar hoje faria
-           a dona ver "enviado" no painel e a cliente nao receber nada, que
-           e a pior falha possivel: silenciosa e com cara de sucesso.
-           Este menu nao tem "em breve", entao sai da lista. Acessivel por URL direta pra continuar o teste. */
+        /* VOLTOU PRO MENU em 31/08. O argumento de 21/08 (a tela so servia
+           pro canal automatico, que nao entregava) deixou de valer: hoje ela
+           tambem hospeda o WhatsApp manual, que sai do numero da propria
+           dona, e' gratis e ja funciona. Era o unico item "Mensagens" do
+           menu e apontava pro tab antigo — foi por ele que o Eduardo caiu na
+           tela velha no celular em 31/08. */
+        { label: 'WhatsApp', href: '/admin/whatsapp', Icon: IconWhatsapp },
       ],
     },
     {
@@ -146,7 +147,6 @@ export default function AdminMobileTopBar({
         { label: 'Fichas Modelo', href: '/admin/configuracoes?tab=fichas-modelo', Icon: IconSearch },
         { label: 'Aparência', href: '/admin/configuracoes?tab=aparencia', Icon: IconSparkles },
         { label: 'QR Code', href: '/admin/configuracoes?tab=qr-code', Icon: IconSettings },
-        { label: 'Mensagens', href: '/admin/configuracoes?tab=mensagens', Icon: IconWhatsapp },
         { label: 'Notificações', href: '/admin/configuracoes?tab=notificacoes', Icon: IconClock },
         { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', Icon: IconTrendingUp },
         { label: 'Plano', href: '/admin/configuracoes?tab=plano', Icon: IconDollar },

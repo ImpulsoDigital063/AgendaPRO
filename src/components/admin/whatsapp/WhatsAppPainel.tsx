@@ -59,6 +59,11 @@ import { BarraConsumo, Chip, IconeAviso, Linha, Lista, TituloSecao, Toggle } fro
 import AvisoDetalhe, { type Aviso } from './AvisoDetalhe'
 import Recarga from './Recarga'
 import Oferta, { type Movimento, type PacoteTela } from './Oferta'
+import VoceManda, {
+  VoceMandaLista,
+  type Qual,
+  type TextosManuais,
+} from './VoceManda'
 
 type Canal = {
   configurado: boolean
@@ -204,6 +209,8 @@ function Seta() {
 
 export default function WhatsAppPainel({
   businessName,
+  businessPhone,
+  category,
 }: {
   businessName: string
   businessPhone?: string | null
@@ -212,9 +219,13 @@ export default function WhatsAppPainel({
   const [canal, setCanal] = useState<Canal | null>(null)
   const [pacotes, setPacotes] = useState<Pacotes | null>(null)
   const [avisos, setAvisos] = useState<Aviso[]>([])
+  /* Os textos do wa.me — o modo "voce manda". Store diferente das reguas:
+     businesses.whatsapp_*_template, nao message_rules. */
+  const [manuais, setManuais] = useState<TextosManuais | null>(null)
   const [vista, setVista] = useState<
     | { tela: 'inicio' }
     | { tela: 'mensagens' }
+    | { tela: 'manual'; qual: Qual }
     | { tela: 'aviso'; tipo: string }
     | { tela: 'recarga' }
   >({ tela: 'inicio' })
@@ -238,6 +249,15 @@ export default function WhatsAppPainel({
     void fetch('/api/admin/mensagens/pacotes')
       .then((r) => r.json())
       .then((j) => setPacotes(j?.error ? null : j))
+      .catch(() => null)
+    void fetch('/api/admin/messages')
+      .then((r) => r.json())
+      .then((j) =>
+        setManuais({
+          confirmation: String(j?.confirmation ?? ''),
+          reminder: String(j?.reminder ?? ''),
+        }),
+      )
       .catch(() => null)
 
     /* Regras e textos vêm de rotas diferentes e viram UM objeto por aviso:
@@ -351,6 +371,38 @@ export default function WhatsAppPainel({
     }
   }
 
+  async function salvarManual(qual: Qual, corpo: string): Promise<boolean> {
+    try {
+      const r = await fetch('/api/admin/messages', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [qual]: corpo }),
+      })
+      if (!r.ok) return false
+      /* Le de volta o que a rota devolveu, nao o que eu mandei: e a unica
+         prova de que gravou. */
+      const j = await r.json().catch(() => null)
+      setManuais({
+        confirmation: String(j?.confirmation ?? corpo),
+        reminder: String(j?.reminder ?? corpo),
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const telefoneDela = businessPhone ? formatarNumero(businessPhone) : ''
+
+  const listaVoceManda = (
+    <VoceMandaLista
+      textos={manuais}
+      negocio={businessName}
+      categoria={category ?? null}
+      onAbrir={(qual) => setVista({ tela: 'manual', qual })}
+    />
+  )
+
   /* Liberacao vem do servidor, por negocio. Enquanto `pacotes` nao chegou,
      trata como NAO liberado: melhor a tela esperar que prometer compra que
      ainda nao existe. */
@@ -388,6 +440,31 @@ export default function WhatsAppPainel({
         </>
       )
     }
+  }
+
+  if (vista.tela === 'manual') {
+    const qual = vista.qual
+    return (
+      <>
+        <Cabecalho
+          titulo={qual === 'confirmation' ? 'Confirmação' : 'Lembrete'}
+          subtitulo="Você aperta enviar · sai do seu número"
+          onVoltar={() => setVista({ tela: 'inicio' })}
+        />
+        <div className={CONTAINER}>
+          <div className="lg:max-w-2xl">
+            <VoceManda
+              qual={qual}
+              inicial={manuais?.[qual] ?? ''}
+              negocio={businessName}
+              numero={telefoneDela}
+              categoria={category ?? null}
+              onSalvar={salvarManual}
+            />
+          </div>
+        </div>
+      </>
+    )
   }
 
   if (vista.tela === 'recarga' && pacotes) {
@@ -608,6 +685,7 @@ export default function WhatsAppPainel({
             onContratar={contratar}
             onVerMensagens={() => setVista({ tela: 'mensagens' })}
           />
+          {listaVoceManda}
         </div>
       </>
     )
@@ -697,6 +775,7 @@ export default function WhatsAppPainel({
           <div className="lg:order-1">
             {caixaPix}
             {listaDeAvisos}
+            {listaVoceManda}
           </div>
         </div>
       </div>

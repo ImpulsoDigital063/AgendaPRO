@@ -85,17 +85,15 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         /* WhatsApp no PAINEL, não em Configurações (Eduardo, 21/08): quando o
            canal cai os avisos param em silêncio, e a dona precisa ver isso na
            tela que ela abre todo dia — não a quatro cliques. */
-        /* EM BREVE ate a entrega estar resolvida (21/08). O motor funciona,
-           mas o WhatsApp so entrega pra quem ja mandou mensagem pro numero
-           da instancia — a cliente do salao nunca mandou. Ligar hoje faria
-           a dona ver "enviado" no painel e a cliente nao receber nada, que
-           e a pior falha possivel: silenciosa e com cara de sucesso.
-           Acessivel por URL direta pra continuar o teste. */
-        /* Nem "em breve": FORA do menu. Item marcado como em breve gera a
-           pergunta "quando sai?" em todo cliente que abre o painel, e a
-           entrega ainda depende de trocar de canal — prazo que ninguem tem.
-           Volta pro menu quando estiver entregando de verdade.
-           A pagina /admin/whatsapp continua no ar pra seguir testando. */
+        /* VOLTOU PRO MENU em 31/08, e o motivo mudou o argumento de 21/08.
+           Naquele dia a tela so servia pro canal automatico, que nao
+           entregava — deixar no menu era prometer o que nao existia.
+           Hoje ela hospeda TAMBEM o WhatsApp manual (o wa.me que sai do
+           numero da propria dona), que e gratis, funciona e todo negocio
+           usa. Esse pedaco nao depende de canal nenhum.
+           Deixar de fora agora e o erro oposto: esconder o que funciona pra
+           proteger o que ainda nao foi liberado. */
+        { label: 'WhatsApp', href: '/admin/whatsapp', Icon: IconWhatsapp },
       ],
     },
     {
