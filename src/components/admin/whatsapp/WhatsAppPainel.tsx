@@ -58,6 +58,7 @@ import {
 import { BarraConsumo, Chip, IconeAviso, Linha, Lista, TituloSecao, Toggle } from './ui'
 import AvisoDetalhe, { type Aviso } from './AvisoDetalhe'
 import Recarga from './Recarga'
+import ModalPix from './ModalPix'
 import Oferta, { type Movimento, type PacoteTela } from './Oferta'
 import VoceManda, {
   VoceMandaLista,
@@ -239,6 +240,8 @@ export default function WhatsAppPainel({
     unidades: number
     dias: number
     copiaECola: string | null
+    qrBase64: string | null
+    reaproveitada: boolean
   } | null>(null)
 
   const carregar = useCallback(() => {
@@ -360,6 +363,8 @@ export default function WhatsAppPainel({
           unidades: j.unidades,
           dias: j.dias,
           copiaECola: j.pixCopiaECola ?? null,
+          qrBase64: j.pixQrBase64 ?? null,
+          reaproveitada: j.reaproveitada === true,
         })
         setVista({ tela: 'inicio' })
       }
@@ -668,7 +673,6 @@ export default function WhatsAppPainel({
           direita={chipBeta}
         />
         <div className={CONTAINER}>
-          {caixaPix}
           <Oferta
             precisaDados={precisaDados}
             remetente="AgendaPRO"
@@ -687,6 +691,7 @@ export default function WhatsAppPainel({
           />
           {listaVoceManda}
         </div>
+        {pix && <ModalPix pix={pix} onFechar={() => setPix(null)} />}
       </>
     )
   }
@@ -779,6 +784,7 @@ export default function WhatsAppPainel({
           </div>
         </div>
       </div>
+      {pix && <ModalPix pix={pix} onFechar={() => setPix(null)} />}
     </>
   )
 }

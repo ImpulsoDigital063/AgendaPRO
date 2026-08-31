@@ -25,7 +25,13 @@ import { PACOTES, pacotePorId, pacoteRecomendado, custoNoPacote, atendimentosQue
 import { canalLiberado } from '@/lib/mensagens/liberado'
 import { consumoDoMes, primeiraCompraProporcional, diferencaDoUpgrade } from '@/lib/mensagens/franquia'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { createPayment, getPixQrCode, findCustomerByExternalReference, createCustomer } from '@/lib/asaas'
+import {
+  createCustomer,
+  createPayment,
+  findCustomerByExternalReference,
+  getPixQrCode,
+  listPaymentsByCustomer,
+} from '@/lib/asaas'
 import { unidadesDaFranquia } from '@/lib/mensagens/templates-cloud'
 import type { TipoMensagem } from '@/lib/mensagens/tipos'
 
@@ -290,28 +296,61 @@ async function cobrarAvisos(
       .eq('business_id', businessId)
   }
 
-  const venc = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10)
-  const pay = await createPayment({
-    customer: customerId,
-    billingType: 'PIX',
-    value: p.valor,
-    dueDate: venc,
-    description: `${p.descricao} — ${nomeNegocio}`,
-    externalReference: `avisos-avulso|${businessId}|${p.pacoteId}|${p.unidades}|${p.dias}`,
-  })
-  if (!pay.ok || !pay.data?.id) {
-    return NextResponse.json({ error: pay.error ?? 'cobranca_falhou' }, { status: 502 })
+  const externalRef = `avisos-avulso|${businessId}|${p.pacoteId}|${p.unidades}|${p.dias}`
+
+  /* ── NUNCA DUAS COBRANCAS PRA MESMA COMPRA ───────────────────
+     Em 31/08 o Eduardo clicou em Contratar quatro vezes e o Asaas ficou com
+     QUATRO PIX de R$ 23,90 abertos. A tela nao mostrava o PIX no lugar onde
+     ele tinha clicado (renderizava la em cima, fora da rolagem), entao ele
+     clicou de novo. A tela foi corrigida — mas a defesa tem que morar AQUI:
+     duplo-clique, rede lenta e botao sem retorno vao acontecer de novo, e o
+     unico lugar que consegue impedir cobranca duplicada e o servidor.
+
+     Se ja existe um PIX PENDENTE identico, devolve ELE. */
+  const abertas = await listPaymentsByCustomer(customerId, 20)
+  const pendente = abertas.ok
+    ? (abertas.data?.data ?? []).find(
+        (x) =>
+          (x as { status?: string }).status === 'PENDING' &&
+          (x as { externalReference?: string }).externalReference === externalRef,
+      )
+    : null
+
+  let pagamentoId: string
+  let invoiceUrl: string | null
+
+  if (pendente) {
+    pagamentoId = (pendente as { id: string }).id
+    invoiceUrl = (pendente as { invoiceUrl?: string }).invoiceUrl ?? null
+  } else {
+    const venc = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10)
+    const pay = await createPayment({
+      customer: customerId,
+      billingType: 'PIX',
+      value: p.valor,
+      dueDate: venc,
+      description: `${p.descricao} — ${nomeNegocio}`,
+      externalReference: externalRef,
+    })
+    if (!pay.ok || !pay.data?.id) {
+      return NextResponse.json({ error: pay.error ?? 'cobranca_falhou' }, { status: 502 })
+    }
+    pagamentoId = pay.data.id
+    invoiceUrl = pay.data.invoiceUrl ?? null
   }
 
-  const qr = await getPixQrCode(pay.data.id)
+  const qr = await getPixQrCode(pagamentoId)
   return NextResponse.json({
     ok: true,
     aguardandoPagamento: true,
+    /* true = a tela pode dizer "voce ja tinha esse PIX aberto" em vez de
+       deixar a dona achando que gerou outro. */
+    reaproveitada: !!pendente,
     valor: p.valor,
     unidades: p.unidades,
     dias: p.dias,
-    pagamentoId: pay.data.id,
-    link: pay.data.invoiceUrl ?? null,
+    pagamentoId,
+    link: invoiceUrl,
     pixCopiaECola: qr.ok ? (qr.data?.payload ?? null) : null,
     pixQrBase64: qr.ok ? (qr.data?.encodedImage ?? null) : null,
   })

@@ -452,6 +452,9 @@ export default function Oferta({
             )}
 
             <div className="mt-4">
+              {/* O PIX nao mora mais aqui: virou modal. Dentro do card ainda
+                  dependia de onde a dona estava na rolagem — foi a observacao
+                  do Eduardo, e ele esta certo. Ver ModalPix.tsx. */}
               {!liberado ? (
                 <div
                   className="rounded-xl px-3 py-2.5 text-center"
