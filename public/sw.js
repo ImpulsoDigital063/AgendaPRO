@@ -22,7 +22,7 @@
 //               no link público (DN). Bump porque o BookingFlow mudou.
 // v21 (25/08): troca do botão de faturar por "Marcar como atendido" no
 // atendimento de convênio + selo do card dividido mostrando a empresa.
-const STATIC_CACHE_VERSION = 'agendapro-static-v60'
+const STATIC_CACHE_VERSION = 'agendapro-static-v61'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
