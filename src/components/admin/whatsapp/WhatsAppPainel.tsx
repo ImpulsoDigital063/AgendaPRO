@@ -45,7 +45,6 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
-import { CANAL_LIBERADO } from '@/lib/mensagens/liberado'
 import {
   IconArrowLeft,
   IconBell,
@@ -75,6 +74,7 @@ type Pacotes = {
   atual: string | null
   podeContratar: boolean
   recomendado: string
+  liberado: boolean
   precoExcedente: number
   movimento: Movimento
   pacotes: PacoteTela[]
@@ -220,6 +220,9 @@ export default function WhatsAppPainel({
   >({ tela: 'inicio' })
   const [salvando, setSalvando] = useState(false)
   const [erroCompra, setErroCompra] = useState<string | null>(null)
+  /* Vira true quando o Asaas nao conhece esse negocio ainda. A rota
+     responde `needs_customer_data` e a tela abre os dois campos. */
+  const [precisaDados, setPrecisaDados] = useState(false)
   const [pix, setPix] = useState<{
     valor: number
     unidades: number
@@ -311,22 +314,25 @@ export default function WhatsAppPainel({
     return null
   }
 
-  async function contratar(id: string) {
+  async function contratar(id: string, cliente?: { name: string; cpfCnpj: string }) {
     setSalvando(true)
     setErroCompra(null)
     try {
       const r = await fetch('/api/admin/mensagens/pacotes', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pacote: id }),
+        body: JSON.stringify({ pacote: id, customer: cliente }),
       })
       const j = await r.json()
+      /* Negocio que nunca passou pelo Asaas — e o caso de quem paga na mao.
+         Em vez de mandar falar com o suporte, a tela pede os dois dados e
+         reenvia. Mesmo contrato do checkout do plano. */
       if (j?.needs_customer_data) {
-        setErroCompra(
-          'Para a primeira cobrança precisamos do seu nome completo e CPF. Fale com o suporte para liberar.',
-        )
+        setPrecisaDados(true)
+        setErroCompra('Pra emitir a cobrança faltam dois dados rápidos.')
         return
       }
+      setPrecisaDados(false)
       if (!r.ok || !j?.ok) throw new Error(String(j?.error ?? 'falhou'))
       if (j.aguardandoPagamento) {
         setPix({
@@ -344,6 +350,11 @@ export default function WhatsAppPainel({
       setSalvando(false)
     }
   }
+
+  /* Liberacao vem do servidor, por negocio. Enquanto `pacotes` nao chegou,
+     trata como NAO liberado: melhor a tela esperar que prometer compra que
+     ainda nao existe. */
+  const liberado = pacotes?.liberado === true
 
   // ── TELAS DE DENTRO ──────────────────────────────────────────
   if (vista.tela === 'aviso') {
@@ -395,7 +406,7 @@ export default function WhatsAppPainel({
               recomendado={pacotes.recomendado}
               temMovimento={pacotes.movimento.atendimentosMes > 0}
               podeContratar={pacotes.podeContratar}
-              liberado={CANAL_LIBERADO}
+              liberado={liberado}
               salvando={salvando}
               erro={erroCompra}
               onContratar={contratar}
@@ -409,13 +420,13 @@ export default function WhatsAppPainel({
   // ── RAIZ ───────────────────────────────────────
   const temPacote = !!canal?.consumo?.pacote
   const c = canal?.consumo
-  const estado = !CANAL_LIBERADO
+  const estado = !liberado
     ? { texto: 'Ainda não liberado', tom: 'neutro' as const }
     : canal?.no_ar
       ? { texto: 'Enviando', tom: 'ok' as const }
       : { texto: 'Parado', tom: 'erro' as const }
 
-  const chipBeta = !CANAL_LIBERADO ? <Chip tom="atencao">Beta</Chip> : undefined
+  const chipBeta = !liberado ? <Chip tom="atencao">Beta</Chip> : undefined
 
   const caixaPix = pix ? (
     <div
@@ -582,6 +593,7 @@ export default function WhatsAppPainel({
         <div className={CONTAINER}>
           {caixaPix}
           <Oferta
+            precisaDados={precisaDados}
             remetente="AgendaPRO"
             numero={canal?.numero ? formatarNumero(canal.numero) : '(63) 9284-6765'}
             pacotes={pacotes.pacotes}
@@ -590,7 +602,7 @@ export default function WhatsAppPainel({
             precoExcedente={pacotes.precoExcedente}
             previa={avisos.find((a) => a.tipo === 'confirmacao')?.previa || null}
             podeContratar={pacotes.podeContratar}
-            liberado={CANAL_LIBERADO}
+            liberado={liberado}
             salvando={salvando}
             erro={erroCompra}
             onContratar={contratar}

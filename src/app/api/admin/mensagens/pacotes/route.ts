@@ -22,6 +22,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { PACOTES, pacotePorId, pacoteRecomendado, custoNoPacote, atendimentosQueCabem, PRECO_EXCEDENTE } from '@/lib/mensagens/pacotes'
+import { canalLiberado } from '@/lib/mensagens/liberado'
 import { consumoDoMes, primeiraCompraProporcional, diferencaDoUpgrade } from '@/lib/mensagens/franquia'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createPayment, getPixQrCode, findCustomerByExternalReference, createCustomer } from '@/lib/asaas'
@@ -93,6 +94,9 @@ export async function GET() {
   return NextResponse.json({
     atual: atual?.id ?? null,
     podeContratar,
+    /* Quem decide e o servidor, nao a tela: a liberacao e por negocio
+       enquanto a chave mestra estiver desligada. */
+    liberado: canalLiberado(businessId),
     precoExcedente: PRECO_EXCEDENTE,
     movimento: {
       atendimentosMes,

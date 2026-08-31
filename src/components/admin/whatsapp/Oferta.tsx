@@ -113,6 +113,7 @@ function Numero({
 }
 
 export default function Oferta({
+  precisaDados,
   remetente,
   numero,
   pacotes,
@@ -127,6 +128,8 @@ export default function Oferta({
   onContratar,
   onVerMensagens,
 }: {
+  /** Asaas nao conhece esse negocio: a tela pede nome e CPF e reenvia. */
+  precisaDados: boolean
   remetente: string
   numero: string
   pacotes: PacoteTela[]
@@ -138,10 +141,13 @@ export default function Oferta({
   liberado: boolean
   salvando: boolean
   erro: string | null
-  onContratar: (id: string) => void
+  onContratar: (id: string, cliente?: { name: string; cpfCnpj: string }) => void
   onVerMensagens: () => void
 }) {
   const [escolhido, setEscolhido] = useState(recomendado)
+  const [nome, setNome] = useState('')
+  const [cpf, setCpf] = useState('')
+  const dadosOk = nome.trim().length > 2 && cpf.length >= 11
   const p = pacotes.find((x) => x.id === escolhido) ?? pacotes[0]
   const outros = pacotes.filter((x) => x.id !== escolhido)
   const temMovimento = movimento.atendimentosMes > 0
@@ -409,6 +415,41 @@ export default function Oferta({
               </p>
             )}
 
+            {/* So aparece quando o Asaas nao conhece o negocio. Antes disso a
+                tela nao pede nada: ninguem digita CPF por precaucao. */}
+            {precisaDados && (
+              <div className="mt-3 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Nome completo"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl text-[14px]"
+                  style={{
+                    background: 'var(--admin-input-bg)',
+                    border: '1px solid var(--admin-border)',
+                    color: 'var(--admin-text)',
+                  }}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="CPF ou CNPJ (so numeros)"
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value.replace(/[^0-9]/g, '').slice(0, 14))}
+                  className="w-full px-3 py-2.5 rounded-xl text-[14px] tabular-nums"
+                  style={{
+                    background: 'var(--admin-input-bg)',
+                    border: '1px solid var(--admin-border)',
+                    color: 'var(--admin-text)',
+                  }}
+                />
+                <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+                  Fica so com o Asaas para emitir a nota. A gente nao compartilha.
+                </p>
+              </div>
+            )}
+
             <div className="mt-4">
               {!liberado ? (
                 <div
@@ -432,8 +473,10 @@ export default function Oferta({
               ) : (
                 <button
                   type="button"
-                  disabled={salvando}
-                  onClick={() => onContratar(p.id)}
+                  disabled={salvando || (precisaDados && !dadosOk)}
+                  onClick={() =>
+                    onContratar(p.id, precisaDados ? { name: nome.trim(), cpfCnpj: cpf } : undefined)
+                  }
                   className="w-full py-3.5 rounded-xl text-[15px] font-bold disabled:opacity-60 transition-all hover:-translate-y-0.5"
                   style={{
                     background: GRADIENTE_ACCENT,
