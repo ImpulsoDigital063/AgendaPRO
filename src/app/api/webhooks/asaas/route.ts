@@ -374,12 +374,16 @@ async function handlePaymentOverdue(
 
   // Tenta pelo subscription primeiro (cartão), depois externalReference (PIX)
   const subId = payment.subscription
-  let subscription: { id: string; business_id: string } | null = null
+  let subscription: {
+    id: string
+    business_id: string
+    grace_ends_at: string | null
+  } | null = null
 
   if (subId) {
     const { data } = await admin
       .from('subscriptions')
-      .select('id, business_id')
+      .select('id, business_id, grace_ends_at')
       .eq('asaas_subscription_id', subId)
       .single()
     subscription = data ?? null
@@ -389,7 +393,7 @@ async function handlePaymentOverdue(
     const businessId = payment.externalReference.split('|')[0]
     const { data } = await admin
       .from('subscriptions')
-      .select('id, business_id')
+      .select('id, business_id, grace_ends_at')
       .eq('business_id', businessId)
       .single()
     subscription = data ?? null
@@ -400,20 +404,34 @@ async function handlePaymentOverdue(
     return
   }
 
-  // Período de graça: 3 dias após overdue antes de bloquear público
-  const graceEnds = new Date()
-  graceEnds.setDate(graceEnds.getDate() + 3)
+  // Período de graça: 3 dias após overdue antes de bloquear público.
+  //
+  // A carência é concedida UMA VEZ por ciclo de inadimplência. O Asaas REENVIA
+  // PAYMENT_OVERDUE enquanto a cobrança segue vencida, e antes cada reenvio
+  // reescrevia grace_ends_at = hoje+3 — o bloqueio era empurrado pra frente
+  // indefinidamente e o pagante inadimplente nunca perdia acesso. Só pegava
+  // quem paga de verdade: cortesia/trial não gera webhook do Asaas, então a
+  // carência deles vencia normal. Visto em prod 31/08/2026, com a carência de
+  // um pagante andando sozinha de 01/09 pra 03/09.
+  //
+  // Não reabrir a carência de quem já foi bloqueado também é proposital: grace
+  // vencida no mesmo ciclo continua vencida. Quem paga tem grace_ends_at zerado
+  // nos handlers de CONFIRMED/RECEIVED, e aí o próximo vencimento ganha 3 dias
+  // novos — que é o único caminho pra uma carência nova.
+  const update: { status: string; grace_ends_at?: string } = { status: 'past_due' }
 
-  await admin
-    .from('subscriptions')
-    .update({
-      status: 'past_due',
-      grace_ends_at: graceEnds.toISOString(),
-    })
-    .eq('id', subscription.id)
+  if (!subscription.grace_ends_at) {
+    const graceEnds = new Date()
+    graceEnds.setDate(graceEnds.getDate() + 3)
+    update.grace_ends_at = graceEnds.toISOString()
+  }
+
+  await admin.from('subscriptions').update(update).eq('id', subscription.id)
 
   console.log(
-    `[Asaas Webhook] OVERDUE pra ${subscription.business_id} → past_due, graça até ${graceEnds.toISOString()}`
+    update.grace_ends_at
+      ? `[Asaas Webhook] OVERDUE pra ${subscription.business_id} → past_due, graça até ${update.grace_ends_at}`
+      : `[Asaas Webhook] OVERDUE reenviado pra ${subscription.business_id} → graça mantida em ${subscription.grace_ends_at}`
   )
 }
 
