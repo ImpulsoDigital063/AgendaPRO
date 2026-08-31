@@ -50,7 +50,8 @@ import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import CountUp from '@/components/admin/CountUp'
 import { IconCheck, IconChevronRight, IconWhatsapp } from '@/components/ui/Icon'
-import { Balao, Lista, TituloSecao } from './ui'
+import { Lista, TituloSecao } from './ui'
+import TelaWhatsApp from './TelaWhatsApp'
 
 export type PacoteTela = {
   id: string
@@ -112,6 +113,7 @@ function Numero({
 }
 
 export default function Oferta({
+  negocio,
   pacotes,
   recomendado,
   movimento,
@@ -124,6 +126,7 @@ export default function Oferta({
   onContratar,
   onVerMensagens,
 }: {
+  negocio: string
   pacotes: PacoteTela[]
   recomendado: string
   movimento: Movimento
@@ -233,14 +236,22 @@ export default function Oferta({
         )}
 
         {previa && (
-          <div className="admin-enter mt-5 max-w-md" style={entra(280)}>
+          <div className="admin-enter mt-6" style={entra(280)}>
             <p
-              className="text-[11px] font-bold uppercase tracking-wider mb-1.5"
+              className="text-[11px] font-bold uppercase tracking-wider mb-2"
               style={{ color: 'var(--admin-text-faded)' }}
             >
-              É assim que ela recebe
+              No celular da sua cliente
             </p>
-            <Balao texto={previa} />
+            <TelaWhatsApp
+              negocio={negocio}
+              texto={previa}
+              botoes={['Confirmar presença', 'Preciso remarcar']}
+            />
+            <p className="text-[11px] mt-2 max-w-sm" style={{ color: 'var(--admin-text-faded)' }}>
+              Ela toca em &quot;Confirmar presença&quot; e o horário fica confirmado na sua agenda
+              sozinho — você não precisa responder nada.
+            </p>
           </div>
         )}
 

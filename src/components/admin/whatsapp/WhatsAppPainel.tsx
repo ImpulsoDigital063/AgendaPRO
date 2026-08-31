@@ -582,6 +582,7 @@ export default function WhatsAppPainel({
         <div className={CONTAINER}>
           {caixaPix}
           <Oferta
+            negocio={businessName}
             pacotes={pacotes.pacotes}
             recomendado={pacotes.recomendado}
             movimento={pacotes.movimento}
