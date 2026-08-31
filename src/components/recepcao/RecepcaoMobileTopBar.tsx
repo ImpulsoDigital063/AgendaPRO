@@ -27,6 +27,7 @@ import {
   IconClose,
   IconUsers,
   IconUser,
+  IconSettings,
 } from '@/components/ui/Icon'
 
 type Props = {
@@ -97,17 +98,22 @@ export default function RecepcaoMobileTopBar({
       label: 'Dinheiro',
       items: [{ label: 'Caixa', href: '/recepcao/caixa', Icon: IconWallet }],
     },
-    ...(tambemAtende
-      ? [
-          {
-            label: 'Meu',
-            items: [
+    /* v146 · o grupo "Meu" passa a existir SEMPRE, por causa da Conta: era o
+       único jeito de a pessoa trocar a própria senha, e ela só chegava lá
+       atravessando o menu do profissional — que agora não aparece mais pra
+       quem opera o balcão. Atendimentos e ganhos seguem só pra quem atende. */
+    {
+      label: 'Meu',
+      items: [
+        ...(tambemAtende
+          ? [
               { label: 'Meus atendimentos', href: '/recepcao/eu', Icon: IconUser },
               { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet },
-            ],
-          },
-        ]
-      : []),
+            ]
+          : []),
+        { label: 'Minha conta', href: '/profissional/conta', Icon: IconSettings },
+      ],
+    },
     ...(podeEditarHorario
       ? [
           {

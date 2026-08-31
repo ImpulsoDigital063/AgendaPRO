@@ -29,6 +29,7 @@ import {
   IconFile,
   IconInbox,
   IconStar,
+  IconSettings,
 } from '@/components/ui/Icon'
 
 type Brand = {
@@ -79,13 +80,18 @@ export default function RecepcaoDesktopSidebar({
 
   /* v144 · quem acumula balcão e atendimento precisa alcançar a própria
      comissão — o balcão mostra o dinheiro do salão, não o dela. */
-  const items: SidebarItem[] = tambemAtende
-    ? [
-        ...base,
-        { label: 'Meus atendimentos', href: '/recepcao/eu', Icon: IconCalendar },
-        { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet },
-      ]
-    : base
+  const items: SidebarItem[] = [
+    ...base,
+    ...(tambemAtende
+      ? [
+          { label: 'Meus atendimentos', href: '/recepcao/eu', Icon: IconCalendar },
+          { label: 'Meus ganhos', href: '/profissional/financeiro', Icon: IconWallet },
+        ]
+      : []),
+    /* v146 · espelha o drawer do celular: a conta dela fica alcançável pelo
+       menu do balcão, sem passar pelo painel do profissional. */
+    { label: 'Minha conta', href: '/profissional/conta', Icon: IconSettings },
+  ]
 
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)

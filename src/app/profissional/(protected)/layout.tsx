@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import ProfissionalBottomNav from '@/components/profissional/ProfissionalBottomNav'
 import ProfissionalMobileTopBar from '@/components/profissional/ProfissionalMobileTopBar'
+import RecepcaoMobileTopBar from '@/components/recepcao/RecepcaoMobileTopBar'
+import RecepcaoBottomNav from '@/components/recepcao/RecepcaoBottomNav'
+import RecepcaoDesktopSidebar from '@/components/recepcao/RecepcaoDesktopSidebar'
 import InstallBanner from '@/components/admin/InstallBanner'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
@@ -38,7 +41,7 @@ export default async function ProfissionalLayout({
   // Verifica se e um profissional com auth_user_id · puxa brand do business
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, business_id, password_changed, employment_type, is_receptionist, does_appointments, ve_agenda, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, prof_edita_horario)')
+    .select('id, name, business_id, password_changed, employment_type, is_receptionist, does_appointments, ve_agenda, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, prof_edita_horario, recep_edita_horario, vendas_balcao_enabled)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -84,6 +87,8 @@ export default async function ProfissionalLayout({
     brand_accent?: string | null
     brand_neutral?: string | null
     prof_edita_horario?: boolean | null
+    recep_edita_horario?: boolean | null
+    vendas_balcao_enabled?: boolean | null
   }
   const businessSlug = business.slug ?? null
 
@@ -107,15 +112,48 @@ export default async function ProfissionalLayout({
             <BrandDecorBackground pattern="scatter" brand={businessSlug} opacity={0.02} />
           </div>
         )}
-        {/* Topbar mobile (header + drawer) · só <lg · coexiste com BottomNav */}
-        <ProfissionalMobileTopBar
-          businessName={business.name ?? null}
-          brandLogoUrl={business.brand_logo_url ?? null}
-          employmentType={employmentType}
-          podeEditarHorario={podeEditarHorario}
-          veAgenda={veAgenda}
-          operaRecepcao={operaRecepcao}
-        />
+        {/* v146 · UM MENU SÓ pra quem opera o balcão (Eduardo, 31/08).
+            A Josi acumula recepção e atendimento. O menu do balcão mandava ela
+            pra /profissional/financeiro em "Meus ganhos" — outra rota, outro
+            layout, outro menu: o drawer virava "PAINEL DO PROFISSIONAL" com
+            Início/Atendimentos/Bloqueios. Mesma pessoa, duas cascas, dependendo
+            de onde tinha tocado por último.
+
+            A rota não é quem decide o menu — a PESSOA é. Quem tem balcão vê o
+            menu do balcão em qualquer lugar, inclusive aqui. Profissional que
+            não é recepção não sente nada: cai no else, exatamente como antes. */}
+        {operaRecepcao ? (
+          <>
+            <RecepcaoMobileTopBar
+              businessName={business.name ?? null}
+              brandLogoUrl={business.brand_logo_url ?? null}
+              podeEditarHorario={business.recep_edita_horario === true}
+              tambemAtende={professional.does_appointments === true}
+              pessoaNome={professional.name as string}
+              vendeProduto={business.vendas_balcao_enabled !== false}
+            />
+            <RecepcaoDesktopSidebar
+              pessoaNome={professional.name as string}
+              tambemAtende={professional.does_appointments === true}
+              podeEditarHorario={business.recep_edita_horario === true}
+              brand={{
+                business_name: business.name ?? null,
+                business_slug: business.slug ?? null,
+                brand_logo_url: business.brand_logo_url ?? null,
+              }}
+            />
+          </>
+        ) : (
+          /* Topbar mobile (header + drawer) · só <lg · coexiste com BottomNav */
+          <ProfissionalMobileTopBar
+            businessName={business.name ?? null}
+            brandLogoUrl={business.brand_logo_url ?? null}
+            employmentType={employmentType}
+            podeEditarHorario={podeEditarHorario}
+            veAgenda={veAgenda}
+            operaRecepcao={operaRecepcao}
+          />
+        )}
         {/* DEPOIS da topbar de propósito (Eduardo 30/07, print do iPhone): a
             barra é `fixed` e quem empurra o conteúdo é o espaçador de 56px que
             ela renderiza logo abaixo de si (ProfissionalMobileTopBar:116).
@@ -134,16 +172,29 @@ export default async function ProfissionalLayout({
             ⚠️ admin/layout.tsx:216 e recepcao/layout.tsx:90 têm o MESMO padrão —
             a dona e a recepção sofrem o mesmo bug no celular. Entram na
             varredura (registrado no STATUS). */}
-        <div className="relative" style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}>
+        <div
+          className={operaRecepcao ? 'relative md:pl-[240px]' : 'relative'}
+          style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}
+        >
           {children}
         </div>
-        <ProfissionalBottomNav
-          employmentType={employmentType}
-          pendingAppointments={pendingCount ?? 0}
-          podeEditarHorario={podeEditarHorario}
-          veAgenda={veAgenda}
-          operaRecepcao={operaRecepcao}
-        />
+        {operaRecepcao ? (
+          /* dock do balcão · some em ≥md, onde a sidebar assume */
+          <div className="md:hidden">
+            <RecepcaoBottomNav
+              tambemAtende={professional.does_appointments === true}
+              podeEditarHorario={business.recep_edita_horario === true}
+            />
+          </div>
+        ) : (
+          <ProfissionalBottomNav
+            employmentType={employmentType}
+            pendingAppointments={pendingCount ?? 0}
+            podeEditarHorario={podeEditarHorario}
+            veAgenda={veAgenda}
+            operaRecepcao={operaRecepcao}
+          />
+        )}
       </div>
     </AdminThemeProvider>
   )
