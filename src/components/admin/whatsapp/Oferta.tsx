@@ -113,7 +113,8 @@ function Numero({
 }
 
 export default function Oferta({
-  negocio,
+  remetente,
+  numero,
   pacotes,
   recomendado,
   movimento,
@@ -126,7 +127,8 @@ export default function Oferta({
   onContratar,
   onVerMensagens,
 }: {
-  negocio: string
+  remetente: string
+  numero: string
   pacotes: PacoteTela[]
   recomendado: string
   movimento: Movimento
@@ -244,14 +246,28 @@ export default function Oferta({
               No celular da sua cliente
             </p>
             <TelaWhatsApp
-              negocio={negocio}
+              remetente={remetente}
+              numero={numero}
+              avatar="/agendapro-icon.svg"
               texto={previa}
               botoes={['Confirmar presença', 'Preciso remarcar']}
             />
-            <p className="text-[11px] mt-2 max-w-sm" style={{ color: 'var(--admin-text-faded)' }}>
-              Ela toca em &quot;Confirmar presença&quot; e o horário fica confirmado na sua agenda
-              sozinho — você não precisa responder nada.
-            </p>
+            {/* A tela mostra o remetente REAL. O aviso chega pelo número
+                oficial do AgendaPRO — não pelo número do salão — e o
+                `verified_name` da conta na Meta é "AgendaPRO". Deixar o nome
+                do salão no cabeçalho seria vender uma tela que não acontece,
+                e a dona descobriria pela cliente. */}
+            <div className="mt-2.5 max-w-sm space-y-1.5">
+              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--admin-text-faded)' }}>
+                Chega pelo número oficial do AgendaPRO, o mesmo para todos os salões. O nome do{' '}
+                <strong style={{ color: 'var(--admin-text-mute)' }}>seu negócio</strong> vai na
+                primeira linha da mensagem, e o telefone de resposta é o seu.
+              </p>
+              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--admin-text-faded)' }}>
+                Ela toca em &quot;Confirmar presença&quot; e o horário fica confirmado na sua agenda
+                sozinho — você não precisa responder nada.
+              </p>
+            </div>
           </div>
         )}
 

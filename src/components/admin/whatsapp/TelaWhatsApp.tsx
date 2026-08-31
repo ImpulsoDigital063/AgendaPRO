@@ -43,12 +43,20 @@ function querMenosMovimento() {
 }
 
 export default function TelaWhatsApp({
-  negocio,
+  remetente,
+  numero,
+  avatar,
   texto,
   botoes,
   hora = '14:32',
 }: {
-  negocio: string
+  /** Quem a cliente ve como contato. NAO e o nome do salao: e o
+   *  `verified_name` da nossa conta na Meta, porque o numero e um so. */
+  remetente: string
+  numero: string
+  /** Foto de perfil do remetente. E a nossa logo: o WhatsApp recorta em
+   *  circulo, entao o icone quadrado com cantos arredondados serve. */
+  avatar?: string
   texto: string
   botoes?: string[]
   hora?: string
@@ -69,7 +77,7 @@ export default function TelaWhatsApp({
     }
   }, [])
 
-  const inicial = (negocio.trim()[0] ?? 'A').toUpperCase()
+  const inicial = (remetente.trim()[0] ?? 'A').toUpperCase()
 
   return (
     <div
@@ -84,16 +92,29 @@ export default function TelaWhatsApp({
         className="flex items-center gap-2.5 px-3.5 py-2.5"
         style={{ background: VERDE_CABECALHO, color: '#fff' }}
       >
-        <span
-          className="flex-shrink-0 inline-flex items-center justify-center rounded-full text-[13px] font-bold"
-          style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.22)' }}
-        >
-          {inicial}
-        </span>
+        {avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatar}
+            alt=""
+            className="flex-shrink-0 rounded-full object-cover"
+            style={{ width: 34, height: 34, background: '#fff' }}
+          />
+        ) : (
+          <span
+            className="flex-shrink-0 inline-flex items-center justify-center rounded-full text-[13px] font-bold"
+            style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.22)' }}
+          >
+            {inicial}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold leading-tight truncate">{negocio}</p>
-          <p className="text-[10px] leading-tight" style={{ color: 'rgba(255,255,255,0.75)' }}>
-            {etapa === 0 ? 'digitando…' : 'online'}
+          <p className="text-[13px] font-semibold leading-tight truncate">{remetente}</p>
+          <p
+            className="text-[10px] leading-tight truncate"
+            style={{ color: 'rgba(255,255,255,0.75)' }}
+          >
+            {etapa === 0 ? 'digitando…' : numero}
           </p>
         </div>
       </div>

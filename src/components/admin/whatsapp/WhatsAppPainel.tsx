@@ -582,7 +582,8 @@ export default function WhatsAppPainel({
         <div className={CONTAINER}>
           {caixaPix}
           <Oferta
-            negocio={businessName}
+            remetente="AgendaPRO"
+            numero={canal?.numero ? formatarNumero(canal.numero) : '(63) 9284-6765'}
             pacotes={pacotes.pacotes}
             recomendado={pacotes.recomendado}
             movimento={pacotes.movimento}
