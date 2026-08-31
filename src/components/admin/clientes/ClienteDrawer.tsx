@@ -348,7 +348,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                   >
                     Adicionar Crédito
                   </button>
-                  {/* v121 · o que a cliente ja fez ANTES do sistema. Registro
+                  {/* v121 · o que o cliente ja fez ANTES do sistema. Registro
                       de historico: nao cria comanda nem entra no financeiro. */}
                   <button
                     type="button"

@@ -74,7 +74,7 @@ export default async function CanceladosPage({
           style={{ background: 'var(--admin-bg-orb-2)' }} />
       </div>
       <div className="pointer-events-none fixed inset-0"
-        style={{ background: 'radial-gradient(ellipse 100% 80% at 50% 50%, transparent 55%, rgba(0,0,0,0.18) 100%)' }} />
+        style={{ background: 'radial-gradient(ellipse 100% 80% at 50% 50%, transparent 55%, rgba(15,23,42,0.05) 100%)' }} />
 
       <div className="relative">
         <SubPageHeader title="Cancelados" subtitle={business.name} back="/admin/financeiro" />
