@@ -247,7 +247,10 @@ export default function Oferta({
         {/* ═══ COMO A CONTA FUNCIONA ═══════════════════════════ */}
         <div className="admin-enter" style={entra(320)}>
           <TituloSecao>Como a conta funciona</TituloSecao>
-          <ul className="space-y-2.5 max-w-md">
+          {/* Duas colunas no desktop: com tudo empilhado, a coluna da
+              esquerda descia bem mais que o trilho da oferta e a tela
+              terminava torta. */}
+          <ul className="space-y-2.5 max-w-md lg:max-w-none lg:grid lg:grid-cols-2 lg:gap-x-5 lg:gap-y-2.5 lg:space-y-0">
             {[
               'Cada mensagem enviada consome uma do pacote.',
               'Aniversário e “hora de voltar” consomem 7 — o WhatsApp cobra essas como divulgação, e é bem mais caro.',

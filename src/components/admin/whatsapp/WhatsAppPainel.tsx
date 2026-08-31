@@ -453,14 +453,16 @@ export default function WhatsAppPainel({
         className="text-[13px] leading-relaxed mb-2.5 px-1"
         style={{ color: 'var(--admin-text-mute)' }}
       >
-        O AgendaPRO manda essas mensagens no WhatsApp da cliente sozinho — você não digita nada.
-        Ligue as que quiser que ela receba.
+        {temPacote
+          ? 'O AgendaPRO manda essas mensagens no WhatsApp da cliente sozinho \u2014 voc\u00ea n\u00e3o digita nada. Ligue as que quiser que ela receba.'
+          : 'Deixe ligadas as que voc\u00ea quer \u2014 a escolha fica salva. Elas come\u00e7am a sair quando voc\u00ea contratar um pacote de mensagens.'}
       </p>
       <Lista>
         {avisos.map((a, i) => (
           <Linha
             key={a.tipo}
             primeira={i === 0}
+            delay={80 + i * 60}
             onClick={() => setVista({ tela: 'aviso', tipo: a.tipo })}
             icone={<IconeAviso ativo={a.enabled}>{INFO[a.tipo]?.icone ?? null}</IconeAviso>}
             titulo={
@@ -498,6 +500,30 @@ export default function WhatsAppPainel({
           />
         ))}
       </Lista>
+
+      {/* Sem pacote, ligar interruptor não manda nada: `podeEnviar()` barra
+          por `sem_pacote_contratado`. Dizer "ligue as que quiser que ela
+          receba" ali em cima seria prometer o que a gente não cumpre —
+          então a tela fecha com o caminho de volta pra oferta. */}
+      {!temPacote && (
+        <button
+          type="button"
+          onClick={() => setVista({ tela: 'inicio' })}
+          className="admin-card w-full mt-3 px-4 py-3.5 flex items-center gap-3 text-left"
+        >
+          <span className="flex-1 min-w-0">
+            <span className="block text-[15px] font-semibold" style={{ color: 'var(--admin-text)' }}>
+              Nenhuma dessas sai ainda
+            </span>
+            <span className="block text-[13px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+              Contrate um pacote de mensagens pra elas começarem a ir.
+            </span>
+          </span>
+          <span style={{ color: 'var(--admin-text-faded)' }} aria-hidden="true">
+            <IconChevronRight size={16} />
+          </span>
+        </button>
+      )}
 
       {/* Aviso que resolve em um toque, não banner que só informa. */}
       {canal?.semTelefone && canal.semTelefone.quantos > 0 && (

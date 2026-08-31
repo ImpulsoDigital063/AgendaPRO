@@ -111,6 +111,7 @@ export function Linha({
   onClick,
   destaque,
   primeira,
+  delay,
 }: {
   icone?: ReactNode
   titulo: ReactNode
@@ -120,6 +121,9 @@ export function Linha({
   onClick?: () => void
   destaque?: 'atencao'
   primeira?: boolean
+  /** Entrada em cascata, em ms. `.admin-enter` para sozinha quando o
+   *  aparelho pede menos movimento. */
+  delay?: number
 }) {
   const conteudo = (
     <>
@@ -149,10 +153,14 @@ export function Linha({
   const estilo = {
     borderTop: primeira ? 'none' : '1px solid var(--admin-divider)',
     background: destaque === 'atencao' ? 'rgba(217,119,6,0.06)' : undefined,
+    ...(delay !== undefined ? ({ '--enter-delay': `${delay}ms` } as Record<string, string>) : {}),
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5" style={estilo}>
+    <div
+      className={`flex items-center gap-3 px-4 py-3.5${delay !== undefined ? ' admin-enter' : ''}`}
+      style={estilo}
+    >
       {onClick ? (
         <button
           type="button"
