@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { todayBR } from '@/lib/date-br'
 import { logActivity } from '@/lib/activity-log'
+import { repartirCentavos, type PaymentShare } from '@/lib/queries/appointment-payment-split'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import {
   IconDollar,
@@ -19,6 +20,9 @@ type AppointmentForCash = {
   paid_at: string | null
   payment_method: string | null
   payment_card_type: string | null
+  /* v146 · divisão real do valor entre as formas de pagamento (comanda paga em
+     Pix + dinheiro, por ex.). Ausente = pagamento direto, vale o payment_method. */
+  payment_split?: PaymentShare[]
   payment_fee_percent: number | null
   client_name: string
   /** Desconto rateado da comanda (centavos) · caixa soma o líquido. */
@@ -219,28 +223,41 @@ export default function CaixaView({
         ? Math.round(a.charged_total * 100)
         : Math.round((a.total_price || 0) * 100) - (a.discount_cents || 0)
       t.gross += price
-      switch (a.payment_method) {
-        case 'pix':
-          t.pix += price
-          break
-        case 'cash':
-          t.cash += price
-          break
-        case 'card':
-          t.card_total += price
-          if (a.payment_card_type === 'credit') t.card_credit += price
-          else if (a.payment_card_type === 'debit') t.card_debit += price
-          // taxa
-          if (a.payment_fee_percent && a.payment_fee_percent > 0) {
-            t.fees += Math.round((price * a.payment_fee_percent) / 100)
-          }
-          break
-        case 'courtesy':
-          t.courtesy += price
-          break
-        case 'points':
-          t.points += 1
-          break
+      /* v146 · o valor é repartido entre as formas de pagamento da comanda, não
+         jogado inteiro num método só. `appointments.payment_method` guarda o
+         método do MAIOR pagamento (de propósito — o detalhe vive em
+         invoice_payments), então comanda dividida em Pix + dinheiro aparecia
+         100% no Pix e a gaveta nunca fechava. `repartirCentavos` distribui os
+         mesmos centavos, sem sobra: o Bruto não muda, só a divisão. */
+      for (const parte of repartirCentavos(price, a.payment_split, {
+        method: a.payment_method,
+        cardType: a.payment_card_type,
+        feePercent: a.payment_fee_percent,
+      })) {
+        switch (parte.method) {
+          case 'pix':
+            t.pix += parte.cents
+            break
+          case 'cash':
+            t.cash += parte.cents
+            break
+          case 'card':
+            t.card_total += parte.cents
+            if (parte.cardType === 'credit') t.card_credit += parte.cents
+            else if (parte.cardType === 'debit') t.card_debit += parte.cents
+            // taxa
+            if (parte.feePercent && parte.feePercent > 0) {
+              t.fees += Math.round((parte.cents * parte.feePercent) / 100)
+            }
+            break
+          case 'courtesy':
+            t.courtesy += parte.cents
+            break
+          case 'points':
+            // conta atendimento, não valor — uma vez só, mesmo se dividido
+            if (parte.ratio === 1) t.points += 1
+            break
+        }
       }
     }
     t.net = t.gross - t.fees

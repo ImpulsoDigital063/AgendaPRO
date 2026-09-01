@@ -5,6 +5,7 @@ import CaixaView from '@/components/recepcao/CaixaView'
 import { IconWallet } from '@/components/ui/Icon'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
+import { getApptPaymentSplitMap, type PaymentShare } from '@/lib/queries/appointment-payment-split'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
@@ -18,6 +19,9 @@ type AppointmentForCash = {
   payment_fee_percent: number | null
   client_name: string
   discount_cents?: number
+  /* v146 · como o valor se divide entre Pix/dinheiro/cartão. Vazio = pagamento
+     direto, e aí vale o payment_method do próprio atendimento. */
+  payment_split?: PaymentShare[]
 }
 
 type ClosingRow = {
@@ -72,12 +76,16 @@ export default async function RecepcaoCaixaPage() {
   // caixa da recepção fechava por baixo — nem as linhas nem os totais somavam
   // produto (Eduardo 22/07). Lote, via service-role (recep não lê invoices).
   const apptCharged = await getApptChargedMap(sbAdmin, (paidToday ?? []).map((a) => a.id as string))
+  // v146 · a conferência por método vinha do payment_method do atendimento, que
+  // guarda só o MAIOR pagamento. Comanda dividida caía inteira num método só.
+  const apptSplit = await getApptPaymentSplitMap(sbAdmin, (paidToday ?? []).map((a) => a.id as string))
   const todayAppts: AppointmentForCash[] = (paidToday ?? []).map((a) => {
     const c = apptCharged[a.id as string]
     return {
       ...a,
       discount_cents: Math.round((apptDisc[a.id as string] ?? 0) * 100),
       charged_total: c && c.produtos.length > 0 ? c.charged : null,
+      payment_split: apptSplit[a.id as string],
     }
   })
 

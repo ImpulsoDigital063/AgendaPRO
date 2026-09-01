@@ -3,6 +3,7 @@ import { startOfDayBR, addDaysBR } from '@/lib/date-br'
 import GradeTimelineHeader from './GradeTimelineHeader'
 import TimelineGridInteractive from './TimelineGridInteractive'
 import { blockAppliesTo, type BlockRow } from '@/lib/blocks'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 
 type Props = {
   businessId: string
@@ -84,7 +85,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .order('name'),
     sb
       .from('appointments')
-      .select('id, professional_id, start_time, end_time, status, client_name, service_name, total_price, paid_at, payment_method, combo_package_id, company_id, company:companies(name)')
+      .select('id, professional_id, start_time, end_time, status, client_name, service_name, total_price, paid_at, payment_method, invoice_item_id, combo_package_id, company_id, company:companies(name)')
       .eq('business_id', businessId)
       .eq('appointment_date', date)
       // Cancelados aparecem visualmente diferentes (faixa diagonal/desbotado · vide TimelineGridInteractive)
@@ -121,7 +122,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
     // Mood 09/06: trança de 08/06 paga em 09/06 estava sumindo do recebido.)
     hideKpis ? vazio : sb
       .from('appointments')
-      .select('total_price, professional_id')
+      .select('id, total_price, professional_id, invoice_item_id')
       .eq('business_id', businessId)
       .not('payment_method', 'in', '(courtesy,credit)')
       .gte('paid_at', startOfDayBR(date))
@@ -201,17 +202,33 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
   // Fluxo de Caixa. Conta atendimentos pagos hoje (apptsPaidDay · por paid_at,
   // não por appointment_date) + vendas pagas hoje. Cortesia/crédito já
   // excluídos na query. Respeita o filtro da aba "Eu" (onlyProfessionalId).
-  const recebidoApptsHoje = ((apptsPaidDay ?? []) as { total_price: number | null; professional_id: string | null }[])
+  /* v146 · o KPI somava total_price CRU e mostrava o BRUTO: comanda de R$300
+     com R$30 de desconto aparecia como R$300 recebidos, enquanto o Caixa —
+     que já passa pelo getApptDiscountMap — dizia R$270. Números diferentes pro
+     mesmo dinheiro, e a grade é a primeira tela que abre de manhã.
+     É o furo que o PLAYBOOK-FINANCEIRO descreve: a função existe, faltava usar.
+     Só busca quando os KPIs aparecem — painel da profissional não paga a ida. */
+  const kpiApptIds = hideKpis
+    ? []
+    : [
+        ...((apptsPaidDay ?? []) as { invoice_item_id?: string | null }[]).map((a) => a.invoice_item_id),
+        ...appts.map((a) => (a as { invoice_item_id?: string | null }).invoice_item_id),
+      ]
+  const kpiDisc = kpiApptIds.length > 0 ? await getApptDiscountMap(sb, kpiApptIds) : {}
+
+  const recebidoApptsHoje = ((apptsPaidDay ?? []) as { id: string; total_price: number | null; professional_id: string | null }[])
     .filter((a) => !onlyProfessionalId || a.professional_id === onlyProfessionalId)
-    .reduce((s, a) => s + (Number(a.total_price) || 0), 0)
+    .reduce((s, a) => s + Math.max(0, (Number(a.total_price) || 0) - (kpiDisc[a.id] ?? 0)), 0)
   const recebidoSalesHoje = (salesPaidDay ?? []).reduce((s, p) => s + Number(p.total ?? 0), 0)
   const recebidoHoje = recebidoApptsHoje + recebidoSalesHoje
   // A receber = serviços não pagos do dia + produtos pendentes do dia (comanda
   // aberta conta serviço E produto · Eduardo 10/06). Serviço e produto são linhas
   // distintas, sem risco de dupla contagem.
+  // mesmo tratamento do Recebido: comanda aberta que já levou desconto promete
+  // o líquido, não o cheio — senão o "A receber" some maior do que vai entrar.
   const aReceberApptsHoje = appts
     .filter((a) => !a.paid_at && (a.status === 'confirmed' || a.status === 'completed') && (a.total_price ?? 0) > 0)
-    .reduce((s, a) => s + (Number(a.total_price) || 0), 0)
+    .reduce((s, a) => s + Math.max(0, (Number(a.total_price) || 0) - (kpiDisc[a.id] ?? 0)), 0)
   const aReceberSalesHoje = ((salesPendingDay ?? []) as { total: number | null; professional_id: string | null }[])
     .filter((p) => !onlyProfessionalId || p.professional_id === onlyProfessionalId)
     .reduce((s, p) => s + Number(p.total ?? 0), 0)
