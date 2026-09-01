@@ -312,6 +312,10 @@ async function cobrarAvisos(
     ? (abertas.data?.data ?? []).find(
         (x) =>
           (x as { status?: string }).status === 'PENDING' &&
+          /* Cobranca cancelada no Asaas MANTEM status PENDING e ganha
+             `deleted: true`. Reaproveitar uma dessas devolveria um codigo
+             que o banco recusa com "nao esta mais disponivel para pagar". */
+          (x as { deleted?: boolean }).deleted !== true &&
           (x as { externalReference?: string }).externalReference === externalRef,
       )
     : null

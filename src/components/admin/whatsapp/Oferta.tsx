@@ -420,9 +420,21 @@ export default function Oferta({
                 tela nao pede nada: ninguem digita CPF por precaucao. */}
             {precisaDados && (
               <div className="mt-3 space-y-2">
+                {/* "de quem vai pagar" nao e' detalhe de copy: o PIX com
+                    vencimento leva o CPF do devedor registrado no PSP, e
+                    varios bancos so aceitam pagamento vindo de conta com o
+                    MESMO CPF. Em 31/08 o Eduardo cadastrou nome e CPF de
+                    outra pessoa e levou "esse codigo nao esta mais
+                    disponivel para pagar" em dois bancos, com a cobranca
+                    intacta e a conta Asaas saudavel. */}
+                <p className="text-[13px] leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+                  Preencha com os dados de{' '}
+                  <strong style={{ color: WA.forte }}>quem vai pagar</strong>. O PIX só pode ser
+                  pago de uma conta com esse mesmo CPF.
+                </p>
                 <input
                   type="text"
-                  placeholder="Nome completo"
+                  placeholder="Nome completo de quem paga"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl text-[14px]"
@@ -435,7 +447,7 @@ export default function Oferta({
                 <input
                   type="text"
                   inputMode="numeric"
-                  placeholder="CPF ou CNPJ (so numeros)"
+                  placeholder="CPF ou CNPJ de quem paga"
                   value={cpf}
                   onChange={(e) => setCpf(e.target.value.replace(/[^0-9]/g, '').slice(0, 14))}
                   className="w-full px-3 py-2.5 rounded-xl text-[14px] tabular-nums"
