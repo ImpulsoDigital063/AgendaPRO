@@ -182,22 +182,22 @@ body {
   --admin-bottomnav-bg: rgba(255, 255, 255, 0.92);
 }
 
-/* O azul do AgendaPRO domina o painel (Eduardo, 31/08/2026).
-   Com o BrandThemeInjector desligado, 51 componentes do admin que leem
-   --brand-primary cairiam no #3B82F6 do :root (linha 11) enquanto o accent
-   é #2563EB — dois azuis quase iguais na mesma tela. É assim que nasce o
-   "onze laranjas" do Trinks: ninguém decide, cada tela escolhe.
-   O --brand-secondary (#06B6D4 ciano) e o --brand-tertiary (#8B5CF6 violeta)
-   entram junto porque são eles que alimentam os gradientes do painel.
-   ESCOPO: shell + body:has() (modal portado monta no body, fora do shell).
-   NÃO mexe no :root — a landing usa os mesmos nomes e ficaria repintada. */
-.admin-shell,
-[data-admin-theme],
-body:has(.admin-shell) {
-  --brand-primary:   #2563EB;
-  --brand-secondary: #2563EB;
-  --brand-tertiary:  #2563EB;
-}
+/* A cor do painel voltou a ser a do CLIENTE (Eduardo, 01/09/2026).
+
+   Em 31/08 o painel tinha passado a usar o azul do AgendaPRO e o
+   BrandThemeInjector fora desligado. Subiu pra producao e o alcance real
+   apareceu: nao eram 3 pagantes, eram 6 — Olimpio, Studio Isis, Viva
+   Cacheada, Rosy Borges, Wanessa Silva e Gessica Batista. Dourado e rosa
+   tambem viraram azul, e essas cores se enxergavam bem.
+
+   Decisao do Eduardo: onde o cliente personalizou, fica a cor dele. O caso
+   que motivou a mudanca — accent escuro demais pra destacar botao — passa a
+   ser resolvido no DADO do negocio, nao no codigo: troca-se o brand_primary
+   de quem escolheu uma cor que nao funciona como cor de acao.
+
+   Se um dia isso voltar a aparecer em varios clientes, o caminho e clampar a
+   luminancia no injector (preserva o matiz do cliente e garante contraste),
+   nao desligar a marca de novo. */
 
 /* Desabilita todas as transições durante troca de tema pra evitar lag visual */
 html.admin-theme-switching,
