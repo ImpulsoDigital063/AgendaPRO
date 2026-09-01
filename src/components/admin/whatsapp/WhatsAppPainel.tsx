@@ -242,6 +242,7 @@ export default function WhatsAppPainel({
     copiaECola: string | null
     qrBase64: string | null
     reaproveitada: boolean
+    link: string | null
   } | null>(null)
 
   const carregar = useCallback(() => {
@@ -365,6 +366,7 @@ export default function WhatsAppPainel({
           copiaECola: j.pixCopiaECola ?? null,
           qrBase64: j.pixQrBase64 ?? null,
           reaproveitada: j.reaproveitada === true,
+          link: j.link ?? null,
         })
         setVista({ tela: 'inicio' })
       }

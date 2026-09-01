@@ -22,7 +22,7 @@
    de novo traz o mesmo PIX de volta.
    ═══════════════════════════════════════════════════════════════ */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconClose } from '@/components/ui/Icon'
 import { WA } from './ui'
 
@@ -33,6 +33,9 @@ export type PixAberto = {
   copiaECola: string | null
   qrBase64: string | null
   reaproveitada: boolean
+  /** Pagina de pagamento do Asaas. E o caminho que nao depende de
+   *  area de transferencia nem de camera. */
+  link: string | null
 }
 
 const reais = (n: number) => 'R$ ' + n.toFixed(2).replace('.', ',')
@@ -44,7 +47,9 @@ export default function ModalPix({
   pix: PixAberto
   onFechar: () => void
 }) {
-  const [copiado, setCopiado] = useState(false)
+  /* null = ainda nao tentou · true = copiou · false = a copia FALHOU */
+  const [copiou, setCopiou] = useState<boolean | null>(null)
+  const campoCodigo = useRef<HTMLTextAreaElement>(null)
 
   /* Trava a rolagem do fundo enquanto o modal está aberto — senão o dedo
      rola a página atrás e a pessoa perde o QR de vista de novo. */
@@ -64,10 +69,42 @@ export default function ModalPix({
     return () => window.removeEventListener('keydown', esc)
   }, [onFechar])
 
-  function copiar() {
-    void navigator.clipboard.writeText(pix.copiaECola ?? '')
-    setCopiado(true)
-    setTimeout(() => setCopiado(false), 2500)
+  /* A versao anterior fazia `void navigator.clipboard.writeText(...)` e
+     mostrava "Código copiado" SEM checar nada. Quando a API falha — e no iOS
+     ela falha em PWA, em contexto nao-seguro e quando o gesto se perde — o
+     botao mentia, e o que ia pro banco era o que ja estava na area de
+     transferencia. Foi isso que fez o Eduardo levar erro em dois bancos com
+     um codigo que o Asaas gerou correto (CRC conferido na fonte).
+
+     Agora: tenta a API, cai pro seletor + execCommand se ela nao existir, e
+     so diz que copiou se copiou. Falhando, a tela mostra o codigo pra
+     selecionar na mao. */
+  async function copiar() {
+    const codigo = pix.copiaECola ?? ''
+    if (!codigo) return
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(codigo)
+        setCopiou(true)
+      } else {
+        throw new Error('sem clipboard api')
+      }
+    } catch {
+      const el = campoCodigo.current
+      let ok = false
+      if (el) {
+        el.focus()
+        el.select()
+        el.setSelectionRange(0, codigo.length)
+        try {
+          ok = document.execCommand('copy')
+        } catch {
+          ok = false
+        }
+      }
+      setCopiou(ok)
+    }
+    setTimeout(() => setCopiou(null), 4000)
   }
 
   return (
@@ -139,14 +176,58 @@ export default function ModalPix({
         )}
 
         {pix.copiaECola && (
-          <button
-            type="button"
-            onClick={copiar}
-            className="w-full mt-4 py-3.5 rounded-xl text-[15px] font-bold transition-transform hover:-translate-y-0.5"
-            style={{ background: WA.gradiente, color: '#fff', boxShadow: WA.sombra }}
+          <>
+            <button
+              type="button"
+              onClick={() => void copiar()}
+              className="w-full mt-4 py-3.5 rounded-xl text-[15px] font-bold transition-transform hover:-translate-y-0.5"
+              style={{ background: WA.gradiente, color: '#fff', boxShadow: WA.sombra }}
+            >
+              {copiou === true ? 'Código copiado' : 'Copiar código PIX'}
+            </button>
+
+            {/* O codigo SEMPRE visivel e selecionavel. Copia automatica falha
+                em celular mais do que se admite; selecionar na mao nunca
+                falha. `readOnly` e nao `disabled` porque campo desabilitado
+                nao deixa selecionar. */}
+            <textarea
+              ref={campoCodigo}
+              readOnly
+              value={pix.copiaECola}
+              onFocus={(e) => e.currentTarget.select()}
+              rows={3}
+              className="w-full mt-2 rounded-xl px-3 py-2 text-[11px] leading-snug"
+              style={{
+                background: 'var(--admin-surface)',
+                border: '1px solid var(--admin-border)',
+                color: 'var(--admin-text-2)',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                wordBreak: 'break-all',
+                resize: 'none',
+              }}
+            />
+            <p className="text-[11px] mt-1 text-center" style={{ color: 'var(--admin-text-faded)' }}>
+              {copiou === false
+                ? 'Não consegui copiar por aqui — toque no código acima, segure e copie.'
+                : 'Se o banco recusar o código colado, toque no código acima e copie na mão.'}
+            </p>
+          </>
+        )}
+
+        {pix.link && (
+          <a
+            href={pix.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full mt-3 py-3 rounded-xl text-[14px] font-semibold text-center"
+            style={{
+              background: 'var(--admin-surface)',
+              border: '1px solid var(--admin-border)',
+              color: 'var(--admin-text-2)',
+            }}
           >
-            {copiado ? 'Código copiado' : 'Copiar código PIX'}
-          </button>
+            Abrir a página de pagamento
+          </a>
         )}
 
         <p
