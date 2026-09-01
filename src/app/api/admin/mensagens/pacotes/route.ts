@@ -218,7 +218,7 @@ export async function PUT(req: NextRequest) {
     valor: prop.valor,
     unidades: prop.unidades,
     dias: prop.dias,
-    descricao: `Avisos ${pacotePorId(novo)!.nome} — ${prop.unidades} mensagens por ${prop.dias} dias`,
+    descricao: `Avisos ${prop.unidades} mensagens ${prop.dias} dias`,
   })
 }
 
@@ -233,6 +233,18 @@ export async function PUT(req: NextRequest) {
  * sem consultar mais nada — inclusive as unidades proporcionais, que não
  * dá pra recalcular depois porque dependem do dia da compra.
  */
+/** Tira acento e qualquer caractere fora do ASCII imprimivel. */
+function apenasAscii(t: string): string {
+  return t
+    .normalize('NFD')
+    // marcas de acento que o NFD separou da letra
+    .replace(/[̀-ͯ]/g, '')
+    // qualquer coisa fora do ASCII imprimível
+    .replace(/[^ -~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 async function cobrarAvisos(
   businessId: string,
   nomeNegocio: string,
@@ -339,7 +351,12 @@ async function cobrarAvisos(
       billingType: 'PIX',
       value: p.valor,
       dueDate: venc,
-      description: `${p.descricao} — ${nomeNegocio}`,
+      /* SO ASCII, e sem pontuacao decorativa. A descricao vai pro campo
+         `solicitacaoPagador` do PSP: o Asaas ja removia os travessoes, e
+         caractere fora do ASCII em campo que trafega pro Banco Central e
+         causa classica de "indisponibilidade temporaria" no app do banco.
+         Nome de negocio com acento tambem e normalizado. */
+      description: `${p.descricao} ${apenasAscii(nomeNegocio)}`.slice(0, 120),
       externalReference: externalRef,
     })
     if (!pay.ok || !pay.data?.id) {
