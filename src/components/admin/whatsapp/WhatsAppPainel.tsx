@@ -60,6 +60,7 @@ import AvisoDetalhe, { type Aviso } from './AvisoDetalhe'
 import Recarga from './Recarga'
 import ModalPix from './ModalPix'
 import Oferta, { type Movimento, type PacoteTela } from './Oferta'
+import Respostas, { type Resposta } from './Respostas'
 import VoceManda, {
   VoceMandaLista,
   type Qual,
@@ -223,6 +224,8 @@ export default function WhatsAppPainel({
   /* Os textos do wa.me — o modo "voce manda". Store diferente das reguas:
      businesses.whatsapp_*_template, nao message_rules. */
   const [manuais, setManuais] = useState<TextosManuais | null>(null)
+  /* So leitura. Nao existe marcar como lida — ver Respostas.tsx. */
+  const [respostas, setRespostas] = useState<Resposta[]>([])
   const [vista, setVista] = useState<
     | { tela: 'inicio' }
     | { tela: 'mensagens' }
@@ -253,6 +256,10 @@ export default function WhatsAppPainel({
     void fetch('/api/admin/mensagens/pacotes')
       .then((r) => r.json())
       .then((j) => setPacotes(j?.error ? null : j))
+      .catch(() => null)
+    void fetch('/api/admin/mensagens/respostas')
+      .then((r) => r.json())
+      .then((j) => setRespostas(Array.isArray(j?.respostas) ? j.respostas : []))
       .catch(() => null)
     void fetch('/api/admin/messages')
       .then((r) => r.json())
@@ -400,6 +407,8 @@ export default function WhatsAppPainel({
   }
 
   const telefoneDela = businessPhone ? formatarNumero(businessPhone) : ''
+
+  const listaRespostas = <Respostas respostas={respostas} />
 
   const listaVoceManda = (
     <VoceMandaLista
@@ -760,6 +769,7 @@ export default function WhatsAppPainel({
             onVerMensagens={() => setVista({ tela: 'mensagens' })}
           />
           {listaVoceManda}
+          {listaRespostas}
         </div>
         {pix && (
           <ModalPix
@@ -860,6 +870,7 @@ export default function WhatsAppPainel({
             {caixaPix}
             {listaDeAvisos}
             {listaVoceManda}
+            {listaRespostas}
           </div>
         </div>
       </div>
