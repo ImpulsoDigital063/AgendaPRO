@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { confirmarAgendamento } from '@/lib/mensagens/confirmar'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { resolveBusinessIdOperacao as getBusinessId } from '@/lib/api-business-access'
@@ -173,6 +174,20 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (!verify || verify.status !== 'reserved' || verify.appointment_id !== appt.id) {
     return NextResponse.json({ error: 'verify_failed' }, { status: 500 })
+  }
+
+  /* Agendamento por cartão presente é agendamento futuro de verdade — "MESMOS
+     campos do AgendarModal", diz o comentário da etapa 6. Era o único dos sete
+     pontos de criação que não avisava a cliente.
+
+     Com `await` e não `void`: em serverless a resposta encerra a invocação, e
+     trabalho pendente pode ser congelado antes de a mensagem sair. É o mesmo
+     jeito do `booking/submit`. O try/catch garante que falha de mensagem não
+     derrube um agendamento que já está gravado e verificado. */
+  try {
+    await confirmarAgendamento(admin, appt.id as string)
+  } catch {
+    /* já gravado — a mensagem é o que falhou, não o agendamento */
   }
 
   return NextResponse.json({ ok: true, appointment_id: appt.id, session_id: session.id })

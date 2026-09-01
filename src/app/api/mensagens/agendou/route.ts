@@ -22,9 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { enviar } from '@/lib/mensagens/enviar'
-import { chaveIdempotencia } from '@/lib/mensagens/tipos'
-import { dataCurta } from '@/lib/mensagens/textos'
+import { confirmarAgendamento } from '@/lib/mensagens/confirmar'
 
 export const runtime = 'nodejs'
 
@@ -45,39 +43,15 @@ export async function POST(req: NextRequest) {
     { auth: { persistSession: false } },
   )
 
-  const { data: a } = await db
-    .from('appointments')
-    .select(`id, business_id, appointment_date, start_time, client_name, client_phone,
-             client_email, service_name, customer_id, status,
-             business:businesses(name, phone), professional:professionals(name)`)
-    .eq('id', appointmentId)
-    .maybeSingle()
-
-  if (!a) return NextResponse.json({ error: 'nao_encontrado' }, { status: 404 })
-  if (!['pending', 'confirmed'].includes(String(a.status))) {
-    return NextResponse.json({ ok: true, ignorado: 'status' })
+  /* A logica vive em `confirmarAgendamento` pra que QUALQUER ponto que crie
+     agendamento consiga disparar com uma linha — sem depender de alguem
+     lembrar de chamar esta rota. */
+  const r = await confirmarAgendamento(db, appointmentId)
+  if (!r.ok) {
+    return r.motivo === 'nao_encontrado'
+      ? NextResponse.json({ error: 'nao_encontrado' }, { status: 404 })
+      : NextResponse.json({ ok: true, ignorado: r.motivo })
   }
 
-  const negocio = a.business as unknown as { name: string; phone: string | null } | null
-  const prof = a.professional as unknown as { name: string } | null
-
-  const r = await enviar(db, {
-    businessId: a.business_id as string,
-    tipo: 'confirmacao',
-    chave: chaveIdempotencia('confirmacao', a.id as string),
-    destino: { telefone: a.client_phone as string | null, email: a.client_email as string | null },
-    appointmentId: a.id as string,
-    customerId: (a.customer_id as string) ?? null,
-    variaveis: {
-      cliente: (a.client_name as string) || 'Cliente',
-      salao: negocio?.name ?? 'seu negócio',
-      data: dataCurta(a.appointment_date as string),
-      hora: String(a.start_time).slice(0, 5),
-      servico: (a.service_name as string) || 'seu atendimento',
-      telefoneSalao: negocio?.phone ?? null,
-      profissional: prof?.name,
-    },
-  })
-
-  return NextResponse.json({ ok: true, resultado: r })
+  return NextResponse.json({ ok: true, resultado: r.resultado })
 }
