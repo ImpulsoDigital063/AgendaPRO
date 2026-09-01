@@ -50,24 +50,40 @@ export default function SinalPix({
   cor: string
 }) {
   const [copiado, setCopiado] = useState(false)
+  const [falhouCopia, setFalhouCopia] = useState(false)
   const [verQR, setVerQR] = useState(false)
 
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
+  /* O `setCopiado(true)` ficava FORA do try/catch e o `execCommand` não
+     tinha o retorno conferido: falhando, o botão dizia "Código copiado ✓" e
+     a cliente colava no banco o que já estava na área de transferência.
+     Mesmo defeito que derrubou o pagamento do Eduardo em dois bancos
+     (31/08). Aqui é pior: quem paga é a cliente do salão, e ela não tem a
+     quem reclamar. */
   async function copiar() {
+    let ok = false
     try {
+      if (!navigator.clipboard?.writeText) throw new Error('sem clipboard api')
       await navigator.clipboard.writeText(copiaECola)
+      ok = true
     } catch {
-      // Safari antigo em contexto sem permissão: seleciona pra cópia manual.
       const el = document.createElement('textarea')
       el.value = copiaECola
+      el.style.position = 'fixed'
+      el.style.opacity = '0'
       document.body.appendChild(el)
       el.select()
-      document.execCommand('copy')
+      try {
+        ok = document.execCommand('copy')
+      } catch {
+        ok = false
+      }
       document.body.removeChild(el)
     }
-    setCopiado(true)
-    setTimeout(() => setCopiado(false), 2500)
+    setCopiado(ok)
+    setFalhouCopia(!ok)
+    if (ok) setTimeout(() => setCopiado(false), 2500)
   }
 
   const zap = telefoneNegocio?.replace(/\D/g, '')
@@ -94,6 +110,29 @@ export default function SinalPix({
       >
         {copiado ? 'Código copiado ✓' : 'Copiar código PIX'}
       </button>
+
+      {/* Falhou de verdade: em vez de mentir, mostra o código pra ela
+          selecionar com o dedo. */}
+      {falhouCopia && (
+        <div className="mt-2">
+          <p className="text-xs mb-1" style={{ color: '#B45309' }}>
+            Não deu para copiar automaticamente. Toque no código, segure e copie:
+          </p>
+          <textarea
+            readOnly
+            value={copiaECola}
+            onFocus={(e) => e.currentTarget.select()}
+            rows={3}
+            className="w-full rounded-lg px-2 py-1.5 text-[11px] leading-snug"
+            style={{
+              border: '1px solid rgba(0,0,0,0.15)',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              wordBreak: 'break-all',
+              resize: 'none',
+            }}
+          />
+        </div>
+      )}
       <p className="text-[11px] mt-2 opacity-60">
         Copie, abra o app do seu banco e escolha <b>PIX copia e cola</b>.
       </p>

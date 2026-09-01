@@ -28,6 +28,7 @@ export default function PixInlineCheckout({
 }: Props) {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
   const [statusMessage, setStatusMessage] = useState('Aguardando pagamento…')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -54,16 +55,29 @@ export default function PixInlineCheckout({
     }
   }, [router])
 
+  /* Não mentia — mas falhava CALADO: selecionava o campo e não dizia nada,
+     então a dona achava que tinha copiado. Agora o fracasso aparece. */
   async function handleCopy() {
     if (!qrPayload) return
     try {
+      if (!navigator.clipboard?.writeText) throw new Error('sem clipboard api')
       await navigator.clipboard.writeText(qrPayload)
       setCopied(true)
+      setCopyFailed(false)
       setTimeout(() => setCopied(false), 2500)
     } catch {
-      // fallback: seleciona o texto pra cliente copiar manual
       const el = document.getElementById(`pix-payload-${paymentId}`) as HTMLInputElement | null
+      el?.focus()
       el?.select()
+      let ok = false
+      try {
+        ok = document.execCommand('copy')
+      } catch {
+        ok = false
+      }
+      setCopied(ok)
+      setCopyFailed(!ok)
+      if (ok) setTimeout(() => setCopied(false), 2500)
     }
   }
 
@@ -152,7 +166,7 @@ export default function PixInlineCheckout({
                 color: '#fff',
               }}
             >
-              {copied ? 'Copiado!' : 'Copiar'}
+              {copied ? 'Copiado!' : copyFailed ? 'Copie na mão' : 'Copiar'}
             </button>
           </div>
         </div>

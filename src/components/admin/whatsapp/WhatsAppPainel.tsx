@@ -528,7 +528,10 @@ export default function WhatsAppPainel({
       {pix.copiaECola && (
         <button
           type="button"
-          onClick={() => void navigator.clipboard.writeText(pix.copiaECola ?? '')}
+          /* Abre o modal, que tem cópia verificada, código selecionável e
+             link da página de pagamento. Copiar direto daqui repetiria o
+             `void` que fez o botão mentir. */
+          onClick={() => setPix(pix)}
           className="text-xs font-semibold px-3 py-1.5 rounded-lg mt-2"
           style={{ background: 'var(--admin-text)', color: 'var(--admin-bg)' }}
         >
