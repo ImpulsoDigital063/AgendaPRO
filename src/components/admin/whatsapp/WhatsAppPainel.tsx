@@ -696,7 +696,16 @@ export default function WhatsAppPainel({
           />
           {listaVoceManda}
         </div>
-        {pix && <ModalPix pix={pix} onFechar={() => setPix(null)} />}
+        {pix && (
+          <ModalPix
+            pix={pix}
+            onFechar={() => setPix(null)}
+            onPago={() => {
+              setPix(null)
+              carregar()
+            }}
+          />
+        )}
       </>
     )
   }
@@ -789,7 +798,16 @@ export default function WhatsAppPainel({
           </div>
         </div>
       </div>
-      {pix && <ModalPix pix={pix} onFechar={() => setPix(null)} />}
+      {pix && (
+        <ModalPix
+          pix={pix}
+          onFechar={() => setPix(null)}
+          onPago={() => {
+            setPix(null)
+            carregar()
+          }}
+        />
+      )}
     </>
   )
 }

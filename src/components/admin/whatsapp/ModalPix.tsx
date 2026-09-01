@@ -43,13 +43,47 @@ const reais = (n: number) => 'R$ ' + n.toFixed(2).replace('.', ',')
 export default function ModalPix({
   pix,
   onFechar,
+  onPago,
 }: {
   pix: PixAberto
   onFechar: () => void
+  /** Chamado quando o pagamento e' confirmado no banco. */
+  onPago: () => void
 }) {
+  const [pago, setPago] = useState(false)
   /* null = ainda nao tentou · true = copiou · false = a copia FALHOU */
   const [copiou, setCopiou] = useState<boolean | null>(null)
   const campoCodigo = useRef<HTMLTextAreaElement>(null)
+
+  /* ── ESPERA O DINHEIRO CAIR ──────────────────────────────────
+     Em 01/09 o Eduardo pagou e a tela nao mudou nem avisou nada. O pacote
+     estava ativo no banco em segundos (o webhook do Asaas fez o trabalho),
+     mas o painel busca os dados UMA vez ao abrir e fica parado. Com PIX isso
+     e' falha de desenho: o dinheiro entra segundos depois, e ninguem volta
+     pra tela pra descobrir.
+
+     Mesmo padrao que o checkout da mensalidade ja usava (5s, silencioso, e
+     para sozinho quando confirma). */
+  useEffect(() => {
+    const t = setInterval(async () => {
+      try {
+        const r = await fetch('/api/admin/mensagens/pacotes', { cache: 'no-store' })
+        if (!r.ok) return
+        const j = await r.json()
+        if (j?.atual) {
+          setPago(true)
+          clearInterval(t)
+          /* 1,8s pra ela LER a confirmacao antes da tela trocar. Fechar na
+             hora daria a sensacao de que nada aconteceu, que e exatamente o
+             problema que isso conserta. */
+          setTimeout(onPago, 1800)
+        }
+      } catch {
+        /* silencioso — a proxima rodada tenta de novo */
+      }
+    }, 5000)
+    return () => clearInterval(t)
+  }, [onPago])
 
   /* Trava a rolagem do fundo enquanto o modal está aberto — senão o dedo
      rola a página atrás e a pessoa perde o QR de vista de novo. */
@@ -136,6 +170,32 @@ export default function ModalPix({
           overflowY: 'auto',
         }}
       >
+        {pago ? (
+          <div className="py-6 text-center">
+            <span
+              className="inline-flex items-center justify-center rounded-full mb-3"
+              style={{ width: 64, height: 64, background: WA.fundo, color: WA.forte }}
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M4 12.5l5.5 5.5L20 7"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <p className="text-[19px] font-bold" style={{ color: 'var(--admin-text)' }}>
+              Pagamento confirmado
+            </p>
+            <p className="text-[14px] mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+              {pix.unidades} mensagens liberadas. A confirmação e o lembrete da véspera já estão
+              ligados — sua cliente começa a receber no próximo agendamento.
+            </p>
+          </div>
+        ) : (
+        <>
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-[17px] font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
@@ -234,9 +294,11 @@ export default function ModalPix({
           className="text-[12px] leading-relaxed mt-3 text-center"
           style={{ color: 'var(--admin-text-mute)' }}
         >
-          Assim que o pagamento cair, os avisos ligam sozinhos — você não precisa voltar aqui.
-          Pode fechar esta janela: a cobrança continua de pé.
+          Esta tela reconhece o pagamento sozinha, em alguns segundos. Pode fechar: a cobrança
+          continua de pé e os avisos ligam do mesmo jeito.
         </p>
+        </>
+        )}
       </div>
     </div>
   )
