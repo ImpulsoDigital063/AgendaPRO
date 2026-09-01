@@ -13,6 +13,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useState } from 'react'
+import type { TermoPessoa } from '@/lib/segmento'
 import { Chip } from './ui'
 import TelaWhatsApp from './TelaWhatsApp'
 
@@ -48,12 +49,14 @@ const SELO: Record<string, { texto: string; tom: 'ok' | 'atencao' | 'erro' }> = 
  * desenha o próprio header acaba com dois títulos empilhados.
  */
 export default function AvisoDetalhe({
+  T,
   aviso,
   numeroCanal,
   onBotao,
   onHorario,
   onEnviarTexto,
 }: {
+  T: TermoPessoa
   aviso: Aviso
   /** Numero oficial de onde o aviso sai. NAO e o do salao. */
   numeroCanal: string
@@ -97,7 +100,7 @@ export default function AvisoDetalhe({
         <>
           <div className="mt-5 mb-2 flex items-center gap-2">
             <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-              No celular da sua cliente
+              {`No celular d${T.art} ${T.poss} ${T.s}`}
             </p>
             {selo && <Chip tom={selo.tom}>{selo.texto}</Chip>}
           </div>
@@ -116,9 +119,7 @@ export default function AvisoDetalhe({
             }
           />
           <p className="text-[11px] mt-2 leading-relaxed max-w-sm" style={{ color: 'var(--admin-text-faded)' }}>
-            Exemplo com uma cliente chamada Maria — nome, dia, horário e serviço entram sozinhos.
-            Chega pelo número oficial do AgendaPRO; o nome do seu negócio vai na mensagem, e o
-            telefone de resposta é o seu.
+            {`Exemplo com ${T.art === 'a' ? 'uma' : 'um'} ${T.s} de nome Maria — nome, dia, horário e serviço entram sozinhos. Chega pelo número oficial do AgendaPRO; o nome do seu negócio vai na mensagem, e o telefone de resposta é o seu.`}
           </p>
 
           {aviso.status === 'REJECTED' && (
@@ -244,10 +245,10 @@ export default function AvisoDetalhe({
               />
               <span className="text-[13px] leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
                 <strong style={{ color: 'var(--admin-text)' }}>
-                  Deixar a cliente confirmar pelo botão
+                  {`Deixar ${T.art} ${T.s} confirmar pelo botão`}
                 </strong>
                 <span className="block text-[11px] mt-0.5">
-                  Ela toca em &quot;Confirmar presença&quot; e o horário é confirmado sozinho.
+                  {`${T.pron.charAt(0).toUpperCase()}${T.pron.slice(1)} toca em "Confirmar presença" e o horário é confirmado sozinho.`}
                 </span>
               </span>
             </label>
@@ -280,7 +281,7 @@ export default function AvisoDetalhe({
                     </option>
                   ))}
                 </select>
-                do horário dela
+                {`do horário ${T.de}`}
               </label>
 
               {/* 24h antes E' a vespera. Os dois avisos sairiam no mesmo

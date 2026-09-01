@@ -21,6 +21,7 @@
 
 import { useState } from 'react'
 import { IconClose, IconWhatsapp } from '@/components/ui/Icon'
+import type { TermoPessoa } from '@/lib/segmento'
 import { Lista, TituloSecao, WA } from './ui'
 
 export type Resposta = {
@@ -54,9 +55,11 @@ function bonito(bruto: string): string {
 }
 
 export default function Respostas({
+  T,
   respostas,
   onApagar,
 }: {
+  T: TermoPessoa
   respostas: Resposta[]
   onApagar: (id: string) => Promise<void>
 }) {
@@ -65,13 +68,12 @@ export default function Respostas({
 
   return (
     <div className="mt-8">
-      <TituloSecao>O que suas clientes responderam</TituloSecao>
+      <TituloSecao>{`O que ${T.possP} ${T.p} responderam`}</TituloSecao>
       <p
         className="text-[13.5px] leading-relaxed mb-2.5 px-1"
         style={{ color: 'var(--admin-text-2)' }}
       >
-        Quando a cliente responde um aviso, a mensagem chega aqui e no seu celular. Este número não
-        é lido por ninguém — para responder, toque em{' '}
+        {`Quando ${T.art} ${T.s} responde um aviso, a mensagem chega aqui e no seu celular. Este número não é lido por ninguém — para responder, toque em `}
         <strong style={{ color: WA.forte }}>Responder no WhatsApp</strong> e a conversa abre no seu.
         Depois de ler, o <strong>×</strong> apaga de vez. O que sobrar some sozinho em 30 dias.
       </p>

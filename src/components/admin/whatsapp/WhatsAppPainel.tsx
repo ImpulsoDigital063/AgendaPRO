@@ -44,6 +44,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import Link from 'next/link'
+import { termoPessoa } from '@/lib/segmento'
 import { useCallback, useEffect, useState } from 'react'
 import {
   IconArrowLeft,
@@ -87,41 +88,42 @@ type Pacotes = {
   pacotes: PacoteTela[]
 }
 
-const INFO: Record<
-  string,
-  { rotulo: string; quando: string; porque: string; icone: React.ReactNode }
-> = {
+/* Os textos falam de quem o negocio atende, entao dependem do segmento:
+   salao diz "a cliente", clinica diz "o paciente". Ver `termoPessoa`. */
+const infoDe = (
+  t: ReturnType<typeof termoPessoa>,
+): Record<string, { rotulo: string; quando: string; porque: string; icone: React.ReactNode }> => ({
   confirmacao: {
     rotulo: 'Confirmação do agendamento',
-    quando: 'Assim que ela marca',
-    porque: 'Manda pra cliente o dia, a hora e o serviço que ficaram marcados.',
+    quando: `Assim que ${t.pron} marca`,
+    porque: `Manda pra ${t.s} o dia, a hora e o serviço que ficaram marcados.`,
     icone: <IconCalendar size={19} />,
   },
   lembrete_vespera: {
     rotulo: 'Lembrete na véspera',
     quando: 'Um dia antes',
-    porque: 'Lembra a cliente na véspera. É o que mais reduz falta.',
+    porque: `Lembra ${t.art} ${t.s} na véspera. É o que mais reduz falta.`,
     icone: <IconBell size={19} />,
   },
   lembrete_dia: {
     rotulo: 'Lembrete no dia',
     quando: 'Horas antes',
-    porque: 'Lembra poucas horas antes do horário dela, não de manhã pra todo mundo.',
+    porque: `Lembra poucas horas antes do horário ${t.de}, não de manhã pra todo mundo.`,
     icone: <IconClock size={19} />,
   },
   aniversario: {
     rotulo: 'Aniversário',
     quando: 'No dia, de manhã',
-    porque: 'Uma mensagem no aniversário da cliente. Uma vez por ano.',
+    porque: `Uma mensagem no aniversário ${t.de}. Uma vez por ano.`,
     icone: <IconGift size={19} />,
   },
   retorno: {
     rotulo: 'Hora de voltar',
     quando: 'Quando fecha o intervalo',
-    porque: 'Avisa a cliente que já deu o prazo de repetir o procedimento.',
+    porque: `Avisa ${t.art} ${t.s} que já deu o prazo de repetir o procedimento.`,
     icone: <IconSparkles size={19} />,
   },
-}
+})
 
 /** 556392846765 → (63) 9284-6765 */
 function formatarNumero(bruto: string): string {
@@ -247,6 +249,10 @@ export default function WhatsAppPainel({
     reaproveitada: boolean
     link: string | null
   } | null>(null)
+
+  /* Vocabulario do segmento: clinica diz "paciente", personal diz "aluno". */
+  const T = termoPessoa(category ?? null)
+  const INFO = infoDe(T)
 
   const carregar = useCallback(() => {
     void fetch('/api/admin/mensagens/canal')
@@ -423,10 +429,11 @@ export default function WhatsAppPainel({
     }
   }
 
-  const listaRespostas = <Respostas respostas={respostas} onApagar={apagarResposta} />
+  const listaRespostas = <Respostas T={T} respostas={respostas} onApagar={apagarResposta} />
 
   const listaVoceManda = (
     <VoceMandaLista
+      T={T}
       textos={manuais}
       negocio={businessName}
       categoria={category ?? null}
@@ -461,6 +468,7 @@ export default function WhatsAppPainel({
           <div className={CONTAINER}>
             <div className="lg:max-w-2xl">
               <AvisoDetalhe
+                T={T}
                 aviso={a}
                 numeroCanal={canal?.numero ? formatarNumero(canal.numero) : '(63) 9284-6765'}
                 onBotao={(v) => salvarRegra(a.tipo, { comBotao: v })}
@@ -486,6 +494,7 @@ export default function WhatsAppPainel({
         <div className={CONTAINER}>
           <div className="lg:max-w-2xl">
             <VoceManda
+              T={T}
               qual={qual}
               inicial={manuais?.[qual] ?? ''}
               negocio={businessName}
@@ -588,8 +597,8 @@ export default function WhatsAppPainel({
         style={{ color: 'var(--admin-text-2)' }}
       >
         {temPacote
-          ? 'O AgendaPRO manda essas mensagens no WhatsApp da cliente sozinho \u2014 voc\u00ea n\u00e3o digita nada. Ligue as que quiser que ela receba.'
-          : 'Deixe ligadas as que voc\u00ea quer \u2014 a escolha fica salva. Elas come\u00e7am a sair quando voc\u00ea contratar um pacote de mensagens.'}
+          ? `O AgendaPRO manda essas mensagens no WhatsApp d${T.art} ${T.s} sozinho — você não digita nada. Ligue as que quiser que ${T.pron} receba.`
+          : 'Deixe ligadas as que você quer — a escolha fica salva. Elas começam a sair quando você contratar um pacote de mensagens.'}
       </p>
       <Lista>
         {avisos.map((a, i) => (
@@ -726,8 +735,8 @@ export default function WhatsAppPainel({
                 <span className="text-[15px] font-semibold" style={{ color: 'var(--admin-text)' }}>
                   {canal.semTelefone.quantos}{' '}
                   {canal.semTelefone.quantos === 1
-                    ? 'cliente sem telefone'
-                    : 'clientes sem telefone'}
+                    ? `${T.s} sem telefone`
+                    : `${T.p} sem telefone`}
                 </span>
               }
               meta={<>Não vão receber aviso: {canal.semTelefone.nomes.join(', ')}</>}
@@ -763,11 +772,12 @@ export default function WhatsAppPainel({
       <>
         <Cabecalho
           titulo="WhatsApp"
-          subtitulo="Mensagens que o sistema manda pras suas clientes"
+          subtitulo={`Mensagens que o sistema manda pr${T.art}s ${T.possP} ${T.p}`}
           direita={chipBeta}
         />
         <div className={CONTAINER}>
           <Oferta
+            T={T}
             precisaDados={precisaDados}
             remetente="AgendaPRO"
             numero={canal?.numero ? formatarNumero(canal.numero) : '(63) 9284-6765'}
@@ -805,7 +815,7 @@ export default function WhatsAppPainel({
     <>
       <Cabecalho
         titulo="WhatsApp"
-        subtitulo="Mensagens que o sistema manda pras suas clientes"
+        subtitulo={`Mensagens que o sistema manda pr${T.art}s ${T.possP} ${T.p}`}
         direita={chipBeta}
       />
 

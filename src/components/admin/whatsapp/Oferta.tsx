@@ -50,6 +50,7 @@ import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import CountUp from '@/components/admin/CountUp'
 import { IconCheck, IconChevronRight, IconWhatsapp } from '@/components/ui/Icon'
+import type { TermoPessoa } from '@/lib/segmento'
 import { Lista, TituloSecao, WA } from './ui'
 import TelaWhatsApp from './TelaWhatsApp'
 
@@ -116,6 +117,7 @@ function Numero({
 }
 
 export default function Oferta({
+  T,
   precisaDados,
   remetente,
   numero,
@@ -131,6 +133,8 @@ export default function Oferta({
   onContratar,
   onVerMensagens,
 }: {
+  /** Vocabulário do segmento: clínica diz "paciente", não "cliente". */
+  T: TermoPessoa
   /** Asaas nao conhece esse negocio: a tela pede nome e CPF e reenvia. */
   precisaDados: boolean
   remetente: string
@@ -177,15 +181,14 @@ export default function Oferta({
           className="admin-enter text-[27px] sm:text-[32px] leading-[1.12] font-bold tracking-tight mt-3"
           style={{ ...entra(60), color: 'var(--admin-text)' }}
         >
-          Sua cliente recebe confirmação
+          {`${T.poss.charAt(0).toUpperCase()}${T.poss.slice(1)} ${T.s} recebe confirmação`}
           <br className="hidden sm:block" /> e lembrete sozinho.
         </h2>
         <p
           className="admin-enter text-[15px] leading-relaxed mt-2.5 max-w-md"
           style={{ ...entra(100), color: 'var(--admin-text-2)' }}
         >
-          O AgendaPRO manda no WhatsApp dela na hora que marca e um dia antes. Você não digita
-          nada, não salva contato, não abre o celular.
+          {`O AgendaPRO manda no WhatsApp ${T.de} na hora que marca e um dia antes. Você não digita nada, não salva contato, não abre o celular.`}
         </p>
 
         {/* ═══ OS NÚMEROS DELA ═════════════════════════════════
@@ -252,7 +255,7 @@ export default function Oferta({
               className="text-[11px] font-bold uppercase tracking-wider mb-2"
               style={{ color: 'var(--admin-text-faded)' }}
             >
-              No celular da sua cliente
+              {`No celular d${T.art} ${T.poss} ${T.s}`}
             </p>
             <TelaWhatsApp
               remetente={remetente}
@@ -273,8 +276,7 @@ export default function Oferta({
                 primeira linha da mensagem, e o telefone de resposta é o seu.
               </p>
               <p className="text-[11px] leading-relaxed" style={{ color: 'var(--admin-text-faded)' }}>
-                Ela toca em &quot;Confirmar presença&quot; e o horário fica confirmado na sua agenda
-                sozinho — você não precisa responder nada.
+                {`${T.pron.charAt(0).toUpperCase()}${T.pron.slice(1)} toca em "Confirmar presença" e o horário fica confirmado na sua agenda sozinho — você não precisa responder nada.`}
               </p>
             </div>
           </div>
@@ -291,7 +293,7 @@ export default function Oferta({
               'Cada mensagem enviada consome uma do pacote.',
               'Aniversário e “hora de voltar” consomem 7 — o WhatsApp cobra essas como divulgação, e é bem mais caro.',
               `Passou do pacote, não para: cada mensagem extra sai ${reais(precoExcedente)} e continua saindo.`,
-              'Cliente sem telefone cadastrado não recebe, e não consome nada.',
+              `${T.s.charAt(0).toUpperCase()}${T.s.slice(1)} sem telefone cadastrado não recebe, e não consome nada.`,
             ].map((t, i) => (
               <li key={i} className="flex items-start gap-2.5">
                 {/* Check VERDE, não no accent: no accent ele compete com o
@@ -326,7 +328,7 @@ export default function Oferta({
         >
           <span className="flex-1 min-w-0">
             <span className="block text-[15px] font-semibold" style={{ color: 'var(--admin-text)' }}>
-              Ver as mensagens que ela recebe
+              {`Ver as mensagens que ${T.pron} recebe`}
             </span>
             <span className="block text-[13px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
               Leia e edite os textos antes de contratar.

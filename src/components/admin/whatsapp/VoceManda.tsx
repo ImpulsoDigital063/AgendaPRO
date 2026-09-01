@@ -48,6 +48,7 @@ import {
 } from '@/lib/message-templates'
 import { sugestoesDeServico } from '@/lib/segmento'
 import { IconCalendar, IconBell } from '@/components/ui/Icon'
+import type { TermoPessoa } from '@/lib/segmento'
 import { Chip, IconeAviso, Linha, Lista, TituloSecao, WA } from './ui'
 import TelaWhatsApp from './TelaWhatsApp'
 
@@ -83,11 +84,13 @@ export type TextosManuais = { confirmation: string; reminder: string }
 
 /** A lista das duas mensagens, pra raiz da central. */
 export function VoceMandaLista({
+  T,
   textos,
   negocio,
   categoria,
   onAbrir,
 }: {
+  T: TermoPessoa
   textos: TextosManuais | null
   negocio: string
   categoria: string | null
@@ -144,6 +147,7 @@ export function VoceMandaLista({
 
 /** A tela de editar UMA das duas. */
 export default function VoceManda({
+  T,
   qual,
   inicial,
   negocio,
@@ -151,6 +155,7 @@ export default function VoceManda({
   categoria,
   onSalvar,
 }: {
+  T: TermoPessoa
   qual: Qual
   inicial: string
   negocio: string
@@ -231,7 +236,7 @@ export default function VoceManda({
         className="text-[11px] font-bold uppercase tracking-wider mt-3 mb-1.5"
         style={{ color: 'var(--admin-text-faded)' }}
       >
-        Inserir dados do cliente
+        {`Inserir dados d${T.art} ${T.s}`}
       </p>
       <div className="flex flex-wrap gap-1.5">
         {TEMPLATE_VARIABLES.map((v) => (
@@ -256,7 +261,7 @@ export default function VoceManda({
         className="text-[11px] font-bold uppercase tracking-wider mt-6 mb-2"
         style={{ color: 'var(--admin-text-faded)' }}
       >
-        No celular da sua cliente
+        {`No celular d${T.art} ${T.poss} ${T.s}`}
       </p>
       <TelaWhatsApp remetente={negocio} numero={numero} texto={previa} />
 

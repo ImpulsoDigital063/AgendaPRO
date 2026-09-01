@@ -38,6 +38,56 @@ export const CATEGORIAS = [
 
 export type Categoria = (typeof CATEGORIAS)[number]
 
+/* ═══════════════════════════════════════════════════════════════
+   COMO O NEGÓCIO CHAMA QUEM ELE ATENDE
+
+   Eduardo, 01/09: "de fato o CAF não trata cliente, ele trata paciente, e
+   clínicas também seguem por esse rumo".
+
+   O painel inteiro foi escrito em linguagem de salão — "a cliente", "sua
+   cliente", "ela". Numa clínica de fisioterapia isso soa errado duas vezes:
+   erra o termo E erra o gênero, porque metade dos pacientes é homem.
+
+   O gênero acompanha o termo de propósito. Em salão a base é feminina e
+   escrever "a cliente" é o que soa natural para a dona; em clínica o
+   masculino é a forma não marcada. Não é descuido — é a linguagem de cada
+   lugar.
+   ═══════════════════════════════════════════════════════════════ */
+export type TermoPessoa = {
+  /** cliente · paciente · aluno */
+  s: string
+  /** clientes · pacientes · alunos */
+  p: string
+  /** a · o — artigo definido */
+  art: string
+  /** sua · seu — possessivo antes do singular */
+  poss: string
+  /** suas · seus */
+  possP: string
+  /** dela · dele */
+  de: string
+  /** ela · ele */
+  pron: string
+}
+
+const CLIENTE: TermoPessoa = { s: 'cliente', p: 'clientes', art: 'a', poss: 'sua', possP: 'suas', de: 'dela', pron: 'ela' }
+const PACIENTE: TermoPessoa = { s: 'paciente', p: 'pacientes', art: 'o', poss: 'seu', possP: 'seus', de: 'dele', pron: 'ele' }
+const ALUNO: TermoPessoa = { s: 'aluno', p: 'alunos', art: 'o', poss: 'seu', possP: 'seus', de: 'dele', pron: 'ele' }
+
+/** O termo que ESTE negócio usa. Sem categoria, cai em cliente. */
+export function termoPessoa(categoria: string | null | undefined): TermoPessoa {
+  switch ((categoria ?? '').trim()) {
+    case 'Fisioterapia':
+    case 'Clínica / consultório':
+    case 'Psicólogo / Terapeuta':
+      return PACIENTE
+    case 'Personal trainer':
+      return ALUNO
+    default:
+      return CLIENTE
+  }
+}
+
 /** Neutros: nenhum termo de salão. Servem pra qualquer segmento. */
 export const SERVICOS_NEUTROS = ['Atendimento', 'Avaliação', 'Sessão', 'Consulta', 'Retorno']
 export const RECOMPENSAS_NEUTRAS = [
