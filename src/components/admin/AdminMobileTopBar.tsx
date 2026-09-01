@@ -229,8 +229,10 @@ export default function AdminMobileTopBar({
               trial.vencido
                 ? { background: 'var(--admin-danger,#DC2626)', color: '#fff' }
                 : {
-                    background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)',
-                    color: 'var(--admin-accent)',
+                    /* azul fixo, não --admin-accent: quem cobra assinatura é o
+                       AgendaPRO, não o salão. No Studio Isis isso sairia vinho. */
+                    background: 'var(--agendapro-blue-soft)',
+                    color: 'var(--agendapro-blue)',
                   }
             }
           >

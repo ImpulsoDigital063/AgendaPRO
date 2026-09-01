@@ -1,5 +1,12 @@
 'use client'
 
+/* AZUL FIXO, NÃO A MARCA DO CLIENTE (Eduardo, 01/09/2026).
+   Todo este componente usa --agendapro-blue em vez de --brand-primary.
+   Regra: azul quando é o AgendaPRO falando. Instalar o app é assunto do
+   AgendaPRO com o dono do negócio — não do salão com a cliente dele. O
+   BrandThemeInjector sobrescreve --brand-*, então no Studio Isis este banner
+   sairia vinho e no Olímpio, cinza. */
+
 import { useEffect, useState } from 'react'
 
 type Platform = 'ios' | 'android' | null
@@ -41,9 +48,9 @@ function GuideSheet({
         <div className="flex items-center gap-3 mb-1">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: 'color-mix(in srgb, var(--brand-primary) 18%, transparent)' }}
+            style={{ background: 'color-mix(in srgb, var(--agendapro-blue) 18%, transparent)' }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--agendapro-blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
               <line x1="12" y1="18" x2="12.01" y2="18" />
             </svg>
@@ -63,11 +70,11 @@ function GuideSheet({
           <div
             className="mt-4 rounded-xl p-3 flex items-start gap-2.5"
             style={{
-              background: 'color-mix(in srgb, var(--brand-primary) 12%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--brand-primary) 30%, transparent)',
+              background: 'color-mix(in srgb, var(--agendapro-blue) 12%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--agendapro-blue) 30%, transparent)',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--agendapro-blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -90,7 +97,7 @@ function GuideSheet({
             <div className="flex items-center gap-2 mb-3">
               <span
                 className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--brand-primary)' }}
+                style={{ background: 'var(--agendapro-blue)' }}
               >
                 1
               </span>
@@ -129,8 +136,8 @@ function GuideSheet({
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse"
                     style={{
-                      background: 'var(--brand-primary)',
-                      boxShadow: '0 8px 16px -4px color-mix(in srgb, var(--brand-primary) 40%, transparent)',
+                      background: 'var(--agendapro-blue)',
+                      boxShadow: '0 8px 16px -4px color-mix(in srgb, var(--agendapro-blue) 40%, transparent)',
                     }}
                   >
                     {isIOS ? (
@@ -150,11 +157,11 @@ function GuideSheet({
                   <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center">
                     <span
                       className="text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
-                      style={{ background: 'var(--brand-primary)' }}
+                      style={{ background: 'var(--agendapro-blue)' }}
                     >
                       aqui
                     </span>
-                    <span className="text-sm leading-none" style={{ color: 'var(--brand-primary)' }}>
+                    <span className="text-sm leading-none" style={{ color: 'var(--agendapro-blue)' }}>
                       &#9660;
                     </span>
                   </div>
@@ -174,7 +181,7 @@ function GuideSheet({
             <div className="flex items-center gap-2 mb-3">
               <span
                 className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--brand-primary)' }}
+                style={{ background: 'var(--agendapro-blue)' }}
               >
                 2
               </span>
@@ -205,14 +212,14 @@ function GuideSheet({
               <div
                 className="px-4 py-2.5 text-sm font-bold flex items-center gap-3"
                 style={{
-                  background: 'color-mix(in srgb, var(--brand-primary) 14%, transparent)',
-                  color: 'var(--brand-primary)',
-                  borderLeft: '4px solid var(--brand-primary)',
+                  background: 'color-mix(in srgb, var(--agendapro-blue) 14%, transparent)',
+                  color: 'var(--agendapro-blue)',
+                  borderLeft: '4px solid var(--agendapro-blue)',
                 }}
               >
                 <div
                   className="w-5 h-5 rounded flex items-center justify-center"
-                  style={{ background: 'color-mix(in srgb, var(--brand-primary) 22%, transparent)' }}
+                  style={{ background: 'color-mix(in srgb, var(--agendapro-blue) 22%, transparent)' }}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -229,7 +236,7 @@ function GuideSheet({
         <button
           onClick={onClose}
           className="w-full mt-5 text-white py-3.5 rounded-2xl font-semibold text-sm active:scale-[0.98] transition-transform"
-          style={{ background: 'var(--brand-primary)' }}
+          style={{ background: 'var(--agendapro-blue)' }}
         >
           Entendi!
         </button>
@@ -316,7 +323,7 @@ export default function InstallBanner({ area = 'admin' }: { area?: Area } = {}) 
         style={{
           border: '1px solid var(--admin-border)',
           background:
-            'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 16%, var(--admin-surface)) 0%, color-mix(in srgb, var(--brand-primary) 7%, var(--admin-surface)) 100%)',
+            'linear-gradient(135deg, color-mix(in srgb, var(--agendapro-blue) 16%, var(--admin-surface)) 0%, color-mix(in srgb, var(--agendapro-blue) 7%, var(--admin-surface)) 100%)',
         }}
       >
         <button
@@ -326,8 +333,10 @@ export default function InstallBanner({ area = 'admin' }: { area?: Area } = {}) 
           <span
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{
-              background: 'var(--brand-primary)',
-              boxShadow: '0 4px 12px -3px color-mix(in srgb, var(--brand-primary) 40%, transparent)',
+              /* azul do AgendaPRO, não a marca do cliente: instalar o APP é
+                 assunto do AgendaPRO com o dono, não do salão com a cliente. */
+              background: 'var(--agendapro-blue)',
+              boxShadow: '0 4px 12px -3px color-mix(in srgb, var(--agendapro-blue) 40%, transparent)',
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -350,7 +359,7 @@ export default function InstallBanner({ area = 'admin' }: { area?: Area } = {}) 
           </span>
           <span
             className="text-[11px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
-            style={{ background: 'var(--brand-primary)', color: '#fff' }}
+            style={{ background: 'var(--agendapro-blue)', color: '#fff' }}
           >
             {platform === 'android' && deferredPrompt ? 'Instalar' : 'Ver'}
           </span>

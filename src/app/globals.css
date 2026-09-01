@@ -180,6 +180,18 @@ body {
   --admin-warn:         #D97706;
   --admin-danger:       #DC2626;
   --admin-bottomnav-bg: rgba(255, 255, 255, 0.92);
+
+  /* AZUL DO AGENDAPRO — imune à marca do cliente (Eduardo, 01/09/2026).
+
+     Regra: azul quando é o AGENDAPRO falando (aviso de teste, cobrança,
+     convite de instalar o app, link do Plano). Cor do cliente quando é o
+     NEGÓCIO DELE operando (agendar, menu ativo, registrar venda).
+
+     Precisa de nome próprio porque o BrandThemeInjector sobrescreve
+     --admin-accent e --brand-* com a cor do negócio. Um componente que
+     cobra assinatura não pode sair vinho na tela do Studio Isis. */
+  --agendapro-blue:      #2563EB;
+  --agendapro-blue-soft: rgba(37, 99, 235, 0.12);
 }
 
 /* A cor do painel voltou a ser a do CLIENTE (Eduardo, 01/09/2026).
