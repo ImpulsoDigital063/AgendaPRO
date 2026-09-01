@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
     const { data: appts } = await db
       .from('appointments')
       .select(`id, business_id, appointment_date, start_time, client_name, client_phone,
-               client_email, service_name, customer_id,
+               client_email, service_name, customer_id, created_at,
                business:businesses(name, phone), professional:professionals(name)`)
       .in('business_id', negLembrete)
       .in('appointment_date', [hoje, amanha])
@@ -126,6 +126,21 @@ export async function GET(req: NextRequest) {
         if (!regra) continue
         const alvo = quando + regra.offsetMinutos * 60_000
         if (!(alvo <= agora && agora < alvo + JANELA)) continue
+
+        /* NAO LEMBRA DO QUE ACABOU DE SER MARCADO.
+           Eduardo, 01/09: "porque veio 2?" — chegaram a confirmacao e o
+           lembrete no mesmo minuto.
+
+           Acontece com cliente de verdade: ela agenda as 17h para hoje as
+           19h, e o alvo do lembrete de 3h (16h) ja passou. A confirmacao sai
+           por ser agendamento novo e o lembrete sai por estar na janela. Ela
+           le "seu horario ficou marcado" e, um segundo depois, "passando
+           para lembrar que seu horario e hoje". Duas mensagens, duas
+           unidades, e a segunda sem sentido nenhum.
+
+           Se o agendamento foi criado DEPOIS da hora do lembrete, a
+           confirmacao ja fez esse trabalho. */
+        if (a.created_at && new Date(a.created_at as string).getTime() > alvo) continue
 
         fila.push({
           tipo, businessId: a.business_id as string,
