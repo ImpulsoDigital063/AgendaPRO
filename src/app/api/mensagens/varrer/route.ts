@@ -362,8 +362,78 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  /* ═══ UMA MENSAGEM POR PESSOA A CADA 30 MINUTOS ═══════════════
+     Regra cravada por Eduardo em 01/09: "nao faz sentido disparar duas msg
+     assim uma atras da outra".
+
+     A guarda anterior resolvia UM caso (lembrete de algo recem-marcado).
+     Esta e' a regra geral, e cobre os que a gente nao previu — inclusive
+     configuracao errada, como o lembrete do dia em 24h colidindo com o da
+     vespera.
+
+     Duas camadas:
+
+     1. DENTRO DESTA VARREDURA: se duas tarefas caem na mesma pessoa e mesmo
+        negocio, so a de maior prioridade vai. A outra nao e' descartada por
+        capricho — dizer duas vezes a mesma coisa em segundos e' o que faz a
+        cliente bloquear o numero, e o numero e' compartilhado por toda a
+        base.
+
+     2. CONTRA O QUE JA SAIU: se essa pessoa recebeu algo deste negocio nos
+        ultimos 30 minutos, espera. Pega o caso da confirmacao que sai NA
+        HORA do agendamento (fora desta fila) seguida de um lembrete.
+
+     PRIORIDADE. Confirmacao ganha de tudo: e' a unica que traz dia, hora e
+     servico de um horario que a pessoa talvez nao saiba que existe. Entre os
+     dois lembretes ganha o da VESPERA — se os dois vencem juntos e' porque o
+     "do dia" esta configurado em 24h, e o texto dele afirma "e hoje", que
+     seria falso. Aniversario e retorno cedem: sao os unicos que podem
+     esperar um dia sem prejuizo. */
+  const PRIORIDADE: Record<string, number> = {
+    confirmacao: 1,
+    dono_novo_agendamento: 2,
+    lembrete_vespera: 3,
+    lembrete_dia: 4,
+    retorno: 5,
+    aniversario: 6,
+  }
+  const SILENCIO = 30 * 60 * 1000
+
+  /* Uma consulta so pra toda a fila, nao uma por tarefa. */
+  const telefones = [...new Set(fila.map((t) => t.telefone).filter(Boolean))] as string[]
+  const recentes = new Set<string>()
+  if (telefones.length > 0) {
+    const { data: jaFoi } = await db
+      .from('message_log')
+      .select('business_id, destino')
+      .eq('canal', 'whatsapp')
+      .gte('created_at', new Date(agora - SILENCIO).toISOString())
+    for (const m of (jaFoi ?? []) as { business_id: string | null; destino: string | null }[]) {
+      /* Compara so digito: o destino e' gravado como a dona digitou —
+         "(63) 99292-0080" numa linha, "556392920080" noutra. */
+      if (m.business_id && m.destino) {
+        recentes.add(`${m.business_id}:${m.destino.replace(/\D/g, '').slice(-11)}`)
+      }
+    }
+  }
+
+  const vistos = new Set<string>()
+  const filaLimpa = fila
+    .slice()
+    .sort((x, y) => (PRIORIDADE[x.tipo] ?? 9) - (PRIORIDADE[y.tipo] ?? 9))
+    .filter((t) => {
+      if (!t.telefone) return true // e-mail nao concorre com WhatsApp
+      const chave = `${t.businessId}:${t.telefone.replace(/\D/g, '').slice(-11)}`
+      if (vistos.has(chave)) return false
+      if (recentes.has(chave)) return false
+      vistos.add(chave)
+      return true
+    })
+
+  const adiados = fila.length - filaLimpa.length
+
   // ── ENVIO (lote) ──────────────────────────────────────────────
-  const lote = fila.slice(0, LOTE)
+  const lote = filaLimpa.slice(0, LOTE)
   let enviados = 0, ignorados = 0, falhas = 0
   /* POR QUE FOI IGNORADO. As travas mais duras (conta demo, assinatura
      bloqueada, regra desligada) devolvem ANTES de gravar no message_log — de
@@ -441,9 +511,10 @@ Falharam agora: ${falhas} de ${lote.length}.`,
     hora_br: new Date(agora - 3 * 3600_000).toISOString().slice(0, 16).replace('T', ' '),
     regras_ligadas: regras.size,
     candidatos: fila.length,
+    adiados_por_silencio: adiados,
     processados: lote.length,
     enviados, ignorados, falhas,
     motivos,
-    restam: Math.max(0, fila.length - lote.length),
+    restam: Math.max(0, filaLimpa.length - lote.length),
   })
 }
