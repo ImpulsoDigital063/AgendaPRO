@@ -213,8 +213,8 @@ export default function ExtratoEmpresa({
     /* Cabeçalho de identificação · a planilha abria direto na linha de títulos
        e quem recebia não sabia de quem era sem olhar o nome do arquivo. */
     const ws = XLSX.utils.aoa_to_sheet([
-      [clinicaNome],
-      [[clinicaRazaoSocial, clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null].filter(Boolean).join(' · ')],
+      [clinicaRazaoSocial || clinicaNome],
+      [clinicaCnpj ? `CNPJ ${clinicaCnpj}` : ''],
       [[clinicaEndereco, clinicaTelefone, clinicaEmail].filter(Boolean).join(' · ')],
       [],
       [faturaDoMes ? `FATURA Nº ${faturaDoMes.numero}` : 'EXTRATO DE ATENDIMENTOS'],
@@ -297,16 +297,20 @@ export default function ExtratoEmpresa({
        mesmo nome em corpo 14 logo abaixo fica amador. Sem logo, ele é o
        cabeçalho — e continua grande. O nome nunca some, porque tem logo que é
        só símbolo, sem o nome escrito. */
+    /* QUEM EMITE é a pessoa jurídica, não a marca (Gustavo + contador dele,
+       31/08): o papel saía com nome e logo do CAF e o CNPJ da G.M.E. Saúde
+       Ltda — "a imagem do CAF com o CNPJ da GME". Com razão social cadastrada,
+       ela lidera e o nome fantasia não é impresso. Sem razão social (o caso dos
+       outros 28 negócios), nada muda: o nome do negócio segue no topo. */
+    const nomeNoDocumento = clinicaRazaoSocial || clinicaNome
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(temLogo ? 10 : 14)
-    doc.text(clinicaNome, 14, topo)
+    doc.text(nomeNoDocumento, 14, topo)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     doc.setTextColor(110)
     const linhasClinica = [
-      /* Razão social primeiro: é o nome que bate com o CNPJ do cartão, e é
-         contra ele que o financeiro do outro lado confere o documento. */
-      [clinicaRazaoSocial, clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null].filter(Boolean).join(' · ') || null,
+      clinicaCnpj ? `CNPJ ${clinicaCnpj}` : null,
       clinicaEndereco,
       [clinicaTelefone, clinicaEmail].filter(Boolean).join(' · ') || null,
     ].filter(Boolean) as string[]
@@ -445,7 +449,7 @@ export default function ExtratoEmpresa({
       doc.setPage(p)
       doc.setFontSize(8)
       doc.setTextColor(140)
-      doc.text(clinicaNome, 14, doc.internal.pageSize.getHeight() - 10)
+      doc.text(clinicaRazaoSocial || clinicaNome, 14, doc.internal.pageSize.getHeight() - 10)
       doc.text(`Página ${p} de ${paginas}`, DIR, doc.internal.pageSize.getHeight() - 10, { align: 'right' })
     }
     doc.setTextColor(20)

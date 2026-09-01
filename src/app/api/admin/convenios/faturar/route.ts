@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, phone, convenios_enabled')
+    .select('id, name, phone, razao_social, convenios_enabled')
     .eq('owner_id', user.id)
     .maybeSingle()
   if (!business) return NextResponse.json({ error: 'negocio_nao_encontrado' }, { status: 404 })
@@ -139,7 +139,9 @@ export async function POST(req: NextRequest) {
         para: empresa.contato_email,
         empresaNome: empresa.name,
         contatoNome: empresa.contato_nome,
-        negocioNome: business.name,
+        /* Mesma regra do PDF: quem emite é a pessoa jurídica. O e-mail chega
+           no financeiro da empresa e precisa bater com o CNPJ da fatura. */
+        negocioNome: business.razao_social || business.name,
         negocioTelefone: business.phone,
         competencia,
         numero: fatura.numero,
