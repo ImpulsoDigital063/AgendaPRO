@@ -50,6 +50,21 @@ export async function GET(req: NextRequest) {
     { auth: { persistSession: false } },
   )
 
+  /* ── TETO DE RETENCAO ────────────────────────────────────────
+     Resposta de cliente com mais de 30 dias sai daqui, tenha a dona apagado
+     ou nao. E' o piso da decisao do Eduardo em 01/09 ("nao acumulamos
+     dados"): mesmo que ela nunca toque em nada, o banco nao vira deposito de
+     conversa alheia. 30 dias cobre com folga qualquer discussao de "eu
+     avisei que nao ia". */
+  {
+    const limite = new Date(Date.now() - 30 * 864e5).toISOString()
+    const { error: errLimpeza } = await admin
+      .from('message_inbox')
+      .delete()
+      .lt('created_at', limite)
+    if (errLimpeza) console.error('[avisos-consumo] limpeza inbox:', errLimpeza.message)
+  }
+
   /* Só quem tem pacote. Quem não contratou não tem o que acabar. */
   const { data: negocios } = await admin
     .from('businesses')

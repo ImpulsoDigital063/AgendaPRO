@@ -19,7 +19,8 @@
    Em outras palavras: mostra o que chegou e sai da frente.
    ═══════════════════════════════════════════════════════════════ */
 
-import { IconWhatsapp } from '@/components/ui/Icon'
+import { useState } from 'react'
+import { IconClose, IconWhatsapp } from '@/components/ui/Icon'
 import { Lista, TituloSecao, WA } from './ui'
 
 export type Resposta = {
@@ -52,7 +53,14 @@ function bonito(bruto: string): string {
   return `(${s.slice(0, 2)}) ${s.slice(2, s.length - 4)}-${s.slice(-4)}`
 }
 
-export default function Respostas({ respostas }: { respostas: Resposta[] }) {
+export default function Respostas({
+  respostas,
+  onApagar,
+}: {
+  respostas: Resposta[]
+  onApagar: (id: string) => Promise<void>
+}) {
+  const [apagando, setApagando] = useState<string | null>(null)
   if (!respostas.length) return null
 
   return (
@@ -65,6 +73,7 @@ export default function Respostas({ respostas }: { respostas: Resposta[] }) {
         Quando a cliente responde um aviso, a mensagem chega aqui e no seu celular. Este número não
         é lido por ninguém — para responder, toque em{' '}
         <strong style={{ color: WA.forte }}>Responder no WhatsApp</strong> e a conversa abre no seu.
+        Depois de ler, o <strong>×</strong> apaga de vez. O que sobrar some sozinho em 30 dias.
       </p>
 
       <Lista>
@@ -81,11 +90,26 @@ export default function Respostas({ respostas }: { respostas: Resposta[] }) {
               >
                 {r.nome || bonito(r.telefone)}
               </span>
-              <span
-                className="text-[11px] flex-shrink-0 tabular-nums"
-                style={{ color: 'var(--admin-text-faded)' }}
-              >
-                {quando(r.quando)}
+              <span className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-[11px] tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
+                  {quando(r.quando)}
+                </span>
+                {/* Apaga de vez, nao "marca como lida": marcar guardaria o
+                    dado do mesmo jeito. */}
+                <button
+                  type="button"
+                  aria-label="Apagar esta resposta"
+                  disabled={apagando === r.id}
+                  onClick={async () => {
+                    setApagando(r.id)
+                    await onApagar(r.id)
+                    setApagando(null)
+                  }}
+                  className="w-7 h-7 rounded-full inline-flex items-center justify-center disabled:opacity-40"
+                  style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-faded)' }}
+                >
+                  <IconClose size={13} />
+                </button>
               </span>
             </div>
 

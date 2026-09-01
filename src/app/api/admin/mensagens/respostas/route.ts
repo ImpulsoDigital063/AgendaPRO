@@ -18,7 +18,7 @@
    que chegou e joga pro WhatsApp dela, que é onde ela já responde.
    ═══════════════════════════════════════════════════════════════ */
 
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
@@ -60,4 +60,53 @@ export async function GET() {
       appointmentId: r.appointment_id ?? null,
     })),
   })
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   APAGAR DE VEZ
+
+   Eduardo, 01/09: "depois que a dona le a msg, a msg some, assim nao
+   acumulamos dados".
+
+   Some quando ELA MANDA sumir, nao ao abrir a tela: ela entra pra ver outra
+   coisa, a lista some sozinha e o registro vai junto. E o registro tem uma
+   funcao — responder "a cliente disse que avisou" quando der discussao.
+
+   `delete` de verdade, nao coluna `lida`. Marcar como lida guardaria o dado
+   do mesmo jeito, que e' exatamente o que ele NAO quer: mensagem de cliente
+   parada no nosso banco sem ninguem precisar dela.
+   ═══════════════════════════════════════════════════════════════ */
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient()
+  const businessId = await resolveBusinessIdOperacao(supabase)
+  if (!businessId) return NextResponse.json({ error: 'sem_acesso' }, { status: 403 })
+
+  const id = new URL(req.url).searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'sem_id' }, { status: 400 })
+
+  const db = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+
+  /* O `business_id` no filtro nao e' redundante: sem ele, saber o id de uma
+     linha bastaria pra apagar resposta de outro negocio. */
+  const { error } = await db
+    .from('message_inbox')
+    .delete()
+    .eq('id', id)
+    .eq('business_id', businessId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  /* λ.prova-na-fonte: le de volta. Delete que nao apagou devolveria ok e a
+     tela sumiria com a linha na tela e nao no banco. */
+  const { data: ainda } = await db
+    .from('message_inbox')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle()
+  if (ainda) return NextResponse.json({ error: 'nao_apagou' }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
 }

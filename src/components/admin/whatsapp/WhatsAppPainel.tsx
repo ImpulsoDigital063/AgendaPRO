@@ -408,7 +408,22 @@ export default function WhatsAppPainel({
 
   const telefoneDela = businessPhone ? formatarNumero(businessPhone) : ''
 
-  const listaRespostas = <Respostas respostas={respostas} />
+  /* Otimista: some da tela na hora e volta se o servidor recusar. Confirmar
+     antes deixaria a dona esperando rede pra fechar um aviso que ela ja leu. */
+  async function apagarResposta(id: string) {
+    const antes = respostas
+    setRespostas((rs) => rs.filter((r) => r.id !== id))
+    try {
+      const r = await fetch(`/api/admin/mensagens/respostas?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+      if (!r.ok) throw new Error('falhou')
+    } catch {
+      setRespostas(antes)
+    }
+  }
+
+  const listaRespostas = <Respostas respostas={respostas} onApagar={apagarResposta} />
 
   const listaVoceManda = (
     <VoceMandaLista
