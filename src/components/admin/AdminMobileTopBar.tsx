@@ -39,6 +39,9 @@ type Props = {
   vendasBalcao?: boolean
   /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
   cartaoPresente?: boolean
+  /** 01/09/2026 · o aviso de teste virou PÍLULA aqui dentro, no lugar da faixa
+   *  de 48px que existia em todas as 41 telas. Ver o comentário no render. */
+  trial?: { diasRestantes: number; vencido?: boolean } | null
 }
 
 type NavItem = {
@@ -63,6 +66,7 @@ export default function AdminMobileTopBar({
   convenios = false,
   vendasBalcao = true,
   cartaoPresente = false,
+  trial = null,
 }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -206,6 +210,33 @@ export default function AdminMobileTopBar({
           </p>
         </div>
 
+        {/* Aviso de teste como PÍLULA (01/09/2026).
+            Era uma faixa de 48px abaixo da topbar, presente nas 41 telas do
+            admin — e no celular ela nem cumpria a função: o texto saía
+            truncado em "Faltam 26 dias do seu aces…", meia frase ocupando uma
+            linha inteira. Aqui ela custa ZERO altura, porque entra no espaço
+            que o ThemeToggle deixou vago (stub que renderiza null desde que o
+            tema dark foi aposentado em 03/06).
+            A faixa continua inteira no desktop (hidden lg:block no layout),
+            onde há largura pra ela dizer a frase completa. */}
+        {trial && (
+          <Link
+            href="/admin/configuracoes?tab=plano"
+            prefetch={false}
+            aria-label={trial.vencido ? 'Teste vencido · ver plano' : `Faltam ${trial.diasRestantes} dias de teste · ver plano`}
+            className="flex-shrink-0 inline-flex items-center h-7 px-2.5 rounded-full text-[11px] font-bold whitespace-nowrap"
+            style={
+              trial.vencido
+                ? { background: 'var(--admin-danger,#DC2626)', color: '#fff' }
+                : {
+                    background: 'color-mix(in srgb, var(--admin-accent) 12%, transparent)',
+                    color: 'var(--admin-accent)',
+                  }
+            }
+          >
+            {trial.vencido ? 'Teste acabou' : `${trial.diasRestantes} dias`}
+          </Link>
+        )}
         <ThemeToggle compact />
       </header>
 

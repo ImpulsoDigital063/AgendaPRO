@@ -182,6 +182,23 @@ body {
   --admin-bottomnav-bg: rgba(255, 255, 255, 0.92);
 }
 
+/* O azul do AgendaPRO domina o painel (Eduardo, 31/08/2026).
+   Com o BrandThemeInjector desligado, 51 componentes do admin que leem
+   --brand-primary cairiam no #3B82F6 do :root (linha 11) enquanto o accent
+   é #2563EB — dois azuis quase iguais na mesma tela. É assim que nasce o
+   "onze laranjas" do Trinks: ninguém decide, cada tela escolhe.
+   O --brand-secondary (#06B6D4 ciano) e o --brand-tertiary (#8B5CF6 violeta)
+   entram junto porque são eles que alimentam os gradientes do painel.
+   ESCOPO: shell + body:has() (modal portado monta no body, fora do shell).
+   NÃO mexe no :root — a landing usa os mesmos nomes e ficaria repintada. */
+.admin-shell,
+[data-admin-theme],
+body:has(.admin-shell) {
+  --brand-primary:   #2563EB;
+  --brand-secondary: #2563EB;
+  --brand-tertiary:  #2563EB;
+}
+
 /* Desabilita todas as transições durante troca de tema pra evitar lag visual */
 html.admin-theme-switching,
 html.admin-theme-switching *,
@@ -267,6 +284,37 @@ html.admin-theme-switching *::after {
 
 @media (prefers-reduced-motion: reduce) {
   .admin-orb-1, .admin-orb-2, .admin-orb-3 { animation: none; }
+}
+
+/* ── Fluxo de Caixa · coluna de rótulo fixa (01/09/2026) ──────────────────
+   No celular (363px) a tabela precisa rolar na horizontal, e ao rolar o
+   rótulo saía junto: sobrava "icial", "eitas", "pesas" — dava pra ler os
+   valores sem saber de que linha eram.
+
+   Duas correções:
+   1) A primeira coluna gruda na esquerda. Fundo OPACO (--admin-surface), não
+      `inherit`: as linhas de Receitas/Despesas usam tinta a 8% sobre
+      transparente, e herdar isso deixaria o conteúdo passar por baixo ao
+      rolar. A 8% a emenda é imperceptível; rótulo ilegível não é.
+   2) A largura do rótulo era 240px inline — dois terços de um aparelho de
+      363px. Agora 132px no celular e os 240px originais voltam no ≥1024px,
+      onde o desktop não muda em nada.
+
+   A sombra de 1px na direita é o que diz "tem conteúdo passando por baixo". */
+.fluxo-table th:first-child,
+.fluxo-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 132px;
+  background: var(--admin-surface);
+  box-shadow: 1px 0 0 0 var(--admin-border);
+}
+@media (min-width: 1024px) {
+  .fluxo-table th:first-child,
+  .fluxo-table td:first-child {
+    min-width: 240px;
+  }
 }
 
 .admin-card {

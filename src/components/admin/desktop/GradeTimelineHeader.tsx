@@ -64,6 +64,19 @@ function formatDate(date: string): string {
   })
 }
 
+/* Versão curta pro celular (31/08/2026): "seg, 31 de ago" no lugar de
+   "segunda-feira, 31 de agosto". Na linha de controles de um aparelho de
+   363px sobram ~150px pra data — o formato longo truncaria em
+   "segunda-feira, 31 d…", que informa menos que a forma curta inteira. */
+function formatDateCurto(date: string): string {
+  const d = new Date(date + 'T12:00:00')
+  return d.toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  })
+}
+
 // CIC Onda 5C P0 #1: chamar `new Date()` direto no render causava
 // React #418 (hydration mismatch) quando servidor (UTC) e browser (BR)
 // estavam em dias diferentes na virada da meia-noite. Agora usa state
@@ -132,8 +145,14 @@ export default function GradeTimelineHeader({
 
       {/* Data como título · acima da linha de navegação
           Cravado 28/05 Eduardo: "a data reposiciona em cima" pra tablet
-          ler bem antes dos controles */}
-      <div className="px-1">
+          ler bem antes dos controles.
+
+          v? 31/08/2026 · SÓ NO DESKTOP a partir de agora (hidden lg:block).
+          No celular esse bloco custava ~55px acima da grade, e a grade tinha
+          ZERO hora visível num aparelho de 794px. A data não sumiu: ela passa
+          a viver DENTRO da linha de navegação abaixo, no `lg:hidden`.
+          Desktop (≥1024px) continua exatamente como o Eduardo cravou em 28/05. */}
+      <div className="hidden lg:block px-1">
         <p
           className="text-base sm:text-lg font-bold capitalize leading-tight"
           style={{ color: 'var(--admin-text)' }}
@@ -221,6 +240,27 @@ export default function GradeTimelineHeader({
               aria-label="Escolher data no calendário"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
+          </div>
+
+          {/* Data no CELULAR · lg:hidden (31/08/2026).
+              Substitui o bloco de título que agora só existe em desktop. Fica
+              na mesma linha dos controles: economiza ~55px acima da grade, que
+              num aparelho de 794px é meia hora de agenda a mais.
+              min-w-0 + truncate porque em 363px, depois de Hoje/‹/›/calendário,
+              sobram ~150px — sem isso a data empurraria a linha e quebraria. */}
+          <div className="lg:hidden min-w-0 pl-1">
+            <p
+              className="text-sm font-bold capitalize leading-tight truncate"
+              style={{ color: 'var(--admin-text)' }}
+            >
+              {formatDateCurto(date)}
+            </p>
+            <p
+              className="text-[11px] font-medium tabular-nums leading-tight truncate"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              {totalAppts} {totalAppts === 1 ? 'agendamento' : 'agendamentos'}
+            </p>
           </div>
         </div>
 

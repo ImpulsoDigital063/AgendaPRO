@@ -325,21 +325,31 @@ export default async function AdminEuPage() {
             <LogoutButton />
           </div>
         </div>
+        {/* Cabeçalho comprimido no CELULAR (01/09/2026) · eram quatro linhas
+            empilhadas (sobrancelha, nome em 28px, data, nome do negócio) e a
+            grade só começava perto de y=470 num aparelho de 857.
+            A sobrancelha some no celular: o nome logo abaixo já diz que a
+            agenda é da pessoa. Desktop (≥1024px) fica idêntico ao que era. */}
         <p
-          className="text-[13px] font-medium mb-1"
+          className="hidden lg:block text-[13px] font-medium mb-1"
           style={{ color: 'var(--admin-text-faded)' }}
         >
           Sua agenda pessoal
         </p>
-        <h1 className="text-[28px] font-bold tracking-tight leading-tight" style={{ color: 'var(--admin-text)' }}>
+        <h1 className="text-xl lg:text-[28px] font-bold tracking-tight leading-tight" style={{ color: 'var(--admin-text)' }}>
           {firstName}
         </h1>
         <p className="text-sm capitalize mt-1" style={{ color: 'var(--admin-text-mute)' }}>
           <span className="inline-flex items-center gap-1.5">
             <IconCalendar size={14} /> {todayFormatted}
           </span>
+          <span className="lg:hidden normal-case" style={{ color: 'var(--admin-text-faded)' }}>
+            {' · '}{business.name}
+          </span>
         </p>
-        <p className="text-xs mt-2" style={{ color: 'var(--admin-text-faded)' }}>
+        {/* No celular o nome do negócio entra na MESMA linha da data (abaixo),
+            economizando uma linha inteira. No desktop segue como linha própria. */}
+        <p className="hidden lg:block text-xs mt-2" style={{ color: 'var(--admin-text-faded)' }}>
           {business.name}
         </p>
       </header>

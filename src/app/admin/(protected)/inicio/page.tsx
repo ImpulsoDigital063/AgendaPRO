@@ -28,6 +28,7 @@ import {
   IconWallet,
 } from '@/components/ui/Icon'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
+import InstallBanner from '@/components/admin/InstallBanner'
 import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import NovidadeSinalCard from '@/components/admin/NovidadeSinalCard'
 import Image from 'next/image'
@@ -456,6 +457,13 @@ export default async function AdminInicioPage() {
 
         {/* Ativar notificação de agendamento novo no celular do dono. Some
             sozinha quando já ativou / não suporta / foi dispensada. */}
+        {/* Convite de instalar o app · veio do layout em 31/08/2026.
+            Estava montado no layout do admin e cobrava 58px de altura nas
+            41 telas. Início e a casa dos avisos; aqui ele custa a altura
+            de uma tela so. Tem que ficar DEPOIS da topbar fixa (30/07),
+            senao some atras dela no celular. */}
+        <InstallBanner />
+
         <PushEnableBanner />
 
         {/* Novidade do sinal (06/08) · some pra quem ja ligou, pra quem

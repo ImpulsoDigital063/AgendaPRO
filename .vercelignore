@@ -1,0 +1,4 @@
+# Laboratorio de redesign — pagina de DECISAO, nao de produto.
+# Existe pro Eduardo comparar cor, fundo e topo da agenda no localhost.
+# Ja retorna null em producao, mas nem subir precisa: fica so no local.
+src/app/lab-redesign

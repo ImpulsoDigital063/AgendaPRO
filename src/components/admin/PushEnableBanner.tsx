@@ -272,11 +272,16 @@ export default function PushEnableBanner() {
             {error}
           </p>
         )}
-        <div className="flex items-center gap-2 mt-3">
+        {/* flex-wrap + nowrap nos dois (31/08): a 363px os dois botões não
+            cabiam lado a lado e o texto QUEBRAVA DENTRO do botão — virava
+            "Ativar / notificações" e "Agora / não". Só o nowrap não resolvia:
+            sem o wrap no container, o botão passaria a vazar em vez de quebrar.
+            Agora eles empilham inteiros quando não cabem. */}
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
           <button
             onClick={ativar}
             disabled={busy}
-            className="text-xs font-bold px-4 py-2 rounded-xl transition-all hover:translate-y-[-1px] disabled:opacity-60"
+            className="text-xs font-bold px-4 py-2 rounded-xl transition-all hover:translate-y-[-1px] disabled:opacity-60 whitespace-nowrap"
             style={{
               background: 'linear-gradient(135deg, var(--brand-primary, var(--admin-accent)) 0%, var(--brand-secondary, var(--admin-accent)) 100%)',
               color: '#fff',
@@ -287,7 +292,7 @@ export default function PushEnableBanner() {
           </button>
           <button
             onClick={dismiss}
-            className="text-xs font-semibold px-3 py-2 rounded-xl"
+            className="text-xs font-semibold px-3 py-2 rounded-xl whitespace-nowrap"
             style={{ color: 'var(--admin-text-faded)' }}
           >
             Agora não

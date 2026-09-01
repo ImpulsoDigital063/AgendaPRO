@@ -233,6 +233,7 @@ export default async function AdminLayout({
             convenios={business?.convenios_enabled === true}
             cartaoPresente={business?.cartao_presente_enabled === true}
             vendasBalcao={business?.vendas_balcao_enabled !== false}
+            trial={trial}
           />
           {/* O InstallBanner SAIU DO LAYOUT (Eduardo, 31/08/2026).
               Montado aqui, ele custava 58px de altura nas 41 telas do admin —
@@ -241,7 +242,11 @@ export default async function AdminLayout({
               agora ele é renderizado em inicio/page.tsx.
               A observação de 30/07 continua valendo lá — o banner tem que vir
               DEPOIS da topbar fixa, senão some atrás dela no celular. */}
+          {/* A faixa completa fica SÓ no desktop (01/09/2026): no celular ela
+              virou pílula dentro da topbar, sem custar altura. Ver
+              AdminMobileTopBar. */}
           {trial && (
+            <div className="hidden lg:block">
             <TrialBanner
               diasRestantes={trial.diasRestantes}
               plano={trial.plano}
@@ -249,6 +254,7 @@ export default async function AdminLayout({
               vencido={trial.vencido}
               diasConcedidos={trial.diasConcedidos}
             />
+            </div>
           )}
           {cobranca && (
             <BillingDueBanner

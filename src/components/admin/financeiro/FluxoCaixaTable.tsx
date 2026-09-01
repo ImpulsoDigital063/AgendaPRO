@@ -101,7 +101,7 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
       }}
     >
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm fluxo-table">
           <thead>
             <tr
               style={{
@@ -111,7 +111,7 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
             >
               <th
                 className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider"
-                style={{ color: 'var(--admin-text-mute)', minWidth: 240 }}
+                style={{ color: 'var(--admin-text-mute)' }}
               />
               {months.map((m) => (
                 <th

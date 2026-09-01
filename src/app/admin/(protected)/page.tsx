@@ -9,8 +9,6 @@ import {
 import WelcomeModal from '@/components/admin/onboarding/WelcomeModal'
 import OnboardingChecklist from '@/components/admin/onboarding/OnboardingChecklist'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
-import PushEnableBanner from '@/components/admin/PushEnableBanner'
-import NovidadeSinalCard from '@/components/admin/NovidadeSinalCard'
 import { todayBR } from '@/lib/date-br'
 
 // Garante revalidação imediata após mutações (router.refresh tras cancel/payment).
@@ -94,20 +92,37 @@ export default async function AdminPage({
         </div>
       )}
 
-      {/* Ativar notificações · na AGENDA (tela que todos usam), não só no Início —
-          o banner some sozinho se já ativo/dispensado/sem suporte (Eduardo 28/07). */}
-      <div className="relative px-3 md:px-6 pt-3 md:pt-6 space-y-3">
-        <PushEnableBanner />
-        {/* Novidade do sinal (06/08). Some sozinho pra quem ja ligou, pra quem
-            dispensou e depois de 31/08 — o push alcanca so quem ativou
-            notificacao, este card alcanca todo mundo que abre o painel. */}
-        <NovidadeSinalCard sinalAtivo={business.sinal_enabled === true} />
-      </div>
+      {/* AVISOS SAÍRAM DAQUI (Eduardo, 31/08/2026) · cada aba tem um papel:
+          Início é a casa da informação e dos avisos, Atendimentos é a grade.
+
+          Isto reverte de propósito a decisão de 28/07, que tinha posto o push
+          aqui por ser "a tela que todos usam". O motivo mudou: medido no
+          celular (363×794), a primeira linha da grade começava em y=760 — 34px
+          de sobra, ZERO hora de agenda visível. O banner que garantia alcance
+          estava custando a tela inteira do produto.
+
+          Nada se perde: PushEnableBanner e NovidadeSinalCard já estão montados
+          em inicio/page.tsx. Aqui eram cópias.
+          (NovidadeSinalCard expira sozinho em 2026-08-31T23:59:59-03:00.)
+
+          Some junto o padding do wrapper (pt-3/md:pt-6), que sobrava mesmo
+          quando os dois banners não apareciam. Vale nos dois breakpoints. */}
 
       {/* Agenda · GradeTimeline em todos os breakpoints (mobile = scroll horizontal) */}
       <div className="relative px-3 md:px-6 pt-3 md:pt-6 pb-8">
         <Suspense fallback={<div className="h-96 rounded-2xl" style={{ background: 'var(--admin-surface)' }} />}>
-          <GradeTimeline businessId={business.id} date={gradeDate} />
+          {/* hideKpis (Eduardo, 31/08/2026) · os três cards Recebido / A receber /
+              Pendentes saíram do topo da agenda. Métrica é informação, e informação
+              mora no Início — que JÁ os mostra, então nada se perde.
+
+              Ganho duplo: além dos ~55px de altura no celular, o prop também
+              impede 3 queries que só alimentavam esses cards. Em 4G lento isso
+              é tempo de tela, não só pixel.
+
+              ATENÇÃO: prop de servidor, não tem breakpoint — some no desktop
+              também. Foi decisão consciente (a mesma regra de aba vale nos dois),
+              e volta tirando esta palavra. */}
+          <GradeTimeline businessId={business.id} date={gradeDate} hideKpis />
         </Suspense>
       </div>
     </main>

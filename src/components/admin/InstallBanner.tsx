@@ -337,7 +337,11 @@ export default function InstallBanner({ area = 'admin' }: { area?: Area } = {}) 
             </svg>
           </span>
           <span className="flex-1 min-w-0">
-            <span className="text-sm font-bold block leading-tight" style={{ color: 'var(--admin-text)' }}>
+            {/* truncate (01/09/2026): a 363px o título quebrava em
+                "Instalar / AgendaPRO" e o card virava três linhas de texto.
+                Agora é uma linha; só corta em aparelho estreito de verdade, e
+                aí "Instalar Agenda…" ainda se lê. */}
+            <span className="text-sm font-bold block leading-tight truncate" style={{ color: 'var(--admin-text)' }}>
               Instalar AgendaPRO
             </span>
             <span className="text-[11px] block leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
