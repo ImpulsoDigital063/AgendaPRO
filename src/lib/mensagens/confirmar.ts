@@ -39,7 +39,7 @@ import { todayBR } from '@/lib/date-br'
 
 export type ResultadoConfirmacao =
   | { ok: true; resultado: Awaited<ReturnType<typeof enviar>> }
-  | { ok: false; motivo: 'nao_encontrado' | 'status' | 'passado' }
+  | { ok: false; motivo: 'nao_encontrado' | 'status' | 'passado' | 'serie' }
 
 export async function confirmarAgendamento(
   db: SupabaseClient,
@@ -50,6 +50,7 @@ export async function confirmarAgendamento(
     .select(
       `id, business_id, appointment_date, start_time, client_name, client_phone,
        client_email, service_name, customer_id, status,
+       recurring_group_id, recurring_index,
        business:businesses(name, phone), professional:professionals(name)`,
     )
     .eq('id', appointmentId)
@@ -63,6 +64,25 @@ export async function confirmarAgendamento(
      das 21h seria lido como "ontem" e a confirmação não sairia. */
   if (String(a.appointment_date) < todayBR()) {
     return { ok: false, motivo: 'passado' }
+  }
+
+  /* ── SÉRIE MANDA UMA CONFIRMAÇÃO SÓ ──────────────────────────
+     Pergunta do Eduardo em 01/09, pensando no CAF: clínica que marca um
+     pacote de 10 sessões de uma vez.
+
+     O `AgendarModal` insere as 10 em lote e chama a confirmação PARA CADA
+     UMA. A cliente receberia dez mensagens quase iguais em segundos. O risco
+     não é ela reclamar — é ela BLOQUEAR o número. E o número é um só,
+     compartilhado por todos os negócios: um bloqueio derruba o
+     `quality_rating` da base inteira. De quebra custaria 10 unidades onde
+     cabe 1.
+
+     Então confirma só a PRIMEIRA sessão da série. As outras nove seguem
+     recebendo os lembretes normalmente — esses são por sessão e cada um
+     avisa de um dia diferente, que é justamente o que ela precisa. */
+  const indice = a.recurring_index as number | null
+  if (a.recurring_group_id && indice !== null && indice > 1) {
+    return { ok: false, motivo: 'serie' }
   }
 
   const negocio = a.business as unknown as { name: string; phone: string | null } | null

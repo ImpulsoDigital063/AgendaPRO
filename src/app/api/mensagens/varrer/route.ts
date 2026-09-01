@@ -161,13 +161,23 @@ export async function GET(req: NextRequest) {
     const { data: novos } = await db
       .from('appointments')
       .select(`id, business_id, appointment_date, start_time, client_name, client_phone,
-               client_email, service_name, customer_id,
+               client_email, service_name, customer_id, recurring_group_id, recurring_index,
                business:businesses(name, phone, owner_id), professional:professionals(name)`)
       .in('business_id', negNovo)
       .gte('created_at', new Date(agora - JANELA).toISOString())
       .in('status', ['pending', 'confirmed'])
 
     for (const a of novos ?? []) {
+      /* SERIE MANDA UMA CONFIRMACAO SO. Clinica que marca pacote de 10
+         sessoes de uma vez (o caso do CAF) inseriria 10 linhas, e a cliente
+         receberia 10 mensagens quase iguais em segundos — risco de bloqueio
+         num numero que e' compartilhado por TODOS os negocios. Mesma guarda
+         de `confirmarAgendamento`; aqui precisa existir de novo porque esta
+         varredura monta a fila direto, sem passar pelo helper.
+         Os LEMBRETES seguem por sessao: cada um avisa de um dia diferente. */
+      const idx = a.recurring_index as number | null
+      if (a.recurring_group_id && idx !== null && idx > 1) continue
+
       const negocio = a.business as unknown as { name: string; phone: string | null } | null
       const prof = a.professional as unknown as { name: string } | null
       const v = {
