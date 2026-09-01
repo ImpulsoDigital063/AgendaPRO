@@ -438,6 +438,7 @@ export default function WhatsAppPainel({
             <div className="lg:max-w-2xl">
               <AvisoDetalhe
                 aviso={a}
+                numeroCanal={canal?.numero ? formatarNumero(canal.numero) : '(63) 9284-6765'}
                 onBotao={(v) => salvarRegra(a.tipo, { comBotao: v })}
                 onHorario={(h) => salvarRegra(a.tipo, { offsetMinutos: -h * 60 })}
                 onEnviarTexto={(corpo) => enviarTexto(a.tipo, corpo)}
@@ -504,11 +505,16 @@ export default function WhatsAppPainel({
   // ── RAIZ ───────────────────────────────────────
   const temPacote = !!canal?.consumo?.pacote
   const c = canal?.consumo
+  /* "ENVIANDO" em verde com ZERO mensagem enviada afirma o que ainda nao
+     aconteceu: descreve o estado do canal, e a dona le como "esta
+     funcionando". Enquanto nada saiu, o honesto e' "pronto para enviar". */
   const estado = !liberado
     ? { texto: 'Ainda não liberado', tom: 'neutro' as const }
-    : canal?.no_ar
-      ? { texto: 'Enviando', tom: 'ok' as const }
-      : { texto: 'Parado', tom: 'erro' as const }
+    : !canal?.no_ar
+      ? { texto: 'Parado', tom: 'erro' as const }
+      : (canal?.consumo?.usadas ?? 0) > 0
+        ? { texto: 'Enviando', tom: 'ok' as const }
+        : { texto: 'Pronto para enviar', tom: 'ok' as const }
 
   const chipBeta = !liberado ? <Chip tom="atencao">Beta</Chip> : undefined
 
@@ -540,6 +546,12 @@ export default function WhatsAppPainel({
       )}
     </div>
   ) : null
+
+  /* Soma o que ESTA LIGADO, em unidades de pacote — nao em mensagens. */
+  const totalLigado = avisos
+    .filter((a) => a.enabled)
+    .reduce((soma, a) => soma + (a.unidadesPorMes ?? 0), 0)
+  const estouraFranquia = temPacote && totalLigado > (c?.franquia ?? 0)
 
   /* A lista aparece em dois lugares: é a raiz de quem já tem pacote, e é a
      tela "ver as mensagens" de quem ainda vai contratar — ela precisa poder
@@ -575,11 +587,23 @@ export default function WhatsAppPainel({
             /* A descrição, não o começo do texto: as mensagens começam todas
                com "Oi Maria, tudo bem?" e as linhas ficavam indistinguíveis. */
             snippet={a.porque || undefined}
+            /* Era "~35 por mês", que le como 35 MENSAGENS. O numero ja vem
+               multiplicado pelo peso: sao 35 UNIDADES do pacote (5 envios de
+               aniversario x 7). Agora diz do pacote, e para os avisos de
+               marketing mostra a conta inteira. */
             meta={
               <>
                 {a.quando}
-                {a.unidadesPorMes ? <> · ~{a.unidadesPorMes} por mês</> : null}
-                {a.marketing && <> · gasta 7 por envio</>}
+                {a.unidadesPorMes ? (
+                  <>
+                    {' · '}
+                    <strong style={{ color: 'var(--admin-text-mute)' }}>
+                      ~{a.unidadesPorMes} do pacote
+                    </strong>
+                    {' por mês'}
+                    {a.marketing && <> (≈{Math.round(a.unidadesPorMes / 7)} envios × 7)</>}
+                  </>
+                ) : null}
               </>
             }
             acao={
@@ -598,6 +622,47 @@ export default function WhatsAppPainel({
           />
         ))}
       </Lista>
+
+      {/* ── A CONTA FECHADA ─────────────────────────────────────
+          Os numeros por aviso ja estavam na tela; a SOMA nunca. Com as tres
+          reguas ligadas dao 315 de pacote e a franquia e' 300 — a dona
+          estoura no primeiro mes e paga excedente sem ter sido avisada. */}
+      {temPacote && totalLigado > 0 && (
+        <div
+          className="mt-2.5 rounded-xl px-4 py-3"
+          style={
+            estouraFranquia
+              ? { background: 'rgba(217,119,6,0.10)', border: '1px solid rgba(217,119,6,0.28)' }
+              : { background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }
+          }
+        >
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[13px]" style={{ color: 'var(--admin-text-2)' }}>
+              Com o que está ligado
+            </span>
+            <span
+              className="text-[15px] font-bold tabular-nums"
+              style={{ color: estouraFranquia ? 'var(--admin-warn)' : 'var(--admin-text)' }}
+            >
+              ~{totalLigado} de {c?.franquia ?? 0}
+            </span>
+          </div>
+          <p className="text-[12px] leading-relaxed mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+            {estouraFranquia ? (
+              <>
+                Isso passa do seu pacote em <strong>~{totalLigado - (c?.franquia ?? 0)}</strong> por
+                mês. As extras não param de sair — saem por R$ 0,12 cada, cerca de{' '}
+                <strong>
+                  R$ {(((totalLigado - (c?.franquia ?? 0)) * 0.12)).toFixed(2).replace('.', ',')}
+                </strong>{' '}
+                a mais. Desligue um aviso ou troque de pacote.
+              </>
+            ) : (
+              <>Estimativa pelo seu movimento dos últimos 90 dias. Cabe no seu pacote.</>
+            )}
+          </p>
+        </div>
+      )}
 
       {/* Sem pacote, ligar interruptor não manda nada: `podeEnviar()` barra
           por `sem_pacote_contratado`. Dizer "ligue as que quiser que ela

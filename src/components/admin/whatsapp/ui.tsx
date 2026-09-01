@@ -120,9 +120,11 @@ export function IconeAviso({ children, ativo }: { children: ReactNode; ativo: bo
       style={{
         width: 40,
         height: 40,
-        background: ativo ? 'var(--admin-accent-bg)' : 'var(--admin-input-bg)',
-        border: `1px solid ${ativo ? 'var(--admin-accent-border)' : 'var(--admin-border)'}`,
-        color: ativo ? 'var(--admin-accent)' : 'var(--admin-text-faded)',
+        /* Verde da feature, nao o accent do negocio: a oferta ja era verde e
+           a gestao era azul — mesma tela, dois sistemas de cor. */
+        background: ativo ? WA.fundo : 'var(--admin-input-bg)',
+        border: `1px solid ${ativo ? WA.borda : 'var(--admin-border)'}`,
+        color: ativo ? WA.forte : 'var(--admin-text-faded)',
       }}
     >
       {children}
@@ -237,8 +239,8 @@ export function Toggle({
       style={{
         width: 46,
         height: 27,
-        background: ligado ? 'var(--admin-accent)' : 'var(--admin-border-hi)',
-        boxShadow: ligado ? '0 2px 8px -2px rgba(37,99,235,0.5)' : 'none',
+        background: ligado ? WA.forte : 'var(--admin-border-hi)',
+        boxShadow: ligado ? '0 2px 8px -2px rgba(0,128,105,0.55)' : 'none',
       }}
     >
       <span
@@ -270,10 +272,7 @@ export function BarraConsumo({ usadas, total }: { usadas: number; total: number 
     >
       <div
         className="h-full rounded-full transition-all"
-        style={{
-          width: `${pct}%`,
-          background: acabando ? 'var(--admin-warn)' : 'var(--admin-accent)',
-        }}
+        style={{ width: `${pct}%`, background: acabando ? 'var(--admin-warn)' : WA.forte }}
       />
     </div>
   )

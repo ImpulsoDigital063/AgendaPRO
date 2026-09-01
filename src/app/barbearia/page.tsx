@@ -120,7 +120,7 @@ const BARBER_FAQS: FAQItem[] = [
   },
   {
     q: 'Como funciona o lembrete anti-falta?',
-    a: 'O sistema envia um lembrete automático por e-mail na véspera do horário. O cliente confirma ou avisa que não vem — e você reorganiza a agenda antes de perder a cadeira. Usamos e-mail em vez de WhatsApp pra proteger seu número, sem risco de bloqueio por disparo em massa.',
+    a: 'O sistema manda confirmação e lembrete no WhatsApp do cliente sozinho, pelo canal oficial da Meta — sem risco de bloqueio, porque não é disparo em massa por número pessoal. O cliente confirma pelo botão e a agenda atualiza sozinha. Sai do número oficial do AgendaPRO, com o nome da sua barbearia na mensagem e o seu telefone para resposta. É um adicional: você contrata um pacote de mensagens a partir de R$ 7,90 por mês e liga só os avisos que quiser. Sem contratar, o lembrete por e-mail continua funcionando e você também manda pelo WhatsApp com 1 clique, do seu próprio número.',
   },
   {
     q: 'E se alguém cancelar em cima da hora?',

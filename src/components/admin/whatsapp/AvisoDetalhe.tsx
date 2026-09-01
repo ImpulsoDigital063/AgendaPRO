@@ -13,7 +13,8 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useState } from 'react'
-import { Balao, Chip } from './ui'
+import { Chip } from './ui'
+import TelaWhatsApp from './TelaWhatsApp'
 
 export type Aviso = {
   tipo: string
@@ -48,11 +49,14 @@ const SELO: Record<string, { texto: string; tom: 'ok' | 'atencao' | 'erro' }> = 
  */
 export default function AvisoDetalhe({
   aviso,
+  numeroCanal,
   onBotao,
   onHorario,
   onEnviarTexto,
 }: {
   aviso: Aviso
+  /** Numero oficial de onde o aviso sai. NAO e o do salao. */
+  numeroCanal: string
   onBotao: (v: boolean) => void
   onHorario: (horas: number) => void
   onEnviarTexto: (corpo: string) => Promise<string[] | null>
@@ -91,18 +95,30 @@ export default function AvisoDetalhe({
 
       {!editando && (
         <>
-          <div className="mt-4 mb-1 flex items-center gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-              Como a cliente recebe
+          <div className="mt-5 mb-2 flex items-center gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+              No celular da sua cliente
             </p>
             {selo && <Chip tom={selo.tom}>{selo.texto}</Chip>}
           </div>
-          <Balao
+          {/* Era um balao VERDE — no WhatsApp, verde e a mensagem que VOCE
+              mandou. Este aviso sai do numero do AgendaPRO e CHEGA na cliente:
+              branco, a esquerda, com "AgendaPRO" no cabecalho. A secao "Voce
+              manda" ja mostrava o celular certo, entao a mesma tela contava
+              duas historias diferentes. */}
+          <TelaWhatsApp
+            remetente="AgendaPRO"
+            numero={numeroCanal}
+            avatar="/agendapro-icon.svg"
             texto={aviso.previa}
-            botoes={aviso.temBotao && aviso.comBotao ? ['Confirmar presença', 'Preciso remarcar'] : undefined}
+            botoes={
+              aviso.temBotao && aviso.comBotao ? ['Confirmar presença', 'Preciso remarcar'] : undefined
+            }
           />
-          <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-            Exemplo com uma cliente chamada Maria. Nome, dia, horário e serviço entram sozinhos.
+          <p className="text-[11px] mt-2 leading-relaxed max-w-sm" style={{ color: 'var(--admin-text-faded)' }}>
+            Exemplo com uma cliente chamada Maria — nome, dia, horário e serviço entram sozinhos.
+            Chega pelo número oficial do AgendaPRO; o nome do seu negócio vai na mensagem, e o
+            telefone de resposta é o seu.
           </p>
 
           {aviso.status === 'REJECTED' && (
@@ -283,7 +299,12 @@ export default function AvisoDetalhe({
                     {horasAtuais}h antes é o mesmo horário do lembrete da véspera.
                   </strong>{' '}
                   Com os dois ligados, a cliente recebe duas mensagens quase iguais na mesma hora e
-                  você paga por duas. Escolha algumas horas antes — 3h é o mais comum.
+                  você paga por duas.{' '}
+                  <strong style={{ color: 'var(--admin-text)' }}>
+                    E o texto deste aviso diz &quot;é hoje&quot;
+                  </strong>{' '}
+                  — com {horasAtuais}h ele chega na véspera, e a cliente lê uma informação errada.
+                  Escolha algumas horas antes; 3h é o mais comum.
                 </p>
               )}
             </>
