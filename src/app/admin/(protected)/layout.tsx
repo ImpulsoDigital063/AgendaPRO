@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import AdminMobileTopBar from '@/components/admin/AdminMobileTopBar'
-import InstallBanner from '@/components/admin/InstallBanner'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import AppSplash from '@/components/admin/AppSplash'
+import AtualizadorPWA from '@/components/admin/AtualizadorPWA'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
@@ -200,6 +200,9 @@ export default async function AdminLayout({
       <SlugCacher slug={businessSlug} />
       <div className="admin-shell admin-shell--with-sidebar" data-admin-theme={initialTheme}>
         <AppSplash />
+        {/* Mantem o PWA na versao publicada sem a dona precisar saber que
+            existe service worker. Ver AtualizadorPWA.tsx. */}
+        <AtualizadorPWA />
         {/* Decoração de marca · só desktop · só Palace · pattern scatter sutil
             atrás de todas as views admin. Mobile (Olímpio/Leticia/Erlane prod)
             NÃO renderiza nada. Regra mobile/desktop isolation cravada 19-20/05. */}
@@ -231,11 +234,13 @@ export default async function AdminLayout({
             cartaoPresente={business?.cartao_presente_enabled === true}
             vendasBalcao={business?.vendas_balcao_enabled !== false}
           />
-          {/* DEPOIS da topbar (mesmo motivo do painel da profissional · 30/07):
-              a barra é fixed e o espaçador dela é quem empurra o conteúdo. Com
-              o banner antes, ele ficava escondido atrás da barra no celular —
-              a dona nunca via o convite de instalar o app. */}
-          <InstallBanner />
+          {/* O InstallBanner SAIU DO LAYOUT (Eduardo, 31/08/2026).
+              Montado aqui, ele custava 58px de altura nas 41 telas do admin —
+              inclusive na agenda, onde no celular sobravam 34px pro conteúdo.
+              Convite de instalar app é informação, e informação mora no Início:
+              agora ele é renderizado em inicio/page.tsx.
+              A observação de 30/07 continua valendo lá — o banner tem que vir
+              DEPOIS da topbar fixa, senão some atrás dela no celular. */}
           {trial && (
             <TrialBanner
               diasRestantes={trial.diasRestantes}
