@@ -298,34 +298,32 @@ html.admin-theme-switching *::after {
   .admin-orb-1, .admin-orb-2, .admin-orb-3 { animation: none; }
 }
 
-/* ── Fluxo de Caixa · coluna de rótulo fixa (01/09/2026) ──────────────────
-   No celular (363px) a tabela precisa rolar na horizontal, e ao rolar o
-   rótulo saía junto: sobrava "icial", "eitas", "pesas" — dava pra ler os
-   valores sem saber de que linha eram.
+/* ── Fluxo de Caixa · rolagem horizontal no celular (01/09/2026) ──────────
+   A coluna fixa saiu do MOBILE a pedido do Eduardo, e o motivo dele e melhor
+   que o meu: grudar o rotulo custa 132px permanentes de uma tela de 383px, e o
+   que sobra pros numeros fica curto. Deixando tudo rolar, cabe mais mes por
+   vez — ele prefere reencontrar o rotulo rolando de volta a nunca ver os
+   dados direito. Eu tinha tratado "nao da pra ler o rotulo" como o problema;
+   a solucao cobrava espaco permanente numa tela que nao tem espaco.
 
-   Duas correções:
-   1) A primeira coluna gruda na esquerda. Fundo OPACO (--admin-surface), não
-      `inherit`: as linhas de Receitas/Despesas usam tinta a 8% sobre
-      transparente, e herdar isso deixaria o conteúdo passar por baixo ao
-      rolar. A 8% a emenda é imperceptível; rótulo ilegível não é.
-   2) A largura do rótulo era 240px inline — dois terços de um aparelho de
-      363px. Agora 132px no celular e os 240px originais voltam no ≥1024px,
-      onde o desktop não muda em nada.
+   Fica do conserto original a largura: era 240px inline (dois tercos do
+   aparelho), agora 132px no celular — serve o mesmo objetivo dele.
 
-   A sombra de 1px na direita é o que diz "tem conteúdo passando por baixo". */
+   No desktop (>=1024px) a coluna segue fixa: la a largura sobra, entao grudar
+   o rotulo so ajuda quando a tabela tem muitos meses. */
 .fluxo-table th:first-child,
 .fluxo-table td:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 1;
   min-width: 132px;
-  background: var(--admin-surface);
-  box-shadow: 1px 0 0 0 var(--admin-border);
 }
 @media (min-width: 1024px) {
   .fluxo-table th:first-child,
   .fluxo-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
     min-width: 240px;
+    background: var(--admin-surface);
+    box-shadow: 1px 0 0 0 var(--admin-border);
   }
 }
 
