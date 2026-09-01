@@ -26,11 +26,18 @@ export default async function BloqueiosProfissionalPage() {
 
   const { data: prof } = await supabase
     .from('professionals')
-    .select('id, name, business_id')
+    .select('id, name, business_id, business:businesses(prof_edita_horario)')
     .eq('auth_user_id', user.id)
     .eq('is_receptionist', false)
     .maybeSingle()
   if (!prof) redirect('/profissional/login')
+
+  /* v146 · bloquear a própria agenda é decidir horário. O menu já esconde a
+     entrada quando o negócio reservou a decisão pra dona e pra recepção, mas a
+     URL digitada abria a tela assim mesmo — e a pessoa só descobria no erro ao
+     salvar. Default `true` no banco → nada muda pra quem não pediu. */
+  const bizHorario = prof.business as { prof_edita_horario?: boolean | null } | null
+  if (bizHorario?.prof_edita_horario === false) redirect('/profissional')
 
   const hoje = todayBR()
 

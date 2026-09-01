@@ -5,11 +5,19 @@ import { useState, useEffect } from 'react'
 export default function WelcomeCard({
   professionalName,
   podeCancelar = true,
+  podeAgendar = false,
+  podeAgendarOutras = false,
 }: {
   professionalName: string
   /** v144 · negócio que reservou o cancelamento pra dona/recepção não promete
    *  aqui o que a profissional não vai conseguir fazer. */
   podeCancelar?: boolean
+  /** v146 · o texto dizia que os agendamentos "aparecem automaticamente" e
+   *  parava aí — descrição de profissional passiva. Num negócio onde ela marca
+   *  (Tassi, no Studio Isis Melo, marca até pras colegas) o card ensinava o
+   *  contrário do que ela ia fazer no dia seguinte. */
+  podeAgendar?: boolean
+  podeAgendarOutras?: boolean
 }) {
   const [dismissed, setDismissed] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -76,6 +84,11 @@ export default function WelcomeCard({
             <p className="font-semibold" style={{ color: 'var(--admin-text)' }}>Sua agenda aqui</p>
             <p>
               Os agendamentos dos seus clientes aparecem automaticamente.{' '}
+              {podeAgendar && (
+                podeAgendarOutras
+                  ? 'Você também marca por aqui, na sua agenda e na das colegas: é só tocar num horário vazio da grade. '
+                  : 'Você também marca os seus por aqui: é só tocar num horário vazio da grade. '
+              )}
               {podeCancelar
                 ? 'Você pode confirmar ou cancelar direto daqui.'
                 : 'Você confirma e conclui por aqui; cancelamento é feito pela recepção ou pela administração.'}

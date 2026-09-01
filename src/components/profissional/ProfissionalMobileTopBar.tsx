@@ -73,10 +73,16 @@ export default function ProfissionalMobileTopBar({
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  // v131 · sem a chave, a aba Horários some do menu. Default `true` → base intacta.
+  /* v131 · sem a chave, a aba Horários some do menu. Default `true` → base intacta.
+     v146 · Bloqueios sai junto: bloquear a própria agenda é decidir horário, e
+     ficava de pé no Studio Isis Melo mesmo com a decisão reservada à dona e à
+     recepção. A rota também recusa (api/profissional/bloqueio) — o menu só
+     evita que ela bata numa porta que não abre. */
   const semHorario = podeEditarHorario
     ? ALL_ITEMS
-    : ALL_ITEMS.filter((i) => i.href !== '/profissional/horarios')
+    : ALL_ITEMS.filter(
+        (i) => i.href !== '/profissional/horarios' && i.href !== '/profissional/bloqueios',
+      )
 
   /* v144 · sem grade: saem Início, Atendimentos e Bloqueios — sobra o que é
      dela (financeiro e conta). Com recepção acumulada, entra o atalho do balcão. */

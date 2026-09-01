@@ -30,12 +30,30 @@ async function profissionalLogada(supabase: Awaited<ReturnType<typeof createClie
   if (!user) return null
   const { data: prof } = await supabase
     .from('professionals')
-    .select('id, business_id, name, is_receptionist')
+    .select('id, business_id, name, is_receptionist, business:businesses(prof_edita_horario)')
     .eq('auth_user_id', user.id)
     .eq('active', true)
     .maybeSingle()
   if (!prof || prof.is_receptionist) return null
   return prof
+}
+
+/**
+ * v146 · bloquear a própria agenda É decidir horário.
+ *
+ * A v131/v132 tirou a aba Horários de quem o negócio não autoriza e trancou
+ * `working_hours` na policy. Só que bloqueio mora em `business_blocks`, outra
+ * tabela, e esta rota grava com service-role justamente pra contornar a policy
+ * da v53 — então passava por fora do gate. No Studio Isis Melo, que pagou pra
+ * horário ser decisão da dona e da recepção, a profissional se bloqueava e a
+ * recepção não conseguia mais encaixar ninguém ali.
+ *
+ * Uma decisão, duas portas: agora as duas pedem a mesma chave. Default `true`
+ * no banco → negócio que não pediu nada segue como sempre.
+ */
+function podeMexerNoHorario(prof: { business?: unknown } | null): boolean {
+  const biz = prof?.business as { prof_edita_horario?: boolean | null } | null | undefined
+  return biz?.prof_edita_horario !== false
 }
 
 export async function POST(req: NextRequest) {
@@ -45,6 +63,9 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const prof = await profissionalLogada(supabase)
   if (!prof) return NextResponse.json({ error: 'nao_autorizado' }, { status: 403 })
+  if (!podeMexerNoHorario(prof)) {
+    return NextResponse.json({ error: 'horario_reservado_a_administracao' }, { status: 403 })
+  }
 
   const body = await req.json().catch(() => null)
   const tipo = body?.block_type === 'recurring' ? 'recurring' : 'specific'
@@ -142,6 +163,9 @@ export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
   const prof = await profissionalLogada(supabase)
   if (!prof) return NextResponse.json({ error: 'nao_autorizado' }, { status: 403 })
+  if (!podeMexerNoHorario(prof)) {
+    return NextResponse.json({ error: 'horario_reservado_a_administracao' }, { status: 403 })
+  }
 
   const id = new URL(req.url).searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id_obrigatorio' }, { status: 400 })

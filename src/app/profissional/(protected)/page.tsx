@@ -260,7 +260,12 @@ export default async function ProfissionalPage({
           homeEhGrade ? 'pt-4 pb-3 md:max-w-none md:px-6' : 'pt-7 pb-6'
         }`}
       >
-        <div className={`flex items-center justify-between ${homeEhGrade ? 'mb-3' : 'mb-6'}`}>
+        {/* v146 · abaixo de lg quem desenha logo + saída é a ProfissionalMobileTopBar
+            (layout, `lg:hidden`). Esta linha repetia a marca e o botão de sair logo
+            embaixo dela — dois cabeçalhos empilhados comendo o topo do celular, com
+            "Sair" em duplicidade (o drawer já tem). Em ≥lg a top bar não existe, e aí
+            esta linha volta a ser a única — desktop segue idêntico. */}
+        <div className={`hidden lg:flex items-center justify-between ${homeEhGrade ? 'mb-3' : 'mb-6'}`}>
           <BrandHeaderLogo
             brandLogoUrl={business.brand_logo_url ?? null}
             businessName={business.name}
@@ -350,7 +355,12 @@ export default async function ProfissionalPage({
         <PushEnableBanner />
 
         {/* Boas-vindas · card de primeiro acesso (dispensável no X) */}
-        <WelcomeCard professionalName={professional.name} podeCancelar={podeCancelar} />
+        <WelcomeCard
+          professionalName={professional.name}
+          podeCancelar={podeCancelar}
+          podeAgendar={canBookSelf}
+          podeAgendarOutras={canBookOthers}
+        />
 
         {/* v98g · O botão "Marcar cliente" que existia aqui SAIU: era a mesma
             função do "+ Agendar" que a própria grade tem no header, e apontado
