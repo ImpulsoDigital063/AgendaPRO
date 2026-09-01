@@ -24,6 +24,10 @@ type ApptDetail = {
   start_time: string
   end_time: string
   status: string
+  /** v146 · quando a cliente tocou em "Confirmar presença" no WhatsApp.
+   *  NULL = ela não respondeu. NÃO confunda com `status`, que já nasce
+   *  'confirmed' em todos os caminhos de criação. */
+  confirmado_em: string | null
   paid_at: string | null
   payment_method: string | null
   total_price: number | null
@@ -115,7 +119,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
     const sb = createClient()
     sb.from('appointments')
       .select(`
-        id, appointment_date, start_time, end_time, status, paid_at,
+        id, appointment_date, start_time, end_time, status, confirmado_em, paid_at,
         payment_method, total_price, notes, sinal_valor, sinal_pago_at,
         client_name, client_phone, customer_id,
         service_name,
@@ -283,6 +287,34 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                 >
                   {statusLabel}
                 </span>
+                {/* ── CONFIRMADO PELA CLIENTE ─────────────────────────
+                    Vem SEPARADO do status de propósito. O status diz que o
+                    horário está de pé na agenda; este selo diz que a PESSOA
+                    respondeu que vem. São coisas diferentes, e era a segunda
+                    que faltava — a dona mandava o lembrete e continuava sem
+                    saber quem ia aparecer. */}
+                {data?.confirmado_em && (
+                  <span
+                    className="text-[11px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full inline-flex items-center gap-1"
+                    style={{
+                      background: 'linear-gradient(135deg, #00A884 0%, #008069 100%)',
+                      color: '#fff',
+                      boxShadow: '0 2px 6px -1px rgba(0,128,105,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
+                    }}
+                    title={`Confirmou pelo WhatsApp em ${new Date(data.confirmado_em).toLocaleString('pt-BR')}`}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M4 12.5l5.5 5.5L20 7"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    Ela confirmou
+                  </span>
+                )}
                 {isPaid && (
                   <span
                     className="text-[11px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"

@@ -345,7 +345,15 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
   const negocio = alvo.business
 
   if (acao.tipo === 'confirmar') {
-    await db.from('appointments').update({ status: 'confirmed' }).eq('id', alvo.id)
+    /* `confirmado_em` alem do status (v146). Escrever so 'confirmed' nao
+       registrava nada: o agendamento JA NASCE confirmed em todos os caminhos
+       de criacao, entao era 'confirmed' por cima de 'confirmed'. A dona nao
+       tinha como distinguir "a cliente disse que vem" de "foi criado assim"
+       — e e' justamente isso que ela contratou o pacote pra saber. */
+    await db
+      .from('appointments')
+      .update({ status: 'confirmed', confirmado_em: new Date().toISOString() })
+      .eq('id', alvo.id)
     await responder(
       negocio?.name ? `Presença confirmada! Até breve, ${negocio.name}.` : 'Presença confirmada! Até breve.',
     )
