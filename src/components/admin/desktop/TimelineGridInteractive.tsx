@@ -20,6 +20,10 @@ type Appt = {
   start_time: string
   end_time: string
   status: string
+  /** v146 · quando a cliente tocou em "Confirmar presenca" no WhatsApp.
+   *  NULL = nao respondeu. Nao e' o mesmo que `status`, que ja nasce
+   *  'confirmed' em todos os caminhos de criacao. */
+  confirmado_em?: string | null
   client_name: string | null
   service_name: string | null
   total_price: number | null
@@ -1017,7 +1021,7 @@ export default function TimelineGridInteractive({
                             opacity: isCancelled ? 0.55 : 1,
                             textDecoration: isCancelled ? 'line-through' : 'none',
                           }}
-                          title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}${nomeConvenio(a) ? ` · convênio ${nomeConvenio(a)}` : ''}${isCancelled ? ' · CANCELADO · slot livre pra reagendar' : ''}`}
+                          title={`${a.start_time.slice(0, 5)} · ${a.client_name ?? 'Cliente'} · ${a.service_name ?? 'Serviço'}${nomeConvenio(a) ? ` · convênio ${nomeConvenio(a)}` : ''}${a.confirmado_em ? ' · ELA CONFIRMOU presença pelo WhatsApp' : ''}${isCancelled ? ' · CANCELADO · slot livre pra reagendar' : ''}`}
                         >
                           {isTiny ? (
                             // 1 linha · horário pequeno + nome inline
@@ -1028,14 +1032,47 @@ export default function TimelineGridInteractive({
                               <span className="font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
                                 {a.client_name ?? 'Cliente'}
                               </span>
+                              {/* Card minusculo: so o tique, sem palavra. */}
+                              {a.confirmado_em && (
+                                <span
+                                  className="flex-shrink-0"
+                                  style={{ color: '#008069' }}
+                                  title="Ela confirmou presenca pelo WhatsApp"
+                                  aria-label="confirmou presenca"
+                                >
+                                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
+                                    <path d="M4 12.5l5.5 5.5L20 7" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </span>
+                              )}
                             </span>
                           ) : (
                             <>
                               <span className={`font-bold tabular-nums leading-tight ${isCompact ? 'text-[10px]' : 'text-[11px]'}`} style={{ color }}>
                                 {a.start_time.slice(0, 5)} · {a.end_time.slice(0, 5)}
                               </span>
-                              <span className={`font-semibold truncate ${isCompact ? 'text-[11px]' : 'text-xs'} leading-tight`} style={{ color: 'var(--admin-text)' }}>
-                                {a.client_name ?? 'Cliente'}
+                              <span className="flex items-center gap-1 min-w-0">
+                                <span className={`font-semibold truncate ${isCompact ? 'text-[11px]' : 'text-xs'} leading-tight`} style={{ color: 'var(--admin-text)' }}>
+                                  {a.client_name ?? 'Cliente'}
+                                </span>
+                                {/* ── ELA CONFIRMOU ────────────────────────
+                                    O tique fica colado no NOME, nao numa
+                                    faixa separada: quem varre a grade procura
+                                    a pessoa, e a informacao tem que estar
+                                    onde o olho ja passa. Verde do WhatsApp
+                                    porque veio de la. */}
+                                {a.confirmado_em && (
+                                  <span
+                                    className="flex-shrink-0 inline-flex items-center justify-center rounded-full"
+                                    style={{ width: 14, height: 14, background: '#008069', color: '#fff' }}
+                                    title={`Ela confirmou presenca pelo WhatsApp em ${new Date(a.confirmado_em).toLocaleString('pt-BR')}`}
+                                    aria-label="confirmou presenca pelo WhatsApp"
+                                  >
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
+                                      <path d="M4 12.5l5.5 5.5L20 7" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </span>
+                                )}
                               </span>
                             </>
                           )}

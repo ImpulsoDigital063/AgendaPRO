@@ -85,7 +85,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .order('name'),
     sb
       .from('appointments')
-      .select('id, professional_id, start_time, end_time, status, client_name, service_name, total_price, paid_at, payment_method, invoice_item_id, combo_package_id, company_id, company:companies(name)')
+      .select('id, professional_id, start_time, end_time, status, confirmado_em, client_name, service_name, total_price, paid_at, payment_method, invoice_item_id, combo_package_id, company_id, company:companies(name)')
       .eq('business_id', businessId)
       .eq('appointment_date', date)
       // Cancelados aparecem visualmente diferentes (faixa diagonal/desbotado · vide TimelineGridInteractive)
