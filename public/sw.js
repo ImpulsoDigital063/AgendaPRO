@@ -22,7 +22,7 @@
 //               no link público (DN). Bump porque o BookingFlow mudou.
 // v21 (25/08): troca do botão de faturar por "Marcar como atendido" no
 // atendimento de convênio + selo do card dividido mostrando a empresa.
-const STATIC_CACHE_VERSION = 'agendapro-static-v81'
+const STATIC_CACHE_VERSION = 'agendapro-static-v82'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
@@ -91,6 +91,22 @@ self.addEventListener('fetch', (event) => {
             return response
           })
           .catch(async () => {
+            /* TENTA DE NOVO antes de desistir (01/09). Queda de 4G/5G e
+               quase sempre instantanea, e a segunda tentativa pega. Sem
+               isso, um piscar de rede num arquivo de CSS deixava a pagina
+               PELADA ate alguem recarregar — e a cliente do salao nao
+               recarrega, ela sai. */
+            try {
+              const segunda = await fetch(request)
+              if (segunda && segunda.ok && segunda.type === 'basic') {
+                const clone2 = segunda.clone()
+                caches.open(STATIC_CACHE_VERSION).then((cache) => cache.put(request, clone2))
+                return segunda
+              }
+            } catch (e) {
+              /* segue pro fallback abaixo */
+            }
+
             // Rede falhou buscando um estatico. SEM este catch, a promise
             // rejeitava e o recurso simplesmente nao chegava — foi assim que
             // o Olimpio abriu o app sem CSS nenhum (10/08). Nao existe fallback

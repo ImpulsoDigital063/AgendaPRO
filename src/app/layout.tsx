@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import RecuperaEstilo from '@/components/RecuperaEstilo'
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import RegisterSW from "@/components/RegisterSW";
@@ -110,6 +111,8 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col" style={{ background: '#030510' }}>
         <RegisterSW />
         <GoogleAnalytics />
+        {/* Pagina sem CSS se conserta sozinha. Ver RecuperaEstilo.tsx. */}
+        <RecuperaEstilo />
         {children}
       </body>
     </html>
