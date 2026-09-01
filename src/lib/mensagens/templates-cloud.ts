@@ -59,6 +59,26 @@ const nome = (s: string) => (s || '').trim().split(/\s+/)[0] || 'tudo bem'
 const fone = (v: Variaveis) =>
   v.telefoneSalao ? formatarTelefone(v.telefoneSalao) : t(v.salao)
 
+/* SERVICO + PROFISSIONAL no mesmo parametro.
+   Eduardo, 01/09: "nao tem o nome da profissional que foi feito o
+   agendamento". Ele esta certo — a cliente le "Servico: Hidratacao Profunda"
+   e nao sabe COM QUEM.
+
+   O nome ja chegava nas variaveis (os quatro caminhos de envio passam
+   `profissional`), so nao era usado por nenhum `params`.
+
+   Vai junto do servico de proposito, em vez de virar um {{7}} novo: mudar o
+   CORPO do template obriga a reenviar pra Meta e esperar aprovacao, com os
+   avisos saindo no texto antigo enquanto isso. Mudar o CONTEUDO de um
+   parametro que ja existe vale na proxima mensagem, sem aprovacao nenhuma.
+
+   Sem profissional definida (o campo aceita nulo), sai so o servico. */
+const servicoCom = (v: Variaveis) => {
+  const servico = t(v.servico, 'seu horário')
+  const quem = (v.profissional ?? '').trim().split(/\s+/)[0]
+  return quem ? `${servico} com ${quem}` : servico
+}
+
 export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
   confirmacao: {
     nome: 'agendapro_confirmacao_v2',
@@ -67,7 +87,7 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
     corpo:
       'Oi {{1}}, tudo bem? Seu horário no {{2}} ficou marcado. Anota aí:\n\nDia: {{3}}\nHorário: {{4}}\nServiço: {{5}}\n\nSe precisar remarcar ou tirar alguma dúvida, é só falar com a gente pelo telefone {{6}}. Até breve!',
     categoria: 'UTILITY',
-    params: (v) => [nome(v.cliente), t(v.salao), t(v.data), t(v.hora), t(v.servico, 'seu horário'), fone(v)],
+    params: (v) => [nome(v.cliente), t(v.salao), t(v.data), t(v.hora), servicoCom(v), fone(v)],
   },
   lembrete_vespera: {
     nome: 'agendapro_lembrete_vespera',
@@ -76,7 +96,7 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
     corpo:
       'Oi {{1}}, tudo bem? Passando para lembrar que você tem horário marcado amanhã no {{2}}.\n\nDia: {{3}}\nHorário: {{4}}\nServiço: {{5}}\n\nSe precisar remarcar ou tirar alguma dúvida, é só falar com a gente pelo telefone {{6}}. Até amanhã!',
     categoria: 'UTILITY',
-    params: (v) => [nome(v.cliente), t(v.salao), t(v.data), t(v.hora), t(v.servico, 'seu horário'), fone(v)],
+    params: (v) => [nome(v.cliente), t(v.salao), t(v.data), t(v.hora), servicoCom(v), fone(v)],
     botoes: ['confirmar', 'remarcar'],
   },
   lembrete_dia: {
@@ -86,7 +106,7 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
     corpo:
       'Oi {{1}}, tudo bem? Passando para lembrar que o seu horário no {{2}} é hoje.\n\nHorário: {{3}}\nServiço: {{4}}\n\nTe esperamos! Se precisar falar com a gente, o telefone é {{5}}. Até mais tarde!',
     categoria: 'UTILITY',
-    params: (v) => [nome(v.cliente), t(v.salao), t(v.hora), t(v.servico, 'seu horário'), fone(v)],
+    params: (v) => [nome(v.cliente), t(v.salao), t(v.hora), servicoCom(v), fone(v)],
     botoes: ['confirmar', 'remarcar'],
   },
   aniversario: {
