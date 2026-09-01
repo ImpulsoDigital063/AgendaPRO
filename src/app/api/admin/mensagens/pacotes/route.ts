@@ -31,6 +31,7 @@ import {
   findCustomerByExternalReference,
   getPixQrCode,
   listPaymentsByCustomer,
+  getNextDueDate,
 } from '@/lib/asaas'
 import { unidadesDaFranquia } from '@/lib/mensagens/templates-cloud'
 import type { TipoMensagem } from '@/lib/mensagens/tipos'
@@ -327,7 +328,12 @@ async function cobrarAvisos(
     pagamentoId = (pendente as { id: string }).id
     invoiceUrl = (pendente as { invoiceUrl?: string }).invoiceUrl ?? null
   } else {
-    const venc = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10)
+    /* λ.fuso — usa o MESMO helper da mensalidade, que e o caminho testado e
+       pago por cliente real. `new Date(Date.now() + …).toISOString()` conta em
+       UTC: cobranca gerada depois das 21h no Brasil ganhava um dia a mais.
+       Aconteceu em 31/08 as 22h45 — a cobranca de "3 dias" saiu vencendo 04/09
+       em vez de 03/09. */
+    const venc = getNextDueDate(3)
     const pay = await createPayment({
       customer: customerId,
       billingType: 'PIX',
