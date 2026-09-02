@@ -33,10 +33,11 @@ export const runtime = 'nodejs'
 
 /* Só os tipos que a varredura realmente executa. Mostrar editor de aviso que
    o motor não manda é prometer na tela o que o sistema não faz. */
-const EDITAVEIS: TipoMensagem[] = ['confirmacao', 'lembrete_vespera', 'lembrete_dia', 'aniversario', 'retorno']
+const EDITAVEIS: TipoMensagem[] = ['confirmacao', 'sinal_pendente', 'lembrete_vespera', 'lembrete_dia', 'aniversario', 'retorno']
 
 const ROTULO: Partial<Record<TipoMensagem, string>> = {
   confirmacao: 'Confirmação do agendamento',
+  sinal_pendente: 'Cobrança do sinal',
   lembrete_vespera: 'Lembrete da véspera',
   lembrete_dia: 'Lembrete do dia',
   aniversario: 'Aniversário',
@@ -117,19 +118,89 @@ async function sincronizarStatus(db: ReturnType<typeof admin>, businessId: strin
  * prévia não tem como divergir do que a cliente recebe. Montar o exemplo
  * à parte foi exatamente o que criou dois textos diferentes na mesma tela.
  */
-function comExemplo(tipo: TipoMensagem, corpo: string, salao: string, telefone: string): string {
+/* O que aparece na prévia. Vem do movimento real do negócio quando existe
+   — ver `exemploDoNegocio` abaixo. */
+type Exemplo = { cliente: string; servico: string; profissional: string }
+
+/* Fallback de quem ainda não atendeu ninguém. Neutro de propósito: sem nome
+   de serviço de salão, porque a mesma tela abre pra barbearia, clínica e
+   personal. "Atendimento" serve em todos; "Escova" só serve em um. */
+const EXEMPLO_NEUTRO: Exemplo = { cliente: 'Ana', servico: 'Atendimento', profissional: '' }
+
+/* Data de exemplo: sempre o próximo sábado, escrito como o template escreve.
+   Estava cravado "sábado, 22/08" — uma data do passado numa tela de venda
+   envelhece o produto sem ninguém perceber. */
+function proximoSabado(): { data: string; hora: string } {
+  const hoje = new Date()
+  const faltam = (6 - hoje.getDay() + 7) % 7 || 7
+  const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + faltam)
+  const dia = String(d.getDate()).padStart(2, '0')
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  return { data: `sábado, ${dia}/${mes}`, hora: '14:30' }
+}
+
+function comExemplo(
+  tipo: TipoMensagem,
+  corpo: string,
+  salao: string,
+  telefone: string,
+  ex: Exemplo,
+): string {
   const def = TEMPLATES[tipo]
   if (!def) return corpo
+  const { data, hora } = proximoSabado()
   const valores = def.params({
-    cliente: 'Maria',
+    cliente: ex.cliente,
     salao,
-    data: 'sábado, 22/08',
-    hora: '14:30',
-    servico: 'Escova',
+    data,
+    hora,
+    servico: ex.servico,
     telefoneSalao: telefone,
-    profissional: 'Ana',
+    profissional: ex.profissional,
   })
   return corpo.replace(/\{\{(\d+)\}\}/g, (_, n) => valores[Number(n) - 1] ?? `{{${n}}}`)
+}
+
+/* ─── A prévia sai da agenda dela, não de um exemplo de salão ──────────
+   Eduardo, 01/09, olhando a prévia da Olímpio Barbearia: "já mostra um erro
+   nas msg, barbearia, aí coloca cliente Maria, e escova de cabelo com
+   Fernanda, nada casou aí hem".
+
+   Ele está certo, e o conserto certo não é uma tabela de exemplo por nicho
+   — é parar de inventar. O último atendimento do próprio negócio traz nome
+   de cliente, serviço e profissional que casam com o nicho por construção,
+   porque SÃO do nicho. Barbearia mostra "Corte com Marcos"; clínica mostra
+   "Sessão com Dra. Paula". Sem lista pra manter e sem nicho esquecido.
+
+   Só o PRIMEIRO nome do cliente, igual ao que o template real faz. */
+async function exemploDoNegocio(
+  db: ReturnType<typeof admin>,
+  businessId: string,
+): Promise<Exemplo> {
+  const { data } = await db
+    .from('appointments')
+    .select('client_name, service_name, professional:professionals(name)')
+    .eq('business_id', businessId)
+    .not('service_name', 'is', null)
+    .order('appointment_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const a = data as {
+    client_name?: string | null
+    service_name?: string | null
+    professional?: { name?: string | null } | { name?: string | null }[] | null
+  } | null
+  if (!a) return EXEMPLO_NEUTRO
+
+  const prof = Array.isArray(a.professional) ? a.professional[0] : a.professional
+  const primeiro = (s: string | null | undefined) => (s ?? '').trim().split(/\s+/)[0] ?? ''
+
+  return {
+    cliente: primeiro(a.client_name) || EXEMPLO_NEUTRO.cliente,
+    servico: (a.service_name ?? '').trim() || EXEMPLO_NEUTRO.servico,
+    profissional: primeiro(prof?.name),
+  }
 }
 
 export async function GET() {
@@ -145,7 +216,12 @@ export async function GET() {
   const nomeNegocio = (neg as { name?: string } | null)?.name ?? 'seu negócio'
   const telNegocio = (neg as { phone?: string } | null)?.phone ?? ''
 
-  await sincronizarStatus(db, r.businessId).catch(() => null)
+  /* Em paralelo: o status na Meta não depende do exemplo, e o exemplo não
+     depende do status. Serializar aqui só somaria latência na abertura. */
+  const [, exemplo] = await Promise.all([
+    sincronizarStatus(db, r.businessId).catch(() => null),
+    exemploDoNegocio(db, r.businessId).catch(() => EXEMPLO_NEUTRO),
+  ])
 
   const { data: meus } = await db
     .from('message_templates_negocio')
@@ -156,6 +232,11 @@ export async function GET() {
   )
 
   return NextResponse.json({
+    /* O nome que a tela de venda usa no cartao da agenda ("Ela confirmou").
+       Vem do ultimo atendimento real, o mesmo que alimenta a previa — assim
+       o exemplo inteiro fala a lingua do negocio, e nao a de um salao
+       generico. */
+    exemplo,
     avisos: EDITAVEIS.map((tipo) => {
       const def = TEMPLATES[tipo]!
       const meu = porTipo.get(tipo) as
@@ -167,7 +248,7 @@ export async function GET() {
         corpoPadrao: def.corpo,
         /* O que a cliente REALMENTE vai ler. A tela mostra isto; os
            {{1}}, {{2}} só aparecem quando ela abre o editor. */
-        previa: comExemplo(tipo, meu?.corpo ?? def.corpo, nomeNegocio, telNegocio),
+        previa: comExemplo(tipo, meu?.corpo ?? def.corpo, nomeNegocio, telNegocio, exemplo),
         campos: def.campos,
         /* MARKETING avisa na tela: consome 7 do pacote em vez de 1. */
         marketing: def.categoria === 'MARKETING',
@@ -229,7 +310,12 @@ export async function PUT(req: NextRequest) {
   if (def.categoria === 'MARKETING') {
     components.push({ type: 'FOOTER', text: 'Responda PARE para não receber mais mensagens.' })
   }
-  if (def.botoes?.length) {
+  /* Os botoes vem da DEFINICAO, nao cravados aqui. Estava cravado o par
+     Confirmar/Remarcar, que serve pros lembretes e some no sinal — e sinal
+     sem o botao de link e uma cobranca sem como pagar. */
+  if (def.botoesMeta?.length) {
+    components.push({ type: 'BUTTONS', buttons: def.botoesMeta })
+  } else if (def.botoes?.length) {
     components.push({
       type: 'BUTTONS',
       buttons: [

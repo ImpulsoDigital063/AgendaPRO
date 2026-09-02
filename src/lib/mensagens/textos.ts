@@ -27,6 +27,10 @@ export type Variaveis = {
   servico: string
   telefoneSalao: string | null
   profissional?: string
+  /** Valor do sinal já formatado ("R$ 40,00"). Só no tipo sinal_pendente. */
+  sinal?: string
+  /** Até quando pagar, como a cliente lê ("as 12:30" ou "amanhã as 09:00"). */
+  prazo?: string
 }
 
 /* O telefone sai formatado na HORA DE MONTAR, nao como foi salvo. No banco
@@ -77,6 +81,19 @@ const CORPO: Record<TipoMensagem, (v: Variaveis) => string> = {
     `Oi ${primeiroNome(v.cliente)}! Seu horário está marcado:\n` +
     `${v.data} às ${v.hora} — ${v.servico}` +
     (v.profissional ? `\ncom ${v.profissional}` : ''),
+
+  /* Este é o texto do FALLBACK POR E-MAIL, quando o WhatsApp não deu conta.
+     Sem o botão, o link tem que aparecer escrito — e ele não vem aqui: o
+     e-mail é montado em `lib/email.ts`, que já tem o link do sinal. Aqui só
+     o corpo, dizendo com todas as letras que o horário AINDA NÃO ESTÁ
+     confirmado. É a diferença que o texto da confirmação não pode ter. */
+  sinal_pendente: (v) =>
+    `${v.salao}\n\n` +
+    `Oi ${primeiroNome(v.cliente)}! Seu horário está reservado, mas ainda não confirmado:\n` +
+    `${v.data} às ${v.hora} — ${v.servico}\n\n` +
+    `Falta o sinal${v.sinal ? ` de ${v.sinal}` : ''}` +
+    `${v.prazo ? `, que precisa ser pago até ${v.prazo}` : ''}. ` +
+    `Depois disso o horário fica livre para outra pessoa.`,
 
   lembrete_vespera: (v) =>
     `${v.salao}\n\n` +

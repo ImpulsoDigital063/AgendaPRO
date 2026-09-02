@@ -389,7 +389,12 @@ export async function GET(req: NextRequest) {
      "do dia" esta configurado em 24h, e o texto dele afirma "e hoje", que
      seria falso. Aniversario e retorno cedem: sao os unicos que podem
      esperar um dia sem prejuizo. */
-  const PRIORIDADE: Record<string, number> = {
+  const PRIORIDADE: Partial<Record<TipoMensagem, number>> = {
+    /* Acima de tudo: e' a unica com PRAZO. O horario cai sozinho quando o
+       sinal vence, entao adiar essa mensagem em meia hora pode custar a
+       venda — as outras so chegam mais tarde. Na pratica ela nunca disputa
+       com a confirmacao, porque uma substitui a outra. */
+    sinal_pendente: 0,
     confirmacao: 1,
     dono_novo_agendamento: 2,
     lembrete_vespera: 3,

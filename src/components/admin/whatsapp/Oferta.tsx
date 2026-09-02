@@ -49,10 +49,15 @@
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import CountUp from '@/components/admin/CountUp'
-import { IconCheck, IconChevronRight, IconWhatsapp } from '@/components/ui/Icon'
+import { IconCheck, IconChevronRight } from '@/components/ui/Icon'
 import type { TermoPessoa } from '@/lib/segmento'
 import { Lista, TituloSecao, WA } from './ui'
 import TelaWhatsApp from './TelaWhatsApp'
+import HeroOferta from './HeroOferta'
+import MenuAncora from './MenuAncora'
+import ComoFunciona from './ComoFunciona'
+import OQueVoceGanha from './OQueVoceGanha'
+import type { Aviso } from './AvisoDetalhe'
 
 export type PacoteTela = {
   id: string
@@ -126,6 +131,8 @@ export default function Oferta({
   movimento,
   precoExcedente,
   previa,
+  avisos,
+  clienteExemplo,
   podeContratar,
   liberado,
   salvando,
@@ -144,6 +151,10 @@ export default function Oferta({
   movimento: Movimento
   precoExcedente: number
   previa: string | null
+  /** A régua inteira, pra seção "Como funciona" montar a lista navegável. */
+  avisos: Aviso[]
+  /** Primeiro nome do último atendimento — o cartão da agenda usa. */
+  clienteExemplo: string
   podeContratar: boolean
   liberado: boolean
   salvando: boolean
@@ -161,34 +172,52 @@ export default function Oferta({
   const ehRecomendado = p.id === recomendado && temMovimento
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-10 lg:items-start">
-      {/* ═══ O QUE É ═══════════════════════════════════════════ */}
-      <div>
-        <span
-          className="admin-enter inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider"
-          style={{
-            ...entra(0),
-            background: 'rgba(37,211,102,0.12)',
-            border: '1px solid rgba(37,211,102,0.28)',
-            color: '#0f7a52',
-          }}
-        >
-          <IconWhatsapp size={13} />
-          WhatsApp oficial
-        </span>
+    <div>
+      {/* ═══ 1 · HERO ══════════════════════════════════════════
+          O selo, o título, a foto e o aparelho. Saiu daqui pra
+          HeroOferta.tsx quando a tela virou LP (01/09) — o hero antigo
+          era um parágrafo e um H2, e o resto da página não tinha por onde
+          começar. */}
+      <HeroOferta
+        T={T}
+        remetente={remetente}
+        numero={numero}
+        previa={previa}
+        atendimentosMes={movimento.atendimentosMes}
+      />
 
-        <h2
-          className="admin-enter text-[27px] sm:text-[32px] leading-[1.12] font-bold tracking-tight mt-3"
-          style={{ ...entra(60), color: 'var(--admin-text)' }}
+      {/* ═══ 2 · MENU ÂNCORA ═══════════════════════════════════ */}
+      <MenuAncora />
+
+      {/* ═══ 3 · COMO FUNCIONA ═════════════════════════════════ */}
+      <ComoFunciona
+        avisos={avisos}
+        remetente={remetente}
+        numero={numero}
+        clienteExemplo={clienteExemplo}
+      />
+
+      {/* ═══ 4 · O QUE VOCÊ GANHA ══════════════════════════════ */}
+      <OQueVoceGanha T={T} precoExcedente={precoExcedente} />
+
+      {/* ═══ 5 · PREÇOS ════════════════════════════════════════ */}
+      <section
+        id="precos"
+        className="secao-ancora pt-9 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-10 lg:items-start"
+      >
+      <div>
+        <h3
+          className="admin-enter text-[24px] sm:text-[28px] leading-tight font-bold tracking-tight"
+          style={{ ...entra(0), color: 'var(--admin-text)' }}
         >
-          {`${T.poss.charAt(0).toUpperCase()}${T.poss.slice(1)} ${T.s} recebe confirmação`}
-          <br className="hidden sm:block" /> e lembrete sozinho.
-        </h2>
+          Escolha o tamanho do seu mês
+        </h3>
         <p
-          className="admin-enter text-[15px] leading-relaxed mt-2.5 max-w-md"
-          style={{ ...entra(100), color: 'var(--admin-text-2)' }}
+          className="admin-enter text-[15px] leading-relaxed mt-2 max-w-md"
+          style={{ ...entra(60), color: 'var(--admin-text-2)' }}
         >
-          {`O AgendaPRO manda no WhatsApp ${T.de} na hora que marca e um dia antes. Você não digita nada, não salva contato, não abre o celular.`}
+          Você paga por mensagem entregue, e só. Sem mensalidade escondida, sem
+          taxa de ativação, e dá para trocar de pacote quando quiser.
         </p>
 
         {/* ═══ OS NÚMEROS DELA ═════════════════════════════════
@@ -269,15 +298,79 @@ export default function Oferta({
                 `verified_name` da conta na Meta é "AgendaPRO". Deixar o nome
                 do salão no cabeçalho seria vender uma tela que não acontece,
                 e a dona descobriria pela cliente. */}
-            <div className="mt-2.5 max-w-sm space-y-1.5">
-              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--admin-text-faded)' }}>
-                Chega pelo número oficial do AgendaPRO, o mesmo para todos os salões. O nome do{' '}
-                <strong style={{ color: 'var(--admin-text-mute)' }}>seu negócio</strong> vai na
-                primeira linha da mensagem, e o telefone de resposta é o seu.
-              </p>
-              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--admin-text-faded)' }}>
-                {`${T.pron.charAt(0).toUpperCase()}${T.pron.slice(1)} toca em "Confirmar presença" e o horário fica confirmado na sua agenda sozinho — você não precisa responder nada.`}
-              </p>
+            {/* ── As duas respostas que a tela precisa dar ──────────
+                Eram dois parágrafos de 11px em cinza claro embaixo do
+                celular. Eduardo, 01/09: "não deixar esse texto solto assim
+                sem destaque nenhum". Ele está certo — e o problema não era
+                só tamanho: as duas perguntas mais duras da tela ("de que
+                número chega?" e "e depois que ela responde?") estavam
+                escritas como se fossem observação de rodapé.
+
+                Viram cartão com ícone e título próprio. Cada uma responde
+                uma pergunta, e o título é a pergunta. */}
+            <div
+              className="mt-3.5 max-w-sm rounded-2xl overflow-hidden"
+              style={{ background: WA.fundo, border: `1px solid ${WA.borda}` }}
+            >
+              {[
+                {
+                  titulo: 'De que número chega',
+                  corpo: (
+                    <>
+                      Do número oficial do AgendaPRO, o mesmo para todos. O nome do{' '}
+                      <strong style={{ color: 'var(--admin-text)' }}>seu negócio</strong> vai na
+                      primeira linha, e o telefone de resposta é o seu.
+                    </>
+                  ),
+                  icone: (
+                    <path
+                      d="M4.5 5.5c0-.6.4-1 1-1h2.2c.5 0 .9.3 1 .8l.7 2.6c.1.4 0 .8-.4 1l-1.4 1a11 11 0 005 5l1-1.4c.2-.3.6-.5 1-.4l2.6.7c.5.1.8.5.8 1v2.2c0 .6-.4 1-1 1A13.5 13.5 0 014.5 5.5z"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                    />
+                  ),
+                },
+                {
+                  titulo: 'E depois que responde',
+                  corpo: `${T.pron.charAt(0).toUpperCase()}${T.pron.slice(1)} toca em "Confirmar presença" e o horário ganha o selo na sua agenda sozinho. Você não precisa responder nada.`,
+                  icone: (
+                    <>
+                      <circle cx="12" cy="12" r="8.2" stroke="currentColor" strokeWidth="1.7" />
+                      <path
+                        d="M8.4 12.2l2.6 2.6 4.6-5"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </>
+                  ),
+                },
+              ].map((b, i) => (
+                <div
+                  key={b.titulo}
+                  className="flex items-start gap-2.5 px-3.5 py-3"
+                  style={i > 0 ? { borderTop: `1px solid ${WA.borda}` } : undefined}
+                >
+                  <span className="flex-shrink-0 mt-[1px]" style={{ color: WA.forte }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      {b.icone}
+                    </svg>
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[12.5px] font-bold leading-tight" style={{ color: WA.forte }}>
+                      {b.titulo}
+                    </p>
+                    <p
+                      className="text-[12.5px] leading-relaxed mt-0.5"
+                      style={{ color: 'var(--admin-text-2)' }}
+                    >
+                      {b.corpo}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -559,6 +652,7 @@ export default function Oferta({
           </p>
         </div>
       </div>
+      </section>
     </div>
   )
 }

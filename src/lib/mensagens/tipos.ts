@@ -12,6 +12,10 @@
 
 export type TipoMensagem =
   | 'confirmacao'
+  /* Ocupa o LUGAR da confirmação quando o horário depende de sinal. Nunca
+     sai junto com ela: enquanto não pagou, dizer "ficou marcado" é mentira,
+     e o horário pode cair. */
+  | 'sinal_pendente'
   | 'lembrete_vespera'
   | 'lembrete_dia'
   | 'aniversario'
@@ -37,6 +41,7 @@ export type Regra = {
 /** Quem é o destinatário — muda o canal e a régua de opt-out. */
 export const DESTINATARIO: Record<TipoMensagem, 'cliente' | 'dono'> = {
   confirmacao: 'cliente',
+  sinal_pendente: 'cliente',
   lembrete_vespera: 'cliente',
   lembrete_dia: 'cliente',
   aniversario: 'cliente',
@@ -55,6 +60,10 @@ export const DESTINATARIO: Record<TipoMensagem, 'cliente' | 'dono'> = {
  */
 export const EH_PROMOCIONAL: Record<TipoMensagem, boolean> = {
   confirmacao: false,
+  /* Transacional: é o pagamento do horário que ELA marcou. Não respeita
+     opt-out pelo mesmo motivo da confirmação — sem essa mensagem ela perde
+     o horário sem saber por quê. */
+  sinal_pendente: false,
   lembrete_vespera: false,
   lembrete_dia: false,
   aniversario: true,
@@ -73,6 +82,13 @@ export const EH_PROMOCIONAL: Record<TipoMensagem, boolean> = {
 export const PADRAO: Record<TipoMensagem, Regra> = {
   confirmacao: {
     tipo: 'confirmacao', enabled: false, offsetMinutos: 0,
+    horaDoDia: '09:00', retornoDias: null, template: null,
+  },
+  /* Chave separada de propósito, e não um `if` dentro da confirmação: a
+     dona pode querer confirmar sozinho e cobrar o sinal na mão, ou o
+     contrário. São duas decisões, então são dois interruptores. */
+  sinal_pendente: {
+    tipo: 'sinal_pendente', enabled: false, offsetMinutos: 0,
     horaDoDia: '09:00', retornoDias: null, template: null,
   },
   lembrete_vespera: {

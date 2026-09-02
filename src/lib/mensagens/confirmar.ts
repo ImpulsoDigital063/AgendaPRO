@@ -3,6 +3,7 @@ import { enviar } from './enviar'
 import { chaveIdempotencia } from './tipos'
 import { dataCurta } from './textos'
 import { todayBR } from '@/lib/date-br'
+import { SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 
 /* ═══════════════════════════════════════════════════════════════
    CONFIRMAÇÃO DE AGENDAMENTO — um lugar só
@@ -35,7 +36,48 @@ import { todayBR } from '@/lib/date-br'
    · data no futuro (ou hoje) — confirmar atendimento de semana passada é o
      jeito mais rápido de assustar a cliente e gastar do pacote à toa
    · idempotência pela chave — dois cliques não mandam duas mensagens
+
+   ─── E a bifurcação do sinal (01/09) ──────────────────────────
+
+   Bug que estava no ar: agendamento com sinal nasce `status: 'pending'`, e
+   'pending' passava na primeira guarda. Ou seja, quem devia sinal recebia
+   "Seu horário no X ficou marcado". Não ficou — ela ainda precisa pagar, e
+   o horário cai sozinho quando o prazo vence.
+
+   Eduardo desenhou a saída: "se o sinal estiver ligado e a dona escolher
+   enviar o sinal automaticamente, então a primeira msg que vai é a do
+   sinal, com o qr e copia e cola para pagar, ai só depois do pagamento e
+   confirmação é que vai a msg de confirmação".
+
+   Então esta função escolhe UMA das duas mensagens. Nunca as duas:
+
+     deve sinal   →  sinal_pendente   (link de pagamento + "Já paguei")
+     não deve     →  confirmacao      (o que já existia)
+
+   Escolher aqui, e não em quem chama, é o mesmo motivo de a confirmação
+   ter vindo pra cá: são sete pontos que criam agendamento, e a regra não
+   pode depender de cada um lembrar dela.
    ═══════════════════════════════════════════════════════════════ */
+
+/** Até quando pagar, como a cliente lê. Em BR, não em UTC — o prazo de 4h
+ *  de um agendamento criado às 22h cai no dia seguinte, e "as 02:00" sem o
+ *  "amanhã" faz ela achar que já perdeu. */
+function prazoLegivel(criadoEm: string, minutos: number, hojeBR: string): string {
+  const alvo = new Date(new Date(criadoEm).getTime() + minutos * 60_000)
+  const fmt = (opts: Intl.DateTimeFormatOptions) =>
+    alvo.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', ...opts })
+  const hora = fmt({ hour: '2-digit', minute: '2-digit' })
+  const dia = fmt({ year: 'numeric', month: '2-digit', day: '2-digit' })
+    .split('/')
+    .reverse()
+    .join('-')
+  if (dia === hojeBR) return `as ${hora}`
+  const [a, m, d] = hojeBR.split('-').map(Number)
+  const amanha = new Date(Date.UTC(a, m - 1, d + 1)).toISOString().slice(0, 10)
+  if (dia === amanha) return `amanha as ${hora}`
+  const [, mm, dd] = dia.split('-')
+  return `${dd}/${mm} as ${hora}`
+}
 
 export type ResultadoConfirmacao =
   | { ok: true; resultado: Awaited<ReturnType<typeof enviar>> }
@@ -49,9 +91,11 @@ export async function confirmarAgendamento(
     .from('appointments')
     .select(
       `id, business_id, appointment_date, start_time, client_name, client_phone,
-       client_email, service_name, customer_id, status,
+       client_email, service_name, customer_id, status, created_at,
        recurring_group_id, recurring_index,
-       business:businesses(name, phone), professional:professionals(name)`,
+       sinal_valor, sinal_pago_at, sinal_isento,
+       business:businesses(name, phone, sinal_expira_minutos),
+       professional:professionals(name)`,
     )
     .eq('id', appointmentId)
     .maybeSingle()
@@ -85,13 +129,28 @@ export async function confirmarAgendamento(
     return { ok: false, motivo: 'serie' }
   }
 
-  const negocio = a.business as unknown as { name: string; phone: string | null } | null
+  const negocio = a.business as unknown as {
+    name: string
+    phone: string | null
+    sinal_expira_minutos: number | null
+  } | null
   const prof = a.professional as unknown as { name: string } | null
+
+  /* ── DEVE SINAL? ─────────────────────────────────────────────
+     `sinal_isento` existe porque a dona libera cliente de casa do sinal
+     caso a caso. Isento é tratado como pago: o horário vale, e a mensagem
+     que sai é a confirmação normal. */
+  const valorSinal = Number(a.sinal_valor ?? 0)
+  const deveSinal = valorSinal > 0 && !a.sinal_pago_at && a.sinal_isento !== true
+
+  const tipo = deveSinal ? ('sinal_pendente' as const) : ('confirmacao' as const)
 
   const resultado = await enviar(db, {
     businessId: a.business_id as string,
-    tipo: 'confirmacao',
-    chave: chaveIdempotencia('confirmacao', a.id as string),
+    tipo,
+    /* Chave por TIPO: se ela pagar depois, a confirmação tem chave própria
+       e sai — a idempotência não pode confundir as duas mensagens. */
+    chave: chaveIdempotencia(tipo, a.id as string),
     destino: { telefone: a.client_phone as string | null, email: a.client_email as string | null },
     appointmentId: a.id as string,
     customerId: (a.customer_id as string) ?? null,
@@ -103,6 +162,18 @@ export async function confirmarAgendamento(
       servico: (a.service_name as string) || 'seu atendimento',
       telefoneSalao: negocio?.phone ?? null,
       profissional: prof?.name,
+      /* Só o tipo sinal_pendente usa. Nos outros ficam undefined e os
+         params nem olham pra eles. */
+      sinal: deveSinal
+        ? valorSinal.toFixed(2).replace('.', ',').replace(/^/, 'R$ ')
+        : undefined,
+      prazo: deveSinal
+        ? prazoLegivel(
+            String(a.created_at),
+            negocio?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN,
+            todayBR(),
+          )
+        : undefined,
     },
   })
 

@@ -129,7 +129,7 @@ type MsgMeta = {
   interactive?: { button_reply?: { id?: string; title?: string } }
 }
 
-type Acao = { tipo: 'confirmar' | 'remarcar' | 'pare'; appointmentId: string | null } | null
+type Acao = { tipo: 'confirmar' | 'remarcar' | 'pare' | 'japaguei'; appointmentId: string | null } | null
 
 /**
  * Lê a intenção sem depender de um campo só.
@@ -143,7 +143,7 @@ type Acao = { tipo: 'confirmar' | 'remarcar' | 'pare'; appointmentId: string | n
 function lerAcao(m: MsgMeta): Acao {
   const payload = m.button?.payload ?? m.interactive?.button_reply?.id ?? ''
   const [verbo, appt] = payload.split(':')
-  if (verbo === 'confirmar' || verbo === 'remarcar') {
+  if (verbo === 'confirmar' || verbo === 'remarcar' || verbo === 'japaguei') {
     return { tipo: verbo, appointmentId: appt || null }
   }
 
@@ -154,6 +154,10 @@ function lerAcao(m: MsgMeta): Acao {
     return { tipo: 'confirmar', appointmentId: null }
   if (['remarcar', 'preciso remarcar', 'remarcar horario', 'remarcar horário'].includes(t))
     return { tipo: 'remarcar', appointmentId: null }
+  /* Mesma porta dupla da confirmação: muita gente digita em vez de tocar,
+     e "paguei" com o comprovante é o que a dona já recebe hoje na mão. */
+  if (['ja paguei', 'já paguei', 'paguei', 'ja fiz o pix', 'já fiz o pix', 'pago'].includes(t))
+    return { tipo: 'japaguei', appointmentId: null }
   if (['pare', 'parar', 'sair'].includes(t)) return { tipo: 'pare', appointmentId: null }
   return null
 }
@@ -166,6 +170,9 @@ type Appt = {
   business_id: string
   client_name: string | null
   client_phone: string | null
+  /* Vinha no select desde sempre e faltava no tipo — só apareceu quando o
+     "Já paguei" precisou dizer DE QUAL horário a cliente está falando. */
+  start_time: string | null
   business: { phone: string | null; name: string; owner_id: string | null } | null
 }
 
@@ -200,7 +207,17 @@ async function acharPorTelefone(db: Db, fone: string): Promise<Appt | null> {
  * mensagem do pacote dela — e o aviso de que alguém escreveu não pode
  * custar mais caro que a mensagem original.
  */
-async function avisarDona(db: Db, businessId: string, ownerId: string | null, quem: string, texto: string) {
+async function avisarDona(
+  db: Db,
+  businessId: string,
+  ownerId: string | null,
+  quem: string,
+  texto: string,
+  /* O sinal precisa cair na tela de sinal, não na de mensagens: o que a
+     dona tem que fazer é conferir o PIX e marcar "Recebi". */
+  destino = '/admin/whatsapp',
+  titulo?: string,
+) {
   if (!ownerId) return
   const { data: devices } = await db
     .from('push_subscriptions')
@@ -210,9 +227,9 @@ async function avisarDona(db: Db, businessId: string, ownerId: string | null, qu
     await sendWebPush(
       { endpoint: d.endpoint, p256dh: d.p256dh, auth: d.auth },
       {
-        titulo: `${quem} respondeu o aviso`,
+        titulo: titulo ?? `${quem} respondeu o aviso`,
         corpo: texto.slice(0, 140),
-        url: '/admin/whatsapp',
+        url: destino,
       },
     ).catch(() => null)
   }
@@ -358,6 +375,36 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
       negocio?.name ? `Presença confirmada! Até breve, ${negocio.name}.` : 'Presença confirmada! Até breve.',
     )
     return 'confirmado'
+  }
+
+  /* ── "JÁ PAGUEI" (01/09) ──────────────────────────────────────
+     NÃO marca o sinal como pago. A cliente dizer que pagou não é prova de
+     que o dinheiro entrou — e aqui a diferença entre "disse" e "caiu" é a
+     dona soltar um horário por engano ou guardar um que ninguém pagou.
+     Quem confirma é ela, olhando o extrato, como já faz hoje.
+
+     O que este botão faz de útil é duas coisas: avisa a dona na hora,
+     em vez do comprovante ficar perdido no WhatsApp pessoal dela; e abre
+     a janela de 24h — o que torna a confirmação seguinte gratuita, porque
+     template de utilidade dentro de janela aberta a Meta não cobra. */
+  if (acao.tipo === 'japaguei') {
+    await avisarDona(
+      db,
+      alvo.business_id,
+      negocio?.owner_id ?? null,
+      alvo.client_name ?? 'Uma cliente',
+      `${alvo.client_name ?? 'Uma cliente'} disse que pagou o sinal do horário de ${String(alvo.start_time).slice(0, 5)}. Confira e marque como recebido.`,
+      '/admin/sinal',
+      'Sinal: confira o pagamento',
+    )
+    /* Texto honesto: não diz "confirmado", porque não está. Dizer que está
+       e depois o horário cair é pior do que não ter mandado nada. */
+    await responder(
+      negocio?.name
+        ? `Obrigado! ${negocio.name} vai conferir o pagamento e confirmar seu horário.`
+        : 'Obrigado! Vamos conferir o pagamento e confirmar seu horário.',
+    )
+    return 'japaguei'
   }
 
   // remarcar: manda o contato do salão. Quem remarca é a dona, não o robô.

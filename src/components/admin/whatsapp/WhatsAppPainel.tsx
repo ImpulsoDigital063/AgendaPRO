@@ -223,6 +223,9 @@ export default function WhatsAppPainel({
   const [canal, setCanal] = useState<Canal | null>(null)
   const [pacotes, setPacotes] = useState<Pacotes | null>(null)
   const [avisos, setAvisos] = useState<Aviso[]>([])
+  /* Nome de exemplo pro cartao da agenda na tela de venda. Vazio ate a API
+     voltar; a secao trata isso caindo num neutro. */
+  const [clienteExemplo, setClienteExemplo] = useState('Ana')
   /* Os textos do wa.me — o modo "voce manda". Store diferente das reguas:
      businesses.whatsapp_*_template, nao message_rules. */
   const [manuais, setManuais] = useState<TextosManuais | null>(null)
@@ -284,6 +287,8 @@ export default function WhatsAppPainel({
       fetch('/api/admin/mensagens/regras').then((r) => r.json()).catch(() => null),
       fetch('/api/admin/mensagens/templates').then((r) => r.json()).catch(() => null),
     ]).then(([reg, tpl]) => {
+      const ex = (tpl as { exemplo?: { cliente?: string } } | null)?.exemplo?.cliente
+      if (ex) setClienteExemplo(ex)
       const textos = new Map<string, Record<string, unknown>>(
         ((tpl?.avisos ?? []) as { tipo: string }[]).map((t) => [
           t.tipo,
@@ -786,6 +791,8 @@ export default function WhatsAppPainel({
             movimento={pacotes.movimento}
             precoExcedente={pacotes.precoExcedente}
             previa={avisos.find((a) => a.tipo === 'confirmacao')?.previa || null}
+            avisos={avisos}
+            clienteExemplo={clienteExemplo}
             podeContratar={pacotes.podeContratar}
             liberado={liberado}
             salvando={salvando}

@@ -105,8 +105,30 @@ export type EnvioTemplate = {
    * Payload de cada botão de resposta rápida, na ordem em que estão no
    * template. É o que volta no webhook quando a cliente toca — sem isso a
    * gente recebe "Confirmar presença" e não sabe de QUAL agendamento.
+   *
+   * Só serve pra template em que TODOS os botões são de resposta rápida,
+   * porque o índice sai da posição no array. Template com botão de link
+   * misturado usa `botoes` abaixo.
    */
   payloadsBotoes?: string[]
+  /**
+   * Botões quando o template mistura tipos — o caso do sinal, que tem
+   * "Pagar o sinal" (link) e "Já paguei" (resposta rápida).
+   *
+   * A Meta exige um componente por botão, com o `index` batendo com a
+   * ORDEM DECLARADA NO TEMPLATE. Como o índice agora depende de tipos
+   * diferentes, não dá pra derivar de um array só de payloads: a posição
+   * do link também conta. Por isso a lista é explícita e ordenada.
+   *
+   * `sufixo` é só o que vem DEPOIS da base cravada na aprovação. Pro
+   * template do sinal a base é `.../sinal?`, e o sufixo é
+   * `id=<uuid>&token=<token>`. Mandar a URL inteira aqui faz a Meta
+   * recusar o envio — ela concatena, não substitui.
+   */
+  botoes?: Array<
+    | { tipo: 'quick_reply'; payload: string }
+    | { tipo: 'url'; sufixo: string }
+  >
 }
 
 /**
@@ -132,13 +154,26 @@ export async function enviarTemplate(
     })
   }
   /* Cada botão vira um componente próprio, indexado. A Meta recusa o array
-     inteiro num componente só. */
-  for (const [i, payload] of (t.payloadsBotoes ?? []).entries()) {
+     inteiro num componente só.
+
+     `botoes` (tipos misturados) tem precedência sobre `payloadsBotoes`
+     (só resposta rápida). Os dois coexistem porque o segundo já é usado
+     pelos lembretes e não havia motivo pra reescrevê-los. */
+  const lista =
+    t.botoes ??
+    (t.payloadsBotoes ?? []).map((payload) => ({ tipo: 'quick_reply' as const, payload }))
+
+  for (const [i, b] of lista.entries()) {
     components.push({
       type: 'button',
-      sub_type: 'quick_reply',
+      sub_type: b.tipo,
       index: String(i),
-      parameters: [{ type: 'payload', payload }],
+      parameters:
+        b.tipo === 'url'
+          ? /* No botão de link o parâmetro é `text`, e vale só o SUFIXO —
+               a base já está cravada no template aprovado. */
+            [{ type: 'text', text: b.sufixo }]
+          : [{ type: 'payload', payload: b.payload }],
     })
   }
 

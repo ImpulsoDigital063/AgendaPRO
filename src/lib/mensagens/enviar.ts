@@ -19,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { PADRAO, DESTINATARIO, EH_PROMOCIONAL, type Regra, type TipoMensagem } from './tipos'
 import { type Variaveis } from './textos'
 import { credencialDoSistema, enviarTemplate, normalizarTelefone } from './canal-cloud'
-import { resolverTemplate, payloadsDosBotoes, unidadesDaFranquia } from './templates-cloud'
+import { resolverTemplate, payloadsDosBotoes, botoesDoTipo, unidadesDaFranquia } from './templates-cloud'
 import { podeEnviar } from './franquia'
 
 
@@ -296,6 +296,11 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
       params: def.params(p.variaveis),
       payloadsBotoes:
         regra.comBotao === false ? undefined : payloadsDosBotoes(p.tipo, p.appointmentId),
+      /* Tem precedência sobre `payloadsBotoes` quando existe. O sinal é o
+         único tipo que mistura link com resposta rápida — o índice de cada
+         botão depende dos dois tipos juntos, então não dá pra derivar de
+         uma lista só de payloads. */
+      botoes: botoesDoTipo(p.tipo, p.appointmentId),
     })
 
     if (r.ok) {

@@ -1255,3 +1255,28 @@ select.admin-input:focus {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   LP DE DENTRO DO SISTEMA (01/09)
+
+   Duas utilidades que a tela de venda dos pacotes precisa e que o resto
+   do painel nunca precisou. Ficam aqui, e não inline no componente,
+   porque `::-webkit-scrollbar` não existe em style inline.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Trilho horizontal sem a barra à mostra. O menu âncora rola de lado no
+   mobile; a barra cinza embaixo das pílulas lê como defeito. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Seção que é alvo de âncora. Sem isso ela para colada embaixo do menu
+   grudado e o título da seção fica escondido — o clique parece não ter
+   funcionado. O valor cobre a altura do menu mais uma folga de respiro. */
+.secao-ancora {
+  scroll-margin-top: 78px;
+}

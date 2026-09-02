@@ -28,6 +28,8 @@ import { sendWebPush } from '@/lib/notify-push'
 import { sendSinalVencendo } from '@/lib/email'
 import { minutosRestantes, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 import { todayBR } from '@/lib/date-br'
+import { enviar } from '@/lib/mensagens/enviar'
+import { dataCurta } from '@/lib/mensagens/textos'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -48,9 +50,34 @@ const JANELA_MIN = 120
    ninguém saber. Devolve `restam` e o Action repete até zerar. */
 const LOTE = 15
 
+/* ── HORARIO CIVIL PRA FALAR COM A CLIENTE ─────────────────────────
+   O aviso pra DONA sai a qualquer hora: e' o negocio dela e ela escolheu
+   receber. O aviso pra CLIENTE nao — cobranca as 23h nao recupera venda
+   nenhuma, irrita, e irritacao no WhatsApp vira bloqueio. Bloqueio derruba
+   o quality_rating do numero, que e' um so pra base inteira.
+
+   Fora da janela o horario simplesmente vence sem a segunda mensagem. A
+   primeira, a da criacao, ela ja recebeu. */
+const HORA_MIN_CLIENTE = 8
+const HORA_MAX_CLIENTE = 21
+
+function horaBR(agora: number): number {
+  return Number(
+    new Date(agora).toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      hour12: false,
+    }),
+  )
+}
+
 type ApptRow = {
   id: string
   client_name: string | null
+  client_phone: string | null
+  client_email: string | null
+  customer_id: string | null
+  service_name: string | null
   appointment_date: string
   start_time: string
   status: string | null
@@ -73,7 +100,7 @@ export async function GET(req: NextRequest) {
 
   const { data: negocios } = await admin
     .from('businesses')
-    .select('id, name, owner_id, sinal_expira_minutos')
+    .select('id, name, phone, owner_id, sinal_expira_minutos')
     .eq('sinal_enabled', true)
 
   if (!negocios || negocios.length === 0) {
@@ -91,7 +118,7 @@ export async function GET(req: NextRequest) {
     const prazo = Number(negocio.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN)
     const { data: appts } = await admin
       .from('appointments')
-      .select('id, client_name, appointment_date, start_time, status, sinal_valor, sinal_pago_at, created_at, professional_id')
+      .select('id, client_name, client_phone, client_email, customer_id, service_name, appointment_date, start_time, status, sinal_valor, sinal_pago_at, created_at, professional_id')
       .eq('business_id', negocio.id)
       .eq('status', 'pending')
       .is('sinal_pago_at', null)
@@ -183,6 +210,49 @@ export async function GET(req: NextRequest) {
         })
       } catch (err) {
         console.error('[sinal-vencendo] email falhou:', err)
+      }
+    }
+
+    /* ── SEGUNDA CHANCE PRA CLIENTE (01/09) ──────────────────────
+       Ate aqui o cron so acordava a DONA. A cliente recebia a cobranca na
+       criacao e depois silencio — o horario caia sem ela saber que ainda
+       dava tempo.
+
+       Reusa o mesmo template do sinal: o texto ja diz valor, prazo e o que
+       acontece se nao pagar, e o botao leva pra mesma pagina. Template novo
+       so pra isso seria outra aprovacao na Meta sem ganho nenhum.
+
+       Chave de idempotencia PROPRIA (`sinal_vencendo:`), senao ela colide
+       com a da criacao e o segundo aviso nunca sai.
+
+       `enviar` cuida do resto: se a dona nao ligou a regra do sinal, se o
+       pacote acabou, se o numero nao esta liberado — nada disso precisa ser
+       decidido aqui. */
+    if (appt.client_phone && horaBR(agora) >= HORA_MIN_CLIENTE && horaBR(agora) < HORA_MAX_CLIENTE) {
+      try {
+        await enviar(admin, {
+          businessId: negocio.id,
+          tipo: 'sinal_pendente',
+          chave: `sinal_vencendo:${appt.id}`,
+          destino: { telefone: appt.client_phone, email: appt.client_email },
+          appointmentId: appt.id,
+          customerId: appt.customer_id,
+          variaveis: {
+            cliente: appt.client_name || 'Cliente',
+            salao: negocio.name ?? 'seu negócio',
+            data: dataCurta(appt.appointment_date),
+            hora,
+            servico: appt.service_name || 'seu atendimento',
+            telefoneSalao: (negocio as { phone?: string | null }).phone ?? null,
+            sinal: valor.toFixed(2).replace('.', ',').replace(/^/, 'R$ '),
+            /* Aqui o prazo e' o que FALTA, nao um horario: "faltam 30
+               minutos" move mais que "as 14:30" quando o relogio ja esta
+               correndo. */
+            prazo: faltam > 0 ? `${faltam} minuto${faltam === 1 ? '' : 's'}` : 'agora',
+          },
+        })
+      } catch (err) {
+        console.error('[sinal-vencendo] aviso a cliente falhou:', err)
       }
     }
 

@@ -21,6 +21,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TipoMensagem } from './tipos'
 import { formatarTelefone, type Variaveis } from './textos'
+import { generateSinalToken } from '@/lib/token'
 
 export type DefTemplate = {
   /** Nome exato aprovado na conta. Prefixo agendapro_ pra não colidir. */
@@ -39,6 +40,11 @@ export type DefTemplate = {
   /** Params NA ORDEM de {{1}}, {{2}}... do texto acima. */
   params: (v: Variaveis) => string[]
   /** Sufixos dos payloads dos botões, na ordem em que estão no template. */
+  /** Botões no formato exato da Meta, pra quando o template NÃO é só
+   *  resposta rápida. O sinal tem link com sufixo dinâmico, e a base da URL
+   *  faz parte da aprovação — se a dona editar o texto e a versão nova sair
+   *  sem este bloco, o botão de pagar some e o link morre. */
+  botoesMeta?: Record<string, unknown>[]
   botoes?: string[]
 }
 
@@ -88,6 +94,50 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
       'Oi {{1}}, tudo bem? Seu horário no {{2}} ficou marcado. Anota aí:\n\nDia: {{3}}\nHorário: {{4}}\nServiço: {{5}}\n\nSe precisar remarcar ou tirar alguma dúvida, é só falar com a gente pelo telefone {{6}}. Até breve!',
     categoria: 'UTILITY',
     params: (v) => [nome(v.cliente), t(v.salao), t(v.data), t(v.hora), servicoCom(v), fone(v)],
+  },
+  /* ── SINAL PENDENTE ───────────────────────────────────────────
+     Submetido em 01/09 e ACEITO com os dois tipos de botão no mesmo
+     template — link ("Pagar o sinal") e resposta rápida ("Já paguei").
+     Eu não sabia se a Meta permitia a mistura e não quis afirmar: submeti
+     e li a resposta. Passou como UTILITY, então custa o mesmo de um
+     lembrete e não os 9x da categoria de divulgação.
+
+     O "Já paguei" existe por dois motivos, e o segundo é o que importa:
+     ele avisa a dona, e ele ABRE A JANELA DE 24H. Tocar em botão de link
+     não manda mensagem nenhuma pra Meta; resposta rápida manda. Com a
+     janela aberta, a confirmação que sai depois do pagamento é grátis. */
+  sinal_pendente: {
+    nome: 'agendapro_sinal_pendente',
+    campos: ['nome da cliente', 'nome do seu negócio', 'data', 'horário', 'serviço', 'valor do sinal', 'prazo para pagar'],
+    idioma: 'pt_BR',
+    corpo:
+      'Oi {{1}}, tudo bem? Seu horário no {{2}} está reservado. Pra confirmar, falta o sinal:\n\n' +
+      'Dia: {{3}}\nHorário: {{4}}\nServiço: {{5}}\nSinal: {{6}}\n\n' +
+      'É só tocar no botão abaixo para pagar. Se não for pago até {{7}}, o horário fica livre para outra pessoa.',
+    categoria: 'UTILITY',
+    params: (v) => [
+      nome(v.cliente),
+      t(v.salao),
+      t(v.data),
+      t(v.hora),
+      servicoCom(v),
+      t(v.sinal, 'o sinal combinado'),
+      t(v.prazo, 'o prazo combinado'),
+    ],
+    /* Viaja junto com o texto em toda nova submissao. O `example` do link e
+       obrigatorio e a Meta valida o formato — URL completa, nao so o
+       sufixo. */
+    botoesMeta: [
+      {
+        type: 'URL',
+        text: 'Pagar o sinal',
+        url: 'https://www.agendapro.net.br/sinal?{{1}}',
+        example: [
+          'https://www.agendapro.net.br/sinal?id=00000000-0000-0000-0000-000000000000&token=abcdef123456',
+        ],
+      },
+      { type: 'QUICK_REPLY', text: 'Já paguei' },
+    ],
   },
   lembrete_vespera: {
     nome: 'agendapro_lembrete_vespera',
@@ -157,6 +207,31 @@ export function unidadesDaFranquia(tipo: TipoMensagem): number {
  * gente precisa saber QUAL horário ela confirmou — hoje o webhook adivinha
  * pelo telefone, e adivinha errado quando ela tem dois horários marcados.
  */
+/**
+ * Botões quando o template mistura link e resposta rápida.
+ *
+ * Só o sinal usa. O link leva pra página de pagamento, que tem QR, botão
+ * de copiar só o código e o nome do salão em cima — a mensagem não carrega
+ * copia-e-cola no corpo de propósito: no celular a cliente toca e segura e
+ * copia a mensagem INTEIRA, e colar isso no banco não funciona.
+ *
+ * `sufixo` é só o que vem depois da base cravada na aprovação. A Meta
+ * concatena com `.../sinal?`; mandar a URL completa faz o envio ser
+ * recusado.
+ */
+export function botoesDoTipo(
+  tipo: TipoMensagem,
+  appointmentId: string | null | undefined,
+):
+  | Array<{ tipo: 'quick_reply'; payload: string } | { tipo: 'url'; sufixo: string }>
+  | undefined {
+  if (tipo !== 'sinal_pendente' || !appointmentId) return undefined
+  return [
+    { tipo: 'url', sufixo: `id=${appointmentId}&token=${generateSinalToken(appointmentId)}` },
+    { tipo: 'quick_reply', payload: `japaguei:${appointmentId}` },
+  ]
+}
+
 export function payloadsDosBotoes(
   tipo: TipoMensagem,
   appointmentId: string | null | undefined,

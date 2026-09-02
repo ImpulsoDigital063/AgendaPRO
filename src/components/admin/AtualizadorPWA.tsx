@@ -49,6 +49,29 @@ export default function AtualizadorPWA() {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
 
+    /* ── Em desenvolvimento, NÃO registra ────────────────────────────
+       01/09: passei três rodadas mexendo no hero da tela de WhatsApp e o
+       Eduardo continuou vendo a versão antiga em `localhost:3005` — ele
+       perguntou por que não tinha mudado nada. Não era o código: era o
+       service worker servindo o bundle em cache pro próprio dev server.
+
+       Em produção o cache é o ponto do PWA. Em dev ele só esconde o que
+       você acabou de escrever, e faz diagnosticar a camada errada.
+
+       Sai ANTES de registrar qualquer listener, senão o `return` pula a
+       função de limpeza lá embaixo e vaza `controllerchange` e
+       `visibilitychange` a cada remontagem. E desregistra o que já existe:
+       um SW instalado numa sessão anterior sobrevive a este guard sozinho. */
+    if (process.env.NODE_ENV !== 'production') {
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((rs) => Promise.all(rs.map((r) => r.unregister())))
+        .then(() => (typeof caches !== 'undefined' ? caches.keys() : []))
+        .then((chaves) => Promise.all((chaves as string[]).map((c) => caches.delete(c))))
+        .catch(() => null)
+      return
+    }
+
     /* Trava contra laço: `controllerchange` pode disparar mais de uma vez, e
        reload em cima de reload deixa a dona presa numa tela piscando. */
     const recarregar = () => {
