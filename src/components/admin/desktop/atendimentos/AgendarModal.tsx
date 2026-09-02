@@ -339,7 +339,15 @@ export default function AgendarModal({
     // Balcão: hora = agora (timestamp do registro · sem grade de horário).
     setTime(defaultTime ?? (balcao ? nowHHMM() : ''))
     setNotes('')
-    setSinalDecisao(true)
+    /* v146 · aqui estava `true` fixo, e este reset roda DEPOIS do efeito que
+       aplica o padrão do negócio (ambos disparam no mesmo `open`). Resultado: a
+       pergunta do sinal abria com "Cobrar" marcado em TODO negócio, mesmo com
+       `sinal_balcao_padrao = false` — que é justamente a chave criada na v138
+       pra impedir isso. Foi o que fez a Wanessa e a Lettícia perderem
+       agendamentos em 26/08: sinal grudado sem ninguém escolher, e o horário
+       liberado sozinho quando não caiu. Agora os dois caminhos aplicam o mesmo
+       padrão, então a ordem entre eles deixou de importar. */
+    setSinalDecisao(sinalCfg?.balcaoPadrao === true)
     setAvulso(false)
     setAvulsoName('')
     // Balcão lança hora livre (não slot da grade) e já entra como concluído.
@@ -1221,7 +1229,9 @@ export default function AgendarModal({
     setDate(todayISO())
     setTime('')
     setNotes('')
-    setSinalDecisao(true)
+    // v146 · mesmo motivo do reset acima: "Novo atendimento" nao pode ressuscitar
+    // o "Cobrar" fixo depois de salvar o anterior.
+    setSinalDecisao(sinalCfg?.balcaoPadrao === true)
     setCreatedId(null)
     setCreatedCustomerId(null)
     setCreditoNoSinal(null)
