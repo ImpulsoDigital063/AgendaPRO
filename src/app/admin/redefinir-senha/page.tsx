@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createBrowserClient } from '@supabase/ssr'
 import { IconEye, IconEyeOff, IconCheck } from '@/components/ui/Icon'
 
 export default function RedefinirSenhaPage() {
@@ -18,27 +18,89 @@ export default function RedefinirSenhaPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  /* v146 · mostrar de quem é a conta na tela. Se por algum caminho ainda sobrar
+     sessão errada, a pessoa vê o e-mail e para antes de salvar. */
+  const [emailDono, setEmailDono] = useState<string | null>(null)
 
-  // Ao cair aqui via magic link, o Supabase cria uma session temporária.
-  // Se não tiver session, o link expirou ou foi acessado direto.
+  /* v146 · esta tela trocava a senha de QUEM JÁ ESTAVA LOGADO no navegador.
+     Aconteceu de verdade (Wanessa, 26/08): o link de recuperação dela foi aberto
+     numa janela onde outra conta estava ativa, e quem teve a senha trocada foi a
+     outra conta. A dona do link continuou sem conseguir entrar.
+
+     A causa não era o link e nem o e-mail: era esta página. Ela perguntava
+     `getSession()` — "existe ALGUMA sessão?" — e, achando a antiga, mostrava o
+     formulário e mandava `updateUser` nela.
+
+     Agora falha fechado. `detectSessionInUrl: false` impede o cliente de
+     consumir o código sozinho; a gente desloga o que estiver aberto, troca o
+     código pela sessão do DONO do link e só então libera o formulário. Se a
+     troca falhar — link velho, já usado, ou aberto num navegador diferente
+     daquele que pediu (o verificador do PKCE fica no que pediu) — a tela diz
+     que o link não vale e ninguém tem senha trocada. Antes, esse mesmo caso
+     caía na sessão errada em silêncio. */
   useEffect(() => {
     let cancelled = false
-    const supabase = createClient()
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { detectSessionInUrl: false } },
+    )
 
     async function check() {
-      const { data } = await supabase.auth.getSession()
-      if (cancelled) return
-      if (!data.session) {
+      const url = new URL(window.location.href)
+      const hash = new URLSearchParams(url.hash.replace(/^#/, ''))
+      const code = url.searchParams.get('code')
+      const tokenHash = url.searchParams.get('token_hash')
+      const accessToken = hash.get('access_token')
+      const refreshToken = hash.get('refresh_token')
+
+      // Sem nenhuma prova de link, não existe formulário — mesmo que haja
+      // sessão aberta. Entrar aqui pela URL não pode virar troca de senha.
+      if (!code && !tokenHash && !accessToken) {
         setTokenInvalid(true)
+        setReady(true)
+        return
       }
+
+      // A sessão de quem estava usando o navegador não pode sobreviver até o
+      // formulário: é ela que era gravada por engano.
+      await supabase.auth.signOut()
+
+      let falhou = false
+      if (tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        falhou = !!error
+      } else if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        falhou = !!error
+      } else if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        falhou = !!error
+      } else {
+        falhou = true
+      }
+
+      if (cancelled) return
+      if (falhou) {
+        setTokenInvalid(true)
+        setReady(true)
+        return
+      }
+
+      // Última conferência: a sessão que sobrou é a do dono do link.
+      const { data } = await supabase.auth.getUser()
+      if (cancelled) return
+      if (!data.user) setTokenInvalid(true)
+      else setEmailDono(data.user.email ?? null)
       setReady(true)
     }
 
-    // Pequeno delay — Supabase processa o hash fragment async
-    const t = setTimeout(check, 300)
+    check()
     return () => {
       cancelled = true
-      clearTimeout(t)
     }
   }, [])
 
@@ -66,7 +128,11 @@ export default function RedefinirSenhaPage() {
     }
 
     setLoading(true)
-    const supabase = createClient()
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { detectSessionInUrl: false } },
+    )
     const { error: updateError } = await supabase.auth.updateUser({ password })
 
     if (updateError) {
@@ -169,6 +235,22 @@ export default function RedefinirSenhaPage() {
                 '0 30px 80px -30px rgba(59, 130, 246, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
             }}
           >
+            {/* v146 · de quem é a conta, em letra grande. A troca de senha é
+                irreversível pra quem estava usando a outra conta, e o e-mail é
+                a única coisa que a pessoa reconhece antes de salvar. */}
+            {emailDono && (
+              <div
+                className="rounded-xl px-3 py-2.5"
+                style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.25)' }}
+              >
+                <p className="text-[11px] uppercase tracking-wider text-slate-400">Nova senha da conta</p>
+                <p className="text-sm font-semibold text-white break-all">{emailDono}</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Não é essa conta? Feche esta página sem salvar e peça um novo link.
+                </p>
+              </div>
+            )}
+
             <p className="text-xs text-slate-400">
               Crie uma nova senha pro seu painel. Ao salvar, você já entra direto.
             </p>
