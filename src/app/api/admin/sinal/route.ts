@@ -54,7 +54,7 @@ export async function GET() {
       .single(),
     supabase
       .from('appointments')
-      .select('id, client_name, client_phone, service_name, appointment_date, start_time, total_price, sinal_valor, sinal_pago_at, sinal_aviso_enviado_at, status, created_at')
+      .select('id, client_name, client_phone, service_name, appointment_date, start_time, total_price, sinal_valor, sinal_pago_at, sinal_aviso_enviado_at, sinal_declarado_em, status, created_at')
       .eq('business_id', businessId)
       .not('sinal_valor', 'is', null)
       .is('sinal_pago_at', null)

@@ -388,6 +388,20 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
      a janela de 24h — o que torna a confirmação seguinte gratuita, porque
      template de utilidade dentro de janela aberta a Meta não cobra. */
   if (acao.tipo === 'japaguei') {
+    /* v146 · Para o relógio de expiração antes de qualquer outra coisa. Sem
+       isto o push saía, a dona não via a tempo, e o horário caía por cima de
+       um PIX declarado — o v140 só contava a folga do lado DELA. Continua não
+       sendo prova de pagamento: sinal_pago_at segue nulo e quem confirma
+       dinheiro é ela, no "Recebi o sinal", olhando o extrato.
+       Só grava a PRIMEIRA declaração: reenviar "paguei" não reabre nada. */
+    await db
+      .from('appointments')
+      .update({ sinal_declarado_em: new Date().toISOString() })
+      .eq('id', alvo.id)
+      .eq('status', 'pending')
+      .is('sinal_pago_at', null)
+      .is('sinal_declarado_em', null)
+
     await avisarDona(
       db,
       alvo.business_id,

@@ -120,10 +120,16 @@ export type EnvioTemplate = {
    * diferentes, não dá pra derivar de um array só de payloads: a posição
    * do link também conta. Por isso a lista é explícita e ordenada.
    *
-   * `sufixo` é só o que vem DEPOIS da base cravada na aprovação. Pro
-   * template do sinal a base é `.../sinal?`, e o sufixo é
-   * `id=<uuid>&token=<token>`. Mandar a URL inteira aqui faz a Meta
-   * recusar o envio — ela concatena, não substitui.
+   * `sufixo` é só o que vem DEPOIS da base cravada na aprovação. Mandar a
+   * URL inteira aqui faz a Meta recusar o envio — ela concatena, não
+   * substitui.
+   *
+   * Pro template do sinal a base aprovada é `.../sinal` — SEM query string —
+   * então o sufixo tem que começar com o `?`: `?id=<uuid>&token=<token>`.
+   * Este comentário dizia `.../sinal?` até 03/09 e estava errado; o sufixo
+   * seguia essa descrição e montava `.../sinalid=<uuid>`, que dá 404.
+   * Conferir sempre em `GET /{WABA_ID}/message_templates?fields=components`,
+   * nunca no que o código acha que submeteu.
    */
   botoes?: Array<
     | { tipo: 'quick_reply'; payload: string }

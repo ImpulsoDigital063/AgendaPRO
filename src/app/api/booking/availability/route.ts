@@ -67,8 +67,8 @@ export async function GET(req: NextRequest) {
     .from('appointments')
     .select(
       modoIntervalo
-        ? 'appointment_date, start_time, end_time, status, sinal_valor, sinal_pago_at, created_at, sinal_aviso_enviado_at'
-        : 'start_time, end_time, status, sinal_valor, sinal_pago_at, created_at, sinal_aviso_enviado_at',
+        ? 'appointment_date, start_time, end_time, status, sinal_valor, sinal_pago_at, created_at, sinal_aviso_enviado_at, sinal_declarado_em'
+        : 'start_time, end_time, status, sinal_valor, sinal_pago_at, created_at, sinal_aviso_enviado_at, sinal_declarado_em',
     )
     .eq('professional_id', professionalId)
     .in('status', ['pending', 'confirmed', 'completed'])

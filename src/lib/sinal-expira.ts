@@ -27,6 +27,7 @@ type ApptSinal = {
   sinal_pago_at: string | null
   created_at: string
   sinal_aviso_enviado_at?: string | null
+  sinal_declarado_em?: string | null
 }
 
 /* Folga entre o aviso sair e o horário poder ser solto (v140). 30 min é o
@@ -60,6 +61,12 @@ export function sinalVencido(appt: ApptSinal, minutos: number, agora = Date.now(
  * que ela viu — aparelho no silencioso, notificação nunca ativada. Garantir
  * leitura é impossível; garantir que ninguém foi surpreendido sem o sistema ao
  * menos tentar, é o que dá pra fazer.
+ *
+ * v146 · A cliente dizer "Já paguei" para o relógio. O v140 só olhava o lado
+ * da dona, então dava pra cliente avisar às 10h20 e o horário cair às 10h31
+ * mesmo assim — a Ariadne com um passo a mais. Parar sem prazo novo é de
+ * propósito: qualquer prazo aqui voltaria a soltar sozinho. A saída é manual,
+ * no 'cancelar' da aba Sinal, pra onde o push deste mesmo fluxo leva.
  */
 export function podeSoltarHorario(
   appt: ApptSinal,
@@ -68,6 +75,7 @@ export function podeSoltarHorario(
   folgaMin = FOLGA_APOS_AVISO_MIN,
 ): boolean {
   if (!sinalVencido(appt, minutos, agora)) return false
+  if (appt.sinal_declarado_em) return false
   if (!appt.sinal_aviso_enviado_at) return false
   return agora > new Date(appt.sinal_aviso_enviado_at).getTime() + folgaMin * 60_000
 }
@@ -128,7 +136,7 @@ export async function limparSinaisVencidos(
 
   let q = db
     .from('appointments')
-    .select('id, status, sinal_valor, sinal_pago_at, created_at, sinal_aviso_enviado_at')
+    .select('id, status, sinal_valor, sinal_pago_at, created_at, sinal_aviso_enviado_at, sinal_declarado_em')
     .eq('business_id', escopo.businessId)
     .eq('status', 'pending')
     .is('sinal_pago_at', null)

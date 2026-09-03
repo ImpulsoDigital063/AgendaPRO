@@ -86,14 +86,28 @@ const servicoCom = (v: Variaveis) => {
 }
 
 export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
+  /* ── CONFIRMAÇÃO ──────────────────────────────────────────────
+     v3 desde 02/09. O CORPO é byte a byte o mesmo do v2 — o que a v3
+     acrescenta são os dois botões de resposta rápida, e é só por isso que
+     ela existe.
+
+     O ganho não é a cliente ter onde tocar: é que resposta rápida MANDA
+     mensagem pra Meta, e isso abre a janela de 24h. Botão de link não abre.
+     Com a janela aberta, o lembrete que sai depois é grátis. Mesma mecânica
+     do "Já paguei" no sinal.
+
+     O payload vai como `confirmar:<appointmentId>` via `payloadsDosBotoes` —
+     o webhook casa pelo verbo e já trata os dois desde o lembrete, então não
+     há caminho novo sendo aberto aqui. */
   confirmacao: {
-    nome: 'agendapro_confirmacao_v2',
+    nome: 'agendapro_confirmacao_v3',
     campos: ['nome da cliente', 'nome do seu negócio', 'data', 'horário', 'serviço', 'seu telefone'],
     idioma: 'pt_BR',
     corpo:
       'Oi {{1}}, tudo bem? Seu horário no {{2}} ficou marcado. Anota aí:\n\nDia: {{3}}\nHorário: {{4}}\nServiço: {{5}}\n\nSe precisar remarcar ou tirar alguma dúvida, é só falar com a gente pelo telefone {{6}}. Até breve!',
     categoria: 'UTILITY',
     params: (v) => [nome(v.cliente), t(v.salao), t(v.data), t(v.hora), servicoCom(v), fone(v)],
+    botoes: ['confirmar', 'remarcar'],
   },
   /* ── SINAL PENDENTE ───────────────────────────────────────────
      Submetido em 01/09 e ACEITO com os dois tipos de botão no mesmo
@@ -126,12 +140,18 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
     ],
     /* Viaja junto com o texto em toda nova submissao. O `example` do link e
        obrigatorio e a Meta valida o formato — URL completa, nao so o
-       sufixo. */
+       sufixo.
+
+       🔴 A base NÃO leva `?`. Tem que bater exatamente com o template que
+       está aprovado (`.../sinal{{1}}`), senão uma variante submetida por
+       aqui nasce com base diferente da do padrão e o mesmo sufixo gera link
+       certo num negócio e quebrado no outro. O `?` é do sufixo, em
+       `botoesDoTipo`. */
     botoesMeta: [
       {
         type: 'URL',
         text: 'Pagar o sinal',
-        url: 'https://www.agendapro.net.br/sinal?{{1}}',
+        url: 'https://www.agendapro.net.br/sinal{{1}}',
         example: [
           'https://www.agendapro.net.br/sinal?id=00000000-0000-0000-0000-000000000000&token=abcdef123456',
         ],
@@ -139,6 +159,11 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
       { type: 'QUICK_REPLY', text: 'Já paguei' },
     ],
   },
+  /* 🔴 NÃO trocar por `agendapro_lembrete_vespera_v2`. Ele foi submetido em
+     01/09 e aprovado em 02/09, mas saiu SEM os botões — corpo idêntico, dois
+     QUICK_REPLY a menos. Trocar seria downgrade: perderia o "Confirmar
+     presença" E a abertura da janela de 24h que ele traz. O mesmo vale pro
+     `agendapro_lembrete_dia_v2`. Os dois ficam órfãos na conta de propósito. */
   lembrete_vespera: {
     nome: 'agendapro_lembrete_vespera',
     campos: ['nome da cliente', 'nome do seu negócio', 'data', 'horário', 'serviço', 'seu telefone'],
@@ -226,8 +251,15 @@ export function botoesDoTipo(
   | Array<{ tipo: 'quick_reply'; payload: string } | { tipo: 'url'; sufixo: string }>
   | undefined {
   if (tipo !== 'sinal_pendente' || !appointmentId) return undefined
+  /* O `?` VAI NO SUFIXO, não na base. A URL aprovada em 03/09 é
+     `https://www.agendapro.net.br/sinal{{1}}` — sem query string — e o
+     `example` que passou na revisão é `.../sinal?id=...&token=...`, ou seja o
+     `{{1}}` começa com `?`. A Meta concatena, não substitui: sufixo sem o `?`
+     produzia `.../sinalid=<uuid>&token=<t>` e a cliente caía em 404 ao tocar
+     em "Pagar o sinal". Cobrança com link quebrado é pior que cobrança
+     nenhuma — ela vê o valor e não tem como pagar. */
   return [
-    { tipo: 'url', sufixo: `id=${appointmentId}&token=${generateSinalToken(appointmentId)}` },
+    { tipo: 'url', sufixo: `?id=${appointmentId}&token=${generateSinalToken(appointmentId)}` },
     { tipo: 'quick_reply', payload: `japaguei:${appointmentId}` },
   ]
 }
