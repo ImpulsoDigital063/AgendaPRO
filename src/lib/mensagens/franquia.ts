@@ -33,6 +33,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { pacotePorId, PRECO_EXCEDENTE, type Pacote } from './pacotes'
 import { PADRAO } from './tipos'
 
@@ -58,6 +59,35 @@ export type Consumo = {
   vigente: boolean
   /** null = não contratou o módulo. */
   pacote: Pacote | null
+}
+
+/**
+ * Cliente de serviço só pra LER `message_log`.
+ *
+ * 🔴 Por que existe (04/09): `message_log` tem RLS ligado e ZERO policies.
+ * Leitura com o cliente do usuário logado não dá erro — devolve LISTA VAZIA.
+ * O resultado era o contador do painel mostrando "0 de 300" com 13 mensagens
+ * entregues no banco, e nada nos logs pra indicar o porquê.
+ *
+ * Foi diagnosticado três vezes na camada errada antes de cair aqui: o cálculo
+ * estava certo, a query estava certa, os dados estavam lá. O que mudava era
+ * QUEM perguntava.
+ *
+ * Por que service role e não uma policy nova: quem chama já resolveu a
+ * autorização (`resolveBusinessIdOperacao`) e passou o `businessId` — a
+ * pergunta "esta pessoa pode ver este negócio?" já foi respondida uma linha
+ * antes. Escrever uma policy aqui obrigaria a repetir essa regra em SQL,
+ * incluindo operador e profissional convidado, e duas cópias da mesma regra
+ * divergem. A leitura é sempre escopada por `business_id`.
+ *
+ * Vale o mesmo pra `message_templates_negocio`, que está no mesmo estado.
+ */
+function leitorDeLog(): SupabaseClient {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
 }
 
 /**
@@ -92,7 +122,9 @@ export async function consumoDoMes(db: SupabaseClient, businessId: string): Prom
      "mês do calendário" não significa nada pra quem nunca teve ciclo. */
   const inicio = n?.avisos_desde ?? new Date(Date.now() - 30 * 864e5).toISOString()
 
-  const { data } = await db
+  /* NÃO usa o `db` que veio: se for o cliente do usuário, o RLS sem policy
+     devolve vazio calado e a conta inteira zera. Ver `leitorDeLog`. */
+  const { data } = await leitorDeLog()
     .from('message_log')
     .select('unidades, entregue_em, falhou_em, status')
     .eq('business_id', businessId)

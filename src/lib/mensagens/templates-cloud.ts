@@ -19,6 +19,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { TipoMensagem } from './tipos'
 import { formatarTelefone, type Variaveis } from './textos'
 import { generateSinalToken } from '@/lib/token'
@@ -365,7 +366,16 @@ export async function resolverTemplate(
   const padrao = TEMPLATES[tipo]
   if (!padrao) return null
 
-  const { data } = await db
+  /* 🔴 `message_templates_negocio` tem RLS ligado e ZERO policies (04/09):
+     lida com o cliente do usuário, devolve vazio SEM erro. Aqui o efeito é
+     pior que um número errado na tela — cai no texto padrão em silêncio, e a
+     dona que escreveu o texto dela vê a mensagem sair com o texto de fábrica
+     sem nenhuma explicação. Mesmo motivo do `leitorDeLog` em franquia.ts. */
+  const { data } = await createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
     .from('message_templates_negocio')
     .select('nome_meta, status')
     .eq('business_id', businessId)
