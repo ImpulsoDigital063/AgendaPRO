@@ -199,7 +199,7 @@ export async function GET(req: NextRequest) {
       .from('appointments')
       .select(`id, business_id, appointment_date, start_time, client_name, client_phone,
                client_email, service_name, customer_id, recurring_group_id, recurring_index,
-               sinal_valor, sinal_pago_at, sinal_isento,
+               sinal_valor, sinal_pago_at, customer:customers(sinal_isento),
                business:businesses(name, phone, owner_id), professional:professionals(name)`)
       .in('business_id', negNovo)
       .gte('created_at', new Date(agora - JANELA).toISOString())
@@ -241,8 +241,15 @@ export async function GET(req: NextRequest) {
 
          A chave de idempotência é a mesma dos dois lados, então rodar de
          hora em hora não manda duas vezes. */
+      /* A isenção é coluna de `customers`, não de `appointments` — pedir
+         `appointments.sinal_isento` faz o SELECT INTEIRO falhar e a varredura
+         devolver zero candidato, derrubando junto a confirmação de todo
+         mundo. Foi o que eu mesmo causei aqui algumas horas atrás, repetindo
+         no arquivo ao lado o bug que estava corrigindo. */
       const deveSinal =
-        Number(a.sinal_valor ?? 0) > 0 && !a.sinal_pago_at && a.sinal_isento !== true
+        Number(a.sinal_valor ?? 0) > 0 &&
+        !a.sinal_pago_at &&
+        (a.customer as unknown as { sinal_isento?: boolean } | null)?.sinal_isento !== true
 
       if (deveSinal) {
         /* Sem `continue`: o aviso pro DONO é outra mensagem, pra outro
