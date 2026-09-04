@@ -58,6 +58,30 @@ export async function regraDe(
     .eq('tipo', tipo)
     .maybeSingle()
 
+  /* ── O SINAL NÃO TEM INTERRUPTOR PRÓPRIO (04/09) ──────────────
+     Quem liga a cobrança de sinal é `businesses.sinal_enabled`, na aba
+     Sinal — junto da chave PIX, do percentual e do prazo. Não existe, e não
+     deve existir, uma linha `sinal_pendente` em `message_rules`: seriam
+     DUAS portas pra mesma decisão, e o estado ruim é fácil de alcançar —
+     sinal ligado numa aba, mensagem desligada na outra, cliente vendo
+     "falta o sinal" na tela e nunca recebendo a cobrança.
+
+     Sem isto, `regraDe` caía em `PADRAO.sinal_pendente`, que é
+     `enabled: false`, e a cobrança era descartada como 'regra_desligada'
+     em TODOS os caminhos. Nenhum negócio jamais recebeu uma. Não aparecia
+     nos testes porque eu mandava direto na Cloud API, por fora do motor.
+
+     Se um dia existir linha explícita pra este tipo, ela vence — alguém
+     terá decidido de propósito, e a escolha da dona manda. */
+  if (!data && tipo === 'sinal_pendente') {
+    const { data: neg } = await db
+      .from('businesses')
+      .select('sinal_enabled')
+      .eq('id', businessId)
+      .maybeSingle()
+    return { ...PADRAO[tipo], enabled: (neg as { sinal_enabled?: boolean } | null)?.sinal_enabled === true }
+  }
+
   if (!data) return PADRAO[tipo]
   return {
     tipo,

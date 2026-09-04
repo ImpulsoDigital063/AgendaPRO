@@ -26,6 +26,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { enviar } from '@/lib/mensagens/enviar'
+import { confirmarAgendamento } from '@/lib/mensagens/confirmar'
 import { chaveIdempotencia, PADRAO, type Regra, type TipoMensagem } from '@/lib/mensagens/tipos'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import { dataCurta } from '@/lib/mensagens/textos'
@@ -93,7 +94,23 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  if (regras.size === 0) {
+  /* ── NEGÓCIOS QUE COBRAM SINAL ────────────────────────────────
+     A cobrança de sinal NÃO tem linha em `message_rules` — quem a liga é
+     `businesses.sinal_enabled` (ver `regraDe`). Então ela não aparece no
+     mapa acima, e sem esta consulta um negócio que só cobra sinal, sem
+     nenhuma régua ligada, nunca seria varrido: cairia no early-return
+     abaixo e a cliente ficaria sem a cobrança pra sempre.
+
+     É o mesmo buraco que obrigou o aviso de "sinal vencendo" a ter rota
+     própria; aqui dá pra resolver dentro da varredura porque o custo é uma
+     consulta a mais, só quando há o que fazer. */
+  const { data: negSinalDb } = await db
+    .from('businesses')
+    .select('id')
+    .eq('sinal_enabled', true)
+  const negSinal = (negSinalDb ?? []).map((n) => n.id as string)
+
+  if (regras.size === 0 && negSinal.length === 0) {
     return NextResponse.json({ ok: true, sem_regra_ligada: true, candidatos: 0, restam: 0 })
   }
 
@@ -171,12 +188,18 @@ export async function GET(req: NextRequest) {
   // no navegador é o erro que já foi corrigido uma vez aqui — se ele fecha
   // a tela, ninguém é avisado. Varrendo por `created_at`, todo caminho de
   // criação fica coberto sem tocar em nenhum deles.
-  const negNovo = [...new Set([...negociosCom('confirmacao'), ...negociosCom('dono_novo_agendamento')])]
+  /* `negSinal` entra aqui porque a cobrança de sinal vive fora de
+     `message_rules` — sem ele, negócio que cobra sinal e não ligou a
+     confirmação não seria nem consultado. */
+  const negNovo = [
+    ...new Set([...negociosCom('confirmacao'), ...negociosCom('dono_novo_agendamento'), ...negSinal]),
+  ]
   if (negNovo.length > 0) {
     const { data: novos } = await db
       .from('appointments')
       .select(`id, business_id, appointment_date, start_time, client_name, client_phone,
                client_email, service_name, customer_id, recurring_group_id, recurring_index,
+               sinal_valor, sinal_pago_at, sinal_isento,
                business:businesses(name, phone, owner_id), professional:professionals(name)`)
       .in('business_id', negNovo)
       .gte('created_at', new Date(agora - JANELA).toISOString())
@@ -205,7 +228,31 @@ export async function GET(req: NextRequest) {
         profissional: prof?.name,
       }
 
-      if (regras.has(`${a.business_id}:confirmacao`)) {
+      /* ── QUEM DEVE SINAL NÃO RECEBE CONFIRMAÇÃO (04/09) ─────────
+         Esta varredura monta a fila à mão e, até aqui, mandava
+         `confirmacao` pra todo mundo — inclusive pra quem ainda não pagou o
+         sinal. Dizer "seu horário ficou marcado" pra quem deve é mentira, e
+         o horário ainda pode cair.
+
+         Delega em vez de montar a mensagem de sinal aqui: ela precisa de
+         valor, prazo, token e dois botões, e duplicar essa montagem foi
+         exatamente o que fez a rota do link público divergir e mentir por
+         semanas. Uma fonte só — `confirmarAgendamento`.
+
+         A chave de idempotência é a mesma dos dois lados, então rodar de
+         hora em hora não manda duas vezes. */
+      const deveSinal =
+        Number(a.sinal_valor ?? 0) > 0 && !a.sinal_pago_at && a.sinal_isento !== true
+
+      if (deveSinal) {
+        /* Sem `continue`: o aviso pro DONO é outra mensagem, pra outro
+           destinatário, e ele precisa saber do agendamento novo tendo sinal
+           ou não. O `else if` abaixo troca só a mensagem DA CLIENTE. */
+        await confirmarAgendamento(db, a.id as string).catch((e) => {
+          console.error('varrer · cobranca de sinal falhou', a.id, e)
+          return null
+        })
+      } else if (regras.has(`${a.business_id}:confirmacao`)) {
         fila.push({
           tipo: 'confirmacao', businessId: a.business_id as string,
           chave: chaveIdempotencia('confirmacao', a.id as string),
