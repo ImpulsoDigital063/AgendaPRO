@@ -81,25 +81,35 @@ function prazoLegivel(criadoEm: string, minutos: number, hojeBR: string): string
 
 export type ResultadoConfirmacao =
   | { ok: true; resultado: Awaited<ReturnType<typeof enviar>> }
-  | { ok: false; motivo: 'nao_encontrado' | 'status' | 'passado' | 'serie' }
+  | { ok: false; motivo: 'nao_encontrado' | 'status' | 'passado' | 'serie' | 'erro_consulta' }
 
 export async function confirmarAgendamento(
   db: SupabaseClient,
   appointmentId: string,
 ): Promise<ResultadoConfirmacao> {
-  const { data: a } = await db
+  const { data: a, error: erroSelect } = await db
     .from('appointments')
     .select(
       `id, business_id, appointment_date, start_time, client_name, client_phone,
        client_email, service_name, customer_id, status, created_at,
        recurring_group_id, recurring_index,
-       sinal_valor, sinal_pago_at, sinal_isento,
+       sinal_valor, sinal_pago_at,
        business:businesses(name, phone, sinal_expira_minutos),
-       professional:professionals(name)`,
+       professional:professionals(name),
+       customer:customers(sinal_isento)`,
     )
     .eq('id', appointmentId)
     .maybeSingle()
 
+  /* Query quebrada NÃO pode se disfarçar de "não encontrado". Foi assim que
+     a coluna inexistente passou meses despercebida: `maybeSingle()` devolve
+     data null tanto pra "esse id não existe" quanto pra "sua query está
+     errada", e quem chama trata os dois como o mesmo silêncio. Um motivo
+     próprio e um erro no log separam as duas coisas. */
+  if (erroSelect) {
+    console.error('confirmarAgendamento · SELECT FALHOU', appointmentId, erroSelect.message)
+    return { ok: false, motivo: 'erro_consulta' }
+  }
   if (!a) return { ok: false, motivo: 'nao_encontrado' }
   if (!['pending', 'confirmed'].includes(String(a.status))) {
     return { ok: false, motivo: 'status' }
@@ -140,8 +150,24 @@ export async function confirmarAgendamento(
      `sinal_isento` existe porque a dona libera cliente de casa do sinal
      caso a caso. Isento é tratado como pago: o horário vale, e a mensagem
      que sai é a confirmação normal. */
+  /* 🔴 A ISENÇÃO MORA EM `customers`, NÃO EM `appointments` (04/09).
+     Até aqui o select pedia `appointments.sinal_isento` — coluna que NUNCA
+     existiu. O PostgREST devolve erro, `a` vem null, e a função saía em
+     `nao_encontrado` para TODO agendamento, em TODO caminho.
+
+     Ou seja: `confirmarAgendamento` nunca funcionou uma vez sequer. As
+     confirmações que a base recebeu vieram da varredura horária, que monta
+     a fila à mão e não toca nessa coluna — por isso ninguém percebeu, e por
+     isso a cobrança de sinal (que só existe aqui) nunca saiu.
+
+     Achado testando o caminho real depois de trocar o link público pra cá:
+     o submit parou de mandar qualquer coisa, e o log ficou vazio em vez de
+     registrar 'ignorado'. Nenhum erro em lugar nenhum — o `.catch` do
+     chamador engolia, e `maybeSingle()` não distingue "não achei" de "sua
+     query está errada". */
+  const isenta = (a.customer as unknown as { sinal_isento?: boolean } | null)?.sinal_isento === true
   const valorSinal = Number(a.sinal_valor ?? 0)
-  const deveSinal = valorSinal > 0 && !a.sinal_pago_at && a.sinal_isento !== true
+  const deveSinal = valorSinal > 0 && !a.sinal_pago_at && !isenta
 
   const tipo = deveSinal ? ('sinal_pendente' as const) : ('confirmacao' as const)
 
