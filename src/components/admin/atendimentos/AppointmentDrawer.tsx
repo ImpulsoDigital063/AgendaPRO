@@ -443,12 +443,27 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                 >
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <span className="text-xs font-semibold" style={{ color: '#B45309' }}>
-                      Aguardando sinal
+                      {/* Depois que a cliente toca "Ja paguei" o horario ja
+                          esta CONFIRMADO — dizer "aguardando sinal" faz a dona
+                          achar que ninguem respondeu, quando na verdade falta
+                          so ela conferir o extrato. O que se espera mudou de
+                          lado: era a cliente, agora e ela. */}
+                      {data.sinal_declarado_em ? 'Cliente disse que pagou' : 'Aguardando sinal'}
                     </span>
                     <span className="text-sm font-black tabular-nums" style={{ color: '#B45309' }}>
                       {Number(data.sinal_valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                   </div>
+                  {data.sinal_declarado_em && (
+                    <p className="text-[11px] mb-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                      Avisou em{' '}
+                      {new Date(data.sinal_declarado_em).toLocaleString('pt-BR', {
+                        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                        timeZone: 'America/Sao_Paulo',
+                      })}
+                      . O horário já está guardado — confira o extrato e registre o valor.
+                    </p>
+                  )}
                   <button
                     onClick={async () => {
                       const r = await fetch('/api/admin/sinal', {
@@ -461,7 +476,13 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                     className="w-full py-2.5 rounded-lg text-xs font-bold"
                     style={{ background: 'rgba(16,185,129,0.15)', color: '#059669', border: '1px solid rgba(16,185,129,0.35)' }}
                   >
-                    Recebi o sinal — confirmar horário
+                    {/* O botao fazia DUAS coisas e anunciava as duas. Agora que
+                        o "Ja paguei" confirma sozinho, so resta o dinheiro —
+                        prometer "confirmar horario" num horario ja confirmado
+                        faz ela procurar o que mudou e nao achar nada. */}
+                    {data.sinal_declarado_em
+                      ? 'Confirmei no extrato — registrar o sinal'
+                      : 'Recebi o sinal — confirmar horário'}
                   </button>
                   {/* DISPENSAR (v118) · sem esta opção a dona usaria o botão de
                       cima como atalho pra não cobrar da cliente de confiança —

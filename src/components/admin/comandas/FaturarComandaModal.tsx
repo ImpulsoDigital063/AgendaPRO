@@ -826,6 +826,11 @@ export default function FaturarComandaModal({
         // A comanda acima já mostra "falta receber R$ 40,00"; o passo do
         // método perguntava por R$ 50,00. Agora os dois falam do mesmo valor.
         sinalPago={sinalPago}
+        /* Repassa pro passo do metodo de pagamento. Sem isto o aviso aparecia
+           na comanda e SUMIA na tela seguinte — que e justamente onde ela
+           digita quanto recebeu. Faltou na primeira versao: eu tinha posto o
+           aviso nos dois modais e esquecido que um abre de dentro do outro. */
+        sinalDeclarado={sinalDeclarado}
         businessId={businessId}
         loading={submitting}
         onChoose={(method, card) => {
