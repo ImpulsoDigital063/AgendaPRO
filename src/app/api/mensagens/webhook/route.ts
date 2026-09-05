@@ -429,12 +429,33 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
       '/admin/sinal',
       'Sinal: confira o pagamento',
     )
-    /* Texto honesto: não diz "confirmado", porque não está. Dizer que está
-       e depois o horário cair é pior do que não ter mandado nada. */
+    /* Texto aprovado pelo Eduardo em 04/09, depois de o "Já paguei" passar a
+       confirmar o horário. O anterior dizia que o salão "vai confirmar seu
+       horário" — virou o oposto da verdade no mesmo commit que mudou o
+       comportamento.
+
+       O que cada pedaço faz:
+       · "está confirmado" primeiro — é o que ela abriu o celular pra saber
+       · "vai conferir o pagamento" — NÃO afirma que o dinheiro entrou, e
+         prepara o terreno caso a dona precise cobrar depois; sem isso um
+         contato posterior soa como desconfiança
+       · "já te chama se faltar alguma coisa" — inverte o ônus: silêncio
+         passa a significar que está tudo certo
+
+       🔴 Nunca escrever "pagamento confirmado" nem "recebemos seu sinal". Se
+       o PIX não caiu (chave errada, valor errado, ou não pagou), a dona vai
+       ter que cobrar de alguém com um print do sistema dizendo que estava
+       pago. Essa conversa é ruim pros dois lados.
+
+       Sem artigo antes do nome: "O Viva Cacheada vai conferir" soa errado, e
+       o nome vem do cadastro de 29 negócios com todo tipo de forma.
+
+       Texto livre, dentro da janela de 24h que o próprio toque no botão
+       abriu — não passa por aprovação da Meta e vale já no próximo envio. */
     await responder(
       negocio?.name
-        ? `Obrigado! ${negocio.name} vai conferir o pagamento e confirmar seu horário.`
-        : 'Obrigado! Vamos conferir o pagamento e confirmar seu horário.',
+        ? `Seu horário está confirmado. ${negocio.name} vai conferir o pagamento e já te chama se faltar alguma coisa.`
+        : 'Seu horário está confirmado. Vamos conferir o pagamento e já te chamamos se faltar alguma coisa.',
     )
     return 'japaguei'
   }
