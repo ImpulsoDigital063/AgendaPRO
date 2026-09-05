@@ -103,7 +103,7 @@ export default async function SinalPage({
   const { data: appt } = await supabase
     .from('appointments')
     .select(
-      'id, client_name, appointment_date, start_time, status, service_name, sinal_valor, sinal_pago_at, created_at, business:businesses(name, slug, phone, pix_key, pix_receiver_name, pix_city, sinal_enabled, sinal_expira_minutos, brand_primary, brand_secondary, brand_mode)',
+      'id, client_name, appointment_date, start_time, status, service_name, sinal_valor, sinal_pago_at, sinal_declarado_em, created_at, business:businesses(name, slug, phone, pix_key, pix_receiver_name, pix_city, sinal_enabled, sinal_expira_minutos, brand_primary, brand_secondary, brand_mode)',
     )
     .eq('id', id)
     .single()
@@ -164,8 +164,22 @@ export default async function SinalPage({
   const horaLimite = rotuloLimite(limite)
 
   const pago = !!appt.sinal_pago_at
+  /* 🔴 A cliente JA avisou que pagou (05/09).
+     ─────────────────────────────────────────────────────────────
+     Sem isto a pagina continuava gritando "FALTA PAGAR O SINAL" com o botao
+     de copiar em destaque DEPOIS de ela ter pago e tocado "Ja paguei" — e o
+     link fica no WhatsApp dela pra sempre. Ela volta, le que falta pagar,
+     acha que nao deu certo e paga de novo. O sistema nao escuta a conta da
+     dona, entao ninguem percebe: o duplicado so aparece como dois PIX iguais
+     no extrato.
+
+     Risco levantado pelo Eduardo olhando as duas telas lado a lado. Nao e a
+     coexistencia das superficies que duplica — o BRCode e o mesmo dos dois
+     lados, mesmo `identificador` derivado do appointment. O que duplica e a
+     pagina nao saber o que a cliente ja disse. */
+  const declarou = !pago && !!appt.sinal_declarado_em
   const cancelado = appt.status === 'cancelled' || vencido
-  const podePagar = !pago && !cancelado && valor > 0 && !!business?.pix_key
+  const podePagar = !pago && !declarou && !cancelado && valor > 0 && !!business?.pix_key
 
   const brcode = podePagar
     ? gerarBRCode({
@@ -206,7 +220,13 @@ export default async function SinalPage({
             style={{ background: 'rgba(255,255,255,0.12)', filter: 'blur(14px)' }}
           />
           <p className="relative text-[11px] font-bold uppercase tracking-widest opacity-80">
-            {pago ? 'Sinal confirmado' : cancelado ? 'Horário liberado' : 'Reserva do seu horário'}
+            {pago
+              ? 'Sinal confirmado'
+              : declarou
+                ? 'Horário garantido'
+                : cancelado
+                  ? 'Horário liberado'
+                  : 'Reserva do seu horário'}
           </p>
           <h1 className="relative text-2xl font-bold mt-1">{business?.name ?? 'Agendamento'}</h1>
         </div>
@@ -242,6 +262,49 @@ export default async function SinalPage({
             <p className="text-xs" style={{ color: mute }}>
               Seu horário está garantido. Te esperamos no dia!
             </p>
+          </div>
+        )}
+
+        {/* ELA JA AVISOU QUE PAGOU (05/09).
+            Estado proprio, entre "falta pagar" e "recebido": o horario esta
+            garantido, mas o dinheiro ainda nao foi conferido pela dona.
+
+            NAO diz "pagamento confirmado" — o sistema nao escuta a conta dela
+            e nao tem como saber. Diz o que e verdade: ela avisou, o horario
+            esta guardado, e o salao esta conferindo.
+
+            O botao de copiar o PIX some daqui de proposito (`podePagar` ja
+            exclui este caso). Deixar o codigo em destaque numa tela que ela
+            reabre dias depois e o caminho curto pro pagamento duplicado. O
+            "se ainda nao pagou" existe pra quem tocou no botao por engano —
+            sem isso ela ficaria presa, sem como pagar e sem entender. */}
+        {declarou && (
+          <div
+            className="rounded-2xl p-5 text-center space-y-2"
+            style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.32)' }}
+          >
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto"
+              style={{ background: '#F59E0B', color: '#fff' }}
+            >
+              <IconCheck size={24} />
+            </div>
+            <p className="font-bold" style={{ color: text }}>
+              Seu horário está garantido
+            </p>
+            <p className="text-xs" style={{ color: mute }}>
+              Você avisou que já pagou o sinal. {business?.name ?? 'O salão'} está
+              conferindo — não precisa pagar de novo.
+            </p>
+            {linkZap && (
+              <p className="text-xs pt-1" style={{ color: mute }}>
+                Se ainda não pagou,{' '}
+                <a href={linkZap} className="underline font-semibold" style={{ color: primary }}>
+                  fale com {business?.name ?? 'o salão'}
+                </a>
+                .
+              </p>
+            )}
           </div>
         )}
 
