@@ -1280,3 +1280,24 @@ select.admin-input:focus {
 .secao-ancora {
   scroll-margin-top: 78px;
 }
+
+/* Pulso do botão de registrar sinal declarado (04/09).
+   ────────────────────────────────────────────────────
+   Chama a atenção da dona no fechamento da comanda: a cliente disse que
+   pagou, o horário já está confirmado, e só falta ela conferir o extrato.
+   Se passar batido, a comanda fecha no valor cheio e a cliente paga o sinal
+   duas vezes.
+
+   Sombra, não escala: o botão fica numa caixa junto de outros e crescer
+   empurraria o layout a cada ciclo. E `prefers-reduced-motion` desliga —
+   animação infinita é das que mais incomodam quem é sensível a movimento. */
+@keyframes admin-sinal-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217,119,6,0.45); }
+  50%      { box-shadow: 0 0 0 6px rgba(217,119,6,0); }
+}
+.admin-sinal-pulse {
+  animation: admin-sinal-pulse 1.8s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-sinal-pulse { animation: none; }
+}

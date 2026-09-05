@@ -141,6 +141,17 @@ export default function FaturarComandaModal({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
+  /* Sinal declarado que a dona acabou de registrar SEM sair da comanda. O
+     valor vem por prop do pai, que nao remonta enquanto o modal esta aberto —
+     entao o registro precisa valer na hora aqui, senao ela clica, nada muda
+     na tela, e clica de novo. */
+  const [sinalRegistrado, setSinalRegistrado] = useState(false)
+  const [registrandoSinal, setRegistrandoSinal] = useState(false)
+
+  /* O que ja esta pago DE FATO: o que veio do banco, mais o que ela registrou
+     agora nesta tela. Todo calculo de "falta receber" usa este, nunca a prop
+     crua — senao o total continuaria cheio depois de ela confirmar. */
+  const sinalEfetivo = sinalRegistrado && sinalDeclarado ? sinalDeclarado.valor : sinalPago
   // Serviços extra (cliente fez serviço a mais na hora · Olímpio 06/06)
   const supabase = useMemo(() => createClient(), [])
   const [services, setServices] = useState<ServiceLite[]>([])
@@ -731,7 +742,7 @@ export default function FaturarComandaModal({
                 logo abaixo e o do sinal DE FATO recebido, e os dois nunca
                 aparecem juntos (um exige sinal_pago_at nulo, o outro exige
                 preenchido). */}
-            {sinalDeclarado && sinalDeclarado.valor > 0 && (
+            {sinalDeclarado && sinalDeclarado.valor > 0 && !sinalRegistrado && (
               <div
                 className="rounded-xl px-3 py-2.5"
                 style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.28)' }}
@@ -751,10 +762,42 @@ export default function FaturarComandaModal({
                     return `A cliente avisou em ${q} que pagou o sinal pelo PIX. Confirme na sua conta antes de fechar — o valor ainda NÃO foi abatido do total abaixo.`
                   })()}
                 </p>
+                {/* O BOTAO VIVE AQUI, e nao so no card (04/09, pedido do
+                    Eduardo). Antes ela via o aviso na comanda e precisava
+                    FECHAR, voltar pro card e clicar la — no meio de fechar
+                    uma conta com a cliente na frente. Fricção assim e o que
+                    faz o passo ser pulado, e pular esse custa a cliente
+                    pagando o sinal duas vezes.
+
+                    Pulsa porque e a unica coisa nesta tela que precisa de
+                    decisao ANTES de fechar; o resto e conferencia. */}
+                <button
+                  type="button"
+                  disabled={registrandoSinal}
+                  onClick={async () => {
+                    setRegistrandoSinal(true)
+                    const r = await fetch('/api/admin/sinal', {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify({ appointmentId, acao: 'recebi' }),
+                    }).then((x) => x.json()).catch(() => null)
+                    setRegistrandoSinal(false)
+                    /* Só marca na tela se o BANCO confirmou (λ.prova-na-fonte).
+                       A rota já faz read-after-write e devolve erro se o
+                       sinal_pago_at não persistiu — aqui a gente respeita
+                       isso em vez de pintar de verde por otimismo. */
+                    if (r?.ok) setSinalRegistrado(true)
+                    else setError(r?.error ?? 'Não consegui registrar o sinal. Tente de novo.')
+                  }}
+                  className="admin-sinal-pulse w-full mt-2.5 py-2.5 rounded-lg text-xs font-bold disabled:opacity-60"
+                  style={{ background: 'rgba(217,119,6,0.16)', color: '#b45309', border: '1px solid rgba(217,119,6,0.4)' }}
+                >
+                  {registrandoSinal ? 'Registrando…' : `Confirmei no extrato — registrar ${brl(sinalDeclarado.valor)}`}
+                </button>
               </div>
             )}
 
-            {sinalPago > 0 && (
+            {sinalEfetivo > 0 && (
               <div
                 className="flex items-center justify-between gap-3 rounded-xl px-3 py-2"
                 style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}
@@ -763,7 +806,7 @@ export default function FaturarComandaModal({
                   Sinal já pago no PIX
                 </span>
                 <span className="text-sm font-bold tabular-nums" style={{ color: '#059669' }}>
-                  − {brl(sinalPago)}
+                  − {brl(sinalEfetivo)}
                 </span>
               </div>
             )}
@@ -771,12 +814,12 @@ export default function FaturarComandaModal({
             <div className="flex items-end justify-between gap-3">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-text-faded)' }}>
-                  {sinalPago > 0 ? 'Falta receber' : 'Total'}
+                  {sinalEfetivo > 0 ? 'Falta receber' : 'Total'}
                 </p>
                 <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--admin-text)' }}>
-                  {brl(Math.max(0, total - sinalPago))}
+                  {brl(Math.max(0, total - sinalEfetivo))}
                 </p>
-                {sinalPago > 0 && (
+                {sinalEfetivo > 0 && (
                   <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
                     de {brl(total)} no total
                   </p>
@@ -825,7 +868,7 @@ export default function FaturarComandaModal({
         totalPrice={total}
         // A comanda acima já mostra "falta receber R$ 40,00"; o passo do
         // método perguntava por R$ 50,00. Agora os dois falam do mesmo valor.
-        sinalPago={sinalPago}
+        sinalPago={sinalEfetivo}
         /* Repassa pro passo do metodo de pagamento. Sem isto o aviso aparecia
            na comanda e SUMIA na tela seguinte — que e justamente onde ela
            digita quanto recebeu. Faltou na primeira versao: eu tinha posto o
