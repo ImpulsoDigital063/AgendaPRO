@@ -473,8 +473,21 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                       }).then((x) => x.json()).catch(() => null)
                       if (r?.ok) onClose(true)
                     }}
-                    className="w-full py-2.5 rounded-lg text-xs font-bold"
-                    style={{ background: 'rgba(16,185,129,0.15)', color: '#059669', border: '1px solid rgba(16,185,129,0.35)' }}
+                    /* Pulsa SÓ quando a cliente já declarou. Sem declaração o
+                       botão é rotina ("recebi o sinal, confirma o horário") e
+                       piscar à toa treina a dona a ignorar o movimento —
+                       quando ele significar algo, ela não vê mais. */
+                    className={`w-full py-2.5 rounded-lg text-xs font-bold${
+                      data.sinal_declarado_em ? ' admin-sinal-pulse' : ''
+                    }`}
+                    style={{
+                      background: 'rgba(16,185,129,0.15)',
+                      color: '#059669',
+                      border: '1px solid rgba(16,185,129,0.35)',
+                      ...(data.sinal_declarado_em
+                        ? ({ '--pulse-cor': 'rgba(16,185,129,0.5)' } as React.CSSProperties)
+                        : {}),
+                    }}
                   >
                     {/* O botao fazia DUAS coisas e anunciava as duas. Agora que
                         o "Ja paguei" confirma sozinho, so resta o dinheiro —

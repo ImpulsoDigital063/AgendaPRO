@@ -1291,9 +1291,12 @@ select.admin-input:focus {
    Sombra, não escala: o botão fica numa caixa junto de outros e crescer
    empurraria o layout a cada ciclo. E `prefers-reduced-motion` desliga —
    animação infinita é das que mais incomodam quem é sensível a movimento. */
+/* A cor vem de fora: o mesmo botao aparece ambar dentro da comanda e verde
+   no card do atendimento, e duplicar os keyframes por cor deixaria os dois
+   fora de sincronia na primeira mudanca. */
 @keyframes admin-sinal-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(217,119,6,0.45); }
-  50%      { box-shadow: 0 0 0 6px rgba(217,119,6,0); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--pulse-cor, rgba(217,119,6,0.45)); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
 }
 .admin-sinal-pulse {
   animation: admin-sinal-pulse 1.8s ease-out infinite;
