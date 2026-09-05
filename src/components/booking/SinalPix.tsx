@@ -25,9 +25,16 @@
      é manual (o dono olha o banco), então o caminho mais rápido pra
      destravar é a própria cliente avisar.
 
-   · Não existe "já paguei" que confirme sozinho. Botão que a cliente
-     aperta pra dizer que pagou é convite pra horário reservado sem
-     dinheiro — e o problema que estamos resolvendo é justamente esse.
+   · ~~Não existe "já paguei" que confirme sozinho.~~ REVISTO EM 05/09 pelo
+     Eduardo: passa a confirmar. O argumento dele — ninguém diz que pagou
+     sem ter pago, e quem mentir só ganha um horário que vai perder na
+     porta. E o receio original ("horário reservado sem dinheiro") já era
+     realidade de outro jeito: desde a v146 a declaração parava o relógio,
+     então o horário ficava preso em "a confirmar" pra sempre. Confirmar não
+     criou risco novo, só parou de mentir na agenda.
+
+     O dinheiro segue separado: `sinal_pago_at` continua nulo, e quem
+     registra é a dona olhando o extrato. A comanda não abate nada até lá.
    ═══════════════════════════════════════════════════════════════ */
 
 import { useState } from 'react'
@@ -40,11 +47,18 @@ export default function SinalPix({
   telefoneNegocio,
   resumo,
   cor,
+  appointmentId,
+  sinalToken,
 }: {
   valor: number
   copiaECola: string
   nomeNegocio: string
   telefoneNegocio?: string | null
+  /* Sem os dois o botao do comprovante nao consegue registrar a declaracao e
+     cai no link puro (comportamento antigo). Opcionais porque a pagina de
+     agendamento monta este componente antes de existir appointment. */
+  appointmentId?: string | null
+  sinalToken?: string | null
   /** Ex: "Limpeza de pele · 12/08 às 14:00" — pra mensagem do comprovante. */
   resumo: string
   cor: string
@@ -52,6 +66,7 @@ export default function SinalPix({
   const [copiado, setCopiado] = useState(false)
   const [falhouCopia, setFalhouCopia] = useState(false)
   const [verQR, setVerQR] = useState(false)
+  const [declarando, setDeclarando] = useState(false)
 
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -150,7 +165,45 @@ export default function SinalPix({
         </div>
       )}
 
-      {linkComprovante && (
+      {/* MESMO EFEITO DO "JA PAGUEI" DO WHATSAPP (05/09).
+          Ate aqui este botao so abria o wa.me com um texto pronto: quem
+          pagava pela pagina ficava com o horario em "a confirmar", sem push
+          pra dona e sem a trava que impede o horario de cair — enquanto quem
+          tocava no botao do WhatsApp tinha tudo isso. Mesmo nome, mesma
+          intencao da cliente, resultados diferentes.
+
+          Agora registra a declaracao ANTES de abrir o WhatsApp. E o
+          comprovante continua indo: a foto do PIX na mao da dona e o que
+          resolve a conferencia, e nenhum sistema substitui isso. */}
+      {linkComprovante && appointmentId && sinalToken && (
+        <button
+          type="button"
+          disabled={declarando}
+          onClick={async () => {
+            setDeclarando(true)
+            /* Registra e SEGUE pro WhatsApp mesmo se falhar. Travar a cliente
+               fora do comprovante por causa da nossa rota seria trocar um
+               problema nosso por um problema dela — e a varredura ainda pega
+               o agendamento depois. */
+            await fetch('/api/sinal/declarar', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ id: appointmentId, token: sinalToken }),
+            }).catch(() => null)
+            setDeclarando(false)
+            window.open(linkComprovante, '_blank', 'noopener,noreferrer')
+          }}
+          className="mt-3 block w-full py-3 rounded-xl font-semibold text-sm text-center disabled:opacity-60"
+          style={{ background: 'rgba(34,197,94,0.14)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}
+        >
+          {declarando ? 'Um instante…' : 'Já paguei — mandar comprovante'}
+        </button>
+      )}
+
+      {/* Sem id/token a pagina nao tem como registrar — cai no link puro, que
+          e o comportamento antigo. Melhor abrir o WhatsApp sem registrar do
+          que nao ter como mandar o comprovante. */}
+      {linkComprovante && !(appointmentId && sinalToken) && (
         <a
           href={linkComprovante}
           target="_blank"

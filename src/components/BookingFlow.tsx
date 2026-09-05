@@ -312,7 +312,7 @@ export default function BookingFlow({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   // v112 · sinal: o server devolve o PIX pronto quando o negocio exige
-  const [pixSinal, setPixSinal] = useState<{ valor: number; copiaECola: string } | null>(null)
+  const [pixSinal, setPixSinal] = useState<{ valor: number; copiaECola: string; token?: string; appointmentId?: string } | null>(null)
   // v113 · credito abatido do sinal. Sem mostrar, o valor "some" e ela estranha.
   const [creditoSinal, setCreditoSinal] = useState<{ aplicado: number; sinalCheio: number | null; quitado: boolean; sobra: number } | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>([])
@@ -1095,7 +1095,13 @@ export default function BookingFlow({
       return
     }
 
-    if (res.pix) setPixSinal(res.pix as { valor: number; copiaECola: string })
+    /* appointmentId vem de fora do objeto `pix` — o botao do comprovante
+       precisa dos dois pra registrar a declaracao. */
+    if (res.pix)
+      setPixSinal({
+        ...(res.pix as { valor: number; copiaECola: string; token?: string }),
+        appointmentId: res.appointmentId as string | undefined,
+      })
     if (res.credito) {
       const c = res.credito as { aplicado: number; sinalCheio: number | null; quitado: boolean; sobra?: number }
       setCreditoSinal({ ...c, sobra: Number(c.sobra ?? 0) })
@@ -1251,6 +1257,8 @@ export default function BookingFlow({
             telefoneNegocio={business.phone}
             resumo={resumoDoHorario}
             cor="#3B82F6"
+            appointmentId={pixSinal.appointmentId ?? null}
+            sinalToken={pixSinal.token ?? null}
           />
         )}
 

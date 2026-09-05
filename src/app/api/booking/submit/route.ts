@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit-api'
 import { variacoesDeTelefone } from '@/lib/phone-variants'
 import { todayBR } from '@/lib/date-br'
 import { limparSinaisVencidos } from '@/lib/sinal-expira'
+import { generateSinalToken } from '@/lib/token'
 import { confirmarAgendamento } from '@/lib/mensagens/confirmar'
 
 /**
@@ -498,6 +499,12 @@ export async function POST(req: NextRequest) {
   const pix = valorSinal && valorSinal > 0
     ? {
         valor: valorSinal,
+        /* Vai junto pra tela poder registrar o "Ja paguei" (05/09). E o mesmo
+           token HMAC do link do sinal, derivado do appointment — quem esta
+           nesta tela acabou de criar o agendamento, entao ja tem direito a
+           ele. Sem isso o botao do comprovante so abriria o WhatsApp, e quem
+           paga por aqui ficaria sem a confirmacao que o botao do WhatsApp da. */
+        token: generateSinalToken(appointment.id as string),
         copiaECola: gerarBRCode({
           chave: negocio!.pix_key as string,
           nomeRecebedor: (negocio as { pix_receiver_name?: string })?.pix_receiver_name || 'RECEBEDOR',
