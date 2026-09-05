@@ -48,6 +48,8 @@ type Props = {
   podeEditarValor?: boolean
   /** Sinal ja pago no PIX (v112c) · abate do que falta receber na comanda. */
   sinalPago?: number | null
+  /** Cliente declarou pagamento e ninguem conferiu o extrato ainda. */
+  sinalDeclarado?: { valor: number; quando: string } | null
   /** Quando existe, o sucesso do pagamento avisa por aqui em vez de recarregar
    *  a pagina inteira — a grade pinta o card localmente. */
   onPago?: (dados: { paid_at: string; total_price?: number | null }) => void
@@ -81,6 +83,7 @@ export default function AppointmentActions({
   podeRemarcar = true,
   podeEditarValor = false,
   sinalPago,
+  sinalDeclarado,
   onPago,
   convenioNome,
   jaAtendido = false,
@@ -479,6 +482,7 @@ export default function AppointmentActions({
         appointmentServiceName={serviceName ?? 'Atendimento'}
         appointmentTotal={totalPrice ?? 0}
         sinalPago={Number(sinalPago ?? 0)}
+        sinalDeclarado={sinalDeclarado ?? null}
         podeEditarValor={podeEditarValor}
         // Fluxo real de pagamento passa por aqui (o botao abre a comanda,
         // nao o modal de metodo). Sem isso o ganho nao chega em ninguem.

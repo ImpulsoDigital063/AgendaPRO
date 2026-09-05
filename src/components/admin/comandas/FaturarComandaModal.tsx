@@ -54,6 +54,8 @@ type Props = {
   appointmentTotal: number
   /** Sinal ja pago no PIX (v112c). Abate do que falta receber. */
   sinalPago?: number
+  /** Cliente disse que pagou no WhatsApp e ninguem conferiu o extrato. */
+  sinalDeclarado?: { valor: number; quando: string } | null
   appointmentProfessionalId: string | null
   customerName: string
   businessId: string
@@ -95,7 +97,7 @@ const selectStyle: React.CSSProperties = {
 }
 
 export default function FaturarComandaModal({
-  open, appointmentId, appointmentServiceName, appointmentTotal, appointmentProfessionalId, podeEditarValor = false, sinalPago = 0,
+  open, appointmentId, appointmentServiceName, appointmentTotal, appointmentProfessionalId, podeEditarValor = false, sinalPago = 0, sinalDeclarado = null,
   customerName, businessId, onClose, onPago,
 }: Props) {
   const router = useRouter()
@@ -715,6 +717,43 @@ export default function FaturarComandaModal({
                 com R$9 de sinal já no PIX, e a comanda pedia R$45 de novo — ela
                 cobraria os R$9 duas vezes. O total do serviço continua sendo o
                 total; o que muda é o que FALTA receber. */}
+            {/* SINAL DECLARADO, NAO CONFERIDO (04/09) · Decisao do Eduardo.
+                A cliente tocou "Ja paguei" no WhatsApp, o horario ja foi
+                confirmado por isso — mas o dinheiro NAO entrou no sistema: o
+                PIX cai direto na conta da dona e a gente nao escuta.
+
+                O aviso vive AQUI, no fechamento, e nao no card da agenda,
+                porque e aqui que o valor importa. Se ela fechar sem conferir,
+                cobra o total cheio de quem ja pagou o sinal — e a cliente
+                reclama na cadeira, com razao.
+
+                Ambar, nao verde: e pendencia, nao confirmacao. O bloco verde
+                logo abaixo e o do sinal DE FATO recebido, e os dois nunca
+                aparecem juntos (um exige sinal_pago_at nulo, o outro exige
+                preenchido). */}
+            {sinalDeclarado && sinalDeclarado.valor > 0 && (
+              <div
+                className="rounded-xl px-3 py-2.5"
+                style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.28)' }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold" style={{ color: '#b45309' }}>
+                    Sinal de {brl(sinalDeclarado.valor)} — confira seu extrato
+                  </span>
+                </div>
+                <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  {(() => {
+                    const d = new Date(sinalDeclarado.quando)
+                    const q = d.toLocaleString('pt-BR', {
+                      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                      timeZone: 'America/Sao_Paulo',
+                    })
+                    return `A cliente avisou em ${q} que pagou o sinal pelo PIX. Confirme na sua conta antes de fechar — o valor ainda NÃO foi abatido do total abaixo.`
+                  })()}
+                </p>
+              </div>
+            )}
+
             {sinalPago > 0 && (
               <div
                 className="flex items-center justify-between gap-3 rounded-xl px-3 py-2"

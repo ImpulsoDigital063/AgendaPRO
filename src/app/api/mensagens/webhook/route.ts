@@ -388,15 +388,33 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
      a janela de 24h — o que torna a confirmação seguinte gratuita, porque
      template de utilidade dentro de janela aberta a Meta não cobra. */
   if (acao.tipo === 'japaguei') {
-    /* v146 · Para o relógio de expiração antes de qualquer outra coisa. Sem
-       isto o push saía, a dona não via a tempo, e o horário caía por cima de
-       um PIX declarado — o v140 só contava a folga do lado DELA. Continua não
-       sendo prova de pagamento: sinal_pago_at segue nulo e quem confirma
-       dinheiro é ela, no "Recebi o sinal", olhando o extrato.
-       Só grava a PRIMEIRA declaração: reenviar "paguei" não reabre nada. */
+    /* v146 · Para o relógio de expiração e CONFIRMA o horário.
+       ─────────────────────────────────────────────────────────────
+       Decisão do Eduardo em 04/09: quem diz que pagou tem o horário
+       garantido. O argumento dele: ninguém diz que pagou sem ter pago, e
+       quem mentir só ganha um horário que vai perder na porta. E o risco de
+       travar horário já existia desde o `sinal_declarado_em` — ele já
+       parava o relógio, então o card ficava preso em "a confirmar" pra
+       sempre, que é pior: a dona olhava a agenda e não sabia se podia
+       contar com aquele horário.
+
+       🔴 `sinal_pago_at` CONTINUA NULO, e isso não é detalhe. Esse campo é
+       o que faz `invoices` ABATER o sinal da comanda. Marcá-lo aqui faria a
+       comanda de um serviço de R$280 abrir em R$252 — a dona cobraria isso
+       na cadeira e os R$28 nunca teriam entrado. Erro de horário custa um
+       horário; erro aqui custa dinheiro que ela nem sabe que deixou de
+       cobrar. Quem registra o dinheiro segue sendo ela, no "Recebi o
+       sinal", olhando o extrato.
+
+       O aviso de que falta conferir aparece no FECHAMENTO DA COMANDA, que é
+       o momento em que o dinheiro importa de verdade.
+
+       Guardas: só sobe de `pending` (não ressuscita cancelado nem mexe em
+       quem já está confirmado) e só grava a PRIMEIRA declaração — reenviar
+       "paguei" não reabre nada. */
     await db
       .from('appointments')
-      .update({ sinal_declarado_em: new Date().toISOString() })
+      .update({ sinal_declarado_em: new Date().toISOString(), status: 'confirmed' })
       .eq('id', alvo.id)
       .eq('status', 'pending')
       .is('sinal_pago_at', null)

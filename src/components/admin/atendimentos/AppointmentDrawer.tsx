@@ -33,6 +33,9 @@ type ApptDetail = {
   total_price: number | null
   sinal_valor?: number | null
   sinal_pago_at?: string | null
+  /* Cliente tocou "Ja paguei" no WhatsApp. Confirma o horario, mas NAO
+     e prova de que o dinheiro entrou — ver o webhook. */
+  sinal_declarado_em?: string | null
 
   notes: string | null
   client_name: string | null
@@ -120,7 +123,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
     sb.from('appointments')
       .select(`
         id, appointment_date, start_time, end_time, status, confirmado_em, paid_at,
-        payment_method, total_price, notes, sinal_valor, sinal_pago_at,
+        payment_method, total_price, notes, sinal_valor, sinal_pago_at, sinal_declarado_em,
         client_name, client_phone, customer_id,
         service_name,
         appointment_services(service_name, price),
@@ -524,6 +527,15 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                   // própria comissão (Eduardo, 03/08). Chave reversível.
                   podeEditarValor={!ehAreaProfissional}
                   sinalPago={data.sinal_pago_at ? Number(data.sinal_valor ?? 0) : 0}
+                  /* Declarado mas não conferido: a cliente disse que pagou e o
+                     horário já está confirmado, mas o dinheiro ainda não foi
+                     registrado. O aviso aparece no fechamento da comanda, que é
+                     onde o valor importa. */
+                  sinalDeclarado={
+                    !data.sinal_pago_at && data.sinal_declarado_em
+                      ? { valor: Number(data.sinal_valor ?? 0), quando: data.sinal_declarado_em }
+                      : null
+                  }
                 />
               )}
             </>

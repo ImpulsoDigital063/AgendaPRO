@@ -48,6 +48,7 @@ type Props = {
      *  R$ 10 de sinal perguntava "como pagou R$ 50,00" quando entram R$ 40. */
     sinal_valor?: number | null
     sinal_pago_at?: string | null
+    sinal_declarado_em?: string | null
   }
   showDate?: boolean
   nextUp?: boolean
@@ -662,6 +663,11 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         clientName={appointment.client_name}
         totalPrice={valorCobrado}
         sinalPago={appointment.sinal_pago_at ? Number(appointment.sinal_valor ?? 0) : 0}
+        sinalDeclarado={
+          !appointment.sinal_pago_at && appointment.sinal_declarado_em
+            ? { valor: Number(appointment.sinal_valor ?? 0), quando: appointment.sinal_declarado_em }
+            : null
+        }
         withPunctualityBonus={withPunctuality}
         punctualityPoints={punctualityBonus}
         loading={loading}

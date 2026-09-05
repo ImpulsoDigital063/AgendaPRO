@@ -38,6 +38,8 @@ type Props = {
    * que entra agora — e é ela que a dona usa pra fechar o caixa.
    */
   sinalPago?: number
+  /** Cliente disse que pagou no WhatsApp e ninguem conferiu o extrato. */
+  sinalDeclarado?: { valor: number; quando: string } | null
   /** Quando fornecido, ao escolher 'card' abre step de detalhes (maquininha + bandeira). */
   businessId?: string
   /** Modo "Atendi +bonus" altera o copy e a cor do header. */
@@ -86,6 +88,7 @@ export default function PaymentMethodModal({
   clientName,
   totalPrice,
   sinalPago = 0,
+  sinalDeclarado = null,
   permiteEditarValor = false,
   businessId,
   withPunctualityBonus = false,
@@ -236,6 +239,22 @@ export default function PaymentMethodModal({
                     {sinalPago > 0 && (
                       <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--admin-text-faded, #94A3B8)' }}>
                         {formatPrice(totalPrice)} no total · {formatPrice(sinalPago)} já pagos no sinal
+                      </p>
+                    )}
+                    {/* A SEGUNDA PORTA (04/09). Este modal e o
+                        FaturarComandaModal fecham a mesma conta por caminhos
+                        diferentes, e os dois abatem o sinal. O aviso tem que
+                        existir nos DOIS: se aparecesse só num, metade dos
+                        fechamentos cobraria o valor cheio de quem ja declarou
+                        ter pago o sinal. */}
+                    {sinalDeclarado && sinalDeclarado.valor > 0 && (
+                      <p
+                        className="text-xs mt-1.5 leading-relaxed rounded-lg px-2 py-1.5"
+                        style={{ background: 'rgba(217,119,6,0.10)', color: '#b45309' }}
+                      >
+                        <strong>Sinal de {formatPrice(sinalDeclarado.valor)} — confira seu extrato.</strong>{' '}
+                        A cliente avisou que pagou pelo PIX, mas ninguém confirmou ainda.
+                        O valor NÃO está abatido acima.
                       </p>
                     )}
                   </>
