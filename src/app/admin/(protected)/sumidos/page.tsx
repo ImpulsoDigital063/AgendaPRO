@@ -48,7 +48,7 @@ export default async function SumidosPage() {
           </p>
         </header>
 
-        <SumidosPanel mostrarLinkCampanha />
+        <SumidosPanel mostrarLinkCampanha podeEditarTexto />
       </div>
     </main>
   )
