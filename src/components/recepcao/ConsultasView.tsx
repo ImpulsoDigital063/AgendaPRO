@@ -131,7 +131,7 @@ export default function ConsultasView({ businessId, professionals, mostrarLinkCa
         })}
       </div>
 
-      {aba === "sumidos" && <SumidosPanel mostrarLinkCampanha={mostrarLinkCampanha} podeEditarTexto={mostrarLinkCampanha} />}
+      {aba === "sumidos" && <SumidosPanel mostrarLinkCampanha={mostrarLinkCampanha} podeCriarCampanha={mostrarLinkCampanha} />}
 
       {aba === 'atendimentos' && (
       <>

@@ -1,6 +1,9 @@
 /**
- * GET  /api/admin/sumidos?dias=N  · lista quem não volta há mais de N dias
- * PUT  /api/admin/sumidos         · salva o texto do WhatsApp (só a dona)
+ * GET /api/admin/sumidos?dias=N · lista quem não volta há mais de N dias.
+ *
+ * O texto/cupom/link NÃO vive aqui: a aba reusa o sistema que já existe —
+ * templates por nicho de coupon-templates.ts + POST /api/admin/coupons/campaign
+ * (que agora aceita `dias`). Não reinventar (Eduardo, 06/09).
  *
  * Pedido da Rosy Borges (06/09/2026, três áudios): o Reativar trava em 40 dias,
  * e no nicho dela (cílios) a manutenção é a cada 15–20. Quando o sistema
@@ -8,9 +11,8 @@
  * pesquisar nome por nome: "vai aparecer ela e todos que foram 20 dias atrás,
  * não só uma".
  *
- * Permission: GET é dono OU recepção (resolveBusinessIdOperacao, o mesmo gate
- * das outras rotas de operação). PUT é só dono — o texto é ajuste de negócio,
- * não operação de balcão. O business NUNCA vem do client.
+ * Permission: dono OU recepção (resolveBusinessIdOperacao, o mesmo gate das
+ * outras rotas de operação). O business NUNCA vem do client.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -18,7 +20,6 @@ import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { todayBR, addDaysBR } from '@/lib/date-br'
-import { SUMIDOS_TEMPLATE_PADRAO } from '@/lib/sumidos-template'
 
 /** Os degraus que a tela oferece. Nada fora disso entra na query. */
 export const DIAS_OPCOES = [15, 20, 25, 30, 40, 60] as const
@@ -47,12 +48,13 @@ export async function GET(req: NextRequest) {
 
   const { data: biz } = await supabase
     .from('businesses')
-    .select('name, sumidos_template')
+    .select('name, slug, description')
     .eq('id', businessId)
     .single()
 
   const negocio = biz?.name ?? ''
-  const template = biz?.sumidos_template ?? SUMIDOS_TEMPLATE_PADRAO
+  const slug = biz?.slug ?? ''
+  const descricao = biz?.description ?? null
 
   /* Mesma primitiva do Reativar: uma linha por cliente com a última data
      QUALQUER — inclui agendamento futuro e cancelado. Quem tem horário
@@ -73,7 +75,7 @@ export async function GET(req: NextRequest) {
     if (id && ultima && ultima < corte) sumidos.set(id, ultima)
   }
   if (sumidos.size === 0) {
-    return NextResponse.json({ dias, negocio, template, clientes: [] })
+    return NextResponse.json({ dias, negocio, slug, descricao, clientes: [] })
   }
 
   const { data: clients } = await supabase
@@ -95,48 +97,5 @@ export async function GET(req: NextRequest) {
     // Quem sumiu há mais tempo primeiro — é quem está mais perto de virar perda.
     .sort((a, b) => b.diasSem - a.diasSem)
 
-  return NextResponse.json({ dias, negocio, template, clientes })
-}
-
-export async function PUT(req: NextRequest) {
-  const rl = checkRateLimit(req, { key: 'admin-sumidos-put', limit: 20, windowSeconds: 60 })
-  if (rl) return rl
-
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'no_auth' }, { status: 401 })
-
-  // Só a dona edita o texto padrão. Recepção usa o que está salvo.
-  const { data: biz } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .maybeSingle()
-  if (!biz) return NextResponse.json({ error: 'only_owner' }, { status: 403 })
-
-  const body = await req.json().catch(() => null)
-  const bruto = typeof body?.template === 'string' ? body.template.trim() : null
-  if (bruto === null) return NextResponse.json({ error: 'bad_body' }, { status: 400 })
-  if (bruto.length > 700) return NextResponse.json({ error: 'muito_longo' }, { status: 400 })
-
-  // Vazio volta pro padrão do código em vez de gravar string vazia.
-  const valor = bruto.length === 0 ? null : bruto
-
-  const { error } = await supabase
-    .from('businesses')
-    .update({ sumidos_template: valor })
-    .eq('id', biz.id)
-  if (error) return NextResponse.json({ error: 'save_failed' }, { status: 500 })
-
-  // λ.prova-na-fonte · devolve o que o banco realmente guardou
-  const { data: depois } = await supabase
-    .from('businesses')
-    .select('sumidos_template')
-    .eq('id', biz.id)
-    .single()
-
-  return NextResponse.json({
-    ok: true,
-    template: depois?.sumidos_template ?? SUMIDOS_TEMPLATE_PADRAO,
-  })
+  return NextResponse.json({ dias, negocio, slug, descricao, clientes })
 }

@@ -9,6 +9,12 @@ import { checkRateLimit } from '@/lib/rate-limit-api'
 // curto (15-30d), 60 era tarde demais.
 const SUMIDO_DAYS = 40
 
+/* 06/09/2026 · a aba Sumidos manda o prazo que a dona escolheu. A Rosy
+   (cilios, manutencao a cada 15-20 dias) pediu: com 40 fixo, quando o
+   sistema acusava a cliente ja tinha sumido de verdade. Sem `dias` no
+   corpo, cai no 40 de sempre — o Reativar antigo nao muda. */
+const DIAS_OPCOES = [15, 20, 25, 30, 40, 60]
+
 type CampaignTarget = 'sumidos' | 'aniversariantes_mes'
 
 /**
@@ -53,6 +59,8 @@ export async function POST(req: NextRequest) {
   const discount_value = Number(body.discount_value)
   const validity_days = Number(body.validity_days)
   const message_template = typeof body.message_template === 'string' ? body.message_template : ''
+  const diasPedido = Number(body.dias)
+  const sumidoDays = DIAS_OPCOES.includes(diasPedido) ? diasPedido : SUMIDO_DAYS
   const target: CampaignTarget =
     body.target === 'aniversariantes_mes' ? 'aniversariantes_mes' : 'sumidos'
 
@@ -121,7 +129,7 @@ export async function POST(req: NextRequest) {
     }
 
     // λ.fuso · corte em dia BR (servidor roda em UTC)
-    const sumidoCutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
+    const sumidoCutoffStr = addDaysBR(todayBR(), -sumidoDays)
 
     targetCustomersAll = customers.filter((c) => {
       const clientId = clientByPhone.get(c.phone)
@@ -130,7 +138,7 @@ export async function POST(req: NextRequest) {
       if (!lastDate) return false
       return lastDate < sumidoCutoffStr
     })
-    emptyMsgEspecifico = `nenhum cliente sumido (sem agendamento há ${SUMIDO_DAYS}+ dias)`
+    emptyMsgEspecifico = `nenhum cliente sumido (sem agendamento há ${sumidoDays}+ dias)`
   } else {
     // target === 'aniversariantes_mes'
     // birthday é 'YYYY-MM-DD' · pega mês (chars 5-7) e compara com mês atual.
@@ -167,7 +175,7 @@ export async function POST(req: NextRequest) {
     const reason = targetCustomersAll.length > 0
       ? `todos os ${targetCustomersAll.length} candidato(s) já têm cupom ativo. Aguarde expirar ou usar.`
       : emptyMsgEspecifico
-    return NextResponse.json({ error: reason, sumidoDays: SUMIDO_DAYS }, { status: 400 })
+    return NextResponse.json({ error: reason, sumidoDays }, { status: 400 })
   }
 
   // 2. Gerar cupons. Code via DB function (gera unico).
