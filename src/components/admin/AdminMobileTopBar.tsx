@@ -97,6 +97,10 @@ export default function AdminMobileTopBar({
         ...(showOwnerTab ? [{ label: 'Eu (meus ganhos)', href: '/admin/eu', Icon: IconUser }] : []),
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
+        /* Sumidos ganhou entrada propria em 06/09 (Eduardo). Antes so se
+           chegava por dentro de Clientes ou pelo Foco do Dia — quem nao
+           sabia que a funcao existia nunca ia achar. */
+        { label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock },
         ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
         // v140 · vale-presente · mesma paridade do desktop (regra do Eduardo, 26/08)
         ...(cartaoPresente ? [{ label: 'Cartão Presente', href: '/admin/cartao-presente', Icon: IconGift }] : []),

@@ -79,6 +79,8 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
+        // Paridade com o mobile (regra do Eduardo): entrada propria pro Sumidos.
+        { label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock },
         // Convênio PJ · só existe pra quem tem businesses.convenios_enabled
         ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
         { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { IconSearch, IconCalendar, IconDollar } from '@/components/ui/Icon'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
+import SumidosPanel from '@/components/admin/SumidosPanel'
 
 type Professional = { id: string; name: string }
 
@@ -26,6 +27,9 @@ type AppointmentRow = {
 type Props = {
   businessId: string
   professionals: Professional[]
+  /** Link "criar campanha" · só o dono tem /admin/clientes/reativar.
+   *  A recepção vê a lista e chama no WhatsApp, mas não monta campanha. */
+  mostrarLinkCampanha?: boolean
 }
 
 const STATUS_OPTIONS = [
@@ -48,8 +52,9 @@ function monthAgoISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export default function ConsultasView({ businessId, professionals }: Props) {
+export default function ConsultasView({ businessId, professionals, mostrarLinkCampanha = false }: Props) {
   const supabase = createClient()
+  const [aba, setAba] = useState<'atendimentos' | 'sumidos'>('atendimentos')
   const [dateFrom, setDateFrom] = useState(monthAgoISO())
   const [dateTo, setDateTo] = useState(todayISO())
   const [profId, setProfId] = useState('')
@@ -100,6 +105,36 @@ export default function ConsultasView({ businessId, professionals }: Props) {
 
   return (
     <div className="relative max-w-lg md:max-w-7xl mx-auto px-4 md:px-6 pb-32 space-y-4">
+      {/* Abas · a Rosy foi procurar "quem sumiu" aqui dentro antes de achar a
+          tela de reativar (06/09). Em vez de enfiar pergunta de CLIENTE numa
+          consulta de ATENDIMENTO — o filtro De/Ate esconderia justamente quem
+          sumiu ha mais tempo — o Sumidos entra como aba propria. */}
+      <div className="flex gap-2">
+        {([['atendimentos', 'Atendimentos'], ['sumidos', 'Sumidos']] as const).map(([id, label]) => {
+          const ativo = aba === id
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setAba(id)}
+              aria-pressed={ativo}
+              className="flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
+              style={{
+                background: ativo ? 'var(--admin-accent)' : 'var(--admin-input-bg)',
+                color: ativo ? '#fff' : 'var(--admin-text-mute)',
+                border: `1px solid ${ativo ? 'var(--admin-accent)' : 'var(--admin-border)'}`,
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
+      {aba === 'sumidos' && <SumidosPanel mostrarLinkCampanha={mostrarLinkCampanha} />}
+
+      {aba === 'atendimentos' && (
+      <>
       <div className="admin-card p-4 space-y-3">
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -261,6 +296,8 @@ export default function ConsultasView({ businessId, professionals }: Props) {
             )
           })}
         </div>
+      )}
+      </>
       )}
     </div>
   )

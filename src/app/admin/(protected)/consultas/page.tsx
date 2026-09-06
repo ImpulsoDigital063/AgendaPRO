@@ -46,7 +46,7 @@ export default async function AdminConsultasPage() {
       </header>
 
       <div className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8">
-        <ConsultasView businessId={business.id} professionals={profs ?? []} />
+        <ConsultasView businessId={business.id} professionals={profs ?? []} mostrarLinkCampanha />
       </div>
     </main>
   )
