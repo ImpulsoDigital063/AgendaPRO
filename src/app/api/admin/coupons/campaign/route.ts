@@ -61,6 +61,13 @@ export async function POST(req: NextRequest) {
   const message_template = typeof body.message_template === 'string' ? body.message_template : ''
   const diasPedido = Number(body.dias)
   const sumidoDays = DIAS_OPCOES.includes(diasPedido) ? diasPedido : SUMIDO_DAYS
+  /* FAIXA FECHADA (06/09): o cupom tem que sair pra exatamente quem a dona
+     viu na tela. Se ela olha a faixa 15-19 e o cupom vai pra todo mundo com
+     15+, o desconto cai em gente que ela nao viu. `ate` = proximo degrau. */
+  const idxDias = DIAS_OPCOES.indexOf(sumidoDays)
+  const sumidoAte = body.dias !== undefined && idxDias >= 0 && idxDias < DIAS_OPCOES.length - 1
+    ? DIAS_OPCOES[idxDias + 1]
+    : null
   const target: CampaignTarget =
     body.target === 'aniversariantes_mes' ? 'aniversariantes_mes' : 'sumidos'
 
@@ -130,15 +137,22 @@ export async function POST(req: NextRequest) {
 
     // λ.fuso · corte em dia BR (servidor roda em UTC)
     const sumidoCutoffStr = addDaysBR(todayBR(), -sumidoDays)
+    // Piso da faixa: quem sumiu ha MENOS que `sumidoAte` dias fica de fora.
+    const sumidoFloorStr = sumidoAte ? addDaysBR(todayBR(), -sumidoAte) : null
 
     targetCustomersAll = customers.filter((c) => {
       const clientId = clientByPhone.get(c.phone)
       if (!clientId) return false
       const lastDate = lastByClient.get(clientId)
       if (!lastDate) return false
-      return lastDate < sumidoCutoffStr
+      // Dentro da faixa: mais velho que o corte E nao mais velho que o piso.
+      if (lastDate >= sumidoCutoffStr) return false
+      if (sumidoFloorStr && lastDate < sumidoFloorStr) return false
+      return true
     })
-    emptyMsgEspecifico = `nenhum cliente sumido (sem agendamento há ${sumidoDays}+ dias)`
+    emptyMsgEspecifico = sumidoAte
+      ? `nenhum cliente sumido na faixa de ${sumidoDays} a ${sumidoAte - 1} dias`
+      : `nenhum cliente sumido (sem agendamento há ${sumidoDays}+ dias)`
   } else {
     // target === 'aniversariantes_mes'
     // birthday é 'YYYY-MM-DD' · pega mês (chars 5-7) e compara com mês atual.

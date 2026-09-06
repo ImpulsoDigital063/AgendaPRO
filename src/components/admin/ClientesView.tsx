@@ -318,7 +318,7 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
 
       {stats.sumidos > 0 && (
         <Link
-          href="/admin/clientes/reativar"
+          href="/admin/sumidos"
           className="flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all hover:-translate-y-px"
           style={{
             background: 'linear-gradient(180deg, #F0FDF4 0%, #DCFCE7 100%)',

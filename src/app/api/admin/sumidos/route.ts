@@ -19,9 +19,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { checkRateLimit } from '@/lib/rate-limit-api'
-import { todayBR, addDaysBR } from '@/lib/date-br'
+import { todayBR } from '@/lib/date-br'
 
-/** Os degraus que a tela oferece. Nada fora disso entra na query. */
+/* FAIXAS FECHADAS (Eduardo, 06/09). Cada botao mostra o SEU pedaco, nao um
+   acumulado: 15 traz de 15 a 19 dias, 20 traz de 20 a 24, e assim por diante.
+   A ultima fica aberta porque nao tem proxima. Antes era ">= N", e clicar em
+   15 devolvia tambem quem sumiu ha 70 — os grupos se repetiam e a soma dos
+   seis nao batia com o total. */
 export const DIAS_OPCOES = [15, 20, 25, 30, 40, 60] as const
 
 /** 40 continua o default — é o que os outros 8 pagantes já conheciam. */
@@ -61,7 +65,9 @@ export async function GET(req: NextRequest) {
      marcado à frente NÃO é sumido, e essa régua importa mais em 15 dias
      do que em 40. */
   const hoje = todayBR()
-  const corte = addDaysBR(hoje, -dias)
+  /* Limite superior = o proximo degrau. No ultimo, Infinity. */
+  const idx = (DIAS_OPCOES as readonly number[]).indexOf(dias)
+  const ate = idx >= 0 && idx < DIAS_OPCOES.length - 1 ? DIAS_OPCOES[idx + 1] : Infinity
 
   const { data: ultimos, error } = await supabase.rpc('ultimo_agendamento_clientes', {
     p_business_id: businessId,
@@ -72,10 +78,13 @@ export async function GET(req: NextRequest) {
   for (const r of ultimos ?? []) {
     const id = r.client_id as string | null
     const ultima = r.ultima as string | null
-    if (id && ultima && ultima < corte) sumidos.set(id, ultima)
+    if (!id || !ultima) continue
+    const d = diasEntre(ultima, hoje)
+    // Fora da faixa (inclui quem tem horario FUTURO, que da d negativo)
+    if (d >= dias && d < ate) sumidos.set(id, ultima)
   }
   if (sumidos.size === 0) {
-    return NextResponse.json({ dias, negocio, slug, descricao, clientes: [] })
+    return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, clientes: [] })
   }
 
   const { data: clients } = await supabase
@@ -97,5 +106,5 @@ export async function GET(req: NextRequest) {
     // Quem sumiu há mais tempo primeiro — é quem está mais perto de virar perda.
     .sort((a, b) => b.diasSem - a.diasSem)
 
-  return NextResponse.json({ dias, negocio, slug, descricao, clientes })
+  return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, clientes })
 }

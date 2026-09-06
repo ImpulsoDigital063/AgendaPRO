@@ -72,6 +72,12 @@ export default async function CampanhasPage({
   // ABA SUMIDOS — replicação da lógica de /clientes/reativar
   // ─────────────────────────────────────────────────
   const cutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
+  /* FAIXA FECHADA (06/09): o contador, o ROI e a campanha tem que falar da
+     MESMA gente que a lista mostra. `floorStr` corta quem sumiu ha menos que
+     o proximo degrau — sem isso, a tela diz 3 clientes e o ROI calcula 20. */
+  const _i = DIAS_OPCOES.indexOf(SUMIDO_DAYS)
+  const proximoDegrau = _i >= 0 && _i < DIAS_OPCOES.length - 1 ? DIAS_OPCOES[_i + 1] : null
+  const floorStr = proximoDegrau ? addDaysBR(todayBR(), -proximoDegrau) : null
 
   /* v109 · uma linha por cliente em vez da base inteira. A função devolve a
      última data QUALQUER (inclui futuro e cancelado), que é a régua desta
@@ -87,7 +93,7 @@ export default async function CampanhasPage({
   }
 
   const sumidoClientIds = Array.from(lastByClient.entries())
-    .filter(([, date]) => date < cutoffStr)
+    .filter(([, date]) => date < cutoffStr && (!floorStr || date >= floorStr))
     .map(([cid]) => cid)
 
   let sumidosTotal = 0

@@ -110,7 +110,7 @@ export default function FocoDoDia({ data }: { data: FocoDoDia }) {
   if (data.cupomExpirando > 0) {
     cards.push({
       key: 'cupom-expira',
-      href: '/admin/clientes/reativar',
+      href: '/admin/sumidos',
       bg: 'linear-gradient(135deg, rgba(168,85,247,0.10), rgba(168,85,247,0.04))',
       border: 'rgba(168,85,247,0.28)',
       icon: '⏰',

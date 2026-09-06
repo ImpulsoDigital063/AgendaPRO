@@ -100,7 +100,7 @@ const items: CardItem[] = [
   {
     title: 'Clientes Sumidos',
     description: 'Confira os clientes sumidos e o tempo de ausência',
-    href: '/admin/clientes/reativar',
+    href: '/admin/sumidos',
     Icon: ICONS.userMinus,
   },
   {

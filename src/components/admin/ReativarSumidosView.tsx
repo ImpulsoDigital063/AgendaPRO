@@ -18,6 +18,9 @@ type Props = {
   businessDescription: string | null
   /** Prazo escolhido pela dona · a pagina recalcula tudo em cima dele. */
   dias: number
+  /** Lista de quem sumiu, renderizada logo abaixo do seletor. Vem da page
+   *  como slot pra dona ver QUEM e' antes de configurar a campanha. */
+  listaSlot?: React.ReactNode
   existingCoupons: {
     id: string
     code: string
@@ -62,6 +65,7 @@ export default function ReativarSumidosView({
   businessName,
   businessDescription,
   dias,
+  listaSlot,
   existingCoupons,
   sumidosTotal,
   sumidosWithoutCoupon,
@@ -69,6 +73,10 @@ export default function ReativarSumidosView({
   ticketMedio = 50,
 }: Props) {
   const router = useRouter()
+  /* Texto da faixa escolhida — "de 15 a 19 dias" ou "60 dias ou mais". */
+  const DEGRAUS = [15, 20, 25, 30, 40, 60]
+  const _p = DEGRAUS[DEGRAUS.indexOf(dias) + 1]
+  const faixaTexto = _p ? `de ${dias} a ${_p - 1} dias` : `há ${dias} dias ou mais`
   const pathname = usePathname()
   const searchParams = useSearchParams()
   /* Preserva os outros params (ex: ?tab=sumidos na tela de Campanhas) —
@@ -321,7 +329,7 @@ export default function ReativarSumidosView({
       <div className="admin-card p-3 lg:p-4">
         <div className="flex items-baseline justify-between gap-2 mb-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-            Considerar sumido quem não vem há mais de
+            Faixa de sumidos
           </p>
           <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
             quem tem hora marcada não conta
@@ -333,8 +341,10 @@ export default function ReativarSumidosView({
           role="group"
           aria-label="Prazo"
         >
-          {[15, 20, 25, 30, 40, 60].map((d, i) => {
+          {[15, 20, 25, 30, 40, 60].map((d, i, lista) => {
             const ativo = d === dias
+            const prox = lista[i + 1]
+            const rot = prox ? `${d}–${prox - 1}` : `${d}+`
             return (
               <button
                 key={d}
@@ -348,13 +358,15 @@ export default function ReativarSumidosView({
                   borderLeft: i === 0 ? 'none' : '1px solid var(--admin-border)',
                 }}
               >
-                {d}
+                {rot}
                 <span className="hidden sm:inline text-[11px] font-normal opacity-75">{' '}dias</span>
               </button>
             )
           })}
         </div>
       </div>
+
+      {listaSlot}
 
       {/* HERO EDUCATIVO · explica O QUE É e PRA QUE SERVE em 2 frases */}
       <div
@@ -369,7 +381,7 @@ export default function ReativarSumidosView({
           Traga de volta seus clientes sumidos
         </p>
         <h2 className="text-lg lg:text-xl font-bold leading-snug" style={{ color: 'var(--admin-text)' }}>
-          Cliente que não vem há mais de {dias} dias é dinheiro parado.
+          Cliente que não vem {faixaTexto} é dinheiro parado.
         </h2>
         <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
           Aqui você manda <strong>1 cupom único de desconto por cliente via WhatsApp</strong> · sistema gera o link
@@ -517,7 +529,7 @@ export default function ReativarSumidosView({
               },
               {
                 q: 'O que conta como "cliente sumido"?',
-                a: `Quem não vem há mais de ${dias} dias e nem agendou nada futuro. Você escolhe esse prazo no topo da tela — cílios e unha costumam pedir 15 ou 20; corte, 30 ou 40.`,
+                a: `Nesta faixa, quem não vem ${faixaTexto} e nem agendou nada futuro. Cada botão do topo é um pedaço fechado: 15 traz de 15 a 19 dias, 20 traz de 20 a 24, e assim por diante — não se repetem. Cílios e unha costumam pedir 15 ou 20; corte, 30 ou 40.`,
               },
             ].map((item, i) => (
               <div key={i}>

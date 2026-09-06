@@ -35,6 +35,13 @@ import {
 const DIAS_OPCOES = [15, 20, 25, 30, 40, 60]
 const TETO_INICIAL = 60
 
+/* Rotulo da faixa: 15 vira "15-19", 60 vira "60+". */
+function rotuloFaixa(d: number, i: number, lista: readonly number[]): string {
+  const prox = lista[i + 1]
+  return prox ? `${d}–${prox - 1}` : `${d}+`
+}
+
+
 type Sumido = { id: string; name: string; phone: string | null; ultima: string; diasSem: number }
 
 type CupomGerado = {
@@ -46,6 +53,10 @@ type CupomGerado = {
 }
 
 type Props = {
+  /** Quando a PAGE ja manda o prazo (tela /admin/sumidos), o painel nao
+   *  desenha seletor proprio nem monta campanha — quem faz isso e' a view
+   *  de reativacao em volta. Evita dois seletores discordando na mesma tela. */
+  diasFixo?: number
   mostrarLinkCampanha?: boolean
   /** Só a dona cria campanha/cupom. Recepção vê a lista e chama no WhatsApp. */
   podeCriarCampanha?: boolean
@@ -90,8 +101,9 @@ function normaliza(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
 
-export default function SumidosPanel({ mostrarLinkCampanha = false, podeCriarCampanha = false }: Props) {
-  const [dias, setDias] = useState(40)
+export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, podeCriarCampanha = false }: Props) {
+  const controlado = typeof diasFixo === 'number'
+  const [dias, setDias] = useState(diasFixo ?? 40)
   const [clientes, setClientes] = useState<Sumido[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -132,6 +144,7 @@ export default function SumidosPanel({ mostrarLinkCampanha = false, podeCriarCam
     } finally { setLoading(false) }
   }, [])
 
+  useEffect(() => { if (controlado && diasFixo !== dias) setDias(diasFixo!) }, [diasFixo, controlado, dias])
   useEffect(() => { buscar(dias) }, [dias, buscar])
   // Trocar o prazo invalida a campanha do prazo anterior
   useEffect(() => { setCupons(null); setAbrirMsg(false); setBusca(''); setTeto(TETO_INICIAL) }, [dias])
@@ -228,11 +241,12 @@ export default function SumidosPanel({ mostrarLinkCampanha = false, podeCriarCam
 
   return (
     <div className="space-y-3">
-      {/* ── Seletor de prazo · controle segmentado, não 6 pílulas soltas ── */}
+      {/* ── Seletor de prazo · escondido quando a page ja manda o prazo ── */}
+      {!controlado && (
       <div className="admin-card p-3 sm:p-4">
         <div className="flex items-baseline justify-between gap-2 mb-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-            Sem voltar há mais de
+            Sumidos entre
           </p>
           <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
             quem tem hora marcada não conta
@@ -245,6 +259,7 @@ export default function SumidosPanel({ mostrarLinkCampanha = false, podeCriarCam
           aria-label="Prazo"
         >
           {DIAS_OPCOES.map((d, i) => {
+            const rot = rotuloFaixa(d, i, DIAS_OPCOES)
             const ativo = d === dias
             return (
               <button
@@ -259,13 +274,14 @@ export default function SumidosPanel({ mostrarLinkCampanha = false, podeCriarCam
                   borderLeft: i === 0 ? 'none' : '1px solid var(--admin-border)',
                 }}
               >
-                {d}
+                {rot}
                 <span className="hidden sm:inline text-[11px] font-normal opacity-75">{' '}dias</span>
               </button>
             )
           })}
         </div>
       </div>
+      )}
 
       {/* ── Resumo + ação principal, numa linha só ── */}
       {!loading && !erro && (
@@ -285,13 +301,14 @@ export default function SumidosPanel({ mostrarLinkCampanha = false, podeCriarCam
                 </span>
               </p>
               <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                sem voltar há mais de {dias} dias
+                {(() => { const i = DIAS_OPCOES.indexOf(dias); const p = DIAS_OPCOES[i + 1]
+                  return p ? `sumidos entre ${dias} e ${p - 1} dias` : `sumidos há ${dias} dias ou mais` })()}
                 {busca.trim() && ` · filtrando "${busca.trim()}"`}
               </p>
             </div>
           </div>
 
-          {podeCriarCampanha && clientes.length > 0 && !cupons && (
+          {!controlado && podeCriarCampanha && clientes.length > 0 && !cupons && (
             <button
               type="button"
               onClick={() => setAbrirMsg((v) => !v)}
@@ -305,7 +322,7 @@ export default function SumidosPanel({ mostrarLinkCampanha = false, podeCriarCam
       )}
 
       {/* ── Montagem da mensagem · sistema existente (templates por nicho) ── */}
-      {abrirMsg && !cupons && (
+      {!controlado && abrirMsg && !cupons && (
         <div className="admin-card p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -410,7 +427,8 @@ export default function SumidosPanel({ mostrarLinkCampanha = false, podeCriarCam
       {!loading && !erro && clientes.length === 0 && (
         <div className="admin-card p-8 text-center">
           <p className="text-sm" style={{ color: 'var(--admin-text-2)' }}>
-            Ninguém passou de {dias} dias sem voltar. Boa notícia.
+            {(() => { const i = DIAS_OPCOES.indexOf(dias); const p = DIAS_OPCOES[i + 1]
+              return p ? `Ninguém sumido entre ${dias} e ${p - 1} dias.` : `Ninguém sumido há ${dias} dias ou mais.` })()}
           </p>
         </div>
       )}
@@ -522,10 +540,10 @@ export default function SumidosPanel({ mostrarLinkCampanha = false, podeCriarCam
         </button>
       )}
 
-      {mostrarLinkCampanha && !loading && clientes.length > 0 && (
-        <Link href="/admin/clientes/reativar" className="admin-card p-4 flex items-center justify-between gap-3 no-underline">
+      {!controlado && mostrarLinkCampanha && !loading && clientes.length > 0 && (
+        <Link href="/admin/sumidos" className="admin-card p-4 flex items-center justify-between gap-3 no-underline">
           <div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>Tela completa de reativação</p>
+            <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>Abrir a aba Sumidos</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
               Cupons ativos, ROI estimado e histórico das campanhas
             </p>
