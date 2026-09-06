@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   suggestTemplates,
   fillTemplate,
@@ -16,6 +16,8 @@ type Props = {
   businessSlug: string
   businessName: string
   businessDescription: string | null
+  /** Prazo escolhido pela dona · a pagina recalcula tudo em cima dele. */
+  dias: number
   existingCoupons: {
     id: string
     code: string
@@ -59,6 +61,7 @@ export default function ReativarSumidosView({
   businessSlug,
   businessName,
   businessDescription,
+  dias,
   existingCoupons,
   sumidosTotal,
   sumidosWithoutCoupon,
@@ -66,6 +69,15 @@ export default function ReativarSumidosView({
   ticketMedio = 50,
 }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  /* Preserva os outros params (ex: ?tab=sumidos na tela de Campanhas) —
+     o mesmo componente e' montado em /clientes/reativar e /clientes/campanhas. */
+  function irParaPrazo(d: number) {
+    const p = new URLSearchParams(searchParams.toString())
+    p.set('dias', String(d))
+    router.push(`${pathname}?${p.toString()}`)
+  }
   const [step, setStep] = useState<'config' | 'send'>('config')
   const [discountType, setDiscountType] = useState<'fixed' | 'percent'>('fixed')
   const [discountValue, setDiscountValue] = useState('10')
@@ -163,6 +175,7 @@ export default function ReativarSumidosView({
         discount_value: v,
         validity_days: days,
         message_template: customMessage,
+        dias,
       }),
     })
     setSubmitting(false)
@@ -302,6 +315,47 @@ export default function ReativarSumidosView({
 
   return (
     <div className="space-y-5">
+      {/* PRAZO · a dona escolhe, e a pagina inteira recalcula (Eduardo, 06/09).
+          Navega por searchParam pra reaproveitar o calculo do server component:
+          sumidos, cupons orfaos e ROI saem todos coerentes com o prazo. */}
+      <div className="admin-card p-3 lg:p-4">
+        <div className="flex items-baseline justify-between gap-2 mb-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+            Considerar sumido quem não vem há mais de
+          </p>
+          <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+            quem tem hora marcada não conta
+          </p>
+        </div>
+        <div
+          className="grid grid-cols-6 rounded-xl overflow-hidden"
+          style={{ border: '1px solid var(--admin-border)' }}
+          role="group"
+          aria-label="Prazo"
+        >
+          {[15, 20, 25, 30, 40, 60].map((d, i) => {
+            const ativo = d === dias
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => irParaPrazo(d)}
+                aria-pressed={ativo}
+                className="py-2.5 text-sm font-semibold transition-colors"
+                style={{
+                  background: ativo ? 'var(--admin-accent)' : 'transparent',
+                  color: ativo ? '#fff' : 'var(--admin-text-2)',
+                  borderLeft: i === 0 ? 'none' : '1px solid var(--admin-border)',
+                }}
+              >
+                {d}
+                <span className="hidden sm:inline text-[11px] font-normal opacity-75">{' '}dias</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {/* HERO EDUCATIVO · explica O QUE É e PRA QUE SERVE em 2 frases */}
       <div
         className="rounded-2xl p-5 lg:p-6"
@@ -315,7 +369,7 @@ export default function ReativarSumidosView({
           Traga de volta seus clientes sumidos
         </p>
         <h2 className="text-lg lg:text-xl font-bold leading-snug" style={{ color: 'var(--admin-text)' }}>
-          Cliente que não vem há mais de 40 dias é dinheiro parado.
+          Cliente que não vem há mais de {dias} dias é dinheiro parado.
         </h2>
         <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
           Aqui você manda <strong>1 cupom único de desconto por cliente via WhatsApp</strong> · sistema gera o link
@@ -463,7 +517,7 @@ export default function ReativarSumidosView({
               },
               {
                 q: 'O que conta como "cliente sumido"?',
-                a: 'Quem não vem há mais de 40 dias e nem agendou nada futuro. Sistema atualiza essa lista automaticamente.',
+                a: `Quem não vem há mais de ${dias} dias e nem agendou nada futuro. Você escolhe esse prazo no topo da tela — cílios e unha costumam pedir 15 ou 20; corte, 30 ou 40.`,
               },
             ].map((item, i) => (
               <div key={i}>

@@ -5,7 +5,17 @@ import { todayBR, addDaysBR } from '@/lib/date-br'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ReativarSumidosView from '@/components/admin/ReativarSumidosView'
 
-export default async function ReativarSumidosPage() {
+/* 06/09/2026 · o prazo deixou de ser fixo. A dona escolhe, e a pagina inteira
+   recalcula em cima dele — sumidos, cupons orfaos e ROI. Antes eram 40 cravados,
+   que e' a queixa da Rosy: no nicho dela (cilios, manutencao a cada 15-20) quando
+   o sistema acusava a cliente ja tinha sumido de verdade. */
+const DIAS_OPCOES = [15, 20, 25, 30, 40, 60]
+
+export default async function ReativarSumidosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dias?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
@@ -29,7 +39,8 @@ export default async function ReativarSumidosPage() {
   // cupom ativo. CIC NB-3 reportou: contador "8 ativos / 3 usados"
   // nao esclarece quantos sumidos AINDA precisam de campanha.
   // Calcula via JOIN entre clients (com last appointment) e coupons.
-  const SUMIDO_DAYS = 40
+  const pedido = Number((await searchParams).dias)
+  const SUMIDO_DAYS = DIAS_OPCOES.includes(pedido) ? pedido : 40
   // λ.fuso · corte em dia BR · com new Date() no servidor (UTC) o corte de
   // "sumido há 40 dias" deslocava 1 dia à noite
   const cutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
@@ -147,6 +158,7 @@ export default async function ReativarSumidosPage() {
             businessSlug={business.slug}
             businessName={business.name}
             businessDescription={business.description}
+            dias={SUMIDO_DAYS}
             existingCoupons={existingCoupons || []}
             sumidosTotal={sumidosTotal}
             sumidosWithoutCoupon={sumidosWithoutCoupon}

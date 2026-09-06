@@ -10,12 +10,14 @@ const MESES_PT = [
   'julho','agosto','setembro','outubro','novembro','dezembro',
 ]
 
-const SUMIDO_DAYS = 40
+// 06/09/2026 · prazo escolhido pela dona (mesma regra da tela de Reativar)
+const DIAS_OPCOES = [15, 20, 25, 30, 40, 60]
+const SUMIDO_DAYS_PADRAO = 40
 
 export default async function CampanhasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; dias?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -28,7 +30,9 @@ export default async function CampanhasPage({
     .single()
   if (!business) redirect(await destinoSemNegocio())
 
-  const { tab } = await searchParams
+  const { tab, dias: diasParam } = await searchParams
+  const pedidoDias = Number(diasParam)
+  const SUMIDO_DAYS = DIAS_OPCOES.includes(pedidoDias) ? pedidoDias : SUMIDO_DAYS_PADRAO
   const initialTab: 'sumidos' | 'aniversariantes' | 'avulso' =
     tab === 'aniversariantes' ? 'aniversariantes' :
     tab === 'avulso' ? 'avulso' :
@@ -220,6 +224,7 @@ export default async function CampanhasPage({
         />
         <div className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6">
           <CampanhasTabs
+            dias={SUMIDO_DAYS}
             businessSlug={business.slug}
             businessName={business.name}
             businessDescription={business.description}

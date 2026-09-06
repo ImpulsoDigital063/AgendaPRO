@@ -23,6 +23,8 @@ type Props = {
   businessSlug: string
   businessName: string
   businessDescription: string | null
+  /** Prazo de "sumido" escolhido pela dona · vem da page via searchParam. */
+  dias: number
 
   // Sumidos
   existingCoupons: {
@@ -59,6 +61,7 @@ export default function CampanhasTabs({
   businessSlug,
   businessName,
   businessDescription,
+  dias,
   existingCoupons,
   sumidosTotal,
   sumidosWithoutCoupon,
@@ -136,6 +139,7 @@ export default function CampanhasTabs({
           businessSlug={businessSlug}
           businessName={businessName}
           businessDescription={businessDescription}
+          dias={dias}
           existingCoupons={existingCoupons}
           sumidosTotal={sumidosTotal}
           sumidosWithoutCoupon={sumidosWithoutCoupon}
