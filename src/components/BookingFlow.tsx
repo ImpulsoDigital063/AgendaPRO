@@ -1079,6 +1079,10 @@ export default function BookingFlow({
         referralCode: referralCode ?? null,
         hasPrice,
         totalPrice: hasPrice ? totalPrice : null,
+        /* So o CODIGO. O servidor busca o cupom e recalcula o desconto por
+           conta propria — mandar o valor daqui seria confiar na tela, que e'
+           exatamente o que a rota evita ao recalcular o preco. */
+        cupom: coupon?.code ?? null,
       }),
     })
       .then((r) => r.json())

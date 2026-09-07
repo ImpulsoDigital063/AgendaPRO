@@ -77,6 +77,10 @@ export async function POST(req: NextRequest) {
   const referralCode = typeof body.referralCode === 'string' && body.referralCode ? body.referralCode : null
   const totalPrice = typeof body.totalPrice === 'number' ? body.totalPrice : null
   const hasPrice = body.hasPrice === true
+  /* CUPOM · so o CODIGO vem da tela. O valor o servidor calcula sozinho,
+     pelo mesmo motivo que ele recalcula o preco: numero enviado pelo cliente
+     nao e' confiavel. Ver o bloco "DESCONTO DO CUPOM" abaixo. */
+  const cupomCode = typeof body.cupom === 'string' ? body.cupom.trim().toUpperCase().slice(0, 32) : ''
 
   if (!businessId || !professionalId || !name || !phone || !appointmentDate || !startTime || !endTime) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 })
@@ -166,9 +170,58 @@ export async function POST(req: NextRequest) {
   /* Divergência entre o que a tela mostrou e o que o banco diz. Normalmente é
      inocente (a dona mudou o preço enquanto a cliente escolhia); se aparecer
      muito no log, é sinal de payload forjado. O banco manda de qualquer jeito. */
-  if (hasPrice && totalPrice !== null && totalServer !== null && Math.abs(totalPrice - totalServer) > 0.01) {
+  /* Comparacao movida pra depois do desconto (07/09): com cupom, a tela manda
+     o valor abatido e o banco tambem passou a abater — comparar contra o cheio
+     acusaria divergencia em todo agendamento com cupom. */
+
+  /* ─── DESCONTO DO CUPOM ────────────────────────────────────────────────
+     Ate 07/09/2026 o desconto existia SO na tela. O servidor somava os precos
+     do banco, ignorava o total enviado ("o banco manda de qualquer jeito", ali
+     em cima) e gravava o valor CHEIO. A cliente via "- R$ 18,00" e a comanda
+     abria com o preco inteiro; o sinal tambem saia do cheio. Pego pelo Eduardo
+     em 07/09 num teste de ponta a ponta com a Erlane: tela R$ 162, banco R$ 180.
+
+     Desconfiar da tela estava certo — o erro era nao ter como aplicar o
+     desconto sozinho. Agora o servidor busca o cupom pelo CODIGO e recalcula.
+     Cupom invalido nao derruba o agendamento: some o desconto e o horario
+     nasce igual, que e' melhor que perder a marcacao da cliente. */
+  let cupomAplicado: { id: string; code: string; standalone: boolean } | null = null
+  let descontoCupom = 0
+  if (cupomCode && totalServer && totalServer > 0) {
+    const { data: cup } = await db
+      .from('coupons')
+      .select('id, code, business_id, discount_type, discount_value, expires_at, used_at, is_standalone')
+      .eq('code', cupomCode)
+      .maybeSingle()
+    const valido =
+      cup &&
+      cup.business_id === businessId &&
+      new Date(cup.expires_at) >= new Date() &&
+      (cup.is_standalone === true || !cup.used_at)
+    if (valido && cup) {
+      const bruto =
+        cup.discount_type === 'fixed'
+          ? Number(cup.discount_value)
+          : (totalServer * Number(cup.discount_value)) / 100
+      // Nunca passa do total nem vira negativo.
+      descontoCupom = Math.max(0, Math.min(Math.round(bruto * 100) / 100, totalServer))
+      cupomAplicado = { id: cup.id as string, code: cup.code as string, standalone: cup.is_standalone === true }
+    } else if (cup) {
+      console.warn(`booking submit · cupom ${cupomCode} recusado · negocio ${businessId}`)
+    }
+  }
+  /* O que a cliente paga, e a base de TUDO daqui pra frente — inclusive do
+     sinal. Era a pergunta do Eduardo: com sinal ligado, a porcentagem sai do
+     valor JA com desconto. */
+  const totalComDesconto =
+    totalServer !== null ? Math.round((totalServer - descontoCupom) * 100) / 100 : null
+
+  /* Divergencia entre o que a tela mostrou e o que o servidor calculou.
+     Normalmente e' inocente (a dona mudou o preco enquanto a cliente escolhia);
+     se aparecer muito no log, e' sinal de payload forjado. O servidor manda. */
+  if (hasPrice && totalPrice !== null && totalComDesconto !== null && Math.abs(totalPrice - totalComDesconto) > 0.01) {
     console.warn(
-      `booking submit · preço divergente · negócio ${businessId} · tela R$ ${totalPrice} × banco R$ ${totalServer}`,
+      `booking submit · preço divergente · negócio ${businessId} · tela R$ ${totalPrice} × servidor R$ ${totalComDesconto} (cheio ${totalServer}, cupom -${descontoCupom})`,
     )
   }
 
@@ -316,10 +369,10 @@ export async function POST(req: NextRequest) {
     !!negocio?.pix_key &&
     !clienteIsenta &&
     temPrecoReal &&
-    !!totalServer &&
-    totalServer > 0
+    !!totalComDesconto &&
+    totalComDesconto > 0
   const sinalCheio = exigeSinal
-    ? calcularSinal(totalServer as number, Number(negocio?.sinal_percent ?? 0))
+    ? calcularSinal(totalComDesconto as number, Number(negocio?.sinal_percent ?? 0))
     : null
 
   /* CRÉDITO ABATE O SINAL (v113 · decisão do Eduardo, 05/08).
@@ -398,7 +451,7 @@ export async function POST(req: NextRequest) {
       client_email: email,
       service_id: firstService?.id ?? null,
       service_name: firstService?.name ?? null,
-      total_price: temPrecoReal ? totalServer : null,
+      total_price: temPrecoReal ? totalComDesconto : null,
       appointment_date: appointmentDate,
       start_time: startTime,
       end_time: endTimeServer,
@@ -422,6 +475,24 @@ export async function POST(req: NextRequest) {
     if (isOverlap) return NextResponse.json({ error: 'overlap' }, { status: 409 })
     console.error('booking submit · appointment insert error:', apptErr)
     return NextResponse.json({ error: 'failed' }, { status: 500 })
+  }
+
+  /* Queima o cupom de campanha aqui mesmo. Antes isso dependia de uma chamada
+     solta do navegador pra /api/coupons/use, com .catch() silencioso — se ela
+     falhasse, o desconto saia e o cupom continuava valendo pra sempre. Cupom
+     standalone NAO usa used_at (e' multi-uso por telefone, rastreado em
+     coupon_redemptions), entao continua a cargo daquela rota. A chamada do
+     cliente segue existindo e e' idempotente: encontra used_at preenchido e
+     responde already_used. */
+  if (cupomAplicado && !cupomAplicado.standalone && descontoCupom > 0) {
+    const { error: cupErr } = await db
+      .from('coupons')
+      .update({ used_at: new Date().toISOString() })
+      .eq('id', cupomAplicado.id)
+      .is('used_at', null)
+    if (cupErr) {
+      console.error(`booking submit · falhou marcar cupom ${cupomAplicado.code} como usado:`, cupErr)
+    }
   }
 
   /* Consome o crédito DEPOIS do agendamento existir — precisamos do id pra
