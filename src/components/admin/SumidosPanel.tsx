@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
-  IconWhatsapp, IconUsers, IconChevronRight, IconCheck, IconSearch, IconClose,
+  IconWhatsapp, IconUsers, IconChevronRight, IconCheck, IconSearch, IconClose, IconGift,
 } from '@/components/ui/Icon'
 import {
   suggestTemplates, sampleNameFor, fillTemplate, formatDiscount, formatValidity,
@@ -34,6 +34,21 @@ import {
 
 const DIAS_OPCOES = [15, 20, 25, 30, 40, 60]
 const TETO_INICIAL = 60
+
+/* Texto do botao "Chamar": chamado simples, SEM desconto. Aprovado pelo
+   Eduardo em 06/09. Nao e' um sistema paralelo de templates — e' uma frase
+   com tres substituicoes, e a dona ainda edita dentro do WhatsApp antes de
+   enviar. O texto COM cupom continua saindo dos modelos de nicho de
+   coupon-templates.ts. */
+const TEXTO_CHAMAR =
+  'Oi {nome}, aqui é do {negocio}. Faz {dias} dias desde seu último horário — quer que eu reserve um pra você?'
+
+function textoChamar(nome: string, dias: number, negocio: string): string {
+  return TEXTO_CHAMAR
+    .replace('{nome}', nome.trim().split(/\s+/)[0] || nome)
+    .replace('{dias}', String(dias))
+    .replace('{negocio}', negocio)
+}
 
 /* Rotulo da faixa: 15 vira "15-19", 60 vira "60+". */
 function rotuloFaixa(d: number, i: number, lista: readonly number[]): string {
@@ -91,10 +106,11 @@ function iniciais(nome: string): string {
   return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '?'
 }
 
-/** wa.me sem cupom — usado antes de a dona montar a campanha. */
-function linkSimples(phone: string): string {
+/** wa.me com o texto de chamado simples (sem cupom). */
+function linkChamar(phone: string, texto: string): string {
   const d = phone.replace(/\D/g, '')
-  return `https://wa.me/${d.startsWith('55') ? d : `55${d}`}`
+  const base = `https://wa.me/${d.startsWith('55') ? d : `55${d}`}`
+  return `${base}?text=${encodeURIComponent(texto)}`
 }
 
 function normaliza(s: string): string {
@@ -124,6 +140,9 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
   const [erroMsg, setErroMsg] = useState<string | null>(null)
   const [cupons, setCupons] = useState<CupomGerado[] | null>(null)
   const [enviados, setEnviados] = useState<Record<string, boolean>>({})
+  /** Cupom pontual: qual linha esta gerando, e erro por linha. */
+  const [gerandoLinha, setGerandoLinha] = useState<string | null>(null)
+  const [erroLinha, setErroLinha] = useState<Record<string, string>>({})
 
   const templates = useMemo(() => suggestTemplates(descricao), [descricao])
   const sampleName = useMemo(() => sampleNameFor(descricao), [descricao])
@@ -217,6 +236,37 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
     } catch (e) {
       setErroMsg(e instanceof Error ? e.message : 'Erro')
     } finally { setEnviando(false) }
+  }
+
+  /** Botao "Cupom" da linha: gera o cupom daquela cliente e abre o WhatsApp
+   *  com o modelo do nicho preenchido. Reusa a rota de campanha com `phones`. */
+  async function cupomDaLinha(c: Sumido) {
+    if (!c.phone) return
+    setGerandoLinha(c.id)
+    setErroLinha((p) => { const n = { ...p }; delete n[c.id]; return n })
+    try {
+      const res = await fetch('/api/admin/coupons/campaign', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          discount_type: discountType,
+          discount_value: Number(discountValue) || 10,
+          validity_days: Number(validityDays) || 14,
+          message_template: customMessage || templates[templateIdx] || '',
+          dias,
+          phones: [c.phone],
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'nao consegui gerar')
+      const item: CupomGerado | undefined = (json.coupons || [])[0]
+      if (!item) throw new Error('cupom nao veio')
+      abrirWhatsApp(item)
+    } catch (e) {
+      setErroLinha((p) => ({ ...p, [c.id]: e instanceof Error ? e.message : 'erro' }))
+    } finally {
+      setGerandoLinha(null)
+    }
   }
 
   function abrirWhatsApp(item: CupomGerado) {
@@ -518,18 +568,49 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                     {c.diasSem}d
                   </span>
                   {c.phone && (
-                    <a href={linkSimples(c.phone)} target="_blank" rel="noopener noreferrer"
-                      aria-label={`WhatsApp de ${c.name}`}
-                      className="px-3 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
-                      style={solido}>
-                      <IconWhatsapp size={15} />
-                      <span className="hidden sm:inline">WhatsApp</span>
-                    </a>
+                    <>
+                      {/* Chamar · sem desconto. Texto pre-pronto, editavel na
+                          propria janela do WhatsApp antes de enviar. */}
+                      <a
+                        href={linkChamar(c.phone, textoChamar(c.name, c.diasSem, negocio))}
+                        target="_blank" rel="noopener noreferrer"
+                        aria-label={`Chamar ${c.name} no WhatsApp`}
+                        title="Chamar sem desconto"
+                        className="px-2.5 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
+                        style={vazio}
+                      >
+                        <IconWhatsapp size={15} />
+                        <span className="hidden md:inline">Chamar</span>
+                      </a>
+                      {/* Cupom · gera o desconto DESSA cliente e abre o WhatsApp
+                          com o modelo do nicho preenchido. */}
+                      {podeCriarCampanha && (
+                        <button
+                          type="button"
+                          onClick={() => cupomDaLinha(c)}
+                          disabled={gerandoLinha === c.id}
+                          aria-label={`Enviar cupom para ${c.name}`}
+                          title="Gerar cupom e chamar"
+                          className="px-2.5 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
+                          style={{ ...solido, opacity: gerandoLinha === c.id ? 0.6 : 1 }}
+                        >
+                          <IconGift size={15} />
+                          <span className="hidden md:inline">
+                            {gerandoLinha === c.id ? '...' : 'Cupom'}
+                          </span>
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
             ))}
           </div>
+          {g.itens.some((c) => erroLinha[c.id]) && (
+            <p className="text-xs px-1" style={{ color: 'var(--admin-danger,#EF4444)' }}>
+              {g.itens.filter((c) => erroLinha[c.id]).map((c) => `${c.name}: ${erroLinha[c.id]}`).join(' · ')}
+            </p>
+          )}
         </div>
       ))}
 

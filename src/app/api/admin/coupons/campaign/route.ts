@@ -64,6 +64,13 @@ export async function POST(req: NextRequest) {
   /* FAIXA FECHADA (06/09): o cupom tem que sair pra exatamente quem a dona
      viu na tela. Se ela olha a faixa 15-19 e o cupom vai pra todo mundo com
      15+, o desconto cai em gente que ela nao viu. `ate` = proximo degrau. */
+  /* Alvo pontual (07/09): a aba Sumidos tem um botao "Cupom" por linha, pra
+     chamar UMA cliente sem disparar a faixa inteira. Sem `phones`, nada muda —
+     a campanha segue valendo pra todos da faixa. */
+  const phonesAlvo: string[] | null = Array.isArray(body.phones) && body.phones.length
+    ? body.phones.filter((x: unknown) => typeof x === 'string').slice(0, 200)
+    : null
+
   const idxDias = DIAS_OPCOES.indexOf(sumidoDays)
   const sumidoAte = body.dias !== undefined && idxDias >= 0 && idxDias < DIAS_OPCOES.length - 1
     ? DIAS_OPCOES[idxDias + 1]
@@ -148,6 +155,8 @@ export async function POST(req: NextRequest) {
       // Dentro da faixa: mais velho que o corte E nao mais velho que o piso.
       if (lastDate >= sumidoCutoffStr) return false
       if (sumidoFloorStr && lastDate < sumidoFloorStr) return false
+      // Alvo pontual, quando informado
+      if (phonesAlvo && !phonesAlvo.includes(c.phone)) return false
       return true
     })
     emptyMsgEspecifico = sumidoAte
