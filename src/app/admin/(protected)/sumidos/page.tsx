@@ -62,6 +62,12 @@ export default async function SumidosPage({
   const _i = DIAS_OPCOES.indexOf(SUMIDO_DAYS)
   const proximoDegrau = _i >= 0 && _i < DIAS_OPCOES.length - 1 ? DIAS_OPCOES[_i + 1] : null
   const floorStr = proximoDegrau ? addDaysBR(todayBR(), -proximoDegrau) : null
+  /* ORFAO nao depende da faixa. Cupom orfao e' aquele cujo dono VOLTOU — nao
+     aquele cujo dono esta em outra faixa. Sem esta regua separada, olhar a
+     faixa 15-19 marcava como orfao todo cupom de quem esta em 20-24, que
+     continua sumido. Bug meu, visto no print do Eduardo em 07/09
+     ("2 Ativos - 2 orfaos"). A regua e' o menor degrau da escala. */
+  const aindaSumidoCutoff = addDaysBR(todayBR(), -DIAS_OPCOES[0])
 
   /* v109 · uma linha por cliente em vez da base inteira. A função devolve a
      última data QUALQUER (inclui futuro e cancelado), que é a régua desta
@@ -130,12 +136,16 @@ export default async function SumidosPage({
   // Cupons "orfaos": ativos atribuidos a customer que NAO esta mais sumido
   // (cliente pegou cupom, depois reativou-se sozinho). CIC NB-3:
   // contador "8 ativos" misturava esses, dono nao entendia diferenca.
+  const aindaSumidoClientIds = Array.from(lastByClient.entries())
+    .filter(([, date]) => date < aindaSumidoCutoff)
+    .map(([cid]) => cid)
+
   const sumidoCustomerIds = new Set<string>()
-  if (sumidoClientIds.length > 0) {
+  if (aindaSumidoClientIds.length > 0) {
     const { data: sumidoClients } = await supabase
       .from('clients')
       .select('id, phone')
-      .in('id', sumidoClientIds)
+      .in('id', aindaSumidoClientIds)
     const sumidoPhones = (sumidoClients || []).map((c) => c.phone)
     const { data: sumidoCustomers } = sumidoPhones.length > 0
       ? await supabase
