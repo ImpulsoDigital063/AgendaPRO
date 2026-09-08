@@ -57,11 +57,13 @@ export async function GET(req: NextRequest) {
     ? pedido
     : DIAS_PADRAO
 
-  const { data: biz } = await supabase
-    .from('businesses')
-    .select('name, slug, description')
-    .eq('id', businessId)
-    .single()
+  /* Em paralelo: nada aqui depende do outro. Eram 6 idas ao banco em fila e
+     a lista ficava segundos em "Carregando..." (08/09). */
+  const [bizRes, ultimosRes] = await Promise.all([
+    supabase.from('businesses').select('name, slug, description').eq('id', businessId).single(),
+    supabase.rpc('ultimo_agendamento_clientes', { p_business_id: businessId }),
+  ])
+  const biz = bizRes.data
 
   const negocio = biz?.name ?? ''
   const slug = biz?.slug ?? ''
@@ -78,10 +80,8 @@ export async function GET(req: NextRequest) {
   /** Piso: em TODOS, o menor degrau da escala. */
   const de = dias === TODOS ? DIAS_OPCOES[0] : dias
 
-  const { data: ultimos, error } = await supabase.rpc('ultimo_agendamento_clientes', {
-    p_business_id: businessId,
-  })
-  if (error) return NextResponse.json({ error: 'rpc_failed' }, { status: 500 })
+  const ultimos = ultimosRes.data
+  if (ultimosRes.error) return NextResponse.json({ error: 'rpc_failed' }, { status: 500 })
 
   const sumidos = new Map<string, string>()
   for (const r of ultimos ?? []) {
@@ -104,55 +104,47 @@ export async function GET(req: NextRequest) {
   /* customer_id de cada cliente, pra abrir a ficha direto da lista (08/09).
      A ponte e' o telefone: `clients` e' global e `customers` e' por negocio. */
   const fonesDaLista = (clients ?? []).map((c) => c.phone as string).filter(Boolean)
-  const { data: custsDaLista } = fonesDaLista.length
-    ? await supabase
-        .from('customers')
-        .select('id, phone')
-        .eq('business_id', businessId)
-        .in('phone', fonesDaLista)
-    : { data: [] }
+  const agoraIso = new Date().toISOString()
+  const [custsRes, cuponsRes] = await Promise.all([
+    fonesDaLista.length
+      ? supabase.from('customers').select('id, phone').eq('business_id', businessId).in('phone', fonesDaLista)
+      : Promise.resolve({ data: [] as { id: string; phone: string }[] }),
+    supabase
+      .from('coupons')
+      .select('id, code, customer_id, discount_type, discount_value, expires_at, sent_at, used_at, whatsapp_message')
+      .eq('business_id', businessId)
+      .is('used_at', null)
+      .gt('expires_at', agoraIso),
+  ])
+  const custsDaLista = custsRes.data
+  const cupons = cuponsRes.data
   const customerPorFone = new Map((custsDaLista ?? []).map((c) => [c.phone as string, c.id as string]))
+  /* Telefone por customer sai dos MESMOS registros: o cupom so interessa se o
+     dono esta na lista. Era uma 6a consulta so pra isso. */
+  const fonePorCustomer = new Map((custsDaLista ?? []).map((c) => [c.id as string, c.phone as string]))
 
   /* CUPOM ATIVO POR CLIENTE (08/09) · sem isto a dona reabre a tela, nao
      lembra que ja mandou cupom pra alguem e gera um segundo — dois descontos
      pra mesma pessoa, e o primeiro solto no mundo. Foi o que quase aconteceu
      com a Erlane. A ponte e' a de sempre: coupons.customer_id -> customers
      -> telefone -> clients. */
-  const agoraIso = new Date().toISOString()
-  const { data: cupons } = await supabase
-    .from('coupons')
-    .select('id, code, customer_id, discount_type, discount_value, expires_at, sent_at, used_at, whatsapp_message')
-    .eq('business_id', businessId)
-    .is('used_at', null)
-    .gt('expires_at', agoraIso)
-
   const cupomPorFone = new Map<string, {
     code: string; discount_type: string; discount_value: number
     expires_at: string; sent_at: string | null; whatsapp_message: string | null
   }>()
-  const customerIds = (cupons ?? []).map((c) => c.customer_id).filter(Boolean) as string[]
-  if (customerIds.length > 0) {
-    const { data: custs } = await supabase
-      .from('customers')
-      .select('id, phone')
-      .eq('business_id', businessId)
-      .in('id', customerIds)
-    const fonePorCustomer = new Map((custs ?? []).map((c) => [c.id as string, c.phone as string]))
-    for (const cp of cupons ?? []) {
-      const fone = cp.customer_id ? fonePorCustomer.get(cp.customer_id as string) : null
-      if (!fone) continue
-      // Mais recente ganha, se houver mais de um ativo.
-      const atual = cupomPorFone.get(fone)
-      if (atual && atual.expires_at > (cp.expires_at as string)) continue
-      cupomPorFone.set(fone, {
-        code: cp.code as string,
-        discount_type: cp.discount_type as string,
-        discount_value: Number(cp.discount_value),
-        expires_at: cp.expires_at as string,
-        sent_at: (cp.sent_at as string) ?? null,
-        whatsapp_message: (cp.whatsapp_message as string) ?? null,
-      })
-    }
+  for (const cp of cupons ?? []) {
+    const fone = cp.customer_id ? fonePorCustomer.get(cp.customer_id as string) : null
+    if (!fone) continue
+    const atual = cupomPorFone.get(fone)
+    if (atual && atual.expires_at > (cp.expires_at as string)) continue
+    cupomPorFone.set(fone, {
+      code: cp.code as string,
+      discount_type: cp.discount_type as string,
+      discount_value: Number(cp.discount_value),
+      expires_at: cp.expires_at as string,
+      sent_at: (cp.sent_at as string) ?? null,
+      whatsapp_message: (cp.whatsapp_message as string) ?? null,
+    })
   }
 
   const clientes = (clients ?? [])
