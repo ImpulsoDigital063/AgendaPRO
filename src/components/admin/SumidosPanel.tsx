@@ -320,10 +320,6 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
     fetch(`/api/admin/coupons/${item.coupon.id}/sent`, { method: 'POST' }).catch(() => {})
   }
 
-  /* Solido = acao principal. Chamar (de graca) e' o principal; o Cupom, que
-     queima margem, ficou em contorno de proposito (Eduardo, 08/09). Antes era
-     o contrario e a tela convidava a dar desconto por instinto — a cliente
-     costuma sumir por esquecimento, nao por preco. */
   const solido = { background: 'var(--admin-accent)', color: '#fff', border: '1px solid var(--admin-accent)' }
   const vazio = { background: 'var(--admin-input-bg)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }
   const enviadosCount = Object.keys(enviados).length
@@ -581,14 +577,14 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 pt-1 text-[11px]"
           style={{ color: 'var(--admin-text-faded)' }}>
           <span className="inline-flex items-center gap-1.5">
-            <span className="w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0" style={solido}>
+            <span className="w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0" style={vazio}>
               <IconWhatsapp size={11} />
             </span>
             chamar <strong style={{ color: 'var(--admin-text-2)' }}>sem desconto</strong>
           </span>
           {podeCriarCampanha && (
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0" style={vazio}>
+              <span className="w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0" style={solido}>
                 <IconGift size={11} />
               </span>
               chamar <strong style={{ color: 'var(--admin-text-2)' }}>com cupom de desconto</strong>
@@ -654,7 +650,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                         aria-label={`Chamar ${c.name} no WhatsApp`}
                         title="Chamar sem desconto"
                         className="px-2.5 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
-                        style={solido}
+                        style={vazio}
                       >
                         <IconWhatsapp size={15} />
                         <span className="hidden sm:inline">Chamar</span>
@@ -682,7 +678,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                             aria-label={`Enviar cupom para ${c.name}`}
                             title="Gerar cupom e chamar"
                             className="px-2.5 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
-                            style={{ ...vazio, opacity: gerandoLinha === c.id ? 0.6 : 1 }}
+                            style={{ ...solido, opacity: gerandoLinha === c.id ? 0.6 : 1 }}
                           >
                             <IconGift size={15} />
                             <span className="hidden sm:inline">
