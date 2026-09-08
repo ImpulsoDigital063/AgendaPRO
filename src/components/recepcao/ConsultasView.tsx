@@ -30,6 +30,8 @@ type Props = {
   /** Link "criar campanha" · só o dono tem /admin/clientes/reativar.
    *  A recepção vê a lista e chama no WhatsApp, mas não monta campanha. */
   mostrarLinkCampanha?: boolean
+  /** Liberacao por negocio (08/09) · sem isso a aba Sumidos nao aparece aqui. */
+  mostrarAbaSumidos?: boolean
 }
 
 const STATUS_OPTIONS = [
@@ -52,7 +54,7 @@ function monthAgoISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export default function ConsultasView({ businessId, professionals, mostrarLinkCampanha = false }: Props) {
+export default function ConsultasView({ businessId, professionals, mostrarLinkCampanha = false, mostrarAbaSumidos = false }: Props) {
   const supabase = createClient()
   const [aba, setAba] = useState<'atendimentos' | 'sumidos'>('atendimentos')
   const [dateFrom, setDateFrom] = useState(monthAgoISO())
@@ -110,7 +112,10 @@ export default function ConsultasView({ businessId, professionals, mostrarLinkCa
           consulta de ATENDIMENTO — o filtro De/Ate esconderia justamente quem
           sumiu ha mais tempo — o Sumidos entra como aba propria. */}
       <div className="flex gap-2">
-        {([['atendimentos', 'Atendimentos'], ['sumidos', 'Sumidos']] as const).map(([id, label]) => {
+        {(mostrarAbaSumidos
+          ? ([['atendimentos', 'Atendimentos'], ['sumidos', 'Sumidos']] as const)
+          : ([['atendimentos', 'Atendimentos']] as const)
+        ).map(([id, label]) => {
           const ativo = aba === id
           return (
             <button

@@ -59,13 +59,15 @@ type Props = {
   pendingClaims?: number
   /** businesses.convenios_enabled · mostra a entrada de Convênios */
   convenios?: boolean
+  /** feature-flags.SUMIDOS_ABA_LIBERADA · liberacao por negocio (08/09) */
+  sumidos?: boolean
   /** v141 · negócio que não vende produto não vê Produtos no menu (CAF). */
   vendasBalcao?: boolean
   /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
   cartaoPresente?: boolean
 }
 
-export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true }: Props) {
+export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, sumidos = false, cartaoPresente = false, vendasBalcao = true }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab')
@@ -80,7 +82,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
         // Paridade com o mobile (regra do Eduardo): entrada propria pro Sumidos.
-        { label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock },
+        ...(sumidos ? [{ label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock }] : []),
         // Convênio PJ · só existe pra quem tem businesses.convenios_enabled
         ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
         { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ConsultasView from '@/components/recepcao/ConsultasView'
+import { temAbaSumidos } from '@/lib/feature-flags'
 import { IconSearch } from '@/components/ui/Icon'
 
 export const dynamic = 'force-dynamic'
@@ -43,7 +44,7 @@ export default async function RecepcaoConsultasPage() {
         </p>
       </header>
 
-      <ConsultasView businessId={business.id} professionals={profs ?? []} />
+      <ConsultasView businessId={business.id} professionals={profs ?? []} mostrarAbaSumidos={temAbaSumidos(business.id)} />
     </main>
   )
 }

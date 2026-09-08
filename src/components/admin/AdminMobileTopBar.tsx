@@ -35,6 +35,8 @@ type Props = {
   showOwnerTab?: boolean
   /** businesses.convenios_enabled · mostra a entrada de Convênios */
   convenios?: boolean
+  /** feature-flags.SUMIDOS_ABA_LIBERADA · liberacao por negocio (08/09) */
+  sumidos?: boolean
   /** v141 · negócio que não vende produto não vê Produtos no menu (CAF). */
   vendasBalcao?: boolean
   /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
@@ -64,6 +66,7 @@ export default function AdminMobileTopBar({
   pendingClaims = 0,
   showOwnerTab = false,
   convenios = false,
+  sumidos = false,
   vendasBalcao = true,
   cartaoPresente = false,
   trial = null,
@@ -100,7 +103,7 @@ export default function AdminMobileTopBar({
         /* Sumidos ganhou entrada propria em 06/09 (Eduardo). Antes so se
            chegava por dentro de Clientes ou pelo Foco do Dia — quem nao
            sabia que a funcao existia nunca ia achar. */
-        { label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock },
+        ...(sumidos ? [{ label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock }] : []),
         ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
         // v140 · vale-presente · mesma paridade do desktop (regra do Eduardo, 26/08)
         ...(cartaoPresente ? [{ label: 'Cartão Presente', href: '/admin/cartao-presente', Icon: IconGift }] : []),

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import AdminMobileTopBar from '@/components/admin/AdminMobileTopBar'
+import { temAbaSumidos } from '@/lib/feature-flags'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import AppSplash from '@/components/admin/AppSplash'
 import AtualizadorPWA from '@/components/admin/AtualizadorPWA'
@@ -219,6 +220,7 @@ export default async function AdminLayout({
           pendingAppointments={pendingAppointments}
           pendingClaims={pendingClaims}
           convenios={business?.convenios_enabled === true}
+          sumidos={temAbaSumidos(business?.id)}
           cartaoPresente={business?.cartao_presente_enabled === true}
           vendasBalcao={business?.vendas_balcao_enabled !== false}
         />
@@ -231,6 +233,7 @@ export default async function AdminLayout({
             pendingClaims={pendingClaims}
             showOwnerTab={showOwnerTab}
             convenios={business?.convenios_enabled === true}
+            sumidos={temAbaSumidos(business?.id)}
             cartaoPresente={business?.cartao_presente_enabled === true}
             vendasBalcao={business?.vendas_balcao_enabled !== false}
             trial={trial}
