@@ -92,6 +92,18 @@ export async function GET(req: NextRequest) {
     .select('id, name, phone')
     .in('id', Array.from(sumidos.keys()))
 
+  /* customer_id de cada cliente, pra abrir a ficha direto da lista (08/09).
+     A ponte e' o telefone: `clients` e' global e `customers` e' por negocio. */
+  const fonesDaLista = (clients ?? []).map((c) => c.phone as string).filter(Boolean)
+  const { data: custsDaLista } = fonesDaLista.length
+    ? await supabase
+        .from('customers')
+        .select('id, phone')
+        .eq('business_id', businessId)
+        .in('phone', fonesDaLista)
+    : { data: [] }
+  const customerPorFone = new Map((custsDaLista ?? []).map((c) => [c.phone as string, c.id as string]))
+
   /* CUPOM ATIVO POR CLIENTE (08/09) · sem isto a dona reabre a tela, nao
      lembra que ja mandou cupom pra alguem e gera um segundo — dois descontos
      pra mesma pessoa, e o primeiro solto no mundo. Foi o que quase aconteceu
@@ -144,6 +156,7 @@ export async function GET(req: NextRequest) {
         ultima,
         diasSem: diasEntre(ultima, hoje),
         cupom: c.phone ? cupomPorFone.get(c.phone as string) ?? null : null,
+        customerId: c.phone ? customerPorFone.get(c.phone as string) ?? null : null,
       }
     })
     // Quem sumiu há mais tempo primeiro — é quem está mais perto de virar perda.

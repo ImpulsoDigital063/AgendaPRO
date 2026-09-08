@@ -24,7 +24,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
+
+/* Ficha da cliente · a MESMA que abre em /admin/clientes. Montada aqui dentro
+   de proposito: mandar pra outra tela foi o que o Eduardo reclamou em 06/09
+   ("clico e depois em voltar caio na aba de clientes"). Dynamic porque o
+   drawer e' pesado e so carrega quando alguem toca num card. */
+const ClienteDrawer = dynamic(() => import('./clientes/ClienteDrawer'), { ssr: false })
 import {
   IconWhatsapp, IconUsers, IconChevronRight, IconCheck, IconSearch, IconClose, IconGift,
 } from '@/components/ui/Icon'
@@ -65,6 +72,9 @@ type Sumido = {
   id: string; name: string; phone: string | null; ultima: string; diasSem: number
   /** Cupom ativo que ela JA tem — evita gerar um segundo (08/09). */
   cupom?: CupomAtivo | null
+  /** Abre a ficha sem sair da aba. Null quando a cliente nao tem cadastro
+   *  em `customers` — a ficha nao existe pra ela. */
+  customerId?: string | null
 }
 
 type CupomGerado = {
@@ -151,6 +161,8 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
   /** Cupom pontual: qual linha esta gerando, e erro por linha. */
   const [gerandoLinha, setGerandoLinha] = useState<string | null>(null)
   const [erroLinha, setErroLinha] = useState<Record<string, string>>({})
+  /** Ficha aberta · null = fechada. */
+  const [fichaDe, setFichaDe] = useState<string | null>(null)
 
   const templates = useMemo(() => suggestTemplates(descricao), [descricao])
   const sampleName = useMemo(() => sampleNameFor(descricao), [descricao])
@@ -573,7 +585,14 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
           <div className="grid gap-2 md:grid-cols-2">
             {g.itens.map((c) => (
               <div key={c.id} className="admin-card p-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => c.customerId && setFichaDe(c.customerId)}
+                  disabled={!c.customerId}
+                  title={c.customerId ? `Ver ficha de ${c.name}` : 'Sem cadastro de cliente'}
+                  className="flex items-center gap-2.5 min-w-0 text-left flex-1"
+                  style={{ cursor: c.customerId ? 'pointer' : 'default' }}
+                >
                   <span className="w-9 h-9 rounded-full inline-flex items-center justify-center text-[11px] font-bold shrink-0"
                     style={{ background: TONS[g.tom].bg, color: TONS[g.tom].fg }}>
                     {iniciais(c.name)}
@@ -598,7 +617,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                       )}
                     </p>
                   </div>
-                </div>
+                </button>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-[11px] font-bold px-2 py-1 rounded-full tabular-nums"
                     style={{ background: TONS[g.tom].bg, color: TONS[g.tom].fg }}>
