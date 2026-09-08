@@ -198,7 +198,7 @@ export default async function SumidosPage({
             sumidosWithoutCoupon={sumidosWithoutCoupon}
             orphanCoupons={orphanCoupons}
             ticketMedio={ticketMedio}
-            listaSlot={<SumidosPanel diasFixo={SUMIDO_DAYS} />}
+            listaSlot={<SumidosPanel diasFixo={SUMIDO_DAYS} podeCriarCampanha />}
           />
         </div>
       </div>
