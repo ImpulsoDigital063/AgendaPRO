@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
     if (d >= dias && d < ate) sumidos.set(id, ultima)
   }
   if (sumidos.size === 0) {
-    return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, clientes: [] })
+    return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, businessId, clientes: [] })
   }
 
   const { data: clients } = await supabase
@@ -162,5 +162,5 @@ export async function GET(req: NextRequest) {
     // Quem sumiu há mais tempo primeiro — é quem está mais perto de virar perda.
     .sort((a, b) => b.diasSem - a.diasSem)
 
-  return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, clientes })
+  return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, businessId, clientes })
 }
