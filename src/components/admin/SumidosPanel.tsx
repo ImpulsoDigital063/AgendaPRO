@@ -597,11 +597,15 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                     style={{ background: TONS[g.tom].bg, color: TONS[g.tom].fg }}>
                     {iniciais(c.name)}
                   </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{c.name}</p>
+                  {/* span, nao div/p: <button> so aceita conteudo de frase.
+                      Com <div>/<p> dentro, o navegador reestrutura o HTML e a
+                      hidratacao do React quebra (erro #418) — a lista inteira
+                      travava em "Carregando..." e o clique nao fazia nada. */}
+                  <span className="block min-w-0">
+                    <span className="block text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{c.name}</span>
                     {/* Uma linha so, com truncate: o marcador de cupom em bloco
                         proprio quebrava em duas linhas e empurrava o nome. */}
-                    <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--admin-text-faded)' }}>
+                    <span className="block text-[11px] mt-0.5 truncate" style={{ color: 'var(--admin-text-faded)' }}>
                       última {dataBR(c.ultima)}
                       {c.cupom && (
                         <>
@@ -615,8 +619,8 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                           </span>
                         </>
                       )}
-                    </p>
-                  </div>
+                    </span>
+                  </span>
                 </button>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-[11px] font-bold px-2 py-1 rounded-full tabular-nums"
