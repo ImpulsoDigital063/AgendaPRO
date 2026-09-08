@@ -25,6 +25,9 @@ import { todayBR } from '@/lib/date-br'
    pessoa; comparando cru viravam duas, e a cliente com cupom ativo aparecia
    sem marcador e ganhava um segundo desconto. Regra cravada em 08/09. */
 import { telefoneCanonico, variacoesDeTelefone } from '@/lib/phone-variants'
+import { canalLiberado } from '@/lib/mensagens/liberado'
+import { consumoDoMes, podeEnviar } from '@/lib/mensagens/franquia'
+import { UNIDADES_POR_TIPO } from '@/lib/mensagens/custo-sumidos'
 
 /* FAIXAS FECHADAS (Eduardo, 06/09). Cada botao mostra o SEU pedaco, nao um
    acumulado: 15 traz de 15 a 19 dias, 20 traz de 20 a 24, e assim por diante.
@@ -178,5 +181,34 @@ export async function GET(req: NextRequest) {
     // Quem sumiu há mais tempo primeiro — é quem está mais perto de virar perda.
     .sort((a, b) => b.diasSem - a.diasSem)
 
-  return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, businessId, clientes })
+  /* ENVIO AUTOMATICO · a tela precisa saber ANTES se da pra disparar e
+     quanto custa. Reativacao usa o template agendapro_retorno, categoria
+     MARKETING: consome 7 unidades por pessoa, nao 1. A Rosy tem 46 sumidos —
+     disparar pra todos seriam 322 unidades, mais que o pacote Padrao inteiro
+     que cobre a regua mensal dela. Mostrar o custo antes nao e' capricho. */
+  let envio: {
+    liberado: boolean
+    pode: boolean
+    motivo?: string
+    restantes?: number
+    franquia?: number
+    unidadesPorPessoa: number
+  } = { liberado: false, pode: false, unidadesPorPessoa: UNIDADES_POR_TIPO.retorno }
+
+  if (canalLiberado(businessId)) {
+    const [perm, consumo] = await Promise.all([
+      podeEnviar(supabase, businessId),
+      consumoDoMes(supabase, businessId),
+    ])
+    envio = {
+      liberado: true,
+      pode: perm.pode,
+      motivo: perm.pode ? undefined : perm.motivo,
+      restantes: consumo.restantes,
+      franquia: consumo.franquia,
+      unidadesPorPessoa: UNIDADES_POR_TIPO.retorno,
+    }
+  }
+
+  return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, businessId, envio, clientes })
 }

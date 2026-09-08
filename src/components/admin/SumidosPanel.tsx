@@ -87,6 +87,15 @@ type CupomGerado = {
   customer: { name: string; phone: string } | null
 }
 
+type Envio = {
+  liberado: boolean
+  pode: boolean
+  motivo?: string
+  restantes?: number
+  franquia?: number
+  unidadesPorPessoa: number
+}
+
 type Props = {
   /** Quando a PAGE ja manda o prazo (tela /admin/sumidos), o painel nao
    *  desenha seletor proprio nem monta campanha — quem faz isso e' a view
@@ -146,6 +155,14 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
   const [negocio, setNegocio] = useState('')
   const [slug, setSlug] = useState('')
   const [descricao, setDescricao] = useState<string | null>(null)
+  /* Envio automatico pelo canal oficial · so aparece pra quem tem pacote. */
+  const [envio, setEnvio] = useState<Envio | null>(null)
+  const [confirmandoDisparo, setConfirmandoDisparo] = useState(false)
+  const [disparando, setDisparando] = useState(false)
+  const [resultadoDisparo, setResultadoDisparo] = useState<
+    { enviados: number; ignorados: number; falhas: number; unidadesGastas: number } | null
+  >(null)
+  const [erroDisparo, setErroDisparo] = useState<string | null>(null)
 
   const [busca, setBusca] = useState('')
   const [teto, setTeto] = useState(TETO_INICIAL)
@@ -177,6 +194,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
       setNegocio(json.negocio ?? '')
       setSlug(json.slug ?? '')
       setDescricao(json.descricao ?? null)
+      setEnvio(json.envio ?? null)
     } catch {
       setErro('Não consegui carregar a lista. Tenta de novo.')
       setClientes([])
@@ -186,7 +204,10 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
   useEffect(() => { if (controlado && diasFixo !== dias) setDias(diasFixo!) }, [diasFixo, controlado, dias])
   useEffect(() => { buscar(dias) }, [dias, buscar])
   // Trocar o prazo invalida a campanha do prazo anterior
-  useEffect(() => { setCupons(null); setAbrirMsg(false); setBusca(''); setTeto(TETO_INICIAL) }, [dias])
+  useEffect(() => {
+    setCupons(null); setAbrirMsg(false); setBusca(''); setTeto(TETO_INICIAL)
+    setConfirmandoDisparo(false); setResultadoDisparo(null); setErroDisparo(null)
+  }, [dias])
   useEffect(() => {
     if (!customMessage || customMessage === templates[templateIdx]) {
       setCustomMessage(templates[templateIdx] || '')
@@ -205,6 +226,13 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
   }, [clientes, busca])
 
   const visiveis = ordenados.slice(0, teto)
+
+  /* Quem entra no disparo automatico: os que a busca deixou na tela e tem
+     telefone. Teto de 60 igual ao da rota — reativacao consome 7 unidades
+     cada, e 60 ja sao 420. */
+  const alvosDoDisparo = ordenados.filter((c) => c.phone).slice(0, 60)
+  const custoDoDisparo = alvosDoDisparo.length * (envio?.unidadesPorPessoa ?? 7)
+  const cabeNaFranquia = (envio?.restantes ?? 0) >= custoDoDisparo
 
   /** Agrupa os visíveis por faixa, preservando a ordem. */
   const grupos = useMemo(() => {
@@ -302,6 +330,29 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
     })
     const comDDI = fone.startsWith('55') ? fone : `55${fone}`
     window.open(`https://wa.me/${comDDI}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  /** Dispara a reativacao pelo canal oficial. So chega aqui depois da
+   *  confirmacao — a tela mostra o custo em unidades antes. */
+  async function dispararAutomatico() {
+    setDisparando(true)
+    setErroDisparo(null)
+    try {
+      const res = await fetch('/api/admin/sumidos/disparar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ dias, clientIds: alvosDoDisparo.map((c) => c.id) }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'falhou')
+      setResultadoDisparo(json)
+      setConfirmandoDisparo(false)
+      buscar(dias)
+    } catch (e) {
+      setErroDisparo(e instanceof Error ? e.message : 'erro')
+    } finally {
+      setDisparando(false)
+    }
   }
 
   function abrirWhatsApp(item: CupomGerado) {
@@ -567,6 +618,93 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
             })}
           </div>
         </>
+      )}
+
+      {/* ── ENVIO AUTOMATICO · so pra quem tem canal e pacote ─────────────
+          Reativacao e' template MARKETING na Meta: 7 unidades por pessoa, nao
+          1. Mostrar o custo ANTES e' o ponto — a dona nao pode descobrir que
+          gastou meio pacote depois de tocar num botao. */}
+      {!loading && !erro && !cupons && podeCriarCampanha && envio?.liberado && alvosDoDisparo.length > 0 && (
+        <div className="admin-card p-4 space-y-3">
+          <div className="flex items-start gap-2.5">
+            <span className="w-9 h-9 rounded-full inline-flex items-center justify-center shrink-0"
+              style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>
+              <IconWhatsapp size={16} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
+                Enviar pelo sistema, sem abrir conversa
+              </p>
+              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                Sai do número oficial pra {alvosDoDisparo.length}{' '}
+                {alvosDoDisparo.length === 1 ? 'pessoa' : 'pessoas'} de uma vez.
+                Texto aprovado pela Meta, <strong>sem cupom e sem link</strong> — pra mandar
+                desconto, use o botão de presente na linha.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl p-3 text-xs leading-relaxed" style={{ background: 'var(--admin-input-bg)' }}>
+            <div className="flex items-center justify-between gap-2">
+              <span style={{ color: 'var(--admin-text-2)' }}>Custo deste envio</span>
+              <strong className="tabular-nums" style={{ color: cabeNaFranquia ? 'var(--admin-text)' : 'var(--admin-danger,#EF4444)' }}>
+                {custoDoDisparo} unidades
+              </strong>
+            </div>
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <span style={{ color: 'var(--admin-text-faded)' }}>Você tem</span>
+              <span className="tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
+                {envio.restantes ?? 0} de {envio.franquia ?? 0}
+              </span>
+            </div>
+            <p className="mt-2" style={{ color: 'var(--admin-text-faded)' }}>
+              Reativação custa {envio.unidadesPorPessoa} unidades por pessoa — é a mensagem
+              mais cara da Meta. Confirmação e lembrete custam 1.
+            </p>
+          </div>
+
+          {resultadoDisparo ? (
+            <p className="text-sm" style={{ color: 'var(--admin-success)' }}>
+              {resultadoDisparo.enviados} enviadas · {resultadoDisparo.unidadesGastas} unidades usadas
+              {resultadoDisparo.ignorados > 0 && ` · ${resultadoDisparo.ignorados} puladas`}
+              {resultadoDisparo.falhas > 0 && ` · ${resultadoDisparo.falhas} falharam`}
+            </p>
+          ) : !envio.pode ? (
+            <p className="text-xs" style={{ color: 'var(--admin-warn)' }}>
+              {envio.motivo === 'sem_pacote_contratado'
+                ? 'Você ainda não tem pacote de mensagens. Contrate pra liberar o envio pelo sistema.'
+                : envio.motivo === 'sem_saldo'
+                  ? 'Sua franquia deste ciclo acabou.'
+                  : 'Envio indisponível agora.'}
+            </p>
+          ) : !cabeNaFranquia ? (
+            <p className="text-xs" style={{ color: 'var(--admin-danger,#EF4444)' }}>
+              Não cabe na franquia: precisa de {custoDoDisparo} e você tem {envio.restantes}.
+              Reduza a faixa ou use a busca pra escolher menos pessoas.
+            </p>
+          ) : confirmandoDisparo ? (
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={dispararAutomatico} disabled={disparando}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ ...solido, opacity: disparando ? 0.6 : 1 }}>
+                {disparando ? 'Enviando…' : `Confirmar · ${custoDoDisparo} unidades`}
+              </button>
+              <button type="button" onClick={() => setConfirmandoDisparo(false)}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold" style={vazio}>
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirmandoDisparo(true)}
+              className="w-full px-4 py-2.5 rounded-xl text-sm font-semibold" style={vazio}>
+              Enviar pelo sistema para {alvosDoDisparo.length}
+            </button>
+          )}
+
+          {erroDisparo && (
+            <p className="text-xs" style={{ color: 'var(--admin-danger,#EF4444)' }}>{erroDisparo}</p>
+          )}
+        </div>
       )}
 
       {/* LEGENDA · no celular os dois botoes sao so icone e nao ha hover pra
