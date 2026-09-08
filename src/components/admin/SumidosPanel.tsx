@@ -25,15 +25,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-/* Ficha da cliente · a MESMA que abre em /admin/clientes. Montada aqui dentro
-   de proposito: mandar pra outra tela foi o que o Eduardo reclamou em 06/09
-   ("clico e depois em voltar caio na aba de clientes").
-   Import ESTATICO: com next/dynamic + ssr:false a hidratacao deste painel
-   quebrava (React #418) e a lista travava em "Carregando..." — o painel e'
-   passado como slot por um Server Component, e o ssr:false mudava a fronteira
-   de cliente da arvore. O drawer ja se protege sozinho: tem portalReady que
-   devolve null ate montar no browser. */
-import ClienteDrawer from './clientes/ClienteDrawer'
 import {
   IconWhatsapp, IconUsers, IconChevronRight, IconCheck, IconSearch, IconClose, IconGift,
 } from '@/components/ui/Icon'
@@ -74,9 +65,6 @@ type Sumido = {
   id: string; name: string; phone: string | null; ultima: string; diasSem: number
   /** Cupom ativo que ela JA tem — evita gerar um segundo (08/09). */
   cupom?: CupomAtivo | null
-  /** Abre a ficha sem sair da aba. Null quando a cliente nao tem cadastro
-   *  em `customers` — a ficha nao existe pra ela. */
-  customerId?: string | null
 }
 
 type CupomGerado = {
@@ -163,8 +151,6 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
   /** Cupom pontual: qual linha esta gerando, e erro por linha. */
   const [gerandoLinha, setGerandoLinha] = useState<string | null>(null)
   const [erroLinha, setErroLinha] = useState<Record<string, string>>({})
-  /** Ficha aberta · null = fechada. */
-  const [fichaDe, setFichaDe] = useState<string | null>(null)
 
   const templates = useMemo(() => suggestTemplates(descricao), [descricao])
   const sampleName = useMemo(() => sampleNameFor(descricao), [descricao])
@@ -587,27 +573,16 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
           <div className="grid gap-2 md:grid-cols-2">
             {g.itens.map((c) => (
               <div key={c.id} className="admin-card p-3 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => c.customerId && setFichaDe(c.customerId)}
-                  disabled={!c.customerId}
-                  title={c.customerId ? `Ver ficha de ${c.name}` : 'Sem cadastro de cliente'}
-                  className="flex items-center gap-2.5 min-w-0 text-left flex-1"
-                  style={{ cursor: c.customerId ? 'pointer' : 'default' }}
-                >
+                <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-9 h-9 rounded-full inline-flex items-center justify-center text-[11px] font-bold shrink-0"
                     style={{ background: TONS[g.tom].bg, color: TONS[g.tom].fg }}>
                     {iniciais(c.name)}
                   </span>
-                  {/* span, nao div/p: <button> so aceita conteudo de frase.
-                      Com <div>/<p> dentro, o navegador reestrutura o HTML e a
-                      hidratacao do React quebra (erro #418) — a lista inteira
-                      travava em "Carregando..." e o clique nao fazia nada. */}
-                  <span className="block min-w-0">
-                    <span className="block text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{c.name}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{c.name}</p>
                     {/* Uma linha so, com truncate: o marcador de cupom em bloco
                         proprio quebrava em duas linhas e empurrava o nome. */}
-                    <span className="block text-[11px] mt-0.5 truncate" style={{ color: 'var(--admin-text-faded)' }}>
+                    <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--admin-text-faded)' }}>
                       última {dataBR(c.ultima)}
                       {c.cupom && (
                         <>
@@ -621,9 +596,9 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                           </span>
                         </>
                       )}
-                    </span>
-                  </span>
-                </button>
+                    </p>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-[11px] font-bold px-2 py-1 rounded-full tabular-nums"
                     style={{ background: TONS[g.tom].bg, color: TONS[g.tom].fg }}>
