@@ -169,3 +169,40 @@ export function servicosDeExemplo(categoria: string | null): Array<{ nome: strin
     { nome: b, preco: 30, minutos: 20 },
   ]
 }
+
+/**
+ * Prazo de "sumido" sugerido por segmento · usado no tour da aba Sumidos
+ * (08/09/2026). Mora aqui, e não em coupon-templates, pelo mesmo motivo que
+ * este arquivo existe: nicho se decide por `category`, não pelo texto livre
+ * de `description`, que o dono edita quando quer.
+ *
+ * Fisioterapia e consultório entram com ciclo próprio — o CAF abria o tour e
+ * lia sugestão de salão. Cada segmento tem seu ritmo de retorno.
+ */
+export function prazoSumidoSugerido(categoria: string | null): string {
+  switch ((categoria ?? '').trim()) {
+    case 'Barbearia':
+      return 'Corte e barba costumam pedir 15 ou 20 dias.'
+    case 'Nail designer':
+    case 'Manicure':
+      return 'Manutenção de unha costuma pedir 15 ou 20 dias.'
+    case 'Cílios e sobrancelhas':
+      return 'Manutenção de cílios costuma pedir 15 ou 20 dias.'
+    case 'Salão de beleza':
+      return 'Retoque de raiz costuma pedir 20 ou 30 dias; corte, 40.'
+    case 'Clínica estética':
+      return 'Sessão de manutenção costuma pedir 20 ou 30 dias.'
+    case 'Fisioterapia':
+      return 'Tratamento tem sessões seguidas: 15 dias sem voltar já quebra a sequência.'
+    case 'Clínica / consultório':
+      return 'Retorno costuma ser marcado em 30 dias; passou disso, vale chamar.'
+    case 'Psicólogo / Terapeuta':
+      return 'Em atendimento semanal ou quinzenal, 15 ou 20 dias já é falta.'
+    case 'Personal trainer':
+      return 'Quem treina toda semana: 15 dias parado já é sinal.'
+    case 'Estúdio de tatuagem':
+      return 'Retoque e sessão seguinte costumam levar 30 ou 40 dias.'
+    default:
+      return 'Escolha o prazo que faz sentido pro seu tipo de atendimento.'
+  }
+}

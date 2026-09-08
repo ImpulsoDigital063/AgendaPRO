@@ -257,34 +257,3 @@ export function formatDiscount(type: 'fixed' | 'percent', value: number): string
   if (type === 'percent') return `${value.toFixed(0)}%`
   return `R$ ${value.toFixed(2).replace('.', ',')}`
 }
-
-/**
- * Sugestão de prazo de "sumido" conforme o nicho (Eduardo, 08/09/2026).
- *
- * O tour da aba Sumidos dizia "cílios e unha costumam pedir 15 ou 20 dias;
- * corte, 30 ou 40" — linguagem de salão, servida também pro CAF, que é
- * fisioterapia, e pra barbearia. Cada atendimento tem seu ciclo, e o sistema
- * já sabe detectar o nicho aqui; a frase mora junto com esse conhecimento em
- * vez de ficar solta na tela.
- */
-export function exemploPrazoPorNicho(description: string | null | undefined): string {
-  switch (detectCategory(description)) {
-    case 'barbearia':
-      return 'Corte e barba costumam pedir 15 ou 20 dias.'
-    case 'nail':
-    case 'manicure':
-      return 'Manutenção de unha costuma pedir 15 ou 20 dias.'
-    case 'salao':
-      return 'Retoque de raiz costuma pedir 20 ou 30 dias; corte, 40.'
-    case 'estetica':
-      return 'Sessão de manutenção costuma pedir 20 ou 30 dias.'
-    case 'psicologo':
-      return 'Em atendimento semanal ou quinzenal, 15 ou 20 dias já é falta.'
-    case 'personal':
-      return 'Quem treina toda semana: 15 dias parado já é sinal.'
-    case 'tatuagem':
-      return 'Retoque e sessão seguinte costumam levar 30 ou 40 dias.'
-    default:
-      return 'Escolha o prazo que faz sentido pro seu tipo de atendimento.'
-  }
-}

@@ -15,6 +15,7 @@ import { redirect } from 'next/navigation'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import SumidosPanel from '@/components/admin/SumidosPanel'
 import TourSumidos from '@/components/admin/TourSumidos'
+import { resolveCategoria } from '@/lib/segmento'
 import { IconClock } from '@/components/ui/Icon'
 import ReativarSumidosView from '@/components/admin/ReativarSumidosView'
 
@@ -35,7 +36,7 @@ export default async function SumidosPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, slug, name, description, tour_sumidos_em')
+    .select('id, slug, name, description, category, tour_sumidos_em')
     .eq('owner_id', user.id)
     .single()
   if (!business) redirect(await destinoSemNegocio())
@@ -202,7 +203,7 @@ export default async function SumidosPage({
         style={{ background: 'radial-gradient(ellipse 100% 80% at 50% 50%, transparent 55%, rgba(15,23,42,0.05) 100%)' }} />
 
       <div className="relative">
-        <TourSumidos aberto={!business.tour_sumidos_em} descricao={business.description} />
+        <TourSumidos aberto={!business.tour_sumidos_em} categoria={resolveCategoria(business)} />
         <div className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 pt-7 pb-6">
           <header className="mb-5">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--admin-text-faded)' }}>
