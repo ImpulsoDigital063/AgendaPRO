@@ -60,7 +60,14 @@ export async function POST(req: NextRequest) {
   const validity_days = Number(body.validity_days)
   const message_template = typeof body.message_template === 'string' ? body.message_template : ''
   const diasPedido = Number(body.dias)
-  const sumidoDays = DIAS_OPCOES.includes(diasPedido) ? diasPedido : SUMIDO_DAYS
+  /* dias=0 e' o "Todos" da aba: cumulativo do menor degrau pra cima, sem teto.
+     O cupom TEM que sair pra exatamente quem a dona viu na tela. */
+  const ehTodos = body.dias !== undefined && diasPedido === 0
+  const sumidoDays = ehTodos
+    ? DIAS_OPCOES[0]
+    : DIAS_OPCOES.includes(diasPedido)
+      ? diasPedido
+      : SUMIDO_DAYS
   /* FAIXA FECHADA (06/09): o cupom tem que sair pra exatamente quem a dona
      viu na tela. Se ela olha a faixa 15-19 e o cupom vai pra todo mundo com
      15+, o desconto cai em gente que ela nao viu. `ate` = proximo degrau. */
@@ -72,7 +79,7 @@ export async function POST(req: NextRequest) {
     : null
 
   const idxDias = DIAS_OPCOES.indexOf(sumidoDays)
-  const sumidoAte = body.dias !== undefined && idxDias >= 0 && idxDias < DIAS_OPCOES.length - 1
+  const sumidoAte = !ehTodos && body.dias !== undefined && idxDias >= 0 && idxDias < DIAS_OPCOES.length - 1
     ? DIAS_OPCOES[idxDias + 1]
     : null
   const target: CampaignTarget =

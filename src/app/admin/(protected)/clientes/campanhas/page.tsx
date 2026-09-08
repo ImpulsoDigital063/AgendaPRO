@@ -32,7 +32,10 @@ export default async function CampanhasPage({
 
   const { tab, dias: diasParam } = await searchParams
   const pedidoDias = Number(diasParam)
-  const SUMIDO_DAYS = DIAS_OPCOES.includes(pedidoDias) ? pedidoDias : SUMIDO_DAYS_PADRAO
+  /* TODOS = 0 · cumulativo do menor degrau pra cima, e o padrao. Sem ele o
+     default de 40 virava a faixa 40-59 e escondia quem sumiu ha mais de 60 —
+     a Wanessa veria 9 onde via 78. */
+  const SUMIDO_DAYS = pedidoDias === 0 || DIAS_OPCOES.includes(pedidoDias) ? pedidoDias : 0
   const initialTab: 'sumidos' | 'aniversariantes' | 'avulso' =
     tab === 'aniversariantes' ? 'aniversariantes' :
     tab === 'avulso' ? 'avulso' :
@@ -71,12 +74,14 @@ export default async function CampanhasPage({
   // ─────────────────────────────────────────────────
   // ABA SUMIDOS — replicação da lógica de /clientes/reativar
   // ─────────────────────────────────────────────────
-  const cutoffStr = addDaysBR(todayBR(), -SUMIDO_DAYS)
+  const pisoDias = SUMIDO_DAYS === 0 ? DIAS_OPCOES[0] : SUMIDO_DAYS
+  const cutoffStr = addDaysBR(todayBR(), -pisoDias)
   /* FAIXA FECHADA (06/09): o contador, o ROI e a campanha tem que falar da
      MESMA gente que a lista mostra. `floorStr` corta quem sumiu ha menos que
      o proximo degrau — sem isso, a tela diz 3 clientes e o ROI calcula 20. */
   const _i = DIAS_OPCOES.indexOf(SUMIDO_DAYS)
-  const proximoDegrau = _i >= 0 && _i < DIAS_OPCOES.length - 1 ? DIAS_OPCOES[_i + 1] : null
+  // Em TODOS nao ha teto: ninguem fica de fora por cima.
+  const proximoDegrau = SUMIDO_DAYS !== 0 && _i >= 0 && _i < DIAS_OPCOES.length - 1 ? DIAS_OPCOES[_i + 1] : null
   const floorStr = proximoDegrau ? addDaysBR(todayBR(), -proximoDegrau) : null
   /* ORFAO nao depende da faixa. Cupom orfao e' aquele cujo dono VOLTOU — nao
      aquele cujo dono esta em outra faixa. Sem esta regua separada, olhar a

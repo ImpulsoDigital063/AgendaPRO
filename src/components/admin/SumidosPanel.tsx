@@ -32,7 +32,11 @@ import {
   suggestTemplates, sampleNameFor, fillTemplate, formatDiscount, formatValidity,
 } from '@/lib/coupon-templates'
 
-const DIAS_OPCOES = [15, 20, 25, 30, 40, 60]
+/* 0 = TODOS · cumulativo do menor degrau pra cima, e o padrao. As seis faixas
+   fechadas continuam como filtro. Sem o Todos, abrir em 40 significava a faixa
+   40-59 e escondia quem sumiu ha mais de 60 (Eduardo, 08/09). */
+const TODOS = 0
+const DIAS_OPCOES = [TODOS, 15, 20, 25, 30, 40, 60]
 const TETO_INICIAL = 60
 
 /* Texto do botao "Chamar": chamado simples, SEM desconto. Aprovado pelo
@@ -52,8 +56,16 @@ function textoChamar(nome: string, dias: number, negocio: string): string {
 
 /* Rotulo da faixa: 15 vira "15-19", 60 vira "60+". */
 function rotuloFaixa(d: number, i: number, lista: readonly number[]): string {
+  if (d === TODOS) return 'Todos'
   const prox = lista[i + 1]
   return prox ? `${d}–${prox - 1}` : `${d}+`
+}
+
+/** "sumidos entre 20 e 24 dias" / "sumidos ha 15 dias ou mais". */
+function textoFaixa(d: number, lista: readonly number[]): string {
+  if (d === TODOS) return `sumidos há ${lista[1]} dias ou mais`
+  const prox = lista[lista.indexOf(d) + 1]
+  return prox ? `sumidos entre ${d} e ${prox - 1} dias` : `sumidos há ${d} dias ou mais`
 }
 
 
@@ -127,7 +139,7 @@ function normaliza(s: string): string {
 
 export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, podeCriarCampanha = false }: Props) {
   const controlado = typeof diasFixo === 'number'
-  const [dias, setDias] = useState(diasFixo ?? 40)
+  const [dias, setDias] = useState(diasFixo ?? TODOS)
   const [clientes, setClientes] = useState<Sumido[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -319,14 +331,14 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
       <div className="admin-card p-3 sm:p-4">
         <div className="flex items-baseline justify-between gap-2 mb-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-            Sumidos entre
+            Sumidos · faixa
           </p>
           <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
             quem tem hora marcada não conta
           </p>
         </div>
         <div
-          className="grid grid-cols-6 gap-0 rounded-xl overflow-hidden"
+          className="grid grid-cols-4 sm:grid-cols-7 gap-0 rounded-xl overflow-hidden"
           style={{ border: '1px solid var(--admin-border)' }}
           role="group"
           aria-label="Prazo"
@@ -348,7 +360,9 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                 }}
               >
                 {rot}
-                <span className="hidden sm:inline text-[11px] font-normal opacity-75">{' '}dias</span>
+                {d !== TODOS && (
+                  <span className="hidden sm:inline text-[11px] font-normal opacity-75">{' '}dias</span>
+                )}
               </button>
             )
           })}
@@ -374,8 +388,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                 </span>
               </p>
               <p className="text-[11px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                {(() => { const i = DIAS_OPCOES.indexOf(dias); const p = DIAS_OPCOES[i + 1]
-                  return p ? `sumidos entre ${dias} e ${p - 1} dias` : `sumidos há ${dias} dias ou mais` })()}
+                {textoFaixa(dias, DIAS_OPCOES)}
                 {busca.trim() && ` · filtrando "${busca.trim()}"`}
               </p>
             </div>
@@ -500,8 +513,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
       {!loading && !erro && clientes.length === 0 && (
         <div className="admin-card p-8 text-center">
           <p className="text-sm" style={{ color: 'var(--admin-text-2)' }}>
-            {(() => { const i = DIAS_OPCOES.indexOf(dias); const p = DIAS_OPCOES[i + 1]
-              return p ? `Ninguém sumido entre ${dias} e ${p - 1} dias.` : `Ninguém sumido há ${dias} dias ou mais.` })()}
+            Ninguém {textoFaixa(dias, DIAS_OPCOES)}.
           </p>
         </div>
       )}

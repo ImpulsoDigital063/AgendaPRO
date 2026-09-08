@@ -28,8 +28,13 @@ import { todayBR } from '@/lib/date-br'
    seis nao batia com o total. */
 export const DIAS_OPCOES = [15, 20, 25, 30, 40, 60] as const
 
-/** 40 continua o default — é o que os outros 8 pagantes já conheciam. */
-const DIAS_PADRAO = 40
+/* TODOS = 0 · cumulativo a partir do menor degrau, sem teto (08/09).
+   Sem ele, o default de 40 virava a faixa 40-59 e escondia quem sumiu ha
+   mais de 60: a Wanessa veria 9 clientes onde via 78, o Olimpio 20 onde via
+   72. A faixa fechada e' a regra que a Rosy pediu pra FILTRAR, nao pra ser
+   o que todo mundo ve ao abrir. */
+export const TODOS = 0
+const DIAS_PADRAO = TODOS
 
 /** Diferença em dias entre duas datas YYYY-MM-DD, sem fuso no meio.
  *  Ambas viram meia-noite UTC, então a subtração é exata. */
@@ -48,7 +53,9 @@ export async function GET(req: NextRequest) {
   if (!businessId) return NextResponse.json({ error: 'no_business' }, { status: 403 })
 
   const pedido = Number(req.nextUrl.searchParams.get('dias'))
-  const dias = (DIAS_OPCOES as readonly number[]).includes(pedido) ? pedido : DIAS_PADRAO
+  const dias = pedido === TODOS || (DIAS_OPCOES as readonly number[]).includes(pedido)
+    ? pedido
+    : DIAS_PADRAO
 
   const { data: biz } = await supabase
     .from('businesses')
@@ -68,6 +75,8 @@ export async function GET(req: NextRequest) {
   /* Limite superior = o proximo degrau. No ultimo, Infinity. */
   const idx = (DIAS_OPCOES as readonly number[]).indexOf(dias)
   const ate = idx >= 0 && idx < DIAS_OPCOES.length - 1 ? DIAS_OPCOES[idx + 1] : Infinity
+  /** Piso: em TODOS, o menor degrau da escala. */
+  const de = dias === TODOS ? DIAS_OPCOES[0] : dias
 
   const { data: ultimos, error } = await supabase.rpc('ultimo_agendamento_clientes', {
     p_business_id: businessId,
@@ -81,7 +90,7 @@ export async function GET(req: NextRequest) {
     if (!id || !ultima) continue
     const d = diasEntre(ultima, hoje)
     // Fora da faixa (inclui quem tem horario FUTURO, que da d negativo)
-    if (d >= dias && d < ate) sumidos.set(id, ultima)
+    if (d >= de && d < ate) sumidos.set(id, ultima)
   }
   if (sumidos.size === 0) {
     return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, businessId, clientes: [] })

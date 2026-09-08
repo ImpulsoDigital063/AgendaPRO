@@ -82,7 +82,12 @@ export default function ReativarSumidosView({
   /* Texto da faixa escolhida — "de 15 a 19 dias" ou "60 dias ou mais". */
   const DEGRAUS = [15, 20, 25, 30, 40, 60]
   const _p = DEGRAUS[DEGRAUS.indexOf(dias) + 1]
-  const faixaTexto = _p ? `de ${dias} a ${_p - 1} dias` : `há ${dias} dias ou mais`
+  const faixaTexto =
+    dias === 0
+      ? `há ${DEGRAUS[0]} dias ou mais`
+      : _p
+        ? `de ${dias} a ${_p - 1} dias`
+        : `há ${dias} dias ou mais`
   const pathname = usePathname()
   const searchParams = useSearchParams()
   /* Preserva os outros params (ex: ?tab=sumidos na tela de Campanhas) —
@@ -361,22 +366,22 @@ export default function ReativarSumidosView({
       <div className="admin-card p-3 lg:p-4">
         <div className="flex items-baseline justify-between gap-2 mb-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-            Faixa de sumidos
+            Sumidos · faixa
           </p>
           <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
             quem tem hora marcada não conta
           </p>
         </div>
         <div
-          className="grid grid-cols-6 rounded-xl overflow-hidden"
+          className="grid grid-cols-4 sm:grid-cols-7 rounded-xl overflow-hidden"
           style={{ border: '1px solid var(--admin-border)' }}
           role="group"
           aria-label="Prazo"
         >
-          {[15, 20, 25, 30, 40, 60].map((d, i, lista) => {
+          {[0, 15, 20, 25, 30, 40, 60].map((d, i, lista) => {
             const ativo = d === dias
             const prox = lista[i + 1]
-            const rot = prox ? `${d}–${prox - 1}` : `${d}+`
+            const rot = d === 0 ? 'Todos' : prox ? `${d}–${prox - 1}` : `${d}+`
             return (
               <button
                 key={d}
@@ -391,7 +396,7 @@ export default function ReativarSumidosView({
                 }}
               >
                 {rot}
-                <span className="hidden sm:inline text-[11px] font-normal opacity-75">{' '}dias</span>
+                {d !== 0 && <span className="hidden sm:inline text-[11px] font-normal opacity-75">{' '}dias</span>}
               </button>
             )
           })}
