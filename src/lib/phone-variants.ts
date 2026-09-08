@@ -62,3 +62,12 @@ export function variacoesDeTelefone(raw: string): string[] {
   ]
   return Array.from(new Set(lista.filter(Boolean)))
 }
+
+/** Dois telefones são a mesma linha, escritos de formas diferentes?
+    Compara o canônico — com o 9 do celular garantido dos dois lados, então
+    "(63) 9274-3602" e "+5563992743602" batem. Vazio nunca casa com nada. */
+export function mesmoTelefone(a: string | null | undefined, b: string | null | undefined): boolean {
+  const ka = telefoneCanonico(a ?? '')
+  const kb = telefoneCanonico(b ?? '')
+  return ka.length >= 10 && ka === kb
+}
