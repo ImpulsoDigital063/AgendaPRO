@@ -4,6 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { randomUUID } from 'crypto'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+/* Mesma regra da casa: telefone so casa pelo modulo. Aqui o defeito decidia
+   QUEM RECEBE o cupom — cliente com grafia diferente entre `customers` e
+   `clients` simplesmente nunca era alcancada. */
+import { telefoneCanonico, variacoesDeTelefone } from '@/lib/phone-variants'
 
 // 40 dias — alinhado com ClientesView. Barbearia/nail tem ciclo
 // curto (15-30d), 60 era tarde demais.
@@ -127,9 +131,9 @@ export async function POST(req: NextRequest) {
     const { data: clients } = await supabase
       .from('clients')
       .select('id, phone')
-      .in('phone', customers.map((c) => c.phone))
+      .in('phone', Array.from(new Set(customers.flatMap((c) => variacoesDeTelefone(c.phone)))))
 
-    const clientByPhone = new Map((clients || []).map((c) => [c.phone, c.id]))
+    const clientByPhone = new Map((clients || []).map((c) => [telefoneCanonico(c.phone), c.id]))
     const clientIds = Array.from(clientByPhone.values())
 
     const { data: lastAppts } = clientIds.length > 0
@@ -155,7 +159,7 @@ export async function POST(req: NextRequest) {
     const sumidoFloorStr = sumidoAte ? addDaysBR(todayBR(), -sumidoAte) : null
 
     targetCustomersAll = customers.filter((c) => {
-      const clientId = clientByPhone.get(c.phone)
+      const clientId = clientByPhone.get(telefoneCanonico(c.phone))
       if (!clientId) return false
       const lastDate = lastByClient.get(clientId)
       if (!lastDate) return false
@@ -163,7 +167,7 @@ export async function POST(req: NextRequest) {
       if (lastDate >= sumidoCutoffStr) return false
       if (sumidoFloorStr && lastDate < sumidoFloorStr) return false
       // Alvo pontual, quando informado
-      if (phonesAlvo && !phonesAlvo.includes(c.phone)) return false
+      if (phonesAlvo && !phonesAlvo.some((p) => telefoneCanonico(p) === telefoneCanonico(c.phone))) return false
       return true
     })
     emptyMsgEspecifico = sumidoAte

@@ -20,6 +20,11 @@ import { createClient } from '@/lib/supabase/server'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { todayBR } from '@/lib/date-br'
+/* Telefone NUNCA e' comparado como string — modulo unico da casa. Duas
+   grafias do mesmo numero ((63) 98800-0003 e 63988000003) sao a MESMA
+   pessoa; comparando cru viravam duas, e a cliente com cupom ativo aparecia
+   sem marcador e ganhava um segundo desconto. Regra cravada em 08/09. */
+import { telefoneCanonico, variacoesDeTelefone } from '@/lib/phone-variants'
 
 /* FAIXAS FECHADAS (Eduardo, 06/09). Cada botao mostra o SEU pedaco, nao um
    acumulado: 15 traz de 15 a 19 dias, 20 traz de 20 a 24, e assim por diante.
@@ -103,7 +108,12 @@ export async function GET(req: NextRequest) {
 
   /* customer_id de cada cliente, pra abrir a ficha direto da lista (08/09).
      A ponte e' o telefone: `clients` e' global e `customers` e' por negocio. */
-  const fonesDaLista = (clients ?? []).map((c) => c.phone as string).filter(Boolean)
+  /* Busca por TODAS as grafias plausiveis — usa indice, nao varre. */
+  const variacoes = new Set<string>()
+  for (const c of clients ?? []) {
+    if (c.phone) for (const v of variacoesDeTelefone(c.phone as string)) variacoes.add(v)
+  }
+  const fonesDaLista = Array.from(variacoes)
   const agoraIso = new Date().toISOString()
   const [custsRes, cuponsRes] = await Promise.all([
     fonesDaLista.length
@@ -118,10 +128,15 @@ export async function GET(req: NextRequest) {
   ])
   const custsDaLista = custsRes.data
   const cupons = cuponsRes.data
-  const customerPorFone = new Map((custsDaLista ?? []).map((c) => [c.phone as string, c.id as string]))
+  // Chaveado pelo canonico dos dois lados: e' o unico jeito de casar.
+  const customerPorFone = new Map(
+    (custsDaLista ?? []).map((c) => [telefoneCanonico(c.phone as string), c.id as string]),
+  )
   /* Telefone por customer sai dos MESMOS registros: o cupom so interessa se o
      dono esta na lista. Era uma 6a consulta so pra isso. */
-  const fonePorCustomer = new Map((custsDaLista ?? []).map((c) => [c.id as string, c.phone as string]))
+  const fonePorCustomer = new Map(
+    (custsDaLista ?? []).map((c) => [c.id as string, telefoneCanonico(c.phone as string)]),
+  )
 
   /* CUPOM ATIVO POR CLIENTE (08/09) · sem isto a dona reabre a tela, nao
      lembra que ja mandou cupom pra alguem e gera um segundo — dois descontos
@@ -156,8 +171,8 @@ export async function GET(req: NextRequest) {
         phone: (c.phone as string) ?? null,
         ultima,
         diasSem: diasEntre(ultima, hoje),
-        cupom: c.phone ? cupomPorFone.get(c.phone as string) ?? null : null,
-        customerId: c.phone ? customerPorFone.get(c.phone as string) ?? null : null,
+        cupom: c.phone ? cupomPorFone.get(telefoneCanonico(c.phone as string)) ?? null : null,
+        customerId: c.phone ? customerPorFone.get(telefoneCanonico(c.phone as string)) ?? null : null,
       }
     })
     // Quem sumiu há mais tempo primeiro — é quem está mais perto de virar perda.
