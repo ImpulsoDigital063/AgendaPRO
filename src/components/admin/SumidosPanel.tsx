@@ -25,11 +25,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-/* Historico de atendimentos · a peca do tamanho certo. O ClienteDrawer
-   completo arrasta 8 sub-componentes (galeria, fichas, PDF, canvas) e
-   derrubou a hidratacao desta tela duas vezes; este modal tem 5 imports,
-   todos leves, e e' exatamente "os procedimentos feitos por essa cliente". */
-import AtendimentoHistoricoModal from './clientes/AtendimentoHistoricoModal'
 import {
   IconWhatsapp, IconUsers, IconChevronRight, IconCheck, IconSearch, IconClose, IconGift,
 } from '@/components/ui/Icon'
@@ -70,8 +65,6 @@ type Sumido = {
   id: string; name: string; phone: string | null; ultima: string; diasSem: number
   /** Cupom ativo que ela JA tem — evita gerar um segundo (08/09). */
   cupom?: CupomAtivo | null
-  /** Abre o historico sem sair da aba. Null = sem cadastro em `customers`. */
-  customerId?: string | null
 }
 
 type CupomGerado = {
@@ -141,9 +134,6 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
   const [negocio, setNegocio] = useState('')
   const [slug, setSlug] = useState('')
   const [descricao, setDescricao] = useState<string | null>(null)
-  const [businessId, setBusinessId] = useState('')
-  /** Historico aberto · null = fechado. */
-  const [historicoDe, setHistoricoDe] = useState<Sumido | null>(null)
 
   const [busca, setBusca] = useState('')
   const [teto, setTeto] = useState(TETO_INICIAL)
@@ -175,7 +165,6 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
       setNegocio(json.negocio ?? '')
       setSlug(json.slug ?? '')
       setDescricao(json.descricao ?? null)
-      setBusinessId(json.businessId ?? '')
     } catch {
       setErro('Não consegui carregar a lista. Tenta de novo.')
       setClientes([])
@@ -584,22 +573,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
           <div className="grid gap-2 md:grid-cols-2">
             {g.itens.map((c) => (
               <div key={c.id} className="admin-card p-3 flex items-center justify-between gap-3">
-                {/* role=button em vez de <button>: <button> so aceita conteudo
-                    de frase, e com <div>/<p> dentro o navegador reestrutura o
-                    HTML e a hidratacao quebra (React #418, 08/09). Uma div com
-                    role aceita qualquer filho e continua acessivel. */}
-                <div
-                  role={c.customerId ? 'button' : undefined}
-                  tabIndex={c.customerId ? 0 : undefined}
-                  onClick={() => c.customerId && setHistoricoDe(c)}
-                  onKeyDown={(e) => {
-                    if (!c.customerId) return
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setHistoricoDe(c) }
-                  }}
-                  title={c.customerId ? `Ver atendimentos de ${c.name}` : undefined}
-                  className="flex items-center gap-2.5 min-w-0 flex-1"
-                  style={{ cursor: c.customerId ? 'pointer' : 'default' }}
-                >
+                <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-9 h-9 rounded-full inline-flex items-center justify-center text-[11px] font-bold shrink-0"
                     style={{ background: TONS[g.tom].bg, color: TONS[g.tom].fg }}>
                     {iniciais(c.name)}
