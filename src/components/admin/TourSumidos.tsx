@@ -27,34 +27,37 @@ type Passo = {
   corpo: string
 }
 
+/* Sem numero no titulo: o selo "N de 6" ja numera, e a propria pagina tem uma
+   secao "COMO FUNCIONA · 4 PASSOS". Eram tres numeracoes competindo — o
+   Eduardo viu "3 DE 6" ao lado de "2. Veja quantas sao" (08/09). */
 const PASSOS: Passo[] = [
   {
     alvo: '',
     titulo: 'Quem sumiu, e o que fazer',
     corpo:
-      'Esta aba mostra as clientes que pararam de voltar e te dá o caminho pra chamar cada uma. São 4 passos rápidos.',
+      'Esta aba mostra as clientes que pararam de voltar e te dá o caminho pra chamar cada uma. Vou te mostrar rapidinho.',
   },
   {
     alvo: 'faixa',
-    titulo: '1. Escolha o prazo',
+    titulo: 'Escolha o prazo',
     corpo:
       'Cada botão é uma faixa fechada: 15–19 traz só quem sumiu de 15 a 19 dias, 20–24 traz a próxima, e assim por diante. "Todos" mostra a base inteira. Cílios e unha costumam pedir 15 ou 20 dias; corte, 30 ou 40.',
   },
   {
     alvo: 'contador',
-    titulo: '2. Veja quantas são',
+    titulo: 'Veja quantas são',
     corpo:
       'O número acompanha a faixa escolhida. Quem já tem horário marcado à frente não entra aqui — ela não sumiu.',
   },
   {
     alvo: 'legenda',
-    titulo: '3. Dois jeitos de chamar',
+    titulo: 'Dois jeitos de chamar',
     corpo:
       'O botão do WhatsApp abre a conversa com um texto pronto, sem desconto nenhum. A caixinha de presente gera um cupom só daquela cliente e manda o texto com o link do desconto.',
   },
   {
     alvo: 'linha',
-    titulo: '4. Uma cliente por vez',
+    titulo: 'Uma cliente por vez',
     corpo:
       'Cada linha mostra há quantos dias ela sumiu e a última visita. Se ela já tiver um cupom ativo, o código aparece aqui e o botão vira Reenviar — assim você não dá dois descontos pra mesma pessoa.',
   },
