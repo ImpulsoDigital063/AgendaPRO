@@ -16,9 +16,10 @@
  * veria tudo de novo ao trocar de celular.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconClose } from '@/components/ui/Icon'
+import { exemploPrazoPorNicho } from '@/lib/coupon-templates'
 
 type Passo = {
   /** data-tour do elemento destacado. Vazio = balão centralizado, sem alvo. */
@@ -30,53 +31,59 @@ type Passo = {
 /* Sem numero no titulo: o selo "N de 6" ja numera, e a propria pagina tem uma
    secao "COMO FUNCIONA · 4 PASSOS". Eram tres numeracoes competindo — o
    Eduardo viu "3 DE 6" ao lado de "2. Veja quantas sao" (08/09). */
-const PASSOS: Passo[] = [
+function montarPassos(descricao: string | null | undefined): Passo[] {
+  return [
   {
     alvo: '',
     titulo: 'Quem sumiu, e o que fazer',
     corpo:
-      'Esta aba mostra as clientes que pararam de voltar e te dá o caminho pra chamar cada uma. Vou te mostrar rapidinho.',
+      'Esta aba mostra quem parou de voltar e te dá o caminho pra chamar cada pessoa. Vou te mostrar rapidinho.',
   },
   {
     alvo: 'faixa',
     titulo: 'Escolha o prazo',
     corpo:
-      'Cada botão é uma faixa fechada: 15–19 traz só quem sumiu de 15 a 19 dias, 20–24 traz a próxima, e assim por diante. "Todos" mostra a base inteira. Cílios e unha costumam pedir 15 ou 20 dias; corte, 30 ou 40.',
+      'Cada botão é uma faixa fechada: 15–19 traz só quem sumiu de 15 a 19 dias, 20–24 traz a próxima, e assim por diante. "Todos" mostra a base inteira. ' +
+      exemploPrazoPorNicho(descricao),
   },
   {
     alvo: 'contador',
     titulo: 'Veja quantas são',
     corpo:
-      'O número acompanha a faixa escolhida. Quem já tem horário marcado à frente não entra aqui — ela não sumiu.',
+      'O número acompanha a faixa escolhida. Quem já tem horário marcado à frente não entra aqui — não sumiu.',
   },
   {
     alvo: 'legenda',
     titulo: 'Dois jeitos de chamar',
     corpo:
-      'O botão do WhatsApp abre a conversa com um texto pronto, sem desconto nenhum. A caixinha de presente gera um cupom só daquela cliente e manda o texto com o link do desconto.',
+      'O botão do WhatsApp abre a conversa com um texto pronto, sem desconto nenhum. A caixinha de presente gera um cupom só pra essa pessoa e manda o texto com o link do desconto.',
   },
   {
     alvo: 'linha',
     titulo: 'Uma cliente por vez',
     corpo:
-      'Cada linha mostra há quantos dias ela sumiu e a última visita. Se ela já tiver um cupom ativo, o código aparece aqui e o botão vira Reenviar — assim você não dá dois descontos pra mesma pessoa.',
+      'Cada linha mostra há quantos dias sumiu e a última visita. Se já houver um cupom ativo, o código aparece aqui e o botão vira Reenviar — assim você não dá dois descontos pra mesma pessoa.',
   },
   {
     alvo: 'cupons',
     titulo: 'Acompanhe o que você mandou',
     corpo:
       'Toque em Ativos, Usados ou Expirados pra ver a lista de cada estado, com o nome de quem recebeu e um botão pra reenviar.',
-  },
-]
+    },
+  ]
+}
 
 type Props = {
   /** Só monta quando a dona ainda não viu. */
   aberto: boolean
+  /** businesses.description · define a frase de prazo por nicho. */
+  descricao?: string | null
 }
 
 type Caixa = { top: number; left: number; width: number; height: number }
 
-export default function TourSumidos({ aberto }: Props) {
+export default function TourSumidos({ aberto, descricao }: Props) {
+  const PASSOS = useMemo(() => montarPassos(descricao), [descricao])
   const [i, setI] = useState(0)
   const [caixa, setCaixa] = useState<Caixa | null>(null)
   const [pronto, setPronto] = useState(false)
