@@ -24,14 +24,16 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import dynamic from 'next/dynamic'
 import Link from 'next/link'
-
 /* Ficha da cliente · a MESMA que abre em /admin/clientes. Montada aqui dentro
    de proposito: mandar pra outra tela foi o que o Eduardo reclamou em 06/09
-   ("clico e depois em voltar caio na aba de clientes"). Dynamic porque o
-   drawer e' pesado e so carrega quando alguem toca num card. */
-const ClienteDrawer = dynamic(() => import('./clientes/ClienteDrawer'), { ssr: false })
+   ("clico e depois em voltar caio na aba de clientes").
+   Import ESTATICO: com next/dynamic + ssr:false a hidratacao deste painel
+   quebrava (React #418) e a lista travava em "Carregando..." — o painel e'
+   passado como slot por um Server Component, e o ssr:false mudava a fronteira
+   de cliente da arvore. O drawer ja se protege sozinho: tem portalReady que
+   devolve null ate montar no browser. */
+import ClienteDrawer from './clientes/ClienteDrawer'
 import {
   IconWhatsapp, IconUsers, IconChevronRight, IconCheck, IconSearch, IconClose, IconGift,
 } from '@/components/ui/Icon'
