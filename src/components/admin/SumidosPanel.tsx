@@ -580,16 +580,23 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{c.name}</p>
-                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
-                      última em {dataBR(c.ultima)}
+                    {/* Uma linha so, com truncate: o marcador de cupom em bloco
+                        proprio quebrava em duas linhas e empurrava o nome. */}
+                    <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--admin-text-faded)' }}>
+                      última {dataBR(c.ultima)}
+                      {c.cupom && (
+                        <>
+                          <span className="mx-1" aria-hidden>·</span>
+                          <IconGift size={10} />{' '}
+                          <span className="font-semibold" style={{ color: 'var(--admin-accent)' }}>
+                            {c.cupom.code}
+                          </span>
+                          <span style={{ color: c.cupom.sent_at ? 'var(--admin-accent)' : 'var(--admin-warn)' }}>
+                            {c.cupom.sent_at ? ' enviado' : ' a enviar'}
+                          </span>
+                        </>
+                      )}
                     </p>
-                    {c.cupom && (
-                      <p className="text-[11px] mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md"
-                        style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>
-                        <IconGift size={10} /> já tem {c.cupom.code}
-                        {c.cupom.sent_at ? ' · enviado' : ' · não enviado'}
-                      </p>
-                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
