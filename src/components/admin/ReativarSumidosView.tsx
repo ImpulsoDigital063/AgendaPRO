@@ -108,7 +108,9 @@ export default function ReativarSumidosView({
   const [showFAQ, setShowFAQ] = useState(false)
   /* Lista de cupons por pessoa (08/09 · pedido do Eduardo). Ele abriu a tela,
      nao lembrava que ja tinha mandado cupom pra Erlane e ia gerar outro. */
-  const [showCupons, setShowCupons] = useState(false)
+  /* Cada numero e' um filtro (08/09, 2a rodada do Eduardo): clicar em Ativos
+     abre so os ativos, Usados so os usados. Antes era uma lista corrida. */
+  const [filtroCupom, setFiltroCupom] = useState<'ativos' | 'usados' | 'expirados' | null>(null)
 
   const templates = useMemo(() => suggestTemplates(businessDescription), [businessDescription])
 
@@ -453,50 +455,71 @@ export default function ReativarSumidosView({
       {/* Stats existentes (se houver) */}
       {couponStats.total > 0 && (
         <div className="admin-card p-3">
-          <button
-            type="button"
-            onClick={() => setShowCupons((v) => !v)}
-            className="w-full flex items-center justify-between gap-2 mb-2"
-            aria-expanded={showCupons}
-          >
+          <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
               Cupons disparados
             </span>
-            <span className="text-[11px] font-semibold" style={{ color: 'var(--admin-accent)' }}>
-              {showCupons ? 'fechar' : 'ver lista'}
-            </span>
-          </button>
+            {filtroCupom ? (
+              <button type="button" onClick={() => setFiltroCupom(null)}
+                className="text-[11px] font-semibold" style={{ color: 'var(--admin-accent)' }}>
+                fechar
+              </button>
+            ) : (
+              <span className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+                toque num número
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--admin-accent)' }}>
-                {couponStats.active}
-              </p>
-              <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
-                Ativos{orphanCoupons > 0 && (
-                  <span title="Cliente reativou-se mas cupom segue válido"> · {orphanCoupons} órfão{orphanCoupons === 1 ? '' : 's'}</span>
-                )}
-              </p>
-            </div>
-            <div>
-              <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--admin-success, #10B981)' }}>
-                {couponStats.used}
-              </p>
-              <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>Usados</p>
-            </div>
-            <div>
-              <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
-                {couponStats.expired}
-              </p>
-              <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>Expirados</p>
-            </div>
+            {([
+              { k: 'ativos' as const, n: couponStats.active, label: 'Ativos', cor: 'var(--admin-accent)' },
+              { k: 'usados' as const, n: couponStats.used, label: 'Usados', cor: 'var(--admin-success, #10B981)' },
+              { k: 'expirados' as const, n: couponStats.expired, label: 'Expirados', cor: 'var(--admin-text-faded)' },
+            ]).map((b) => {
+              const on = filtroCupom === b.k
+              return (
+                <button
+                  key={b.k}
+                  type="button"
+                  disabled={b.n === 0}
+                  onClick={() => setFiltroCupom(on ? null : b.k)}
+                  aria-pressed={on}
+                  className="rounded-xl py-1.5 transition-colors"
+                  style={{
+                    background: on ? 'var(--admin-accent-bg)' : 'transparent',
+                    border: `1px solid ${on ? 'var(--admin-accent)' : 'transparent'}`,
+                    opacity: b.n === 0 ? 0.45 : 1,
+                    cursor: b.n === 0 ? 'default' : 'pointer',
+                  }}
+                >
+                  <p className="text-lg font-bold tabular-nums" style={{ color: b.cor }}>{b.n}</p>
+                  <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                    {b.label}
+                    {b.k === 'ativos' && orphanCoupons > 0 && (
+                      <span title="Cliente reativou-se mas cupom segue válido"> · {orphanCoupons} órfão{orphanCoupons === 1 ? '' : 's'}</span>
+                    )}
+                  </p>
+                </button>
+              )
+            })}
           </div>
 
-          {showCupons && (
+          {filtroCupom && (
             <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: '1px solid var(--admin-divider)' }}>
-              {existingCoupons.length === 0 && (
-                <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Nenhum cupom ainda.</p>
+              {existingCoupons.filter((c) => {
+                const exp = new Date(c.expires_at) < new Date()
+                if (filtroCupom === 'usados') return !!c.used_at
+                if (filtroCupom === 'expirados') return !c.used_at && exp
+                return !c.used_at && !exp
+              }).length === 0 && (
+                <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Nenhum cupom aqui.</p>
               )}
-              {existingCoupons.map((c) => {
+              {existingCoupons.filter((c) => {
+                const exp = new Date(c.expires_at) < new Date()
+                if (filtroCupom === 'usados') return !!c.used_at
+                if (filtroCupom === 'expirados') return !c.used_at && exp
+                return !c.used_at && !exp
+              }).map((c) => {
                 const expirado = new Date(c.expires_at) < new Date()
                 const estado = c.used_at ? 'usado' : expirado ? 'expirado' : c.sent_at ? 'enviado' : 'criado'
                 const cor = c.used_at
