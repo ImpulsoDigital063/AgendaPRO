@@ -180,7 +180,7 @@ export default function ConfiguracoesTabs({
           onRewardsChange={setRewards}
           initialCustomers={initialCustomers}
           initialServices={initialServices}
-          businessCategory={business.description ?? null}
+          businessCategory={categoriaDoNegocio}
           referralPoints={referralPoints}
           onReferralPointsChange={setReferralPoints}
           punctualityPoints={punctualityPoints}

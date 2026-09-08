@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { variantesTelefone, mesmoTelefone } from '@/lib/telefone'
 
 /**
  * POST /api/admin/customers
@@ -106,13 +107,17 @@ export async function POST(req: NextRequest) {
       ? `(${phoneClean.slice(0, 2)}) ${phoneClean.slice(2, 6)}-${phoneClean.slice(6)}`
       : phone
 
-  // 1. Verifica se ja existe customer no business com esse phone
-  const { data: existingCustomer } = await supabase
+  // 1. Verifica se ja existe customer no business com esse phone.
+  //    Procura por TODAS as formas em que o numero pode estar gravado — quem
+  //    veio da importacao esta em "+5591...", quem foi digitado aqui esta em
+  //    "(91) 9...". Comparar so o formato brasileiro fazia a dona cadastrar de
+  //    novo alguem que ja existia (08/09/2026, base da Wanessa).
+  const { data: achados } = await supabase
     .from('customers')
-    .select('id, name')
+    .select('id, name, phone')
     .eq('business_id', business.id)
-    .eq('phone', phoneFormatted)
-    .maybeSingle()
+    .in('phone', variantesTelefone(phone))
+  const existingCustomer = (achados ?? []).find((c) => mesmoTelefone(c.phone, phone)) ?? null
 
   if (existingCustomer) {
     return NextResponse.json(
@@ -122,11 +127,11 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Cria/atualiza em `clients` (universal)
-  const { data: existingClient } = await supabase
+  const { data: clientesAchados } = await supabase
     .from('clients')
-    .select('id')
-    .eq('phone', phoneFormatted)
-    .maybeSingle()
+    .select('id, phone')
+    .in('phone', variantesTelefone(phone))
+  const existingClient = (clientesAchados ?? []).find((c) => mesmoTelefone(c.phone, phone)) ?? null
 
   let clientId: string | null = existingClient?.id ?? null
 

@@ -10,7 +10,10 @@ export const CILIOS_FICHA: NicheFicha = {
   slug: 'cilios',
   name: 'Cílios · Anamnese',
   // Só em negócios de beleza/estética — não aparece em barbearia, tatuagem, etc.
-  segments: ['Salão de beleza', 'Clínica estética', 'Nail designer', 'Manicure'],
+  // 'Cílios e sobrancelhas' entrou em 03/09/2026: era a única categoria que
+  // nomeia o nicho e não via a ficha do nicho. Pegava Studio Priscila Martins
+  // e Studio Amanda Freitas (mais a demo-lash).
+  segments: ['Salão de beleza', 'Clínica estética', 'Nail designer', 'Manicure', 'Cílios e sobrancelhas'],
   sections: [
     {
       kind: 'health',

@@ -25,6 +25,7 @@ import type {
   ImportSource,
   ImportWarning,
 } from './canonical'
+import { chaveTelefone } from '@/lib/telefone'
 
 export type RunOptions = {
   supabase: SupabaseClient
@@ -99,10 +100,15 @@ async function importClients(
     return report
   }
 
+  // Chave do mapa é o telefone CANÔNICO, nunca a string gravada: o painel
+  // grava "(91) 98338-0203" e o importador manda "+5591983380203". Comparando
+  // texto puro nada casava, e o import criava cliente novo pra quem já existia
+  // (17 duplicados na base da Wanessa, 08/09/2026). Ver src/lib/telefone.ts.
   const byPhone = new Map<string, { id: string }>()
   const byExternal = new Map<string, { id: string }>()
   for (const c of existing ?? []) {
-    if (c.phone) byPhone.set(c.phone, { id: c.id })
+    const k = chaveTelefone(c.phone)
+    if (k) byPhone.set(k, { id: c.id })
     if (c.import_source === opts.source && c.import_external_id) {
       byExternal.set(c.import_external_id, { id: c.id })
     }
@@ -117,7 +123,8 @@ async function importClients(
   // vence (é a mais recente na planilha).
   const inFile = new Map<string, CanonicalClient>()
   for (const c of clients) {
-    const dup = inFile.get(c.phone)
+    const kFile = chaveTelefone(c.phone) ?? c.phone
+    const dup = inFile.get(kFile)
     if (dup) {
       warnings.push({
         level: 'fix',
@@ -126,7 +133,7 @@ async function importClients(
       })
       report.skipped++
     }
-    inFile.set(c.phone, c)
+    inFile.set(kFile, c)
   }
 
   for (const c of inFile.values()) {
@@ -135,9 +142,9 @@ async function importClients(
 
     if (opts.dedupe === 'external-id-then-phone') {
       if (c.externalId) matchId = byExternal.get(c.externalId)?.id ?? null
-      if (!matchId) matchId = byPhone.get(c.phone)?.id ?? null
+      if (!matchId) matchId = byPhone.get(chaveTelefone(c.phone) ?? c.phone)?.id ?? null
     } else {
-      matchId = byPhone.get(c.phone)?.id ?? null
+      matchId = byPhone.get(chaveTelefone(c.phone) ?? c.phone)?.id ?? null
     }
 
     if (matchId) {

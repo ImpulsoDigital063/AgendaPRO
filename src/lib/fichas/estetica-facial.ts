@@ -24,7 +24,9 @@ import type { NicheFicha } from './types'
 export const ESTETICA_FACIAL_FICHA: NicheFicha = {
   slug: 'estetica-facial',
   name: 'Estética Facial · Anamnese',
-  segments: ['Salão de beleza', 'Clínica estética', 'Nail designer', 'Manicure'],
+  // 'Cílios e sobrancelhas' (03/09/2026): studio de cílios que começa a
+  // fazer limpeza de pele precisa da anamnese facial — caso da Elizângela.
+  segments: ['Salão de beleza', 'Clínica estética', 'Nail designer', 'Manicure', 'Cílios e sobrancelhas'],
   sections: [
     {
       kind: 'health',
