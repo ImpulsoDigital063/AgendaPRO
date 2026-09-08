@@ -569,6 +569,30 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
         </>
       )}
 
+      {/* LEGENDA · no celular os dois botoes sao so icone e nao ha hover pra
+          descobrir o que fazem. O Eduardo pegou isso em 08/09: "como o nosso
+          cliente vai saber isso, precisamos deixar mais claro". Uma linha, uma
+          vez, acima da lista — melhor que repetir rotulo em cada card. */}
+      {!loading && !erro && !cupons && grupos.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 pt-1 text-[11px]"
+          style={{ color: 'var(--admin-text-faded)' }}>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0" style={vazio}>
+              <IconWhatsapp size={11} />
+            </span>
+            chamar <strong style={{ color: 'var(--admin-text-2)' }}>sem desconto</strong>
+          </span>
+          {podeCriarCampanha && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0" style={solido}>
+                <IconGift size={11} />
+              </span>
+              chamar <strong style={{ color: 'var(--admin-text-2)' }}>com cupom de desconto</strong>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* ── Lista agrupada por faixa de urgência ── */}
       {!loading && !erro && !cupons && grupos.map((g) => (
         <div key={g.titulo} className="space-y-2">
@@ -629,7 +653,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                         style={vazio}
                       >
                         <IconWhatsapp size={15} />
-                        <span className="hidden md:inline">Chamar</span>
+                        <span className="hidden sm:inline">Chamar</span>
                       </a>
                       {/* Cupom · gera o desconto DESSA cliente e abre o WhatsApp
                           com o modelo do nicho preenchido. */}
@@ -644,7 +668,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                             style={vazio}
                           >
                             <IconGift size={15} />
-                            <span className="hidden md:inline">Reenviar</span>
+                            <span className="hidden sm:inline">Reenviar</span>
                           </button>
                         ) : (
                           <button
@@ -657,7 +681,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                             style={{ ...solido, opacity: gerandoLinha === c.id ? 0.6 : 1 }}
                           >
                             <IconGift size={15} />
-                            <span className="hidden md:inline">
+                            <span className="hidden sm:inline">
                               {gerandoLinha === c.id ? '...' : 'Cupom'}
                             </span>
                           </button>
