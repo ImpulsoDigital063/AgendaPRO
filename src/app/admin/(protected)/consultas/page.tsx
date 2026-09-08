@@ -2,7 +2,6 @@ import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ConsultasView from '@/components/recepcao/ConsultasView'
-import { temAbaSumidos } from '@/lib/feature-flags'
 import { IconSearch } from '@/components/ui/Icon'
 
 export const dynamic = 'force-dynamic'
@@ -47,7 +46,7 @@ export default async function AdminConsultasPage() {
       </header>
 
       <div className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8">
-        <ConsultasView businessId={business.id} professionals={profs ?? []} mostrarLinkCampanha mostrarAbaSumidos={temAbaSumidos(business.id)} />
+        <ConsultasView businessId={business.id} professionals={profs ?? []} mostrarLinkCampanha />
       </div>
     </main>
   )
