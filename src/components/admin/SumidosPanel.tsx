@@ -57,7 +57,15 @@ function rotuloFaixa(d: number, i: number, lista: readonly number[]): string {
 }
 
 
-type Sumido = { id: string; name: string; phone: string | null; ultima: string; diasSem: number }
+type CupomAtivo = {
+  code: string; discount_type: string; discount_value: number
+  expires_at: string; sent_at: string | null; whatsapp_message: string | null
+}
+type Sumido = {
+  id: string; name: string; phone: string | null; ultima: string; diasSem: number
+  /** Cupom ativo que ela JA tem — evita gerar um segundo (08/09). */
+  cupom?: CupomAtivo | null
+}
 
 type CupomGerado = {
   coupon: {
@@ -267,6 +275,21 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
     } finally {
       setGerandoLinha(null)
     }
+  }
+
+  /** Reenvia o cupom que a cliente JA tem, sem criar outro. */
+  function reenviarCupom(c: Sumido) {
+    if (!c.phone || !c.cupom) return
+    const fone = c.phone.replace(/\D/g, '')
+    const msg = fillTemplate(c.cupom.whatsapp_message || templates[templateIdx] || '', {
+      nome: c.name,
+      negocio,
+      desconto: formatDiscount(c.cupom.discount_type as 'fixed' | 'percent', c.cupom.discount_value),
+      validade: formatValidity(new Date(c.cupom.expires_at)),
+      link: `${window.location.origin}/${slug}?cupom=${c.cupom.code}`,
+    })
+    const comDDI = fone.startsWith('55') ? fone : `55${fone}`
+    window.open(`https://wa.me/${comDDI}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer')
   }
 
   function abrirWhatsApp(item: CupomGerado) {
@@ -560,6 +583,13 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                     <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
                       última em {dataBR(c.ultima)}
                     </p>
+                    {c.cupom && (
+                      <p className="text-[11px] mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md"
+                        style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>
+                        <IconGift size={10} /> já tem {c.cupom.code}
+                        {c.cupom.sent_at ? ' · enviado' : ' · não enviado'}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -585,20 +615,34 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                       {/* Cupom · gera o desconto DESSA cliente e abre o WhatsApp
                           com o modelo do nicho preenchido. */}
                       {podeCriarCampanha && (
-                        <button
-                          type="button"
-                          onClick={() => cupomDaLinha(c)}
-                          disabled={gerandoLinha === c.id}
-                          aria-label={`Enviar cupom para ${c.name}`}
-                          title="Gerar cupom e chamar"
-                          className="px-2.5 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
-                          style={{ ...solido, opacity: gerandoLinha === c.id ? 0.6 : 1 }}
-                        >
-                          <IconGift size={15} />
-                          <span className="hidden md:inline">
-                            {gerandoLinha === c.id ? '...' : 'Cupom'}
-                          </span>
-                        </button>
+                        c.cupom ? (
+                          <button
+                            type="button"
+                            onClick={() => reenviarCupom(c)}
+                            aria-label={`Reenviar cupom para ${c.name}`}
+                            title={`Já tem o cupom ${c.cupom.code} — reenviar em vez de criar outro`}
+                            className="px-2.5 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
+                            style={vazio}
+                          >
+                            <IconGift size={15} />
+                            <span className="hidden md:inline">Reenviar</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => cupomDaLinha(c)}
+                            disabled={gerandoLinha === c.id}
+                            aria-label={`Enviar cupom para ${c.name}`}
+                            title="Gerar cupom e chamar"
+                            className="px-2.5 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
+                            style={{ ...solido, opacity: gerandoLinha === c.id ? 0.6 : 1 }}
+                          >
+                            <IconGift size={15} />
+                            <span className="hidden md:inline">
+                              {gerandoLinha === c.id ? '...' : 'Cupom'}
+                            </span>
+                          </button>
+                        )
                       )}
                     </>
                   )}

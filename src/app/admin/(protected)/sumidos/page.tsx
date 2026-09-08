@@ -42,10 +42,30 @@ export default async function SumidosPage({
   // Lista cupons ativos pra mostrar dashboard mini
   const { data: existingCoupons } = await supabase
     .from('coupons')
-    .select('id, code, sent_at, used_at, expires_at, customer_id')
+    .select('id, code, sent_at, used_at, expires_at, customer_id, discount_type, discount_value, whatsapp_message')
     .eq('business_id', business.id)
     .order('created_at', { ascending: false })
     .limit(50)
+
+  /* Nome e telefone de quem tem cada cupom, pra lista "ver lista" do painel
+     (08/09). Sem isso a lista mostraria so o codigo, que nao diz nada. */
+  const cupomCustomerIds = Array.from(
+    new Set((existingCoupons || []).map((c) => c.customer_id).filter(Boolean) as string[]),
+  )
+  const { data: cupomCustomers } = cupomCustomerIds.length
+    ? await supabase
+        .from('customers')
+        .select('id, name, phone')
+        .eq('business_id', business.id)
+        .in('id', cupomCustomerIds)
+    : { data: [] }
+  const donoDoCupom = new Map(
+    (cupomCustomers || []).map((c) => [c.id as string, { name: c.name as string, phone: c.phone as string }]),
+  )
+  const cuponsComDono = (existingCoupons || []).map((c) => {
+    const dono = c.customer_id ? donoDoCupom.get(c.customer_id as string) : null
+    return { ...c, customer_name: dono?.name ?? null, customer_phone: dono?.phone ?? null }
+  })
 
   // Conta sumidos atuais (>=40 dias sem aparecer) e quantos NAO tem
   // cupom ativo. CIC NB-3 reportou: contador "8 ativos / 3 usados"
@@ -193,7 +213,7 @@ export default async function SumidosPage({
             businessName={business.name}
             businessDescription={business.description}
             dias={SUMIDO_DAYS}
-            existingCoupons={existingCoupons || []}
+            existingCoupons={cuponsComDono}
             sumidosTotal={sumidosTotal}
             sumidosWithoutCoupon={sumidosWithoutCoupon}
             orphanCoupons={orphanCoupons}

@@ -92,6 +92,48 @@ export async function GET(req: NextRequest) {
     .select('id, name, phone')
     .in('id', Array.from(sumidos.keys()))
 
+  /* CUPOM ATIVO POR CLIENTE (08/09) · sem isto a dona reabre a tela, nao
+     lembra que ja mandou cupom pra alguem e gera um segundo — dois descontos
+     pra mesma pessoa, e o primeiro solto no mundo. Foi o que quase aconteceu
+     com a Erlane. A ponte e' a de sempre: coupons.customer_id -> customers
+     -> telefone -> clients. */
+  const agoraIso = new Date().toISOString()
+  const { data: cupons } = await supabase
+    .from('coupons')
+    .select('id, code, customer_id, discount_type, discount_value, expires_at, sent_at, used_at, whatsapp_message')
+    .eq('business_id', businessId)
+    .is('used_at', null)
+    .gt('expires_at', agoraIso)
+
+  const cupomPorFone = new Map<string, {
+    code: string; discount_type: string; discount_value: number
+    expires_at: string; sent_at: string | null; whatsapp_message: string | null
+  }>()
+  const customerIds = (cupons ?? []).map((c) => c.customer_id).filter(Boolean) as string[]
+  if (customerIds.length > 0) {
+    const { data: custs } = await supabase
+      .from('customers')
+      .select('id, phone')
+      .eq('business_id', businessId)
+      .in('id', customerIds)
+    const fonePorCustomer = new Map((custs ?? []).map((c) => [c.id as string, c.phone as string]))
+    for (const cp of cupons ?? []) {
+      const fone = cp.customer_id ? fonePorCustomer.get(cp.customer_id as string) : null
+      if (!fone) continue
+      // Mais recente ganha, se houver mais de um ativo.
+      const atual = cupomPorFone.get(fone)
+      if (atual && atual.expires_at > (cp.expires_at as string)) continue
+      cupomPorFone.set(fone, {
+        code: cp.code as string,
+        discount_type: cp.discount_type as string,
+        discount_value: Number(cp.discount_value),
+        expires_at: cp.expires_at as string,
+        sent_at: (cp.sent_at as string) ?? null,
+        whatsapp_message: (cp.whatsapp_message as string) ?? null,
+      })
+    }
+  }
+
   const clientes = (clients ?? [])
     .map((c) => {
       const ultima = sumidos.get(c.id as string)!
@@ -101,6 +143,7 @@ export async function GET(req: NextRequest) {
         phone: (c.phone as string) ?? null,
         ultima,
         diasSem: diasEntre(ultima, hoje),
+        cupom: c.phone ? cupomPorFone.get(c.phone as string) ?? null : null,
       }
     })
     // Quem sumiu há mais tempo primeiro — é quem está mais perto de virar perda.

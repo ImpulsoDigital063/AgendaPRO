@@ -28,6 +28,12 @@ type Props = {
     used_at: string | null
     expires_at: string
     customer_id: string | null
+    /** Enriquecido pela page de /admin/sumidos pra listar por pessoa (08/09). */
+    customer_name?: string | null
+    customer_phone?: string | null
+    discount_type?: string | null
+    discount_value?: number | null
+    whatsapp_message?: string | null
   }[]
   sumidosTotal: number
   sumidosWithoutCoupon: number
@@ -100,13 +106,21 @@ export default function ReativarSumidosView({
   const [showAllCoupons, setShowAllCoupons] = useState(false)
   // FAQ colapsável · default fechado (não distrai usuário experiente)
   const [showFAQ, setShowFAQ] = useState(false)
+  /* Lista de cupons por pessoa (08/09 · pedido do Eduardo). Ele abriu a tela,
+     nao lembrava que ja tinha mandado cupom pra Erlane e ia gerar outro. */
+  const [showCupons, setShowCupons] = useState(false)
 
   const templates = useMemo(() => suggestTemplates(businessDescription), [businessDescription])
 
   // ROI estimado · taxa de conversão típica 20% (1 em 5 sumidos volta)
   // Custo zero — só o desconto que o dono define
   const sumidosCount = sumidosWithoutCoupon > 0 ? sumidosWithoutCoupon : sumidosTotal
-  const retornoEsperado = Math.floor(sumidosCount * 0.2)
+  /* Math.floor zerava a estimativa em toda faixa com menos de 5 clientes —
+     e com faixas fechadas (08/09) isso virou o caso comum. O card existe pra
+     convencer a dona a agir e estava dizendo "0 atendimentos de volta · custo
+     zero", que soa como "nao vale a pena". Havendo pelo menos 1 sumido, a
+     estimativa minima e' 1. */
+  const retornoEsperado = sumidosCount > 0 ? Math.max(1, Math.round(sumidosCount * 0.2)) : 0
   const receitaEstimada = retornoEsperado * ticketMedio
   const formatBRL = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -195,6 +209,22 @@ export default function ReativarSumidosView({
     const data = await res.json()
     setCampaignResult(data.coupons || [])
     setStep('send')
+  }
+
+  /** Reenvia um cupom que ja existe, direto da lista. Nao cria nada novo. */
+  function reenviarDaLista(c: Props['existingCoupons'][number]) {
+    const fone = (c.customer_phone || '').replace(/\D/g, '')
+    if (fone.length < 10) return
+    const msg = fillTemplate(c.whatsapp_message || customMessage || '', {
+      nome: c.customer_name || '',
+      negocio: businessName,
+      desconto: formatDiscount((c.discount_type as 'fixed' | 'percent') || 'fixed', Number(c.discount_value ?? 0)),
+      validade: formatValidity(new Date(c.expires_at)),
+      link: `${window.location.origin}/${businessSlug}?cupom=${c.code}`,
+    })
+    const comDDI = fone.startsWith('55') ? fone : `55${fone}`
+    window.open(`https://wa.me/${comDDI}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer')
+    fetch(`/api/admin/coupons/${c.id}/sent`, { method: 'POST' }).catch(() => {})
   }
 
   async function abrirWhatsApp(item: CouponWithCustomer) {
@@ -423,9 +453,19 @@ export default function ReativarSumidosView({
       {/* Stats existentes (se houver) */}
       {couponStats.total > 0 && (
         <div className="admin-card p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-mute)' }}>
-            Cupons disparados
-          </p>
+          <button
+            type="button"
+            onClick={() => setShowCupons((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 mb-2"
+            aria-expanded={showCupons}
+          >
+            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
+              Cupons disparados
+            </span>
+            <span className="text-[11px] font-semibold" style={{ color: 'var(--admin-accent)' }}>
+              {showCupons ? 'fechar' : 'ver lista'}
+            </span>
+          </button>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
               <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--admin-accent)' }}>
@@ -450,6 +490,54 @@ export default function ReativarSumidosView({
               <p className="text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>Expirados</p>
             </div>
           </div>
+
+          {showCupons && (
+            <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: '1px solid var(--admin-divider)' }}>
+              {existingCoupons.length === 0 && (
+                <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Nenhum cupom ainda.</p>
+              )}
+              {existingCoupons.map((c) => {
+                const expirado = new Date(c.expires_at) < new Date()
+                const estado = c.used_at ? 'usado' : expirado ? 'expirado' : c.sent_at ? 'enviado' : 'criado'
+                const cor = c.used_at
+                  ? 'var(--admin-success, #10B981)'
+                  : expirado
+                    ? 'var(--admin-text-faded)'
+                    : c.sent_at
+                      ? 'var(--admin-accent)'
+                      : 'var(--admin-warn)'
+                const podeReenviar = !c.used_at && !expirado && !!c.customer_phone
+                return (
+                  <div key={c.id} className="flex items-center justify-between gap-2 py-1.5">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold truncate" style={{ color: 'var(--admin-text)' }}>
+                        {c.customer_name || 'Sem nome'}
+                      </p>
+                      <p className="text-[10px] font-mono" style={{ color: 'var(--admin-text-faded)' }}>
+                        {c.code} · vale até {new Date(c.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: 'var(--admin-input-bg)', color: cor }}>
+                        {estado}
+                      </span>
+                      {podeReenviar && (
+                        <button
+                          type="button"
+                          onClick={() => reenviarDaLista(c)}
+                          className="text-[11px] font-semibold px-2 py-1 rounded-lg"
+                          style={{ color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}
+                        >
+                          Reenviar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
