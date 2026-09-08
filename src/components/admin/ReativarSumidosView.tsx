@@ -363,7 +363,7 @@ export default function ReativarSumidosView({
       {/* PRAZO · a dona escolhe, e a pagina inteira recalcula (Eduardo, 06/09).
           Navega por searchParam pra reaproveitar o calculo do server component:
           sumidos, cupons orfaos e ROI saem todos coerentes com o prazo. */}
-      <div className="admin-card p-3 lg:p-4">
+      <div className="admin-card p-3 lg:p-4" data-tour="faixa">
         <div className="flex items-baseline justify-between gap-2 mb-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
             Sumidos · faixa
@@ -459,7 +459,7 @@ export default function ReativarSumidosView({
 
       {/* Stats existentes (se houver) */}
       {couponStats.total > 0 && (
-        <div className="admin-card p-3">
+        <div className="admin-card p-3" data-tour="cupons">
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
               Cupons disparados

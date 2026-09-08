@@ -1,0 +1,33 @@
+/**
+ * POST /api/admin/tour-sumidos
+ *
+ * Marca que a dona viu (ou pulou) o tour da aba Sumidos. Só o DONO —
+ * a recepção não decide isso pelo negócio.
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit-api'
+
+export async function POST(req: NextRequest) {
+  const rl = checkRateLimit(req, { key: 'admin-tour-sumidos', limit: 10, windowSeconds: 60 })
+  if (rl) return rl
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'no_auth' }, { status: 401 })
+
+  const { data: biz } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (!biz) return NextResponse.json({ error: 'only_owner' }, { status: 403 })
+
+  const { error } = await supabase
+    .from('businesses')
+    .update({ tour_sumidos_em: new Date().toISOString() })
+    .eq('id', biz.id)
+  if (error) return NextResponse.json({ error: 'save_failed' }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
+}

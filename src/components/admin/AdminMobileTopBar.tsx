@@ -24,6 +24,7 @@ import {
   IconLayers,
 } from '@/components/ui/Icon'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
+import { ehNovidade } from '@/lib/novidades'
 
 type Props = {
   businessName: string | null
@@ -313,6 +314,12 @@ export default function AdminMobileTopBar({
                         >
                           <item.Icon size={18} />
                           <span className="text-sm flex-1">{item.label}</span>
+                          {ehNovidade(item.href) && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md tracking-wide"
+                              style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>
+                              NOVO
+                            </span>
+                          )}
                           {item.badge && item.badge > 0 ? (
                             <span
                               className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"

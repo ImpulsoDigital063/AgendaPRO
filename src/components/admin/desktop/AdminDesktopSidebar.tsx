@@ -29,6 +29,7 @@ import {
   IconLayers,
 } from '@/components/ui/Icon'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
+import { ehNovidade } from '@/lib/novidades'
 
 type Brand = {
   business_name?: string | null
@@ -305,6 +306,12 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
                     {!collapsed && (
                       <>
                         <span className="truncate flex-1">{item.label}</span>
+                        {item.href && ehNovidade(item.href) && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md tracking-wide shrink-0"
+                            style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>
+                            NOVO
+                          </span>
+                        )}
                         {item.comingSoon && (
                           <span
                             className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"

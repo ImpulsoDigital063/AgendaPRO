@@ -328,7 +328,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
     <div className="space-y-3">
       {/* ── Seletor de prazo · escondido quando a page ja manda o prazo ── */}
       {!controlado && (
-      <div className="admin-card p-3 sm:p-4">
+      <div className="admin-card p-3 sm:p-4" data-tour="faixa">
         <div className="flex items-baseline justify-between gap-2 mb-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
             Sumidos · faixa
@@ -372,7 +372,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
 
       {/* ── Resumo + ação principal, numa linha só ── */}
       {!loading && !erro && (
-        <div className="admin-card p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="admin-card p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3" data-tour="contador">
           <div className="flex items-center gap-2.5 min-w-0">
             <span
               className="w-9 h-9 rounded-full inline-flex items-center justify-center shrink-0"
@@ -575,7 +575,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
           vez, acima da lista — melhor que repetir rotulo em cada card. */}
       {!loading && !erro && !cupons && grupos.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 pt-1 text-[11px]"
-          style={{ color: 'var(--admin-text-faded)' }}>
+          style={{ color: 'var(--admin-text-faded)' }} data-tour="legenda">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0" style={vazio}>
               <IconWhatsapp size={11} />
@@ -608,7 +608,8 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
 
           <div className="grid gap-2 md:grid-cols-2">
             {g.itens.map((c) => (
-              <div key={c.id} className="admin-card p-3 flex items-center justify-between gap-3">
+              <div key={c.id} className="admin-card p-3 flex items-center justify-between gap-3"
+                data-tour={g.itens[0]?.id === c.id ? 'linha' : undefined}>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-9 h-9 rounded-full inline-flex items-center justify-center text-[11px] font-bold shrink-0"
                     style={{ background: TONS[g.tom].bg, color: TONS[g.tom].fg }}>
