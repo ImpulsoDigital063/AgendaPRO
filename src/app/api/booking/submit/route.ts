@@ -487,7 +487,11 @@ export async function POST(req: NextRequest) {
   if (cupomAplicado && !cupomAplicado.standalone && descontoCupom > 0) {
     const { error: cupErr } = await db
       .from('coupons')
-      .update({ used_at: new Date().toISOString() })
+      /* used_appointment_id JUNTO (08/09): sem ele o vinculo cupom->agendamento
+         se perde. A rota /api/coupons/use, que gravava esse campo, agora
+         encontra used_at preenchido e sai no early-return `already_used` antes
+         de escrever. E' por esse vinculo que se mede quem voltou. */
+      .update({ used_at: new Date().toISOString(), used_appointment_id: appointment.id })
       .eq('id', cupomAplicado.id)
       .is('used_at', null)
     if (cupErr) {
