@@ -69,28 +69,37 @@ function montarPassos(categoria: string | null): Passo[] {
       `Cada linha mostra há quantos dias sumiu e a última visita. Se já houver um cupom ativo, o código aparece aqui e o botão vira Reenviar — assim você não dá dois descontos pra mesma pessoa.`,
   },
   {
-    alvo: 'desconto',
-    titulo: 'Quanto de desconto dar',
-    corpo:
-      'Valor fixo em reais ou porcentagem, e quantos dias o cupom vale. Cada pessoa recebe um código único — se ela não usar, você não gastou nada.',
-  },
-  {
-    alvo: 'mensagem',
-    titulo: 'A mensagem é sua, e dá pra editar',
-    corpo:
-      `Vêm modelos prontos pro seu tipo de atendimento, e você troca o texto à vontade na caixa. {nome}, {negocio}, {desconto}, {validade} e {link} são preenchidos sozinhos — cada ${t.s} recebe a mensagem com os dados próprios. Como sai do seu WhatsApp, não precisa de aprovação: você edita e manda na hora.`,
-  },
-  {
-    alvo: 'previa',
-    titulo: 'Confira antes de gerar',
-    corpo:
-      'A prévia mostra a mensagem já montada, com nome de exemplo e o link do cupom. Se estiver do jeito que você quer, é só gerar — aí aparece um botão de WhatsApp por pessoa.',
-  },
-  {
     alvo: 'cupons',
     titulo: 'Acompanhe o que você mandou',
-    corpo:
-      'Toque em Ativos, Usados ou Expirados pra ver a lista de cada estado, com o nome de quem recebeu e um botão pra reenviar.',
+      corpo:
+        'Toque em Ativos, Usados ou Expirados pra ver a lista de cada estado, com o nome de quem recebeu e um botão pra reenviar.',
+    },
+  ]
+}
+
+/* SEGUNDO TOUR (Eduardo, 08/09) · o primeiro apresenta a tela e para. Este
+   só aparece quando a dona rola até a parte de montar o cupom — o momento em
+   que a explicação vira útil, em vez de virar mais um passo pra pular. */
+function montarPassos2(categoria: string | null): Passo[] {
+  const t = termoPessoa(categoria)
+  return [
+    {
+      alvo: 'desconto',
+      titulo: 'Quanto de desconto dar',
+      corpo:
+        'Valor fixo em reais ou porcentagem, e quantos dias o cupom vale. Cada pessoa recebe um código único — se não usar, você não gastou nada.',
+    },
+    {
+      alvo: 'mensagem',
+      titulo: 'A mensagem é sua, e dá pra editar',
+      corpo:
+        `Vêm modelos prontos pro seu tipo de atendimento, e você troca o texto à vontade na caixa. {nome}, {negocio}, {desconto}, {validade} e {link} se preenchem sozinhos — cada ${t.s} recebe com os dados próprios. Como sai do seu WhatsApp, não precisa de aprovação: você edita e manda na hora.`,
+    },
+    {
+      alvo: 'previa',
+      titulo: 'Confira antes de gerar',
+      corpo:
+        'A prévia mostra a mensagem montada, com nome de exemplo e o link do cupom. Se estiver do jeito que você quer, é só gerar — aí aparece um botão de WhatsApp por pessoa.',
     },
   ]
 }
@@ -100,12 +109,17 @@ type Props = {
   aberto: boolean
   /** Categoria resolvida pelo modulo de segmento (nao o texto livre). */
   categoria?: string | null
+  /** 1 = apresentacao (abre sozinho) · 2 = como usar (entra por convite). */
+  parte?: 1 | 2
 }
 
 type Caixa = { top: number; left: number; width: number; height: number }
 
-export default function TourSumidos({ aberto, categoria = null }: Props) {
-  const PASSOS = useMemo(() => montarPassos(categoria), [categoria])
+export default function TourSumidos({ aberto, categoria = null, parte = 1 }: Props) {
+  const PASSOS = useMemo(
+    () => (parte === 2 ? montarPassos2(categoria) : montarPassos(categoria)),
+    [categoria, parte],
+  )
   const [i, setI] = useState(0)
   const [caixa, setCaixa] = useState<Caixa | null>(null)
   const [pronto, setPronto] = useState(false)
@@ -117,8 +131,8 @@ export default function TourSumidos({ aberto, categoria = null }: Props) {
     setFechado(true)
     // Marca no banco. Se falhar, o tour volta na próxima — melhor que sumir
     // sem a dona ter visto.
-    fetch('/api/admin/tour-sumidos', { method: 'POST' }).catch(() => {})
-  }, [])
+    fetch(`/api/admin/tour-sumidos?parte=${parte}`, { method: 'POST' }).catch(() => {})
+  }, [parte])
 
   /* Mede o alvo do passo atual. useLayoutEffect pra não piscar o balão numa
      posição errada antes de reposicionar. */
