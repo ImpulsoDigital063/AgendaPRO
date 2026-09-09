@@ -15,6 +15,10 @@ export const DIAS_COM_SELO = 30
 
 export const NOVIDADES: Readonly<Record<string, string>> = {
   '/admin/sumidos': '2026-09-08',
+  /* Sinal não é tela nova — existe há meses. O selo entrou em 08/09 a pedido
+     do Eduardo pra chamar atenção de quem ainda não usa: é a tela que segura
+     dinheiro de horário furado. Some sozinha em 30 dias, como as outras. */
+  '/admin/financeiro/sinal': '2026-09-08',
   '/admin/cartao-presente': '2026-08-26',
 }
 
