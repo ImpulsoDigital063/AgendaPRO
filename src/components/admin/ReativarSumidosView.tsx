@@ -666,7 +666,7 @@ export default function ReativarSumidosView({
       <div className="lg:grid lg:grid-cols-[1.4fr_1fr] lg:gap-6 lg:items-start space-y-5 lg:space-y-0">
         <div className="admin-card p-4 space-y-5">
         {/* Etapa 1: Desconto */}
-        <div>
+        <div data-tour="desconto">
           <p className="text-sm font-bold mb-1" style={{ color: 'var(--admin-text)' }}>
             1. Quanto de desconto vai dar?
           </p>
@@ -725,7 +725,7 @@ export default function ReativarSumidosView({
         </div>
 
         {/* Etapa 2: Mensagem */}
-        <div>
+        <div data-tour="mensagem">
           <p className="text-sm font-bold mb-1" style={{ color: 'var(--admin-text)' }}>
             2. Como vai chamar o cliente de volta?
           </p>
@@ -767,7 +767,7 @@ export default function ReativarSumidosView({
           <div className="admin-card p-4 space-y-4">
 
         {/* Etapa 3: Preview */}
-        <div>
+        <div data-tour="previa">
           <p className="text-sm font-bold mb-1" style={{ color: 'var(--admin-text)' }}>
             3. Veja como vai chegar pro cliente
           </p>

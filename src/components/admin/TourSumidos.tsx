@@ -69,6 +69,24 @@ function montarPassos(categoria: string | null): Passo[] {
       `Cada linha mostra há quantos dias sumiu e a última visita. Se já houver um cupom ativo, o código aparece aqui e o botão vira Reenviar — assim você não dá dois descontos pra mesma pessoa.`,
   },
   {
+    alvo: 'desconto',
+    titulo: 'Quanto de desconto dar',
+    corpo:
+      'Valor fixo em reais ou porcentagem, e quantos dias o cupom vale. Cada pessoa recebe um código único — se ela não usar, você não gastou nada.',
+  },
+  {
+    alvo: 'mensagem',
+    titulo: 'A mensagem é sua, e dá pra editar',
+    corpo:
+      `Vêm modelos prontos pro seu tipo de atendimento, e você troca o texto à vontade na caixa. {nome}, {negocio}, {desconto}, {validade} e {link} são preenchidos sozinhos — cada ${t.s} recebe a mensagem com os dados próprios. Como sai do seu WhatsApp, não precisa de aprovação: você edita e manda na hora.`,
+  },
+  {
+    alvo: 'previa',
+    titulo: 'Confira antes de gerar',
+    corpo:
+      'A prévia mostra a mensagem já montada, com nome de exemplo e o link do cupom. Se estiver do jeito que você quer, é só gerar — aí aparece um botão de WhatsApp por pessoa.',
+  },
+  {
     alvo: 'cupons',
     titulo: 'Acompanhe o que você mandou',
     corpo:
