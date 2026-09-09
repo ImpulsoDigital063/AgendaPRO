@@ -31,6 +31,7 @@ import {
 import {
   suggestTemplates, sampleNameFor, fillTemplate, formatDiscount, formatValidity,
 } from '@/lib/coupon-templates'
+import { SUMIDOS_ENVIO_AUTOMATICO } from '@/lib/feature-flags'
 
 /* 0 = TODOS · cumulativo do menor degrau pra cima, e o padrao. As seis faixas
    fechadas continuam como filtro. Sem o Todos, abrir em 40 significava a faixa
@@ -624,7 +625,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
           Reativacao e' template MARKETING na Meta: 7 unidades por pessoa, nao
           1. Mostrar o custo ANTES e' o ponto — a dona nao pode descobrir que
           gastou meio pacote depois de tocar num botao. */}
-      {!loading && !erro && !cupons && podeCriarCampanha && envio?.liberado && alvosDoDisparo.length > 0 && (
+      {SUMIDOS_ENVIO_AUTOMATICO && !loading && !erro && !cupons && podeCriarCampanha && envio?.liberado && alvosDoDisparo.length > 0 && (
         <div className="admin-card p-4 space-y-3">
           <div className="flex items-start gap-2.5">
             <span className="w-9 h-9 rounded-full inline-flex items-center justify-center shrink-0"

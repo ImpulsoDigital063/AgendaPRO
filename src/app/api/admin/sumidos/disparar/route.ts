@@ -31,6 +31,7 @@ import { canalLiberado } from '@/lib/mensagens/liberado'
 import { podeEnviar } from '@/lib/mensagens/franquia'
 import { enviar } from '@/lib/mensagens/enviar'
 import { UNIDADES_POR_TIPO } from '@/lib/mensagens/custo-sumidos'
+import { SUMIDOS_ENVIO_AUTOMATICO } from '@/lib/feature-flags'
 
 const DIAS_OPCOES = [15, 20, 25, 30, 40, 60]
 const TETO_POR_CHAMADA = 60
@@ -38,6 +39,13 @@ const TETO_POR_CHAMADA = 60
 export async function POST(req: NextRequest) {
   const rl = checkRateLimit(req, { key: 'admin-sumidos-disparar', limit: 6, windowSeconds: 60 })
   if (rl) return rl
+
+  /* Desligado enquanto o sistema de envios nao assenta (Eduardo, 08/09).
+     A trava fica AQUI tambem, nao so na tela: esconder botao nao impede
+     ninguem de chamar a rota. */
+  if (!SUMIDOS_ENVIO_AUTOMATICO) {
+    return NextResponse.json({ error: 'envio_automatico_desligado' }, { status: 403 })
+  }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
