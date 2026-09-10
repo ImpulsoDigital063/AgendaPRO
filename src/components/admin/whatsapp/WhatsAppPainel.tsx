@@ -500,7 +500,7 @@ export default function WhatsAppPainel({
                 onEnviarTexto={(corpo) => enviarTexto(a.tipo, corpo)}
                 categoria={category ?? null}
                 abrirEditando={vista.editar === true}
-                tourEdicaoVisto={tour2Visto}
+                tourEdicaoVisto={tour2Visto || !liberado}
                 onTourEdicaoVisto={() => setTour2Visto(true)}
               />
             </div>
@@ -1001,7 +1001,10 @@ export default function WhatsAppPainel({
           oferta, outra tela — e só até ver ou pular uma vez. */}
       <TourAvisos
         parte={1}
-        aberto={temPacote && !tour1Visto}
+        /* Só onde o envio está liberado (Eduardo, 10/09): o tour diz que "as
+           mensagens saem desse número", e com o pacote ativo e o canal ainda
+           travado isso seria mentira — e a dona veria antes do aviso dele. */
+        aberto={temPacote && liberado && !tour1Visto}
         categoria={category ?? null}
         sinalAtivo={sinalAtivo}
         onVisto={() => setTour1Visto(true)}
