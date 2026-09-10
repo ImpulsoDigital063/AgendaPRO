@@ -20,7 +20,7 @@ export default async function AdminWhatsAppPage() {
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, category, phone')
+    .select('id, name, category, phone, sinal_enabled, tour_avisos_em, tour_avisos_2_em')
     .eq('owner_id', user.id)
     .single()
   if (!business) redirect(await destinoSemNegocio())
@@ -59,6 +59,12 @@ export default async function AdminWhatsAppPage() {
           businessName={business.name}
           category={business.category}
           businessPhone={business.phone}
+          /* Tour da aba (v151) e item de leitura da cobranca do sinal. O sinal
+             vem daqui porque nenhuma rota do painel devolvia sinal_enabled —
+             e quem liga e desliga continua sendo a aba Sinal, uma porta so. */
+          tourAvisosVisto={!!business.tour_avisos_em}
+          tourEdicaoVisto={!!business.tour_avisos_2_em}
+          sinalAtivo={business.sinal_enabled === true}
         />
       </div>
     </main>

@@ -44,6 +44,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { termoPessoa } from '@/lib/segmento'
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -54,6 +55,7 @@ import {
   IconClock,
   IconGift,
   IconSparkles,
+  IconWallet,
   IconWhatsapp,
 } from '@/components/ui/Icon'
 import { BarraConsumo, Chip, IconeAviso, Linha, Lista, TituloSecao, Toggle } from './ui'
@@ -62,6 +64,8 @@ import Recarga from './Recarga'
 import ModalPix from './ModalPix'
 import Oferta, { type Movimento, type PacoteTela } from './Oferta'
 import Respostas, { type Resposta } from './Respostas'
+import TourAvisos from './TourAvisos'
+import PerguntasAvisos from './PerguntasAvisos'
 import VoceManda, {
   VoceMandaLista,
   type Qual,
@@ -215,10 +219,19 @@ export default function WhatsAppPainel({
   businessName,
   businessPhone,
   category,
+  tourAvisosVisto = false,
+  tourEdicaoVisto = false,
+  sinalAtivo = false,
 }: {
   businessName: string
   businessPhone?: string | null
   category?: string | null
+  /** Já viu (ou pulou) o tour da aba — businesses.tour_avisos_em (v151). */
+  tourAvisosVisto?: boolean
+  /** Já viu o tour de edição de texto — businesses.tour_avisos_2_em (v151). */
+  tourEdicaoVisto?: boolean
+  /** businesses.sinal_enabled. Só leitura aqui: quem liga é a aba Sinal. */
+  sinalAtivo?: boolean
 }) {
   const [canal, setCanal] = useState<Canal | null>(null)
   const [pacotes, setPacotes] = useState<Pacotes | null>(null)
@@ -235,7 +248,7 @@ export default function WhatsAppPainel({
     | { tela: 'inicio' }
     | { tela: 'mensagens' }
     | { tela: 'manual'; qual: Qual }
-    | { tela: 'aviso'; tipo: string }
+    | { tela: 'aviso'; tipo: string; editar?: boolean }
     | { tela: 'recarga' }
   >({ tela: 'inicio' })
   const [salvando, setSalvando] = useState(false)
@@ -255,6 +268,12 @@ export default function WhatsAppPainel({
 
   /* Vocabulario do segmento: clinica diz "paciente", personal diz "aluno". */
   const T = termoPessoa(category ?? null)
+  const router = useRouter()
+  /* "Já viu" LOCAL, inicializado pelo servidor. Sem isto o tour reabre ao
+     voltar do editor: a tela raiz remonta e a flag do servidor só atualiza no
+     próximo carregamento da página. */
+  const [tour1Visto, setTour1Visto] = useState(tourAvisosVisto)
+  const [tour2Visto, setTour2Visto] = useState(tourEdicaoVisto)
   const INFO = infoDe(T)
 
   const carregar = useCallback(() => {
@@ -479,6 +498,10 @@ export default function WhatsAppPainel({
                 onBotao={(v) => salvarRegra(a.tipo, { comBotao: v })}
                 onHorario={(h) => salvarRegra(a.tipo, { offsetMinutos: -h * 60 })}
                 onEnviarTexto={(corpo) => enviarTexto(a.tipo, corpo)}
+                categoria={category ?? null}
+                abrirEditando={vista.editar === true}
+                tourEdicaoVisto={tour2Visto}
+                onTourEdicaoVisto={() => setTour2Visto(true)}
               />
             </div>
           </div>
@@ -559,7 +582,11 @@ export default function WhatsAppPainel({
      quem estava usando. Quem mais precisa saber que é experimento é quem já
      manda mensagem pra cliente real: baixa a expectativa antes do primeiro
      tropeço e convida a sugerir. Sai quando o módulo deixar de ser beta. */
-  const chipBeta = <Chip tom="atencao">Beta</Chip>
+  const chipBeta = (
+    <span data-tour="avisos-beta" className="inline-flex">
+      <Chip tom="atencao">Beta</Chip>
+    </span>
+  )
 
   const caixaPix = pix ? (
     <div
@@ -599,6 +626,48 @@ export default function WhatsAppPainel({
   /* A lista aparece em dois lugares: é a raiz de quem já tem pacote, e é a
      tela "ver as mensagens" de quem ainda vai contratar — ela precisa poder
      ler e editar os textos ANTES de pagar. */
+  /* ── COBRANÇA DO SINAL, SÓ LEITURA (10/09) ───────────────────
+     Sem interruptor de propósito: quem liga é a aba Sinal, junto da chave PIX,
+     do percentual e do prazo. Duas portas pra mesma decisão levam ao estado
+     ruim — sinal ligado numa aba e cobrança desligada na outra, e a cliente
+     vendo "falta o sinal" sem nunca receber a cobrança.
+     Existe pra dona ENTENDER que essa mensagem sai e que ela substitui a
+     confirmação. Até aqui a aba não dizia uma palavra sobre o sinal, e o
+     "Como funciona" que mostrava só aparecia pra quem não tinha pacote. */
+  const sinalItem = temPacote ? (
+    <div data-tour="avisos-sinal" className="mt-2.5">
+      <Lista>
+        <Linha
+          primeira
+          delay={80 + avisos.length * 60}
+          onClick={() => router.push('/admin/sinal')}
+          icone={
+            <IconeAviso ativo={sinalAtivo}>
+              <IconWallet size={19} />
+            </IconeAviso>
+          }
+          titulo={
+            <span className="text-[15px] font-semibold" style={{ color: 'var(--admin-text)' }}>
+              Cobrança do sinal
+            </span>
+          }
+          snippet={
+            sinalAtivo
+              ? 'Sai no lugar da confirmação quando o horário tem sinal, com o PIX pra pagar.'
+              : 'Desligada. Ligue na aba Sinal, com a sua chave PIX.'
+          }
+          meta={<>Liga e desliga na aba Sinal</>}
+          acao={
+            <>
+              {sinalAtivo ? <Chip tom="ok">ligada</Chip> : <Chip tom="neutro">desligada</Chip>}
+              <Seta />
+            </>
+          }
+        />
+      </Lista>
+    </div>
+  ) : null
+
   const listaDeAvisos = (
     <>
       <TituloSecao>O que o sistema manda sozinho</TituloSecao>
@@ -610,6 +679,7 @@ export default function WhatsAppPainel({
           ? `O AgendaPRO manda essas mensagens no WhatsApp d${T.art} ${T.s} sozinho — você não digita nada. Ligue as que quiser que ${T.pron} receba.`
           : 'Deixe ligadas as que você quer — a escolha fica salva. Elas começam a sair quando você contratar um pacote de mensagens.'}
       </p>
+      <div data-tour="avisos-lista">
       <Lista>
         {avisos.map((a, i) => (
           <Linha
@@ -665,6 +735,9 @@ export default function WhatsAppPainel({
           />
         ))}
       </Lista>
+      </div>
+
+      {sinalItem}
 
       {/* ── A CONTA FECHADA ─────────────────────────────────────
           Os numeros por aviso ja estavam na tela; a SOMA nunca. Com as tres
@@ -672,6 +745,7 @@ export default function WhatsAppPainel({
           estoura no primeiro mes e paga excedente sem ter sido avisada. */}
       {temPacote && totalLigado > 0 && (
         <div
+          data-tour="avisos-conta"
           className="mt-2.5 rounded-xl px-4 py-3"
           style={
             estouraFranquia
@@ -837,7 +911,7 @@ export default function WhatsAppPainel({
             sempre visível em vez de vazio. */}
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start">
           {canal && (
-            <aside className="lg:order-2 lg:sticky lg:top-24 admin-card-deep p-4">
+            <aside data-tour="avisos-estado" className="lg:order-2 lg:sticky lg:top-24 admin-card-deep p-4">
               <div className="flex items-center gap-3">
                 <span
                   className="flex-shrink-0 inline-flex items-center justify-center rounded-xl"
@@ -908,6 +982,8 @@ export default function WhatsAppPainel({
             {listaDeAvisos}
             {listaVoceManda}
             {listaRespostas}
+            {/* Dúvidas frequentes no fim da aba (10/09): o que o tour não cobre. */}
+            <PerguntasAvisos categoria={category ?? null} />
           </div>
         </div>
       </div>
@@ -921,6 +997,18 @@ export default function WhatsAppPainel({
           }}
         />
       )}
+      {/* Tour da aba (10/09): só pra quem tem pacote — sem pacote a aba é a
+          oferta, outra tela — e só até ver ou pular uma vez. */}
+      <TourAvisos
+        parte={1}
+        aberto={temPacote && !tour1Visto}
+        categoria={category ?? null}
+        sinalAtivo={sinalAtivo}
+        onVisto={() => setTour1Visto(true)}
+        /* O último passo leva pro editor da confirmação — o aviso que todo
+           negócio tem ligado — já aberto em modo de edição. */
+        onAbrirEdicao={() => setVista({ tela: 'aviso', tipo: 'confirmacao', editar: true })}
+      />
     </>
   )
 }

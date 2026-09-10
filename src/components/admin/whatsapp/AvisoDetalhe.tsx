@@ -13,6 +13,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { useState } from 'react'
+import TourAvisos from './TourAvisos'
 import type { TermoPessoa } from '@/lib/segmento'
 import { Chip } from './ui'
 import TelaWhatsApp from './TelaWhatsApp'
@@ -55,6 +56,10 @@ export default function AvisoDetalhe({
   onBotao,
   onHorario,
   onEnviarTexto,
+  categoria = null,
+  abrirEditando = false,
+  tourEdicaoVisto = true,
+  onTourEdicaoVisto,
 }: {
   T: TermoPessoa
   aviso: Aviso
@@ -63,8 +68,15 @@ export default function AvisoDetalhe({
   onBotao: (v: boolean) => void
   onHorario: (horas: number) => void
   onEnviarTexto: (corpo: string) => Promise<string[] | null>
+  /** Pro tour de edição falar de "cliente", "paciente"... */
+  categoria?: string | null
+  /** Abre direto no editor — é por onde o tour da aba traz a dona (10/09). */
+  abrirEditando?: boolean
+  /** Padrão true: quem não passar nada não vê tour nenhum. */
+  tourEdicaoVisto?: boolean
+  onTourEdicaoVisto?: () => void
 }) {
-  const [editando, setEditando] = useState(false)
+  const [editando, setEditando] = useState(abrirEditando)
   const [rascunho, setRascunho] = useState(aviso.meuTexto ?? aviso.corpoPadrao)
   const [erros, setErros] = useState<string[]>([])
   const [enviando, setEnviando] = useState(false)
@@ -145,22 +157,28 @@ export default function AvisoDetalhe({
 
       {editando && (
         <div className="mt-4 space-y-2">
+          {/* Tour 2 (10/09): na primeira vez que o editor abre, seja pelo botão
+              do tour da aba ou por conta própria. Montado aqui dentro pra que os
+              alvos (campo, códigos, envio) já estejam na tela quando ele medir. */}
+          <TourAvisos parte={2} aberto={!tourEdicaoVisto} categoria={categoria} onVisto={onTourEdicaoVisto} />
           {/* A regra que a tela existe pra comunicar, no momento em que ela
               importa: ANTES de escrever, não depois de salvar. */}
           <div
+            data-tour="edit-aprovacao"
             className="rounded-xl px-3 py-2.5"
             style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.20)' }}
           >
             <p className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
               <strong style={{ color: 'var(--admin-text)' }}>
-                Toda alteração passa pela aprovação do WhatsApp
+                Toda alteração passa pela aprovação da Meta, dona do WhatsApp,
               </strong>{' '}
-              e pode levar de alguns minutos até cerca de um dia. Enquanto isso, o aviso continua
+              e leva em média um dia, às vezes mais. Enquanto isso, o aviso continua
               saindo com o texto padrão — ninguém fica sem lembrete esperando.
             </p>
           </div>
 
           <textarea
+            data-tour="edit-texto"
             value={rascunho}
             onChange={(e) => setRascunho(e.target.value)}
             rows={9}
@@ -172,7 +190,7 @@ export default function AvisoDetalhe({
             }}
           />
 
-          <div className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
+          <div data-tour="edit-campos" className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
             <p className="mb-1">
               Os campos entre chaves são preenchidos sozinhos.{' '}
               <strong>Todos precisam continuar no texto:</strong>
@@ -198,6 +216,7 @@ export default function AvisoDetalhe({
             <button
               type="button"
               disabled={enviando}
+              data-tour="edit-enviar"
               onClick={enviar}
               className="text-[13px] font-semibold px-4 py-2.5 rounded-xl disabled:opacity-60"
               style={{ background: 'var(--admin-accent)', color: '#fff' }}
