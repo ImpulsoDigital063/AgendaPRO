@@ -554,7 +554,12 @@ export default function WhatsAppPainel({
         ? { texto: 'Enviando', tom: 'ok' as const }
         : { texto: 'Pronto para enviar', tom: 'ok' as const }
 
-  const chipBeta = !liberado ? <Chip tom="atencao">Beta</Chip> : undefined
+  /* O selo Beta vale pra TODO MUNDO enquanto o módulo for beta (10/09).
+     Antes era `!liberado` — "você ainda não tem acesso" — e sumia justo pra
+     quem estava usando. Quem mais precisa saber que é experimento é quem já
+     manda mensagem pra cliente real: baixa a expectativa antes do primeiro
+     tropeço e convida a sugerir. Sai quando o módulo deixar de ser beta. */
+  const chipBeta = <Chip tom="atencao">Beta</Chip>
 
   const caixaPix = pix ? (
     <div
@@ -776,7 +781,7 @@ export default function WhatsAppPainel({
     return (
       <>
         <Cabecalho
-          titulo="WhatsApp"
+          titulo="Avisos automáticos"
           subtitulo={`Mensagens que o sistema manda pr${T.art}s ${T.possP} ${T.p}`}
           direita={chipBeta}
         />
@@ -821,7 +826,7 @@ export default function WhatsAppPainel({
   return (
     <>
       <Cabecalho
-        titulo="WhatsApp"
+        titulo="Avisos automáticos"
         subtitulo={`Mensagens que o sistema manda pr${T.art}s ${T.possP} ${T.p}`}
         direita={chipBeta}
       />

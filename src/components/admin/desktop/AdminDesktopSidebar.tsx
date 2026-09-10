@@ -96,7 +96,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
            usa. Esse pedaco nao depende de canal nenhum.
            Deixar de fora agora e o erro oposto: esconder o que funciona pra
            proteger o que ainda nao foi liberado. */
-        { label: 'WhatsApp', href: '/admin/whatsapp', Icon: IconWhatsapp },
+        { label: 'Avisos', href: '/admin/whatsapp', Icon: IconWhatsapp },
       ],
     },
     {

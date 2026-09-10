@@ -112,7 +112,7 @@ export default function AdminMobileTopBar({
            dona, e' gratis e ja funciona. Era o unico item "Mensagens" do
            menu e apontava pro tab antigo — foi por ele que o Eduardo caiu na
            tela velha no celular em 31/08. */
-        { label: 'WhatsApp', href: '/admin/whatsapp', Icon: IconWhatsapp },
+        { label: 'Avisos', href: '/admin/whatsapp', Icon: IconWhatsapp },
       ],
     },
     {
