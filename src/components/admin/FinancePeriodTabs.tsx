@@ -1,6 +1,7 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import PeriodoPersonalizado from './financeiro/PeriodoPersonalizado'
 
 const TABS = [
   { key: 'hoje',   label: 'Hoje'   },
@@ -8,9 +9,24 @@ const TABS = [
   { key: 'mes',    label: 'Mês'    },
 ] as const
 
-export default function FinancePeriodTabs({ periodo }: { periodo: string }) {
+/**
+ * `permitirCustom` nasce DESLIGADO de propósito: este seletor é compartilhado
+ * com Despesas, Cancelados e o financeiro do profissional, e o servidor dessas
+ * telas não entende `?de=&ate=`. Mostrar o botão lá viraria filtro que não
+ * filtra. Só o Financeiro liga (Eduardo, 13/09/2026).
+ */
+export default function FinancePeriodTabs({
+  periodo,
+  permitirCustom = false,
+}: {
+  periodo: string
+  permitirCustom?: boolean
+}) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const de = searchParams.get('de') ?? undefined
+  const ate = searchParams.get('ate') ?? undefined
 
   return (
     <div
@@ -46,6 +62,10 @@ export default function FinancePeriodTabs({ periodo }: { periodo: string }) {
           </button>
         )
       })}
+
+      {permitirCustom && (
+        <PeriodoPersonalizado de={de} ate={ate} ativo={periodo === 'custom'} estilo="aba" />
+      )}
     </div>
   )
 }

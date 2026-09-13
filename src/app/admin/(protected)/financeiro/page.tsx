@@ -51,25 +51,35 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: '#6B7280',
 }
 
-function dateRange(periodo: 'hoje' | 'semana' | 'mes'): { start: Date; end: Date; prevStart: Date; prevEnd: Date } {
-  // λ.fuso: ancora no dia BR ao meio-dia UTC · os toISOString().slice(0,10) que
-  // consomem essas datas devolvem sempre a data de Brasília (não pula dia >21h).
+type Periodo = 'hoje' | 'semana' | 'mes' | 'custom'
+
+/** Teto do intervalo escolhido na mão · 1 ano. Acima disso a query e o gráfico
+ *  deixam de fazer sentido na tela, e cai no padrão de 30 dias. */
+const MAX_DIAS_CUSTOM = 366
+
+function dateRange(periodo: Periodo, de?: string, ate?: string): { start: Date; end: Date; prevStart: Date; prevEnd: Date } {
+  // λ.fuso: TUDO ancorado ao meio-dia UTC do dia BR. Quem consome essas datas
+  // usa toISOString().slice(0,10), e do meio-dia nenhuma conversão de fuso
+  // cruza a fronteira do dia.
+  //
+  // ⚠️ Não usar setHours pra "fechar o dia": setHours é do fuso do RUNTIME.
+  // Em máquina no horário de Brasília, `setHours(23,59)` vira 02:59 UTC do dia
+  // SEGUINTE e o fim do período anda um dia — provado em 13/09/2026 no teste
+  // local (06/07 a 06/07 trouxe R$ 2.820 em vez de R$ 1.105, porque somou 07/07).
+  // Em UTC o bug fica escondido, então é armadilha esperando mudança de host.
   const today = new Date(todayBR() + 'T12:00:00Z')
-  today.setHours(23, 59, 59, 999)
   let start: Date, end: Date
-  if (periodo === 'hoje') {
+  if (periodo === 'custom' && de && ate) {
+    start = new Date(de + 'T12:00:00Z')
+    end = new Date(ate + 'T12:00:00Z')
+  } else if (periodo === 'hoje') {
     start = new Date(today)
-    start.setHours(0, 0, 0, 0)
     end = today
   } else if (periodo === 'semana') {
-    start = new Date(today)
-    start.setDate(start.getDate() - 6)
-    start.setHours(0, 0, 0, 0)
+    start = new Date(today.getTime() - 6 * 86400000)
     end = today
   } else {
-    start = new Date(today)
-    start.setDate(start.getDate() - 29)
-    start.setHours(0, 0, 0, 0)
+    start = new Date(today.getTime() - 29 * 86400000)
     end = today
   }
   const periodMs = end.getTime() - start.getTime()
@@ -78,7 +88,7 @@ function dateRange(periodo: 'hoje' | 'semana' | 'mes'): { start: Date; end: Date
   return { start, end, prevStart, prevEnd }
 }
 
-function bucketLabel(d: Date, periodo: 'hoje' | 'semana' | 'mes'): string {
+function bucketLabel(d: Date, periodo: Periodo): string {
   if (periodo === 'hoje') return `${String(d.getHours()).padStart(2, '0')}h`
   if (periodo === 'semana') return d.toLocaleDateString('pt-BR', { weekday: 'short' })
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
@@ -87,7 +97,7 @@ function bucketLabel(d: Date, periodo: 'hoje' | 'semana' | 'mes'): string {
 export default async function FinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string }>
+  searchParams: Promise<{ periodo?: string; de?: string; ate?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -101,11 +111,30 @@ export default async function FinanceiroPage({
 
   if (!business) redirect(await destinoSemNegocio())
 
-  const { periodo: periodoParam } = await searchParams
-  const periodoNorm: 'hoje' | 'semana' | 'mes' =
-    periodoParam === 'hoje' || periodoParam === 'semana' ? periodoParam : 'mes'
+  const { periodo: periodoParam, de: deParam, ate: ateParam } = await searchParams
 
-  const { start, end, prevStart, prevEnd } = dateRange(periodoNorm)
+  // Período escolhido na mão (pedido da Letícia · Viva Cacheada, 06/08/2026).
+  // Só vale com as duas datas no formato certo, na ordem certa, sem futuro e
+  // com no máximo 1 ano. Qualquer desvio cai nos 30 dias padrão em vez de
+  // quebrar a tela — data vem da URL, então qualquer coisa pode chegar aqui.
+  const YMD = /^\d{4}-\d{2}-\d{2}$/
+  const hojeBR = todayBR()
+  const deOk = deParam && YMD.test(deParam) ? deParam : null
+  const ateBruto = ateParam && YMD.test(ateParam) ? ateParam : null
+  const ateOk = ateBruto && ateBruto > hojeBR ? hojeBR : ateBruto
+  const diasEscolhidos =
+    deOk && ateOk
+      ? Math.round((Date.parse(ateOk + 'T12:00:00Z') - Date.parse(deOk + 'T12:00:00Z')) / 86400000) + 1
+      : 0
+  const customOk = !!deOk && !!ateOk && deOk <= ateOk && diasEscolhidos <= MAX_DIAS_CUSTOM
+
+  const periodoNorm: Periodo = customOk
+    ? 'custom'
+    : periodoParam === 'hoje' || periodoParam === 'semana'
+      ? periodoParam
+      : 'mes'
+
+  const { start, end, prevStart, prevEnd } = dateRange(periodoNorm, deOk ?? undefined, ateOk ?? undefined)
   const startStr = start.toISOString().slice(0, 10)
   const endStr = end.toISOString().slice(0, 10)
   const prevStartStr = prevStart.toISOString().slice(0, 10)
@@ -423,10 +452,19 @@ export default async function FinanceiroPage({
       if (buckets[h]) buckets[h].previous += Number(s.total ?? 0)
     }
   } else {
-    const days = periodoNorm === 'semana' ? 7 : 30
-    for (let i = 0; i < days; i++) {
-      const d = new Date(start)
-      d.setDate(d.getDate() + i)
+    // Uma barra por dia. Em janela longa (só acontece no período escolhido na
+    // mão) agrupa de 7 em 7, senão um ano vira 366 barras ilegíveis.
+    const DIA_MS = 86400000
+    const startYmd = start.toISOString().slice(0, 10)
+    const endYmd = end.toISOString().slice(0, 10)
+    const prevStartYmd = prevStart.toISOString().slice(0, 10)
+    const diasNoRange =
+      Math.round((Date.parse(endYmd + 'T12:00:00Z') - Date.parse(startYmd + 'T12:00:00Z')) / DIA_MS) + 1
+    const passo = diasNoRange > 60 ? 7 : 1
+    const qtdBuckets = Math.max(1, Math.ceil(diasNoRange / passo))
+
+    for (let i = 0; i < qtdBuckets; i++) {
+      const d = new Date(Date.parse(startYmd + 'T12:00:00Z') + i * passo * DIA_MS)
       buckets.push({
         label: bucketLabel(d, periodoNorm),
         current: 0,
@@ -434,27 +472,26 @@ export default async function FinanceiroPage({
         date: d.toISOString().slice(0, 10),
       })
     }
-    const bucketByDate = new Map(buckets.map((b) => [b.date, b]))
+
+    // Posição da data no gráfico, contada a partir do 1º dia da janela. O
+    // período anterior usa a MESMA conta a partir do 1º dia dele, pra "dia 1"
+    // ficar em cima de "dia 1" (era o que o mapa de datas fazia antes).
+    const posicao = (ymd: string, baseYmd: string): number => {
+      const delta = Math.round((Date.parse(ymd + 'T12:00:00Z') - Date.parse(baseYmd + 'T12:00:00Z')) / DIA_MS)
+      if (delta < 0) return -1
+      const i = Math.floor(delta / passo)
+      return i < buckets.length ? i : -1
+    }
+
     for (const a of appointments) {
       if (!a.paid_at) continue
-      const d = a.appointment_date as string
-      const b = bucketByDate.get(d)
-      if (b) b.current += Number(a.total_price ?? 0)
-    }
-    // Mapeia datas anteriores pra mesma posição (alinha "dia 1 anterior" com "dia 1 atual")
-    const prevDates = new Map<string, number>()
-    for (let i = 0; i < days; i++) {
-      const d = new Date(prevStart)
-      d.setDate(d.getDate() + i)
-      prevDates.set(d.toISOString().slice(0, 10), i)
+      const i = posicao(a.appointment_date as string, startYmd)
+      if (i >= 0) buckets[i].current += Number(a.total_price ?? 0)
     }
     for (const a of prevAppts) {
       if (!a.paid_at) continue
-      const d = a.appointment_date as string
-      const idx = prevDates.get(d)
-      if (idx !== undefined && buckets[idx]) {
-        buckets[idx].previous += Number(a.total_price ?? 0)
-      }
+      const i = posicao(a.appointment_date as string, prevStartYmd)
+      if (i >= 0) buckets[i].previous += Number(a.total_price ?? 0)
     }
   }
 
@@ -478,6 +515,8 @@ export default async function FinanceiroPage({
           <div className="hidden lg:block">
             <DashboardFinanceiro
               periodo={periodoNorm}
+              de={deOk ?? undefined}
+              ate={ateOk ?? undefined}
               kpis={kpis}
               formasPagamento={formasPagamento}
               principaisDespesas={principaisDespesas}

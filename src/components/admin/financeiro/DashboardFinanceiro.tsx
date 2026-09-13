@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import PeriodoPersonalizado from './PeriodoPersonalizado'
 
 type KpiCard = {
   label: string
@@ -34,7 +35,10 @@ export type TaxasBreakdown = {
 }
 
 type Props = {
-  periodo: 'hoje' | 'semana' | 'mes'
+  periodo: 'hoje' | 'semana' | 'mes' | 'custom'
+  /** intervalo escolhido na mão (só quando periodo === 'custom') */
+  de?: string
+  ate?: string
   kpis: KpiCard[]
   formasPagamento: DonutSlice[]
   principaisDespesas: DonutSlice[]
@@ -54,6 +58,7 @@ const PERIODO_LABEL: Record<Props['periodo'], string> = {
   hoje: 'Hoje',
   semana: 'Últimos 7 dias',
   mes: 'Últimos 30 dias',
+  custom: 'Período escolhido',
 }
 
 function formatBRL(v: number): string {
@@ -81,6 +86,8 @@ const TONE_COLORS: Record<KpiCard['tone'], { bg: string; text: string; border: s
 
 export default function DashboardFinanceiro({
   periodo,
+  de,
+  ate,
   kpis,
   formasPagamento,
   principaisDespesas,
@@ -92,7 +99,7 @@ export default function DashboardFinanceiro({
 }: Props) {
   return (
     <div className="space-y-5">
-      {/* Toggle de período · 3 botões */}
+      {/* Toggle de período · 3 atalhos + intervalo escolhido na mão */}
       <div className="flex flex-wrap gap-1 rounded-xl p-1 mb-2" style={{
         background: 'var(--admin-surface)',
         border: '1px solid var(--admin-border)',
@@ -112,6 +119,7 @@ export default function DashboardFinanceiro({
             {PERIODO_LABEL[p]}
           </Link>
         ))}
+        <PeriodoPersonalizado de={de} ate={ate} ativo={periodo === 'custom'} estilo="pilula" />
       </div>
 
       {/* HERO · Lucro Líquido destacado */}

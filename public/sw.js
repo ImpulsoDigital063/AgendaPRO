@@ -25,7 +25,10 @@
 //               no link público (DN). Bump porque o BookingFlow mudou.
 // v21 (25/08): troca do botão de faturar por "Marcar como atendido" no
 // atendimento de convênio + selo do card dividido mostrando a empresa.
-const STATIC_CACHE_VERSION = 'agendapro-static-v103'
+// v104 (13/09): período escolhido na mão no Financeiro (pedido da Letícia,
+//   Viva Cacheada). Bump porque o seletor de período mudou no mobile e no
+//   desktop — sem ele, celular com o app instalado serve a barra antiga.
+const STATIC_CACHE_VERSION = 'agendapro-static-v104'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

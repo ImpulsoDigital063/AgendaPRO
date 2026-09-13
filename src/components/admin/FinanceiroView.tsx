@@ -45,6 +45,7 @@ const PERIODO_LABEL: Record<string, string> = {
   hoje: 'Hoje',
   semana: 'Últimos 7 dias',
   mes: 'Este mês',
+  custom: 'Período escolhido',
 }
 
 export default function FinanceiroView({ appointments, periodo, totalExpenses = 0 }: Props) {
@@ -193,7 +194,7 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
     <div className="space-y-5 pb-24">
       {/* pb-24 reserva espaço pro FAB + bottom nav. Sem isso, conteúdo
           final (Comissão por profissional / lista) ficava cortado. */}
-      <FinancePeriodTabs periodo={periodo} />
+      <FinancePeriodTabs periodo={periodo} permitirCustom />
 
       {/* Hero KPI: Realizado (dinheiro real no caixa) */}
       <div
