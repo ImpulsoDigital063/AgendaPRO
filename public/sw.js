@@ -28,7 +28,10 @@
 // v104 (13/09): período escolhido na mão no Financeiro (pedido da Letícia,
 //   Viva Cacheada). Bump porque o seletor de período mudou no mobile e no
 //   desktop — sem ele, celular com o app instalado serve a barra antiga.
-const STATIC_CACHE_VERSION = 'agendapro-static-v104'
+// v105 (13/09): o seletor de período virou calendário (marca dia inicial e
+//   final) e abre como janela sobre a tela. A v104 tinha dois campos de data
+//   num painel ancorado no botão, que no celular abria pra fora da tela.
+const STATIC_CACHE_VERSION = 'agendapro-static-v105'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

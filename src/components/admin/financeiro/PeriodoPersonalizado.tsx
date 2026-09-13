@@ -1,29 +1,58 @@
 'use client'
 
 /**
- * Período personalizado do Financeiro — pedido da Letícia (Viva Cacheada,
- * 06/08/2026): "sinto falta de pôr a data personalizada". Os três atalhos
- * (Hoje / 7 dias / Mês) continuam iguais; aqui entra o intervalo escolhido
- * na mão, que vira `?periodo=custom&de=AAAA-MM-DD&ate=AAAA-MM-DD`.
+ * Período personalizado do Financeiro — pedido da Letícia (Viva Cacheada).
  *
- * Mesmo componente nos dois fronts (mobile e desktop) — muda só o `estilo`,
- * porque o desktop usa pílulas quadradas e o mobile abas arredondadas.
+ * v2 (13/09/2026, depois do print do Eduardo): a 1ª versão usava dois campos
+ * `type="date"` num painel ancorado no botão. No celular o painel abria pra
+ * fora da tela (aparecia só "DE" e "Aplicar" cortados) e o rótulo estourava a
+ * barra. Agora é **calendário de verdade**: clica no dia inicial, clica no
+ * final, o intervalo fica marcado — dentro de uma janela sobre a tela (mesmo
+ * padrão dos outros modais do painel), que não tem como ser cortada.
  *
- * λ.fuso: o teto do calendário é `todayBR()`, não `new Date()`. Depois das 21h
- * o runtime em UTC já está no dia seguinte e o cliente conseguiria escolher um
- * "amanhã" que não existe pra ele.
+ * λ.fuso: nada de `new Date()` cru nem `setHours` pra montar dia. Tudo sai de
+ * string YYYY-MM-DD e de `date-br.ts`; quando precisa virar Date pra pegar o
+ * dia da semana, ancora ao meio-dia UTC.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
-import { todayBR } from '@/lib/date-br'
+import { todayBR, monthBoundsBR, formatDateBR } from '@/lib/date-br'
+import { IconCalendar, IconChevronLeft, IconChevronRight, IconClose } from '@/components/ui/Icon'
+
+/** Mesmo teto do servidor (financeiro/page.tsx): janela maior cai no padrão. */
+const MAX_DIAS = 366
+
+const DIAS_CURTOS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+const MESES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+]
 
 type Props = {
-  /** intervalo já aplicado (vem da URL), pra reabrir o painel preenchido */
   de?: string
   ate?: string
   ativo: boolean
   estilo: 'aba' | 'pilula'
+}
+
+/** Dia da semana (0=Dom) de um YYYY-MM-DD, ancorado ao meio-dia UTC. */
+function diaDaSemana(ymd: string): number {
+  return new Date(ymd + 'T12:00:00Z').getUTCDay()
+}
+
+/** Soma meses a um YYYY-MM. */
+function mesVizinho(ym: string, delta: number): string {
+  const ano = Number(ym.slice(0, 4))
+  const mes = Number(ym.slice(5, 7)) - 1 + delta
+  const anoAlvo = ano + Math.floor(mes / 12)
+  const mesAlvo = ((mes % 12) + 12) % 12
+  return `${anoAlvo}-${String(mesAlvo + 1).padStart(2, '0')}`
+}
+
+function diasEntre(a: string, b: string): number {
+  return Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 86400000) + 1
 }
 
 export default function PeriodoPersonalizado({ de, ate, ativo, estilo }: Props) {
@@ -32,11 +61,43 @@ export default function PeriodoPersonalizado({ de, ate, ativo, estilo }: Props) 
   const hoje = todayBR()
 
   const [aberto, setAberto] = useState(false)
-  const [inicio, setInicio] = useState(de ?? '')
-  const [fim, setFim] = useState(ate ?? '')
+  const [mesVisivel, setMesVisivel] = useState((de ?? hoje).slice(0, 7))
+  const [inicio, setInicio] = useState<string | null>(de ?? null)
+  const [fim, setFim] = useState<string | null>(ate ?? null)
+  const [portalPronto, setPortalPronto] = useState(false)
 
-  const invertido = !!inicio && !!fim && inicio > fim
-  const podeAplicar = !!inicio && !!fim && !invertido
+  useEffect(() => { setPortalPronto(true) }, [])
+
+  useEffect(() => {
+    if (!aberto) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setAberto(false) }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [aberto])
+
+  function abrir() {
+    setInicio(de ?? null)
+    setFim(ate ?? null)
+    setMesVisivel((de ?? hoje).slice(0, 7))
+    setAberto(true)
+  }
+
+  /** 1º clique marca o início; 2º fecha o intervalo. Clique antes do início
+   *  recomeça dali — é o que a pessoa quer dizer ao voltar no calendário. */
+  function escolherDia(dia: string) {
+    if (dia > hoje) return
+    if (!inicio || fim) { setInicio(dia); setFim(null); return }
+    if (dia < inicio) { setInicio(dia); return }
+    setFim(dia)
+  }
+
+  const total = inicio && fim ? diasEntre(inicio, fim) : 0
+  const longoDemais = total > MAX_DIAS
+  const podeAplicar = !!inicio && !!fim && !longoDemais
 
   function aplicar() {
     if (!podeAplicar) return
@@ -44,17 +105,24 @@ export default function PeriodoPersonalizado({ de, ate, ativo, estilo }: Props) 
     setAberto(false)
   }
 
-  const rotulo =
-    ativo && de && ate
-      ? `${de.slice(8, 10)}/${de.slice(5, 7)} a ${ate.slice(8, 10)}/${ate.slice(5, 7)}`
-      : 'Personalizado'
+  function limpar() {
+    setInicio(null)
+    setFim(null)
+    router.push(pathname)
+    setAberto(false)
+  }
 
-  const botaoBase =
+  // ── Botão na barra ────────────────────────────────────────────────────────
+  // Rótulo curto de propósito: no celular a barra tem 4 itens e o texto longo
+  // empurrava o último pra fora da tela (print do Eduardo, 13/09).
+  const rotulo = ativo && de && ate ? `${de.slice(8, 10)}/${de.slice(5, 7)}–${ate.slice(8, 10)}/${ate.slice(5, 7)}` : 'Período'
+
+  const classeBotao =
     estilo === 'aba'
-      ? 'flex-1 py-2 text-sm font-semibold rounded-xl transition-all'
-      : 'px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider'
+      ? 'w-full py-2 text-[13px] sm:text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-1 truncate'
+      : 'px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap'
 
-  const botaoStyle = ativo
+  const estiloBotao = ativo
     ? estilo === 'aba'
       ? {
           background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))',
@@ -64,90 +132,164 @@ export default function PeriodoPersonalizado({ de, ate, ativo, estilo }: Props) 
       : { background: 'var(--admin-accent)', color: '#fff' }
     : { background: 'transparent', color: 'var(--admin-text-mute)' }
 
-  return (
-    <div className={estilo === 'aba' ? 'flex-1 relative' : 'relative'}>
-      <button
-        type="button"
-        onClick={() => setAberto((v) => !v)}
-        className={botaoBase + (estilo === 'aba' ? ' w-full' : '')}
-        style={botaoStyle}
-      >
-        {rotulo}
-      </button>
+  // ── Grade do mês ──────────────────────────────────────────────────────────
+  const { start: primeiroDia, end: ultimoDia } = monthBoundsBR(mesVisivel)
+  const vazios = diaDaSemana(primeiroDia)
+  const totalDias = Number(ultimoDia.slice(8, 10))
+  const celulas: (string | null)[] = [
+    ...Array(vazios).fill(null),
+    ...Array.from({ length: totalDias }, (_, i) => `${mesVisivel}-${String(i + 1).padStart(2, '0')}`),
+  ]
 
-      {aberto && (
-        <div
-          className="absolute z-30 mt-2 p-3 rounded-2xl w-[17rem] max-w-[calc(100vw-2rem)]"
-          style={{
-            top: '100%',
-            left: 0,
-            background: 'var(--admin-surface)',
-            border: '1px solid var(--admin-border)',
-            boxShadow: '0 18px 40px -12px rgba(0,0,0,0.25)',
-          }}
-        >
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-                De
-              </span>
-              <input
-                type="date"
-                value={inicio}
-                max={hoje}
-                onChange={(e) => setInicio(e.target.value)}
-                className="w-full mt-1 px-2 py-2 rounded-lg text-sm"
-                style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
-              />
-            </label>
-            <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-                Até
-              </span>
-              <input
-                type="date"
-                value={fim}
-                max={hoje}
-                onChange={(e) => setFim(e.target.value)}
-                className="w-full mt-1 px-2 py-2 rounded-lg text-sm"
-                style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
-              />
-            </label>
+  const modal = (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={() => setAberto(false)}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
+        style={{
+          background: 'var(--admin-popover-bg, #FFFFFF)',
+          border: '1px solid var(--admin-popover-border, #E2E8F0)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
+          maxHeight: '90vh',
+        }}
+      >
+        {/* Cabeçalho */}
+        <div className="flex items-start justify-between p-5 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--admin-divider)' }}>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: 'var(--admin-text-faded)' }}>
+              Escolher período
+            </p>
+            <h3 className="text-base font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>
+              {inicio && fim
+                ? `${formatDateBR(inicio)} a ${formatDateBR(fim)}`
+                : inicio
+                  ? `${formatDateBR(inicio)} — escolha o dia final`
+                  : 'Toque no primeiro dia'}
+            </h3>
+            {inicio && fim && (
+              <p className="text-xs mt-0.5" style={{ color: longoDemais ? '#DC2626' : 'var(--admin-text-mute)' }}>
+                {longoDemais ? `Máximo de ${MAX_DIAS} dias` : `${total} ${total === 1 ? 'dia' : 'dias'}`}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setAberto(false)}
+            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ color: 'var(--admin-text-mute)' }}
+            aria-label="Fechar"
+          >
+            <IconClose size={16} />
+          </button>
+        </div>
+
+        {/* Calendário */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex items-center justify-between mb-3">
+            <button
+              type="button"
+              onClick={() => setMesVisivel(mesVizinho(mesVisivel, -1))}
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text)' }}
+              aria-label="Mês anterior"
+            >
+              <IconChevronLeft size={16} />
+            </button>
+            <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+              {MESES[Number(mesVisivel.slice(5, 7)) - 1]} {mesVisivel.slice(0, 4)}
+            </p>
+            <button
+              type="button"
+              onClick={() => setMesVisivel(mesVizinho(mesVisivel, 1))}
+              disabled={mesVisivel >= hoje.slice(0, 7)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30"
+              style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text)' }}
+              aria-label="Próximo mês"
+            >
+              <IconChevronRight size={16} />
+            </button>
           </div>
 
-          {invertido && (
-            <p className="text-[11px] mt-2" style={{ color: '#DC2626' }}>
-              A data inicial tem que vir antes da final.
-            </p>
-          )}
+          <div className="grid grid-cols-7 gap-1 mb-1">
+            {DIAS_CURTOS.map((d, i) => (
+              <div key={i} className="text-center text-[10px] font-bold uppercase py-1" style={{ color: 'var(--admin-text-faded)' }}>
+                {d}
+              </div>
+            ))}
+          </div>
 
-          <div className="flex gap-2 mt-3">
-            <button
-              type="button"
-              onClick={aplicar}
-              disabled={!podeAplicar}
-              className="flex-1 py-2 rounded-xl text-sm font-bold"
-              style={{
-                background: podeAplicar ? 'var(--admin-accent)' : 'var(--admin-surface-hi)',
-                color: podeAplicar ? '#fff' : 'var(--admin-text-faded)',
-              }}
-            >
-              Aplicar
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAberto(false)
-                router.push(pathname)
-              }}
-              className="px-3 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: 'transparent', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
-            >
-              Limpar
-            </button>
+          <div className="grid grid-cols-7 gap-1">
+            {celulas.map((dia, i) => {
+              if (!dia) return <div key={`v${i}`} />
+              const futuro = dia > hoje
+              const ehInicio = dia === inicio
+              const ehFim = dia === fim
+              const noMeio = !!inicio && !!fim && dia > inicio && dia < fim
+              const pontas = ehInicio || ehFim
+              return (
+                <button
+                  key={dia}
+                  type="button"
+                  onClick={() => escolherDia(dia)}
+                  disabled={futuro}
+                  className="aspect-square rounded-lg text-sm font-semibold transition-all disabled:opacity-25"
+                  style={{
+                    background: pontas
+                      ? 'var(--admin-accent)'
+                      : noMeio
+                        ? 'color-mix(in srgb, var(--admin-accent) 18%, transparent)'
+                        : 'transparent',
+                    color: pontas ? '#fff' : 'var(--admin-text)',
+                    border: dia === hoje && !pontas ? '1px solid var(--admin-accent)' : '1px solid transparent',
+                  }}
+                >
+                  {Number(dia.slice(8, 10))}
+                </button>
+              )
+            })}
           </div>
         </div>
-      )}
+
+        {/* Ações */}
+        <div className="flex gap-2 p-4 pt-3 flex-shrink-0" style={{ borderTop: '1px solid var(--admin-divider)' }}>
+          <button
+            type="button"
+            onClick={limpar}
+            className="px-4 py-3 rounded-xl text-sm font-semibold"
+            style={{ background: 'transparent', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
+          >
+            Limpar
+          </button>
+          <button
+            type="button"
+            onClick={aplicar}
+            disabled={!podeAplicar}
+            className="flex-1 py-3 rounded-xl text-sm font-bold"
+            style={{
+              background: podeAplicar ? 'var(--admin-accent)' : 'var(--admin-surface-hi)',
+              color: podeAplicar ? '#fff' : 'var(--admin-text-faded)',
+            }}
+          >
+            Aplicar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className={estilo === 'aba' ? 'flex-1 min-w-0' : ''}>
+      <button type="button" onClick={abrir} className={classeBotao} style={estiloBotao}>
+        <IconCalendar size={14} />
+        <span className="truncate">{rotulo}</span>
+      </button>
+      {aberto && portalPronto && createPortal(modal, document.body)}
     </div>
   )
 }

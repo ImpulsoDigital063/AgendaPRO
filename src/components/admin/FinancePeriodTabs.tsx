@@ -44,7 +44,7 @@ export default function FinancePeriodTabs({
             key={t.key}
             type="button"
             onClick={() => router.push(`${pathname}?periodo=${t.key}`)}
-            className="flex-1 py-2 text-sm font-semibold rounded-xl transition-all"
+            className="flex-1 min-w-0 py-2 text-[13px] sm:text-sm font-semibold rounded-xl transition-all"
             style={
               active
                 ? {
