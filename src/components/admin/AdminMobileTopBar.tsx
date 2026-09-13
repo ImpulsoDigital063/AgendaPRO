@@ -118,6 +118,13 @@ export default function AdminMobileTopBar({
     {
       label: 'Financeiro',
       items: [
+        /* Entrada propria pro relatorio (Eduardo, 13/09/2026). Ate aqui a tela
+           de /admin/financeiro so era alcancavel pelo "Ver tudo" do cartao da
+           Inicio — a tela que a Leticia (Viva Cacheada) mais usa era a mais
+           escondida do sistema. `exact` porque as irmas (vendas, despesas,
+           fluxo-caixa, sinal, remuneracoes) vivem DENTRO de /admin/financeiro
+           e acenderiam o item junto sem isso. */
+        { label: 'Relatório financeiro', href: '/admin/financeiro', Icon: IconTrendingUp, exact: true },
         { label: 'Caixa', href: '/admin/caixa', Icon: IconWallet },
         { label: 'Vendas', href: '/admin/financeiro/vendas', Icon: IconWallet },
         { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconWallet },

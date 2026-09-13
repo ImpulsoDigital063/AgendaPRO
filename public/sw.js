@@ -31,7 +31,10 @@
 // v105 (13/09): o seletor de período virou calendário (marca dia inicial e
 //   final) e abre como janela sobre a tela. A v104 tinha dois campos de data
 //   num painel ancorado no botão, que no celular abria pra fora da tela.
-const STATIC_CACHE_VERSION = 'agendapro-static-v105'
+// v106 (13/09): "Relatório financeiro" ganhou entrada própria na seção
+//   Financeiro dos dois menus (celular e computador). Até aqui a tela só era
+//   alcançável pelo "Ver tudo" do cartão da Início.
+const STATIC_CACHE_VERSION = 'agendapro-static-v106'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

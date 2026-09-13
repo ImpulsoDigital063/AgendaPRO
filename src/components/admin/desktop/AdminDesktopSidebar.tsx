@@ -102,6 +102,11 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
     {
       label: 'Financeiro',
       items: [
+        /* Paridade com o mobile (Eduardo, 13/09/2026): entrada propria pro
+           relatorio. No desktop ainda dava pra chegar por Outros > Relatorios,
+           mas em dois cliques e fora do grupo Financeiro. `exact` porque as
+           irmas vivem dentro de /admin/financeiro. */
+        { label: 'Relatório financeiro', href: '/admin/financeiro', exact: true, Icon: IconTrendingUp },
         { label: 'Caixa', href: '/admin/caixa', Icon: IconWallet },
         { label: 'Vendas', href: '/admin/financeiro/vendas', Icon: IconWallet },
         { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconReceipt },
