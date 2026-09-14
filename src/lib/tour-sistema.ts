@@ -27,6 +27,8 @@ export type BalaoTour = { alvo: string; titulo: string; corpo: string }
 
 export type ParadaTour = {
   id: string
+  /** Parada sem balão: a própria tela se demonstra sozinha (modal em modo demo). */
+  demo?: boolean
   parte: number
   nomeParte: string
   /** Rota da tela, com ?tab= quando for aba de Configurações. */
@@ -37,6 +39,10 @@ export type ParadaTour = {
 }
 
 export const TOTAL_PARTES = 5
+
+/** O modal de agendar em modo demo não conhece o roteiro: ao terminar, manda
+    pra esta parada. */
+export const PARADA_DEPOIS_DA_DEMO_AGENDAR = 'balcao-venda'
 
 export function montarRoteiro(opts: { categoria: string | null; vendeProduto: boolean }): ParadaTour[] {
   const t = termoPessoa(opts.categoria)
@@ -125,18 +131,31 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 2,
       nomeParte: 'Seu dia no balcão',
       href: '/admin',
-      seguir: opts.vendeProduto ? 'Próximo: produtos' : 'Próximo: o caixa',
+      seguir: 'Ver um exemplo',
       baloes: [
         {
           alvo: 'agendar',
           titulo: 'Marque pelo painel',
-          corpo: `${t.art.toUpperCase()} ${t.s} ligou ou mandou mensagem? Toque em Agendar, escolha ${t.art} ${t.s} (ou atenda sem cadastro), o serviço e o horário. Tocar num horário vazio da agenda também abre.`,
+          corpo: `${t.art.toUpperCase()} ${t.s} ligou ou mandou mensagem? É por aqui, em Agendar. Tocar num horário vazio da agenda também abre. Vou te mostrar um exemplo sendo feito.`,
         },
-        {
-          alvo: '',
-          titulo: 'Já atendeu? Registre o pagamento',
-          corpo: 'Ao marcar um atendimento que já aconteceu, responda "Sim, já atendi" e escolha a forma de pagamento: pix, dinheiro ou cartão com a sua maquininha. O valor entra direto no caixa.',
-        },
+      ],
+    },
+    {
+      id: 'balcao-demo',
+      demo: true,
+      parte: 2,
+      nomeParte: 'Seu dia no balcão',
+      href: '/admin?agendar=1&demo=1',
+      seguir: '',
+      baloes: [],
+    },
+    {
+      id: 'balcao-venda',
+      parte: 2,
+      nomeParte: 'Seu dia no balcão',
+      href: '/admin',
+      seguir: opts.vendeProduto ? 'Próximo: produtos' : 'Próximo: o caixa',
+      baloes: [
         {
           alvo: 'registrar-venda',
           titulo: 'Atendimento na hora',

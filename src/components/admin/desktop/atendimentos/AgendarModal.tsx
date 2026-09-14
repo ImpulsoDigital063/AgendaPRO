@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import { getAreaPrefix, areaSemTelasInternas } from '@/lib/area-prefix'
@@ -103,6 +103,11 @@ type Props = {
   initialServiceId?: string | null
   initialResgateBalanceId?: string | null
   onClose: () => void
+  /** Modo demonstração do tour do sistema (14/09/2026): o modal se preenche
+      sozinho com um exemplo e NADA é salvo (handleSave sai na 1ª linha). */
+  demo?: boolean
+  /** Chamado no botão final da demonstração (seguir o tour). */
+  onDemoFim?: () => void
 }
 
 function todayISO(): string {
@@ -149,6 +154,8 @@ export default function AgendarModal({
   initialServiceId = null,
   initialResgateBalanceId = null,
   onClose,
+  demo = false,
+  onDemoFim,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -851,7 +858,104 @@ export default function AgendarModal({
     return null
   }
 
+  /* ── DEMONSTRAÇÃO DO TOUR (14/09/2026) ───────────────────────────────
+     Com demo=true o modal se preenche sozinho, campo por campo, com uma
+     legenda em cima dizendo o que está acontecendo. É a tela de verdade,
+     então a demo nunca fica desatualizada. Nada é salvo: handleSave sai na
+     primeira linha e o botão Salvar fica desligado.
+     Refs pros valores mais novos: o roteiro roda num efeito só, e sem ref ele
+     leria as linhas de serviço e os profissionais do primeiro render. */
+  const [demoLegenda, setDemoLegenda] = useState<string | null>(null)
+  const [demoFim, setDemoFim] = useState(false)
+  const demoLinhasRef = useRef(serviceLines)
+  demoLinhasRef.current = serviceLines
+  const demoPickRef = useRef<(uid: string, id: string) => void>(() => {})
+
+  useEffect(() => {
+    if (!open || !demo) return
+    let vivo = true
+    const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    const focar = (chave: string) => {
+      document.querySelectorAll<HTMLElement>('[data-demo]').forEach((el) => {
+        el.style.outline = ''
+        el.style.outlineOffset = ''
+        el.style.borderRadius = ''
+      })
+      const el = document.querySelector<HTMLElement>(`[data-demo="${chave}"]`)
+      if (!el) return
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      el.style.outline = '2px solid var(--admin-accent)'
+      el.style.outlineOffset = '6px'
+      el.style.borderRadius = '12px'
+    }
+
+    ;(async () => {
+      setDemoFim(false)
+      await esperar(700)
+      if (!vivo) return
+      setDemoLegenda('Quem vai ser atendido. Pode escolher alguém do cadastro ou atender sem cadastro, como neste exemplo.')
+      focar('cliente')
+      await esperar(900)
+      setAvulso(true)
+      setCliente(null)
+      const nome = 'Cliente exemplo'
+      for (let n = 1; n <= nome.length && vivo; n++) {
+        setAvulsoName(nome.slice(0, n))
+        await esperar(55)
+      }
+      await esperar(900)
+      if (!vivo) return
+
+      setDemoLegenda('Quem vai atender.')
+      focar('profissional')
+      await esperar(900)
+      const prof = professionals[0]
+      if (prof) setProfId(prof.id)
+      await esperar(1300)
+      if (!vivo) return
+
+      setDemoLegenda('O serviço. Preço e duração já vêm do cadastro.')
+      focar('servico')
+      await esperar(900)
+      const servico = services[0]
+      const linha = demoLinhasRef.current[0]
+      if (servico && linha) demoPickRef.current(linha.uid, servico.id)
+      await esperar(1500)
+      if (!vivo) return
+
+      setDemoLegenda('O dia e o horário.')
+      focar('data')
+      setDate(todayISO())
+      await esperar(1000)
+      focar('horario')
+      setManualTime(true)
+      setTime('14:00')
+      await esperar(1400)
+      if (!vivo) return
+
+      setDemoLegenda('Já atendeu? Marque Sim. Ao salvar, o sistema pede a forma de pagamento (pix, dinheiro ou cartão com a sua maquininha) e o valor entra no caixa.')
+      focar('concluido')
+      await esperar(900)
+      setJaConcluido(true)
+      await esperar(2600)
+      if (!vivo) return
+
+      focar('__nenhum__')
+      setDemoLegenda('Pronto, é assim que se marca pelo painel. Isto foi só um exemplo: nada foi salvo.')
+      setDemoFim(true)
+    })()
+
+    return () => {
+      vivo = false
+      setDemoLegenda(null)
+      setDemoFim(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, demo])
+
   async function handleSave() {
+    // Demonstração do tour: trava no código, não só no botão.
+    if (demo) return
     if (!canSave || (!cliente && !avulso)) return
     setError(null)
     // Segunda trava contra o aviso de crédito vazar de um agendamento pro
@@ -1397,6 +1501,8 @@ export default function AgendarModal({
   }
 
   // ===== FORM PRINCIPAL =====
+  demoPickRef.current = handleServicePick
+
   return createPortal(
     <div
       role="dialog"
@@ -1416,6 +1522,31 @@ export default function AgendarModal({
           maxHeight: '90vh',
         }}
       >
+        {demo && demoLegenda && (
+          <div
+            className="px-5 py-3 flex items-start gap-3"
+            style={{ background: 'color-mix(in srgb, var(--admin-accent) 12%, var(--admin-popover-bg, #FFFFFF))', borderBottom: '1px solid var(--admin-border)' }}
+            aria-live="polite"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg flex-shrink-0" style={{ background: 'var(--admin-accent)', color: '#fff' }}>
+              Exemplo
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm leading-snug" style={{ color: 'var(--admin-text)' }}>{demoLegenda}</p>
+              {demoFim && onDemoFim && (
+                <button
+                  type="button"
+                  onClick={onDemoFim}
+                  className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold"
+                  style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                >
+                  Continuar o tour
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div
           className="flex items-center justify-between p-5 pb-3 flex-shrink-0"
@@ -1463,7 +1594,7 @@ export default function AgendarModal({
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Cliente · ou avulso (sem cadastro) */}
-          <Field icon={<IconUser size={14} />} label="Cliente">
+          <Field icon={<IconUser size={14} />} label="Cliente" demo="cliente">
             {avulso ? (
               <div className="space-y-2">
                 <input
@@ -1542,7 +1673,7 @@ export default function AgendarModal({
           </Field>
 
           {/* Data */}
-          <Field icon={<IconCalendar size={14} />} label="Data">
+          <Field icon={<IconCalendar size={14} />} label="Data" demo="data">
             <input
               type="date"
               value={date}
@@ -1552,7 +1683,7 @@ export default function AgendarModal({
           </Field>
 
           {/* Profissional */}
-          <Field icon={<IconUser size={14} />} label="Profissional">
+          <Field icon={<IconUser size={14} />} label="Profissional" demo="profissional">
             <select
               value={profId}
               onChange={(e) => setProfId(e.target.value)}
@@ -1601,7 +1732,7 @@ export default function AgendarModal({
             const resOpt = !recurring && cliente ? resgateOpts[line.serviceId] : undefined
             const isRes = !recurring && !!line.resgateBalanceId
             return (
-              <div key={line.uid} className="space-y-1.5">
+              <div key={line.uid} className="space-y-1.5" data-demo={idx === 0 ? 'servico' : undefined}>
                 <ServiceLineBlock
                   index={idx}
                   line={line}
@@ -1961,7 +2092,7 @@ export default function AgendarModal({
 
           {/* Horário (início) · vem DEPOIS do serviço · grid de chips agora sabe
               a duração total e calcula sobreposição corretamente */}
-          <Field icon={<IconClock size={14} />} label={balcao ? 'Hora (registro)' : 'Horário (início)'}>
+          <Field icon={<IconClock size={14} />} label={balcao ? 'Hora (registro)' : 'Horário (início)'} demo="horario">
             {manualTime ? (
               <div className="space-y-2">
                 <input
@@ -2022,7 +2153,7 @@ export default function AgendarModal({
           {/* Atendimento já concluído? → ao salvar abre "como foi pago".
               No balcão é sempre "sim" (atende e registra na hora) · escondido. */}
           {!balcao && (
-          <Field label="Atendimento já concluído?">
+          <Field label="Atendimento já concluído?" demo="concluido">
             <div className="grid grid-cols-2 gap-2">
               {([
                 { v: false, l: 'Não' },
@@ -2175,7 +2306,7 @@ export default function AgendarModal({
             <button
               type="button"
               onClick={handleSave}
-              disabled={!canSave || saving}
+              disabled={demo || !canSave || saving}
               className="px-5 py-2.5 rounded-xl text-sm font-bold transition-transform hover:translate-y-[-1px] disabled:opacity-40 disabled:translate-y-0"
               style={{
                 background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
@@ -2386,9 +2517,9 @@ export default function AgendarModal({
   )
 }
 
-function Field({ icon, label, children }: { icon?: React.ReactNode; label: string; children: React.ReactNode }) {
+function Field({ icon, label, children, demo }: { icon?: React.ReactNode; label: string; children: React.ReactNode; demo?: string }) {
   return (
-    <div>
+    <div data-demo={demo}>
       <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>
         {icon}
         {label}

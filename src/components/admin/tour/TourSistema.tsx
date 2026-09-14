@@ -91,7 +91,9 @@ export default function TourSistema({ categoria, vendeProduto }: Props) {
     router.replace(s ? `${pathname}?${s}` : pathname)
   }
 
-  if (!parada || !naTela || !pronto) return null
+  /* Parada de demo: quem conduz é a própria tela (ex. AgendarModal com
+     demo=1), não há balão pra abrir aqui. */
+  if (!parada || parada.demo || !naTela || !pronto) return null
 
   const contador = parada.parte === 0
     ? 'Conheça seu sistema'

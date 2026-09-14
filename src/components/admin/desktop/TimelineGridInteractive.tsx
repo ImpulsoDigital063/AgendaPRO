@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { PARADA_DEPOIS_DA_DEMO_AGENDAR } from '@/lib/tour-sistema'
 import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus, IconInfo, IconSettings, IconCheck, IconClock } from '@/components/ui/Icon'
 import AppointmentDrawer from '@/components/admin/atendimentos/AppointmentDrawer'
 import AgendarModal from '@/components/admin/desktop/atendimentos/AgendarModal'
@@ -1521,6 +1522,8 @@ export default function TimelineGridInteractive({
           router.replace(pathname)
           router.refresh()
         }}
+        demo={searchParams.get('demo') === '1'}
+        onDemoFim={() => router.push(`${pathname}?tour=${PARADA_DEPOIS_DA_DEMO_AGENDAR}`)}
       />
 
       {/* MODAL de VENDA DE BALCÃO · abre via ?balcao=1 · mesmo motor do Agendar,
