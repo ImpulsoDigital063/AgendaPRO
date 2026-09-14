@@ -33,6 +33,9 @@ export type PassoTour = {
    * editor de um aviso. Use só no último passo: depois dele não há "Próximo".
    */
   acao?: { rotulo: string; executar: () => void }
+  /** 'rodape' prende o balão embaixo da tela, pra não tampar o que vem logo
+      abaixo do alvo (ex. números de uma tela financeira). */
+  posicao?: 'auto' | 'rodape'
 }
 
 type Props = {
@@ -88,17 +91,33 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contado
     if (!passo?.alvo) { setCaixa(null); return }
     const el = acharAlvo(passo.alvo)
     if (!el) { setCaixa(null); return }
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    /* Alvo grande (uma aba inteira): rola até o TOPO dele deixando espaço pro
+       balão em cima. Centralizar jogava o balão no rodapé, por cima dos
+       botões da própria aba (teste 14/09). */
+    const grande = el.getBoundingClientRect().height > window.innerHeight * 0.45
+    if (grande) {
+      el.style.scrollMarginTop = '250px'
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    } else {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
     const medir = () => {
       const r = el.getBoundingClientRect()
       setCaixa({ top: r.top, left: r.left, width: r.width, height: r.height })
     }
     medir()
     const t = setTimeout(medir, 350) // depois do scroll suave
+    /* A tela ainda pode mudar depois de medir: lista que carrega empurra o
+       alvo pra baixo (Fichas modelo apontou pra um espaço vazio). */
+    const ro = new ResizeObserver(medir)
+    ro.observe(document.body)
+    ro.observe(el)
     window.addEventListener('resize', medir)
     window.addEventListener('scroll', medir, true)
     return () => {
       clearTimeout(t)
+      ro.disconnect()
+      if (grande) el.style.scrollMarginTop = ''
       window.removeEventListener('resize', medir)
       window.removeEventListener('scroll', medir, true)
     }
@@ -121,34 +140,57 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contado
   const ultimo = i === passos.length - 1
   const margem = 8
 
-  /* Balão embaixo do alvo; se não couber, em cima; alvo grande que ocupa a
-     tela toda deixa o balão preso no rodapé. Sem alvo, centralizado. */
-  const espacoAbaixo = caixa ? window.innerHeight - (caixa.top + caixa.height) : 0
-  const cabeAbaixo = caixa ? espacoAbaixo >= 220 : false
-  const cabeAcima = caixa ? caixa.top >= 220 : false
-  const balao: React.CSSProperties = caixa
-    ? {
-        position: 'fixed',
-        left: 12,
-        right: 12,
-        ...(cabeAbaixo
+  /* Posição vertical: alvo grande → balão em cima dele (a tela já rolou pra
+     abrir esse espaço); passo com posicao 'rodape' → preso embaixo (cabeçalho
+     de tela de números, pra não tampar o principal logo abaixo); senão
+     embaixo do alvo, ou em cima se não couber. Sem alvo, centralizado. */
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const espacoAbaixo = caixa ? vh - (caixa.top + caixa.height) : 0
+  const grande = caixa ? caixa.height > vh * 0.45 : false
+  const vertical: React.CSSProperties = !caixa
+    ? { top: '50%', transform: 'translateY(-50%)' }
+    : passo.posicao === 'rodape'
+      ? { bottom: 12 }
+      : grande && caixa.top >= 200
+        ? { bottom: vh - caixa.top + margem }
+        : espacoAbaixo >= 220
           ? { top: caixa.top + caixa.height + margem }
-          : cabeAcima
-            ? { bottom: window.innerHeight - caixa.top + margem }
-            : { bottom: 12 }),
+          : caixa.top >= 220
+            ? { bottom: vh - caixa.top + margem }
+            : { bottom: 12 }
+
+  /* Horizontal: no celular ocupa a largura; em tela larga fica alinhado com
+     o alvo (antes ficava sempre no meio, longe dos botões da direita). */
+  const largura = 420
+  const horizontal: React.CSSProperties = vw < 640 || !caixa || grande
+    ? { left: 12, right: 12, marginLeft: 'auto', marginRight: 'auto' }
+    : {
+        left: Math.min(Math.max(caixa.left + caixa.width / 2 - largura / 2, 12), vw - largura - 12),
+        width: largura,
       }
-    : { position: 'fixed', left: 12, right: 12, top: '50%', transform: 'translateY(-50%)' }
+  const balao: React.CSSProperties = { position: 'fixed', ...vertical, ...horizontal }
+
+  /* Contorno nunca passa da borda da tela (cabeçalho fixo é mais largo que o
+     conteúdo e o contorno saía cortado à direita). */
+  const contorno = caixa
+    ? (() => {
+        const left = Math.max(caixa.left - 6, 4)
+        const right = Math.min(caixa.left + caixa.width + 6, vw - 4)
+        return { top: caixa.top - 6, left, width: right - left, height: caixa.height + 12 }
+      })()
+    : null
 
   return createPortal(
     <div className="fixed inset-0 z-[200]" role="dialog" aria-modal="true" aria-label={rotulo}>
-      {caixa ? (
+      {contorno ? (
         <div
           className="absolute rounded-2xl pointer-events-none transition-all duration-200"
           style={{
-            top: caixa.top - 6,
-            left: caixa.left - 6,
-            width: caixa.width + 12,
-            height: caixa.height + 12,
+            top: contorno.top,
+            left: contorno.left,
+            width: contorno.width,
+            height: contorno.height,
             boxShadow: '0 0 0 9999px rgba(15,23,42,0.62)',
             border: '2px solid var(--admin-accent)',
           }}
@@ -159,7 +201,7 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contado
 
       <div
         className="admin-card p-4 mx-auto"
-        style={{ ...balao, maxWidth: 420, boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}
+        style={{ ...balao, maxWidth: largura, boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}
       >
         <div className="flex items-start justify-between gap-2 mb-1">
           <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-accent)' }}>
@@ -188,7 +230,7 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contado
         </div>
 
         <div className="flex items-center gap-2 mt-4">
-          <button type="button" onClick={encerrar} className="text-sm font-semibold px-2 py-2" style={{ color: 'var(--admin-text-faded)' }}>
+          <button type="button" onClick={encerrar} className="text-sm font-semibold px-2 py-2 whitespace-nowrap" style={{ color: 'var(--admin-text-faded)' }}>
             {rotuloSair ?? (passo.acao ? 'Agora não' : 'Pular')}
           </button>
           <div className="flex-1" />
@@ -196,7 +238,7 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contado
             <button
               type="button"
               onClick={() => (i > 0 ? setI(i - 1) : aoVoltarInicio?.())}
-              className="px-3 py-2 rounded-xl text-sm font-semibold"
+              className="px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap"
               style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}
             >
               Voltar
@@ -210,7 +252,7 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contado
                 encerrar()
                 acao?.executar()
               }}
-              className="px-4 py-2 rounded-xl text-sm font-semibold"
+              className="px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap"
               style={{ background: 'var(--admin-accent)', color: '#fff' }}
             >
               {passo.acao.rotulo}

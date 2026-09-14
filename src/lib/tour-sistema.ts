@@ -23,7 +23,7 @@ export function tourSistemaLiberado(businessId: string | null | undefined): bool
   return !!businessId && TOUR_SISTEMA_LIBERADOS.includes(businessId)
 }
 
-export type BalaoTour = { alvo: string; titulo: string; corpo: string }
+export type BalaoTour = { alvo: string; titulo: string; corpo: string; posicao?: 'auto' | 'rodape' }
 
 export type ParadaTour = {
   id: string
@@ -193,6 +193,7 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       baloes: [
         {
           alvo: 'cabecalho',
+          posicao: 'rodape',
           titulo: 'Caixa do dia',
           corpo: 'Abra o caixa com o fundo de troco, registre sangria e suprimento, e no fim do dia confira dinheiro, cartão e pix. O sistema mostra se sobrou ou faltou.',
         },
@@ -203,10 +204,11 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 3,
       nomeParte: 'Feche o dia',
       href: '/admin/financeiro',
-      seguir: 'Próximo: fluxo de caixa',
+      seguir: 'Próximo: fluxo',
       baloes: [
         {
           alvo: 'cabecalho',
+          posicao: 'rodape',
           titulo: 'Relatório financeiro',
           corpo: 'Quanto entrou, quanto falta receber, as despesas e o resultado do período. Tudo que foi lançado no balcão aparece aqui, já com desconto de cupom abatido.',
         },
@@ -221,6 +223,7 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       baloes: [
         {
           alvo: 'cabecalho',
+          posicao: 'rodape',
           titulo: 'Fluxo de caixa',
           corpo: 'Todas as entradas e saídas em ordem, com o saldo de cada período. É onde você enxerga se o dinheiro do mês fecha antes de ele acabar.',
         },
@@ -231,7 +234,7 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 3,
       nomeParte: 'Feche o dia',
       href: '/admin/financeiro/remuneracoes',
-      seguir: `Próximo: fazer ${t.art} ${t.s} voltar`,
+      seguir: 'Próximo: fichas',
       baloes: [
         {
           alvo: 'regra-comissao',
@@ -261,7 +264,7 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 4,
       nomeParte: `Faça ${t.art} ${t.s} voltar`,
       href: '/admin/configuracoes?tab=fidelidade',
-      seguir: 'Próximo: QR code e link',
+      seguir: 'Próximo: QR code',
       baloes: [
         {
           alvo: 'dica-fidelidade|tab-fidelidade',
