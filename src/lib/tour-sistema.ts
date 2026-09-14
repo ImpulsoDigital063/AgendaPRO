@@ -29,6 +29,8 @@ export type ParadaTour = {
   id: string
   /** Parada sem balão: a própria tela se demonstra sozinha (modal em modo demo). */
   demo?: boolean
+  /** Encerramento: abre o card de conclusão (TourFinal) em vez de balões. */
+  final?: boolean
   parte: number
   nomeParte: string
   /** Rota da tela, com ?tab= quando for aba de Configurações. */
@@ -370,10 +372,7 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 6,
       nomeParte: 'Seu plano',
       href: '/admin/configuracoes?tab=plano',
-      seguir: 'Falar no WhatsApp',
-      seguirLink: `https://wa.me/${WHATSAPP_SUPORTE}?text=${encodeURIComponent(
-        'Oi! Terminei o tour do AgendaPRO e quero marcar a call de alinhamento e personalização.',
-      )}`,
+      seguir: 'Concluir',
       baloes: [
         {
           alvo: 'tab-plano',
@@ -385,12 +384,21 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
           titulo: 'Como contratar',
           corpo: 'Aqui você escolhe o plano e a forma de pagar: PIX mensal, semestral ou anual, ou cartão com cobrança automática. Não existe cobrança antes do fim do teste.',
         },
-        {
-          alvo: '',
-          titulo: 'Sua call de alinhamento e personalização',
-          corpo: `Todo negócio tem direito a uma call com a gente pra alinhar o sistema ao seu jeito de trabalhar e personalizar o que precisar. Chame no WhatsApp e a gente marca.`,
-        },
       ],
+    },
+    {
+      /* Fecha na Início, não em cima da tela de Plano: os planos escurecidos
+         atrás do card pareciam cobrança (teste 14/09). */
+      id: 'fim',
+      final: true,
+      parte: 6,
+      nomeParte: 'Seu plano',
+      href: '/admin/inicio',
+      seguir: '',
+      seguirLink: `https://wa.me/${WHATSAPP_SUPORTE}?text=${encodeURIComponent(
+        'Oi! Terminei o tour do AgendaPRO e quero marcar a call de alinhamento e personalização.',
+      )}`,
+      baloes: [],
     },
   )
 

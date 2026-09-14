@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TourGuiado, { acharAlvo, type PassoTour } from './TourGuiado'
+import TourFinal from './TourFinal'
 import { hrefDaParada, limparIdParada, montarRoteiro, TOTAL_PARTES } from '@/lib/tour-sistema'
 
 type Props = { categoria: string | null; vendeProduto: boolean }
@@ -96,6 +97,11 @@ export default function TourSistema({ categoria, vendeProduto }: Props) {
 
   /* Parada de demo: quem conduz é a própria tela (ex. AgendarModal com
      demo=1), não há balão pra abrir aqui. */
+  if (parada?.final && naTela) {
+    const partes = Array.from(new Set(roteiro.filter((p) => p.parte > 0).map((p) => p.nomeParte)))
+    return <TourFinal partes={partes} linkWhatsApp={parada.seguirLink ?? ''} onFechar={sair} />
+  }
+
   if (!parada || parada.demo || !naTela || !pronto) return null
 
   const contador = parada.parte === 0
