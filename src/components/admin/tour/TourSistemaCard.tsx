@@ -1,12 +1,13 @@
 'use client'
 
 /* Convite do tour "Conheça seu sistema" na Início. Por enquanto só aparece
-   pros negócios liberados em src/lib/tour-sistema.ts, e fica fixo (sem
-   dispensar) enquanto o roteiro está sendo revisado. Sem emoji: SVG. */
+   pros negócios liberados em src/lib/tour-sistema.ts. Some no X ou quando o
+   tour chega ao fim (localStorage). Sem emoji: SVG. */
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { limparIdParada, montarRoteiro } from '@/lib/tour-sistema'
+import { limparIdParada, montarRoteiro, TOUR_SISTEMA_CARD_OCULTO } from '@/lib/tour-sistema'
 
 const IDS = new Set(montarRoteiro({ categoria: null, vendeProduto: true }).map((p) => p.id))
 
@@ -25,11 +26,22 @@ export default function TourSistemaCard() {
      do balão (teste 14/09). Some enquanto o tour roda. */
   const params = useSearchParams()
   const id = limparIdParada(params.get('tour'))
-  if (id && IDS.has(id)) return null
+  /* Some pra quem dispensou no X ou já chegou ao fim do tour. Começa
+     escondido e só aparece depois de ler o localStorage, pra não piscar. */
+  const [oculto, setOculto] = useState(true)
+  useEffect(() => {
+    try { setOculto(localStorage.getItem(TOUR_SISTEMA_CARD_OCULTO) === '1') } catch { setOculto(false) }
+  }, [])
+  if (oculto || (id && IDS.has(id))) return null
+
+  function dispensar() {
+    try { localStorage.setItem(TOUR_SISTEMA_CARD_OCULTO, '1') } catch {}
+    setOculto(true)
+  }
 
   return (
     <div
-      className="rounded-2xl p-4 flex items-start gap-3"
+      className="rounded-2xl p-4 flex items-start gap-3 relative"
       style={{
         background:
           'linear-gradient(135deg, color-mix(in srgb, var(--brand-primary, var(--admin-accent)) 10%, var(--admin-surface)) 0%, var(--admin-surface) 70%)',
@@ -66,6 +78,18 @@ export default function TourSistemaCard() {
           Começar o tour
         </Link>
       </div>
+
+      <button
+        type="button"
+        onClick={dispensar}
+        aria-label="Dispensar convite do tour"
+        className="absolute top-2.5 right-2.5 p-1"
+        style={{ color: 'var(--admin-text-faded)' }}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
     </div>
   )
 }

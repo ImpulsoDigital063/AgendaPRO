@@ -12,16 +12,33 @@
  * próxima pela URL (?tour=<id>), então o tour atravessa telas sem estado
  * global: recarregar a página mantém a parada.
  *
- * Por enquanto só aparece pros negócios em TOUR_SISTEMA_LIBERADOS.
+ * Quem vê: os negócios em TOUR_SISTEMA_LIBERADOS e todo negócio cadastrado a
+ * partir de TOUR_SISTEMA_CADASTRO_DESDE (decisão do Eduardo em 14/09/2026:
+ * Marcela + novos cadastros; clientes antigos não veem).
  */
 import { termoPessoa } from '@/lib/segmento'
 
-/** Studio Marcela Hair (conta de teste do Eduardo). */
-export const TOUR_SISTEMA_LIBERADOS = ['cd3c7f5a-e657-4ddb-96c7-0a4ff45b63eb']
+/** Liberados à mão, fora da regra de data: Studio Marcela Hair (conta de
+    teste do Eduardo) e Gustavo Souza Hair (trial de 09/09, pedido 14/09). */
+export const TOUR_SISTEMA_LIBERADOS = [
+  'cd3c7f5a-e657-4ddb-96c7-0a4ff45b63eb',
+  '5202c5b6-5377-46ee-b48d-9aa0fbf405e8',
+]
 
-export function tourSistemaLiberado(businessId: string | null | undefined): boolean {
-  return !!businessId && TOUR_SISTEMA_LIBERADOS.includes(businessId)
+/** Cadastros a partir daqui veem o tour. 13/09 00:00 BRT pega a AvA beauty. */
+export const TOUR_SISTEMA_CADASTRO_DESDE = '2026-09-13T03:00:00Z'
+
+export function tourSistemaLiberado(
+  business: { id?: string | null; created_at?: string | null } | null | undefined,
+): boolean {
+  if (!business?.id) return false
+  if (TOUR_SISTEMA_LIBERADOS.includes(business.id)) return true
+  return !!business.created_at && business.created_at >= TOUR_SISTEMA_CADASTRO_DESDE
 }
+
+/** localStorage: card dispensado no X ou tour concluído. Só esconde o card;
+    o tour em si continua abrindo por link. */
+export const TOUR_SISTEMA_CARD_OCULTO = 'ap_tour_sistema_card_oculto'
 
 export type BalaoTour = { alvo: string; titulo: string; corpo: string; posicao?: 'auto' | 'rodape' }
 

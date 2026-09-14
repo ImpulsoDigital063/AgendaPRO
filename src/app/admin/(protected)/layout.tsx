@@ -268,7 +268,7 @@ export default async function AdminLayout({
           )}
           {children}
           {/* Tour 'Conheça seu sistema' (13/09/2026) · só negócios liberados. */}
-          {business && tourSistemaLiberado(business.id) && (
+          {business && tourSistemaLiberado(business) && (
             <Suspense fallback={null}>
               <TourSistema
                 categoria={resolveCategoria(business)}

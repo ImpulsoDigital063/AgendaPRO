@@ -51,6 +51,7 @@ export const dynamic = 'force-dynamic'
 
 type Business = {
   id: string
+  created_at?: string | null
   slug: string
   name: string
   brand_logo_url?: string | null
@@ -478,7 +479,7 @@ export default async function AdminInicioPage() {
         <NovidadeSumidosCard jaEntrou={!!business.tour_sumidos_em} />
 
         {/* Tour 'Conheça seu sistema' · em revisão, só negócios liberados. */}
-        {tourSistemaLiberado(business.id) && (
+        {tourSistemaLiberado(business) && (
           <Suspense fallback={null}><TourSistemaCard /></Suspense>
         )}
 

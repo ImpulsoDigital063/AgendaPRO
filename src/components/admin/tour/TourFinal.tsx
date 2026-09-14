@@ -12,6 +12,7 @@
  */
 import { createPortal } from 'react-dom'
 import { useEffect, useState } from 'react'
+import { TOUR_SISTEMA_CARD_OCULTO } from '@/lib/tour-sistema'
 
 function IconCheck({ size = 14 }: { size?: number }) {
   return (
@@ -46,7 +47,11 @@ type Props = {
 
 export default function TourFinal({ partes, linkWhatsApp, onFechar }: Props) {
   const [pronto, setPronto] = useState(false)
-  useEffect(() => setPronto(true), [])
+  useEffect(() => {
+    setPronto(true)
+    /* Chegou ao fim: o convite da Início não precisa mais aparecer. */
+    try { localStorage.setItem(TOUR_SISTEMA_CARD_OCULTO, '1') } catch {}
+  }, [])
   if (!pronto) return null
 
   return createPortal(
@@ -75,7 +80,7 @@ export default function TourFinal({ partes, linkWhatsApp, onFechar }: Props) {
             Pronto, você conheceu o AgendaPRO
           </h2>
           <p className="text-sm mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
-            Agora é colocar o seu negócio aqui dentro. Você pode rever o tour quando quiser pelo card na Início.
+            Agora é colocar o seu negócio aqui dentro. Se travar em alguma parte, chama a gente.
           </p>
         </div>
 
