@@ -254,8 +254,20 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
         {
           alvo: 'cabecalho',
           posicao: 'rodape',
-          titulo: 'Sinal pra segurar o horário',
-          corpo: `Se quiser, cobre um sinal no agendamento pra diminuir falta. Aqui você acompanha os sinais pagos e pendentes e o crédito que fica com ${t.art} ${t.s} quando ${t.pron} desmarca no prazo.`,
+          titulo: 'Sinal: chega de furo na agenda',
+          corpo: `Peça um sinal por PIX pra confirmar o horário. Com o horário pago antes, o furo diminui.`,
+        },
+        {
+          alvo: 'cabecalho',
+          posicao: 'rodape',
+          titulo: 'O dinheiro cai direto na sua conta',
+          corpo: 'O PIX vai pra sua chave, sem taxa e sem intermediário: o sistema só monta o código. Você liga aqui mesmo, com a sua chave PIX, e escolhe a porcentagem do sinal, o prazo pra pagar e o que acontece se desmarcar.',
+        },
+        {
+          alvo: 'cabecalho',
+          posicao: 'rodape',
+          titulo: 'Como funciona no dia a dia',
+          corpo: `Pelo link de agendamento, o sinal é pedido sempre. Quando você marca pelo painel, cobra só se escolher. O que acontece com o valor quando ${t.art} ${t.s} desmarca segue a regra que você definiu. Nesta tela você acompanha o que foi pago, o que está pendente e os créditos.`,
         },
       ],
     },
@@ -313,8 +325,18 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       baloes: [
         {
           alvo: 'avisos-estado|avisos-lista|avisos-beta',
-          titulo: 'Avisos automáticos',
-          corpo: `Confirmação e lembrete do horário saindo sozinhos pelo WhatsApp oficial, sem você mandar um por um. Está em beta e sendo liberado aos poucos pros negócios.`,
+          titulo: 'Avisos automáticos no WhatsApp',
+          corpo: `Marcou o horário, ${t.art} ${t.s} recebe a confirmação. Na véspera, o lembrete. Tudo sai sozinho, sem você digitar uma mensagem. Se o horário tem sinal, no lugar da confirmação sai a cobrança com o PIX.`,
+        },
+        {
+          alvo: 'avisos-lista|avisos-estado|avisos-beta',
+          titulo: 'Por que vale a pena',
+          corpo: `Menos falta e menos tempo no celular confirmando um por um. As mensagens saem do número oficial da Meta, não do seu, então o seu WhatsApp não corre risco de bloqueio. E você pode escrever cada aviso do seu jeito.`,
+        },
+        {
+          alvo: 'avisos-conta|avisos-estado|avisos-beta',
+          titulo: 'Funciona com pacote mensal',
+          corpo: 'Pra ligar os avisos, você escolhe um pacote de mensagens por mês, a partir de R$ 7,90. A tela mostra quantos atendimentos cabem em cada pacote e soma quanto os avisos ligados gastam, então você sabe antes de pagar. Está em beta e sendo liberado aos poucos.',
         },
       ],
     },
