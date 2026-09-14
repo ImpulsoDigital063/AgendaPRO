@@ -6,6 +6,9 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { limparIdParada, montarRoteiro } from '@/lib/tour-sistema'
+
+const IDS = new Set(montarRoteiro({ categoria: null, vendeProduto: true }).map((p) => p.id))
 
 function IconMapa({ size = 20 }: { size?: number }) {
   return (
@@ -21,7 +24,8 @@ export default function TourSistemaCard() {
   /* Com o tour aberto, o card vira uma segunda entrada pro mesmo tour atrás
      do balão (teste 14/09). Some enquanto o tour roda. */
   const params = useSearchParams()
-  if (params.get('tour')) return null
+  const id = limparIdParada(params.get('tour'))
+  if (id && IDS.has(id)) return null
 
   return (
     <div

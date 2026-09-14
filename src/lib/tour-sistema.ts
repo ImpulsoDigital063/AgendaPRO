@@ -291,6 +291,13 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
   return paradas
 }
 
+/** Id da parada lido da URL. Tira pontuação colada: link copiado de mensagem
+    chega como "?tour=abertura." e não abria nada (teste 14/09). */
+export function limparIdParada(bruto: string | null): string | null {
+  const id = (bruto ?? '').toLowerCase().replace(/[^a-z-]/g, '')
+  return id || null
+}
+
 /** Junta ?tour=<id> no href, respeitando o ?tab= que já possa existir. */
 export function hrefDaParada(p: ParadaTour): string {
   return `${p.href}${p.href.includes('?') ? '&' : '?'}tour=${p.id}`

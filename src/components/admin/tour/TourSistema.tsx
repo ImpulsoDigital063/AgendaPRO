@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TourGuiado, { acharAlvo, type PassoTour } from './TourGuiado'
-import { hrefDaParada, montarRoteiro, TOTAL_PARTES } from '@/lib/tour-sistema'
+import { hrefDaParada, limparIdParada, montarRoteiro, TOTAL_PARTES } from '@/lib/tour-sistema'
 
 type Props = { categoria: string | null; vendeProduto: boolean }
 
@@ -19,7 +19,7 @@ export default function TourSistema({ categoria, vendeProduto }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
-  const tourId = params.get('tour')
+  const tourId = limparIdParada(params.get('tour'))
   const tab = params.get('tab')
 
   const roteiro = useMemo(() => montarRoteiro({ categoria, vendeProduto }), [categoria, vendeProduto])
