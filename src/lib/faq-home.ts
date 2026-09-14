@@ -31,7 +31,7 @@ export const DEFAULT_FAQS: FAQItem[] = [
   },
   {
     q: 'Tenho mais de um profissional. Funciona?',
-    a: 'Sim. No plano Equipe, cada profissional tem agenda e horários independentes, e entra com o login dela pelo celular. Você decide o que cada uma pode fazer: marcar só na própria agenda, marcar também pras colegas, receber o pagamento da cliente. A comissão é calculada sozinha e cada uma vê só a dela. O Equipe (R$97) inclui até 5 profissionais mais 1 recepcionista com tela própria — ela marca pra todo mundo e fecha caixa sem enxergar seu faturamento. Venda de produto e controle de estoque também entram só nesse plano.',
+    a: 'Sim. No plano Equipe, cada profissional tem agenda e horários independentes, e entra com o login dela pelo celular. Você decide o que cada uma pode fazer: marcar só na própria agenda, marcar também pras colegas, receber o pagamento da cliente. A comissão é calculada sozinha e cada uma vê só a dela. O Equipe (R$97) inclui até 5 profissionais mais 1 recepcionista com tela própria — ela marca pra todo mundo e fecha caixa sem enxergar seu faturamento.',
   },
   {
     q: 'Vocês adaptam o sistema pro meu negócio?',

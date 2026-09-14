@@ -27,9 +27,9 @@ export const PRICING = {
       financeiro: true,
       cupons: true,
       relatorios: true,
-      catalogoProdutos: false, // ⚠️ Solo NÃO tem · diferencial pra venda Equipe
-      controleEstoque: false,
-      vendaProduto: false,
+      catalogoProdutos: true, // liberado pro Solo em 13/09/2026 (antes só Equipe)
+      controleEstoque: true,
+      vendaProduto: true,
       recepcao: false,
     },
   },

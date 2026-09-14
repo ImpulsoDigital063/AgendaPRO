@@ -111,7 +111,7 @@ const ESTETICA_FAQS: FAQItem[] = [
   },
   {
     q: 'Vendo dermocosmético pra levar pra casa. Dá pra controlar?',
-    a: 'Dá, no plano Equipe. O produto entra na mesma comanda do procedimento e baixa do estoque sozinho — a receita que hoje vai pra farmácia fica com você, com controle do que entrou e do que sobrou.',
+    a: 'Dá, em todos os planos. O produto entra na mesma comanda do procedimento e baixa do estoque sozinho — a receita que hoje vai pra farmácia fica com você, com controle do que entrou e do que sobrou.',
   },
   {
     q: 'Como funciona a garantia?',

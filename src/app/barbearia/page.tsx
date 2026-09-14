@@ -86,7 +86,7 @@ const BARBER_FAQS: FAQItem[] = [
   },
   {
     q: 'Vendo pomada e óleo. O sistema controla?',
-    a: 'Controla, no plano Equipe. O produto entra na mesma comanda do corte e baixa do estoque sozinho. Você vê quanto sobrou de cada item e quanto aquilo rendeu no mês — sem anotar em caderno.',
+    a: 'Controla, em todos os planos. O produto entra na mesma comanda do corte e baixa do estoque sozinho. Você vê quanto sobrou de cada item e quanto aquilo rendeu no mês — sem anotar em caderno.',
   },
   {
     q: 'Vocês adaptam o sistema pra minha barbearia?',
@@ -128,7 +128,7 @@ const BARBER_FAQS: FAQItem[] = [
   },
   {
     q: 'Tenho 3 barbeiros. Cada um tem agenda separada?',
-    a: 'Sim. No plano Equipe (R$97), cada barbeiro tem agenda, horários e comissão independentes — e entra com o login dele pelo celular. Você decide o que ele pode fazer: marcar só na agenda dele, marcar também pros colegas, receber o pagamento do cliente. O Equipe ainda inclui 1 recepcionista com tela própria (marca e fecha caixa sem ver seu faturamento) e libera venda de produto com controle de estoque.',
+    a: 'Sim. No plano Equipe (R$97), cada barbeiro tem agenda, horários e comissão independentes — e entra com o login dele pelo celular. Você decide o que ele pode fazer: marcar só na agenda dele, marcar também pros colegas, receber o pagamento do cliente. O Equipe ainda inclui 1 recepcionista com tela própria (marca e fecha caixa sem ver seu faturamento).',
   },
 
   /* ── TÉCNICO (consigo usar?) ── */

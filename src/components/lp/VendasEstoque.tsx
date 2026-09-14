@@ -16,8 +16,8 @@
    NÃO EXISTE (não prometer):
      · leitor de código de barras
      · alerta automático de reposição
-   GATE REAL: app/api/admin/products/route.ts → canSellProducts =
-   plan === 'equipe'. A seção diz isso na cara — vira gatilho de upgrade.
+   PLANO: desde 13/09/2026 venda de produto e estoque valem pra Solo e
+   Equipe (app/api/admin/products/route.ts → canSellProducts = true).
    ═══════════════════════════════════════════════════════════════ */
 
 import { SectionReveal } from '@/components/ui'
@@ -212,20 +212,18 @@ export default function VendasEstoque({ variant }: { variant: Variant }) {
           </h2>
           <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto">{c.sub}</p>
 
-          {/* Venda de produto e estoque são do plano EQUIPE — o gate é real e
-              está em /api/admin/products (canSellProducts = plan === 'equipe').
-              Sem dizer isso, alguém assina o Solo esperando controlar estoque e
-              descobre depois. Eduardo 01/08: tem que estar em todas as LPs. */}
+          {/* Venda de produto e estoque vêm nos dois planos desde 13/09/2026.
+              Antes eram só do Equipe; se voltar a ter trava, este selo muda junto. */}
           <div className="mt-5 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12px] sm:text-[13px]"
             style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.30)' }}
           >
             <span className="font-bold px-2 py-0.5 rounded-lg text-[10px] uppercase tracking-wide"
               style={{ background: '#10B981', color: '#05070f' }}
             >
-              Plano Equipe
+              Solo e Equipe
             </span>
             <span className="text-slate-300">
-              Venda de produto e controle de estoque entram no <strong className="text-white">Equipe (R$97/mês)</strong> — quem atende registra a venda junto do atendimento e o estoque baixa sozinho.
+              Venda de produto e controle de estoque vêm em <strong className="text-white">todos os planos, a partir de R$67/mês</strong> — quem atende registra a venda junto do atendimento e o estoque baixa sozinho.
             </span>
           </div>
         </SectionReveal>
@@ -255,10 +253,10 @@ export default function VendasEstoque({ variant }: { variant: Variant }) {
               <div className="rounded-xl p-4" style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.25)' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="inline-flex text-violet-300"><IconGift size={14} /></span>
-                  <strong className="text-white text-sm">Vendas de produto entram no plano Equipe</strong>
+                  <strong className="text-white text-sm">Venda de produto já vem no Solo</strong>
                 </div>
                 <p className="text-[13px] text-slate-400 leading-relaxed">
-                  R$ 97/mês, até 5 profissionais. Se você só atende e não revende nada, o Solo de R$ 67 resolve — e você sobe de plano quando quiser começar a vender.
+                  A partir de R$ 67/mês você já vende e controla o estoque. Quando a equipe crescer, o Equipe de R$ 97 libera até 5 profissionais com acesso próprio e recepcionista.
                 </p>
               </div>
 

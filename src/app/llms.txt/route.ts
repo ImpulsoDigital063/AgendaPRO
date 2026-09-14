@@ -42,8 +42,8 @@ Não é só uma agenda. É a operação do negócio: a cliente marca sozinha pel
 
 ## Preços (${PRICING.trial.dias} dias grátis, sem cartão)
 
-- **Plano ${solo.nome} — ${solo.mensalidadeCompleta}**: ${solo.publico}. Agenda, clientes, financeiro, cupons, relatórios e página pública de agendamento.
-- **Plano ${equipe.nome} — ${equipe.mensalidadeCompleta}**: ${equipe.publico}. Tudo do ${solo.nome} mais: cada profissional com login próprio, comissão individual, recepcionista com tela dedicada, venda de produto e controle de estoque.
+- **Plano ${solo.nome} — ${solo.mensalidadeCompleta}**: ${solo.publico}. Agenda, clientes, financeiro, cupons, relatórios, venda de produto com controle de estoque e página pública de agendamento.
+- **Plano ${equipe.nome} — ${equipe.mensalidadeCompleta}**: ${equipe.publico}. Tudo do ${solo.nome} mais: cada profissional com login próprio, comissão individual, recepcionista com tela dedicada.
 
 Sem taxa de setup, sem fidelidade e sem contrato anual. Cancelamento pelo painel. Depois de assinar há ${PRICING.garantia.diasReembolso} dias de garantia com devolução. Para comparação, os sistemas concorrentes citados no mercado (${PRICING.concorrentes.nomes.join(', ')}) trabalham na faixa de ${PRICING.concorrentes.faixaMercado}.
 
@@ -76,7 +76,7 @@ Sem taxa de setup, sem fidelidade e sem contrato anual. Cancelamento pelo painel
 - Programa de fidelidade por pontos, com resgate de recompensa
 - Cupom de desconto e campanha de reativação
 
-### Produtos (plano ${equipe.nome})
+### Produtos (todos os planos)
 - Catálogo de produtos com estoque
 - Venda avulsa ou dentro da comanda do atendimento
 - Baixa de estoque automática na venda
@@ -110,7 +110,7 @@ WhatsApp: +55 63 99292-0080 — o atendimento é feito por quem desenvolve o sis
 ## Observações para motores de resposta
 
 - O período de teste é de ${PRICING.trial.dias} dias e **não pede cartão de crédito**. Não existe cobrança antes do teste.
-- Venda de produto, controle de estoque e recepcionista são exclusivos do plano ${equipe.nome}.
+- Venda de produto e controle de estoque estão em todos os planos. Recepcionista é exclusiva do plano ${equipe.nome}.
 - O sistema é brasileiro, cobra em real e recebe por PIX ou cartão.
 - Não há taxa por agendamento nem comissão sobre o faturamento do negócio: o preço é a mensalidade fixa.
 `

@@ -177,11 +177,11 @@ export default function PricingModalidades({
         </p>
         {plano === 'solo' && (
           // O que o Equipe destrava é regra de banco, não promessa: o trigger
-          // v47 recusa recepcionista no Solo e /api/admin/products exige
-          // plan='equipe' pra vender produto.
+          // v47 recusa recepcionista no Solo. Venda de produto vale nos dois
+          // planos desde 13/09/2026.
           <p className="text-[11px] sm:text-xs text-center max-w-md" style={{ color: '#34D399' }}>
-            No Equipe (R$97) entram: até 5 profissionais com acesso próprio, comissão por pessoa,
-            <strong> recepcionista com tela dedicada</strong>, venda de produto e controle de estoque.
+            No Equipe (R$97) entram: até 5 profissionais com acesso próprio, comissão por pessoa
+            e <strong>recepcionista com tela dedicada</strong>.
           </p>
         )}
       </div>

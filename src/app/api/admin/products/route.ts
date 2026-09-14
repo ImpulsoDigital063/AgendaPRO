@@ -34,14 +34,10 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Produto é exclusivo do plano Equipe (R$97). O flag deixa as telas
-  // esconderem o picker de produto pra quem é Solo (ex.: Faturar comanda).
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('plan')
-    .eq('business_id', businessId)
-    .maybeSingle()
-  const canSellProducts = sub?.plan === 'equipe'
+  // Desde 13/09/2026 venda de produto vale pra Solo e Equipe (antes era só
+  // Equipe). O flag segue no contrato porque Faturar comanda e Editar
+  // serviços escondem o picker de produto quando ele vem false.
+  const canSellProducts = true
 
   return NextResponse.json({ products: data ?? [], canSellProducts })
 }
