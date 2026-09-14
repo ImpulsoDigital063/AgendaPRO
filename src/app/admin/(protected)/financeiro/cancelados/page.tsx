@@ -9,7 +9,7 @@ import { todayBR, addDaysBR, monthBoundsBR } from '@/lib/date-br'
 export default async function CanceladosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string }>
+  searchParams: Promise<{ periodo?: string; de?: string; ate?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -22,15 +22,40 @@ export default async function CanceladosPage({
     .single()
   if (!business) redirect(await destinoSemNegocio())
 
-  const { periodo: periodoParam } = await searchParams
-  const periodo = periodoParam || 'mes'
+  const { periodo: periodoParam, de: deParam, ate: ateParam } = await searchParams
 
   // λ.fuso · dia BR, nunca new Date().toISOString() cru (servidor roda em UTC:
   // depois das 21h no Brasil o filtro "Hoje" mostrava o dia seguinte)
   const today = todayBR()
+
+  /* Período escolhido na mão · mesmas regras do /admin/financeiro (13/09/2026):
+     as duas datas no formato certo, na ordem certa, sem futuro e no máximo 1
+     ano. Qualquer desvio cai no padrão em vez de quebrar — data vem da URL. */
+  const YMD = /^\d{4}-\d{2}-\d{2}$/
+  const deOk = deParam && YMD.test(deParam) ? deParam : null
+  const ateBruto = ateParam && YMD.test(ateParam) ? ateParam : null
+  const ateOk = ateBruto && ateBruto > today ? today : ateBruto
+  const diasEscolhidos =
+    deOk && ateOk
+      ? Math.round((Date.parse(ateOk + 'T12:00:00Z') - Date.parse(deOk + 'T12:00:00Z')) / 86400000) + 1
+      : 0
+  const customOk = !!deOk && !!ateOk && deOk <= ateOk && diasEscolhidos <= 366
+
+  /* Só valor conhecido volta do fallback: a URL vem com `periodo=custom`, e
+     devolver esse valor quando as datas são inválidas fazia a tela dizer
+     "Período escolhido" sem filtrar nada (achado no teste de 13/09). */
+  const periodo = customOk
+    ? 'custom'
+    : periodoParam === 'hoje' || periodoParam === 'semana'
+      ? periodoParam
+      : 'mes'
+
   let startDate: string
   let endDate: string
-  if (periodo === 'hoje') {
+  if (customOk) {
+    startDate = deOk as string
+    endDate = ateOk as string
+  } else if (periodo === 'hoje') {
     startDate = today
     endDate = today
   } else if (periodo === 'semana') {

@@ -126,6 +126,7 @@ const PERIODO_LABEL: Record<string, string> = {
   hoje: 'Hoje',
   semana: 'Últimos 7 dias',
   mes: 'Este mês',
+  custom: 'Período escolhido',
 }
 
 function formatPrice(value: number) {
@@ -220,7 +221,7 @@ export default function DespesasView({ expenses, vencidas = [], periodo, current
 
   return (
     <div className="space-y-5">
-      <FinancePeriodTabs periodo={periodo} />
+      <FinancePeriodTabs periodo={periodo} permitirCustom />
 
       {/* Navegação mês-a-mês · só quando filtro é "Mês" */}
       {periodo === 'mes' && currentMonth && (

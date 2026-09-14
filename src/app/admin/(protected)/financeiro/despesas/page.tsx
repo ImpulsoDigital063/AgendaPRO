@@ -9,7 +9,7 @@ import { todayBR, addDaysBR, monthBoundsBR } from '@/lib/date-br'
 export default async function DespesasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string; mes?: string }>
+  searchParams: Promise<{ periodo?: string; mes?: string; de?: string; ate?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -22,10 +22,33 @@ export default async function DespesasPage({
     .single()
   if (!business) redirect(await destinoSemNegocio())
 
-  const { periodo: periodoParam, mes: mesParam } = await searchParams
+  const { periodo: periodoParam, mes: mesParam, de: deParam, ate: ateParam } = await searchParams
+
+  /* Período escolhido na mão · mesmas regras do /admin/financeiro (13/09/2026).
+     Ordem de prioridade: intervalo escolhido > ?mes=YYYY-MM > ?periodo. */
+  const YMD = /^\d{4}-\d{2}-\d{2}$/
+  const hojeBR = todayBR()
+  const deOk = deParam && YMD.test(deParam) ? deParam : null
+  const ateBruto = ateParam && YMD.test(ateParam) ? ateParam : null
+  const ateOk = ateBruto && ateBruto > hojeBR ? hojeBR : ateBruto
+  const diasEscolhidos =
+    deOk && ateOk
+      ? Math.round((Date.parse(ateOk + 'T12:00:00Z') - Date.parse(deOk + 'T12:00:00Z')) / 86400000) + 1
+      : 0
+  const customOk = !!deOk && !!ateOk && deOk <= ateOk && diasEscolhidos <= 366
+
   // ?mes=YYYY-MM tem prioridade sobre ?periodo. Permite navegar histórico
   // (essencial pra Marko que migrou despesas dos meses anteriores).
-  const periodo = mesParam ? 'mes' : (periodoParam || 'mes')
+  /* Só valor conhecido volta do fallback: a URL vem com `periodo=custom`, e
+     devolver esse valor quando as datas são inválidas fazia a tela dizer
+     "Período escolhido" sem filtrar nada (achado no teste de 13/09). */
+  const periodo = customOk
+    ? 'custom'
+    : mesParam
+      ? 'mes'
+      : periodoParam === 'hoje' || periodoParam === 'semana'
+        ? periodoParam
+        : 'mes'
 
   // λ.fuso · tudo derivado do dia BR. Antes: new Date() cru + getFullYear/
   // getMonth, que no servidor (UTC) viram o dia/mês seguinte depois das 21h —
@@ -36,7 +59,11 @@ export default async function DespesasPage({
   let endDate: string
   let currentMonth: string // YYYY-MM do mês ativo (pra navegação)
 
-  if (mesParam) {
+  if (customOk) {
+    startDate = deOk as string
+    endDate = ateOk as string
+    currentMonth = (deOk as string).slice(0, 7)
+  } else if (mesParam) {
     const bounds = monthBoundsBR(mesParam)
     startDate = bounds.start
     endDate = bounds.end

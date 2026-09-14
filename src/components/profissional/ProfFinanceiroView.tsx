@@ -36,6 +36,7 @@ const PERIODO_LABEL: Record<string, string> = {
   hoje: 'Hoje',
   semana: 'Últimos 7 dias',
   mes: 'Este mês',
+  custom: 'Período escolhido',
 }
 
 export default function ProfFinanceiroView({ appointments, periodo, commissionPercentage, comissaoValorFixo = false }: Props) {
@@ -94,7 +95,7 @@ export default function ProfFinanceiroView({ appointments, periodo, commissionPe
 
   return (
     <div className="space-y-5">
-      <FinancePeriodTabs periodo={periodo} />
+      <FinancePeriodTabs periodo={periodo} permitirCustom />
 
       {/* Hero KPI: Minha comissão (o que vou receber) */}
       <div

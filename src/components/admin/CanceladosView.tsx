@@ -56,6 +56,7 @@ const PERIODO_LABEL: Record<string, string> = {
   hoje: 'Hoje',
   semana: 'Últimos 7 dias',
   mes: 'Este mês',
+  custom: 'Período escolhido',
 }
 
 const METHOD_LABEL: Record<NonNullable<Appointment['payment_method']>, string> = {
@@ -143,7 +144,7 @@ export default function CanceladosView({ appointments, periodo, businessName }: 
 
   return (
     <div className="space-y-5">
-      <FinancePeriodTabs periodo={periodo} />
+      <FinancePeriodTabs periodo={periodo} permitirCustom />
 
       {/* Hero KPI */}
       <div

@@ -8,7 +8,7 @@ import { getApptDiscountMap } from '@/lib/commission-discount'
 export default async function ProfissionalFinanceiroPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string }>
+  searchParams: Promise<{ periodo?: string; de?: string; ate?: string }>
 }) {
   const supabase = await createClient()
 
@@ -24,8 +24,31 @@ export default async function ProfissionalFinanceiroPage({
   if (!professional) redirect('/profissional/login')
   if ((professional.employment_type ?? 'commissioned') === 'employed') redirect('/profissional')
 
-  const { periodo: periodoParam } = await searchParams
-  const periodo = periodoParam || 'mes'
+  const { periodo: periodoParam, de: deParam, ate: ateParam } = await searchParams
+
+  /* Período escolhido na mão · mesmas regras do /admin/financeiro (13/09/2026):
+     formato certo, na ordem, sem futuro e no máximo 1 ano; qualquer desvio cai
+     no padrão. Aqui o intervalo vale LITERAL (sem a folga de dias futuros que
+     os atalhos usam): quem marcou 01 a 10 quer 01 a 10. */
+  const YMD = /^\d{4}-\d{2}-\d{2}$/
+  const hojeBR = todayBR()
+  const deOk = deParam && YMD.test(deParam) ? deParam : null
+  const ateBruto = ateParam && YMD.test(ateParam) ? ateParam : null
+  const ateOk = ateBruto && ateBruto > hojeBR ? hojeBR : ateBruto
+  const diasEscolhidos =
+    deOk && ateOk
+      ? Math.round((Date.parse(ateOk + 'T12:00:00Z') - Date.parse(deOk + 'T12:00:00Z')) / 86400000) + 1
+      : 0
+  const customOk = !!deOk && !!ateOk && deOk <= ateOk && diasEscolhidos <= 366
+
+  /* Só valor conhecido volta do fallback: a URL vem com `periodo=custom`, e
+     devolver esse valor quando as datas são inválidas fazia a tela dizer
+     "Período escolhido" sem filtrar nada (achado no teste de 13/09). */
+  const periodo: 'hoje' | 'semana' | 'mes' | 'custom' = customOk
+    ? 'custom'
+    : periodoParam === 'hoje' || periodoParam === 'semana'
+      ? periodoParam
+      : 'mes'
 
   // λ.fuso · datas em BR, NUNCA new Date().toISOString() cru: o servidor da
   // Vercel roda em UTC e depois das 21h no Brasil ele já está no dia seguinte —
@@ -37,7 +60,10 @@ export default async function ProfissionalFinanceiroPage({
   // sumiam de "A receber" do profissional.
   let startDate: string
   let endDate: string
-  if (periodo === 'hoje') {
+  if (customOk) {
+    startDate = deOk as string
+    endDate = ateOk as string
+  } else if (periodo === 'hoje') {
     startDate = todayStr
     endDate = todayStr
   } else if (periodo === 'semana') {
