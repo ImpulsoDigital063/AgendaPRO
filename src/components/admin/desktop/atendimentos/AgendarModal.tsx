@@ -1524,7 +1524,7 @@ export default function AgendarModal({
       >
         {demo && demoLegenda && (
           <div
-            className="px-5 py-3 flex items-start gap-3"
+            className="px-4 py-2 sm:px-5 sm:py-3 flex items-start gap-2 sm:gap-3"
             style={{ background: 'color-mix(in srgb, var(--admin-accent) 12%, var(--admin-popover-bg, #FFFFFF))', borderBottom: '1px solid var(--admin-border)' }}
             aria-live="polite"
           >
@@ -1532,12 +1532,12 @@ export default function AgendarModal({
               Exemplo
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm leading-snug" style={{ color: 'var(--admin-text)' }}>{demoLegenda}</p>
+              <p className="text-xs sm:text-sm leading-snug" style={{ color: 'var(--admin-text)' }}>{demoLegenda}</p>
               {demoFim && onDemoFim && (
                 <button
                   type="button"
                   onClick={onDemoFim}
-                  className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold"
+                  className="mt-1.5 sm:mt-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold"
                   style={{ background: 'var(--admin-accent)', color: '#fff' }}
                 >
                   Continuar o tour

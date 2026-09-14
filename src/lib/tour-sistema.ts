@@ -312,7 +312,7 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       seguir: 'Próximo: QR code',
       baloes: [
         {
-          alvo: 'avisos-estado|avisos-beta|avisos-lista',
+          alvo: 'avisos-estado|avisos-lista|avisos-beta',
           titulo: 'Avisos automáticos',
           corpo: `Confirmação e lembrete do horário saindo sozinhos pelo WhatsApp oficial, sem você mandar um por um. Está em beta e sendo liberado aos poucos pros negócios.`,
         },
