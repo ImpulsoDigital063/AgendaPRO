@@ -36,7 +36,7 @@
 //   alcançável pelo "Ver tudo" do cartão da Início.
 // v107 (13/09): calendário de período chegou em Cancelados, Despesas e no
 //   financeiro do profissional (as três já usavam a mesma barra Hoje/7/Mês).
-const STATIC_CACHE_VERSION = 'agendapro-static-v108'
+const STATIC_CACHE_VERSION = 'agendapro-static-v109'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
