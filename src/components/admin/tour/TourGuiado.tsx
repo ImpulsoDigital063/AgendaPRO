@@ -43,11 +43,13 @@ type Props = {
   rotulo: string
   /** Chamado ao pular, fechar ou concluir. É aqui que se grava "já viu". */
   aoEncerrar: () => void
+  /** Troca o "1 de 3" do topo. O tour do sistema usa pra mostrar a parte. */
+  contador?: string
 }
 
 type Caixa = { top: number; left: number; width: number; height: number }
 
-export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar }: Props) {
+export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contador }: Props) {
   const [i, setI] = useState(0)
   const [caixa, setCaixa] = useState<Caixa | null>(null)
   const [pronto, setPronto] = useState(false)
@@ -139,7 +141,7 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar }: Props
       >
         <div className="flex items-start justify-between gap-2 mb-1">
           <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-accent)' }}>
-            {i + 1} de {passos.length}
+            {contador ?? `${i + 1} de ${passos.length}`}
           </p>
           <button type="button" onClick={encerrar} aria-label="Fechar tour" style={{ color: 'var(--admin-text-faded)' }}>
             <IconClose size={16} />

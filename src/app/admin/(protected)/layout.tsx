@@ -1,4 +1,8 @@
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
+import TourSistema from '@/components/admin/tour/TourSistema'
+import { tourSistemaLiberado } from '@/lib/tour-sistema'
+import { resolveCategoria } from '@/lib/segmento'
 import { headers } from 'next/headers'
 import AdminMobileTopBar from '@/components/admin/AdminMobileTopBar'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
@@ -263,6 +267,15 @@ export default async function AdminLayout({
             />
           )}
           {children}
+          {/* Tour 'Conheça seu sistema' (13/09/2026) · só negócios liberados. */}
+          {business && tourSistemaLiberado(business.id) && (
+            <Suspense fallback={null}>
+              <TourSistema
+                categoria={resolveCategoria(business)}
+                vendeProduto={business.vendas_balcao_enabled !== false}
+              />
+            </Suspense>
+          )}
         </div>
       </div>
     </AdminThemeProvider>

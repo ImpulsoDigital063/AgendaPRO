@@ -1,0 +1,264 @@
+/**
+ * Tour "Conheça seu sistema" · roteiro que mostra o AgendaPRO inteiro.
+ *
+ * Nasceu em 13/09/2026 do diagnóstico dos trials que não ficaram: o
+ * onboarding antigo só levava pro link público e dava por concluído com um
+ * agendamento de teste. Quem paga usa o painel no balcão (Rosy e Viva
+ * Cacheada marcaram 100% pelo painel de 24/08 a 13/09). Então o roteiro
+ * segue o dia do salão: monta a casa, atende no balcão, fecha o dia, faz a
+ * cliente voltar, e só no fim fala do link.
+ *
+ * Cada PARADA é uma tela com 1 a 3 balões. O último balão da parada leva pra
+ * próxima pela URL (?tour=<id>), então o tour atravessa telas sem estado
+ * global: recarregar a página mantém a parada.
+ *
+ * Por enquanto só aparece pros negócios em TOUR_SISTEMA_LIBERADOS.
+ */
+import { termoPessoa } from '@/lib/segmento'
+
+/** Studio Marcela Hair (conta de teste do Eduardo). */
+export const TOUR_SISTEMA_LIBERADOS = ['cd3c7f5a-e657-4ddb-96c7-0a4ff45b63eb']
+
+export function tourSistemaLiberado(businessId: string | null | undefined): boolean {
+  return !!businessId && TOUR_SISTEMA_LIBERADOS.includes(businessId)
+}
+
+export type BalaoTour = { alvo: string; titulo: string; corpo: string }
+
+export type ParadaTour = {
+  id: string
+  parte: number
+  nomeParte: string
+  /** Rota da tela, com ?tab= quando for aba de Configurações. */
+  href: string
+  baloes: BalaoTour[]
+  /** Texto do botão que leva pra próxima parada. */
+  seguir: string
+}
+
+export const TOTAL_PARTES = 5
+
+export function montarRoteiro(opts: { categoria: string | null; vendeProduto: boolean }): ParadaTour[] {
+  const t = termoPessoa(opts.categoria)
+  const paradas: ParadaTour[] = [
+    {
+      id: 'abertura',
+      parte: 0,
+      nomeParte: 'Boas-vindas',
+      href: '/admin/inicio',
+      seguir: 'Começar',
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Seu negócio inteiro num lugar só',
+          corpo: `Em 5 partes rápidas você vai ver tudo que o AgendaPRO faz: montar o negócio, atender no balcão, fechar o caixa do dia e fazer ${t.art} ${t.s} voltar. Dá pra parar quando quiser e continuar depois.`,
+        },
+      ],
+    },
+
+    /* ── Parte 1 · Monte seu negócio ── */
+    {
+      id: 'servicos',
+      parte: 1,
+      nomeParte: 'Monte seu negócio',
+      href: '/admin/configuracoes?tab=servicos',
+      seguir: 'Próximo: equipe',
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Seus serviços',
+          corpo: 'Cadastre cada serviço com preço e duração. É com eles que a agenda calcula o horário, o caixa soma o valor e a comissão sai certa.',
+        },
+      ],
+    },
+    {
+      id: 'equipe',
+      parte: 1,
+      nomeParte: 'Monte seu negócio',
+      href: '/admin/configuracoes?tab=profissionais',
+      seguir: 'Próximo: horários',
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Sua equipe',
+          corpo: 'Cada profissional tem a própria agenda, o próprio acesso pelo celular e a comissão calculada sozinha. Você decide o que cada um pode ver e fazer.',
+        },
+      ],
+    },
+    {
+      id: 'horarios',
+      parte: 1,
+      nomeParte: 'Monte seu negócio',
+      href: '/admin/configuracoes?tab=horarios',
+      seguir: `Próximo: ${t.p}`,
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Horários de atendimento',
+          corpo: 'Defina os dias e horários em que vocês atendem. A agenda só mostra horário livre dentro deles.',
+        },
+      ],
+    },
+    {
+      id: 'clientes',
+      parte: 1,
+      nomeParte: 'Monte seu negócio',
+      href: '/admin/clientes',
+      seguir: 'Próximo: o balcão',
+      baloes: [
+        {
+          alvo: 'novo-cliente',
+          titulo: `${t.possP[0].toUpperCase()}${t.possP.slice(1)} ${t.p}`,
+          corpo: `Cadastre ${t.possP} ${t.p} aqui. Cada ficha guarda telefone, histórico de atendimentos, quanto já gastou e as anotações.`,
+        },
+        {
+          alvo: '',
+          titulo: 'Já tem uma lista?',
+          corpo: `Se ${t.possP} ${t.p} estão numa planilha ou em outro sistema, dá pra importar tudo de uma vez em Configurações, Importar. É o passo que mais adianta o seu começo.`,
+        },
+      ],
+    },
+
+    /* ── Parte 2 · Seu dia no balcão ── */
+    {
+      id: 'balcao',
+      parte: 2,
+      nomeParte: 'Seu dia no balcão',
+      href: '/admin',
+      seguir: opts.vendeProduto ? 'Próximo: produtos' : 'Próximo: o caixa',
+      baloes: [
+        {
+          alvo: 'agendar',
+          titulo: 'Marque pelo painel',
+          corpo: `${t.art.toUpperCase()} ${t.s} ligou ou mandou mensagem? Toque em Agendar, escolha ${t.art} ${t.s} (ou atenda sem cadastro), o serviço e o horário. Tocar num horário vazio da agenda também abre.`,
+        },
+        {
+          alvo: '',
+          titulo: 'Já atendeu? Registre o pagamento',
+          corpo: 'Ao marcar um atendimento que já aconteceu, responda "Sim, já atendi" e escolha a forma de pagamento: pix, dinheiro ou cartão com a sua maquininha. O valor entra direto no caixa.',
+        },
+        {
+          alvo: 'registrar-venda',
+          titulo: 'Atendimento na hora',
+          corpo: `Chegou ${t.s} sem horário marcado? Registrar venda atende e recebe na hora, sem passar pela agenda.`,
+        },
+      ],
+    },
+  ]
+
+  if (opts.vendeProduto) {
+    paradas.push({
+      id: 'produtos',
+      parte: 2,
+      nomeParte: 'Seu dia no balcão',
+      href: '/admin/produtos',
+      seguir: 'Próximo: o caixa',
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Venda de produtos',
+          corpo: 'Cadastre os produtos que você revende com preço e estoque. A venda pode entrar junto com o atendimento, e o estoque baixa sozinho.',
+        },
+      ],
+    })
+  }
+
+  paradas.push(
+    /* ── Parte 3 · Feche o dia ── */
+    {
+      id: 'caixa',
+      parte: 3,
+      nomeParte: 'Feche o dia',
+      href: '/admin/caixa',
+      seguir: 'Próximo: financeiro',
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Caixa do dia',
+          corpo: 'Abra o caixa com o fundo de troco, registre sangria e suprimento, e no fim do dia confira dinheiro, cartão e pix. O sistema mostra se sobrou ou faltou.',
+        },
+      ],
+    },
+    {
+      id: 'financeiro',
+      parte: 3,
+      nomeParte: 'Feche o dia',
+      href: '/admin/financeiro',
+      seguir: 'Próximo: comissão',
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Relatório financeiro',
+          corpo: 'Quanto entrou, quanto falta receber, as despesas e o resultado do período. Tudo que foi lançado no balcão aparece aqui, já com desconto de cupom abatido.',
+        },
+      ],
+    },
+    {
+      id: 'comissao',
+      parte: 3,
+      nomeParte: 'Feche o dia',
+      href: '/admin/financeiro/remuneracoes',
+      seguir: `Próximo: fazer ${t.art} ${t.s} voltar`,
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Comissão da equipe',
+          corpo: 'A comissão de cada profissional sai calculada sobre o que foi recebido de verdade. Na hora de pagar, você marca aqui e fica o registro.',
+        },
+      ],
+    },
+
+    /* ── Parte 4 · Faça a cliente voltar ── */
+    {
+      id: 'fichas',
+      parte: 4,
+      nomeParte: `Faça ${t.art} ${t.s} voltar`,
+      href: '/admin/configuracoes?tab=fichas-modelo',
+      seguir: 'Próximo: fidelidade',
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Ficha de anamnese',
+          corpo: `Modelos de ficha prontos pro seu segmento. Preenchida uma vez, ela fica guardada no cadastro ${t.de} pra você consultar antes de cada atendimento.`,
+        },
+      ],
+    },
+    {
+      id: 'fidelidade',
+      parte: 4,
+      nomeParte: `Faça ${t.art} ${t.s} voltar`,
+      href: '/admin/configuracoes?tab=fidelidade',
+      seguir: 'Próximo: o link',
+      baloes: [
+        {
+          alvo: '',
+          titulo: 'Fidelidade, cupons e sumidos',
+          corpo: `Dê pontos por atendimento e troque por recompensas. No menu, Cupons cria desconto e Sumidos mostra quem parou de voltar, pra você chamar no WhatsApp.`,
+        },
+      ],
+    },
+
+    /* ── Parte 5 · Deixe agendar sozinha ── */
+    {
+      id: 'link',
+      parte: 5,
+      nomeParte: 'Agendamento online',
+      href: '/admin/configuracoes?tab=qr-code',
+      seguir: 'Concluir',
+      baloes: [
+        {
+          alvo: '',
+          titulo: `${t.art.toUpperCase()} ${t.s} também pode agendar sozinh${t.art}`,
+          corpo: 'Além de marcar pelo painel, você tem uma página de agendamento com link e cartaz com QR code. Coloque na bio do Instagram ou mande no WhatsApp: o horário cai direto na agenda.',
+        },
+      ],
+    },
+  )
+
+  return paradas
+}
+
+/** Junta ?tour=<id> no href, respeitando o ?tab= que já possa existir. */
+export function hrefDaParada(p: ParadaTour): string {
+  return `${p.href}${p.href.includes('?') ? '&' : '?'}tour=${p.id}`
+}

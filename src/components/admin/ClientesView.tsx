@@ -294,6 +294,7 @@ export default function ClientesView({ clients, bookingSlug, businessId: _busine
       {/* Botão + Novo cliente · em desktop alinha à esquerda com largura limitada */}
       <button
         type="button"
+        data-tour="novo-cliente"
         onClick={() => setShowAddModal(true)}
         className="w-full lg:w-auto lg:px-6 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-[0.98]"
         style={{

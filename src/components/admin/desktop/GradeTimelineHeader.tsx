@@ -294,6 +294,7 @@ export default function GradeTimelineHeader({
           {!hideCaixaActions && vendasBalcao && (
           <Link
             href={`?balcao=1&date=${date}`}
+            data-tour="registrar-venda"
             className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
             style={{
               minHeight: 44,
@@ -314,6 +315,7 @@ export default function GradeTimelineHeader({
           {podeAgendar && (
           <Link
             href={`?agendar=1&date=${date}`}
+            data-tour="agendar"
             className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
             style={{
               minHeight: 44,
