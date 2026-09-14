@@ -234,12 +234,28 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 3,
       nomeParte: 'Feche o dia',
       href: '/admin/financeiro/remuneracoes',
-      seguir: 'Próximo: fichas',
+      seguir: 'Próximo: sinal',
       baloes: [
         {
           alvo: 'regra-comissao',
           titulo: 'Comissão da equipe',
           corpo: 'A comissão de cada profissional sai calculada sozinha sobre o faturamento, com a regra que você define pra cada um. Toque na linha pra ver o detalhe e registrar o pagamento.',
+        },
+      ],
+    },
+
+    {
+      id: 'sinal',
+      parte: 3,
+      nomeParte: 'Feche o dia',
+      href: '/admin/financeiro/sinal',
+      seguir: 'Próximo: fichas',
+      baloes: [
+        {
+          alvo: 'cabecalho',
+          posicao: 'rodape',
+          titulo: 'Sinal pra segurar o horário',
+          corpo: `Se quiser, cobre um sinal no agendamento pra diminuir falta. Aqui você acompanha os sinais pagos e pendentes e o crédito que fica com ${t.art} ${t.s} quando ${t.pron} desmarca no prazo.`,
         },
       ],
     },
@@ -264,12 +280,41 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 4,
       nomeParte: `Faça ${t.art} ${t.s} voltar`,
       href: '/admin/configuracoes?tab=fidelidade',
-      seguir: 'Próximo: QR code',
+      seguir: 'Próximo: sumidos',
       baloes: [
         {
           alvo: 'dica-fidelidade|tab-fidelidade',
-          titulo: 'Fidelidade, cupons e sumidos',
-          corpo: `Dê pontos por atendimento e troque por recompensas: o passo a passo desta tela mostra como configurar. No menu, Cupons cria desconto e Sumidos mostra quem parou de voltar, pra você chamar no WhatsApp.`,
+          titulo: 'Fidelidade e cupons',
+          corpo: `Dê pontos por atendimento e troque por recompensas: o passo a passo desta tela mostra como configurar. No menu, Cupons cria desconto pra oferecer quando quiser.`,
+        },
+      ],
+    },
+
+    {
+      id: 'sumidos',
+      parte: 4,
+      nomeParte: `Faça ${t.art} ${t.s} voltar`,
+      href: '/admin/sumidos',
+      seguir: 'Próximo: avisos',
+      baloes: [
+        {
+          alvo: 'faixa',
+          titulo: 'Quem parou de voltar',
+          corpo: `Escolha o prazo (15, 20, 30 dias) e veja ${t.possP} ${t.p} que sumiram. Dá pra chamar no WhatsApp com ou sem cupom de desconto.`,
+        },
+      ],
+    },
+    {
+      id: 'avisos',
+      parte: 4,
+      nomeParte: `Faça ${t.art} ${t.s} voltar`,
+      href: '/admin/whatsapp',
+      seguir: 'Próximo: QR code',
+      baloes: [
+        {
+          alvo: 'avisos-estado|avisos-beta|avisos-lista',
+          titulo: 'Avisos automáticos',
+          corpo: `Confirmação e lembrete do horário saindo sozinhos pelo WhatsApp oficial, sem você mandar um por um. Está em beta e sendo liberado aos poucos pros negócios.`,
         },
       ],
     },

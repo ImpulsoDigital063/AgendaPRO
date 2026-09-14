@@ -24,6 +24,7 @@
  */
 
 import { useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import TourGuiado, { type PassoTour } from '@/components/admin/tour/TourGuiado'
 import { termoPessoa } from '@/lib/segmento'
 
@@ -150,9 +151,12 @@ export default function TourAvisos({
     onVisto?.()
   }, [parte, onVisto])
 
+  /* Tour do sistema passando pela aba (?tour=...): este espera (14/09/2026). */
+  const tourSistema = !!useSearchParams().get('tour')
+
   return (
     <TourGuiado
-      aberto={aberto}
+      aberto={aberto && !tourSistema}
       passos={passos}
       rotulo={parte === 2 ? 'Tour de edição de texto' : 'Tour da aba Avisos'}
       aoEncerrar={aoEncerrar}

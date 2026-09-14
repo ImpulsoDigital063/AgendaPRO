@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { IconClose } from '@/components/ui/Icon'
 /* Segmento pelo modulo oficial: le `category`, nao o texto livre de
@@ -115,7 +116,11 @@ type Props = {
 
 type Caixa = { top: number; left: number; width: number; height: number }
 
-export default function TourSumidos({ aberto, categoria = null, parte = 1 }: Props) {
+export default function TourSumidos({ aberto: abertoPedido, categoria = null, parte = 1 }: Props) {
+  /* Com o tour do sistema passando por aqui (?tour=...), este espera: dois
+     balões disputando a mesma tela (14/09/2026). Não grava "já viu". */
+  const tourSistema = !!useSearchParams().get('tour')
+  const aberto = abertoPedido && !tourSistema
   const PASSOS = useMemo(
     () => (parte === 2 ? montarPassos2(categoria) : montarPassos(categoria)),
     [categoria, parte],
