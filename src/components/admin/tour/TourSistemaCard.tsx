@@ -5,6 +5,7 @@
    dispensar) enquanto o roteiro está sendo revisado. Sem emoji: SVG. */
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 function IconMapa({ size = 20 }: { size?: number }) {
   return (
@@ -17,6 +18,11 @@ function IconMapa({ size = 20 }: { size?: number }) {
 }
 
 export default function TourSistemaCard() {
+  /* Com o tour aberto, o card vira uma segunda entrada pro mesmo tour atrás
+     do balão (teste 14/09). Some enquanto o tour roda. */
+  const params = useSearchParams()
+  if (params.get('tour')) return null
+
   return (
     <div
       className="rounded-2xl p-4 flex items-start gap-3"

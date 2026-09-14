@@ -150,7 +150,7 @@ export default async function AdminCaixaPage() {
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
-      <header className="relative max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 pt-7 pb-4">
+      <header data-tour="cabecalho" className="relative max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 pt-7 pb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--admin-text-faded)' }}>
           Financeiro
         </p>

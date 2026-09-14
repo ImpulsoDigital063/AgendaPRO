@@ -478,7 +478,9 @@ export default async function AdminInicioPage() {
         <NovidadeSumidosCard jaEntrou={!!business.tour_sumidos_em} />
 
         {/* Tour 'Conheça seu sistema' · em revisão, só negócios liberados. */}
-        {tourSistemaLiberado(business.id) && <TourSistemaCard />}
+        {tourSistemaLiberado(business.id) && (
+          <Suspense fallback={null}><TourSistemaCard /></Suspense>
+        )}
 
         {/* Pedidos de pontos por avaliação · aprovar/recusar na hora · fica no
             TOPO (acima de atalhos e KPIs) pra não precisar rolar pra achar

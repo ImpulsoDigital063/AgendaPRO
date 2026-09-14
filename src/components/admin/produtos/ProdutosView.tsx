@@ -256,6 +256,7 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
           </Link>
           <button
             type="button"
+            data-tour="novo-produto"
             onClick={() => setShowNovo(true)}
             className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
             style={{

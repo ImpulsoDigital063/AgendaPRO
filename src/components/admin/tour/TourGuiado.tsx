@@ -22,7 +22,8 @@ import { createPortal } from 'react-dom'
 import { IconClose } from '@/components/ui/Icon'
 
 export type PassoTour = {
-  /** data-tour do elemento destacado. Vazio = balão centralizado, sem alvo. */
+  /** data-tour do elemento destacado. Vazio = balão centralizado, sem alvo.
+      Aceita alternativas separadas por | (vale a primeira visível). */
   alvo: string
   titulo: string
   corpo: string
@@ -45,11 +46,28 @@ type Props = {
   aoEncerrar: () => void
   /** Troca o "1 de 3" do topo. O tour do sistema usa pra mostrar a parte. */
   contador?: string
+  /** Texto fixo do botão de sair. Sem ele: "Agora não" no passo com ação, "Pular" nos outros. */
+  rotuloSair?: string
+  /** Mostra "Voltar" também no 1º passo (volta pra etapa anterior de um roteiro maior). */
+  aoVoltarInicio?: () => void
+}
+
+/** Primeiro elemento VISÍVEL entre as alternativas: o mesmo data-tour pode
+    existir escondido (versão de outra largura de tela). */
+export function acharAlvo(alvo: string): HTMLElement | null {
+  for (const nome of alvo.split('|')) {
+    const els = document.querySelectorAll<HTMLElement>(`[data-tour="${nome.trim()}"]`)
+    for (const el of Array.from(els)) {
+      const r = el.getBoundingClientRect()
+      if (r.width > 0 && r.height > 0) return el
+    }
+  }
+  return null
 }
 
 type Caixa = { top: number; left: number; width: number; height: number }
 
-export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contador }: Props) {
+export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contador, rotuloSair, aoVoltarInicio }: Props) {
   const [i, setI] = useState(0)
   const [caixa, setCaixa] = useState<Caixa | null>(null)
   const [pronto, setPronto] = useState(false)
@@ -68,7 +86,7 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contado
     if (!aberto || fechado) return
     const passo = passos[i]
     if (!passo?.alvo) { setCaixa(null); return }
-    const el = document.querySelector<HTMLElement>(`[data-tour="${passo.alvo}"]`)
+    const el = acharAlvo(passo.alvo)
     if (!el) { setCaixa(null); return }
     el.scrollIntoView({ block: 'center', behavior: 'smooth' })
     const medir = () => {
@@ -103,17 +121,21 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contado
   const ultimo = i === passos.length - 1
   const margem = 8
 
-  /* Balão embaixo do alvo; se não couber, em cima. Sem alvo, centralizado. */
+  /* Balão embaixo do alvo; se não couber, em cima; alvo grande que ocupa a
+     tela toda deixa o balão preso no rodapé. Sem alvo, centralizado. */
   const espacoAbaixo = caixa ? window.innerHeight - (caixa.top + caixa.height) : 0
-  const acima = caixa ? espacoAbaixo < 220 : false
+  const cabeAbaixo = caixa ? espacoAbaixo >= 220 : false
+  const cabeAcima = caixa ? caixa.top >= 220 : false
   const balao: React.CSSProperties = caixa
     ? {
         position: 'fixed',
         left: 12,
         right: 12,
-        ...(acima
-          ? { bottom: window.innerHeight - caixa.top + margem }
-          : { top: caixa.top + caixa.height + margem }),
+        ...(cabeAbaixo
+          ? { top: caixa.top + caixa.height + margem }
+          : cabeAcima
+            ? { bottom: window.innerHeight - caixa.top + margem }
+            : { bottom: 12 }),
       }
     : { position: 'fixed', left: 12, right: 12, top: '50%', transform: 'translateY(-50%)' }
 
@@ -167,13 +189,13 @@ export default function TourGuiado({ aberto, passos, rotulo, aoEncerrar, contado
 
         <div className="flex items-center gap-2 mt-4">
           <button type="button" onClick={encerrar} className="text-sm font-semibold px-2 py-2" style={{ color: 'var(--admin-text-faded)' }}>
-            {passo.acao ? 'Agora não' : 'Pular'}
+            {rotuloSair ?? (passo.acao ? 'Agora não' : 'Pular')}
           </button>
           <div className="flex-1" />
-          {i > 0 && (
+          {(i > 0 || aoVoltarInicio) && (
             <button
               type="button"
-              onClick={() => setI(i - 1)}
+              onClick={() => (i > 0 ? setI(i - 1) : aoVoltarInicio?.())}
               className="px-3 py-2 rounded-xl text-sm font-semibold"
               style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}
             >

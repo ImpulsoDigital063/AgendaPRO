@@ -62,12 +62,12 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 1,
       nomeParte: 'Monte seu negócio',
       href: '/admin/configuracoes?tab=servicos',
-      seguir: 'Próximo: equipe',
+      seguir: 'Próximo: profissionais',
       baloes: [
         {
-          alvo: '',
+          alvo: 'adicionar-servico',
           titulo: 'Seus serviços',
-          corpo: 'Cadastre cada serviço com preço e duração. É com eles que a agenda calcula o horário, o caixa soma o valor e a comissão sai certa.',
+          corpo: 'Cadastre aqui cada serviço com preço e duração. É com eles que a agenda calcula o horário, o caixa soma o valor e a comissão sai certa.',
         },
       ],
     },
@@ -79,8 +79,8 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       seguir: 'Próximo: horários',
       baloes: [
         {
-          alvo: '',
-          titulo: 'Sua equipe',
+          alvo: 'tab-profissionais',
+          titulo: 'Seus profissionais',
           corpo: 'Cada profissional tem a própria agenda, o próprio acesso pelo celular e a comissão calculada sozinha. Você decide o que cada um pode ver e fazer.',
         },
       ],
@@ -93,9 +93,9 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       seguir: `Próximo: ${t.p}`,
       baloes: [
         {
-          alvo: '',
+          alvo: 'tab-horarios',
           titulo: 'Horários de atendimento',
-          corpo: 'Defina os dias e horários em que vocês atendem. A agenda só mostra horário livre dentro deles.',
+          corpo: 'Cada profissional tem os próprios dias e horários. Escolha a pessoa nas abas e defina quando ela atende: a agenda só oferece horário livre dentro deles.',
         },
       ],
     },
@@ -112,9 +112,9 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
           corpo: `Cadastre ${t.possP} ${t.p} aqui. Cada ficha guarda telefone, histórico de atendimentos, quanto já gastou e as anotações.`,
         },
         {
-          alvo: '',
+          alvo: 'importar-clientes',
           titulo: 'Já tem uma lista?',
-          corpo: `Se ${t.possP} ${t.p} estão numa planilha ou em outro sistema, dá pra importar tudo de uma vez em Configurações, Importar. É o passo que mais adianta o seu começo.`,
+          corpo: `${t.possP[0].toUpperCase()}${t.possP.slice(1)} ${t.p} estão numa planilha ou em outro sistema? Toque em Importar e traga tudo de uma vez. É o passo que mais adianta o seu começo.`,
         },
       ],
     },
@@ -155,7 +155,7 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       seguir: 'Próximo: o caixa',
       baloes: [
         {
-          alvo: '',
+          alvo: 'novo-produto',
           titulo: 'Venda de produtos',
           corpo: 'Cadastre os produtos que você revende com preço e estoque. A venda pode entrar junto com o atendimento, e o estoque baixa sozinho.',
         },
@@ -173,7 +173,7 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       seguir: 'Próximo: financeiro',
       baloes: [
         {
-          alvo: '',
+          alvo: 'cabecalho',
           titulo: 'Caixa do dia',
           corpo: 'Abra o caixa com o fundo de troco, registre sangria e suprimento, e no fim do dia confira dinheiro, cartão e pix. O sistema mostra se sobrou ou faltou.',
         },
@@ -184,12 +184,26 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 3,
       nomeParte: 'Feche o dia',
       href: '/admin/financeiro',
+      seguir: 'Próximo: fluxo de caixa',
+      baloes: [
+        {
+          alvo: 'cabecalho',
+          titulo: 'Relatório financeiro',
+          corpo: 'Quanto entrou, quanto falta receber, as despesas e o resultado do período. Tudo que foi lançado no balcão aparece aqui, já com desconto de cupom abatido.',
+        },
+      ],
+    },
+    {
+      id: 'fluxo',
+      parte: 3,
+      nomeParte: 'Feche o dia',
+      href: '/admin/financeiro/fluxo-caixa',
       seguir: 'Próximo: comissão',
       baloes: [
         {
-          alvo: '',
-          titulo: 'Relatório financeiro',
-          corpo: 'Quanto entrou, quanto falta receber, as despesas e o resultado do período. Tudo que foi lançado no balcão aparece aqui, já com desconto de cupom abatido.',
+          alvo: 'cabecalho',
+          titulo: 'Fluxo de caixa',
+          corpo: 'Todas as entradas e saídas em ordem, com o saldo de cada período. É onde você enxerga se o dinheiro do mês fecha antes de ele acabar.',
         },
       ],
     },
@@ -201,9 +215,9 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       seguir: `Próximo: fazer ${t.art} ${t.s} voltar`,
       baloes: [
         {
-          alvo: '',
+          alvo: 'regra-comissao',
           titulo: 'Comissão da equipe',
-          corpo: 'A comissão de cada profissional sai calculada sobre o que foi recebido de verdade. Na hora de pagar, você marca aqui e fica o registro.',
+          corpo: 'A comissão de cada profissional sai calculada sozinha sobre o faturamento, com a regra que você define pra cada um. Toque na linha pra ver o detalhe e registrar o pagamento.',
         },
       ],
     },
@@ -217,8 +231,8 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       seguir: 'Próximo: fidelidade',
       baloes: [
         {
-          alvo: '',
-          titulo: 'Ficha de anamnese',
+          alvo: 'nova-ficha',
+          titulo: 'Fichas modelo (anamnese)',
           corpo: `Modelos de ficha prontos pro seu segmento. Preenchida uma vez, ela fica guardada no cadastro ${t.de} pra você consultar antes de cada atendimento.`,
         },
       ],
@@ -228,12 +242,12 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 4,
       nomeParte: `Faça ${t.art} ${t.s} voltar`,
       href: '/admin/configuracoes?tab=fidelidade',
-      seguir: 'Próximo: o link',
+      seguir: 'Próximo: QR code e link',
       baloes: [
         {
-          alvo: '',
+          alvo: 'dica-fidelidade|tab-fidelidade',
           titulo: 'Fidelidade, cupons e sumidos',
-          corpo: `Dê pontos por atendimento e troque por recompensas. No menu, Cupons cria desconto e Sumidos mostra quem parou de voltar, pra você chamar no WhatsApp.`,
+          corpo: `Dê pontos por atendimento e troque por recompensas: o passo a passo desta tela mostra como configurar. No menu, Cupons cria desconto e Sumidos mostra quem parou de voltar, pra você chamar no WhatsApp.`,
         },
       ],
     },
@@ -247,9 +261,9 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       seguir: 'Concluir',
       baloes: [
         {
-          alvo: '',
+          alvo: 'tab-qr-code',
           titulo: `${t.art.toUpperCase()} ${t.s} também pode agendar sozinh${t.art}`,
-          corpo: 'Além de marcar pelo painel, você tem uma página de agendamento com link e cartaz com QR code. Coloque na bio do Instagram ou mande no WhatsApp: o horário cai direto na agenda.',
+          corpo: 'Além de marcar pelo painel, você tem uma página de agendamento: é o link e o QR code desta tela. Coloque na bio do Instagram ou mande no WhatsApp, e o horário cai direto na agenda.',
         },
       ],
     },

@@ -20,6 +20,7 @@ export default function SubPageHeader({
 }) {
   return (
     <div
+      data-tour="cabecalho"
       className="sticky top-0 z-20 backdrop-blur-xl border-b"
       style={{
         background: 'var(--admin-bottomnav-bg)',

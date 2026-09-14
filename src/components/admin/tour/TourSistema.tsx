@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import TourGuiado, { type PassoTour } from './TourGuiado'
+import TourGuiado, { acharAlvo, type PassoTour } from './TourGuiado'
 import { hrefDaParada, montarRoteiro, TOTAL_PARTES } from '@/lib/tour-sistema'
 
 type Props = { categoria: string | null; vendeProduto: boolean }
@@ -26,6 +26,7 @@ export default function TourSistema({ categoria, vendeProduto }: Props) {
   const idx = roteiro.findIndex((p) => p.id === tourId)
   const parada = idx >= 0 ? roteiro[idx] : null
   const proxima = idx >= 0 ? roteiro[idx + 1] ?? null : null
+  const anterior = idx > 0 ? roteiro[idx - 1] : null
 
   /* Só abre na tela da parada. Se a dona navegou pra outro lugar com o
      ?tour ainda na URL, o balão não aparece fora de contexto. */
@@ -37,15 +38,29 @@ export default function TourSistema({ categoria, vendeProduto }: Props) {
     return !tabEsperada || tabEsperada === tab
   }, [parada, pathname, tab])
 
-  /* Espera a tela desenhar antes de medir o alvo; sem isso o botão ainda
-     não existe e o balão cai no centro. */
+  /* Só abre quando o alvo do 1º balão aparece na tela. Na 1ª versão o balão
+     abria com tempo fixo e pegava a página ainda carregando: sem destaque no
+     Agendar e explicando Caixa por cima de blocos cinza (teste 14/09). Se o
+     alvo não aparecer em 6s, abre assim mesmo, centralizado. */
   const [pronto, setPronto] = useState(false)
   useEffect(() => {
     setPronto(false)
-    if (!naTela) return
-    const t = setTimeout(() => setPronto(true), 450)
+    if (!naTela || !parada) return
+    const alvo = parada.baloes[0]?.alvo ?? ''
+    const inicio = Date.now()
+    let t: ReturnType<typeof setTimeout>
+    const checar = () => {
+      const achou = alvo ? !!acharAlvo(alvo) : true
+      if (achou || Date.now() - inicio > 6000) {
+        /* Um respiro depois de achar: deixa o resto da tela assentar. */
+        t = setTimeout(() => setPronto(true), 250)
+        return
+      }
+      t = setTimeout(checar, 150)
+    }
+    checar()
     return () => clearTimeout(t)
-  }, [naTela, tourId])
+  }, [naTela, tourId, parada])
 
   const avancando = useRef(false)
 
@@ -89,6 +104,8 @@ export default function TourSistema({ categoria, vendeProduto }: Props) {
       passos={passos}
       rotulo="Tour do sistema"
       contador={contador}
+      rotuloSair="Sair do tour"
+      aoVoltarInicio={anterior ? () => router.push(hrefDaParada(anterior)) : undefined}
       aoEncerrar={() => {
         /* O TourGuiado chama aoEncerrar ANTES de executar a ação do botão.
            Adia a saída um tique: se foi "Próximo", o executar marca

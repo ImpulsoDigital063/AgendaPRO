@@ -167,6 +167,7 @@ export default async function ClientesPage() {
             /* Único caminho pra /admin/importar no painel inteiro — sem esse
                atalho a tela de importação só existia pra quem digitava a URL. */
             <Link
+              data-tour="importar-clientes"
               href="/admin/importar"
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-transform hover:scale-105"
               style={{

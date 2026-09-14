@@ -131,6 +131,7 @@ export default function ConfiguracoesTabs({
       )}
 
       {activeTab === 'profissionais' && (
+        <div data-tour="tab-profissionais">
         <ProfissionaisTab
           businessId={business.id}
           professionals={professionals}
@@ -141,6 +142,7 @@ export default function ConfiguracoesTabs({
           canBookOthers={business.professionals_can_book_others ?? false}
           seeTeamAgenda={business.professionals_see_team_agenda ?? false}
         />
+        </div>
       )}
 
       {activeTab === 'servicos' && (
@@ -160,20 +162,25 @@ export default function ConfiguracoesTabs({
             field="onboarding_horarios_revisado"
             alreadyMarked={business.onboarding_horarios_revisado ?? false}
           />
+          <div data-tour="tab-horarios">
           <HorariosTab
             professionals={professionals}
             initialWorkingHours={initialWorkingHours}
             isAdmin
           />
+          </div>
         </>
       )}
 
       {activeTab === 'fidelidade' && (
         <>
+          <div data-tour="dica-fidelidade">
           <FidelidadeOnboardingCard
             category={categoriaDoNegocio}
             initialDismissed={business.fidelidade_dica_lida ?? false}
           />
+          </div>
+          <div data-tour="tab-fidelidade">
           <FidelidadeTab
             businessId={business.id}
           rewards={rewards}
@@ -196,6 +203,7 @@ export default function ConfiguracoesTabs({
           initialNoShowFixedPoints={business.no_show_fixed_points ?? 20}
           initialLoyaltyEnabled={business.loyalty_enabled ?? false}
         />
+          </div>
         </>
       )}
 
@@ -216,6 +224,7 @@ export default function ConfiguracoesTabs({
             field="qr_code_compartilhado"
             alreadyMarked={business.qr_code_compartilhado ?? false}
           />
+          <div data-tour="tab-qr-code">
           <WhatsAppQRTab
             business={business}
             onNavigateToNegocio={() => {
@@ -223,6 +232,7 @@ export default function ConfiguracoesTabs({
               if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
             }}
           />
+          </div>
         </>
       )}
 

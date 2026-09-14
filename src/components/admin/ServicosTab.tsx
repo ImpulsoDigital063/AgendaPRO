@@ -457,6 +457,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
       {/* Adicionar serviço */}
       <div
         ref={addFormRef}
+        data-tour="adicionar-servico"
         className="rounded-2xl p-4 space-y-3"
         style={{
           background: 'var(--admin-surface)',

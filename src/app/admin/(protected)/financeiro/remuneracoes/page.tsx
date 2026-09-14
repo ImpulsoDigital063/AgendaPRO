@@ -417,7 +417,7 @@ export default async function RemuneracoesPage({
           )}
 
           {/* Hint */}
-          <p className="text-[11px] mt-1 text-center" style={{ color: 'var(--admin-text-faded)' }}>
+          <p data-tour="regra-comissao" className="text-[11px] mt-1 text-center" style={{ color: 'var(--admin-text-faded)' }}>
             {business.comissao_valor_fixo === true
               ? 'Comissão calculada no faturamento, pelo valor fixo de cada serviço · Clique na linha pra abrir ações'
               : 'Comissão calculada no faturamento (% configurável por profissional) · Clique na linha pra abrir ações'}

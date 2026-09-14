@@ -574,6 +574,7 @@ export default function FichasModeloTab() {
         </p>
         <button
           type="button"
+          data-tour="nova-ficha"
           onClick={startNew}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider"
           style={{ background: 'var(--admin-accent)', color: '#fff' }}
