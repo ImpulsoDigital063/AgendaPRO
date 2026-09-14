@@ -76,7 +76,10 @@ export default function TourSistema({ categoria, vendeProduto }: Props) {
           executar: () => {
             avancando.current = true
             if (proxima) router.push(hrefDaParada(proxima))
-            else sair()
+            else {
+              if (parada.seguirLink) window.open(parada.seguirLink, '_blank', 'noopener')
+              sair()
+            }
           },
         },
       }

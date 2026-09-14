@@ -36,9 +36,14 @@ export type ParadaTour = {
   baloes: BalaoTour[]
   /** Texto do botão que leva pra próxima parada. */
   seguir: string
+  /** Na última parada: o botão final abre este link (nova aba) e encerra. */
+  seguirLink?: string
 }
 
-export const TOTAL_PARTES = 5
+export const TOTAL_PARTES = 6
+
+/** WhatsApp do atendimento (o mesmo do PlanoCard e da tela de bloqueio). */
+const WHATSAPP_SUPORTE = '5563992920080'
 
 /** O modal de agendar em modo demo não conhece o roteiro: ao terminar, manda
     pra esta parada. */
@@ -57,7 +62,7 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
         {
           alvo: '',
           titulo: 'Seu negócio inteiro num lugar só',
-          corpo: `Em 5 partes rápidas você vai ver tudo que o AgendaPRO faz: montar o negócio, atender no balcão, fechar o caixa do dia e fazer ${t.art} ${t.s} voltar. Dá pra parar quando quiser e continuar depois.`,
+          corpo: `Em ${TOTAL_PARTES} partes rápidas você vai ver tudo que o AgendaPRO faz: montar o negócio, atender no balcão, fechar o caixa do dia e fazer ${t.art} ${t.s} voltar. Dá pra parar quando quiser e continuar depois.`,
         },
       ],
     },
@@ -347,12 +352,43 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       parte: 5,
       nomeParte: 'Agendamento online',
       href: '/admin/configuracoes?tab=qr-code',
-      seguir: 'Concluir',
+      seguir: 'Próximo: seu plano',
       baloes: [
         {
           alvo: 'tab-qr-code',
           titulo: `${t.art.toUpperCase()} ${t.s} também pode agendar sozinh${t.art}`,
           corpo: 'Além de marcar pelo painel, você tem uma página de agendamento: é o link e o QR code desta tela. Coloque na bio do Instagram ou mande no WhatsApp, e o horário cai direto na agenda.',
+        },
+      ],
+    },
+  )
+
+  paradas.push(
+    /* ── Parte 6 · Seu plano ── */
+    {
+      id: 'plano',
+      parte: 6,
+      nomeParte: 'Seu plano',
+      href: '/admin/configuracoes?tab=plano',
+      seguir: 'Falar no WhatsApp',
+      seguirLink: `https://wa.me/${WHATSAPP_SUPORTE}?text=${encodeURIComponent(
+        'Oi! Terminei o tour do AgendaPRO e quero marcar a call de alinhamento e personalização.',
+      )}`,
+      baloes: [
+        {
+          alvo: 'tab-plano',
+          titulo: 'Qual plano serve pra você',
+          corpo: 'Solo, R$ 67 por mês: até 2 profissionais. Equipe, R$ 97 por mês: até 5 profissionais e 1 acesso de recepção. Precisa de mais acessos? Chame o suporte que a gente aumenta de acordo com a sua demanda.',
+        },
+        {
+          alvo: 'tab-plano',
+          titulo: 'Como contratar',
+          corpo: 'Aqui você escolhe o plano e a forma de pagar: PIX mensal, semestral ou anual, ou cartão com cobrança automática. Não existe cobrança antes do fim do teste.',
+        },
+        {
+          alvo: '',
+          titulo: 'Sua call de alinhamento e personalização',
+          corpo: `Todo negócio tem direito a uma call com a gente pra alinhar o sistema ao seu jeito de trabalhar e personalizar o que precisar. Chame no WhatsApp e a gente marca.`,
         },
       ],
     },

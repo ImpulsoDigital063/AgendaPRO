@@ -238,7 +238,11 @@ export default function ConfiguracoesTabs({
 
       {activeTab === 'divulgacao' && <DivulgacaoTab business={business} />}
 
-      {activeTab === 'plano' && !hidePlanoForBusiness && <PlanoCard />}
+      {activeTab === 'plano' && !hidePlanoForBusiness && (
+        <div data-tour="tab-plano">
+          <PlanoCard />
+        </div>
+      )}
 
       {activeTab === 'importar' && (
         <ImportarView businessId={business.id} businessName={business.name} />

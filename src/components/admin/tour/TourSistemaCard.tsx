@@ -52,7 +52,7 @@ export default function TourSistemaCard() {
           Conheça seu sistema
         </p>
         <p className="text-sm font-bold mt-0.5" style={{ color: 'var(--admin-text)' }}>
-          Veja tudo que o AgendaPRO faz em 5 partes
+          Veja tudo que o AgendaPRO faz em 6 partes
         </p>
         <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
           Montar o negócio, atender no balcão, fechar o caixa e fazer a clientela voltar.
