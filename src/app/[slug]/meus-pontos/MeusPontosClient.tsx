@@ -485,7 +485,20 @@ export default function MeusPontosClient({
               <a
                 href={(() => {
                   const link = `${typeof window !== 'undefined' ? window.location.origin : ''}${result.customer.referral_link}`
-                  const text = `Olá! Marquei minhas próximas no ${businessName}. Se você agendar pelo meu link, eu ganho pontos: ${link}`
+                  /* Texto escrito pela Wanessa e aprovado pelo Eduardo em
+                     16/09/2026. O anterior — "Marquei minhas próximas no X,
+                     se você agendar pelo meu link eu ganho pontos" — tinha
+                     dois defeitos: quebrava a concordância com metade dos
+                     nomes ("no Wanessa Silva Estética") e o único argumento
+                     que dava era a vantagem de QUEM manda. Ninguém agenda pra
+                     fazer favor. Agora abre pelo que a amiga ganha e só no
+                     fim cita o ponto. Sem emoji: o padrão vale pra barbearia
+                     e clínica também, e quem quiser põe o seu. */
+                  const text =
+                    `Quero te indicar a ${businessName}.\n\n` +
+                    `Pelo link você consegue conhecer os serviços, valores e já escolher o melhor horário pra você.\n\n` +
+                    `E tem vantagem: usando meu link, eu ganho pontos pela indicação e você já entra no programa de benefícios nos seus atendimentos.\n\n` +
+                    `${link}`
                   return `https://wa.me/?text=${encodeURIComponent(text)}`
                 })()}
                 target="_blank"
