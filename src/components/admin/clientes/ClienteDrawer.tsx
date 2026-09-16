@@ -654,10 +654,15 @@ function PerfilTab({ customer, onSaved }: { customer: Customer; onSaved: () => v
       return
     }
     const j = (await res.json().catch(() => ({}))) as { pendentes?: Record<string, number> }
-    if (j.pendentes) {
-      setError('Telefone trocado, mas alguns registros antigos continuam com o número anterior.')
-    }
     setSubmitting(false)
+    if (j.pendentes) {
+      /* Mantém o formulário aberto de propósito: a faixa de aviso só existe
+         dentro dele, e fechar esconderia o problema. */
+      setError('Telefone trocado, mas alguns registros continuam com o número anterior. Avise o suporte.')
+      onSaved()
+      return
+    }
+    setError(null)
     setEditMode(false)
     onSaved()
   }

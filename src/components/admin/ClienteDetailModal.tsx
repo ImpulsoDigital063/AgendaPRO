@@ -661,8 +661,12 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                       setEditing(false)
                       setEditName(customer.name)
                       setEditEmail(customer.email || '')
+                      // Sem isso, um número digitado pela metade sobrevivia ao
+                      // Cancelar e voltava preenchido na próxima edição.
+                      setEditPhone(customer.phone || '')
                       setEditBirthday(customer.birthday || '')
                       setEditNotes(customer.notes || '')
+                      setPointsError(null)
                     }}
                     className="flex-1 py-2 rounded-lg text-xs font-semibold"
                     style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
