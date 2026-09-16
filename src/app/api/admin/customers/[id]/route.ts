@@ -156,9 +156,13 @@ export async function GET(
 
      Disponível = não usado em comanda, não usado em sinal, dentro da
      validade. Mesma régua das telas de pagamento. */
+  /* slug + link do Google + pontos entram aqui (16/09/2026) pra ficha montar
+     os botões de "pedir avaliação" e "mandar o link de indicação" — antes a
+     dona só conseguia esses links se a própria cliente abrisse Meus Pontos
+     sozinha (pedido da Wanessa). */
   const { data: negocioSinal } = await supabase
     .from('businesses')
-    .select('sinal_enabled')
+    .select('sinal_enabled, name, slug, google_place_id, points_for_review, points_for_referral')
     .eq('id', customer.business_id)
     .maybeSingle()
 
@@ -236,6 +240,13 @@ export async function GET(
     /* O toggle de isenção só faz sentido em negócio que cobra sinal — na ficha
        de quem não cobra seria um botão sem efeito nenhum. */
     sinalAtivo: negocioSinal?.sinal_enabled === true,
+    negocio: {
+      nome: (negocioSinal?.name as string | null) ?? null,
+      slug: (negocioSinal?.slug as string | null) ?? null,
+      googleReviewUrl: (negocioSinal?.google_place_id as string | null) ?? null,
+      pontosAvaliacao: (negocioSinal?.points_for_review as number | null) ?? 0,
+      pontosIndicacao: (negocioSinal?.points_for_referral as number | null) ?? 0,
+    },
     creditBalance,
     credits: creditList,
     activeCoupon: activeCoupon ?? null,
@@ -246,8 +257,9 @@ export async function GET(
 /**
  * PATCH /api/admin/customers/[id]
  *
- * Edita dados do customer (nome, email). Não permite trocar phone
- * (chave de match com clients universal).
+ * Edita dados do customer (nome, email, telefone e os campos de ficha).
+ * Trocar o telefone é permitido desde 16/09/2026 e propaga pras cópias do
+ * número no negócio inteiro — ver o bloco de propagação mais abaixo.
  */
 /** Dígitos canônicos no formato que o painel grava: "(91) 98150-9149". */
 function formatarTelefoneBR(canon: string): string {

@@ -38,7 +38,9 @@
 //   financeiro do profissional (as três já usavam a mesma barra Hoje/7/Mês).
 // v110 (16/09): telefone da cliente virou campo editável na ficha (celular e
 //   computador) e a troca propaga pras cópias do número no negócio inteiro.
-const STATIC_CACHE_VERSION = 'agendapro-static-v110'
+// v111 (16/09): previa do link com a cara do negocio, modal de pontos so com
+//   Fechar, push do pedido de avaliacao e botoes de avaliacao/indicacao na ficha.
+const STATIC_CACHE_VERSION = 'agendapro-static-v111'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

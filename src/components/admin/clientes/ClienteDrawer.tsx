@@ -99,6 +99,15 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
     diasRestantes: number
   } | null>(null)
   const [sinalAtivoNoNegocio, setSinalAtivoNoNegocio] = useState(false)
+  // Negócio + código de indicação da cliente, pros botões de WhatsApp
+  const [negocio, setNegocio] = useState<{
+    nome: string | null
+    slug: string | null
+    googleReviewUrl: string | null
+    pontosAvaliacao: number
+    pontosIndicacao: number
+  } | null>(null)
+  const [referralCode, setReferralCode] = useState<string | null>(null)
   const [isento, setIsento] = useState(false)
   // Bump força o fetch do drawer de novo (contador + lista) · v121
   const [reloadKey, setReloadKey] = useState(0)
@@ -152,6 +161,8 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
           )
           setSinalAtivoNoNegocio(d.sinalAtivo === true)
           setIsento(d.customer?.sinal_isento === true)
+          setNegocio(d.negocio ?? null)
+          setReferralCode(d.customer?.referral_code ?? null)
         })
         .catch(() => {})
       const list = appts ?? []
@@ -392,6 +403,53 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
               </div>
             </div>
           )}
+
+          {/* Pedir avaliação · link de indicação (16/09/2026) · mesma entrega
+              da ficha no celular. Antes os dois links só existiam na tela
+              pública "Meus pontos", e só se a cliente entrasse lá sozinha. */}
+          {negocio && customer?.phone && (() => {
+            const digitos = (customer.phone || '').replace(/\D/g, '')
+            const primeiro = customer.name.trim().split(' ')[0] || customer.name
+            const origem = typeof window !== 'undefined' ? window.location.origin : 'https://www.agendapro.net.br'
+            const linkIndicacao =
+              negocio.slug && referralCode ? `${origem}/${negocio.slug}?ref=${referralCode}` : null
+            const textoAvaliacao =
+              `Oi ${primeiro}! Se puder deixar uma avaliação no Google, leva 30 segundos e ajuda muito: ${negocio.googleReviewUrl}` +
+              (negocio.pontosAvaliacao > 0 ? ` Você ainda ganha ${negocio.pontosAvaliacao} pontos no programa de fidelidade.` : '')
+            const textoIndicacao = linkIndicacao
+              ? `Oi ${primeiro}! Esse é o seu link de indicação: ${linkIndicacao}` +
+                (negocio.pontosIndicacao > 0
+                  ? ` Quem agendar por ele conta como sua indicação e você ganha ${negocio.pontosIndicacao} pontos.`
+                  : ' Quem agendar por ele conta como sua indicação.')
+              : null
+            if (!digitos || (!negocio.googleReviewUrl && !linkIndicacao)) return null
+            return (
+              <div className="flex flex-wrap gap-2 mb-5">
+                {negocio.googleReviewUrl && (
+                  <a
+                    href={`https://wa.me/55${digitos}?text=${encodeURIComponent(textoAvaliacao)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold"
+                    style={{ background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.28)', color: '#16A34A' }}
+                  >
+                    Pedir avaliação no Google
+                  </a>
+                )}
+                {textoIndicacao && (
+                  <a
+                    href={`https://wa.me/55${digitos}?text=${encodeURIComponent(textoIndicacao)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold"
+                    style={{ background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.28)', color: '#16A34A' }}
+                  >
+                    Mandar link de indicação
+                  </a>
+                )}
+              </div>
+            )
+          })()}
 
           {/* NÃO COBRAR SINAL (v118) · só em negócio que cobra sinal. É a
               cliente antiga que nunca falta: sem esta opção a dona clicaria

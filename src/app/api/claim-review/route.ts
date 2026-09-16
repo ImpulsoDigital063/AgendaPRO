@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
+import { sendWebPush } from '@/lib/notify-push'
 
 function getAdminClient() {
   return createServiceClient(
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   // Valida que o negócio existe + tem programa de pontos por review ativo
   const { data: business } = await adminClient
     .from('businesses')
-    .select('id, points_for_review')
+    .select('id, points_for_review, owner_id')
     .eq('id', businessId)
     .single()
 
@@ -105,6 +106,41 @@ export async function POST(req: NextRequest) {
 
   if (insertError) {
     return NextResponse.json({ error: 'Erro ao registrar pedido. Tente novamente.' }, { status: 500 })
+  }
+
+  /* Push pra dona (16/09/2026) · antes disso NADA avisava: o pedido só
+     aparecia no cartão da tela Início, e quem só abre o painel na sexta
+     deixava a cliente 4 dias esperando os pontos que a tela prometeu na
+     hora — logo na mecânica que existe pra trazer avaliação nova.
+     Mesmo caminho do "Novo agendamento" em /api/notify.
+     AWAIT obrigatório: a Vercel congela a invocação assim que a resposta
+     sai, e fire-and-forget perde o envio (lição do /api/cadastro). */
+  try {
+    const { data: devices } = await adminClient
+      .from('push_subscriptions')
+      .select('endpoint, p256dh, auth')
+      .eq('user_id', business.owner_id)
+
+    if (devices && devices.length > 0) {
+      const payload = {
+        titulo: 'Novo pedido de pontos por avaliação',
+        corpo: `${customer.name || 'Uma cliente'} avaliou no Google. Toque pra conferir e liberar os ${business.points_for_review} pts.`,
+        url: '/admin/inicio',
+      }
+      const mortas: string[] = []
+      for (const d of devices) {
+        const res = await sendWebPush(
+          { endpoint: d.endpoint as string, p256dh: d.p256dh as string, auth: d.auth as string },
+          payload
+        )
+        if (res.gone) mortas.push(d.endpoint as string)
+      }
+      if (mortas.length > 0) {
+        await adminClient.from('push_subscriptions').delete().in('endpoint', mortas)
+      }
+    }
+  } catch {
+    // Aviso é extra: falha aqui não pode derrubar o pedido, que já está salvo.
   }
 
   return NextResponse.json({

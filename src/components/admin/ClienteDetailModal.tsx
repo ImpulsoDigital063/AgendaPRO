@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
-import { IconClose, IconWhatsapp, IconSparkles } from '@/components/ui/Icon'
+import { IconClose, IconWhatsapp, IconSparkles, IconStar, IconUsers } from '@/components/ui/Icon'
 import FichasTab from './clientes/FichasTab'
 import AtendimentoHistoricoModal from './clientes/AtendimentoHistoricoModal'
 
@@ -141,6 +141,14 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
     expires_at: string
   } | null>(null)
   const [rewards, setRewards] = useState<Array<{ id: string; name: string; points_required: number }>>([])
+  // Dados do negócio usados pelos botões de avaliação/indicação (16/09/2026)
+  const [negocio, setNegocio] = useState<{
+    nome: string | null
+    slug: string | null
+    googleReviewUrl: string | null
+    pontosAvaliacao: number
+    pontosIndicacao: number
+  } | null>(null)
   const [redeeming, setRedeeming] = useState(false)
   const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -183,6 +191,7 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
         setSinalAtivoNoNegocio(data.sinalAtivo === true)
         setActiveCoupon(data.activeCoupon ?? null)
         setRewards(data.rewards ?? [])
+        setNegocio(data.negocio ?? null)
         setEditName(data.customer.name)
         setEditEmail(data.customer.email || '')
         setEditPhone(data.customer.phone || '')
@@ -558,6 +567,57 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                   </div>
                 )}
               </div>
+
+              {/* Pedir avaliação · mandar link de indicação (16/09/2026).
+                  Pedido da Wanessa: os dois links existiam SÓ na tela pública
+                  "Meus pontos", e só se a própria cliente entrasse lá sozinha.
+                  A dona não tinha como mandar. Aqui abre o WhatsApp da cliente
+                  com o texto pronto — ela lê e edita antes de enviar. */}
+              {negocio && (() => {
+                const digitos = customer.phone.replace(/\D/g, '')
+                const primeiro = customer.name.trim().split(' ')[0] || customer.name
+                const origem = typeof window !== 'undefined' ? window.location.origin : 'https://www.agendapro.net.br'
+                const linkIndicacao =
+                  negocio.slug && customer.referral_code
+                    ? `${origem}/${negocio.slug}?ref=${customer.referral_code}`
+                    : null
+                const textoAvaliacao =
+                  `Oi ${primeiro}! Se puder deixar uma avaliação no Google, leva 30 segundos e ajuda muito: ${negocio.googleReviewUrl}` +
+                  (negocio.pontosAvaliacao > 0 ? ` Você ainda ganha ${negocio.pontosAvaliacao} pontos no programa de fidelidade.` : '')
+                const textoIndicacao = linkIndicacao
+                  ? `Oi ${primeiro}! Esse é o seu link de indicação: ${linkIndicacao}` +
+                    (negocio.pontosIndicacao > 0
+                      ? ` Quem agendar por ele conta como sua indicação e você ganha ${negocio.pontosIndicacao} pontos.`
+                      : ' Quem agendar por ele conta como sua indicação.')
+                  : null
+                if (!digitos || (!negocio.googleReviewUrl && !linkIndicacao)) return null
+                return (
+                  <div className="grid grid-cols-2 gap-2">
+                    {negocio.googleReviewUrl && (
+                      <a
+                        href={`https://wa.me/55${digitos}?text=${encodeURIComponent(textoAvaliacao)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                        style={{ background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.25)', color: '#16A34A' }}
+                      >
+                        <IconStar size={14} /> Pedir avaliação
+                      </a>
+                    )}
+                    {textoIndicacao && (
+                      <a
+                        href={`https://wa.me/55${digitos}?text=${encodeURIComponent(textoIndicacao)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                        style={{ background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.25)', color: '#16A34A' }}
+                      >
+                        <IconUsers size={14} /> Link de indicação
+                      </a>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Contato */}
               <div className="space-y-2">
