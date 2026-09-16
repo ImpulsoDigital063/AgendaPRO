@@ -36,7 +36,9 @@
 //   alcançável pelo "Ver tudo" do cartão da Início.
 // v107 (13/09): calendário de período chegou em Cancelados, Despesas e no
 //   financeiro do profissional (as três já usavam a mesma barra Hoje/7/Mês).
-const STATIC_CACHE_VERSION = 'agendapro-static-v109'
+// v110 (16/09): telefone da cliente virou campo editável na ficha (celular e
+//   computador) e a troca propaga pras cópias do número no negócio inteiro.
+const STATIC_CACHE_VERSION = 'agendapro-static-v110'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

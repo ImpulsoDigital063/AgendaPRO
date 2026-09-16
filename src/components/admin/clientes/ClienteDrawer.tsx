@@ -635,9 +635,27 @@ function PerfilTab({ customer, onSaved }: { customer: Customer; onSaved: () => v
     })
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))
-      setError(j.error ?? 'falha')
+      /* Até 16/09/2026 a rota IGNORAVA o telefone em silêncio: dava pra digitar
+         o número novo, a tela dizia salvo e nada mudava. Agora ela troca de
+         verdade — e quando recusa, o motivo tem que chegar em português. */
+      const map: Record<string, string> = {
+        phone_invalid_format: 'Telefone inválido — use DDD + número',
+        phone_obrigatorio: 'O telefone não pode ficar vazio',
+        email_invalid_format: 'Email inválido',
+        birthday_invalid_format: 'Data de aniversário inválida',
+        name_too_long: 'Nome muito longo',
+      }
+      setError(
+        j.error === 'phone_duplicado'
+          ? `Esse número já é da ficha de ${j.cliente}. Use outro número ou edite aquela ficha.`
+          : map[j.error] ?? j.error ?? 'falha'
+      )
       setSubmitting(false)
       return
+    }
+    const j = (await res.json().catch(() => ({}))) as { pendentes?: Record<string, number> }
+    if (j.pendentes) {
+      setError('Telefone trocado, mas alguns registros antigos continuam com o número anterior.')
     }
     setSubmitting(false)
     setEditMode(false)

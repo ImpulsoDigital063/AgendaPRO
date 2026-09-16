@@ -150,6 +150,9 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  // Telefone editável na ficha (16/09/2026, pedido da Wanessa): antes o número
+  // era só o botão do WhatsApp, e tocar nele no modo edição abria a conversa.
+  const [editPhone, setEditPhone] = useState('')
   // v42 · campos novos
   const [editBirthday, setEditBirthday] = useState('')
   const [editNotes, setEditNotes] = useState('')
@@ -182,6 +185,7 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
         setRewards(data.rewards ?? [])
         setEditName(data.customer.name)
         setEditEmail(data.customer.email || '')
+        setEditPhone(data.customer.phone || '')
         setEditBirthday(data.customer.birthday || '')
         setEditNotes(data.customer.notes || '')
       } catch (e) {
@@ -271,6 +275,12 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
       setPointsError('Email inválido')
       return
     }
+    const trimmedPhone = editPhone.trim()
+    const digitosPhone = trimmedPhone.replace(/\D/g, '')
+    if (digitosPhone.length < 10 || digitosPhone.length > 13) {
+      setPointsError('Telefone inválido — use DDD + número')
+      return
+    }
     const trimmedBirthday = editBirthday.trim()
     const trimmedNotes = editNotes.trim()
     setPointsError(null)
@@ -280,19 +290,33 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
       body: JSON.stringify({
         name: trimmedName,
         email: trimmedEmail,
+        phone: trimmedPhone,
         birthday: trimmedBirthday || null,
         notes: trimmedNotes || null,
       }),
     })
     if (res.ok) {
+      const data = (await res.json().catch(() => ({}))) as {
+        phone?: string
+        pendentes?: Record<string, number>
+      }
       setCustomer({
         ...customer,
         name: trimmedName,
         email: trimmedEmail || null,
+        phone: data.phone ?? trimmedPhone,
         birthday: trimmedBirthday || null,
         notes: trimmedNotes || null,
       })
+      if (data.phone) setEditPhone(data.phone)
       setEditing(false)
+      // Sobrou cópia do número antigo em alguma tabela: avisa em vez de dar
+      // o salvamento como completo (o servidor conta e devolve).
+      setPointsError(
+        data.pendentes
+          ? 'Telefone trocado, mas alguns registros antigos continuam com o número anterior. Me avise pra eu conferir.'
+          : null
+      )
       router.refresh()
     } else {
       const data = await res.json().catch(() => ({}))
@@ -300,8 +324,14 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
         email_invalid_format: 'Email inválido',
         birthday_invalid_format: 'Data de aniversário inválida',
         name_too_long: 'Nome muito longo',
+        phone_invalid_format: 'Telefone inválido — use DDD + número',
+        phone_obrigatorio: 'O telefone não pode ficar vazio',
       }
-      setPointsError(map[data.error] || 'Erro ao salvar')
+      setPointsError(
+        data.error === 'phone_duplicado'
+          ? `Esse número já é da ficha de ${data.cliente}. Use outro número ou edite aquela ficha.`
+          : map[data.error] || 'Erro ao salvar'
+      )
     }
   }
 
@@ -534,7 +564,20 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                 <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
                   Contato
                 </p>
-                {waUrl && (
+                {/* Em edição o número vira campo. Antes ficava só o botão do
+                    WhatsApp, e tocar nele no modo edição abria a conversa em
+                    vez de deixar corrigir (achado pelo Eduardo, 16/09/2026). */}
+                {editing ? (
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="(00) 00000-0000"
+                    aria-label="Telefone da cliente"
+                    className="admin-input w-full px-3 py-2.5 text-sm"
+                  />
+                ) : waUrl ? (
                   <a
                     href={waUrl}
                     target="_blank"
@@ -547,7 +590,7 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                       {maskPhone(customer.phone)}
                     </span>
                   </a>
-                )}
+                ) : null}
                 {editing ? (
                   <input
                     type="email"

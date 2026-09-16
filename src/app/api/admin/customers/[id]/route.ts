@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit-api'
-import { variacoesDeTelefone } from '@/lib/phone-variants'
+import { variacoesDeTelefone, telefoneCanonico } from '@/lib/phone-variants'
 
 // Valida que a string é uma data ISO REAL (não só "regex passa").
 // "2024-02-30" passa no regex YYYY-MM-DD mas não existe — Date corrige
@@ -249,6 +249,15 @@ export async function GET(
  * Edita dados do customer (nome, email). Não permite trocar phone
  * (chave de match com clients universal).
  */
+/** Dígitos canônicos no formato que o painel grava: "(91) 98150-9149". */
+function formatarTelefoneBR(canon: string): string {
+  const ddd = canon.slice(0, 2)
+  const resto = canon.slice(2)
+  const meio = resto.length === 9 ? resto.slice(0, 5) : resto.slice(0, 4)
+  const fim = resto.length === 9 ? resto.slice(5) : resto.slice(4)
+  return `(${ddd}) ${meio}-${fim}`
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -298,6 +307,21 @@ export async function PATCH(
     } else if (typeof v === 'string') {
       updates.notes = v.trim().slice(0, 1000)
     }
+  }
+
+  /* Telefone editável pela ficha (pedido da Wanessa, 16/09/2026). É a chave
+     que amarra ficha, agendamento e cliente universal, então aqui só validamos
+     e guardamos: a troca acontece mais abaixo, depois de conferir duplicata,
+     e propaga pra toda tabela que guarda cópia do número. */
+  let phoneNovo: string | null = null
+  if ('phone' in body) {
+    const raw = typeof body.phone === 'string' ? body.phone.trim() : ''
+    if (!raw) return NextResponse.json({ error: 'phone_obrigatorio' }, { status: 400 })
+    const canon = telefoneCanonico(raw)
+    if (canon.length < 10 || canon.length > 11) {
+      return NextResponse.json({ error: 'phone_invalid_format' }, { status: 400 })
+    }
+    phoneNovo = formatarTelefoneBR(canon)
   }
 
   /* Isenta de sinal (v118) · cliente de confiança que a dona não quer
@@ -403,9 +427,97 @@ export async function PATCH(
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
+  /* Duplicata BLOQUEIA (decisão Eduardo, 16/09/2026): fundir duas fichas mexe
+     em pontos, crédito e histórico e merece tela própria. A busca usa
+     variacoesDeTelefone porque a MESMA pessoa está gravada em formatos
+     diferentes conforme a porta de entrada (link público x avaliação). */
+  const phoneAntigo = customer.phone || ''
+  const trocaTelefone =
+    phoneNovo !== null && telefoneCanonico(phoneNovo) !== telefoneCanonico(phoneAntigo)
+  if (trocaTelefone && phoneNovo) {
+    const { data: jaExiste } = await supabase
+      .from('customers')
+      .select('id, name')
+      .eq('business_id', customer.business_id)
+      .in('phone', variacoesDeTelefone(phoneNovo))
+      .neq('id', id)
+      .limit(1)
+      .maybeSingle()
+    if (jaExiste) {
+      return NextResponse.json(
+        { error: 'phone_duplicado', cliente: jaExiste.name },
+        { status: 409 }
+      )
+    }
+    updates.phone = phoneNovo
+    // Número novo: a checagem de WhatsApp do número antigo não vale mais.
+    updates.whatsapp_valido = null
+    updates.whatsapp_checado_em = null
+  }
+
   if (Object.keys(updates).length > 0) {
     const { error: custErr } = await supabase.from('customers').update(updates).eq('id', id)
     if (custErr) return NextResponse.json({ error: 'update_failed' }, { status: 500 })
+  }
+
+  /* Propaga o número novo pra TODA cópia dentro deste negócio. Onde existe
+     customer_id o telefone é retrato do momento do lançamento; onde não existe
+     (waitlist, gift_cards, optout) casamos pelas variações do número antigo.
+     `message_inbox` fica de fora de propósito: é histórico de conversa que
+     chegou naquele número, reescrever seria falsear o que aconteceu.
+     `clients` é GLOBAL por telefone — nunca reescrevemos a linha, porque outro
+     negócio pode atender a mesma pessoa; achamos/criamos a do número novo e
+     reapontamos só os agendamentos deste negócio. */
+  const pendentes: Record<string, number> = {}
+  if (trocaTelefone && phoneNovo) {
+    const antigas = variacoesDeTelefone(phoneAntigo)
+    const biz = customer.business_id
+
+    await supabase.from('appointments').update({ client_phone: phoneNovo }).eq('business_id', biz).eq('customer_id', id)
+    await supabase.from('appointments').update({ client_phone: phoneNovo }).eq('business_id', biz).in('client_phone', antigas)
+    await supabase.from('sales').update({ client_phone: phoneNovo }).eq('business_id', biz).eq('customer_id', id)
+    await supabase.from('waitlist').update({ client_phone: phoneNovo }).eq('business_id', biz).in('client_phone', antigas)
+    await supabase.from('review_claims').update({ customer_phone: phoneNovo }).eq('business_id', biz).eq('customer_id', id)
+    await supabase.from('coupon_redemptions').update({ customer_phone: phoneNovo }).eq('customer_id', id)
+    await supabase.from('gift_cards').update({ buyer_phone: phoneNovo }).eq('business_id', biz).in('buyer_phone', antigas)
+    await supabase.from('message_optout').update({ telefone: phoneNovo }).eq('business_id', biz).in('telefone', antigas)
+
+    const { data: cliUniv } = await supabase.from('clients').select('id').eq('phone', phoneNovo).maybeSingle()
+    let clientIdNovo = cliUniv?.id ?? null
+    if (!clientIdNovo) {
+      const { data: criado } = await supabase
+        .from('clients')
+        .insert({
+          name: (updates.name as string | undefined) ?? customer.name,
+          phone: phoneNovo,
+          email: customer.email,
+        })
+        .select('id')
+        .single()
+      clientIdNovo = criado?.id ?? null
+    }
+    if (clientIdNovo) {
+      await supabase.from('appointments').update({ client_id: clientIdNovo }).eq('business_id', biz).eq('customer_id', id)
+    }
+
+    /* Prova na fonte: RLS recusa UPDATE sem erro (afeta 0 linhas). Em vez de
+       responder sucesso às cegas, contamos o que ficou com o número velho e
+       devolvemos — a tela avisa em vez de mentir. */
+    const conferir = [
+      ['appointments', 'client_phone'],
+      ['sales', 'client_phone'],
+      ['waitlist', 'client_phone'],
+      ['gift_cards', 'buyer_phone'],
+      ['message_optout', 'telefone'],
+    ] as const
+    for (const [tabela, coluna] of conferir) {
+      const { count } = await supabase
+        .from(tabela)
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', biz)
+        .in(coluna, antigas)
+      if (count) pendentes[tabela] = count
+    }
   }
 
   // Ajuste de pontos · cria transaction + atualiza total
@@ -440,8 +552,16 @@ export async function PATCH(
     if (newEmail !== customer.email) clientsUpdate.email = newEmail
   }
   if (Object.keys(clientsUpdate).length > 0) {
-    await supabase.from('clients').update(clientsUpdate).eq('phone', customer.phone)
+    // Depois da troca, quem espelha nome/email é a linha do número NOVO.
+    await supabase
+      .from('clients')
+      .update(clientsUpdate)
+      .eq('phone', trocaTelefone && phoneNovo ? phoneNovo : customer.phone)
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    ...(trocaTelefone ? { phone: updates.phone } : {}),
+    ...(Object.keys(pendentes).length > 0 ? { pendentes } : {}),
+  })
 }
