@@ -20,9 +20,15 @@ import {
   IconStar,
 } from '@/components/ui/Icon'
 import PointsTrailModal from '@/components/PointsTrailModal'
+import { buildBusinessMetadata } from '@/lib/public-metadata'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  return buildBusinessMetadata(slug, 'home')
+}
 
 function hexToRgba(hex: string, a: number) {
   const m = /^#([0-9A-Fa-f]{6})$/.exec(hex)
@@ -507,7 +513,6 @@ export default async function BusinessPage({
           (b.points_for_review ?? 0) > 0 ||
           (b.points_for_referral ?? 0) > 0) && (
           <PointsTrailModal
-            agendarHref={agendarHref}
             meusPontosHref={`/${slug}/meus-pontos`}
             primary={primary}
             cheapestReward={

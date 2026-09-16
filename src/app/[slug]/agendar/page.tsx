@@ -7,9 +7,15 @@ import Image from 'next/image'
 import BookingFlow from '@/components/BookingFlow'
 import type { Business, Professional } from '@/lib/types'
 import { BookingBackProvider, BookingBackButton } from '@/components/BookingBack'
+import { buildBusinessMetadata } from '@/lib/public-metadata'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  return buildBusinessMetadata(slug, 'agendar')
+}
 
 export default async function AgendarPage({
   params,

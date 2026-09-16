@@ -2,10 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { IconCalendar, IconSparkles, IconGift, IconStar, IconArrowRight, IconClose } from '@/components/ui/Icon'
+import { IconCalendar, IconSparkles, IconGift, IconStar, IconClose } from '@/components/ui/Icon'
 
 type Props = {
-  agendarHref: string
   meusPontosHref: string
   primary: string
   cheapestReward: { name: string; pointsRequired: number } | null
@@ -20,7 +19,6 @@ type Props = {
  * sempre visíveis sem rolar (Olímpio 05/06: CTA caía abaixo da dobra).
  */
 export default function PointsTrailModal({
-  agendarHref,
   meusPontosHref,
   primary,
   cheapestReward,
@@ -101,22 +99,20 @@ export default function PointsTrailModal({
           </p>
         </div>
 
-        {/* Rodapé FIXO — sempre visível sem rolar */}
+        {/* Rodapé FIXO — sempre visível sem rolar.
+            Só "Fechar" (Eduardo, 16/09/2026): havia um CTA "Agendar horário"
+            aqui e as clientes tocavam nele direto, caindo na tela de escolher
+            serviço sem NUNCA ver a página do negócio — foto, endereço, lista
+            de serviços, avaliação do Google. O popup abre sozinho em toda
+            visita, então o botão roubava a primeira impressão do salão. Quem
+            quer agendar tem o CTA da própria página, logo atrás. */}
         <div className="flex-shrink-0 px-5 pt-3 pb-4" style={{ borderTop: '1px solid #E2E8F0' }}>
-          <Link
-            href={agendarHref}
-            className="cta-pulse-green group w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
-            style={{ background: 'linear-gradient(180deg, #22C55E 0%, #16A34A 100%)', color: 'white' }}
-          >
-            Agendar horário
-            <span className="transition-transform group-hover:translate-x-1"><IconArrowRight size={18} /></span>
-          </Link>
           <button
             onClick={() => setOpen(false)}
-            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-2xl font-bold text-sm mt-2 transition-colors hover:brightness-95"
+            className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold transition-colors hover:brightness-95"
             style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', color: '#334155' }}
           >
-            <IconClose size={15} /> Fechar
+            <IconClose size={16} /> Fechar
           </button>
         </div>
       </div>

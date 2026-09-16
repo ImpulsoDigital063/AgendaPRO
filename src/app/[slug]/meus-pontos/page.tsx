@@ -5,9 +5,15 @@ import Image from 'next/image'
 import { IconArrowLeft } from '@/components/ui/Icon'
 import MeusPontosClient from './MeusPontosClient'
 import type { Business } from '@/lib/types'
+import { buildBusinessMetadata } from '@/lib/public-metadata'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  return buildBusinessMetadata(slug, 'pontos')
+}
 
 export default async function MeusPontosPage({
   params,
