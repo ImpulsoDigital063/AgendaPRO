@@ -61,6 +61,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (body.date > hojeBR()) {
     return NextResponse.json({ error: 'date_must_be_past' }, { status: 400 })
   }
+  /* Ano de dois dígitos passa na regex (vira "0026-04-16") e gravou dois
+     históricos da Wanessa no ano 23 e 26 (achado 17/09/2026). O piso vive no
+     servidor também, pelo mesmo motivo da trava de data futura. */
+  if (body.date < '1990-01-01') {
+    return NextResponse.json({ error: 'date_too_old' }, { status: 400 })
+  }
 
   const admin = getAdmin()
   const { data: cust } = await admin

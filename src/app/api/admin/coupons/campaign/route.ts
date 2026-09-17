@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { randomUUID } from 'crypto'
-import { todayBR, addDaysBR } from '@/lib/date-br'
+import { todayBR } from '@/lib/date-br'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 /* Mesma regra da casa: telefone so casa pelo modulo. Aqui o defeito decidia
    QUEM RECEBE o cupom — cliente com grafia diferente entre `customers` e
    `clients` simplesmente nunca era alcancada. */
-import { telefoneCanonico, variacoesDeTelefone } from '@/lib/phone-variants'
+import { telefoneCanonico } from '@/lib/phone-variants'
+
+/** Dias entre duas datas YYYY-MM-DD, sem fuso no meio — mesma conta da rota
+ *  /api/admin/sumidos, pra campanha e lista usarem a mesma régua. */
+function diasEntre(de: string, ate: string): number {
+  return Math.round((Date.parse(ate + 'T00:00:00Z') - Date.parse(de + 'T00:00:00Z')) / 86400000)
+}
 
 // 40 dias — alinhado com ClientesView. Barbearia/nail tem ciclo
 // curto (15-30d), 60 era tarde demais.
@@ -127,45 +133,55 @@ export async function POST(req: NextRequest) {
   let emptyMsgEspecifico: string
 
   if (target === 'sumidos') {
-    // Lookup de último agendamento via clients (universal) ↔ phone
-    const { data: clients } = await supabase
-      .from('clients')
-      .select('id, phone')
-      .in('phone', Array.from(new Set(customers.flatMap((c) => variacoesDeTelefone(c.phone)))))
+    /* 17/09/2026 · A Wanessa via 111 sumidos na lista e, ao gerar o cupom,
+       "nenhum cliente sumido". A campanha buscava o cliente global mandando
+       TODAS as variações de telefone da base num único `.in('phone', …)`:
+       154 clientes viravam 1.812 grafias e uma URL de 41 mil caracteres, que
+       o banco recusa com 400. O erro era ignorado, a lista vinha vazia e a
+       tela mentia. Pegava todo negócio de base grande.
 
-    const clientByPhone = new Map((clients || []).map((c) => [telefoneCanonico(c.phone), c.id]))
-    const clientIds = Array.from(clientByPhone.values())
-
-    const { data: lastAppts } = clientIds.length > 0
-      ? await supabase
-          .from('appointments')
-          .select('client_id, appointment_date')
-          .eq('business_id', business.id)
-          .in('client_id', clientIds)
-          .order('appointment_date', { ascending: false })
-      : { data: [] }
-
-    const lastByClient = new Map<string, string>()
-    for (const a of lastAppts || []) {
-      if (!a.client_id) continue
-      if (!lastByClient.has(a.client_id)) {
-        lastByClient.set(a.client_id, a.appointment_date)
-      }
+       Agora usa a MESMA primitiva da lista de sumidos
+       (`ultimo_agendamento_clientes`), com a MESMA régua de faixa
+       (dias >= de e < ate, contando agendamento futuro e cancelado).
+       As duas portas contam igual — nada de uma dizer 111 e a outra 0. */
+    const { data: ultimos, error: ultimosErr } = await supabase.rpc('ultimo_agendamento_clientes', {
+      p_business_id: business.id,
+    })
+    if (ultimosErr) {
+      return NextResponse.json(
+        { error: 'não deu pra ler o último atendimento dos clientes — tente de novo' },
+        { status: 500 }
+      )
     }
 
-    // λ.fuso · corte em dia BR (servidor roda em UTC)
-    const sumidoCutoffStr = addDaysBR(todayBR(), -sumidoDays)
-    // Piso da faixa: quem sumiu ha MENOS que `sumidoAte` dias fica de fora.
-    const sumidoFloorStr = sumidoAte ? addDaysBR(todayBR(), -sumidoAte) : null
+    const hoje = todayBR()
+    const naFaixa: string[] = []
+    for (const r of (ultimos ?? []) as Array<{ client_id: string | null; ultima: string | null }>) {
+      if (!r.client_id || !r.ultima) continue
+      const d = diasEntre(r.ultima, hoje)
+      if (d < sumidoDays) continue // inclui quem tem horário futuro (d negativo)
+      if (sumidoAte && d >= sumidoAte) continue
+      naFaixa.push(r.client_id)
+    }
+
+    // Telefone de cada cliente global da faixa, em lotes pra URL nunca estourar.
+    const telefonesNaFaixa = new Set<string>()
+    for (let i = 0; i < naFaixa.length; i += 150) {
+      const { data: lote, error: loteErr } = await supabase
+        .from('clients')
+        .select('phone')
+        .in('id', naFaixa.slice(i, i + 150))
+      if (loteErr) {
+        return NextResponse.json(
+          { error: 'não deu pra montar a lista de clientes sumidos — tente de novo' },
+          { status: 500 }
+        )
+      }
+      for (const c of lote ?? []) telefonesNaFaixa.add(telefoneCanonico(c.phone as string))
+    }
 
     targetCustomersAll = customers.filter((c) => {
-      const clientId = clientByPhone.get(telefoneCanonico(c.phone))
-      if (!clientId) return false
-      const lastDate = lastByClient.get(clientId)
-      if (!lastDate) return false
-      // Dentro da faixa: mais velho que o corte E nao mais velho que o piso.
-      if (lastDate >= sumidoCutoffStr) return false
-      if (sumidoFloorStr && lastDate < sumidoFloorStr) return false
+      if (!telefonesNaFaixa.has(telefoneCanonico(c.phone))) return false
       // Alvo pontual, quando informado
       if (phonesAlvo && !phonesAlvo.some((p) => telefoneCanonico(p) === telefoneCanonico(c.phone))) return false
       return true

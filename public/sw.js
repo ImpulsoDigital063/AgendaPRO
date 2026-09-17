@@ -40,7 +40,9 @@
 //   computador) e a troca propaga pras cópias do número no negócio inteiro.
 // v111 (16/09): previa do link com a cara do negocio, modal de pontos so com
 //   Fechar, push do pedido de avaliacao e botoes de avaliacao/indicacao na ficha.
-const STATIC_CACHE_VERSION = 'agendapro-static-v111'
+// v112 (17/09): campanha de cupom pros sumidos voltou a achar os clientes
+//   (base grande estourava a consulta) e o historico antigo barra ano de 2 digitos.
+const STATIC_CACHE_VERSION = 'agendapro-static-v112'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

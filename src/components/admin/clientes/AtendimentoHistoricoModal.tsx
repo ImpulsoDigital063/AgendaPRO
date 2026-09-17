@@ -18,6 +18,9 @@ import { IconClose, IconArrowLeft } from '@/components/ui/Icon'
  * (mobile). Um componente só pra não nascerem duas regras.
  */
 
+/** Piso da data do histórico — igual ao da rota. Barra o ano de 2 dígitos. */
+const DATA_MINIMA = '1990-01-01'
+
 type Professional = { id: string; name: string }
 type Service = { id: string; name: string }
 
@@ -85,6 +88,13 @@ export default function AtendimentoHistoricoModal({
       setError('Essa data ainda não chegou. Pra marcar no futuro, use a agenda.')
       return
     }
+    /* Ano com dois dígitos (17/09/2026): digitar "26" no campo de data grava o
+       ano 0026, e a lista de sumidos mostrou "730639 dias" pro Henerson da
+       Wanessa. Nenhum histórico real é anterior a 1990. */
+    if (date < DATA_MINIMA) {
+      setError('Confira o ano: use os 4 dígitos, tipo 2024.')
+      return
+    }
     if (!serviceName.trim()) {
       setError('Informe o procedimento')
       return
@@ -107,6 +117,8 @@ export default function AtendimentoHistoricoModal({
       setError(
         j.error === 'date_must_be_past'
           ? 'Essa data ainda não chegou. Pra marcar no futuro, use a agenda.'
+          : j.error === 'date_too_old'
+            ? 'Confira o ano: use os 4 dígitos, tipo 2024.'
           : j.error === 'service_required'
             ? 'Informe o procedimento'
             : (j.error ?? 'Não deu pra salvar'),
@@ -180,6 +192,7 @@ export default function AtendimentoHistoricoModal({
               <input
                 type="date"
                 value={date}
+                min={DATA_MINIMA}
                 max={hoje}
                 onChange={(e) => setDate(e.target.value)}
                 disabled={submitting}
