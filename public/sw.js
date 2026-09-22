@@ -44,7 +44,9 @@
 //   (base grande estourava a consulta) e o historico antigo barra ano de 2 digitos.
 // v113 (22/09): fuso de Brasilia no cartao do Relatorio financeiro, no bonus,
 //   na ficha da cliente e no grafico de Analises (depois das 21h virava amanha).
-const STATIC_CACHE_VERSION = 'agendapro-static-v113'
+// v114 (22/09): "o aviso chegou?" — situacao da mensagem dentro do
+//   atendimento (celular e computador) e placar + lista na aba Avisos.
+const STATIC_CACHE_VERSION = 'agendapro-static-v114'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

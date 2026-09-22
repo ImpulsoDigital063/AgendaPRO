@@ -28,6 +28,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { TEMPLATES, validarCorpo, nomeMetaDoNegocio } from '@/lib/mensagens/templates-cloud'
 import type { TipoMensagem } from '@/lib/mensagens/tipos'
+import { ROTULO_AVISO } from '@/lib/mensagens/rotulos'
 
 export const runtime = 'nodejs'
 
@@ -35,14 +36,11 @@ export const runtime = 'nodejs'
    o motor não manda é prometer na tela o que o sistema não faz. */
 const EDITAVEIS: TipoMensagem[] = ['confirmacao', 'sinal_pendente', 'lembrete_vespera', 'lembrete_dia', 'aniversario', 'retorno']
 
-const ROTULO: Partial<Record<TipoMensagem, string>> = {
-  confirmacao: 'Confirmação do agendamento',
-  sinal_pendente: 'Cobrança do sinal',
-  lembrete_vespera: 'Lembrete da véspera',
-  lembrete_dia: 'Lembrete do dia',
-  aniversario: 'Aniversário',
-  retorno: 'Hora de voltar',
-}
+/* Os nomes moraram aqui até 22/09/2026. Saíram pra `lib/mensagens/rotulos`
+   quando a ficha do atendimento passou a mostrar os mesmos avisos — dois
+   lugares escrevendo "Lembrete da véspera" na mão é o começo de um virar
+   "Lembrete de véspera". */
+const ROTULO: Partial<Record<TipoMensagem, string>> = ROTULO_AVISO
 
 const BASE = process.env.WHATSAPP_BASE_URL || 'https://graph.facebook.com/v21.0'
 

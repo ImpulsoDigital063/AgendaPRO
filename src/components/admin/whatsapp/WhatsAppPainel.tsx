@@ -64,6 +64,7 @@ import Recarga from './Recarga'
 import ModalPix from './ModalPix'
 import Oferta, { type Movimento, type PacoteTela } from './Oferta'
 import Respostas, { type Resposta } from './Respostas'
+import Entregas, { type Entrega, type Placar } from './Entregas'
 import TourAvisos from './TourAvisos'
 import PerguntasAvisos from './PerguntasAvisos'
 import VoceManda, {
@@ -244,6 +245,10 @@ export default function WhatsAppPainel({
   const [manuais, setManuais] = useState<TextosManuais | null>(null)
   /* So leitura. Nao existe marcar como lida — ver Respostas.tsx. */
   const [respostas, setRespostas] = useState<Resposta[]>([])
+  /* O que já saiu e no que deu (22/09/2026, pergunta da Wanessa: "onde vejo
+     se o cliente recebeu?"). */
+  const [entregas, setEntregas] = useState<Entrega[]>([])
+  const [placar, setPlacar] = useState<Placar | null>(null)
   const [vista, setVista] = useState<
     | { tela: 'inicio' }
     | { tela: 'mensagens' }
@@ -288,6 +293,13 @@ export default function WhatsAppPainel({
     void fetch('/api/admin/mensagens/respostas')
       .then((r) => r.json())
       .then((j) => setRespostas(Array.isArray(j?.respostas) ? j.respostas : []))
+      .catch(() => null)
+    void fetch('/api/admin/mensagens/status')
+      .then((r) => r.json())
+      .then((j) => {
+        setEntregas(Array.isArray(j?.avisos) ? j.avisos : [])
+        setPlacar(j?.placar ?? null)
+      })
       .catch(() => null)
     void fetch('/api/admin/messages')
       .then((r) => r.json())
@@ -980,6 +992,9 @@ export default function WhatsAppPainel({
           <div className="lg:order-1">
             {caixaPix}
             {listaDeAvisos}
+            {/* O resultado vem DEPOIS da régua: primeiro ela liga o que quer,
+                aí vê o que aquilo produziu. */}
+            <Entregas placar={placar} entregas={entregas} />
             {listaVoceManda}
             {listaRespostas}
             {/* Dúvidas frequentes no fim da aba (10/09): o que o tour não cobre. */}

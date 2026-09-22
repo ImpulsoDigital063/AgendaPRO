@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconCalendar, IconClock, IconDollar, IconUser, IconExternalLink } from '@/components/ui/Icon'
 import AppointmentActions from './AppointmentActions'
+import AvisosDoAtendimento from './AvisosDoAtendimento'
 import ClientFichaSection from '../clientes/ClientFichaSection'
 import Link from 'next/link'
 
@@ -519,6 +520,10 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                   </button>
                 </div>
               )}
+
+              {/* O que o sistema mandou pra ESTA cliente (22/09/2026, pedido
+                  da Wanessa). Some sozinho quando não houve aviso nenhum. */}
+              <AvisosDoAtendimento appointmentId={data.id} />
 
               {/* Ações · sem mostrar pra cancelados */}
               {!isCancelled && (

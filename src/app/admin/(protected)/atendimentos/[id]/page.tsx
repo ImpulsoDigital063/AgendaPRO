@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { IconArrowLeft, IconCalendar, IconClock, IconDollar, IconUser } from '@/components/ui/Icon'
 import AppointmentActions from '@/components/admin/atendimentos/AppointmentActions'
+import AvisosDoAtendimento from '@/components/admin/atendimentos/AvisosDoAtendimento'
 import ClientFichaSection from '@/components/admin/clientes/ClientFichaSection'
 import { getApptCharged } from '@/lib/queries/appointment-charged-total'
 
@@ -220,6 +221,10 @@ export default async function AppointmentDetailPage({
         {appt.customer_id && (
           <ClientFichaSection customerId={appt.customer_id as string} />
         )}
+
+        {/* O que o sistema mandou pra ESTA cliente (22/09/2026, pedido da
+            Wanessa). Mesmo bloco do computador, mesmo componente. */}
+        <AvisosDoAtendimento appointmentId={appt.id as string} />
 
         {/* Ações · client component */}
         {!isCancelled && (
