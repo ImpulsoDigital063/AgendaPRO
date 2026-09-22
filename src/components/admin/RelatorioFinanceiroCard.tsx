@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { IconTrendingUp, IconInfo, IconExternalLink } from '@/components/ui/Icon'
+import { todayBR, addDaysBR, addMonthsBR, monthBoundsBR, startOfDayBR } from '@/lib/date-br'
 
 /**
  * Relatório Financeiro · Home (largura total da coluna esquerda).
@@ -58,16 +59,30 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
     { auth: { persistSession: false } },
   )
 
-  const now = new Date()
-  const startCurr = new Date(now.getFullYear(), now.getMonth(), 1)
-  const endCurr = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const endPrev = startCurr
-  const todayStr = now.toISOString().slice(0, 10)
-  const firstDayMonthStr = startCurr.toISOString().slice(0, 10)
+  /* λ.fuso (22/09/2026) · Este card rodava TUDO no relógio do servidor, que na
+     Vercel é UTC: `new Date(ano, mes, 1)` virava 1º às 00:00 UTC = dia 30 às
+     21h BRT, e `now.toISOString().slice(0,10)` já devolvia AMANHÃ depois das
+     21h. Resultado pra dona que fecha o dia à noite: o "Recebido hoje" zerava
+     às 21h e, na virada do mês, o card mostrava o mês novo com 3h de
+     antecedência — puxando dinheiro da noite do dia 30 pro mês seguinte.
+     Mesmo defeito que a Luana reportou no Palace. Agora tudo nasce de
+     `todayBR()` e as bordas saem em -03:00. */
+  const hoje = todayBR()
+  const { start: firstDayMonthStr } = monthBoundsBR(hoje.slice(0, 7))
+  const primeiroDiaMesAnterior = monthBoundsBR(
+    addMonthsBR(firstDayMonthStr, -1).slice(0, 7),
+  ).start
+  const todayStr = hoje
+  const iniMes = startOfDayBR(firstDayMonthStr)
+  const fimMes = startOfDayBR(addMonthsBR(firstDayMonthStr, 1))
+  const iniMesAnt = startOfDayBR(primeiroDiaMesAnterior)
+  const fimMesAnt = iniMes
+  /* Só pros RÓTULOS ("01 set 2026 · 22 set 2026"). Ancorado ao meio-dia do dia
+     BR: nenhuma conversão de fuso cruza a fronteira do dia. */
+  const now = new Date(hoje + 'T12:00:00Z')
   // Recebido HOJE · pra 1º BigKpi do relatório (substitui o KPI deslocado do topo)
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const endToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  const iniHoje = startOfDayBR(hoje)
+  const fimHoje = startOfDayBR(addDaysBR(hoje, 1))
 
   const [
     // Invoice payments do mês atual (source of truth do breakdown quando há comanda)
@@ -92,16 +107,16 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .from('invoice_payments')
       .select('payment_method, card_type, amount, paid_at, invoices!inner(business_id)')
       .eq('invoices.business_id', businessId)
-      .gte('paid_at', startCurr.toISOString())
-      .lt('paid_at', endCurr.toISOString()),
+      .gte('paid_at', iniMes)
+      .lt('paid_at', fimMes),
     sb
       .from('appointments')
       .select('total_price, payment_method, payment_card_type')
       .eq('business_id', businessId)
       .is('invoice_item_id', null) // não veio de comanda
       .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', startCurr.toISOString())
-      .lt('paid_at', endCurr.toISOString())
+      .gte('paid_at', iniMes)
+      .lt('paid_at', fimMes)
       .not('paid_at', 'is', null),
     sb
       .from('sales')
@@ -111,8 +126,8 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('status', 'paid')
       .is('invoice_id', null) // não veio de comanda
       .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', startCurr.toISOString())
-      .lt('paid_at', endCurr.toISOString())
+      .gte('paid_at', iniMes)
+      .lt('paid_at', fimMes)
       .not('paid_at', 'is', null),
     // Mês anterior (totais só)
     sb
@@ -121,8 +136,8 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('business_id', businessId)
       .not('payment_method', 'in', '(courtesy,credit)')
       .is('invoice_item_id', null)
-      .gte('paid_at', startPrev.toISOString())
-      .lt('paid_at', endPrev.toISOString())
+      .gte('paid_at', iniMesAnt)
+      .lt('paid_at', fimMesAnt)
       .not('paid_at', 'is', null),
     sb
       .from('sales')
@@ -132,15 +147,15 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('status', 'paid')
       .is('invoice_id', null)
       .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', startPrev.toISOString())
-      .lt('paid_at', endPrev.toISOString())
+      .gte('paid_at', iniMesAnt)
+      .lt('paid_at', fimMesAnt)
       .not('paid_at', 'is', null),
     sb
       .from('invoice_payments')
       .select('amount, invoices!inner(business_id)')
       .eq('invoices.business_id', businessId)
-      .gte('paid_at', startPrev.toISOString())
-      .lt('paid_at', endPrev.toISOString()),
+      .gte('paid_at', iniMesAnt)
+      .lt('paid_at', fimMesAnt),
     sb
       .from('expenses')
       .select('amount')
@@ -154,23 +169,23 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .select('amount')
       .eq('business_id', businessId)
       .eq('status', 'paid')
-      .gte('occurred_at', startPrev.toISOString().slice(0, 10))
+      .gte('occurred_at', primeiroDiaMesAnterior)
       .lt('occurred_at', firstDayMonthStr),
     // ─── Recebido HOJE · invoice_payments + appts diretos + sales diretas
     sb
       .from('invoice_payments')
       .select('amount, payment_method, invoices!inner(business_id)')
       .eq('invoices.business_id', businessId)
-      .gte('paid_at', startToday.toISOString())
-      .lt('paid_at', endToday.toISOString()),
+      .gte('paid_at', iniHoje)
+      .lt('paid_at', fimHoje),
     sb
       .from('appointments')
       .select('total_price')
       .eq('business_id', businessId)
       .is('invoice_item_id', null)
       .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', startToday.toISOString())
-      .lt('paid_at', endToday.toISOString())
+      .gte('paid_at', iniHoje)
+      .lt('paid_at', fimHoje)
       .not('paid_at', 'is', null),
     sb
       .from('sales')
@@ -180,8 +195,8 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('status', 'paid')
       .is('invoice_id', null)
       .not('payment_method', 'in', '(courtesy,credit)')
-      .gte('paid_at', startToday.toISOString())
-      .lt('paid_at', endToday.toISOString())
+      .gte('paid_at', iniHoje)
+      .lt('paid_at', fimHoje)
       .not('paid_at', 'is', null),
   ])
 

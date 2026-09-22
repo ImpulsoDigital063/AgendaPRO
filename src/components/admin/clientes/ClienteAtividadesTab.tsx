@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconChevronRight, IconWhatsapp, IconExternalLink, IconCheck, IconClose, IconCalendar } from '@/components/ui/Icon'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
+import { todayBR } from '@/lib/date-br'
 
 type Activity = {
   id: string
@@ -82,7 +83,8 @@ export default function ClienteAtividadesTab({ customerId, customerName, custome
   const [openKebab, setOpenKebab] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null)
 
-  const today = new Date().toISOString().slice(0, 10)
+  // λ.fuso: mesmo caso do contador da ficha — à noite 'hoje' virava amanhã.
+  const today = todayBR()
 
   useEffect(() => {
     const sb = createClient()

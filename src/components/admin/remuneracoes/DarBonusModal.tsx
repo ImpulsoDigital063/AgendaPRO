@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { IconClose, IconCheck } from '@/components/ui/Icon'
+import { todayBR } from '@/lib/date-br'
 
 /**
  * Bônus avulso (v141 · item 3 do setup do Studio Isis Melo).
@@ -33,7 +34,8 @@ export default function DarBonusModal({
   const router = useRouter()
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  // λ.fuso: bônus lançado às 22h nascia com a data de AMANHÃ.
+  const [date, setDate] = useState(() => todayBR())
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [portalReady, setPortalReady] = useState(false)

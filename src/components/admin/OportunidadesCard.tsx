@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { IconStar, IconWhatsapp } from '@/components/ui/Icon'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 
 /**
  * Widget "Oportunidades" da Home · ativa cliente parado + lembra de aniversariantes.
@@ -104,14 +105,11 @@ export default async function OportunidadesCard({ businessId, businessName }: Pr
     .slice(0, 5)
 
   // Clientes sumidos · último appointment > 60 dias atrás
-  const sessenta = new Date()
-  sessenta.setDate(sessenta.getDate() - 60)
-  const sessentaIso = sessenta.toISOString().slice(0, 10)
+  // λ.fuso: o corte saía do relógio UTC do servidor e andava um dia à noite.
+  const sessentaIso = addDaysBR(todayBR(), -60)
 
   // Pega clientes com último atendimento entre 60-180 dias atrás (não muito antigos pra reativar)
-  const cento80 = new Date()
-  cento80.setDate(cento80.getDate() - 180)
-  const cento80Iso = cento80.toISOString().slice(0, 10)
+  const cento80Iso = addDaysBR(todayBR(), -180)
 
   // RPC seria ideal · vou fazer 2 queries (todos com appt no range + agrupar pelo último)
   const { data: oldAppts } = await sb

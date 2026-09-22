@@ -42,7 +42,9 @@
 //   Fechar, push do pedido de avaliacao e botoes de avaliacao/indicacao na ficha.
 // v112 (17/09): campanha de cupom pros sumidos voltou a achar os clientes
 //   (base grande estourava a consulta) e o historico antigo barra ano de 2 digitos.
-const STATIC_CACHE_VERSION = 'agendapro-static-v112'
+// v113 (22/09): fuso de Brasilia no cartao do Relatorio financeiro, no bonus,
+//   na ficha da cliente e no grafico de Analises (depois das 21h virava amanha).
+const STATIC_CACHE_VERSION = 'agendapro-static-v113'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

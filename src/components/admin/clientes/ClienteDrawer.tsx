@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { formatDateBR } from '@/lib/date-br'
+import { formatDateBR, todayBR } from '@/lib/date-br'
 import { IconClose, IconArrowLeft, IconPlus } from '@/components/ui/Icon'
 import ClienteAtividadesTab from './ClienteAtividadesTab'
 import SaldoTab from './SaldoTab'
@@ -169,7 +169,9 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
       // Contador "ATENDIMENTOS" só conta os REAIS (passados que aconteceram).
       // Exclui futuros agendados (recorrências importadas Salão99 inflavam o
       // número · Ana Paula mostrava 202 quando real era 5) e cancelados.
-      const today = new Date().toISOString().slice(0, 10)
+      // λ.fuso: depois das 21h o 'hoje' em UTC virava amanhã e o agendamento
+      // de amanhã entrava na conta de atendimentos já realizados.
+      const today = todayBR()
       const realizados = list.filter(
         (a) => a.appointment_date <= today && a.status !== 'cancelled' && a.status !== 'no_show'
       )

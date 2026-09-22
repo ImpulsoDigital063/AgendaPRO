@@ -1,6 +1,6 @@
 'use client'
 
-import { todayBR } from '@/lib/date-br'
+import { todayBR, addDaysBR } from '@/lib/date-br'
 import { useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 
@@ -124,15 +124,15 @@ export default function AnalisesView({
       if (!s.sale_date) continue
       map.set(s.sale_date, (map.get(s.sale_date) || 0) + Number(s.total || 0))
     }
-    const start = new Date(startCurrent + 'T00:00:00')
-    const end = new Date(endCurrent + 'T00:00:00')
+    /* λ.fuso: a varredura montava um Date por dia e cortava com toISOString —
+       fuso do aparelho no meio do caminho. Aqui é aritmética de string no dia
+       BR, igual ao resto do financeiro. */
     let cumulative = 0
     const days: { date: string; value: number; cumulative: number; day: number }[] = []
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().split('T')[0]
-      const value = map.get(iso) || 0
+    for (let dia = startCurrent; dia <= endCurrent; dia = addDaysBR(dia, 1)) {
+      const value = map.get(dia) || 0
       cumulative += value
-      days.push({ date: iso, value, cumulative, day: d.getDate() })
+      days.push({ date: dia, value, cumulative, day: Number(dia.slice(8, 10)) })
     }
     return days
   }, [pagos, productSalesCurrent, startCurrent, endCurrent])
