@@ -244,10 +244,52 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
      responde é o perfil que rende denúncia de spam.
      Isto aqui é de graça: ela acabou de escrever, então a janela de 24h
      está aberta e texto livre dentro da janela não entra na fatura. */
-  const responder = async (texto: string) => {
+  /* De quem é a conversa. Preenchido assim que o webhook identifica o
+     agendamento/negócio — as respostas saem depois disso. */
+  let negocioDaConversa: string | null = null
+
+  /* TODA resposta em texto livre é registrada (22/09/2026). Antes só a
+     auto-resposta gravava linha, e ainda assim sem `business_id` e sem
+     `provider_id`: as outras três (confirmado, já paguei, remarcar) não
+     deixavam rastro nenhum. A Meta contou 145 envios em setembro e o nosso
+     banco tinha 101 — e os 10 "sem recibo de entrega" eram justamente estas,
+     porque o webhook de status casa por `provider_id`.
+
+     `unidades: 0` DE PROPÓSITO: texto dentro da janela de 24h é gratuito na
+     Meta (as 49 mensagens de categoria "serviço" saíram a custo zero), então
+     registra sem descontar do pacote da dona. Falha de registro nunca
+     derruba a resposta: quem escreveu tem que ser respondido. */
+  const responder = async (
+    texto: string,
+    opcoes?: { tipo?: string; chave?: string },
+  ) => {
     const cred = credencialDoSistema()
     if (!cred) return false
-    return (await enviarTexto(cred, fone, texto)).ok
+    const r = await enviarTexto(cred, fone, texto)
+    const campos = {
+      status: r.ok ? 'enviado' : 'falhou',
+      erro: r.erro ?? null,
+      provider_id: r.providerId ?? null,
+      business_id: negocioDaConversa,
+    }
+    try {
+      if (opcoes?.chave) {
+        // A linha já existe (é a trava de 12h) — completa com o que voltou.
+        await db.from('message_log').update(campos).eq('chave', opcoes.chave)
+      } else {
+        await db.from('message_log').insert({
+          ...campos,
+          chave: `resposta:${fone}:${Date.now()}`,
+          tipo: opcoes?.tipo ?? 'auto_resposta',
+          canal: 'whatsapp',
+          destino: fone,
+          unidades: 0,
+        })
+      }
+    } catch {
+      /* registro é contabilidade, resposta é atendimento */
+    }
+    return r.ok
   }
 
   const acao = lerAcao(m)
@@ -304,12 +346,18 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
        (O código anterior dizia 12h no comentário mas a chave girava de
        hora em hora. Agora o balde é de 12h de verdade.) */
     const balde = Math.floor(Date.now() / (12 * 3600_000))
+    const chaveAuto = `auto_resposta:${fone}:${balde}`
+    negocioDaConversa = dono?.business_id ?? null
     const { error: repetido } = await db.from('message_log').insert({
-      chave: `auto_resposta:${fone}:${balde}`,
-      tipo: 'confirmacao',
+      chave: chaveAuto,
+      /* Era `confirmacao` e sujava a conta: no relatório, resposta de robô
+         aparecia como confirmação de horário. */
+      tipo: 'auto_resposta',
       canal: 'whatsapp',
       destino: fone,
-      status: 'enviado',
+      status: 'processando',
+      unidades: 0,
+      business_id: negocioDaConversa,
     })
     if (!repetido) {
       await responder(
@@ -321,6 +369,7 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
         'Recebemos a sua mensagem e avisamos o local do seu atendimento. ' +
           'Este número é automático e não é acompanhado o tempo todo, então, ' +
           'se for urgente, fale pelo telefone que aparece na mensagem do seu horário.',
+        { chave: chaveAuto },
       )
     }
     return 'sem_acao'
@@ -360,6 +409,7 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
 
   if (!alvo) return 'sem_agendamento'
   const negocio = alvo.business
+  negocioDaConversa = alvo.business_id
 
   if (acao.tipo === 'confirmar') {
     /* `confirmado_em` alem do status (v146). Escrever so 'confirmed' nao
@@ -373,6 +423,7 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
       .eq('id', alvo.id)
     await responder(
       negocio?.name ? `Presença confirmada! Até breve, ${negocio.name}.` : 'Presença confirmada! Até breve.',
+      { tipo: 'resposta_confirmou' },
     )
     return 'confirmado'
   }
@@ -456,6 +507,7 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
       negocio?.name
         ? `Seu horário está confirmado. ${negocio.name} vai conferir o pagamento e já te chama se faltar alguma coisa.`
         : 'Seu horário está confirmado. Vamos conferir o pagamento e já te chamamos se faltar alguma coisa.',
+      { tipo: 'resposta_ja_paguei' },
     )
     return 'japaguei'
   }
@@ -469,6 +521,7 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
         : /* Sem nome do negócio, NÃO inventa categoria: 'o salão' chega em
              cliente de clínica e barbearia igual. Aponta pro telefone. */
           'Sem problema! Fale pelo telefone que aparece na mensagem do seu horário para remarcar.',
+    { tipo: 'resposta_remarcar' },
   )
   return 'remarcar'
 }
