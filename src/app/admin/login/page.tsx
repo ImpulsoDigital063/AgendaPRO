@@ -34,7 +34,10 @@ export default function LoginPage() {
     })
 
     if (authError) {
-      setError('Email ou senha incorretos.')
+      // Conta suspensa pela Impulso (ban no Auth): não é senha errada, é caso de suporte.
+      setError(authError.code === 'user_banned'
+        ? 'Seu acesso foi suspenso por segurança. Fale com o suporte do AgendaPRO pelo WhatsApp (63) 99292-0080.'
+        : 'Email ou senha incorretos.')
       setLoading(false)
       return
     }
