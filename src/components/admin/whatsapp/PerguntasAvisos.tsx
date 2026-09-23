@@ -58,6 +58,17 @@ function perguntas(categoria: string | null): { q: string; a: string }[] {
       a: 'Pode. A resposta aparece aqui na aba e no seu celular. Mas ninguém lê o número oficial: pra conversar, toque em Responder no WhatsApp e a conversa abre no seu número.',
     },
     {
+      /* A dúvida real da Wanessa, 23/09/2026 — em áudio, olhando UMA cliente.
+         A resposta começa pelo caso mais comum (sinal) e termina no caminho
+         de conferir, que agora existe na conversa aqui da aba. */
+      q: `${maiuscula(t.art)} ${t.s} não recebeu a confirmação. O que houve?`,
+      a: `Na maioria das vezes o horário tinha sinal: nesse caso sai a cobrança do sinal no lugar da confirmação, e ${t.art} ${t.s} recebeu essa. Pra ter certeza, role até a conversa aqui em cima e veja o que saiu pra ela: o tiquinho mostra se chegou e se foi lida. Se aparecer "não chegou", o número do cadastro provavelmente está errado ou não tem WhatsApp.`,
+    },
+    {
+      q: `${maiuscula(t.art)} ${t.s} recebe algo depois de pagar o sinal?`,
+      a: 'Se ela tocar em "Já paguei" na própria mensagem, o sistema responde na hora dizendo que o horário está confirmado e que você vai conferir o pagamento. Se ela só pagar o PIX e não tocar em nada, não sai mensagem nenhuma — o pagamento aparece pra você no sistema.',
+    },
+    {
       q: 'Posso mudar o texto de um aviso?',
       a: 'Pode. Toque no aviso e depois em escrever o seu texto. Todo texto novo passa pela aprovação da Meta e leva em média um dia, às vezes mais. Enquanto isso, sai o texto padrão.',
     },

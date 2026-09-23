@@ -66,6 +66,7 @@ import Oferta, { type Movimento, type PacoteTela } from './Oferta'
 import Respostas, { type Resposta } from './Respostas'
 import Entregas, { type Placar } from './Entregas'
 import Conversas, { type Conversa } from './Conversas'
+import QuandoSaiCada from './QuandoSaiCada'
 import TourAvisos from './TourAvisos'
 import PerguntasAvisos from './PerguntasAvisos'
 import VoceManda, {
@@ -686,6 +687,11 @@ export default function WhatsAppPainel({
 
   const listaDeAvisos = (
     <>
+      {/* A regra ANTES da régua (23/09/2026). A Wanessa perguntou por que uma
+          cliente não recebeu confirmação; a resposta (o sinal substitui) já
+          existia, mas escondida dentro da linha da Cobrança do sinal. */}
+      <QuandoSaiCada T={T} sinalAtivo={sinalAtivo} />
+
       <TituloSecao>O que o sistema manda sozinho</TituloSecao>
       <p
         className="text-[13.5px] leading-relaxed mb-2.5 px-1"

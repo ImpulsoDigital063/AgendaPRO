@@ -50,7 +50,9 @@
 //   da cliente) no lugar da lista de status.
 // v117 (23/09): CSS que nao chega deixa de virar tela azul sem estilo —
 //   o service worker avisa a aba, que recarrega uma vez.
-const STATIC_CACHE_VERSION = 'agendapro-static-v117'
+// v118 (23/09): aba Avisos explica qual mensagem sai em cada caso (a duvida
+//   da Wanessa) e duas perguntas novas nas duvidas frequentes.
+const STATIC_CACHE_VERSION = 'agendapro-static-v118'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
