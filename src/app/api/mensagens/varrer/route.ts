@@ -36,11 +36,32 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const LOTE = 20
-/* Janela de 2h, não de 1h, mesmo rodando de hora em hora: o cron do GitHub
-   atrasa e às vezes pula execução. Com janela justa, o atraso faz o lembrete
-   NÃO SAIR e ninguém percebe; com folga ele sai um pouco atrasado, que é
-   sempre melhor. Mandar duas vezes não é risco: a chave é UNIQUE. */
-const JANELA = 2 * 60 * 60 * 1000
+/* ─── O lembrete não se perde mais por atraso da varredura (23/09/2026) ───
+
+   A janela de 2h assumia que o cron do GitHub roda de hora em hora, como
+   está agendado. MEDIDO em 23/09: ele rodou 09:02, 14:21, 18:30, 21:47 e
+   00:00 — a cada 4 ou 5 horas. Tudo que vencia entre duas execuções sumia,
+   sem log nenhum, e a dona só descobria pela cliente.
+
+   Caso que abriu o diagnóstico (Wanessa, áudio de 23/09 08:18): a Tatiane
+   atendia 23/09 09:00, o lembrete de véspera vencia 22/09 09:00, a janela
+   fechava 11:00 e a varredura rodou 11:21. Perdeu por 21 minutos.
+
+   Agora a regra é RECUPERAR, não acertar a janela: manda se a hora alvo já
+   passou E o atendimento ainda não aconteceu. Dois limites:
+
+   · ATRASO_MAX de 12h — lembrete de ontem não serve mais, e o teto impede
+     que uma mudança de regra dispare um monte de atrasado de uma vez
+     (medido antes de subir: hoje sairia 1 mensagem extra, não um lote);
+   · HORA_CIVIL — nada de aviso automático entre 21h e 7h. Varredura que
+     atrasa até a madrugada segura e manda de manhã, em vez de tocar o
+     celular da cliente às 3h.
+
+   Mandar duas vezes continua não sendo risco: a chave é UNIQUE. */
+const ATRASO_MAX = 12 * 60 * 60 * 1000
+const HORA_INICIO = 7
+const HORA_FIM = 21
+
 
 function instanteDo(data: string, hora: string): number {
   return new Date(`${data}T${(hora || '00:00').slice(0, 5)}:00-03:00`).getTime()
@@ -67,6 +88,13 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } },
   )
+
+  /* Filtro opcional por negócio (23/09/2026). A varredura dispara pra TODA
+     a base de uma vez, então testar uma mudança de regra obrigava a mandar
+     mensagem pra cliente de verdade. Com `?negocio=<id>` dá pra rodar num
+     negócio descartável antes de subir — e, no suporte, forçar a fila de um
+     salão só sem mexer nos outros. Protegido pelo mesmo CRON_SECRET. */
+  const soNegocio = new URL(req.url).searchParams.get('negocio')
 
   const agora = Date.now()
   const horaBR = Number(new Date(agora - 3 * 3600_000).toISOString().slice(11, 13))
@@ -142,7 +170,12 @@ export async function GET(req: NextRequest) {
         const regra = regras.get(`${a.business_id}:${tipo}`)
         if (!regra) continue
         const alvo = quando + regra.offsetMinutos * 60_000
-        if (!(alvo <= agora && agora < alvo + JANELA)) continue
+        /* Passou da hora do lembrete, o atendimento ainda não aconteceu, e o
+           atraso cabe no teto. Fora do horário civil, espera a próxima. */
+        if (alvo > agora) continue
+        if (agora >= quando) continue
+        if (agora - alvo > ATRASO_MAX) continue
+        if (horaBR < HORA_INICIO || horaBR >= HORA_FIM) continue
 
         /* NAO LEMBRA DO QUE ACABOU DE SER MARCADO.
            Eduardo, 01/09: "porque veio 2?" — chegaram a confirmacao e o
@@ -202,7 +235,10 @@ export async function GET(req: NextRequest) {
                sinal_valor, sinal_pago_at, customer:customers(sinal_isento),
                business:businesses(name, phone, owner_id), professional:professionals(name)`)
       .in('business_id', negNovo)
-      .gte('created_at', new Date(agora - JANELA).toISOString())
+      /* Mesmo teto do lembrete: com a varredura rodando a cada 4-5h, olhar
+         só 2h pra trás fazia a confirmação de agendamento novo se perder do
+         mesmo jeito (Aline 18/09, Juliana 10/08 — nenhuma mensagem). */
+      .gte('created_at', new Date(agora - ATRASO_MAX).toISOString())
       .in('status', ['pending', 'confirmed'])
 
     for (const a of novos ?? []) {
@@ -215,6 +251,12 @@ export async function GET(req: NextRequest) {
          Os LEMBRETES seguem por sessao: cada um avisa de um dia diferente. */
       const idx = a.recurring_index as number | null
       if (a.recurring_group_id && idx !== null && idx > 1) continue
+
+      /* Com recuperação de 12h, o lote pode pegar agendamento que JÁ
+         aconteceu — "seu horário ficou agendado" depois do atendimento é
+         pior que silêncio. E nada de mensagem automática de madrugada. */
+      if (instanteDo(a.appointment_date as string, a.start_time as string) <= agora) continue
+      if (horaBR < HORA_INICIO || horaBR >= HORA_FIM) continue
 
       const negocio = a.business as unknown as { name: string; phone: string | null } | null
       const prof = a.professional as unknown as { name: string } | null
@@ -489,10 +531,14 @@ export async function GET(req: NextRequest) {
       return true
     })
 
+  const filaDoNegocio = soNegocio
+    ? filaLimpa.filter((t) => t.businessId === soNegocio)
+    : filaLimpa
+
   const adiados = fila.length - filaLimpa.length
 
   // ── ENVIO (lote) ──────────────────────────────────────────────
-  const lote = filaLimpa.slice(0, LOTE)
+  const lote = filaDoNegocio.slice(0, LOTE)
   let enviados = 0, ignorados = 0, falhas = 0
   /* POR QUE FOI IGNORADO. As travas mais duras (conta demo, assinatura
      bloqueada, regra desligada) devolvem ANTES de gravar no message_log — de
@@ -574,6 +620,9 @@ Falharam agora: ${falhas} de ${lote.length}.`,
     processados: lote.length,
     enviados, ignorados, falhas,
     motivos,
-    restam: Math.max(0, filaLimpa.length - lote.length),
+    /* Conta a fila que ESTA rodada vai esvaziar — com `?negocio=`, o laço
+       do workflow não pode ficar repetindo por causa de tarefa de outro
+       salão que este filtro nem processa. */
+    restam: Math.max(0, filaDoNegocio.length - lote.length),
   })
 }
