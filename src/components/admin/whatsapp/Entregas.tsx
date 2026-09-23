@@ -17,22 +17,12 @@
    "Não chegou" aparece só quando existe, e em vermelho: é o único item que
    pede ação. Aviso entregue não precisa de atenção nenhuma.
 
-   A lista mostra os últimos, com NOME da cliente. Resposta automática do
-   robô fica de fora — aquilo é conversa, e já tem a seção de respostas.
+   A lista que ficava aqui virou conversa de WhatsApp logo abaixo
+   (22/09/2026): rótulo + status era relatório, e a dona tinha que traduzir
+   linha por linha. Aqui sobrou o placar — o número que ela conta.
    ═══════════════════════════════════════════════════════════════ */
 
-import { Chip, Lista, Linha, TituloSecao } from './ui'
-
-export type Entrega = {
-  id: string
-  rotulo: string
-  situacao: 'lida' | 'entregue' | 'enviada' | 'falhou' | 'processando'
-  resposta: boolean
-  quando: string
-  entregueEm: string | null
-  lidoEm: string | null
-  cliente: string | null
-}
+import { TituloSecao } from './ui'
 
 export type Placar = {
   enviados: number
@@ -43,31 +33,8 @@ export type Placar = {
   dias: number
 }
 
-const TOM: Record<Entrega['situacao'], 'ok' | 'neutro' | 'erro'> = {
-  lida: 'ok',
-  entregue: 'ok',
-  enviada: 'neutro',
-  processando: 'neutro',
-  falhou: 'erro',
-}
 
-const TEXTO: Record<Entrega['situacao'], string> = {
-  lida: 'lida',
-  entregue: 'entregue',
-  enviada: 'enviada',
-  processando: 'saindo',
-  falhou: 'não chegou',
-}
 
-function quando(iso: string): string {
-  const d = new Date(iso)
-  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-  const dia = (x: Date) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`
-  const hoje = new Date()
-  if (dia(d) === dia(hoje)) return `hoje ${hora}`
-  if (dia(d) === dia(new Date(hoje.getTime() - 864e5))) return `ontem ${hora}`
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${hora}`
-}
 
 function Numero({ valor, texto, tom }: { valor: number; texto: string; tom?: 'ok' | 'erro' }) {
   const cor =
@@ -84,15 +51,7 @@ function Numero({ valor, texto, tom }: { valor: number; texto: string; tom?: 'ok
   )
 }
 
-export default function Entregas({
-  placar,
-  entregas,
-}: {
-  placar: Placar | null
-  entregas: Entrega[]
-}) {
-  const lista = entregas.filter((e) => !e.resposta).slice(0, 8)
-
+export default function Entregas({ placar }: { placar: Placar | null }) {
   /* Nunca enviou nada: não mostra placar zerado. Zero em toda coluna parece
      defeito, e a dona nova já tem a barra de consumo dizendo que está em 0. */
   if (!placar || placar.enviados === 0) return null
@@ -122,33 +81,6 @@ export default function Entregas({
           : 'Quando a cliente responder confirmando presença, ela aparece aqui.'}
       </p>
 
-      {lista.length > 0 && (
-        <Lista>
-          {lista.map((e, i) => (
-            <Linha
-              key={e.id}
-              primeira={i === 0}
-              destaque={e.situacao === 'falhou' ? 'atencao' : undefined}
-              titulo={
-                <>
-                  <span className="text-[14.5px] font-semibold" style={{ color: 'var(--admin-text)' }}>
-                    {e.cliente ?? 'Cliente'}
-                  </span>
-                  <Chip tom={TOM[e.situacao]}>{TEXTO[e.situacao]}</Chip>
-                </>
-              }
-              snippet={e.rotulo}
-              meta={
-                e.situacao === 'lida' && e.lidoEm
-                  ? `enviada ${quando(e.quando)} · lida ${quando(e.lidoEm)}`
-                  : e.entregueEm
-                    ? `enviada ${quando(e.quando)} · entregue ${quando(e.entregueEm)}`
-                    : `enviada ${quando(e.quando)}`
-              }
-            />
-          ))}
-        </Lista>
-      )}
     </>
   )
 }

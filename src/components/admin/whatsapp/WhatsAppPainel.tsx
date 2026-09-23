@@ -64,7 +64,8 @@ import Recarga from './Recarga'
 import ModalPix from './ModalPix'
 import Oferta, { type Movimento, type PacoteTela } from './Oferta'
 import Respostas, { type Resposta } from './Respostas'
-import Entregas, { type Entrega, type Placar } from './Entregas'
+import Entregas, { type Placar } from './Entregas'
+import Conversas, { type Conversa } from './Conversas'
 import TourAvisos from './TourAvisos'
 import PerguntasAvisos from './PerguntasAvisos'
 import VoceManda, {
@@ -247,8 +248,10 @@ export default function WhatsAppPainel({
   const [respostas, setRespostas] = useState<Resposta[]>([])
   /* O que já saiu e no que deu (22/09/2026, pergunta da Wanessa: "onde vejo
      se o cliente recebeu?"). */
-  const [entregas, setEntregas] = useState<Entrega[]>([])
   const [placar, setPlacar] = useState<Placar | null>(null)
+  /* A conversa como a cliente viu — balões, tiquinhos e a resposta dela.
+     Eduardo, 22/09: "simula a tela do whatsapp". */
+  const [conversas, setConversas] = useState<Conversa[]>([])
   const [vista, setVista] = useState<
     | { tela: 'inicio' }
     | { tela: 'mensagens' }
@@ -296,10 +299,11 @@ export default function WhatsAppPainel({
       .catch(() => null)
     void fetch('/api/admin/mensagens/status')
       .then((r) => r.json())
-      .then((j) => {
-        setEntregas(Array.isArray(j?.avisos) ? j.avisos : [])
-        setPlacar(j?.placar ?? null)
-      })
+      .then((j) => setPlacar(j?.placar ?? null))
+      .catch(() => null)
+    void fetch('/api/admin/mensagens/conversas')
+      .then((r) => r.json())
+      .then((j) => setConversas(Array.isArray(j?.conversas) ? j.conversas : []))
       .catch(() => null)
     void fetch('/api/admin/messages')
       .then((r) => r.json())
@@ -994,7 +998,8 @@ export default function WhatsAppPainel({
             {listaDeAvisos}
             {/* O resultado vem DEPOIS da régua: primeiro ela liga o que quer,
                 aí vê o que aquilo produziu. */}
-            <Entregas placar={placar} entregas={entregas} />
+            <Entregas placar={placar} />
+            <Conversas conversas={conversas} />
             {listaVoceManda}
             {listaRespostas}
             {/* Dúvidas frequentes no fim da aba (10/09): o que o tour não cobre. */}

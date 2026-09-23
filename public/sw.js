@@ -46,7 +46,9 @@
 //   na ficha da cliente e no grafico de Analises (depois das 21h virava amanha).
 // v114 (22/09): "o aviso chegou?" — situacao da mensagem dentro do
 //   atendimento (celular e computador) e placar + lista na aba Avisos.
-const STATIC_CACHE_VERSION = 'agendapro-static-v114'
+// v115 (23/09): aba Avisos mostra a CONVERSA (baloes + tiquinhos + resposta
+//   da cliente) no lugar da lista de status.
+const STATIC_CACHE_VERSION = 'agendapro-static-v115'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
