@@ -103,7 +103,31 @@ export default function AtualizadorPWA() {
       if (pendente.current && !digitando()) recarregar()
     }
 
+    /* ── Tela sem estilo: recarrega UMA vez ──────────────────────────
+       Quando um CSS ou chunk nao chega, o service worker devolve 504 e a
+       tela abre sem estilo nenhum — tudo link azul (Olimpio 10/08, Eduardo
+       no app da Marcela em 23/09). O proprio sw avisa aqui; o reload busca
+       HTML e assets de novo e resolve.
+
+       Duas travas, porque reload automatico e faca de dois gumes:
+       · UMA vez por sessao (sessionStorage) — rede ruim nao vira piscada;
+       · so ONLINE. Offline, recarregar troca a tela feia por uma tela de
+         erro do navegador, e ai ela perde ate o que estava na frente. */
+    const aoFaltarRecurso = (e: MessageEvent) => {
+      if ((e.data as { tipo?: string } | null)?.tipo !== 'recurso-faltando') return
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+      try {
+        if (sessionStorage.getItem('agendapro:recarga-recurso')) return
+        sessionStorage.setItem('agendapro:recarga-recurso', '1')
+      } catch {
+        /* navegador sem sessionStorage (aba privada antiga): segue e
+           recarrega — a trava do `recarregando` ainda evita o laco. */
+      }
+      recarregar()
+    }
+
     navigator.serviceWorker.addEventListener('controllerchange', marcar)
+    navigator.serviceWorker.addEventListener('message', aoFaltarRecurso)
     document.addEventListener('visibilitychange', aoVoltar)
 
     let intervalo: ReturnType<typeof setInterval> | null = null
@@ -123,6 +147,7 @@ export default function AtualizadorPWA() {
 
     return () => {
       navigator.serviceWorker.removeEventListener('controllerchange', marcar)
+      navigator.serviceWorker.removeEventListener('message', aoFaltarRecurso)
       document.removeEventListener('visibilitychange', aoVoltar)
       if (intervalo) clearInterval(intervalo)
     }

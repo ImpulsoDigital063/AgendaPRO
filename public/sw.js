@@ -48,7 +48,9 @@
 //   atendimento (celular e computador) e placar + lista na aba Avisos.
 // v115 (23/09): aba Avisos mostra a CONVERSA (baloes + tiquinhos + resposta
 //   da cliente) no lugar da lista de status.
-const STATIC_CACHE_VERSION = 'agendapro-static-v116'
+// v117 (23/09): CSS que nao chega deixa de virar tela azul sem estilo —
+//   o service worker avisa a aba, que recarrega uma vez.
+const STATIC_CACHE_VERSION = 'agendapro-static-v117'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
@@ -142,6 +144,23 @@ self.addEventListener('fetch', (event) => {
             // estado quebrado com o SW no meio do caminho.
             const ultimaChance = await caches.match(request, { ignoreSearch: true })
             if (ultimaChance) return ultimaChance
+
+            /* AVISA A PAGINA (23/09/2026). O 504 mudo resolvia o lado do
+               service worker e deixava a dona com o pior resultado possivel:
+               app aberto, HTML novo, CSS faltando — tudo vira link azul sem
+               estilo. Aconteceu com o Olimpio em 10/08 e de novo com o
+               Eduardo no app da Marcela.
+               Agora a aba e avisada e recarrega UMA vez: o reload busca o
+               HTML e os assets de novo da rede, e o que faltou chega. */
+            const critico = url.pathname.endsWith('.css') || isStaticChunk
+            if (critico) {
+              self.clients
+                .matchAll({ type: 'window' })
+                .then((abas) =>
+                  abas.forEach((a) => a.postMessage({ tipo: 'recurso-faltando', url: url.pathname }))
+                )
+                .catch(() => {})
+            }
             return new Response('', { status: 504, statusText: 'asset offline' })
           })
       })
