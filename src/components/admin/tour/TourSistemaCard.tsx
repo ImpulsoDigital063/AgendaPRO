@@ -7,7 +7,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { limparIdParada, montarRoteiro, TOUR_SISTEMA_CARD_OCULTO } from '@/lib/tour-sistema'
+import { chaveTourCardOculto, limparIdParada, montarRoteiro } from '@/lib/tour-sistema'
 
 const IDS = new Set(montarRoteiro({ categoria: null, vendeProduto: true }).map((p) => p.id))
 
@@ -21,7 +21,7 @@ function IconMapa({ size = 20 }: { size?: number }) {
   )
 }
 
-export default function TourSistemaCard() {
+export default function TourSistemaCard({ businessId }: { businessId: string }) {
   /* Com o tour aberto, o card vira uma segunda entrada pro mesmo tour atrás
      do balão (teste 14/09). Some enquanto o tour roda. */
   const params = useSearchParams()
@@ -30,12 +30,12 @@ export default function TourSistemaCard() {
      escondido e só aparece depois de ler o localStorage, pra não piscar. */
   const [oculto, setOculto] = useState(true)
   useEffect(() => {
-    try { setOculto(localStorage.getItem(TOUR_SISTEMA_CARD_OCULTO) === '1') } catch { setOculto(false) }
-  }, [])
+    try { setOculto(localStorage.getItem(chaveTourCardOculto(businessId)) === '1') } catch { setOculto(false) }
+  }, [businessId])
   if (oculto || (id && IDS.has(id))) return null
 
   function dispensar() {
-    try { localStorage.setItem(TOUR_SISTEMA_CARD_OCULTO, '1') } catch {}
+    try { localStorage.setItem(chaveTourCardOculto(businessId), '1') } catch {}
     setOculto(true)
   }
 

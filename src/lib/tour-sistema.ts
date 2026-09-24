@@ -36,9 +36,24 @@ export function tourSistemaLiberado(
   return !!business.created_at && business.created_at >= TOUR_SISTEMA_CADASTRO_DESDE
 }
 
-/** localStorage: card dispensado no X ou tour concluído. Só esconde o card;
-    o tour em si continua abrindo por link. */
-export const TOUR_SISTEMA_CARD_OCULTO = 'ap_tour_sistema_card_oculto'
+/* localStorage: card dispensado no X ou tour concluído. Só esconde o card;
+   o tour em si continua abrindo por link.
+
+   🔑 POR NEGÓCIO, não por navegador (23/09/2026). A chave era global:
+   `ap_tour_sistema_card_oculto`. Eduardo criou um cadastro novo pra testar,
+   entrou e o convite do tour não apareceu — porque ele já tinha dispensado
+   (ou concluído) o tour em OUTRA conta, no mesmo celular. A marca é do
+   navegador e vazava entre contas.
+
+   Vale pra dona de verdade também: quem atende em dois negócios no mesmo
+   aparelho perdia o tour do segundo. E pra nós, que testamos várias contas
+   no mesmo navegador, escondia justamente a tela de quem chega agora.
+
+   Efeito colateral aceito: quem já tinha dispensado vê o convite uma vez
+   mais, porque a marca antiga não é lida. Some de novo no primeiro X. */
+export function chaveTourCardOculto(businessId: string | null | undefined): string {
+  return `ap_tour_sistema_card_oculto:${businessId ?? 'sem-negocio'}`
+}
 
 export type BalaoTour = { alvo: string; titulo: string; corpo: string; posicao?: 'auto' | 'rodape' }
 

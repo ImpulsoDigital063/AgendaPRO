@@ -52,7 +52,9 @@
 //   o service worker avisa a aba, que recarrega uma vez.
 // v118 (23/09): aba Avisos explica qual mensagem sai em cada caso (a duvida
 //   da Wanessa) e duas perguntas novas nas duvidas frequentes.
-const STATIC_CACHE_VERSION = 'agendapro-static-v118'
+// v119 (23/09): convite do tour passa a ser por NEGOCIO — dispensar num
+//   cadastro escondia o tour de todos os outros no mesmo navegador.
+const STATIC_CACHE_VERSION = 'agendapro-static-v119'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

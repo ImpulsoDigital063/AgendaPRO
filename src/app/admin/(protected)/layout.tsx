@@ -273,6 +273,7 @@ export default async function AdminLayout({
               <TourSistema
                 categoria={resolveCategoria(business)}
                 vendeProduto={business.vendas_balcao_enabled !== false}
+                businessId={business.id as string}
               />
             </Suspense>
           )}

@@ -480,7 +480,7 @@ export default async function AdminInicioPage() {
 
         {/* Tour 'Conheça seu sistema' · em revisão, só negócios liberados. */}
         {tourSistemaLiberado(business) && (
-          <Suspense fallback={null}><TourSistemaCard /></Suspense>
+          <Suspense fallback={null}><TourSistemaCard businessId={business.id as string} /></Suspense>
         )}
 
         {/* Pedidos de pontos por avaliação · aprovar/recusar na hora · fica no

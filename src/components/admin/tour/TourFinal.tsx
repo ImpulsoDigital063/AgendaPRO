@@ -12,7 +12,7 @@
  */
 import { createPortal } from 'react-dom'
 import { useEffect, useState } from 'react'
-import { TOUR_SISTEMA_CARD_OCULTO } from '@/lib/tour-sistema'
+import { chaveTourCardOculto } from '@/lib/tour-sistema'
 
 function IconCheck({ size = 14 }: { size?: number }) {
   return (
@@ -42,16 +42,17 @@ function IconWhatsApp({ size = 18 }: { size?: number }) {
 type Props = {
   partes: string[]
   linkWhatsApp: string
+  businessId: string
   onFechar: () => void
 }
 
-export default function TourFinal({ partes, linkWhatsApp, onFechar }: Props) {
+export default function TourFinal({ partes, linkWhatsApp, businessId, onFechar }: Props) {
   const [pronto, setPronto] = useState(false)
   useEffect(() => {
     setPronto(true)
     /* Chegou ao fim: o convite da Início não precisa mais aparecer. */
-    try { localStorage.setItem(TOUR_SISTEMA_CARD_OCULTO, '1') } catch {}
-  }, [])
+    try { localStorage.setItem(chaveTourCardOculto(businessId), '1') } catch {}
+  }, [businessId])
   if (!pronto) return null
 
   return createPortal(

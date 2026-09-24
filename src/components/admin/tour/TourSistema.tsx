@@ -14,9 +14,9 @@ import TourGuiado, { acharAlvo, type PassoTour } from './TourGuiado'
 import TourFinal from './TourFinal'
 import { hrefDaParada, limparIdParada, montarRoteiro, TOTAL_PARTES } from '@/lib/tour-sistema'
 
-type Props = { categoria: string | null; vendeProduto: boolean }
+type Props = { categoria: string | null; vendeProduto: boolean; businessId: string }
 
-export default function TourSistema({ categoria, vendeProduto }: Props) {
+export default function TourSistema({ categoria, vendeProduto, businessId }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
@@ -99,7 +99,7 @@ export default function TourSistema({ categoria, vendeProduto }: Props) {
      demo=1), não há balão pra abrir aqui. */
   if (parada?.final && naTela) {
     const partes = Array.from(new Set(roteiro.filter((p) => p.parte > 0).map((p) => p.nomeParte)))
-    return <TourFinal partes={partes} linkWhatsApp={parada.seguirLink ?? ''} onFechar={sair} />
+    return <TourFinal partes={partes} linkWhatsApp={parada.seguirLink ?? ''} businessId={businessId} onFechar={sair} />
   }
 
   if (!parada || parada.demo || !naTela || !pronto) return null
