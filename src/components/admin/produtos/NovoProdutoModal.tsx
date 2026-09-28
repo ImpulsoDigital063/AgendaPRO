@@ -14,7 +14,7 @@ type Props = {
 type Brand = { id: string; name: string }
 type Category = { id: string; name: string }
 
-const UNIT_OPTIONS = ['un', 'ml', 'l', 'g', 'kg', 'cx', 'pct']
+export const UNIT_OPTIONS = ['un', 'ml', 'l', 'g', 'kg', 'cx', 'pct']
 
 export default function NovoProdutoModal({ businessId: _businessId, onClose, onSuccess }: Props) {
   void _businessId

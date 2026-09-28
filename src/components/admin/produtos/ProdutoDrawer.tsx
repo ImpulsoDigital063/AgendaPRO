@@ -8,6 +8,7 @@ import { getAreaPrefix } from '@/lib/area-prefix'
 import AjustarEstoqueModal from './AjustarEstoqueModal'
 import ProductImageUpload from './ProductImageUpload'
 import AdicionarComandaAbertaModal from './AdicionarComandaAbertaModal'
+import { UNIT_OPTIONS } from './NovoProdutoModal'
 
 type Product = {
   id: string
@@ -33,6 +34,15 @@ type Product = {
   image_url?: string | null
   brand?: { id: string; name: string } | { id: string; name: string }[] | null
   category?: { id: string; name: string } | { id: string; name: string }[] | null
+}
+
+const SELECT_STYLE = {
+  background: `var(--admin-input-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.625rem center`,
+  border: '1px solid var(--admin-border)',
+  color: 'var(--admin-text)',
+  appearance: 'none' as const,
+  WebkitAppearance: 'none' as const,
+  MozAppearance: 'none' as const,
 }
 
 function pickRel<T>(rel: T | T[] | null | undefined): T | null {
@@ -200,6 +210,7 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
               businessId={businessId}
               onSaved={onChanged}
               onDelete={() => setConfirmDelete(true)}
+              onMovimentar={() => setShowAjustar(true)}
             />
           )}
           {tab === 'historico' && <HistoricoTab productId={product.id} />}
@@ -449,12 +460,13 @@ type Brand = { id: string; name: string }
 type Category = { id: string; name: string }
 
 function EditarTab({
-  product, businessId, onSaved, onDelete,
+  product, businessId, onSaved, onDelete, onMovimentar,
 }: {
   product: Product
   businessId: string
   onSaved: () => void
   onDelete: () => void
+  onMovimentar: () => void
 }) {
   const [imageUrl, setImageUrl] = useState<string | null>(product.image_url ?? null)
   // Básico
@@ -591,7 +603,14 @@ function EditarTab({
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm resize-none" />
         <div>
           <EditLabel>Unidade</EditLabel>
-          <input type="text" value={unit} onChange={(e) => setUnit(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm" />
+          {/* Lista, igual ao cadastro. Era texto livre e a dona digitava a
+              QUANTIDADE aqui achando que era estoque ("150 3" na lista).
+              Unidade fora da lista (legado) continua aparecendo pra ser
+              trocada, sem mudar sozinha. */}
+          <select value={unit} onChange={(e) => setUnit(e.target.value)} className="w-full px-3 py-2.5 pr-9 rounded-xl text-sm" style={SELECT_STYLE}>
+            {!UNIT_OPTIONS.includes(unit) && <option value={unit}>{unit}</option>}
+            {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+          </select>
         </div>
       </div>
 
@@ -636,9 +655,21 @@ function EditarTab({
                 <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm" />
               </div>
             </div>
-            <p className="text-[11px] italic" style={{ color: 'var(--admin-text-mute)' }}>
-              Pra alterar a <strong>quantidade atual</strong>, use a aba Resumo → Movimentar estoque.
-            </p>
+            {/* Quantidade não é campo do formulário (todo movimento vira
+                histórico), mas o atalho fica aqui: era só um aviso em
+                itálico e a dona não achava onde corrigir o estoque. */}
+            <button
+              type="button"
+              onClick={onMovimentar}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm"
+              style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+            >
+              <span className="text-left">
+                <span className="block text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>Quantidade em estoque</span>
+                <span className="font-bold tabular-nums">{formatQty(product.quantity, product.unit)}</span>
+              </span>
+              <span className="text-xs font-semibold" style={{ color: 'var(--admin-accent)' }}>Ajustar</span>
+            </button>
           </>
         )}
       </EditSection>
@@ -824,14 +855,7 @@ function SelectWithCreate({
   createPlaceholder: string
 }) {
   const [showCreate, setShowCreate] = useState(false)
-  const selectStyle = {
-    background: `var(--admin-input-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 0.625rem center`,
-    border: '1px solid var(--admin-border)',
-    color: 'var(--admin-text)',
-    appearance: 'none' as const,
-    WebkitAppearance: 'none' as const,
-    MozAppearance: 'none' as const,
-  }
+  const selectStyle = SELECT_STYLE
   if (showCreate) {
     return (
       <div className="flex gap-1.5">

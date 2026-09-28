@@ -51,15 +51,22 @@ export default function AjustarEstoqueModal({ product, onClose, onSuccess }: Pro
   async function submit() {
     setError(null)
     const q = parseFloat(quantity)
-    if (!q || !isFinite(q)) { setError('Quantidade inválida'); return }
+    if (!isFinite(q) || q < 0 || (type !== 'adjust' && q === 0)) { setError('Quantidade inválida'); return }
+    /* Ajuste = CONTAGEM: a dona digita quanto tem de verdade na prateleira
+       e a gente manda a diferença pro servidor (que soma o delta). Antes o
+       campo pedia a própria diferença, mas a prévia mostrava o número
+       digitado como resultado — digitar 3 com 150 no estoque prometia
+       "vai ficar com 3" e gravava 153 (Wanessa, 28/09). */
+    const enviar = type === 'adjust' ? Math.round((q - product.quantity) * 1000) / 1000 : q
+    if (type === 'adjust' && enviar === 0) { setError('O estoque já está com essa quantidade'); return }
     setSaving(true)
     const res = await fetch(`/api/admin/products/${product.id}/movement`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         type,
-        quantity: q,
-        reason: reason.trim() || null,
+        quantity: enviar,
+        reason: reason.trim() || (type === 'adjust' ? 'Contagem' : null),
       }),
     })
     setSaving(false)
@@ -77,13 +84,13 @@ export default function AjustarEstoqueModal({ product, onClose, onSuccess }: Pro
     const q = parseFloat(quantity) || 0
     if (type === 'entry') return product.quantity + q
     if (type === 'exit') return product.quantity - q
-    return q // adjust = vai pra esse valor
+    return q // adjust = contagem, vai pra esse valor
   })()
 
   const typeMeta: Record<MovementType, { label: string; helper: string; color: string }> = {
     entry: { label: 'Entrada', helper: 'Recebeu novo estoque (compra, reposição, devolução)', color: '#10B981' },
     exit: { label: 'Saída', helper: 'Saiu do estoque (uso interno, venda, perda)', color: '#EF4444' },
-    adjust: { label: 'Ajuste', helper: 'Diferença pra correção · positivo soma, negativo subtrai', color: '#3B82F6' },
+    adjust: { label: 'Contagem', helper: 'Contou o que tem? Digite a quantidade real e o estoque passa a ser ela', color: '#3B82F6' },
   }
 
   return createPortal(
@@ -170,18 +177,19 @@ export default function AjustarEstoqueModal({ product, onClose, onSuccess }: Pro
           {/* Quantidade */}
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-              {type === 'adjust' ? 'Diferença (pode ser negativo)' : `Quantidade (${product.unit})`}
+              {type === 'adjust' ? `Quantidade real (${product.unit})` : `Quantidade (${product.unit})`}
             </label>
             <input
               type="number"
+              min={0}
               step={0.01}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums"
               autoFocus
-              placeholder={type === 'adjust' ? '-2 ou 5.5' : 'Ex: 10'}
+              placeholder="Ex: 10"
             />
-            {parseFloat(quantity) > 0 && (
+            {quantity !== '' && parseFloat(quantity) >= 0 && (
               <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
                 Vai ficar com <span className="font-bold tabular-nums" style={{ color: previewQty < 0 ? '#EF4444' : 'var(--admin-text)' }}>{formatQty(previewQty, product.unit)}</span>
                 {previewQty < 0 && ' · ⚠ negativo'}
