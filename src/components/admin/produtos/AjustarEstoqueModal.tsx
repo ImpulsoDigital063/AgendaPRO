@@ -14,6 +14,10 @@ type Product = {
 
 type Props = {
   product: Product
+  /** Modo já marcado ao abrir. O atalho "Ajustar" da edição abre em Contagem:
+   *  quem vem de lá quer CORRIGIR o número. Com "Entrada" pré-marcada, digitar
+   *  3 somava 3 (teste do Eduardo 28/09: 150 virou 153). */
+  modoInicial?: 'entry' | 'exit' | 'adjust'
   onClose: () => void
   onSuccess: () => void
 }
@@ -26,8 +30,8 @@ function formatQty(v: number, unit: string): string {
   return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${unit}`
 }
 
-export default function AjustarEstoqueModal({ product, onClose, onSuccess }: Props) {
-  const [type, setType] = useState<MovementType>('entry')
+export default function AjustarEstoqueModal({ product, modoInicial, onClose, onSuccess }: Props) {
+  const [type, setType] = useState<MovementType>(modoInicial ?? 'entry')
   const [quantity, setQuantity] = useState<string>('')
   const [reason, setReason] = useState<string>('')
   const [saving, setSaving] = useState(false)

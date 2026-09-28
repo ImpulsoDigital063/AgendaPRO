@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { parseValorBR } from '@/lib/valor-br'
 import { IconClose, IconChevronDown, IconChevronRight, IconPlus } from '@/components/ui/Icon'
 import ProductImageUpload from './ProductImageUpload'
+import VendePorSelector from './VendePorSelector'
 
 type Props = {
   businessId: string
@@ -266,17 +267,7 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
               placeholder="Marca · uso · observações"
               className="admin-input w-full px-3 py-2.5 rounded-xl text-sm resize-none"
             />
-            <div>
-              <FieldLabel>Unidade</FieldLabel>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                className="w-full px-3 py-2.5 pr-9 rounded-xl text-sm"
-                style={selectStyle}
-              >
-                {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
+            <VendePorSelector value={unit} onChange={setUnit} Label={FieldLabel} />
           </div>
 
           {/* Categorização */}

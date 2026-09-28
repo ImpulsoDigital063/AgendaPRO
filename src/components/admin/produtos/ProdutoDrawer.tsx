@@ -9,7 +9,7 @@ import { getAreaPrefix } from '@/lib/area-prefix'
 import AjustarEstoqueModal from './AjustarEstoqueModal'
 import ProductImageUpload from './ProductImageUpload'
 import AdicionarComandaAbertaModal from './AdicionarComandaAbertaModal'
-import { UNIT_OPTIONS } from './NovoProdutoModal'
+import VendePorSelector from './VendePorSelector'
 
 type Product = {
   id: string
@@ -96,6 +96,7 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
   const areaPrefix = getAreaPrefix(pathname)
   const [tab, setTab] = useState<Tab>('resumo')
   const [showAjustar, setShowAjustar] = useState(false)
+  const [ajusteModo, setAjusteModo] = useState<'entry' | 'adjust'>('entry')
   const [showAddComanda, setShowAddComanda] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteErro, setDeleteErro] = useState<string | null>(null)
@@ -203,7 +204,7 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
               status={status}
               statusColor={statusColor}
               statusLabel={statusLabel}
-              onMovimentar={() => setShowAjustar(true)}
+              onMovimentar={() => { setAjusteModo('entry'); setShowAjustar(true) }}
               onVenderAgora={() => {
                 onClose()
                 router.push(`${areaPrefix}/produtos/vender?prefill=${product.id}`)
@@ -217,7 +218,7 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
               businessId={businessId}
               onSaved={onChanged}
               onDelete={() => setConfirmDelete(true)}
-              onMovimentar={() => setShowAjustar(true)}
+              onMovimentar={() => { setAjusteModo('adjust'); setShowAjustar(true) }}
             />
           )}
           {tab === 'historico' && <HistoricoTab productId={product.id} />}
@@ -228,6 +229,7 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
       {showAjustar && (
         <AjustarEstoqueModal
           product={product}
+          modoInicial={ajusteModo}
           onClose={() => setShowAjustar(false)}
           onSuccess={() => {
             setShowAjustar(false)
@@ -622,17 +624,8 @@ function EditarTab({
         <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm" />
         <EditLabel>Descrição</EditLabel>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm resize-none" />
-        <div>
-          <EditLabel>Unidade</EditLabel>
-          {/* Lista, igual ao cadastro. Era texto livre e a dona digitava a
-              QUANTIDADE aqui achando que era estoque ("150 3" na lista).
-              Unidade fora da lista (legado) continua aparecendo pra ser
-              trocada, sem mudar sozinha. */}
-          <select value={unit} onChange={(e) => setUnit(e.target.value)} className="w-full px-3 py-2.5 pr-9 rounded-xl text-sm" style={SELECT_STYLE}>
-            {!UNIT_OPTIONS.includes(unit) && <option value={unit}>{unit}</option>}
-            {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-          </select>
-        </div>
+        {/* "Vende por" (era "Unidade" · a dona digitava a QUANTIDADE aqui). */}
+        <VendePorSelector value={unit} onChange={setUnit} Label={EditLabel} />
       </div>
 
       {/* Categorização */}
