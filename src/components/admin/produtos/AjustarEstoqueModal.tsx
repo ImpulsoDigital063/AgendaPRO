@@ -57,14 +57,15 @@ export default function AjustarEstoqueModal({ product, onClose, onSuccess }: Pro
        campo pedia a própria diferença, mas a prévia mostrava o número
        digitado como resultado — digitar 3 com 150 no estoque prometia
        "vai ficar com 3" e gravava 153 (Wanessa, 28/09). */
-    const enviar = type === 'adjust' ? Math.round((q - product.quantity) * 1000) / 1000 : q
-    if (type === 'adjust' && enviar === 0) { setError('O estoque já está com essa quantidade'); return }
+    // Contagem: manda o número contado; a diferença é calculada no servidor
+    // com o estoque do banco (T11 · a lista aberta pode estar velha).
+    const enviar = q
     setSaving(true)
     const res = await fetch(`/api/admin/products/${product.id}/movement`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        type,
+        type: type === 'adjust' ? 'count' : type,
         quantity: enviar,
         reason: reason.trim() || (type === 'adjust' ? 'Contagem' : null),
       }),

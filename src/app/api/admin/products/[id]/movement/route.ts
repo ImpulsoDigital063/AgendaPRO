@@ -28,8 +28,12 @@ export async function POST(
 
   const body = await req.json().catch(() => ({}))
   const type = typeof body.type === 'string' ? body.type : ''
-  if (!['entry', 'exit', 'adjust'].includes(type)) {
-    return NextResponse.json({ error: 'type inválido (entry/exit/adjust)' }, { status: 400 })
+  // 'count' (T11 · auditoria 28/09): a tela manda a quantidade CONTADA e a
+  // diferença é calculada aqui, com o estoque do banco na hora de gravar.
+  // Antes a tela mandava (contado − estoque da tela) e, se alguém vendeu
+  // depois que a lista abriu, o estoque final saía errado. Grava como 'adjust'.
+  if (!['entry', 'exit', 'adjust', 'count'].includes(type)) {
+    return NextResponse.json({ error: 'type inválido (entry/exit/adjust/count)' }, { status: 400 })
   }
   const rawQty = typeof body.quantity === 'number' ? body.quantity : null
   if (rawQty == null || !isFinite(rawQty)) {
@@ -48,6 +52,11 @@ export async function POST(
   let delta = Math.abs(rawQty)
   if (type === 'exit') delta = -delta
   else if (type === 'adjust') delta = rawQty // pode ser negativo
+  else if (type === 'count') {
+    if (rawQty < 0) return NextResponse.json({ error: 'Quantidade contada não pode ser negativa.' }, { status: 400 })
+    delta = Math.round((rawQty - Number(product.quantity ?? 0)) * 1000) / 1000
+    if (delta === 0) return NextResponse.json({ error: 'O estoque já está com essa quantidade.' }, { status: 400 })
+  }
 
   // Validação: não permitir saída que zera além do estoque
   if (type === 'exit' && product.quantity + delta < 0) {
@@ -61,9 +70,11 @@ export async function POST(
     .insert({
       business_id: product.business_id,
       product_id: productId,
-      type,
+      type: type === 'count' ? 'adjust' : type,
       quantity: delta,
-      reason: typeof body.reason === 'string' ? body.reason.trim() || null : null,
+      reason: typeof body.reason === 'string' && body.reason.trim()
+        ? body.reason.trim()
+        : type === 'count' ? 'Contagem' : null,
       created_by: user.id,
     })
 
@@ -75,6 +86,14 @@ export async function POST(
     .select('quantity')
     .eq('id', productId)
     .single()
+
+  // λ.prova-na-fonte: o movimento entrou mas o estoque não mudou = o UPDATE
+  // do trigger foi barrado (RLS da recepção · T17). Não responder "ok".
+  const esperado = Math.round((Number(product.quantity ?? 0) + delta) * 1000) / 1000
+  if (after && Math.abs(Number(after.quantity) - esperado) > 0.001 && Number(after.quantity) === Number(product.quantity)) {
+    console.error('[movement] estoque nao atualizou', productId, product.quantity, delta, after.quantity)
+    return NextResponse.json({ error: 'A movimentação foi registrada, mas o estoque não foi atualizado. Avise o suporte.' }, { status: 500 })
+  }
 
   revalidatePath('/admin/produtos')
   return NextResponse.json({ ok: true, new_quantity: after?.quantity ?? null })
