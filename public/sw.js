@@ -54,7 +54,7 @@
 //   da Wanessa) e duas perguntas novas nas duvidas frequentes.
 // v119 (23/09): convite do tour passa a ser por NEGOCIO — dispensar num
 //   cadastro escondia o tour de todos os outros no mesmo navegador.
-const STATIC_CACHE_VERSION = 'agendapro-static-v120'
+const STATIC_CACHE_VERSION = 'agendapro-static-v121'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
