@@ -195,6 +195,31 @@ export async function POST(request: Request) {
   const total = subtotal
   const customerId = body.customerId ?? appts[0]?.customer_id ?? null
 
+  /* PDV (Registrar venda · 28/09): venda sem agendamento. O nome/telefone
+     vinham de appts[0] e caíam em "Cliente" mesmo com cliente escolhida. */
+  let nomeCliente: string = appts[0]?.client_name ?? ''
+  let foneCliente: string = ''
+  if (!nomeCliente && customerId) {
+    const { data: c } = await admin.from('customers').select('name, phone, business_id').eq('id', customerId).maybeSingle()
+    if (!c || c.business_id !== businessId) return NextResponse.json({ error: 'customer_not_found' }, { status: 404 })
+    nomeCliente = c.name ?? ''
+    foneCliente = c.phone ?? ''
+  }
+  if (!nomeCliente) nomeCliente = typeof body.client_name === 'string' && body.client_name.trim() ? body.client_name.trim() : 'Cliente avulso'
+
+  // Profissional enviado tem que ser deste negócio (a rota grava com service
+  // role · auditoria 28/09, achado 9).
+  const profsEnviados = [
+    ...productSales.map((p) => p.professional_id),
+    ...extraServices.map((e) => e.professional_id),
+  ].filter((x): x is string => typeof x === 'string' && !!x)
+  if (profsEnviados.length > 0) {
+    const { data: profsOk } = await admin.from('professionals').select('id').eq('business_id', businessId).in('id', Array.from(new Set(profsEnviados)))
+    if ((profsOk ?? []).length !== new Set(profsEnviados).size) {
+      return NextResponse.json({ error: 'professional_not_found', detail: 'Profissional não pertence ao negócio.' }, { status: 400 })
+    }
+  }
+
   // Validar pagamento (se vier)
   type PaymentIn = { method: 'cash'|'pix'|'card'|'courtesy'|'points'; device_id?: string|null; card_brand?: string|null; card_type?: string|null; installments?: number|null; fee_percent?: number|null }
   const payment: PaymentIn | null = body.payment && ['cash','pix','card','courtesy','points'].includes(body.payment.method)
@@ -321,7 +346,7 @@ export async function POST(request: Request) {
         business_id: businessId,
         type: 'product_sale',
         customer_id: customerId,
-        client_name: appts[0]?.client_name ?? 'Cliente',
+        client_name: nomeCliente,
         professional_id: ps.professional_id ?? null,
         // Dia de Brasília: nowIso é UTC e depois das 21h virava o dia seguinte.
         sale_date: dataBR(),
@@ -388,8 +413,8 @@ export async function POST(request: Request) {
       .insert({
         business_id: businessId,
         customer_id: customerId,
-        client_name: appts[0]?.client_name ?? 'Cliente',
-        client_phone: '', // NOT NULL
+        client_name: nomeCliente,
+        client_phone: foneCliente, // NOT NULL
         professional_id: svcProfId,
         service_id: svc.id,
         service_name: svc.name,

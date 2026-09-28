@@ -8,6 +8,7 @@ import { PARADA_DEPOIS_DA_DEMO_AGENDAR } from '@/lib/tour-sistema'
 import { IconChevronLeft, IconChevronRight, IconCalendar, IconDollar, IconClose, IconPlus, IconInfo, IconSettings, IconCheck, IconClock } from '@/components/ui/Icon'
 import AppointmentDrawer from '@/components/admin/atendimentos/AppointmentDrawer'
 import AgendarModal from '@/components/admin/desktop/atendimentos/AgendarModal'
+import PdvModal from '@/components/admin/pdv/PdvModal'
 import ResgatarPacoteModal, { type ResgateSelecionado } from '@/components/admin/pacotes/ResgatarPacoteModal'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import { MiniKPI } from './GradeTimelineHeader'
@@ -1529,14 +1530,12 @@ export default function TimelineGridInteractive({
       {/* MODAL de VENDA DE BALCÃO · abre via ?balcao=1 · mesmo motor do Agendar,
           modo balcão (já concluído + hoje + agora, sem agenda). Pra negócio que
           atende e registra na hora sem marcar (Izanara/Palace · Eduardo 09/06). */}
-      <AgendarModal
+      {/* PDV (Eduardo 28/09/2026): "Registrar venda tem que se tornar um PDV,
+          mais simples, com poucos cliques". Era o AgendarModal em modo
+          balcão (cliente/profissional/serviço/horário/concluído). */}
+      <PdvModal
         open={searchParams.get('balcao') === '1'}
-        balcao
         businessId={businessId}
-        professionals={profs}
-        services={services}
-        defaultProfId={searchParams.get('prof')}
-        defaultDate={date}
         onClose={() => {
           router.replace(pathname)
           router.refresh()
