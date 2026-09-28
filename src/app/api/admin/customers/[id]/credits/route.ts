@@ -58,7 +58,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   return NextResponse.json({ ok: true, credit: data })
 }
 
-// DELETE ?creditId=...
+const ORIGEM: Record<string, string> = {
+  advance: 'Adiantamento',
+  other: 'Outro',
+  sinal_cancelado: 'Sinal cancelado',
+}
+
+function brl(v: number) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+// DELETE ?creditId=...   body opcional: { motivo: string }
+//
+// Wanessa (28/09): o crédito some de vez (delete), então o MOTIVO vai pro
+// activity_log (aba Atividades) com valor e origem — sem isso, R$ saindo da
+// ficha da cliente não deixava rastro nenhum. A ficha do celular exige o
+// motivo; o computador (SaldoTab) ainda não manda e fica "sem motivo".
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const businessId = await getBusinessId(supabase)
@@ -70,7 +85,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const admin = getAdmin()
   const { data: c } = await admin
     .from('customer_credits')
-    .select('id, business_id, customer_id, used_in_invoice_id, used_in_appointment_id')
+    .select('id, business_id, customer_id, used_in_invoice_id, used_in_appointment_id, amount, origin')
     .eq('id', creditId)
     .maybeSingle()
   if (!c || c.business_id !== businessId || c.customer_id !== customerId) {
@@ -81,6 +96,33 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (c.used_in_invoice_id || c.used_in_appointment_id) {
     return NextResponse.json({ error: 'credit_used' }, { status: 400 })
   }
-  await admin.from('customer_credits').delete().eq('id', creditId)
+  const corpo = await request.json().catch(() => null)
+  const motivo = typeof corpo?.motivo === 'string' ? corpo.motivo.trim().slice(0, 300) : ''
+
+  const { error: delErr } = await admin.from('customer_credits').delete().eq('id', creditId)
+  // λ.prova-na-fonte: só diz que removeu se a linha sumiu mesmo.
+  const { data: ainda } = await admin.from('customer_credits').select('id').eq('id', creditId).maybeSingle()
+  if (delErr || ainda) {
+    return NextResponse.json({ error: 'nao_removeu' }, { status: 500 })
+  }
+
+  // Quem removeu: profissional (recepção) quando for o caso; dono = null.
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: prof } = user
+    ? await admin.from('professionals').select('id').eq('business_id', businessId).eq('auth_user_id', user.id).maybeSingle()
+    : { data: null }
+  const { data: cli } = await admin.from('customers').select('name').eq('id', customerId).maybeSingle()
+  const { error: logErr } = await admin.from('activity_log').insert({
+    business_id: businessId,
+    professional_id: prof?.id ?? null,
+    action: 'remove_credit',
+    target_type: 'customer',
+    target_id: customerId,
+    description:
+      `Crédito de ${brl(Number(c.amount ?? 0))} (${ORIGEM[c.origin as string] ?? c.origin}) removido` +
+      `${cli?.name ? ` de ${cli.name}` : ''} · motivo: ${motivo || 'sem motivo'}`,
+  })
+  if (logErr) console.error('[credits] activity_log falhou (credito ja removido):', logErr)
+
   return NextResponse.json({ ok: true })
 }

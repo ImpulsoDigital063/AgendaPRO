@@ -39,6 +39,7 @@ const ACTION_META: Record<
   create_customer: { label: 'Cadastrou cliente', icon: IconUsers, color: 'var(--admin-accent)' },
   update_customer: { label: 'Editou cliente', icon: IconUsers, color: 'var(--admin-text-mute)' },
   redeem_points: { label: 'Resgatou pontos', icon: IconStar, color: 'var(--admin-warn)' },
+  remove_credit: { label: 'Removeu crédito', icon: IconDollar, color: 'var(--admin-danger,#EF4444)' },
   close_cash: { label: 'Fechou caixa', icon: IconWallet, color: 'var(--admin-accent)' },
   login: { label: 'Login', icon: IconUser, color: 'var(--admin-text-faded)' },
   confirm: { label: 'Confirmou', icon: IconCheck, color: 'var(--admin-accent)' },

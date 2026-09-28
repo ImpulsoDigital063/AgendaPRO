@@ -21,6 +21,7 @@ export type ActivityAction =
   | 'close_cash'
   | 'cash_sangria'
   | 'cash_suprimento'
+  | 'remove_credit'
   | 'login'
 
 export async function logActivity(params: {

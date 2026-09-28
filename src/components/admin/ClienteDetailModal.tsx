@@ -132,17 +132,24 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const [creditBalance, setCreditBalance] = useState(0)
   /* Remover crédito (Wanessa 28/09): cancelou guardando o sinal como crédito
      e a cliente tinha sido atendida. Só o computador (SaldoTab) tinha como
-     tirar. Dois toques em vez de confirm() nativo: no iPhone o diálogo do
-     sistema trava a tela instalada. */
+     tirar. "Remover" abre um campo de motivo (vai pro activity_log, porque
+     o crédito é apagado de vez) — sem confirm() nativo, que trava o PWA no
+     iPhone. */
   const [creditoConfirmando, setCreditoConfirmando] = useState<string | null>(null)
+  const [creditoMotivo, setCreditoMotivo] = useState('')
   const [creditoRemovendo, setCreditoRemovendo] = useState(false)
   const [creditoErro, setCreditoErro] = useState<string | null>(null)
   async function removerCredito(creditId: string) {
     setCreditoRemovendo(true)
     setCreditoErro(null)
-    const res = await fetch(`/api/admin/customers/${customerId}/credits?creditId=${creditId}`, { method: 'DELETE' })
+    const res = await fetch(`/api/admin/customers/${customerId}/credits?creditId=${creditId}`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ motivo: creditoMotivo.trim() }),
+    })
     setCreditoRemovendo(false)
     setCreditoConfirmando(null)
+    setCreditoMotivo('')
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
       setCreditoErro(d.error === 'credit_used'
@@ -828,30 +835,55 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                             {brlCredito(c.amount)}
                             {c.usado && <span className="font-normal"> · usado</span>}
                           </span>
-                          {!c.usado && (
-                            creditoConfirmando === c.id ? (
-                              <button
-                                type="button"
-                                onClick={() => removerCredito(c.id)}
-                                disabled={creditoRemovendo}
-                                className="flex-shrink-0 px-2 py-1 rounded-md text-[11px] font-bold disabled:opacity-50"
-                                style={{ background: '#DC2626', color: '#fff' }}
-                              >
-                                {creditoRemovendo ? 'Removendo…' : 'Confirmar'}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => { setCreditoErro(null); setCreditoConfirmando(c.id) }}
-                                className="flex-shrink-0 px-2 py-1 rounded-md text-[11px] font-semibold"
-                                style={{ color: '#DC2626', border: '1px solid rgba(220,38,38,0.35)' }}
-                              >
-                                Remover
-                              </button>
-                            )
+                          {!c.usado && creditoConfirmando !== c.id && (
+                            <button
+                              type="button"
+                              onClick={() => { setCreditoErro(null); setCreditoMotivo(''); setCreditoConfirmando(c.id) }}
+                              className="flex-shrink-0 px-2 py-1 rounded-md text-[11px] font-semibold"
+                              style={{ color: '#DC2626', border: '1px solid rgba(220,38,38,0.35)' }}
+                            >
+                              Remover
+                            </button>
                           )}
                         </div>
                       ))}
+                      {creditoConfirmando && (
+                        <div className="mt-2 space-y-2">
+                          <label className="block text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+                            Motivo da remoção
+                          </label>
+                          <input
+                            type="text"
+                            autoFocus
+                            value={creditoMotivo}
+                            onChange={(e) => setCreditoMotivo(e.target.value)}
+                            placeholder="Ex: cliente foi atendida, cancelei por engano"
+                            maxLength={300}
+                            disabled={creditoRemovendo}
+                            className="admin-input w-full px-3 py-2 rounded-lg text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => { setCreditoConfirmando(null); setCreditoMotivo('') }}
+                              disabled={creditoRemovendo}
+                              className="flex-1 py-2 rounded-lg text-xs font-semibold"
+                              style={{ background: 'var(--admin-surface)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}
+                            >
+                              Voltar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removerCredito(creditoConfirmando)}
+                              disabled={creditoRemovendo || creditoMotivo.trim().length < 3}
+                              className="flex-1 py-2 rounded-lg text-xs font-bold disabled:opacity-50"
+                              style={{ background: '#DC2626', color: '#fff' }}
+                            >
+                              {creditoRemovendo ? 'Removendo…' : 'Remover crédito'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {creditoErro && (
                       <p className="mt-2 text-[11px] font-semibold" role="alert" style={{ color: '#DC2626' }}>{creditoErro}</p>
