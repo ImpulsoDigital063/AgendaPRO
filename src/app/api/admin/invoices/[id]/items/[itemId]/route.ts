@@ -24,6 +24,12 @@ async function validateAccess(invoiceId: string, businessId: string) {
   const inv = invoice as { id: string; business_id: string; status: string } | null
   if (!inv) return { admin, error: NextResponse.json({ error: 'invoice_not_found' }, { status: 404 }) }
   if (inv.business_id !== businessId) return { admin, error: NextResponse.json({ error: 'forbidden' }, { status: 403 }) }
+  // Auditoria 28/09 (T7): item de comanda FECHADA não muda por aqui. Remover
+  // produto de comanda paga devolvia estoque e sumia do Hub, mas o pagamento
+  // ficava — caixa e relatório discordando. Reabrir primeiro (botão existe).
+  if (inv.status !== 'open') {
+    return { admin, error: NextResponse.json({ error: 'invoice_not_open', detail: 'Reabra a comanda para alterar os itens.' }, { status: 409 }) }
+  }
   return { admin, invoice: inv }
 }
 
@@ -102,11 +108,16 @@ export async function PATCH(
   // Antes o PATCH só mexia no valor: baixava 1 pacote, você corrigia pra 0,5,
   // o preço caía mas o estoque continuava −1. Meio pacote sumia do sistema.
   // Bug já existia com inteiros (2 → 1 não devolvia nada) · só era raro.
+  //
+  // Auditoria 28/09 (T6): a venda também acompanha PREÇO e DESCONTO editados,
+  // não só a quantidade. Antes a comanda cobrava R$40 e Hub/Início/comissão
+  // seguiam em R$50. E produto sem controle de estoque (track_stock=false) não
+  // gera movimento aqui (não teve saída na venda · T12).
   const qtdAntiga = Number(item.quantity ?? 0)
-  if (item.item_type === 'product' && item.reference_id && quantity !== qtdAntiga) {
+  if (item.item_type === 'product' && item.reference_id) {
     const { data: saleItems, error: siErr } = await admin
       .from('sale_items')
-      .select('id, product_id, quantity, unit_price')
+      .select('id, product_id, quantity, unit_price, products(track_stock)')
       .eq('sale_id', item.reference_id)
     if (siErr) return NextResponse.json({ error: `sale_items_read_failed: ${siErr.message}` }, { status: 500 })
 
@@ -114,9 +125,11 @@ export async function PATCH(
     // Com mais de um, não dá pra saber a quem atribuir o delta — não adivinha.
     if ((saleItems?.length ?? 0) === 1) {
       const si = saleItems![0]
+      const prod = Array.isArray(si.products) ? si.products[0] : si.products
+      const controlaEstoque = (prod as { track_stock?: boolean } | null)?.track_stock !== false
       const delta = quantity - qtdAntiga // >0 consumiu mais · <0 devolveu
 
-      if (si.product_id && delta !== 0) {
+      if (si.product_id && delta !== 0 && controlaEstoque) {
         const { error: movErr } = await admin.from('stock_movements').insert({
           business_id: businessId,
           product_id: si.product_id as string,
@@ -129,10 +142,11 @@ export async function PATCH(
         if (movErr) return NextResponse.json({ error: `stock_adjust_failed: ${movErr.message}` }, { status: 500 })
       }
 
-      // sale_item e sale acompanham, senão o relatório de vendas diverge da comanda
-      const novoTotalVenda = Math.max(0, Number(si.unit_price ?? unit_price) * quantity)
-      await admin.from('sale_items').update({ quantity }).eq('id', si.id)
-      await admin.from('sales').update({ total: novoTotalVenda }).eq('id', item.reference_id)
+      // sale_item e sale acompanham, senão o relatório de vendas diverge da
+      // comanda. sales.total = o que a linha cobra (o desconto geral entra
+      // quando a comanda fecha · acertarValorDosProdutosDaComanda).
+      await admin.from('sale_items').update({ quantity, unit_price, discount }).eq('id', si.id)
+      await admin.from('sales').update({ total }).eq('id', item.reference_id)
     }
   }
 
@@ -187,33 +201,42 @@ export async function DELETE(
   }
 
   if (item.item_type === 'product' && item.reference_id) {
-    // sale_items pra devolver estoque
-    const { data: saleItems, error: siErr } = await admin
-      .from('sale_items')
-      .select('product_id, quantity')
-      .eq('sale_id', item.reference_id)
-    if (siErr) return NextResponse.json({ error: `sale_items_read_failed: ${siErr.message}` }, { status: 500 })
-
-    const compensations = (saleItems ?? [])
-      .filter((s) => s.product_id)
-      .map((s) => ({
-        business_id: businessId,
-        product_id: s.product_id as string,
-        type: 'entry' as const,
-        quantity: Number(s.quantity ?? 0),
-        reason: 'Item removido da comanda',
-        created_by: user.id,
-      }))
-    if (compensations.length > 0) {
-      const { error: movErr } = await admin.from('stock_movements').insert(compensations)
-      if (movErr) return NextResponse.json({ error: `stock_revert_failed: ${movErr.message}` }, { status: 500 })
-    }
-
-    const { error: saleErr } = await admin
+    // Auditoria 28/09: cancela a venda PRIMEIRO, só se ainda não estava, e
+    // devolve estoque só nesse caso (clique duplo não devolve 2x). Produto
+    // sem controle de estoque não teve saída → não ganha entrada (T12).
+    const { data: cancelou, error: saleErr } = await admin
       .from('sales')
       .update({ status: 'cancelled', paid_at: null })
       .eq('id', item.reference_id)
+      .neq('status', 'cancelled')
+      .select('id')
     if (saleErr) return NextResponse.json({ error: `sale_cancel_failed: ${saleErr.message}` }, { status: 500 })
+
+    if ((cancelou ?? []).length > 0) {
+      const { data: saleItems, error: siErr } = await admin
+        .from('sale_items')
+        .select('product_id, quantity, products(track_stock)')
+        .eq('sale_id', item.reference_id)
+      if (siErr) return NextResponse.json({ error: `sale_items_read_failed: ${siErr.message}` }, { status: 500 })
+
+      const compensations = (saleItems ?? [])
+        .filter((s) => {
+          const prod = Array.isArray(s.products) ? s.products[0] : s.products
+          return s.product_id && (prod as { track_stock?: boolean } | null)?.track_stock !== false
+        })
+        .map((s) => ({
+          business_id: businessId,
+          product_id: s.product_id as string,
+          type: 'entry' as const,
+          quantity: Number(s.quantity ?? 0),
+          reason: 'Item removido da comanda',
+          created_by: user.id,
+        }))
+      if (compensations.length > 0) {
+        const { error: movErr } = await admin.from('stock_movements').insert(compensations)
+        if (movErr) return NextResponse.json({ error: `stock_revert_failed: ${movErr.message}` }, { status: 500 })
+      }
+    }
   }
 
   // Deleta o invoice_item

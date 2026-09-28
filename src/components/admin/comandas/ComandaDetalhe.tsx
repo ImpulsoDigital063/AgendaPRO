@@ -119,7 +119,9 @@ export default function ComandaDetalhe({
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const color = STATUS_COLOR[invoice.status]
-  const canEditItems = invoice.status !== 'cancelled'
+  // Só comanda aberta muda item (a rota também bloqueia · auditoria 28/09).
+  // Fechada: "Reabrir" primeiro.
+  const canEditItems = invoice.status === 'open'
   const canReceivePayment = invoice.status === 'open' && invoice.total > 0
   const customerName = invoice.customer?.name ?? 'Cliente'
 
