@@ -14,7 +14,8 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 //   payment?: {
 //     method: 'cash'|'pix'|'card'|'courtesy'|'points',
 //     device_id?, card_brand?, card_type?, installments?, fee_percent?
-//   }
+//   },
+//   manual_discount?: number   // R$ · "Desconto geral" da comanda (Wanessa 28/09)
 // }
 //
 // Tem que ter ao menos 1 item (appointment ou productSale). Se payment vier,
@@ -59,6 +60,17 @@ export async function POST(request: Request) {
   if (appointmentIds.length === 0 && productSales.length === 0 && extraServices.length === 0) {
     return NextResponse.json({ error: 'no_items' }, { status: 400 })
   }
+
+  /* Desconto no faturamento (Wanessa · 28/09/2026): "às vezes concedo algum
+     desconto mas não tenho como lançar lá, aí fatura errado". Mesma casa e
+     mesma conta do "Desconto geral" de /invoices/[id]/discount — o que as
+     telas de líquido e comissão já leem (getApptDiscountMap). */
+  const manualDiscountRaw = body.manual_discount
+  if (manualDiscountRaw !== undefined && manualDiscountRaw !== null
+      && (typeof manualDiscountRaw !== 'number' || !Number.isFinite(manualDiscountRaw) || manualDiscountRaw < 0)) {
+    return NextResponse.json({ error: 'manual_discount inválido' }, { status: 400 })
+  }
+  const manualDiscount = typeof manualDiscountRaw === 'number' ? Math.round(manualDiscountRaw * 100) / 100 : 0
 
   const admin = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -277,6 +289,20 @@ export async function POST(request: Request) {
     if (!isExistingInvoice && invoice) await admin.from('invoices').delete().eq('id', invoice.id)
   }
 
+  // 6b. Desconto não pode passar da comanda. Confere ANTES do passo 7: depois
+  // dele o estoque dos produtos já baixou e o rollback não devolve.
+  if (manualDiscount > 0) {
+    const { data: itensAgora } = await admin.from('invoice_items').select('total').eq('invoice_id', invoice.id)
+    const totalPrevisto = (itensAgora ?? []).reduce((s, r) => s + Number(r.total ?? 0), 0) + subtotalProds + subtotalExtraSvcs
+    if (manualDiscount > totalPrevisto) {
+      await rollback()
+      return NextResponse.json({
+        error: 'discount_exceeds_total',
+        detail: `O desconto de R$ ${manualDiscount.toFixed(2).replace('.', ',')} é maior que o total de R$ ${totalPrevisto.toFixed(2).replace('.', ',')}.`,
+      }, { status: 400 })
+    }
+  }
+
   // 7. Pra cada productSale: cria sales + sale_items (trigger baixa estoque) + invoice_item
   for (const ps of productSales) {
     const p = prodMap[ps.product_id]
@@ -428,7 +454,7 @@ export async function POST(request: Request) {
   const itemsSubtotal = (allItems ?? []).reduce((s, r) => s + Number(r.total ?? 0), 0)
   const itemsDiscount = (allItems ?? []).reduce((s, r) => s + Number(r.discount ?? 0), 0)
   // Fallback defensivo: se a leitura vier vazia (não deveria), cai no total do request.
-  const payableTotal = (allItems && allItems.length > 0) ? itemsSubtotal : total
+  const payableTotal = Math.max(0, ((allItems && allItems.length > 0) ? itemsSubtotal : total) - manualDiscount)
 
   /* SINAL JÁ PAGO (v112c · 05/08) — abate do que falta receber.
      ─────────────────────────────────────────────────────────────────
@@ -486,13 +512,14 @@ export async function POST(request: Request) {
   }
 
   // 9b. Recalcula subtotal/total da invoice (reusa allItems lido acima)
-  if (isExistingInvoice || productSales.length > 0 || extraServices.length > 0) {
+  if (isExistingInvoice || productSales.length > 0 || extraServices.length > 0 || manualDiscount > 0) {
     await admin
       .from('invoices')
       .update({
         subtotal: itemsSubtotal + itemsDiscount,
-        discount: itemsDiscount,
-        total: itemsSubtotal,
+        discount: itemsDiscount + manualDiscount,
+        ...(manualDiscount > 0 ? { manual_discount: manualDiscount } : {}),
+        total: Math.max(0, itemsSubtotal - manualDiscount),
         status: willClose ? 'closed' : 'open',
         closed_at: willClose ? nowIso : null,
         customer_id: customerId,
@@ -510,12 +537,16 @@ export async function POST(request: Request) {
   // 10. Read-after-write: confere invoice criada
   const { data: confirm } = await admin
     .from('invoices')
-    .select('id, invoice_number, status, total')
+    .select('id, invoice_number, status, total, manual_discount')
     .eq('id', invoice.id)
     .maybeSingle()
 
   if (!confirm) {
     return NextResponse.json({ error: 'persistence_check_failed' }, { status: 500 })
+  }
+  if (manualDiscount > 0 && Number(confirm.manual_discount ?? -1) !== manualDiscount) {
+    console.error('[invoices] desconto nao persistiu', invoice.id, confirm.manual_discount, manualDiscount)
+    return NextResponse.json({ error: 'persistence_check_failed', detail: 'O desconto não foi gravado. Confira a comanda antes de cobrar de novo.' }, { status: 500 })
   }
 
   return NextResponse.json({

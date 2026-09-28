@@ -58,8 +58,16 @@ type Props = {
    *  segue com o comportamento antigo (valor so exibido). Ver comentario da
    *  rota /appointments/[id]/payment sobre a propagacao pra comanda. */
   permiteEditarValor?: boolean
-  /** 3o argumento so chega quando permiteEditarValor esta ligado e o valor mudou. */
-  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number) => void
+  /** Wanessa 28/09 · libera "Dar desconto". Opt-in pelo mesmo motivo do
+   *  permiteEditarValor: o modal é usado em 7 fluxos e só quem grava o
+   *  desconto na comanda (AppointmentActions → /payment) pode ligar. */
+  permiteDesconto?: boolean
+  /** Erro do chamador (ex: rota recusou o desconto) mostrado DENTRO do modal —
+   *  fora dele fica escondido atrás do overlay. */
+  erro?: string | null
+  /** 3o argumento so chega quando permiteEditarValor esta ligado e o valor mudou.
+   *  4o só quando permiteDesconto está ligado e há desconto > 0. */
+  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number, desconto?: number) => void
   onClose: () => void
 }
 
@@ -90,6 +98,8 @@ export default function PaymentMethodModal({
   sinalPago = 0,
   sinalDeclarado = null,
   permiteEditarValor = false,
+  permiteDesconto = false,
+  erro = null,
   businessId,
   withPunctualityBonus = false,
   punctualityPoints = 0,
@@ -151,6 +161,21 @@ export default function PaymentMethodModal({
   const campoValor = permiteEditarValor && semValorFixo
   const valorEfetivo = campoValor ? valorDigitado : (totalPrice ?? null)
 
+  /* Desconto (R$) · fechado por padrão pra não pesar a tela de quem não dá
+     desconto; abre com "Dar desconto". Mesmo parse do valor editável. */
+  const [descontoAberto, setDescontoAberto] = useState(false)
+  const [descontoTexto, setDescontoTexto] = useState('')
+  useEffect(() => {
+    if (open) { setDescontoAberto(false); setDescontoTexto('') }
+  }, [open])
+  const desconto = (() => {
+    if (!permiteDesconto || !descontoAberto) return 0
+    const n = Number(descontoTexto.replace(/\./g, '').replace(',', '.').trim())
+    return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0
+  })()
+  const descontoMaiorQueValor = desconto > 0 && desconto > Number(valorEfetivo ?? 0)
+  const descontoEnviado = desconto > 0 ? desconto : undefined
+
   if (!open || !portalReady) return null
 
   // Sem valor, PIX/dinheiro/cartão fecham atendimento zerado — foi o que
@@ -168,14 +193,16 @@ export default function PaymentMethodModal({
       setCardStep(true)
       return
     }
-    onChoose(method, undefined, campoValor ? valorEfetivo ?? undefined : undefined)
+    onChoose(method, undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado)
   }
 
   /* O que entra AGORA, na mão de quem está no balcão. O sinal já entrou antes
      e por outro meio; somar os dois aqui faria a dona conferir o caixa com um
      valor que não existe. */
   const aReceberAgora =
-    sinalPago > 0 && totalPrice != null ? Math.max(0, Math.round((totalPrice - sinalPago) * 100) / 100) : totalPrice
+    (sinalPago > 0 || desconto > 0) && totalPrice != null
+      ? Math.max(0, Math.round((totalPrice - sinalPago - desconto) * 100) / 100)
+      : totalPrice
   const priceLabel = formatPrice(aReceberAgora)
 
   return createPortal(
@@ -205,7 +232,7 @@ export default function PaymentMethodModal({
             clientName={clientName}
             loading={loading}
             onBack={() => setCardStep(false)}
-            onConfirm={(details) => onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined)}
+            onConfirm={(details) => onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado)}
             onClose={onClose}
           />
         ) : (
@@ -236,9 +263,11 @@ export default function PaymentMethodModal({
                     </p>
                     {/* Dizer só "R$ 40,00" onde o serviço é R$ 50 levanta a
                         pergunta na hora errada. A conta aparece resolvida. */}
-                    {sinalPago > 0 && (
+                    {(sinalPago > 0 || desconto > 0) && (
                       <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--admin-text-faded, #94A3B8)' }}>
-                        {formatPrice(totalPrice)} no total · {formatPrice(sinalPago)} já pagos no sinal
+                        {formatPrice(totalPrice)} no total
+                        {sinalPago > 0 && <> · {formatPrice(sinalPago)} já pagos no sinal</>}
+                        {desconto > 0 && <> · {formatPrice(desconto)} de desconto</>}
                       </p>
                     )}
                     {/* A SEGUNDA PORTA (04/09). Este modal e o
@@ -308,13 +337,67 @@ export default function PaymentMethodModal({
               </div>
             )}
 
+            {permiteDesconto && (
+              <div className="px-5 pb-3">
+                {!descontoAberto ? (
+                  <button
+                    type="button"
+                    onClick={() => setDescontoAberto(true)}
+                    disabled={loading}
+                    className="text-xs font-semibold disabled:opacity-40"
+                    style={{ color: 'var(--admin-accent, #7C3AED)' }}
+                  >
+                    + Dar desconto
+                  </button>
+                ) : (
+                  <>
+                    <label
+                      className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5"
+                      style={{ color: 'var(--admin-text-faded, #94A3B8)' }}
+                    >
+                      Desconto
+                    </label>
+                    <div className="relative">
+                      <span
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold pointer-events-none"
+                        style={{ color: 'var(--admin-text-mute, #64748B)' }}
+                      >
+                        R$
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        autoFocus
+                        value={descontoTexto}
+                        onChange={(e) => setDescontoTexto(e.target.value.replace(/[^\d.,]/g, ''))}
+                        placeholder="0,00"
+                        disabled={loading}
+                        className="admin-input w-full text-base font-bold tabular-nums py-2.5 pl-10 pr-3"
+                      />
+                    </div>
+                    <p className="text-[11px] mt-1.5" style={{ color: descontoMaiorQueValor ? '#DC2626' : 'var(--admin-text-faded, #94A3B8)' }}>
+                      {descontoMaiorQueValor
+                        ? '⚠ O desconto é maior que o valor do atendimento.'
+                        : 'Entra no faturamento como desconto · o valor do serviço não muda.'}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {erro && (
+              <p className="mx-5 mb-3 text-xs font-semibold rounded-lg px-2.5 py-2" role="alert" style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}>
+                {erro}
+              </p>
+            )}
+
             <div className="grid grid-cols-2 gap-2.5 px-5 pb-3">
               {METHODS.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => handleMethodClick(m.id)}
-                  disabled={loading}
+                  disabled={loading || descontoMaiorQueValor}
                   className="relative rounded-2xl p-3.5 text-left transition-all disabled:opacity-40 hover:translate-y-[-1px] active:scale-[0.98]"
                   style={{
                     background: 'var(--admin-surface, #F8FAFC)',

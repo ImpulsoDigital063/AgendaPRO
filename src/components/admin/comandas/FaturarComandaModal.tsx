@@ -284,7 +284,7 @@ export default function FaturarComandaModal({
     return null
   }
 
-  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails) {
+  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number) {
     const v = validateBeforeSubmit()
     if (v) { setError(v); return }
     setError(null)
@@ -318,6 +318,8 @@ export default function FaturarComandaModal({
         pay.installments = cardDetails.installments
       }
       body.payment = pay
+      // Desconto só existe junto com o pagamento (vem do passo do método).
+      if (typeof desconto === 'number' && desconto > 0) body.manual_discount = desconto
     }
 
     const r = await fetch('/api/admin/invoices', {
@@ -340,7 +342,7 @@ export default function FaturarComandaModal({
     // pagina, e nao tira o dono do lugar onde ele trabalha — ele marca
     // varios pagamentos seguidos.
     if (onPago && payment !== 'leave_open' && payment !== null) {
-      onPago({ invoiceId, total })
+      onPago({ invoiceId, total: typeof d?.invoice?.total === 'number' ? d.invoice.total : total })
       onClose()
       return
     }
@@ -874,11 +876,13 @@ export default function FaturarComandaModal({
            digita quanto recebeu. Faltou na primeira versao: eu tinha posto o
            aviso nos dois modais e esquecido que um abre de dentro do outro. */
         sinalDeclarado={sinalDeclarado}
+        permiteDesconto
+        erro={paymentOpen ? error : null}
         businessId={businessId}
         loading={submitting}
-        onChoose={(method, card) => {
+        onChoose={(method, card, _valor, desconto) => {
           if (method === null) { setPaymentOpen(false); return }
-          submitInvoice(method, card)
+          submitInvoice(method, card, desconto)
         }}
         onClose={() => setPaymentOpen(false)}
       />
