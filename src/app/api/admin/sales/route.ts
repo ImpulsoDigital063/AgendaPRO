@@ -62,23 +62,26 @@ export async function POST(req: NextRequest) {
     clientName = body.client_name.trim()
   }
 
-  // Resolve profissional (default = usuário logado se for prof)
+  // Profissional da venda (T8 · Eduardo 28/09): SÓ quem foi escolhido de
+  // propósito. Antes, sem escolha, caía em quem estava logado — e a comissão
+  // do produto ia pra dona/recepção que só registrou a venda. E o escolhido
+  // tem que ser deste negócio (a rota grava com service role).
   let professionalId = typeof body.professional_id === 'string' && body.professional_id ? body.professional_id : null
-  if (!professionalId) {
+  if (professionalId) {
     const { data: prof } = await supabase
       .from('professionals')
       .select('id')
-      .eq('auth_user_id', user.id)
+      .eq('id', professionalId)
       .eq('business_id', businessId)
       .maybeSingle()
-    professionalId = prof?.id ?? null
+    if (!prof) return NextResponse.json({ error: 'Profissional não pertence ao negócio' }, { status: 400 })
   }
 
   // Resolve dados dos produtos (nome, comissão, track_stock)
   const productIds = Array.from(new Set(items.map((i: { product_id: string }) => i.product_id)))
   const { data: produtos } = await supabase
     .from('products')
-    .select('id, name, commission_type, commission_value, track_stock')
+    .select('id, name, variant, commission_type, commission_value, track_stock, quantity, active, sale_active')
     .in('id', productIds)
     .eq('business_id', businessId)
   const prodMap = new Map((produtos ?? []).map((p) => [p.id, p]))
@@ -91,13 +94,15 @@ export async function POST(req: NextRequest) {
   for (const it of items as ItemInput[]) {
     const p = prodMap.get(it.product_id)
     if (!p) return NextResponse.json({ error: 'Produto não encontrado ou não pertence ao negócio' }, { status: 400 })
+    if (p.active === false) return NextResponse.json({ error: `${p.name} foi excluído` }, { status: 400 })
     const qty = typeof it.quantity === 'number' ? it.quantity : 0
     const price = typeof it.unit_price === 'number' ? it.unit_price : 0
     const disc = typeof it.discount === 'number' && it.discount >= 0 ? it.discount : 0
     if (qty <= 0 || price < 0) return NextResponse.json({ error: 'Item inválido' }, { status: 400 })
     cleanItems.push({
       product_id: it.product_id,
-      product_name: p.name,
+      // Variante no nome (achado 14): "Esmalte · Vermelho", não só "Esmalte".
+      product_name: p.variant ? `${p.name} · ${p.variant}` : p.name,
       quantity: qty,
       unit_price: price,
       discount: disc,
@@ -108,13 +113,33 @@ export async function POST(req: NextRequest) {
   }
   total = Math.max(0, total - totalDiscount)
 
+  // T10 · estoque: o PDV não conferia nada (comanda e /items conferem).
+  // Soma por produto — o mesmo produto em duas linhas conta junto.
+  const pedido = new Map<string, number>()
+  for (const it of cleanItems) pedido.set(it.product_id, (pedido.get(it.product_id) ?? 0) + it.quantity)
+  for (const [pid, qtd] of pedido) {
+    const p = prodMap.get(pid)
+    if (p && p.track_stock !== false && qtd > Number(p.quantity ?? 0)) {
+      return NextResponse.json({
+        error: 'insufficient_stock',
+        detail: `${p.variant ? `${p.name} · ${p.variant}` : p.name}: pediu ${qtd}, só tem ${Number(p.quantity ?? 0)} em estoque`,
+        product_id: pid,
+      }, { status: 400 })
+    }
+  }
+
   // todayBR() (não toISOString) — fuso de Brasília, senão pega o dia errado à noite.
   const saleDate = typeof body.sale_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.sale_date) ? body.sale_date : todayBR()
 
   // Pagamento na hora (opcional). Sem método válido → venda fica pendente (paga
   // depois, como era). Card detail (taxa/maquininha) não é guardado aqui: a tabela
   // sales não tem colunas de cartão (só payment_method) — só o método é persistido.
-  const ALLOWED_METHODS = ['cash', 'pix', 'card', 'points']
+  // 'points' saiu (T9 · Eduardo 28/09): pontos só em atendimento. No PDV
+  // entrava como receita e não debitava saldo nenhum.
+  const ALLOWED_METHODS = ['cash', 'pix', 'card']
+  if (body.payment_method === 'points') {
+    return NextResponse.json({ error: 'points_not_allowed', detail: 'Pontos só podem ser usados em atendimento.' }, { status: 400 })
+  }
   const payMethod = typeof body.payment_method === 'string' && ALLOWED_METHODS.includes(body.payment_method)
     ? body.payment_method : null
   const nowIso = new Date().toISOString()

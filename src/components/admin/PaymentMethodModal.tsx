@@ -62,6 +62,8 @@ type Props = {
    *  permiteEditarValor: o modal é usado em 7 fluxos e só quem grava o
    *  desconto na comanda (AppointmentActions → /payment) pode ligar. */
   permiteDesconto?: boolean
+  /** Esconde "Pontos" (venda de produto no PDV · Eduardo 28/09). */
+  semPontos?: boolean
   /** Erro do chamador (ex: rota recusou o desconto) mostrado DENTRO do modal —
    *  fora dele fica escondido atrás do overlay. */
   erro?: string | null
@@ -99,6 +101,7 @@ export default function PaymentMethodModal({
   sinalDeclarado = null,
   permiteEditarValor = false,
   permiteDesconto = false,
+  semPontos = false,
   erro = null,
   businessId,
   withPunctualityBonus = false,
@@ -392,7 +395,7 @@ export default function PaymentMethodModal({
             )}
 
             <div className="grid grid-cols-2 gap-2.5 px-5 pb-3">
-              {METHODS.map((m) => (
+              {METHODS.filter((m) => !(semPontos && m.id === 'points')).map((m) => (
                 <button
                   key={m.id}
                   type="button"

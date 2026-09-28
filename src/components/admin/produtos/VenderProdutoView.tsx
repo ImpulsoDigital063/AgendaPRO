@@ -226,7 +226,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
     setSaving(false)
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
-      setError(d.error ?? 'Erro ao salvar')
+      setError(d.detail ?? d.error ?? 'Erro ao salvar')
       return
     }
     const d = await res.json()
@@ -482,7 +482,8 @@ export default function VenderProdutoView({ businessId, products, professionals,
         </div>
       </section>
 
-      {/* Pagamento · recebe na hora (pix/dinheiro/cartão/pontos) ou "pagar depois" */}
+      {/* Pagamento · recebe na hora (pix/dinheiro/cartão) ou "pagar depois" ·
+          Pontos saiu do PDV (Eduardo 28/09): só em atendimento. */}
       <PaymentMethodModal
         open={showPayModal}
         clientName={cliente?.name ?? (avulso ? (avulsoName.trim() || 'Cliente avulso') : 'Cliente')}
@@ -490,6 +491,7 @@ export default function VenderProdutoView({ businessId, products, professionals,
         businessId={businessId}
         loading={saving}
         deferLabel="Pagar depois"
+        semPontos
         onChoose={(method, cardDetails) => save(method, cardDetails)}
         onClose={() => setShowPayModal(false)}
       />
