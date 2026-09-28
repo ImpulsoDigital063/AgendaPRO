@@ -1,4 +1,5 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
+import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
 import { dataBR, horaBR } from '@/lib/date-br'
 import { createClient } from '@/lib/supabase/server'
@@ -532,6 +533,10 @@ export async function POST(request: Request) {
       .update({ status: 'closed', closed_at: nowIso })
       .eq('id', invoice.id)
   }
+
+  // 9c. Produto: valor da venda = cobrado na comanda − parte do desconto geral
+  // (Hub/Início/Vendas/comissão somam sales.total). Só quando fecha.
+  if (willClose) await acertarValorDosProdutosDaComanda(admin, invoice.id)
 
   // 10. Read-after-write: confere invoice criada
   const { data: confirm } = await admin

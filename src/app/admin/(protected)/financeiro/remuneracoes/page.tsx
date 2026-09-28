@@ -1,4 +1,5 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
+import { baseLiquidaDaLinha } from '@/lib/produto-desconto'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -113,7 +114,7 @@ export default async function RemuneracoesPage({
     // Vendas de produto pagas no mês · comissão respeitando snapshot (exclui cortesia)
     sb
       .from('sales')
-      .select('professional_id, paid_at, sale_items(quantity, unit_price, commission_type, commission_value)')
+      .select('professional_id, paid_at, total, sale_items(quantity, unit_price, commission_type, commission_value)')
       .eq('business_id', business.id)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
@@ -174,13 +175,15 @@ export default async function RemuneracoesPage({
 
   // Comissão por venda de produto · respeita snapshot do sale_item
   // commission_type:
-  //  - 'percent' + value → % sobre o bruto
+  //  - 'percent' + value → % sobre o LÍQUIDO da venda (Eduardo 28/09 · igual
+  //    ao serviço: desconto da linha, desconto geral da comanda e preço
+  //    editado entram · baseLiquidaDaLinha)
   //  - 'fixed'   + value → R$ fixo por unidade
   //  - 'none'           → SEM comissão (v75 · explícito)
   //  - null             → fallback no pct padrão do prof (retrocompat)
   type SaleItemAgg = { quantity: number; unit_price: number; commission_type: string | null; commission_value: number | null }
   function calcProductCommission(
-    sales: { professional_id: string | null; sale_items: SaleItemAgg[] | null }[],
+    sales: { professional_id: string | null; total?: number | null; sale_items: SaleItemAgg[] | null }[],
     professionalId: string,
   ): number {
     let total = 0
@@ -190,13 +193,13 @@ export default async function RemuneracoesPage({
       for (const it of items) {
         const qty = Number(it.quantity ?? 0)
         const unit = Number(it.unit_price ?? 0)
-        const lineGross = qty * unit
+        const lineBase = baseLiquidaDaLinha(s.total, items, it)
         if (it.commission_type === 'none') {
           // sem comissão explícita · não soma nada
           continue
         }
         if (it.commission_type === 'percent' && it.commission_value != null) {
-          total += (lineGross * Number(it.commission_value)) / 100
+          total += (lineBase * Number(it.commission_value)) / 100
         } else if (it.commission_type === 'fixed' && it.commission_value != null) {
           total += qty * Number(it.commission_value)
         }

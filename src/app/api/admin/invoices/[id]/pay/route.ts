@@ -1,4 +1,5 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
+import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -200,6 +201,8 @@ export async function POST(
 
   // 4. Atualiza sales → paid
   if (saleIds.length > 0) {
+    // Valor do produto = o cobrado na comanda − parte do desconto geral.
+    await acertarValorDosProdutosDaComanda(admin, invoiceId)
     const { error } = await admin
       .from('sales')
       .update({ status: 'paid', paid_at: nowIso, payment_method: propagatedMethod })
