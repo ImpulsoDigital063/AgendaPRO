@@ -92,6 +92,8 @@ export async function POST(req: NextRequest) {
       commission_type: commissionType,
       commission_value: commissionValue,
       image_url: typeof body.image_url === 'string' && body.image_url.trim() ? body.image_url.trim() : null,
+      // T14: o código de barras do formulário se perdia no cadastro com variantes.
+      barcode: typeof body.barcode === 'string' && body.barcode.trim() ? body.barcode.trim() : null,
       variant_group_id: groupId,
       quantity: 0,
     }

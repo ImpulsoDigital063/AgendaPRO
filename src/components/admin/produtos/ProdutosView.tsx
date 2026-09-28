@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { parseValorBR } from '@/lib/valor-br'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { IconPlus, IconAlert, IconInbox, IconDollar, IconChevronRight } from '@/components/ui/Icon'
@@ -171,14 +172,14 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
   }, [filtered])
 
   // Status agregado de um grupo: pior caso (esgotado > baixo > ok).
+  // T15 (auditoria 28/09): "Esgotado" só com TODAS as variantes zeradas.
+  // Uma cor zerada com o resto em estoque é "Estoque baixo" — antes o card
+  // dizia Esgotado ao lado de "Estoque total 20".
   function groupStatus(vars: Product[]): StockStatus {
-    let worst: StockStatus = 'ok'
-    for (const v of vars) {
-      const s = stockStatus(v)
-      if (s === 'out') return 'out'
-      if (s === 'low') worst = 'low'
-    }
-    return worst
+    const st = vars.map(stockStatus)
+    if (st.length > 0 && st.every((s) => s === 'out')) return 'out'
+    if (st.some((s) => s === 'out' || s === 'low')) return 'low'
+    return 'ok'
   }
 
   // KPIs
@@ -501,6 +502,7 @@ function VarianteGrupoModal({ variants, onPick, onAdded, onClose }: { variants: 
 
   async function addVariante() {
     if (!vLabel.trim()) { setError('Informe o rótulo da variante'); return }
+    if (Number.isNaN(parseValorBR(vPrice))) { setError('Preço inválido. Use o formato 150,00'); return }
     setError(null)
     setSaving(true)
     const res = await fetch('/api/admin/products', {
@@ -510,6 +512,16 @@ function VarianteGrupoModal({ variants, onPick, onAdded, onClose }: { variants: 
         variant_group_id: base.variant_group_id,
         name: base.name,
         unit: base.unit,
+        // T14 (auditoria 28/09): herda do grupo o que é do PRODUTO, não da
+        // variante. Sem isso a variante nova nascia sem foto (e, se o rótulo
+        // viesse antes na ordem, o card do grupo perdia a foto), sem custo
+        // ("Valor em estoque" usava o preço) e sem alerta de mínimo.
+        description: base.description ?? null,
+        image_url: base.image_url ?? null,
+        cost: base.cost ?? null,
+        min_quantity: base.min_quantity ?? 0,
+        pack_quantity: base.pack_quantity ?? null,
+        expires_at: base.expires_at ?? null,
         brand_id: base.brand_id ?? null,
         category_id: base.category_id ?? null,
         track_stock: base.track_stock,
@@ -517,7 +529,7 @@ function VarianteGrupoModal({ variants, onPick, onAdded, onClose }: { variants: 
         commission_type: base.commission_type && base.commission_type !== 'none' ? base.commission_type : null,
         commission_value: base.commission_value ?? null,
         variant: vLabel.trim(),
-        price: base.sale_active && vPrice ? Number(vPrice) : null,
+        price: base.sale_active ? parseValorBR(vPrice) : null,
         quantity: base.track_stock && vQty ? Number(vQty) : 0,
         sku: vSku.trim() || null,
       }),
@@ -572,7 +584,7 @@ function VarianteGrupoModal({ variants, onPick, onAdded, onClose }: { variants: 
                 {base.sale_active && (
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: 'var(--admin-text-faded)' }}>Preço</label>
-                    <input type="number" min={0} step={0.01} value={vPrice} onChange={(e) => setVPrice(e.target.value)} className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums" />
+                    <input type="text" inputMode="decimal" placeholder="0,00" value={vPrice} onChange={(e) => setVPrice(e.target.value.replace(/[^\d.,]/g, ''))} className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums" />
                   </div>
                 )}
                 {base.track_stock && (
