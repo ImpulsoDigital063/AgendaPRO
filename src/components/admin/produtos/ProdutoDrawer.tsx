@@ -563,10 +563,13 @@ function EditarTab({
         sku: sku.trim() || null,
         barcode: barcode.trim() || null,
         sale_active: saleActive,
-        price: saleActive && price ? Number(price) : null,
+        // Venda desligada NÃO apaga preço/comissão (auditoria 28/09): campo
+        // ausente = rota não mexe. Antes mandava null e, ao religar, o preço
+        // tinha sumido. `undefined` some do JSON.stringify.
+        price: saleActive ? (price ? Number(price) : null) : undefined,
         cost: cost ? Number(cost) : null,
-        commission_type: saleActive && commissionType ? commissionType : null,
-        commission_value: saleActive && commissionType !== 'none' && commissionValue ? Number(commissionValue) : null,
+        commission_type: saleActive ? (commissionType ? commissionType : null) : undefined,
+        commission_value: saleActive ? (commissionType !== 'none' && commissionValue ? Number(commissionValue) : null) : undefined,
       }),
     })
     setSaving(false)
