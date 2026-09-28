@@ -209,13 +209,28 @@ export async function POST(
       }
 
       // Reverte sales de produto + devolve estoque
+      // Auditoria 28/09: cancela a venda PRIMEIRO (só as que ainda não
+      // estavam) e devolve só dessas · cancelar a comanda depois não devolve
+      // de novo. Produto sem controle de estoque não ganha entrada.
       if (productSaleIds.length > 0) {
-        const { data: saleItems } = await admin
-          .from('sale_items')
-          .select('sale_id, product_id, quantity')
-          .in('sale_id', productSaleIds)
+        const { data: recem } = await admin
+          .from('sales')
+          .update({ status: 'cancelled', paid_at: null })
+          .in('id', productSaleIds)
+          .neq('status', 'cancelled')
+          .select('id')
+        const idsDevolver = (recem ?? []).map((x) => x.id as string)
+        const { data: saleItems } = idsDevolver.length > 0
+          ? await admin
+              .from('sale_items')
+              .select('sale_id, product_id, quantity, products(track_stock)')
+              .in('sale_id', idsDevolver)
+          : { data: [] }
         const compensations = (saleItems ?? [])
-          .filter((s) => s.product_id)
+          .filter((s) => {
+            const prod = Array.isArray(s.products) ? s.products[0] : s.products
+            return s.product_id && (prod as { track_stock?: boolean } | null)?.track_stock !== false
+          })
           .map((s) => ({
             business_id: appt.business_id,
             product_id: s.product_id as string,
@@ -227,10 +242,6 @@ export async function POST(
         if (compensations.length > 0) {
           await admin.from('stock_movements').insert(compensations)
         }
-        await admin
-          .from('sales')
-          .update({ status: 'cancelled', paid_at: null })
-          .in('id', productSaleIds)
       }
 
       // Apaga pagamentos da invoice

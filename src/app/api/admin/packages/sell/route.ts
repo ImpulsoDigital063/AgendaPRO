@@ -157,7 +157,13 @@ export async function POST(request: Request) {
   //     O trigger v63 (trg_apply_stock_movement) abate products.quantity sozinho.
   let stockWarning: string | null = null
   if (productItems.length > 0) {
-    const movements = productItems.map((it) => ({
+    // Produto sem controle de estoque não baixa (mesma regra da venda · v66).
+    const { data: controle } = await admin
+      .from('products')
+      .select('id, track_stock')
+      .in('id', productItems.map((it) => it.product_id))
+    const semControle = new Set((controle ?? []).filter((p) => p.track_stock === false).map((p) => p.id as string))
+    const movements = productItems.filter((it) => !semControle.has(it.product_id as string)).map((it) => ({
       business_id: businessId,
       product_id: it.product_id,
       type: 'exit',
@@ -165,7 +171,9 @@ export async function POST(request: Request) {
       reason: `Pacote: ${pkg.name}`,
       created_by: user.id,
     }))
-    const { error: mvErr } = await admin.from('stock_movements').insert(movements)
+    const { error: mvErr } = movements.length > 0
+      ? await admin.from('stock_movements').insert(movements)
+      : { error: null }
     if (mvErr) {
       // Produto já foi entregue fisicamente · não desfaz a venda por falha de estoque.
       // Sinaliza pro dono ajustar manualmente.
