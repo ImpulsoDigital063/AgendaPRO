@@ -1,5 +1,6 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { NextResponse } from 'next/server'
+import { dataBR, horaBR } from '@/lib/date-br'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -115,7 +116,7 @@ export async function POST(
     //    atendimento) mantém a data de hoje.
     //  - client_name: cliente cadastrado da comanda; se avulso, nome do
     //    atendimento (antes 'Comanda aberta' · Eduardo 09/06).
-    let saleDate = nowIso.slice(0, 10)
+    let saleDate = dataBR()
     let apptClientName: string | null = null
     {
       const { data: apptItem } = await admin
@@ -210,19 +211,16 @@ export async function POST(
 
     // Cria appointment com status=completed (já aconteceu · trigger v71 não dispara)
     const now = new Date()
-    const startHH = String(now.getHours()).padStart(2, '0')
-    const startMM = String(now.getMinutes()).padStart(2, '0')
-    const start_time = `${startHH}:${startMM}:00`
+    // Hora de Brasília (servidor roda em UTC · getHours() dava +3h).
+    const start_time = horaBR(now)
     const duration = Number(service.duration_minutes ?? 30)
     const end = new Date(now.getTime() + duration * 60000)
-    const endHH = String(end.getHours()).padStart(2, '0')
-    const endMM = String(end.getMinutes()).padStart(2, '0')
-    const end_time = `${endHH}:${endMM}:00`
+    const end_time = horaBR(end)
 
     // Data do serviço extra = data do ATENDIMENTO ORIGINAL da comanda, não o dia
     // do clique. Serviço adicionado depois (ex: lembrou de uma remoção) cai no
     // mesmo dia do atendimento · senão some do faturamento daquele dia.
-    let comandaDate = nowIso.slice(0, 10)
+    let comandaDate = dataBR()
     const { data: origAppItem } = await admin
       .from('invoice_items')
       .select('reference_id')

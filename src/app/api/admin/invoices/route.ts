@@ -1,5 +1,6 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { NextResponse } from 'next/server'
+import { dataBR, horaBR } from '@/lib/date-br'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -318,7 +319,8 @@ export async function POST(request: Request) {
         customer_id: customerId,
         client_name: appts[0]?.client_name ?? 'Cliente',
         professional_id: ps.professional_id ?? null,
-        sale_date: nowIso.slice(0, 10),
+        // Dia de Brasília: nowIso é UTC e depois das 21h virava o dia seguinte.
+        sale_date: dataBR(),
         total: lineTotal,
         discount: 0,
         status: willClose ? 'paid' : 'pending',
@@ -371,13 +373,10 @@ export async function POST(request: Request) {
     const qty = Math.max(1, Number(es.quantity ?? 1))
     const unitPrice = Number(es.unit_price ?? svc.price ?? 0)
     const lineTotal = qty * unitPrice
+    // Hora e dia de Brasília (servidor roda em UTC · getHours() dava +3h).
     const now = new Date()
-    const sH = String(now.getHours()).padStart(2, '0')
-    const sM = String(now.getMinutes()).padStart(2, '0')
     const dur = Number(svc.duration_minutes ?? 30)
     const end = new Date(now.getTime() + dur * 60000)
-    const eH = String(end.getHours()).padStart(2, '0')
-    const eM = String(end.getMinutes()).padStart(2, '0')
     const svcProfId = es.professional_id ?? appts[0]?.professional_id ?? null
 
     const { data: exAppt, error: exErr } = await admin
@@ -390,9 +389,9 @@ export async function POST(request: Request) {
         professional_id: svcProfId,
         service_id: svc.id,
         service_name: svc.name,
-        appointment_date: nowIso.slice(0, 10),
-        start_time: `${sH}:${sM}:00`,
-        end_time: `${eH}:${eM}:00`,
+        appointment_date: dataBR(now),
+        start_time: horaBR(now),
+        end_time: horaBR(end),
         status: 'completed',
         total_price: lineTotal,
         paid_at: willClose ? nowIso : null,

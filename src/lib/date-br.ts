@@ -17,6 +17,27 @@ const YMD_BR = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 })
 
+const HM_BR = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'America/Sao_Paulo',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+/**
+ * Hora de Brasília de um instante, formato HH:MM:00 (coluna `time`).
+ * O servidor da Vercel roda em UTC: `getHours()` lá dá 3h a mais — serviço
+ * lançado às 13h no balcão aparecia às 16h na agenda (auditoria 28/09).
+ */
+export function horaBR(d: Date = new Date()): string {
+  return `${HM_BR.format(d)}:00`
+}
+
+/** Data de Brasília de um instante qualquer, YYYY-MM-DD. */
+export function dataBR(d: Date = new Date()): string {
+  return YMD_BR.format(d)
+}
+
 /** Data de hoje em Brasília no formato YYYY-MM-DD (ex: "2026-06-05"). */
 export function todayBR(): string {
   // en-CA já emite YYYY-MM-DD; timeZone fixo garante BRT em server e client.
