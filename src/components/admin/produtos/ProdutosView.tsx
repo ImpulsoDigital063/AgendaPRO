@@ -183,11 +183,16 @@ export default function ProdutosView({ businessId, initialProducts }: Props) {
   }
 
   // KPIs
-  const totalProdutos = products.length
+  // Auditoria 28/09: grupo de variantes conta como UM produto (antes cada cor
+  // contava) e "Valor em estoque" só soma o que tem controle de estoque e
+  // quantidade positiva (produto sem controle e estoque negativo distorciam).
+  const totalProdutos = new Set(products.map((p) => p.variant_group_id ?? p.id)).size
   const baixoEstoque = products.filter((p) => stockStatus(p) === 'low').length
   const esgotados = products.filter((p) => stockStatus(p) === 'out').length
   const valorEmEstoque = products.reduce(
-    (sum, p) => sum + (Number(p.cost ?? p.price ?? 0) * Number(p.quantity)),
+    (sum, p) => (p.track_stock === false || Number(p.quantity) <= 0)
+      ? sum
+      : sum + (Number(p.cost ?? p.price ?? 0) * Number(p.quantity)),
     0,
   )
 
@@ -526,7 +531,7 @@ function VarianteGrupoModal({ variants, onPick, onAdded, onClose }: { variants: 
         category_id: base.category_id ?? null,
         track_stock: base.track_stock,
         sale_active: base.sale_active,
-        commission_type: base.commission_type && base.commission_type !== 'none' ? base.commission_type : null,
+        commission_type: base.commission_type ?? null,
         commission_value: base.commission_value ?? null,
         variant: vLabel.trim(),
         price: base.sale_active ? parseValorBR(vPrice) : null,

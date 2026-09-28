@@ -41,6 +41,8 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
   const [showEstoque, setShowEstoque] = useState(true)
   const [trackStock, setTrackStock] = useState(true)
   const [quantity, setQuantity] = useState<string>('0')
+  // Aviso "estoque igual ao preço" já mostrado · segundo toque confirma
+  const [confirmouEstoque, setConfirmouEstoque] = useState(false)
   const [minQuantity, setMinQuantity] = useState<string>('0')
   const [packQuantity, setPackQuantity] = useState<string>('')
   const [expiresAt, setExpiresAt] = useState<string>('')
@@ -142,6 +144,15 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
     if (Number.isNaN(custoN)) { setError('Custo inválido. Use o formato 150,00'); return }
     if (hasVariants && validVariants.some((v) => Number.isNaN(parseValorBR(v.price)))) {
       setError('Preço de variante inválido. Use o formato 150,00'); return
+    }
+    // Estoque igual ao preço quase sempre é o preço digitado no campo errado
+    // (caso Wanessa · 28/09). Não trava: pergunta uma vez; tocar de novo confirma.
+    const qtdN = Number(String(quantity).replace(',', '.'))
+    const suspeito = !hasVariants && trackStock && saleActive && precoN != null && precoN >= 10 && qtdN === precoN
+    if (suspeito && !confirmouEstoque) {
+      setConfirmouEstoque(true)
+      setError(`Confere o estoque: você colocou ${qtdN} unidades, o mesmo número do preço. Se estiver certo, toque em cadastrar de novo.`)
+      return
     }
     setSaving(true)
     const base = {
@@ -270,6 +281,70 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
             <VendePorSelector value={unit} onChange={setUnit} Label={FieldLabel} />
           </div>
 
+          {/* Venda · SOBE pra antes do estoque (Eduardo 28/09). O primeiro campo
+              de número do formulário era "Quantidade inicial" e a Wanessa
+              digitou o PREÇO ali (Sabonete: estoque 150 = preço 150). */}
+          <Section
+            title="Dados de venda"
+            subtitle={saleActive ? 'Produto vendável · preço e comissão' : 'Só uso interno (não vende)'}
+            open={showVenda}
+            onToggle={() => setShowVenda((v) => !v)}
+            toggle={{ value: saleActive, onChange: setSaleActive }}
+          >
+            {saleActive && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  {!hasVariants && (
+                    <div>
+                      <FieldLabel>Preço de venda (R$)</FieldLabel>
+                      <input type="text" inputMode="decimal" placeholder="0,00" value={price} onChange={(e) => { setPrice(e.target.value.replace(/[^\d.,]/g, '')); setConfirmouEstoque(false) }} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+                    </div>
+                  )}
+                  <div>
+                    <FieldLabel>Custo (R$)</FieldLabel>
+                    <input type="text" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value.replace(/[^\d.,]/g, ''))} placeholder="Opcional" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <FieldLabel>Comissão</FieldLabel>
+                  {/* v75 · Eduardo cravou 25/05: default 'Sem comissão' pois a maior parte das vendas não comissiona */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {([
+                      { id: 'none' as const, label: 'Sem comissão' },
+                      { id: 'percent' as const, label: '% Percentual' },
+                      { id: 'fixed' as const, label: 'R$ Fixo' },
+                    ]).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setCommissionType(commissionType === opt.id ? '' : opt.id)}
+                        className="py-2 px-2 rounded-lg text-[11px] font-bold transition-colors"
+                        style={
+                          commissionType === opt.id
+                            ? { background: 'var(--admin-accent)', color: '#fff' }
+                            : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
+                        }
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {(commissionType === 'percent' || commissionType === 'fixed') && (
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={commissionValue}
+                      onChange={(e) => setCommissionValue(e.target.value)}
+                      placeholder={commissionType === 'percent' ? 'ex: 10 (= 10%)' : 'ex: 5 (= R$ 5 por unidade)'}
+                      className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums"
+                    />
+                  )}
+                </div>
+              </>
+            )}
+          </Section>
+
           {/* Categorização */}
           <Section title="Categorização" subtitle="Marca · categoria · variante de cor" open={showCategorizacao} onToggle={() => setShowCategorizacao((v) => !v)}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -389,8 +464,8 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
                 <div className="grid grid-cols-2 gap-3">
                   {!hasVariants && (
                     <div>
-                      <FieldLabel>Quantidade inicial</FieldLabel>
-                      <input type="number" min={0} step={0.01} value={quantity} onChange={(e) => setQuantity(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+                      <FieldLabel>Quantas unidades você tem agora</FieldLabel>
+                      <input type="number" min={0} step={0.01} value={quantity} onChange={(e) => { setQuantity(e.target.value); setConfirmouEstoque(false) }} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
                     </div>
                   )}
                   <div>
@@ -426,67 +501,6 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
             </div>
           </Section>
 
-          {/* Venda */}
-          <Section
-            title="Dados de venda"
-            subtitle={saleActive ? 'Produto vendável · preço e comissão' : 'Só uso interno (não vende)'}
-            open={showVenda}
-            onToggle={() => setShowVenda((v) => !v)}
-            toggle={{ value: saleActive, onChange: setSaleActive }}
-          >
-            {saleActive && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  {!hasVariants && (
-                    <div>
-                      <FieldLabel>Preço de venda (R$)</FieldLabel>
-                      <input type="text" inputMode="decimal" placeholder="0,00" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.,]/g, ''))} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
-                    </div>
-                  )}
-                  <div>
-                    <FieldLabel>Custo (R$)</FieldLabel>
-                    <input type="text" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value.replace(/[^\d.,]/g, ''))} placeholder="Opcional" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <FieldLabel>Comissão</FieldLabel>
-                  {/* v75 · Eduardo cravou 25/05: default 'Sem comissão' pois a maior parte das vendas não comissiona */}
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {([
-                      { id: 'none' as const, label: 'Sem comissão' },
-                      { id: 'percent' as const, label: '% Percentual' },
-                      { id: 'fixed' as const, label: 'R$ Fixo' },
-                    ]).map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setCommissionType(commissionType === opt.id ? '' : opt.id)}
-                        className="py-2 px-2 rounded-lg text-[11px] font-bold transition-colors"
-                        style={
-                          commissionType === opt.id
-                            ? { background: 'var(--admin-accent)', color: '#fff' }
-                            : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
-                        }
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  {(commissionType === 'percent' || commissionType === 'fixed') && (
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={commissionValue}
-                      onChange={(e) => setCommissionValue(e.target.value)}
-                      placeholder={commissionType === 'percent' ? 'ex: 10 (= 10%)' : 'ex: 5 (= R$ 5 por unidade)'}
-                      className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums"
-                    />
-                  )}
-                </div>
-              </>
-            )}
-          </Section>
         </div>
 
         <div

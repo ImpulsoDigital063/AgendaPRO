@@ -63,11 +63,23 @@ export async function POST(req: NextRequest) {
   if (!name) return NextResponse.json({ error: 'Nome obrigatório' }, { status: 400 })
   if (name.length > 120) return NextResponse.json({ error: 'Nome longo demais (max 120)' }, { status: 400 })
 
+  // Valor negativo era ignorado em silêncio (gravava 0/null e dizia ok ·
+  // auditoria 28/09). Agora recusa com a mensagem.
+  const negativo = (['price', 'cost', 'quantity', 'min_quantity'] as const)
+    .find((k) => typeof body[k] === 'number' && body[k] < 0)
+  if (negativo) {
+    const nomes = { price: 'Preço', cost: 'Custo', quantity: 'Estoque', min_quantity: 'Mínimo' } as const
+    return NextResponse.json({ error: `${nomes[negativo]} não pode ser negativo.` }, { status: 400 })
+  }
+
   const initialQty = typeof body.quantity === 'number' && body.quantity >= 0 ? body.quantity : 0
 
   // Campos v64 (paridade Salão99)
-  const commissionType = typeof body.commission_type === 'string' && ['percent', 'fixed'].includes(body.commission_type) ? body.commission_type : null
-  const commissionValue = typeof body.commission_value === 'number' && body.commission_value >= 0 ? body.commission_value : null
+  // 'none' = "Sem comissão" escolhido de propósito (a coluna aceita desde a
+  // v75; 82 produtos já têm). A rota descartava e gravava null, e ao reabrir
+  // nenhuma opção aparecia marcada.
+  const commissionType = typeof body.commission_type === 'string' && ['percent', 'fixed', 'none'].includes(body.commission_type) ? body.commission_type : null
+  const commissionValue = commissionType && commissionType !== 'none' && typeof body.commission_value === 'number' && body.commission_value >= 0 ? body.commission_value : null
 
   // ── VARIANTES (v88 · Caminho A) ────────────────────────────────────────
   // Cada variante é uma LINHA de products, com variant/preço/estoque/sku
@@ -119,10 +131,15 @@ export async function POST(req: NextRequest) {
       createdIds.push(created.id as string)
       const vQty = typeof v.quantity === 'number' && v.quantity >= 0 ? v.quantity : 0
       if (shared.track_stock && vQty > 0) {
-        await supabase.from('stock_movements').insert({
+        // Estoque inicial que falha não pode virar produto com 0 e "ok".
+        const { error: movErr } = await supabase.from('stock_movements').insert({
           business_id: businessId, product_id: created.id, type: 'entry',
           quantity: vQty, reason: 'Estoque inicial', created_by: user.id,
         })
+        if (movErr) {
+          await supabase.from('products').delete().in('id', createdIds)
+          return NextResponse.json({ error: `Não foi possível registrar o estoque inicial: ${movErr.message}` }, { status: 500 })
+        }
       }
     }
     if (createdIds.length === 0) {
@@ -168,7 +185,7 @@ export async function POST(req: NextRequest) {
 
   // Estoque inicial vira primeiro movement (mantém histórico consistente)
   if (initialQty > 0) {
-    await supabase.from('stock_movements').insert({
+    const { error: movErr } = await supabase.from('stock_movements').insert({
       business_id: businessId,
       product_id: created.id,
       type: 'entry',
@@ -176,6 +193,11 @@ export async function POST(req: NextRequest) {
       reason: 'Estoque inicial',
       created_by: user.id,
     })
+    // Falhou o estoque inicial: desfaz o produto em vez de deixar com 0 e "ok".
+    if (movErr) {
+      await supabase.from('products').delete().eq('id', created.id)
+      return NextResponse.json({ error: `Não foi possível registrar o estoque inicial: ${movErr.message}` }, { status: 500 })
+    }
   }
 
   revalidatePath('/admin/produtos')
