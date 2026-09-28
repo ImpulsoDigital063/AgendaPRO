@@ -6,6 +6,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight, IconPlus, IconDollar, IconCheck, IconClock, IconCalendar, IconGift } from '@/components/ui/Icon'
 import { todayBR } from '@/lib/date-br'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
+import CalendarioMesModal from './CalendarioMesModal'
 
 type Props = {
   date: string // YYYY-MM-DD
@@ -36,6 +37,10 @@ type Props = {
    * hoje mas pode passar a usar, e tem gate próprio.
    */
   vendasBalcao?: boolean
+  /** Filtros de coluna da grade · repassados pro calendário do mês contar
+   *  só o que aparece ao abrir o dia (aba Eu / painel da profissional). */
+  onlyProfessionalId?: string
+  excludeProfessionalIds?: string[]
 }
 
 function formatBRL(v: number) {
@@ -92,6 +97,8 @@ export default function GradeTimelineHeader({
   hideCaixaActions = false,
   podeAgendar = true,
   vendasBalcao = true,
+  onlyProfessionalId,
+  excludeProfessionalIds,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -103,6 +110,7 @@ export default function GradeTimelineHeader({
     setTodayClient(todayBR())
   }, [])
   const isCurrentDay = todayClient !== null && date === todayClient
+  const [mesAberto, setMesAberto] = useState(false)
 
   function navigateTo(newDate: string) {
     const params = new URLSearchParams(searchParams)
@@ -216,31 +224,32 @@ export default function GradeTimelineHeader({
             <IconChevronRight size={16} />
           </button>
 
-          {/* Calendário · pula direto pra qualquer data (date-picker nativo ·
-              funciona no mobile e no desktop). O input transparente por cima do
-              botão abre o seletor ao tocar. */}
-          <div className="relative w-9 h-9">
-            <button
-              type="button"
-              aria-hidden="true"
-              tabIndex={-1}
-              className="w-9 h-9 rounded-lg flex items-center justify-center pointer-events-none"
-              style={{
-                background: 'var(--admin-surface)',
-                color: 'var(--admin-text-mute)',
-                border: '1px solid var(--admin-border)',
-              }}
-            >
-              <IconCalendar size={16} />
-            </button>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => { if (e.target.value) navigateTo(e.target.value) }}
-              aria-label="Escolher data no calendário"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-          </div>
+          {/* Calendário do MÊS com a quantidade de atendimentos por dia
+              (Wanessa, 28/09/2026 · mobile e desktop). Era o seletor de data
+              nativo: pulava pro dia, mas não mostrava onde tinha movimento —
+              ela entrava dia por dia pra descobrir. */}
+          <button
+            type="button"
+            onClick={() => setMesAberto(true)}
+            aria-label="Ver agenda do mês"
+            className="w-9 h-9 rounded-lg flex items-center justify-center"
+            style={{
+              background: 'var(--admin-surface)',
+              color: 'var(--admin-text-mute)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            <IconCalendar size={16} />
+          </button>
+          <CalendarioMesModal
+            open={mesAberto}
+            date={date}
+            today={todayClient}
+            onlyProfessionalId={onlyProfessionalId}
+            excludeProfessionalIds={excludeProfessionalIds}
+            onPick={(d) => { setMesAberto(false); navigateTo(d) }}
+            onClose={() => setMesAberto(false)}
+          />
 
           {/* Data no CELULAR · lg:hidden (31/08/2026).
               Substitui o bloco de título que agora só existe em desktop. Fica

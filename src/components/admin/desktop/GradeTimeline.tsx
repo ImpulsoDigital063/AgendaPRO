@@ -294,6 +294,8 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
         hideCaixaActions={hideCaixaActions}
         podeAgendar={podeAgendar}
         vendasBalcao={bizFlags?.vendas_balcao_enabled !== false}
+        onlyProfessionalId={onlyProfessionalId}
+        excludeProfessionalIds={excludeProfessionalIds}
       />
 
       <TimelineGridInteractive
