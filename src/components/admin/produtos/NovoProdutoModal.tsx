@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { parseValorBR } from '@/lib/valor-br'
 import { IconClose, IconChevronDown, IconChevronRight, IconPlus } from '@/components/ui/Icon'
 import ProductImageUpload from './ProductImageUpload'
 
@@ -132,6 +133,15 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
     if (!name.trim()) { setError('Nome obrigatório'); return }
     const validVariants = variants.filter((v) => v.variant.trim())
     if (hasVariants && validVariants.length === 0) { setError('Adicione pelo menos 1 variante com rótulo'); return }
+    // Valores em reais (T13): "1.450,00" vira 1450; inválido avisa em vez de
+    // gravar o produto sem preço.
+    const precoN = parseValorBR(price)
+    const custoN = parseValorBR(cost)
+    if (Number.isNaN(precoN)) { setError('Preço de venda inválido. Use o formato 150,00'); return }
+    if (Number.isNaN(custoN)) { setError('Custo inválido. Use o formato 150,00'); return }
+    if (hasVariants && validVariants.some((v) => Number.isNaN(parseValorBR(v.price)))) {
+      setError('Preço de variante inválido. Use o formato 150,00'); return
+    }
     setSaving(true)
     const base = {
       name: name.trim(),
@@ -146,7 +156,7 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
       barcode: barcode.trim() || null,
       track_stock: trackStock,
       sale_active: saleActive,
-      cost: cost ? Number(cost) : null,
+      cost: custoN,
       commission_type: saleActive && commissionType ? commissionType : null,
       commission_value: saleActive && commissionType !== 'none' && commissionValue ? Number(commissionValue) : null,
     }
@@ -156,7 +166,7 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
           // Variantes: preço/estoque/sku por variante. API cria N linhas agrupadas.
           variants: validVariants.map((v) => ({
             variant: v.variant.trim(),
-            price: saleActive && v.price ? Number(v.price) : null,
+            price: saleActive ? parseValorBR(v.price) : null,
             quantity: trackStock && v.qty ? Number(v.qty) : 0,
             sku: v.sku.trim() || null,
           })),
@@ -167,7 +177,7 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
           variant: variant.trim() || null,
           quantity: trackStock && quantity ? Number(quantity) : 0,
           sku: sku.trim() || null,
-          price: saleActive && price ? Number(price) : null,
+          price: saleActive ? precoN : null,
         }
     const res = await fetch('/api/admin/products', {
       method: 'POST',
@@ -347,7 +357,7 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
                       {saleActive && (
                         <div>
                           <FieldLabel>Preço (R$)</FieldLabel>
-                          <input type="number" min={0} step={0.01} value={v.price} onChange={(e) => updateVariant(v.key, { price: e.target.value })} className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums" />
+                          <input type="text" inputMode="decimal" placeholder="0,00" value={v.price} onChange={(e) => updateVariant(v.key, { price: e.target.value.replace(/[^\d.,]/g, '') })} className="admin-input w-full px-2.5 py-2 rounded-lg text-sm tabular-nums" />
                         </div>
                       )}
                       {trackStock && (
@@ -439,12 +449,12 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
                   {!hasVariants && (
                     <div>
                       <FieldLabel>Preço de venda (R$)</FieldLabel>
-                      <input type="number" min={0} step={0.01} value={price} onChange={(e) => setPrice(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+                      <input type="text" inputMode="decimal" placeholder="0,00" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.,]/g, ''))} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
                     </div>
                   )}
                   <div>
                     <FieldLabel>Custo (R$)</FieldLabel>
-                    <input type="number" min={0} step={0.01} value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Opcional" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+                    <input type="text" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value.replace(/[^\d.,]/g, ''))} placeholder="Opcional" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
                   </div>
                 </div>
                 <div className="space-y-2">

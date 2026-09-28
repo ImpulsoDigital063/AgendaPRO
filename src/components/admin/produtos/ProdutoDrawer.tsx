@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { parseValorBR, valorParaCampo } from '@/lib/valor-br'
 import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconPencil, IconClock, IconTrash, IconAlert, IconPlus, IconCheck, IconDollar } from '@/components/ui/Icon'
 import { getAreaPrefix } from '@/lib/area-prefix'
@@ -491,8 +492,8 @@ function EditarTab({
   const [barcode, setBarcode] = useState<string>(product.barcode ?? '')
   // Venda
   const [saleActive, setSaleActive] = useState<boolean>(product.sale_active ?? true)
-  const [price, setPrice] = useState<string>(product.price?.toString() ?? '')
-  const [cost, setCost] = useState<string>(product.cost?.toString() ?? '')
+  const [price, setPrice] = useState<string>(valorParaCampo(product.price))
+  const [cost, setCost] = useState<string>(valorParaCampo(product.cost))
   const [commissionType, setCommissionType] = useState<'percent' | 'fixed' | 'none' | ''>(product.commission_type ?? '')
   const [commissionValue, setCommissionValue] = useState<string>(product.commission_value?.toString() ?? '')
 
@@ -544,6 +545,11 @@ function EditarTab({
   async function save() {
     setError(null)
     if (!name.trim()) { setError('Nome obrigatório'); return }
+    // T13: valor em reais inválido avisa em vez de apagar o preço salvo.
+    const precoN = parseValorBR(price)
+    const custoN = parseValorBR(cost)
+    if (saleActive && Number.isNaN(precoN)) { setError('Preço de venda inválido. Use o formato 150,00'); return }
+    if (Number.isNaN(custoN)) { setError('Custo inválido. Use o formato 150,00'); return }
     setSaving(true)
     const res = await fetch(`/api/admin/products/${product.id}`, {
       method: 'PATCH',
@@ -566,8 +572,8 @@ function EditarTab({
         // Venda desligada NÃO apaga preço/comissão (auditoria 28/09): campo
         // ausente = rota não mexe. Antes mandava null e, ao religar, o preço
         // tinha sumido. `undefined` some do JSON.stringify.
-        price: saleActive ? (price ? Number(price) : null) : undefined,
-        cost: cost ? Number(cost) : null,
+        price: saleActive ? precoN : undefined,
+        cost: custoN,
         commission_type: saleActive ? (commissionType ? commissionType : null) : undefined,
         commission_value: saleActive ? (commissionType !== 'none' && commissionValue ? Number(commissionValue) : null) : undefined,
       }),
@@ -701,11 +707,11 @@ function EditarTab({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <EditLabel>Preço de venda (R$)</EditLabel>
-                <input type="number" min={0} step={0.01} value={price} onChange={(e) => setPrice(e.target.value)} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+                <input type="text" inputMode="decimal" placeholder="0,00" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.,]/g, ''))} className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
               </div>
               <div>
                 <EditLabel>Custo (R$)</EditLabel>
-                <input type="number" min={0} step={0.01} value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Opcional" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
+                <input type="text" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value.replace(/[^\d.,]/g, ''))} placeholder="Opcional" className="admin-input w-full px-3 py-2.5 rounded-xl text-sm tabular-nums" />
               </div>
             </div>
             <div className="space-y-2">
