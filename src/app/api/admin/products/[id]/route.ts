@@ -55,12 +55,19 @@ export async function PATCH(
   }
   update.updated_at = new Date().toISOString()
 
-  const { error } = await supabase
+  // T16 (auditoria 28/09): confere que ALGUMA linha mudou. Sem permissão de
+  // escrita (RLS · recepção), o update atinge 0 linhas sem erro e a tela
+  // mostrava "Salvo!" sem ter salvo nada.
+  const { data: alterados, error } = await supabase
     .from('products')
     .update(update)
     .eq('id', id)
+    .select('id')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!alterados || alterados.length === 0) {
+    return NextResponse.json({ error: 'Sem permissão para alterar este produto.' }, { status: 403 })
+  }
   revalidatePath('/admin/produtos')
   return NextResponse.json({ ok: true })
 }
@@ -81,12 +88,16 @@ export async function DELETE(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
 
-  const { error } = await supabase
+  const { data: alterados, error } = await supabase
     .from('products')
     .update({ active: false, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .select('id')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!alterados || alterados.length === 0) {
+    return NextResponse.json({ error: 'Sem permissão para excluir este produto.' }, { status: 403 })
+  }
   revalidatePath('/admin/produtos')
   return NextResponse.json({ ok: true })
 }

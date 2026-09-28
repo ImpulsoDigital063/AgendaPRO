@@ -98,6 +98,7 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
   const [showAjustar, setShowAjustar] = useState(false)
   const [showAddComanda, setShowAddComanda] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteErro, setDeleteErro] = useState<string | null>(null)
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
 
@@ -191,6 +192,11 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5">
+          {deleteErro && (
+            <p className="mb-3 text-xs font-semibold rounded-lg px-3 py-2" role="alert" style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}>
+              {deleteErro}
+            </p>
+          )}
           {tab === 'resumo' && (
             <ResumoTab
               product={product}
@@ -256,8 +262,14 @@ export default function ProdutoDrawer({ product, businessId, onClose, onChanged 
           name={product.name}
           onCancel={() => setConfirmDelete(false)}
           onConfirm={async () => {
-            await fetch(`/api/admin/products/${product.id}`, { method: 'DELETE' })
+            // T16: só fecha se excluiu de verdade (antes fechava mesmo com erro).
+            const res = await fetch(`/api/admin/products/${product.id}`, { method: 'DELETE' })
             setConfirmDelete(false)
+            if (!res.ok) {
+              const d = await res.json().catch(() => ({}))
+              setDeleteErro(d.error ?? 'Não foi possível excluir o produto.')
+              return
+            }
             onClose()
             onChanged()
           }}
