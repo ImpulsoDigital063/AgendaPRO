@@ -117,6 +117,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'cannot_reopen_cancelled', detail: 'Comanda cancelada já reverteu estoque e pagamentos · crie uma nova.' }, { status: 400 })
   }
 
+  // Cancelar de novo uma comanda já cancelada devolvia o estoque de novo
+  // (duplo clique / dois aparelhos · auditoria 28/09).
+  if (action === 'cancel' && invoice.status === 'cancelled') {
+    return NextResponse.json({ error: 'already_cancelled', detail: 'Essa comanda já foi cancelada.' }, { status: 409 })
+  }
+
   if (action === 'reopen') {
     const { error: updErr } = await admin
       .from('invoices')
@@ -153,17 +159,37 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   // 3. Reverter sales · gerar movement compensatório de estoque
+  //
+  // Auditoria 28/09: a venda é marcada cancelada PRIMEIRO, só onde ainda não
+  // estava (`neq cancelled` + select). O estoque volta só dessas. Assim um
+  // segundo cancelamento concorrente, ou o cancelamento do atendimento que
+  // já devolveu o produto antes, não devolvem de novo.
   if (saleIds.length > 0) {
+    const { data: recemCanceladas, error: salesErr } = await admin
+      .from('sales')
+      .update({ status: 'cancelled', paid_at: null, payment_method: null })
+      .in('id', saleIds)
+      .neq('status', 'cancelled')
+      .select('id')
+    if (salesErr) return NextResponse.json({ error: `sales_cancel_failed: ${salesErr.message}` }, { status: 500 })
+    const idsParaDevolver = (recemCanceladas ?? []).map((s) => s.id as string)
+
     // Busca sale_items pra saber qty/produto a devolver
-    const { data: saleItems, error: siErr } = await admin
-      .from('sale_items')
-      .select('sale_id, product_id, quantity')
-      .in('sale_id', saleIds)
+    const { data: saleItems, error: siErr } = idsParaDevolver.length > 0
+      ? await admin
+          .from('sale_items')
+          .select('sale_id, product_id, quantity, products(track_stock)')
+          .in('sale_id', idsParaDevolver)
+      : { data: [], error: null }
     if (siErr) return NextResponse.json({ error: `sale_items_read_failed: ${siErr.message}` }, { status: 500 })
 
-    // Cria stock_movements de entrada compensando o exit original
+    // Cria stock_movements de entrada compensando o exit original. Produto
+    // sem controle de estoque não teve saída (v66) → não ganha entrada.
     const compensations = (saleItems ?? [])
-      .filter((it) => it.product_id)
+      .filter((it) => {
+        const prod = Array.isArray(it.products) ? it.products[0] : it.products
+        return it.product_id && (prod as { track_stock?: boolean } | null)?.track_stock !== false
+      })
       .map((it) => ({
         business_id: businessId,
         product_id: it.product_id as string,
@@ -176,14 +202,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const { error: movErr } = await admin.from('stock_movements').insert(compensations)
       if (movErr) return NextResponse.json({ error: `stock_revert_failed: ${movErr.message}` }, { status: 500 })
     }
-
-    // Marca sales como cancelled (não delete · histórico). Limpa payment_method
-    // junto (igual o appointment) pra não sobrar método num registro cancelado.
-    const { error: salesErr } = await admin
-      .from('sales')
-      .update({ status: 'cancelled', paid_at: null, payment_method: null })
-      .in('id', saleIds)
-    if (salesErr) return NextResponse.json({ error: `sales_cancel_failed: ${salesErr.message}` }, { status: 500 })
   }
 
   // 4. Apagar invoice_payments (pagamento revertido)
