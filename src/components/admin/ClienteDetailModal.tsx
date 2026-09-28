@@ -130,6 +130,29 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([])
   const [creditos, setCreditos] = useState<CreditoLinha[]>([])
   const [creditBalance, setCreditBalance] = useState(0)
+  /* Remover crédito (Wanessa 28/09): cancelou guardando o sinal como crédito
+     e a cliente tinha sido atendida. Só o computador (SaldoTab) tinha como
+     tirar. Dois toques em vez de confirm() nativo: no iPhone o diálogo do
+     sistema trava a tela instalada. */
+  const [creditoConfirmando, setCreditoConfirmando] = useState<string | null>(null)
+  const [creditoRemovendo, setCreditoRemovendo] = useState(false)
+  const [creditoErro, setCreditoErro] = useState<string | null>(null)
+  async function removerCredito(creditId: string) {
+    setCreditoRemovendo(true)
+    setCreditoErro(null)
+    const res = await fetch(`/api/admin/customers/${customerId}/credits?creditId=${creditId}`, { method: 'DELETE' })
+    setCreditoRemovendo(false)
+    setCreditoConfirmando(null)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setCreditoErro(d.error === 'credit_used'
+        ? 'Esse crédito já foi usado e não pode ser removido.'
+        : 'Não foi possível remover o crédito. Tente de novo.')
+      return
+    }
+    // Recarrega a ficha do servidor: o saldo que aparece é o que ficou no banco.
+    setReloadKey((k) => k + 1)
+  }
   /* Isenção de sinal (v118) · o toggle só aparece em negócio que cobra sinal;
      em quem não cobra seria um botão sem sentido na ficha. */
   const [isento, setIsento] = useState(false)
@@ -805,9 +828,34 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                             {brlCredito(c.amount)}
                             {c.usado && <span className="font-normal"> · usado</span>}
                           </span>
+                          {!c.usado && (
+                            creditoConfirmando === c.id ? (
+                              <button
+                                type="button"
+                                onClick={() => removerCredito(c.id)}
+                                disabled={creditoRemovendo}
+                                className="flex-shrink-0 px-2 py-1 rounded-md text-[11px] font-bold disabled:opacity-50"
+                                style={{ background: '#DC2626', color: '#fff' }}
+                              >
+                                {creditoRemovendo ? 'Removendo…' : 'Confirmar'}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => { setCreditoErro(null); setCreditoConfirmando(c.id) }}
+                                className="flex-shrink-0 px-2 py-1 rounded-md text-[11px] font-semibold"
+                                style={{ color: '#DC2626', border: '1px solid rgba(220,38,38,0.35)' }}
+                              >
+                                Remover
+                              </button>
+                            )
+                          )}
                         </div>
                       ))}
                     </div>
+                    {creditoErro && (
+                      <p className="mt-2 text-[11px] font-semibold" role="alert" style={{ color: '#DC2626' }}>{creditoErro}</p>
+                    )}
                   </div>
                 </div>
               )}
