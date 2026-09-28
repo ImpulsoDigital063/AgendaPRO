@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { AlvoDesconto } from '@/lib/desconto-geral'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconCheck, IconArrowLeft } from '@/components/ui/Icon'
 import {
@@ -64,12 +65,16 @@ type Props = {
   permiteDesconto?: boolean
   /** Esconde "Pontos" (venda de produto no PDV · Eduardo 28/09). */
   semPontos?: boolean
+  /** Comanda tem serviço E produto: pergunta de onde sai o desconto
+   *  (Eduardo 28/09 · a comissão depende disso). */
+  perguntarOrigemDesconto?: boolean
   /** Erro do chamador (ex: rota recusou o desconto) mostrado DENTRO do modal —
    *  fora dele fica escondido atrás do overlay. */
   erro?: string | null
   /** 3o argumento so chega quando permiteEditarValor esta ligado e o valor mudou.
-   *  4o só quando permiteDesconto está ligado e há desconto > 0. */
-  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number, desconto?: number) => void
+   *  4o só quando permiteDesconto está ligado e há desconto > 0.
+   *  5o = de onde sai o desconto (só com perguntarOrigemDesconto). */
+  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number, desconto?: number, origem?: AlvoDesconto) => void
   onClose: () => void
 }
 
@@ -102,6 +107,7 @@ export default function PaymentMethodModal({
   permiteEditarValor = false,
   permiteDesconto = false,
   semPontos = false,
+  perguntarOrigemDesconto = false,
   erro = null,
   businessId,
   withPunctualityBonus = false,
@@ -178,6 +184,9 @@ export default function PaymentMethodModal({
   })()
   const descontoMaiorQueValor = desconto > 0 && desconto > Number(valorEfetivo ?? 0)
   const descontoEnviado = desconto > 0 ? desconto : undefined
+  const [origem, setOrigem] = useState<AlvoDesconto>('proporcional')
+  useEffect(() => { if (open) setOrigem('proporcional') }, [open])
+  const origemEnviada = descontoEnviado && perguntarOrigemDesconto ? origem : undefined
 
   if (!open || !portalReady) return null
 
@@ -196,7 +205,7 @@ export default function PaymentMethodModal({
       setCardStep(true)
       return
     }
-    onChoose(method, undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado)
+    onChoose(method, undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada)
   }
 
   /* O que entra AGORA, na mão de quem está no balcão. O sinal já entrou antes
@@ -235,7 +244,7 @@ export default function PaymentMethodModal({
             clientName={clientName}
             loading={loading}
             onBack={() => setCardStep(false)}
-            onConfirm={(details) => onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado)}
+            onConfirm={(details) => onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada)}
             onClose={onClose}
           />
         ) : (
@@ -383,6 +392,32 @@ export default function PaymentMethodModal({
                         ? '⚠ O desconto é maior que o valor do atendimento.'
                         : 'Entra no faturamento como desconto · o valor do serviço não muda.'}
                     </p>
+                    {perguntarOrigemDesconto && desconto > 0 && !descontoMaiorQueValor && (
+                      <div className="mt-2.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-faded, #94A3B8)' }}>
+                          Tirar o desconto de
+                        </p>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {([['servico', 'Serviço'], ['produto', 'Produto'], ['proporcional', 'Dividir']] as const).map(([v, rot]) => (
+                            <button
+                              key={v}
+                              type="button"
+                              onClick={() => setOrigem(v)}
+                              disabled={loading}
+                              className="py-2 rounded-lg text-xs font-bold"
+                              style={origem === v
+                                ? { background: 'var(--admin-accent, #7C3AED)', color: '#fff' }
+                                : { background: 'var(--admin-surface, #F8FAFC)', color: 'var(--admin-text-2, #475569)', border: '1px solid var(--admin-border, #E2E8F0)' }}
+                            >
+                              {rot}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded, #94A3B8)' }}>
+                          A comissão é calculada sobre o que sobra depois do desconto.
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
               </div>

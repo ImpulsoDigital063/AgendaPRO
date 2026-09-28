@@ -1,6 +1,7 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
+import { normalizarAlvo } from '@/lib/desconto-geral'
 import { dataBR, horaBR } from '@/lib/date-br'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -73,6 +74,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'manual_discount inválido' }, { status: 400 })
   }
   const manualDiscount = typeof manualDiscountRaw === 'number' ? Math.round(manualDiscountRaw * 100) / 100 : 0
+  // De onde sai o desconto (serviço / produto / proporcional · v148).
+  const discountTarget = normalizarAlvo(body.discount_target)
 
   const admin = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -518,7 +521,7 @@ export async function POST(request: Request) {
       .update({
         subtotal: itemsSubtotal + itemsDiscount,
         discount: itemsDiscount + manualDiscount,
-        ...(manualDiscount > 0 ? { manual_discount: manualDiscount } : {}),
+        ...(manualDiscount > 0 ? { manual_discount: manualDiscount, discount_target: discountTarget } : {}),
         total: Math.max(0, itemsSubtotal - manualDiscount),
         status: willClose ? 'closed' : 'open',
         closed_at: willClose ? nowIso : null,

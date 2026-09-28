@@ -1,5 +1,6 @@
 -- ============================================================
 -- v148 · Estoque: recepção grava de verdade + consumo em serviço uma vez só
+--        + de onde sai o desconto geral da comanda (invoices.discount_target)
 -- Auditoria do módulo de produtos · 28/09/2026 (T17 + T18)
 -- ============================================================
 --
@@ -144,7 +145,21 @@ CREATE TRIGGER trg_consume_service_products
   AFTER UPDATE ON public.appointments
   FOR EACH ROW EXECUTE FUNCTION public.consume_service_products();
 
+-- ── DE ONDE SAI O DESCONTO GERAL (Eduardo 28/09) ────────────────────────
+-- Comanda com serviço E produto: a dona escolhe se o desconto geral sai do
+-- serviço, do produto ou dividido. Muda a comissão: serviço comissiona e
+-- produto não (ou o contrário) → o desconto tem que cair no item certo.
+-- 'proporcional' = comportamento anterior (divide pelo peso de cada item).
+ALTER TABLE public.invoices
+  ADD COLUMN IF NOT EXISTS discount_target text NOT NULL DEFAULT 'proporcional';
+ALTER TABLE public.invoices DROP CONSTRAINT IF EXISTS invoices_discount_target_check;
+ALTER TABLE public.invoices
+  ADD CONSTRAINT invoices_discount_target_check
+  CHECK (discount_target IN ('proporcional', 'servico', 'produto'));
+
 -- ── Verificação (rodar depois; tem que listar as duas com prosecdef = true)
 -- SELECT proname, prosecdef FROM pg_proc
 --  WHERE proname IN ('apply_stock_movement','consume_service_products');
 -- SELECT policyname, cmd FROM pg_policies WHERE tablename = 'products';
+-- SELECT column_name, column_default FROM information_schema.columns
+--  WHERE table_name = 'invoices' AND column_name = 'discount_target';

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import type { AlvoDesconto } from '@/lib/desconto-geral'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar, IconFile, IconWhatsapp } from '@/components/ui/Icon'
@@ -19,6 +20,8 @@ export type InvoiceFull = {
   subtotal: number
   discount: number
   manual_discount: number
+  /** De onde sai o desconto geral (v148 · Eduardo 28/09). */
+  discount_target: AlvoDesconto
   total: number
   notes: string | null
   created_at: string
@@ -122,6 +125,7 @@ export default function ComandaDetalhe({
   // Só comanda aberta muda item (a rota também bloqueia · auditoria 28/09).
   // Fechada: "Reabrir" primeiro.
   const canEditItems = invoice.status === 'open'
+  const temServicoEProduto = invoice.items.some((i) => i.item_type === 'appointment') && invoice.items.some((i) => i.item_type === 'product')
   const canReceivePayment = invoice.status === 'open' && invoice.total > 0
   const customerName = invoice.customer?.name ?? 'Cliente'
 
@@ -214,12 +218,12 @@ export default function ComandaDetalhe({
     }
   }
 
-  async function saveManualDiscount(value: number) {
+  async function saveManualDiscount(value: number, origem: AlvoDesconto = invoice.discount_target) {
     setError(null)
     const r = await fetch(`/api/admin/invoices/${invoice.id}/discount`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ manual_discount: value }),
+      body: JSON.stringify({ manual_discount: value, discount_target: origem }),
     })
     if (!r.ok) {
       const d = await r.json().catch(() => ({}))
@@ -590,6 +594,33 @@ export default function ComandaDetalhe({
             ) : (
               invoice.manual_discount > 0 && (
                 <Row label="Desconto geral" value={`- ${brl(invoice.manual_discount)}`} />
+              )
+            )}
+            {/* De onde sai o desconto geral · só quando a comanda tem serviço E
+                produto (com um tipo só não há escolha). Eduardo 28/09: a
+                comissão depende disso. */}
+            {invoice.manual_discount > 0 && temServicoEProduto && (
+              invoice.status === 'open' ? (
+                <div className="flex justify-between gap-3 items-center no-print" style={{ color: 'var(--admin-text-mute)' }}>
+                  <span className="text-xs">Tirar de</span>
+                  <span className="inline-flex gap-1">
+                    {([['servico', 'Serviço'], ['produto', 'Produto'], ['proporcional', 'Dividir']] as const).map(([v, rot]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => { if (v !== invoice.discount_target) saveManualDiscount(invoice.manual_discount, v) }}
+                        className="px-2 py-1 rounded-md text-[11px] font-bold"
+                        style={invoice.discount_target === v
+                          ? { background: 'var(--admin-accent)', color: '#fff' }
+                          : { background: 'var(--admin-surface)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}
+                      >
+                        {rot}
+                      </button>
+                    ))}
+                  </span>
+                </div>
+              ) : (
+                <Row label="Desconto tirado de" value={invoice.discount_target === 'servico' ? 'Serviço' : invoice.discount_target === 'produto' ? 'Produto' : 'Dividido'} />
               )
             )}
             <Row label="Total" value={brl(invoice.total)} strong />

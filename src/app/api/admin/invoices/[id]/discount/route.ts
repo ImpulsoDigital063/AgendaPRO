@@ -1,5 +1,6 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { NextResponse } from 'next/server'
+import { normalizarAlvo } from '@/lib/desconto-geral'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -37,6 +38,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'manual_discount inválido', detail: 'use número >= 0' }, { status: 400 })
   }
   const manualDiscount = Math.round(manualRaw * 100) / 100 // arredonda pra 2 casas
+  // De onde sai o desconto (serviço / produto / proporcional · v148).
+  const discountTarget = normalizarAlvo(body?.discount_target)
 
   const admin = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -77,6 +80,7 @@ export async function PATCH(
       subtotal: itemsTotal + itemsDiscount,
       discount: itemsDiscount + manualDiscount,
       manual_discount: manualDiscount,
+      discount_target: discountTarget,
       total: newTotal,
     })
     .eq('id', id)

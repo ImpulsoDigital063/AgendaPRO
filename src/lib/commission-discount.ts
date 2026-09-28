@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { normalizarAlvo, ratearDescontoGeral, type ItemRateio } from './desconto-geral'
 
 /**
  * Desconto rateado por appointment · 01/06/2026 (regra Luana).
@@ -25,41 +26,51 @@ export async function getApptDiscountMap(
   const ids = apptInvoiceItemIds.filter((x): x is string => !!x)
   if (ids.length === 0) return out
 
-  // invoice_item dos appointments → invoice (com discount)
+  /* 28/09/2026 · o desconto do atendimento = desconto da PRÓPRIA linha +
+     a parte do desconto geral que cabe a ele segundo invoices.discount_target
+     (serviço / produto / proporcional · ratearDescontoGeral). Antes rateava
+     invoices.discount inteiro (que soma o desconto das linhas de TODOS os
+     itens) — desconto da linha de um produto vazava pro serviço. */
   const { data: items } = await sb
     .from('invoice_items')
-    .select('id, reference_id, item_type, total, invoices!inner(id, discount)')
+    .select('id, invoice_id, reference_id, item_type, total, discount, invoices!inner(id, discount, manual_discount, discount_target)')
     .in('id', ids)
 
-  const invDiscount: Record<string, number> = {}
-  const invIdsComDesc = new Set<string>()
+  const comDesconto = new Set<string>()
+  const faturas: Record<string, { geral: number; alvo: ReturnType<typeof normalizarAlvo> }> = {}
   for (const it of items ?? []) {
-    const inv = Array.isArray(it.invoices) ? it.invoices[0] : it.invoices
+    const inv = (Array.isArray(it.invoices) ? it.invoices[0] : it.invoices) as
+      | { id: string; discount: number | null; manual_discount: number | null; discount_target?: string | null }
+      | null
     if (!inv || Number(inv.discount ?? 0) <= 0) continue
-    invDiscount[inv.id] = Number(inv.discount ?? 0)
-    invIdsComDesc.add(inv.id)
+    comDesconto.add(inv.id)
+    faturas[inv.id] = { geral: Number(inv.manual_discount ?? 0), alvo: normalizarAlvo(inv.discount_target) }
   }
-  if (invIdsComDesc.size === 0) return out
+  if (comDesconto.size === 0) return out
 
-  // subtotal real de cada invoice com desconto = soma de TODOS os seus items
+  // Todos os itens dessas comandas (o rateio precisa do peso de cada um)
   const { data: allItems } = await sb
     .from('invoice_items')
-    .select('invoice_id, total')
-    .in('invoice_id', Array.from(invIdsComDesc))
-  const invSubtotal: Record<string, number> = {}
+    .select('id, invoice_id, item_type, total')
+    .in('invoice_id', Array.from(comDesconto))
+  const porFatura: Record<string, ItemRateio[]> = {}
   for (const it of allItems ?? []) {
-    invSubtotal[it.invoice_id as string] = (invSubtotal[it.invoice_id as string] ?? 0) + Number(it.total ?? 0)
+    const k = it.invoice_id as string
+    ;(porFatura[k] ??= []).push({ chave: it.id as string, tipo: it.item_type as string, total: Number(it.total ?? 0) })
+  }
+  const partes: Record<string, Map<string, number>> = {}
+  for (const invId of comDesconto) {
+    partes[invId] = ratearDescontoGeral(porFatura[invId] ?? [], faturas[invId].geral, faturas[invId].alvo)
   }
 
-  // rateia: cada appointment-item pega (seu total / subtotal) × desconto da comanda
   for (const it of items ?? []) {
-    const inv = Array.isArray(it.invoices) ? it.invoices[0] : it.invoices
-    if (!inv || !invIdsComDesc.has(inv.id) || it.item_type !== 'appointment') continue
-    const sub = invSubtotal[inv.id] ?? 0
-    if (sub <= 0) continue
-    const frac = Number(it.total ?? 0) / sub
+    if (it.item_type !== 'appointment' || !it.reference_id) continue
+    const invId = it.invoice_id as string
+    if (!comDesconto.has(invId)) continue
+    const daLinha = Number(it.discount ?? 0)
+    const doGeral = partes[invId]?.get(it.id as string) ?? 0
     const apptId = it.reference_id as string
-    if (apptId) out[apptId] = (out[apptId] ?? 0) + invDiscount[inv.id] * frac
+    if (daLinha + doGeral > 0) out[apptId] = (out[apptId] ?? 0) + daLinha + doGeral
   }
   return out
 }

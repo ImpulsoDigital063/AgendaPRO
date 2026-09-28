@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import ComandaDetalhe, { type InvoiceFull } from '@/components/admin/comandas/ComandaDetalhe'
+import { normalizarAlvo } from '@/lib/desconto-geral'
 import { resolveProductItemSellers } from '@/lib/queries/product-item-sellers'
 
 export const dynamic = 'force-dynamic'
@@ -30,7 +31,7 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
   const { data: invoice } = await admin
     .from('invoices')
     .select(`
-      id, invoice_number, status, subtotal, discount, manual_discount, total, notes,
+      id, invoice_number, status, subtotal, discount, manual_discount, discount_target, total, notes,
       created_at, closed_at, cancelled_at, business_id, customer_id,
       customer:customers(id, name, phone)
     `)
@@ -118,6 +119,7 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
     subtotal: Number(invoice.subtotal ?? 0),
     discount: Number(invoice.discount ?? 0),
     manual_discount: Number(invoice.manual_discount ?? 0),
+    discount_target: normalizarAlvo((invoice as { discount_target?: string | null }).discount_target),
     total: Number(invoice.total ?? 0),
     notes: invoice.notes as string | null,
     created_at: invoice.created_at as string,

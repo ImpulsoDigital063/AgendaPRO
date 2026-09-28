@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconPlus, IconTrash, IconSearch } from '@/components/ui/Icon'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
+import type { AlvoDesconto } from '@/lib/desconto-geral'
 import { getAreaPrefix, areaSemTelasInternas } from '@/lib/area-prefix'
 import { createClient } from '@/lib/supabase/client'
 
@@ -284,7 +285,7 @@ export default function FaturarComandaModal({
     return null
   }
 
-  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number) {
+  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto) {
     const v = validateBeforeSubmit()
     if (v) { setError(v); return }
     setError(null)
@@ -319,7 +320,10 @@ export default function FaturarComandaModal({
       }
       body.payment = pay
       // Desconto só existe junto com o pagamento (vem do passo do método).
-      if (typeof desconto === 'number' && desconto > 0) body.manual_discount = desconto
+      if (typeof desconto === 'number' && desconto > 0) {
+        body.manual_discount = desconto
+        if (origem) body.discount_target = origem
+      }
     }
 
     const r = await fetch('/api/admin/invoices', {
@@ -880,9 +884,11 @@ export default function FaturarComandaModal({
         erro={paymentOpen ? error : null}
         businessId={businessId}
         loading={submitting}
-        onChoose={(method, card, _valor, desconto) => {
+        // Serviço + produto na mesma comanda → pergunta de onde sai o desconto.
+        perguntarOrigemDesconto={cart.length > 0 || jaNaComanda.length > 0}
+        onChoose={(method, card, _valor, desconto, origem) => {
           if (method === null) { setPaymentOpen(false); return }
-          submitInvoice(method, card, desconto)
+          submitInvoice(method, card, desconto, origem)
         }}
         onClose={() => setPaymentOpen(false)}
       />

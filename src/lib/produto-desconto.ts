@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { normalizarAlvo, ratearDescontoGeral } from './desconto-geral'
 
 /**
  * Valor de venda do PRODUTO dentro da comanda = o que foi cobrado dele.
@@ -12,8 +13,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  *  2. editar o preço do produto na comanda mudava invoice_items, não sales.
  *
  * Aqui: sales.total = invoice_items.total (o cobrado, já com desconto da linha
- * e preço editado) − parte proporcional do desconto geral. Mesma régua de
- * rateio do getApptDiscountMap (peso = total do item / soma dos itens).
+ * e preço editado) − a parte do desconto geral que cabe ao produto, segundo
+ * invoices.discount_target (ratearDescontoGeral · mesma régua do serviço).
  * Idempotente: recalcula do zero, pode rodar a cada fechamento.
  *
  * Chamar quando a comanda FECHA (pagamento), depois de gravar o desconto.
@@ -24,24 +25,29 @@ export async function acertarValorDosProdutosDaComanda(
 ): Promise<void> {
   const { data: inv } = await admin
     .from('invoices')
-    .select('manual_discount')
+    .select('manual_discount, discount_target')
     .eq('id', invoiceId)
     .maybeSingle()
   const descontoGeral = Number(inv?.manual_discount ?? 0)
+  const alvo = normalizarAlvo((inv as { discount_target?: string | null } | null)?.discount_target)
 
   const { data: itens } = await admin
     .from('invoice_items')
-    .select('item_type, reference_id, total')
+    .select('id, item_type, reference_id, total')
     .eq('invoice_id', invoiceId)
   const lista = itens ?? []
-  const soma = lista.reduce((s, i) => s + Number(i.total ?? 0), 0)
+  // Mesma régua do serviço (getApptDiscountMap): respeita de onde a dona
+  // escolheu tirar o desconto (serviço / produto / proporcional).
+  const partes = ratearDescontoGeral(
+    lista.map((i) => ({ chave: i.id as string, tipo: i.item_type as string, total: Number(i.total ?? 0) })),
+    descontoGeral,
+    alvo,
+  )
 
   for (const it of lista) {
     if (it.item_type !== 'product' || !it.reference_id) continue
     const cobrado = Number(it.total ?? 0)
-    const parte = soma > 0 && descontoGeral > 0
-      ? Math.round(((descontoGeral * cobrado) / soma) * 100) / 100
-      : 0
+    const parte = partes.get(it.id as string) ?? 0
     await admin
       .from('sales')
       .update({ total: Math.max(0, Math.round((cobrado - parte) * 100) / 100), discount: parte })
