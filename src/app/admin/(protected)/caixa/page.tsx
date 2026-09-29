@@ -8,6 +8,7 @@ import { IconWallet } from '@/components/ui/Icon'
 import { getOwnerProfessional } from '@/lib/admin-data'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getSalePaymentSplitMap, getApptPaymentSplitMap, type PaymentShare } from '@/lib/queries/appointment-payment-split'
+import { sinalPorAtendimento, sinaisRecebidos } from '@/lib/sinal-da-comanda'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
@@ -100,8 +101,12 @@ export default async function AdminCaixaPage() {
   // v146 · a conferência por método vinha do payment_method do atendimento, que
   // guarda só o MAIOR pagamento. Comanda dividida caía inteira num método só.
   const apptSplit = await getApptPaymentSplitMap(sbAdmin, (paidApptsRes.data ?? []).map((a) => a.id as string))
+  // Sinal (decisão 29/09): sai do atendimento no dia em que ele é pago e
+  // entra como linha própria no dia em que caiu (sinaisHoje, abaixo).
+  const sinalAppt = await sinalPorAtendimento(sbAdmin, (paidApptsRes.data ?? []).map((a) => a.id as string))
   const apptsToday: AppointmentForCash[] = (paidApptsRes.data ?? []).map((a) => ({
     ...a,
+    total_price: Math.max(0, Number(a.total_price ?? 0) - (sinalAppt[a.id as string] ?? 0)),
     discount_cents: Math.round((apptDisc[a.id as string] ?? 0) * 100),
     payment_split: apptSplit[a.id as string],
   }))
@@ -117,7 +122,17 @@ export default async function AdminCaixaPage() {
     client_name: (s.client_name as string | null) ?? 'Venda de produto',
     payment_split: saleSplit[s.id as string],
   }))
-  const todayAppts = [...apptsToday, ...salesToday]
+  const sinaisDoDia = await sinaisRecebidos(sbAdmin, business.id, startOfDayBR(today), startOfDayBR(tomorrowISO))
+  const sinaisHoje: AppointmentForCash[] = sinaisDoDia.map((x) => ({
+    id: `sinal-${x.id}`,
+    total_price: x.valor,
+    paid_at: x.paid_at,
+    payment_method: 'pix',
+    payment_card_type: null,
+    payment_fee_percent: null,
+    client_name: `Sinal · ${x.client_name}`,
+  }))
+  const todayAppts = [...apptsToday, ...salesToday, ...sinaisHoje]
 
   // Resumo do dia (atendimentos + a receber)
   const allTodayAppts = allTodayRes.data ?? []

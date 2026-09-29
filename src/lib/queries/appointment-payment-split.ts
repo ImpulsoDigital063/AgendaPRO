@@ -72,6 +72,9 @@ export async function getApptPaymentSplitMap(
     .from('invoice_payments')
     .select('invoice_id, payment_method, card_type, fee_percent, amount')
     .in('invoice_id', invoiceIds)
+    // O SINAL entra no Caixa no dia em que caiu, como linha própria (29/09).
+    // Aqui só o que foi pago na hora do atendimento reparte o valor dele.
+    .or('notes.is.null,notes.neq.Sinal do agendamento')
   if (!pagamentos?.length) return out
 
   // 3) proporção por comanda · linhas do mesmo método+bandeira+taxa viram uma só
@@ -162,6 +165,7 @@ export async function getSalePaymentSplitMap(
     .from('invoice_payments')
     .select('invoice_id, payment_method, amount, card_type, fee_percent')
     .in('invoice_id', invIds)
+    .or('notes.is.null,notes.neq.Sinal do agendamento')
 
   const porInvoice: Record<string, Map<string, PaymentShare & { amount: number }>> = {}
   const somaInvoice: Record<string, number> = {}

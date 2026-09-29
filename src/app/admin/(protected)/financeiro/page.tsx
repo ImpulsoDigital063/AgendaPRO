@@ -6,7 +6,8 @@ import FinanceiroView, { type AppointmentRow } from '@/components/admin/Financei
 import DashboardFinanceiro from '@/components/admin/financeiro/DashboardFinanceiro'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
-import { todayBR } from '@/lib/date-br'
+import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
+import { ajusteSinalDoPeriodo } from '@/lib/sinal-da-comanda'
 
 const CATEGORY_LABEL: Record<string, string> = {
   rent: 'Aluguel',
@@ -257,10 +258,28 @@ export default async function FinanceiroPage({
 
   // Cálculos · receita = appointments pagos + vendas de produto pagas
   // Receita real exclui cortesia (bonificação não conta como faturamento)
+  /* Sinal (decisão 29/09): conta no dia em que caiu. Sai do atendimento pago
+     do período o sinal que caiu fora dele (e a parte em crédito, que nunca é
+     receita); entra o sinal em dinheiro recebido no período de atendimento
+     que não está aqui. Mexe na própria lista pra o painel do celular
+     (FinanceiroView) somar igual. */
+  const pagosDoPeriodo = appointments.filter((a) => a.paid_at)
+  const ajusteSinal = await ajusteSinalDoPeriodo(
+    supabase,
+    business.id,
+    pagosDoPeriodo.map((a) => a.id as string),
+    startOfDayBR(startStr),
+    startOfDayBR(addDaysBR(endStr, 1)),
+  )
+  for (const a of pagosDoPeriodo) {
+    const tirar = ajusteSinal.subtrair[a.id as string] ?? 0
+    if (tirar > 0) a.total_price = Math.max(0, Number(a.total_price ?? 0) - tirar)
+  }
+
   const paidAppts = appointments.filter((a) => a.paid_at && a.payment_method !== 'courtesy' && a.payment_method !== 'credit' && a.payment_method !== 'points')
   const valorRecebidoAppts = paidAppts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
   const valorRecebidoSales = productSales.reduce((s, p) => s + Number(p.total ?? 0), 0)
-  const valorRecebido = valorRecebidoAppts + valorRecebidoSales
+  const valorRecebido = valorRecebidoAppts + valorRecebidoSales + ajusteSinal.somar
   const prevPaid = prevAppts.filter((a) => a.paid_at)
   const prevValorRecebidoAppts = prevPaid.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
   const prevValorRecebidoSales = prevProductSales.reduce((s, p) => s + Number(p.total ?? 0), 0)
@@ -543,6 +562,7 @@ export default async function FinanceiroPage({
               appointments={(appointments || []) as unknown as AppointmentRow[]}
               periodo={periodoNorm}
               totalExpenses={despesasPagas}
+              sinaisRecebidos={ajusteSinal.somar}
             />
           </div>
         </div>

@@ -35,6 +35,8 @@ type Props = {
   appointments: AppointmentRow[]
   periodo: string
   totalExpenses?: number
+  /** Sinal em dinheiro recebido no período de atendimento que não está na lista (29/09) */
+  sinaisRecebidos?: number
 }
 
 function formatPrice(value: number) {
@@ -48,7 +50,7 @@ const PERIODO_LABEL: Record<string, string> = {
   custom: 'Período escolhido',
 }
 
-export default function FinanceiroView({ appointments, periodo, totalExpenses = 0 }: Props) {
+export default function FinanceiroView({ appointments, periodo, totalExpenses = 0, sinaisRecebidos = 0 }: Props) {
   // Semantica financeira:
   // - Realizado = dinheiro QUE ENTROU em caixa (PIX/Dinheiro/Cartao).
   //   Cortesia NAO conta — eh brinde, nao receita. Bug histórico
@@ -77,7 +79,8 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
   // junto). total_price é só o serviço e deixava o faturamento por baixo.
   const valorDe = (a: AppointmentRow) => a.charged_total ?? a.total_price ?? 0
 
-  const totalRealizado = pagosReceita.reduce((sum, a) => sum + valorDe(a), 0)
+  // + sinal recebido no período de atendimento de outro período (decisão 29/09)
+  const totalRealizado = pagosReceita.reduce((sum, a) => sum + valorDe(a), 0) + sinaisRecebidos
   const totalCortesia = cortesias.reduce((sum, a) => sum + valorDe(a), 0)
   const totalPendente = naoPagos.reduce((sum, a) => sum + valorDe(a), 0)
   const totalFaturado = ativos.reduce((sum, a) => sum + valorDe(a), 0)
