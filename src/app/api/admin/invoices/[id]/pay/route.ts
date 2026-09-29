@@ -1,7 +1,8 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
-import { reservarComanda, RESPOSTA_COMANDA_OCUPADA } from '@/lib/reserva-comanda'
+import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
+import { reservarComanda, RESPOSTA_COMANDA_OCUPADA, comReservaLiberadaNoErro } from '@/lib/reserva-comanda'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -21,10 +22,26 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
  *  4. Atualiza sales vinculadas: status='paid', paid_at, payment_method
  *  5. Read-after-write
  */
+// Qualquer erro depois de reservar a comanda libera a reserva (v150).
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  ctx: { params: Promise<{ id: string }> },
 ) {
+  return comReservaLiberadaNoErro(
+  createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  ),
+    (ctxReserva) => postPagar(request, ctx, ctxReserva),
+  )
+}
+
+async function postPagar(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+  ctxReserva: { reservada?: string },
+): Promise<Response> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
@@ -89,17 +106,32 @@ export async function POST(
   if (!(await reservarComanda(admin, invoiceId))) {
     return NextResponse.json(RESPOSTA_COMANDA_OCUPADA, { status: 409 })
   }
+  ctxReserva.reservada = invoiceId
 
   const nowIso = new Date().toISOString()
   const total = Number(invoice.total ?? 0)
 
-  // Se single, amount = total. Se split, amount vem em cada · valida soma.
-  const normalized = payments.map((p) => ({ ...p, amount: payments.length === 1 ? total : Number(p.amount ?? 0) }))
+  /* SINAL já pago (auditoria 29/09): esta rota não conhecia o sinal e
+     cobrava o total cheio — a cliente pagava o sinal de novo. Agora o sinal
+     vira pagamento próprio (na data em que caiu, pix ou crédito) e a dona
+     recebe só o que falta. */
+  const { data: itensAppt } = await admin
+    .from('invoice_items')
+    .select('reference_id')
+    .eq('invoice_id', invoiceId)
+    .eq('item_type', 'appointment')
+  const sinal = await linhasDoSinal(admin, (itensAppt ?? []).map((i) => i.reference_id as string).filter(Boolean))
+  const aReceber = Math.max(0, Math.round((total - sinal.total) * 100) / 100)
+
+  // Se single, amount = o que falta. Se split, amount vem em cada · valida soma.
+  const normalized = payments.map((p) => ({ ...p, amount: payments.length === 1 ? aReceber : Number(p.amount ?? 0) }))
   const sumAmounts = normalized.reduce((s, p) => s + (p.amount ?? 0), 0)
-  if (Math.abs(sumAmounts - total) > 0.01) {
+  if (Math.abs(sumAmounts - aReceber) > 0.01) {
     return NextResponse.json({
       error: 'amounts_dont_sum_total',
-      detail: `Soma dos pagamentos (${sumAmounts.toFixed(2)}) não fecha com o total da comanda (${total.toFixed(2)})`,
+      detail: sinal.total > 0
+        ? `Soma dos pagamentos (${sumAmounts.toFixed(2)}) não fecha com o que falta receber (${aReceber.toFixed(2)} · R$ ${sinal.total.toFixed(2)} já pagos no sinal)`
+        : `Soma dos pagamentos (${sumAmounts.toFixed(2)}) não fecha com o total da comanda (${total.toFixed(2)})`,
     }, { status: 400 })
   }
 
@@ -162,9 +194,22 @@ export async function POST(
   // total), então limpamos os pagamentos antigos antes de registrar os novos.
   // Sem isso, reabrir+pagar de novo empilhava pagamentos duplicados (ex: comanda
   // de R$195 com R$754 registrado). Studio Mood/Izanara 09/06.
+  // A linha do SINAL fica (é dinheiro que entrou em outro dia · 29/09).
   await admin.from('invoice_payments').delete().eq('invoice_id', invoiceId)
+    .or(`notes.is.null,notes.neq.${NOTA_SINAL}`)
+  const { count: sinalJaLancado } = await admin
+    .from('invoice_payments')
+    .select('id', { count: 'exact', head: true })
+    .eq('invoice_id', invoiceId)
+    .eq('notes', NOTA_SINAL)
+  if (!sinalJaLancado && sinal.linhas.length > 0) {
+    const { error: sinalErr } = await admin.from('invoice_payments').insert(
+      sinal.linhas.map((l) => ({ invoice_id: invoiceId, ...l, installments: 1, fee_percent: 0, notes: NOTA_SINAL })),
+    )
+    if (sinalErr) return NextResponse.json({ error: `sinal_payment_failed: ${sinalErr.message}` }, { status: 500 })
+  }
 
-  const rows = normalized.map((p) => ({
+  const rows = normalized.filter((p) => (p.amount ?? 0) > 0).map((p) => ({
     invoice_id: invoiceId,
     payment_method: p.method,
     amount: p.amount,
@@ -175,7 +220,10 @@ export async function POST(
     fee_percent: p.fee_percent ?? 0,
     paid_at: nowIso,
   }))
-  const { error: payErr } = await admin.from('invoice_payments').insert(rows)
+  // Sinal cobriu tudo (ou comanda 100% descontada): não sobra linha a gravar.
+  const { error: payErr } = rows.length > 0
+    ? await admin.from('invoice_payments').insert(rows)
+    : { error: null }
   if (payErr) return NextResponse.json({ error: `payment_creation_failed: ${payErr.message}` }, { status: 500 })
 
   // Pra appointments/sales, usa o método do MAIOR pagamento REAL (cash/pix/card/courtesy/points).
@@ -218,7 +266,7 @@ export async function POST(
   // 5. Fecha invoice
   const { error: invErr } = await admin
     .from('invoices')
-    .update({ status: 'closed', closed_at: nowIso })
+    .update({ status: 'closed', closed_at: nowIso, fechando_desde: null })
     .eq('id', invoiceId)
   if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 })
 

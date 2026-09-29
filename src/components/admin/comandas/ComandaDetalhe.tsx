@@ -22,6 +22,8 @@ export type InvoiceFull = {
   manual_discount: number
   /** De onde sai o desconto geral (v148 · Eduardo 28/09). */
   discount_target: AlvoDesconto
+  /** Sinal já pago nos atendimentos desta comanda (R$) */
+  sinal_pago: number
   total: number
   notes: string | null
   created_at: string
@@ -126,7 +128,8 @@ export default function ComandaDetalhe({
   // Fechada: "Reabrir" primeiro.
   const canEditItems = invoice.status === 'open'
   const temServicoEProduto = invoice.items.some((i) => i.item_type === 'appointment') && invoice.items.some((i) => i.item_type === 'product')
-  const canReceivePayment = invoice.status === 'open' && invoice.total > 0
+  // Total 0 também fecha (comanda 100% descontada / coberta pelo sinal)
+  const canReceivePayment = invoice.status === 'open' && invoice.items.length > 0
   const customerName = invoice.customer?.name ?? 'Cliente'
 
   async function receberPagamento(payments: { method: 'cash' | 'pix' | 'card' | 'courtesy' | 'points' | 'credit'; amount: number; card_type?: 'credit' | 'debit' | null }[]) {
@@ -624,6 +627,14 @@ export default function ComandaDetalhe({
               )
             )}
             <Row label="Total" value={brl(invoice.total)} strong />
+            {/* Sinal já pago: a comanda pede só o resto (auditoria 29/09 · a
+                cliente pagava o sinal de novo no "Receber pagamento"). */}
+            {invoice.sinal_pago > 0 && invoice.status === 'open' && (
+              <>
+                <Row label="Sinal já pago" value={`- ${brl(invoice.sinal_pago)}`} />
+                <Row label="Falta receber" value={brl(Math.max(0, invoice.total - invoice.sinal_pago))} strong />
+              </>
+            )}
           </div>
         </section>
 
@@ -692,7 +703,7 @@ export default function ComandaDetalhe({
       <SplitPaymentModal
         open={paymentOpen}
         clientName={customerName}
-        totalPrice={invoice.total}
+        totalPrice={Math.max(0, Math.round((invoice.total - invoice.sinal_pago) * 100) / 100)}
         availableCredit={availableCredit}
         loading={paying}
         onConfirm={receberPagamento}

@@ -1,7 +1,8 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
-import { reservarComanda, RESPOSTA_COMANDA_OCUPADA } from '@/lib/reserva-comanda'
+import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
+import { reservarComanda, RESPOSTA_COMANDA_OCUPADA, comReservaLiberadaNoErro } from '@/lib/reserva-comanda'
 import { normalizarAlvo } from '@/lib/desconto-geral'
 import { dataBR, horaBR, todayBR } from '@/lib/date-br'
 import { createClient } from '@/lib/supabase/server'
@@ -24,7 +25,19 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 //
 // Tem que ter ao menos 1 item (appointment ou productSale). Se payment vier,
 // fecha a comanda como paga · senão fica 'open'.
+// Qualquer erro depois de reservar a comanda libera a reserva (v150).
 export async function POST(request: Request) {
+  return comReservaLiberadaNoErro(
+  createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  ),
+    (ctxReserva) => postFaturar(request, ctxReserva),
+  )
+}
+
+async function postFaturar(request: Request, ctxReserva: { reservada?: string }): Promise<Response> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
@@ -301,6 +314,7 @@ export async function POST(request: Request) {
     if (willClose && !(await reservarComanda(admin, invObj.id))) {
       return NextResponse.json(RESPOSTA_COMANDA_OCUPADA, { status: 409 })
     }
+    ctxReserva.reservada = invObj.id
     /* Desconto geral que JÁ estava na comanda (dado no ComandaDetalhe) vale
        quando o Faturar não manda um novo (auditoria 29/09 · A1). Antes o
        fechamento cobrava cheio e o manual_discount ficava gravado, e o
@@ -549,27 +563,16 @@ export async function POST(request: Request) {
      Duas linhas de pagamento na mesma comanda em vez de uma: é o que
      mantém a soma dos pagamentos igual ao total, sem inventar desconto
      que ninguém deu. */
-  const sinaisPagos = appts
-    .filter((a) => (a as { sinal_pago_at?: string | null }).sinal_pago_at && Number((a as { sinal_valor?: number | null }).sinal_valor ?? 0) > 0)
-    .map((a) => ({
-      valor: Number((a as { sinal_valor?: number | null }).sinal_valor ?? 0),
-      quando: (a as { sinal_pago_at?: string | null }).sinal_pago_at as string,
-    }))
-  const totalSinal = sinaisPagos.reduce((s, x) => s + x.valor, 0)
+  // Parte em crédito entra como 'credit' (não é receita) · antes virava pix
+  // e contava como faturamento (auditoria 29/09 · A5).
+  const sinal = await linhasDoSinal(admin, appts.map((a) => a.id))
+  const totalSinal = sinal.total
 
-  if (payment && totalSinal > 0) {
-    for (const s of sinaisPagos) {
-      const { error: sinalErr } = await admin.from('invoice_payments').insert({
-        invoice_id: invoice.id,
-        payment_method: 'pix',
-        amount: s.valor,
-        installments: 1,
-        fee_percent: 0,
-        paid_at: s.quando,
-        notes: 'Sinal do agendamento',
-      })
-      if (sinalErr) { await rollback(); return NextResponse.json({ error: sinalErr.message }, { status: 500 }) }
-    }
+  if (payment && sinal.linhas.length > 0) {
+    const { error: sinalErr } = await admin.from('invoice_payments').insert(
+      sinal.linhas.map((l) => ({ invoice_id: invoice!.id, ...l, installments: 1, fee_percent: 0, notes: NOTA_SINAL })),
+    )
+    if (sinalErr) { await rollback(); return NextResponse.json({ error: sinalErr.message }, { status: 500 }) }
   }
 
   // invoice_payments (se pagou) · amount = comanda inteira menos o sinal já pago
@@ -601,6 +604,7 @@ export async function POST(request: Request) {
         ...(manualDiscount > 0 ? { manual_discount: manualDiscount, discount_target: discountTarget } : {}),
         total: Math.max(0, itemsSubtotal - manualDiscount),
         status: willClose ? 'closed' : 'open',
+        fechando_desde: null, // libera a reserva (v150)
         closed_at: willClose ? quandoIso : null,
         customer_id: customerId,
         // Observação só muda quando vem no pedido (apagava a da comanda · A1)
@@ -611,7 +615,7 @@ export async function POST(request: Request) {
     // Caminho B sem productSales · só fechar
     await admin
       .from('invoices')
-      .update({ status: 'closed', closed_at: quandoIso })
+      .update({ status: 'closed', closed_at: quandoIso, fechando_desde: null })
       .eq('id', invoice.id)
   }
 

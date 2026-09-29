@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import ComandaDetalhe, { type InvoiceFull } from '@/components/admin/comandas/ComandaDetalhe'
+import { linhasDoSinal } from '@/lib/sinal-da-comanda'
 import { normalizarAlvo } from '@/lib/desconto-geral'
 import { resolveProductItemSellers } from '@/lib/queries/product-item-sellers'
 
@@ -105,6 +106,8 @@ export default async function RecepcaoComandaDetalhePage({ params }: { params: P
     discount: Number(invoice.discount ?? 0),
     manual_discount: Number(invoice.manual_discount ?? 0),
     discount_target: normalizarAlvo((invoice as { discount_target?: string | null }).discount_target),
+    // Sinal já pago (vira pagamento próprio · "Receber pagamento" cobra só o resto)
+    sinal_pago: (await linhasDoSinal(admin, (items ?? []).filter((it) => it.item_type === 'appointment' && it.reference_id).map((it) => it.reference_id as string))).total,
     total: Number(invoice.total ?? 0),
     notes: invoice.notes as string | null,
     created_at: invoice.created_at as string,

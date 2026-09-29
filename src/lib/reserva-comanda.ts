@@ -24,3 +24,23 @@ export const RESPOSTA_COMANDA_OCUPADA = {
   error: 'comanda_ocupada',
   detail: 'Essa comanda já está sendo paga (clique duplo ou outro aparelho). Confira a comanda antes de tentar de novo.',
 }
+
+/** Solta a reserva (erro depois de reservar · a dona pode tentar de novo já). */
+export async function liberarComanda(admin: SupabaseClient, invoiceId: string): Promise<void> {
+  await admin.from('invoices').update({ fechando_desde: null }).eq('id', invoiceId)
+}
+
+/**
+ * Embrulha a rota: se ela reservou a comanda (ctx.reservada) e respondeu
+ * erro (>= 400), libera a reserva antes de devolver. Cobre todas as saídas
+ * de erro sem precisar tocar cada `return`.
+ */
+export async function comReservaLiberadaNoErro(
+  admin: SupabaseClient,
+  executar: (ctx: { reservada?: string }) => Promise<Response>,
+): Promise<Response> {
+  const ctx: { reservada?: string } = {}
+  const res = await executar(ctx)
+  if (res.status >= 400 && ctx.reservada) await liberarComanda(admin, ctx.reservada)
+  return res
+}

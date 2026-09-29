@@ -126,7 +126,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (action === 'reopen') {
     const { error: updErr } = await admin
       .from('invoices')
-      .update({ status: 'open', closed_at: null, cancelled_at: null })
+      .update({ status: 'open', closed_at: null, cancelled_at: null, fechando_desde: null })
       .eq('id', id)
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
     return NextResponse.json({ ok: true, status: 'open' })
