@@ -1,6 +1,7 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
+import { reservarComanda, RESPOSTA_COMANDA_OCUPADA } from '@/lib/reserva-comanda'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -83,6 +84,10 @@ export async function POST(
   if (invoice.business_id !== businessId) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   if (invoice.status !== 'open') {
     return NextResponse.json({ error: 'invoice_not_open', current: invoice.status }, { status: 400 })
+  }
+  // Clique duplo / 2 aparelhos pagando a mesma comanda (v150 · M5)
+  if (!(await reservarComanda(admin, invoiceId))) {
+    return NextResponse.json(RESPOSTA_COMANDA_OCUPADA, { status: 409 })
   }
 
   const nowIso = new Date().toISOString()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconPlus, IconTrash, IconSearch } from '@/components/ui/Icon'
@@ -137,6 +137,7 @@ export default function FaturarComandaModal({
   // vendido junto). Este modal nunca lia a comanda — mostrava só o serviço e
   // fechava conta de R$290 dizendo R$195 (Eduardo 22/07).
   const [jaNaComanda, setJaNaComanda] = useState<ChargedProduct[]>([])
+  const enviandoRef = useRef(false)
   // "Desconto geral" já lançado na comanda (ComandaDetalhe) · entra no total
   // e a rota respeita no fechamento (auditoria 29/09 · A1)
   const [descontoJaLancado, setDescontoJaLancado] = useState(0)
@@ -293,6 +294,18 @@ export default function FaturarComandaModal({
   }
 
   async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto) {
+    // Toque duplo: o estado `submitting` só vale no próximo render; a ref
+    // barra na hora (auditoria 29/09 · M5 · a rota também reserva a comanda).
+    if (enviandoRef.current) return
+    enviandoRef.current = true
+    try {
+      await enviarFatura(payment, cardDetails, desconto, origem)
+    } finally {
+      enviandoRef.current = false
+    }
+  }
+
+  async function enviarFatura(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto) {
     const v = validateBeforeSubmit()
     if (v) { setError(v); return }
     setError(null)

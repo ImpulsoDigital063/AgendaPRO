@@ -15,7 +15,7 @@
    (Produtos → Vender). Mobile e desktop: bottom sheet no celular, modal
    centralizado no sm+. */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose } from '@/components/ui/Icon'
@@ -71,6 +71,7 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [feito, setFeito] = useState<number | null>(null)
+  const enviandoRef = useRef(false)
 
   function zerar() {
     setCarrinho([]); setCliente(null); setBusca(''); setErro(null); setAviso(null)
@@ -178,6 +179,17 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
   }
 
   async function registrar(method: PaymentMethodChoice, card?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto) {
+    // Toque duplo criava 2 vendas (2 comandas) · a ref barra na hora (M5)
+    if (enviandoRef.current) return
+    enviandoRef.current = true
+    try {
+      await registrarVenda(method, card, desconto, origem)
+    } finally {
+      enviandoRef.current = false
+    }
+  }
+
+  async function registrarVenda(method: PaymentMethodChoice, card?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto) {
     setSalvando(true)
     setErro(null)
     const body: Record<string, unknown> = {

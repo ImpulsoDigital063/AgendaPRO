@@ -1,6 +1,7 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
+import { reservarComanda, RESPOSTA_COMANDA_OCUPADA } from '@/lib/reserva-comanda'
 import { normalizarAlvo } from '@/lib/desconto-geral'
 import { dataBR, horaBR } from '@/lib/date-br'
 import { createClient } from '@/lib/supabase/server'
@@ -281,6 +282,10 @@ export async function POST(request: Request) {
     }
     invoice = { id: invObj.id, invoice_number: invObj.invoice_number }
     isExistingInvoice = true
+    // Clique duplo / 2 aparelhos pagando a mesma comanda (v150 · M5)
+    if (willClose && !(await reservarComanda(admin, invObj.id))) {
+      return NextResponse.json(RESPOSTA_COMANDA_OCUPADA, { status: 409 })
+    }
     /* Desconto geral que JÁ estava na comanda (dado no ComandaDetalhe) vale
        quando o Faturar não manda um novo (auditoria 29/09 · A1). Antes o
        fechamento cobrava cheio e o manual_discount ficava gravado, e o
