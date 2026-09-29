@@ -214,7 +214,7 @@ export default async function FluxoCaixaPage({
       .select('paid_at, total_price, payment_method, payment_card_type, payment_fee_percent')
       .eq('business_id', business.id)
       .is('invoice_item_id', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', range.from.toISOString())
       .lt('paid_at', range.to.toISOString())
       .not('paid_at', 'is', null),
@@ -225,7 +225,7 @@ export default async function FluxoCaixaPage({
       .eq('type', 'product_sale')
       .eq('status', 'paid')
       .is('invoice_id', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', range.from.toISOString())
       .lt('paid_at', range.to.toISOString())
       .not('paid_at', 'is', null),
@@ -249,7 +249,7 @@ export default async function FluxoCaixaPage({
       .select('total_price')
       .eq('business_id', business.id)
       .is('invoice_item_id', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .lt('paid_at', startOfPeriod)
       .not('paid_at', 'is', null),
     sb
@@ -259,7 +259,7 @@ export default async function FluxoCaixaPage({
       .eq('type', 'product_sale')
       .eq('status', 'paid')
       .is('invoice_id', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .lt('paid_at', startOfPeriod)
       .not('paid_at', 'is', null),
     sb
@@ -274,7 +274,7 @@ export default async function FluxoCaixaPage({
   const priorInvReceita = (priorInvPay ?? [])
     .filter((p) => {
       const m = (p.payment_method as string | null) ?? 'other'
-      return m !== 'courtesy' && m !== 'credit'
+      return m !== 'courtesy' && m !== 'credit' && m !== 'points'
     })
     .reduce((s, p) => s + Number(p.amount ?? 0), 0)
   const priorApptReceita = (priorApptsDirect ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)
@@ -301,7 +301,7 @@ export default async function FluxoCaixaPage({
   for (const p of invPayments ?? []) {
     if (!p.paid_at) continue
     const raw = (p.payment_method as string | null) ?? 'other'
-    if (raw === 'courtesy' || raw === 'credit') continue // não é receita real
+    if (raw === 'courtesy' || raw === 'credit' || raw === 'points') continue // não é receita real
     const d = emBR(p.paid_at as string)
     const key = keyForDate(view, d, cols)
     if (!key || !data[key]) continue

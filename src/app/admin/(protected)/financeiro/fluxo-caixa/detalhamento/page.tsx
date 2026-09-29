@@ -157,7 +157,7 @@ export default async function DetalhamentoPage({
       .eq('invoice.business_id', business.id)
       .gte('paid_at', fromISO)
       .lt('paid_at', toISO)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
 
     if (dbMethods) qInv = qInv.in('payment_method', dbMethods)
     if (cardTypeFilter) qInv = qInv.eq('card_type', cardTypeFilter)
@@ -206,7 +206,7 @@ export default async function DetalhamentoPage({
       .gte('paid_at', fromISO)
       .lt('paid_at', toISO)
       .not('paid_at', 'is', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
 
     if (dbMethods) qAppt = qAppt.in('payment_method', dbMethods)
     if (cardTypeFilter) qAppt = qAppt.eq('payment_card_type', cardTypeFilter)
@@ -246,7 +246,7 @@ export default async function DetalhamentoPage({
         .gte('paid_at', fromISO)
         .lt('paid_at', toISO)
         .not('paid_at', 'is', null)
-        .not('payment_method', 'in', '(courtesy,credit)')
+        .not('payment_method', 'in', '(courtesy,credit,points)')
 
       if (dbMethods) qSale = qSale.in('payment_method', dbMethods)
       if (cardTypeFilter) qSale = qSale.eq('payment_card_type', cardTypeFilter)

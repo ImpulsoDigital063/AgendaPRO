@@ -22,7 +22,7 @@ export default async function TrendReceitaCard({ businessId }: { businessId: str
       .select('id, appointment_date, total_price, payment_method, invoice_item_id')
       .eq('business_id', businessId)
       .not('paid_at', 'is', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('appointment_date', fourteenDaysAgoStr)
       .lte('appointment_date', todayStr),
     supabase
@@ -31,7 +31,7 @@ export default async function TrendReceitaCard({ businessId }: { businessId: str
       .eq('business_id', businessId)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('sale_date', fourteenDaysAgoStr)
       .lte('sale_date', todayStr),
     // TrendReceitaCard já filtrava cortesia em appointments · sales filtrado acima

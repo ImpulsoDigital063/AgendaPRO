@@ -141,3 +141,51 @@ export function repartirCentavos(
   })
   return out
 }
+
+/**
+ * Mesmo rateio, pra VENDA DE PRODUTO que está numa comanda (auditoria 29/09).
+ * `sales.payment_method` também guarda só o método do MAIOR pagamento: comanda
+ * de serviço 100 + produto 50 paga com 100 no Pix e 50 em dinheiro mostrava o
+ * produto inteiro no Pix e o Caixa não batia. Venda avulsa (PDV sem comanda)
+ * não entra no mapa: o método dela é a verdade.
+ */
+export async function getSalePaymentSplitMap(
+  sb: SupabaseClient,
+  vendas: { id: string; invoice_id: string | null }[],
+): Promise<Record<string, PaymentShare[]>> {
+  const out: Record<string, PaymentShare[]> = {}
+  const comComanda = vendas.filter((v) => !!v.invoice_id)
+  const invIds = [...new Set(comComanda.map((v) => v.invoice_id as string))]
+  if (invIds.length === 0) return out
+
+  const { data: pagamentos } = await sb
+    .from('invoice_payments')
+    .select('invoice_id, payment_method, amount, card_type, fee_percent')
+    .in('invoice_id', invIds)
+
+  const porInvoice: Record<string, Map<string, PaymentShare & { amount: number }>> = {}
+  const somaInvoice: Record<string, number> = {}
+  for (const p of pagamentos ?? []) {
+    const invId = p.invoice_id as string
+    const amount = Number(p.amount ?? 0)
+    if (!invId || !(amount > 0)) continue
+    const method = (p.payment_method as string) ?? ''
+    const cardType = (p.card_type as string | null) ?? null
+    const feePercent = p.fee_percent == null ? null : Number(p.fee_percent)
+    const chave = `${method}|${cardType ?? ''}|${feePercent ?? ''}`
+    const bucket = (porInvoice[invId] ??= new Map())
+    const atual = bucket.get(chave)
+    if (atual) atual.amount += amount
+    else bucket.set(chave, { method, cardType, feePercent, ratio: 0, amount })
+    somaInvoice[invId] = (somaInvoice[invId] ?? 0) + amount
+  }
+  for (const v of comComanda) {
+    const invId = v.invoice_id as string
+    const soma = somaInvoice[invId] ?? 0
+    const bucket = porInvoice[invId]
+    // Só vale a pena quando há mais de um método (senão o fallback já acerta)
+    if (!(soma > 0) || !bucket || bucket.size < 2) continue
+    out[v.id] = [...bucket.values()].map((s) => ({ method: s.method, cardType: s.cardType, feePercent: s.feePercent, ratio: s.amount / soma }))
+  }
+  return out
+}

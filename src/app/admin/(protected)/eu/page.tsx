@@ -71,7 +71,7 @@ async function PersonalKPIs({
     .select('id, total_price, invoice_item_id')
     .eq('business_id', business.id)
     .eq('professional_id', owner.id)
-    .not('payment_method', 'in', '(courtesy,credit)')
+    .not('payment_method', 'in', '(courtesy,credit,points)')
     .gte('paid_at', startOfDayBR(today))
     .lt('paid_at', startOfDayBR(addDaysBR(today, 1)))
     .not('paid_at', 'is', null)

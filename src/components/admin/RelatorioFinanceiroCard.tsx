@@ -114,7 +114,7 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .select('total_price, payment_method, payment_card_type')
       .eq('business_id', businessId)
       .is('invoice_item_id', null) // não veio de comanda
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', iniMes)
       .lt('paid_at', fimMes)
       .not('paid_at', 'is', null),
@@ -125,7 +125,7 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('type', 'product_sale')
       .eq('status', 'paid')
       .is('invoice_id', null) // não veio de comanda
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', iniMes)
       .lt('paid_at', fimMes)
       .not('paid_at', 'is', null),
@@ -134,7 +134,7 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .from('appointments')
       .select('total_price')
       .eq('business_id', businessId)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .is('invoice_item_id', null)
       .gte('paid_at', iniMesAnt)
       .lt('paid_at', fimMesAnt)
@@ -146,7 +146,7 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('type', 'product_sale')
       .eq('status', 'paid')
       .is('invoice_id', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', iniMesAnt)
       .lt('paid_at', fimMesAnt)
       .not('paid_at', 'is', null),
@@ -183,7 +183,7 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .select('total_price')
       .eq('business_id', businessId)
       .is('invoice_item_id', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', iniHoje)
       .lt('paid_at', fimHoje)
       .not('paid_at', 'is', null),
@@ -194,7 +194,7 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
       .eq('type', 'product_sale')
       .eq('status', 'paid')
       .is('invoice_id', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', iniHoje)
       .lt('paid_at', fimHoje)
       .not('paid_at', 'is', null),
@@ -213,7 +213,7 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
   for (const p of invPaymentsCurr ?? []) {
     const raw = (p.payment_method as string | null) ?? 'other'
     // cortesia + credit_cliente não contam como receita
-    if (raw === 'courtesy' || raw === 'credit') continue
+    if (raw === 'courtesy' || raw === 'credit' || raw === 'points') continue
     const key = resolveKey(raw, p.card_type as string | null)
     byMethod[key] = (byMethod[key] ?? 0) + Number(p.amount ?? 0)
   }
@@ -251,7 +251,7 @@ export default async function RelatorioFinanceiroCard({ businessId }: Props) {
     (invPaymentsToday ?? [])
       .filter((p) => {
         const m = (p.payment_method as string | null) ?? 'other'
-        return m !== 'courtesy' && m !== 'credit'
+        return m !== 'courtesy' && m !== 'credit' && m !== 'points'
       })
       .reduce((s, p) => s + Number(p.amount ?? 0), 0)
     + (apptsDirectToday ?? []).reduce((s, a) => s + Number(a.total_price ?? 0), 0)

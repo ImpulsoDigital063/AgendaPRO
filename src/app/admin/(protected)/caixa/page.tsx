@@ -7,7 +7,7 @@ import CaixaView from '@/components/recepcao/CaixaView'
 import { IconWallet } from '@/components/ui/Icon'
 import { getOwnerProfessional } from '@/lib/admin-data'
 import { getApptDiscountMap } from '@/lib/commission-discount'
-import { getApptPaymentSplitMap, type PaymentShare } from '@/lib/queries/appointment-payment-split'
+import { getSalePaymentSplitMap, getApptPaymentSplitMap, type PaymentShare } from '@/lib/queries/appointment-payment-split'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
@@ -67,15 +67,18 @@ export default async function AdminCaixaPage() {
       .select('id, total_price, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name, invoice_item_id')
       .eq('business_id', business.id)
       .not('paid_at', 'is', null)
+      // Decisão 29/09: cortesia, pontos e crédito não são dinheiro na gaveta ·
+      // saem do bruto/líquido do caixa (antes inflavam o fechamento).
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', startOfDayBR(today))
       .lt('paid_at', startOfDayBR(tomorrowISO)),
     supabase
       .from('sales')
-      .select('id, total, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name')
+      .select('id, total, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name, invoice_id')
       .eq('business_id', business.id)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .not('paid_at', 'is', null)
       .gte('paid_at', startOfDayBR(today))
       .lt('paid_at', startOfDayBR(tomorrowISO)),
@@ -102,6 +105,8 @@ export default async function AdminCaixaPage() {
     discount_cents: Math.round((apptDisc[a.id as string] ?? 0) * 100),
     payment_split: apptSplit[a.id as string],
   }))
+  // Produto em comanda paga dividida reparte entre os métodos (auditoria 29/09)
+  const saleSplit = await getSalePaymentSplitMap(sbAdmin, (paidSalesRes.data ?? []).map((x) => ({ id: x.id as string, invoice_id: (x.invoice_id as string | null) ?? null })))
   const salesToday: AppointmentForCash[] = (paidSalesRes.data ?? []).map((s) => ({
     id: s.id as string,
     total_price: Number(s.total ?? 0),
@@ -110,6 +115,7 @@ export default async function AdminCaixaPage() {
     payment_card_type: (s.payment_card_type as string | null) ?? null,
     payment_fee_percent: (s.payment_fee_percent as number | null) ?? null,
     client_name: (s.client_name as string | null) ?? 'Venda de produto',
+    payment_split: saleSplit[s.id as string],
   }))
   const todayAppts = [...apptsToday, ...salesToday]
 

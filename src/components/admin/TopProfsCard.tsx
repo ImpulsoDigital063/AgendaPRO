@@ -19,7 +19,7 @@ export default async function TopProfsCard({ businessId }: { businessId: string 
       .select('id, professional_id, total_price, payment_method, invoice_item_id, professional:professionals(id, name)')
       .eq('business_id', businessId)
       .not('paid_at', 'is', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('appointment_date', startStr)
       .lte('appointment_date', todayStr),
     supabase
@@ -28,7 +28,7 @@ export default async function TopProfsCard({ businessId }: { businessId: string 
       .eq('business_id', businessId)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('sale_date', startStr)
       .lte('sale_date', todayStr),
   ])

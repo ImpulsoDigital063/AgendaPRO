@@ -113,7 +113,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .eq('business_id', businessId)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', startOfDayBR(date))
       .lt('paid_at', startOfDayBR(addDaysBR(date, 1))),
     // Atendimentos PAGOS no dia (por paid_at · não por appointment_date) ·
@@ -124,7 +124,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
       .from('appointments')
       .select('id, total_price, professional_id, invoice_item_id')
       .eq('business_id', businessId)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('paid_at', startOfDayBR(date))
       .lt('paid_at', startOfDayBR(addDaysBR(date, 1)))
       .not('paid_at', 'is', null),

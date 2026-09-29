@@ -4,8 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import CaixaView from '@/components/recepcao/CaixaView'
 import { IconWallet } from '@/components/ui/Icon'
 import { getApptDiscountMap } from '@/lib/commission-discount'
-import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
-import { getApptPaymentSplitMap, type PaymentShare } from '@/lib/queries/appointment-payment-split'
+import { getSalePaymentSplitMap, getApptPaymentSplitMap, type PaymentShare } from '@/lib/queries/appointment-payment-split'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
@@ -61,6 +60,8 @@ export default async function RecepcaoCaixaPage() {
     .select('id, total_price, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name, invoice_item_id')
     .eq('business_id', business.id)
     .not('paid_at', 'is', null)
+    // Decisão 29/09: cortesia, pontos e crédito não são dinheiro na gaveta
+    .not('payment_method', 'in', '(courtesy,credit,points)')
     .gte('paid_at', startOfDayBR(today))
     .lt('paid_at', startOfDayBR(tomorrowISO))
 
@@ -72,22 +73,41 @@ export default async function RecepcaoCaixaPage() {
     { auth: { persistSession: false } },
   )
   const apptDisc = await getApptDiscountMap(sbAdmin, (paidToday ?? []).map((a) => a.invoice_item_id))
-  // Valor cobrado (comanda com produto: combo / vendido junto). Sem isso o
-  // caixa da recepção fechava por baixo — nem as linhas nem os totais somavam
-  // produto (Eduardo 22/07). Lote, via service-role (recep não lê invoices).
-  const apptCharged = await getApptChargedMap(sbAdmin, (paidToday ?? []).map((a) => a.id as string))
-  // v146 · a conferência por método vinha do payment_method do atendimento, que
-  // guarda só o MAIOR pagamento. Comanda dividida caía inteira num método só.
+  /* Auditoria da comanda (29/09): a recepção usava `charged_total` = o total
+     da COMANDA INTEIRA em cada atendimento. Comanda com 2 atendimentos +
+     produto contava tudo 2x (R$460 onde entraram R$230), e venda de produto
+     avulsa nem aparecia. Agora é a mesma conta do Caixa da dona: atendimento
+     pelo líquido + venda de produto pelo valor dela (sales.total), cada coisa
+     uma vez. */
   const apptSplit = await getApptPaymentSplitMap(sbAdmin, (paidToday ?? []).map((a) => a.id as string))
-  const todayAppts: AppointmentForCash[] = (paidToday ?? []).map((a) => {
-    const c = apptCharged[a.id as string]
-    return {
-      ...a,
-      discount_cents: Math.round((apptDisc[a.id as string] ?? 0) * 100),
-      charged_total: c && c.produtos.length > 0 ? c.charged : null,
-      payment_split: apptSplit[a.id as string],
-    }
-  })
+  const apptsHoje: AppointmentForCash[] = (paidToday ?? []).map((a) => ({
+    ...a,
+    discount_cents: Math.round((apptDisc[a.id as string] ?? 0) * 100),
+    payment_split: apptSplit[a.id as string],
+  }))
+  const { data: vendasHoje } = await sbAdmin
+    .from('sales')
+    .select('id, total, paid_at, payment_method, payment_card_type, payment_fee_percent, client_name, invoice_id')
+    .eq('business_id', business.id)
+    .eq('type', 'product_sale')
+    .eq('status', 'paid')
+    .not('payment_method', 'in', '(courtesy,credit,points)')
+    .not('paid_at', 'is', null)
+    .gte('paid_at', startOfDayBR(today))
+    .lt('paid_at', startOfDayBR(tomorrowISO))
+  // Produto em comanda paga dividida reparte entre os métodos (auditoria 29/09)
+  const saleSplit = await getSalePaymentSplitMap(sbAdmin, (vendasHoje ?? []).map((x) => ({ id: x.id as string, invoice_id: (x.invoice_id as string | null) ?? null })))
+  const salesHoje: AppointmentForCash[] = (vendasHoje ?? []).map((v) => ({
+    id: v.id as string,
+    total_price: Number(v.total ?? 0),
+    paid_at: v.paid_at as string | null,
+    payment_method: v.payment_method as string | null,
+    payment_card_type: (v.payment_card_type as string | null) ?? null,
+    payment_fee_percent: (v.payment_fee_percent as number | null) ?? null,
+    client_name: (v.client_name as string | null) ?? 'Venda de produto',
+    payment_split: saleSplit[v.id as string],
+  }))
+  const todayAppts: AppointmentForCash[] = [...apptsHoje, ...salesHoje]
 
   // Resumo do dia · atendimentos no dia + a receber (contexto antes de fechar)
   const { data: allTodayAppts } = await supabase
@@ -98,15 +118,11 @@ export default async function RecepcaoCaixaPage() {
     .not('status', 'in', '(cancelled,no_show)')
 
   const todayCount = (allTodayAppts ?? []).length
-  // "A receber" também precisa do valor da comanda, senão promete menos do que
-  // vai entrar quando o atendimento tem produto.
-  const pendentes = (allTodayAppts ?? []).filter((a) => !a.paid_at)
-  const pendChargedMap = await getApptChargedMap(sbAdmin, pendentes.map((a) => a.id as string))
-  const pendingValueCents = pendentes.reduce((s, a) => {
-    const c = pendChargedMap[a.id as string]
-    const valor = c && c.produtos.length > 0 ? c.charged : Number(a.total_price) || 0
-    return s + Math.round(valor * 100)
-  }, 0)
+  // "A receber" = valor de cada atendimento ainda não pago (mesma conta do
+  // Caixa da dona). O valor da comanda inteira por atendimento duplicava
+  // quando a comanda tinha 2+ atendimentos.
+  const pendingValueCents = (allTodayAppts ?? []).filter((a) => !a.paid_at)
+    .reduce((s, a) => s + Math.round((Number(a.total_price) || 0) * 100), 0)
   const pendingCount = (allTodayAppts ?? []).filter((a) => !a.paid_at).length
 
   // Recepção só vê dado DIÁRIO · não recebe histórico de fechamentos

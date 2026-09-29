@@ -17,7 +17,7 @@ export default async function TopServicesCard({ businessId }: { businessId: stri
       .select('id, service_name, total_price, payment_method, invoice_item_id')
       .eq('business_id', businessId)
       .not('paid_at', 'is', null)
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('appointment_date', startStr)
       .lte('appointment_date', todayStr),
     supabase
@@ -26,7 +26,7 @@ export default async function TopServicesCard({ businessId }: { businessId: stri
       .eq('business_id', businessId)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('sale_date', startStr)
       .lte('sale_date', todayStr),
   ])

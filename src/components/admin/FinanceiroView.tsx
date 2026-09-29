@@ -59,7 +59,7 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
   // - Cortesias = brinde dado, conta separada (nao soma em receita).
   // - Faturado = Realizado + Em aberto (cortesia exclusa).
   const pagosReceita = appointments.filter(
-    (a) => a.paid_at && a.total_price && a.payment_method !== 'courtesy' && a.payment_method !== 'credit'
+    (a) => a.paid_at && a.total_price && a.payment_method !== 'courtesy' && a.payment_method !== 'credit' && (a.payment_method as string | null) !== 'points'
   )
   const cortesias = appointments.filter(
     (a) => a.paid_at && a.total_price && a.payment_method === 'courtesy'

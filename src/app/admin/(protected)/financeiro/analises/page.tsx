@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import AnalisesView from '@/components/admin/AnalisesView'
 import { getApptDiscountMap } from '@/lib/commission-discount'
-import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 
 export default async function AnalisesPage({
@@ -64,7 +63,7 @@ export default async function AnalisesPage({
     .from('appointments')
     .select('id, total_price, payment_method, invoice_item_id')
     .eq('business_id', business.id)
-    .not('payment_method', 'in', '(courtesy,credit)')
+    .not('payment_method', 'in', '(courtesy,credit,points)')
     .gte('appointment_date', startPrev)
     .lte('appointment_date', endPrev)
     .not('paid_at', 'is', null)
@@ -78,7 +77,7 @@ export default async function AnalisesPage({
     .eq('business_id', business.id)
     .eq('type', 'product_sale')
     .eq('status', 'paid')
-    .not('payment_method', 'in', '(courtesy,credit)')
+    .not('payment_method', 'in', '(courtesy,credit,points)')
     .gte('sale_date', startCurrent)
     .lte('sale_date', endCurrent)
 
@@ -88,7 +87,7 @@ export default async function AnalisesPage({
     .eq('business_id', business.id)
     .eq('type', 'product_sale')
     .eq('status', 'paid')
-    .not('payment_method', 'in', '(courtesy,credit)')
+    .not('payment_method', 'in', '(courtesy,credit,points)')
     .gte('sale_date', startPrev)
     .lte('sale_date', endPrev)
 
@@ -132,29 +131,20 @@ export default async function AnalisesPage({
 
   // λ.valor-liquido: receita (atual e anterior) com o cupom da comanda abatido
   // antes de passar pro AnalisesView (04/07/2026).
-  const [discCur, discPrev, chargedCur, chargedPrev] = await Promise.all([
+  const [discCur, discPrev] = await Promise.all([
     getApptDiscountMap(supabase, (currentRes.data ?? []).map((a) => (a as { invoice_item_id: string | null }).invoice_item_id)),
     getApptDiscountMap(supabase, (prevRes.data ?? []).map((a) => (a as { invoice_item_id: string | null }).invoice_item_id)),
-    // valor cobrado quando a comanda tem produto (combo / vendido junto)
-    getApptChargedMap(supabase, (currentRes.data ?? []).map((a) => (a as { id: string }).id)),
-    getApptChargedMap(supabase, (prevRes.data ?? []).map((a) => (a as { id: string }).id)),
   ])
-  // charged (invoices.total) já vem líquido — não abate desconto de novo.
-  const netAppt = (
-    a: Record<string, unknown>,
-    m: Record<string, number>,
-    c: Record<string, { charged: number; produtos: unknown[] }>,
-  ) => {
-    const ch = c[a.id as string]
-    return {
-      ...a,
-      total_price: ch && ch.produtos.length > 0
-        ? ch.charged
-        : Math.max(0, Number(a.total_price ?? 0) - (m[a.id as string] ?? 0)),
-    }
-  }
-  const currentNet = (currentRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discCur, chargedCur))
-  const prevNet = (prevRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discPrev, chargedPrev))
+  /* Serviço pelo líquido. O produto vem da soma de `sales` (salesCurrent /
+     salesPrev). Antes o atendimento com produto na comanda recebia o valor
+     da comanda inteira (charged) E o produto era somado de novo pelas
+     vendas — 195 + 95 virava 385 (auditoria 29/09). */
+  const netAppt = (a: Record<string, unknown>, m: Record<string, number>) => ({
+    ...a,
+    total_price: Math.max(0, Number(a.total_price ?? 0) - (m[a.id as string] ?? 0)),
+  })
+  const currentNet = (currentRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discCur))
+  const prevNet = (prevRes.data ?? []).map((a) => netAppt(a as Record<string, unknown>, discPrev))
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>

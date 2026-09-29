@@ -90,7 +90,8 @@ export default function AnalisesView({
   const pagos = useMemo(() => currentMonth.filter((a) =>
     a.paid_at && a.total_price &&
     a.payment_method !== 'courtesy' &&
-    (a.payment_method as string | null) !== 'credit',
+    (a.payment_method as string | null) !== 'credit' &&
+    (a.payment_method as string | null) !== 'points',
   ), [currentMonth])
   /* Horario que venceu por falta de sinal sai da conta (v117): a cliente
      nunca confirmou, entao nao houve desistencia nem perda de atendimento

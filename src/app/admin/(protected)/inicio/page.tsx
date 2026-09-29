@@ -74,7 +74,7 @@ async function KPIsRow({ business }: { business: Business }) {
     .eq('business_id', business.id)
     .eq('type', 'product_sale')
     .eq('status', 'paid')
-    .not('payment_method', 'in', '(courtesy,credit)')
+    .not('payment_method', 'in', '(courtesy,credit,points)')
     .gte('paid_at', startOfDayBR(today))
     .lt('paid_at', startOfDayBR(addDaysBR(today, 1)))
   const productSalesPaidToday = salesToday ?? []
@@ -91,7 +91,7 @@ async function KPIsRow({ business }: { business: Business }) {
   // λ.valor-liquido: recebido e a-receber com o cupom da comanda abatido (04/07/2026).
   const apptDisc = await getApptDiscountMap(sb, list.map((a) => a.invoice_item_id))
   const liq = (a: { id: string; total_price: number | null }) => Math.max(0, Number(a.total_price ?? 0) - (apptDisc[a.id] ?? 0))
-  const recebidos = list.filter((a) => a.paid_at != null && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
+  const recebidos = list.filter((a) => a.paid_at != null && a.payment_method !== 'courtesy' && a.payment_method !== 'credit' && a.payment_method !== 'points')
   const recebidoApptsTotal = recebidos.reduce((s, a) => s + liq(a), 0)
   const recebidoTotal = recebidoApptsTotal + recebidoSalesTotal
   const recebidoCount = recebidos.length + recebidoSalesCount

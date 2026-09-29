@@ -198,7 +198,7 @@ export default async function FinanceiroPage({
       .eq('business_id', business.id)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('sale_date', startStr)
       .lte('sale_date', endStr),
     supabase
@@ -207,7 +207,7 @@ export default async function FinanceiroPage({
       .eq('business_id', business.id)
       .eq('type', 'product_sale')
       .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit)')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
       .gte('sale_date', prevStartStr)
       .lte('sale_date', prevEndStr),
   ])
@@ -257,7 +257,7 @@ export default async function FinanceiroPage({
 
   // Cálculos · receita = appointments pagos + vendas de produto pagas
   // Receita real exclui cortesia (bonificação não conta como faturamento)
-  const paidAppts = appointments.filter((a) => a.paid_at && a.payment_method !== 'courtesy' && a.payment_method !== 'credit')
+  const paidAppts = appointments.filter((a) => a.paid_at && a.payment_method !== 'courtesy' && a.payment_method !== 'credit' && a.payment_method !== 'points')
   const valorRecebidoAppts = paidAppts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
   const valorRecebidoSales = productSales.reduce((s, p) => s + Number(p.total ?? 0), 0)
   const valorRecebido = valorRecebidoAppts + valorRecebidoSales
