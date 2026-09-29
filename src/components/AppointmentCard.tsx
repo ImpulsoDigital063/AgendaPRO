@@ -66,6 +66,8 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
   // Modal de pagamento — só abre via botão "Atendi e recebi". Botão
   // "Atendi" simples conclui sem método (pra quem cobra fora do app).
   const [paymentModal, setPaymentModal] = useState(false)
+  const [erroPagamento, setErroPagamento] = useState<string | null>(null)
+  const alertaPagamento = (m: string) => setErroPagamento(m)
   // Toggle de pontualidade. Quando ON, qualquer fluxo de complete
   // (Atendi OU Atendi e recebi) dispara o bônus depois do update.
   const [withPunctuality, setWithPunctuality] = useState(false)
@@ -199,9 +201,17 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
 
   /**
    * Conclui atendimento com método de pagamento opcional.
-   * - method != null: update atômico — status=completed + paid_at + payment_method
-   * - method == null: só marca completed (admin confirma pagamento depois no Financeiro)
+   * - method != null: paga pela rota /api/admin/appointments/[id]/payment e
+   *   só então marca completed.
+   * - method == null: só marca completed (paga depois).
    * - withPunctuality: dispara também o bônus via API após o update
+   *
+   * Auditoria da comanda (28/09/2026): este cartão (aba "Eu" do dono que
+   * atende e tela da recepção) gravava paid_at DIRETO no atendimento. Todo
+   * atendimento tem comanda (trigger v70/v77) e a comanda ficava ABERTA sem
+   * pagamento — Fluxo de Caixa e Início contam atendimento com comanda pelo
+   * pagamento da comanda, então o dinheiro sumia deles (Olímpio: 28 casos,
+   * R$1.205). A rota de pagamento fecha a comanda e registra o pagamento.
    */
   async function completeWithPayment(
     method: PaymentMethodChoice,
@@ -210,30 +220,28 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
   ) {
     setLoading(true)
     const supabase = createClient()
-    const updates: {
-      status: string
-      paid_at?: string
-      payment_method?: string
-      payment_device_id?: string | null
-      payment_card_brand?: string | null
-      payment_card_type?: string | null
-      payment_fee_percent?: number | null
-      payment_installments?: number
-    } = {
-      status: 'completed',
-    }
     if (method != null) {
-      updates.paid_at = new Date().toISOString()
-      updates.payment_method = method
+      const body: Record<string, unknown> = { method }
       if (method === 'card' && cardDetails) {
-        updates.payment_device_id = cardDetails.device_id
-        updates.payment_card_brand = cardDetails.card_brand
-        updates.payment_card_type = cardDetails.card_type
-        updates.payment_fee_percent = cardDetails.fee_percent
-        updates.payment_installments = cardDetails.installments ?? 1
+        body.device_id = cardDetails.device_id
+        body.card_brand = cardDetails.card_brand
+        body.card_type = cardDetails.card_type
+        body.fee_percent = cardDetails.fee_percent
+        body.installments = cardDetails.installments ?? 1
+      }
+      const res = await fetch(`/api/admin/appointments/${appointment.id}/payment`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setLoading(false)
+        alertaPagamento(d.error ?? 'Não foi possível registrar o pagamento. Tente de novo.')
+        return
       }
     }
-    await supabase.from('appointments').update(updates).eq('id', appointment.id)
+    await supabase.from('appointments').update({ status: 'completed' }).eq('id', appointment.id)
     setStatus('completed')
     setPaymentModal(false)
     if (withPunctuality) {
@@ -660,6 +668,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
       />
       <PaymentMethodModal
         open={paymentModal}
+        erro={paymentModal ? erroPagamento : null}
         clientName={appointment.client_name}
         totalPrice={valorCobrado}
         sinalPago={appointment.sinal_pago_at ? Number(appointment.sinal_valor ?? 0) : 0}
@@ -673,7 +682,7 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         loading={loading}
         businessId={appointment.business_id}
         onChoose={(method, cardDetails) => completeWithPayment(method, withPunctuality, cardDetails)}
-        onClose={() => !loading && setPaymentModal(false)}
+        onClose={() => { if (!loading) { setPaymentModal(false); setErroPagamento(null) } }}
       />
       {/* Confirmação "atendi com antecedência" — só aparece se o admin
           tentar marcar concluído antes da janela de 15min. Caminho A
