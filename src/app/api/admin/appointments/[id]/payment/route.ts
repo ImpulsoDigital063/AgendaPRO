@@ -271,22 +271,32 @@ export async function POST(
           })
           .eq('id', item.id)
 
+        /* Mesma conta de /invoices/[id]/items (auditoria 29/09 · M1): o total
+           dos itens JÁ vem líquido do desconto da linha; só o desconto GERAL
+           sai de novo. Antes subtraía invoices.discount (linha + geral) e o
+           desconto da linha saía 2x; e gravava o subtotal líquido. */
         const { data: itens } = await admin
           .from('invoice_items')
-          .select('total')
+          .select('total, discount')
           .eq('invoice_id', item.invoice_id)
-        const subtotal = (itens ?? []).reduce((s, i) => s + Number(i.total ?? 0), 0)
+        const itensTotal = (itens ?? []).reduce((s, i) => s + Number(i.total ?? 0), 0)
+        const itensDesc = (itens ?? []).reduce((s, i) => s + Number(i.discount ?? 0), 0)
 
         const { data: fatura } = await admin
           .from('invoices')
-          .select('discount')
+          .select('manual_discount')
           .eq('id', item.invoice_id)
           .maybeSingle()
-        const descontoFatura = Number(fatura?.discount ?? 0)
+        const geral = Math.min(Number(fatura?.manual_discount ?? 0), itensTotal)
 
         await admin
           .from('invoices')
-          .update({ subtotal, total: Math.max(0, subtotal - descontoFatura) })
+          .update({
+            subtotal: itensTotal + itensDesc,
+            discount: itensDesc + geral,
+            manual_discount: geral,
+            total: Math.max(0, itensTotal - geral),
+          })
           .eq('id', item.invoice_id)
       }
     } catch (e) {

@@ -186,6 +186,28 @@ export async function POST(request: Request) {
     }
     // Espelha na lista em memória — os itens da fatura saem daqui embaixo.
     a.total_price = novo
+
+    /* A3 (auditoria 29/09): o item da comanda que o trigger criou seguia com
+       o valor antigo (R$0 no serviço sem preço fixo) e o pagamento sai da
+       SOMA DOS ITENS → comanda fechava em R$0 com o atendimento marcado
+       R$450. Atualiza a linha junto, respeitando o desconto dela. */
+    if (a.invoice_item_id) {
+      const { data: linha } = await admin
+        .from('invoice_items')
+        .select('quantity, discount')
+        .eq('id', a.invoice_item_id)
+        .maybeSingle()
+      if (linha) {
+        const qtd = Number(linha.quantity ?? 1) || 1
+        const { error: errLinha } = await admin
+          .from('invoice_items')
+          .update({ unit_price: novo, total: Math.max(0, novo * qtd - Number(linha.discount ?? 0)) })
+          .eq('id', a.invoice_item_id)
+        if (errLinha) {
+          return NextResponse.json({ error: 'nao_foi_possivel_atualizar_valor' }, { status: 500 })
+        }
+      }
+    }
   }
 
   const subtotalAppts = appts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
