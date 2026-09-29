@@ -41,6 +41,8 @@ export type ApptCharged = {
   services: number
   /** produtos lançados na comanda (combo ou vendidos junto) */
   produtos: ChargedProduct[]
+  /** "Desconto geral" já lançado na comanda (invoices.manual_discount) */
+  descontoGeral: number
 }
 
 /**
@@ -72,11 +74,15 @@ export async function getApptChargedMap(
     sb.from('invoice_items')
       .select('invoice_id, item_type, description, quantity, unit_price, total')
       .in('invoice_id', invoiceIds),
-    sb.from('invoices').select('id, total').in('id', invoiceIds),
+    sb.from('invoices').select('id, total, manual_discount').in('id', invoiceIds),
   ])
 
   const invTotal: Record<string, number> = {}
-  for (const inv of invoices ?? []) invTotal[inv.id as string] = Number(inv.total ?? 0)
+  const invDesc: Record<string, number> = {}
+  for (const inv of invoices ?? []) {
+    invTotal[inv.id as string] = Number(inv.total ?? 0)
+    invDesc[inv.id as string] = Number((inv as { manual_discount?: number | null }).manual_discount ?? 0)
+  }
 
   const porInvoice: Record<string, { services: number; produtos: ChargedProduct[] }> = {}
   for (const it of allItems ?? []) {
@@ -104,6 +110,7 @@ export async function getApptChargedMap(
       charged: invTotal[invId] ?? b.services + b.produtos.reduce((s, p) => s + p.total, 0),
       services: b.services,
       produtos: b.produtos,
+      descontoGeral: invDesc[invId] ?? 0,
     }
   }
   return out

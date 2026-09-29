@@ -223,7 +223,7 @@ export async function PATCH(
   // Carrega o appointment
   const { data: appointment } = await admin
     .from('appointments')
-    .select('id, business_id, professional_id, appointment_date, start_time, end_time, status')
+    .select('id, business_id, professional_id, appointment_date, start_time, end_time, status, service_id, total_price')
     .eq('id', appointmentId)
     .single()
 
@@ -289,15 +289,39 @@ export async function PATCH(
     }
   }
 
+  /* MESMOS SERVIÇOS = mantém preço, duração e a lista (auditoria da comanda
+     29/09). O modal manda serviceIds em todo salvamento; a rota recalculava
+     tudo pelo catálogo mesmo quando só o horário/data/profissional/obs
+     mudava. Combo (serviço rateado) voltava ao preço cheio, resgate de
+     pacote (R$0) passava a ser cobrado, desconto da linha e cupom do link
+     sumiam. Trocou serviço → recalcula pelo catálogo, como antes. */
+  const { data: atuaisRows } = await admin
+    .from('appointment_services')
+    .select('service_id')
+    .eq('appointment_id', appointmentId)
+  const atuais = new Set<string>((atuaisRows ?? []).map((r) => r.service_id as string).filter(Boolean))
+  if (atuais.size === 0 && appointment.service_id) atuais.add(appointment.service_id as string)
+  const mesmosServicos = atuais.size === uniqueServiceIds.length && uniqueServiceIds.every((id) => atuais.has(id))
+  const duracaoAtual = (() => {
+    const [h1, m1] = String(appointment.start_time).slice(0, 5).split(':').map(Number)
+    const [h2, m2] = String(appointment.end_time ?? '').slice(0, 5).split(':').map(Number)
+    const d = (h2 * 60 + m2) - (h1 * 60 + m1)
+    return Number.isFinite(d) && d > 0 ? d : 0
+  })()
+
   // Calcula nova duração total + total_price + novo end_time
-  const totalDurationMin = services.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0)
+  const duracaoCatalogo = services.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0)
+  const totalDurationMin = mesmosServicos && duracaoAtual > 0 ? duracaoAtual : duracaoCatalogo
   if (totalDurationMin <= 0) {
     return NextResponse.json(
       { error: 'Duração total inválida (serviços sem duração configurada).' },
       { status: 400 },
     )
   }
-  const totalPrice = services.reduce((sum, s) => sum + (s.price ?? 0), 0)
+  const precoCatalogo = services.reduce((sum, s) => sum + (s.price ?? 0), 0)
+  const totalPrice = mesmosServicos && appointment.total_price != null
+    ? Number(appointment.total_price)
+    : precoCatalogo
 
   // Resolve os novos valores (ausente = mantém o atual).
   const startStr = (newStartRaw ?? appointment.start_time).slice(0, 5)
@@ -362,24 +386,27 @@ export async function PATCH(
   // sem services — o cron auto-complete não falha por isso e o admin
   // re-edita. Trade-off aceito pra evitar RPC só pra essa transação.
 
-  const { error: delErr } = await admin
-    .from('appointment_services')
-    .delete()
-    .eq('appointment_id', appointmentId)
-  if (delErr) {
-    return NextResponse.json({ error: 'Erro ao limpar serviços antigos.' }, { status: 500 })
-  }
+  // Mesmos serviços: a lista (com os preços de quando foi marcado) fica.
+  if (!mesmosServicos) {
+    const { error: delErr } = await admin
+      .from('appointment_services')
+      .delete()
+      .eq('appointment_id', appointmentId)
+    if (delErr) {
+      return NextResponse.json({ error: 'Erro ao limpar serviços antigos.' }, { status: 500 })
+    }
 
-  const newRows = services.map((s) => ({
-    appointment_id: appointmentId,
-    service_id: s.id,
-    service_name: s.name,
-    price: s.price,
-    duration_minutes: s.duration_minutes,
-  }))
-  const { error: insErr } = await admin.from('appointment_services').insert(newRows)
-  if (insErr) {
-    return NextResponse.json({ error: 'Erro ao gravar novos serviços.' }, { status: 500 })
+    const newRows = services.map((s) => ({
+      appointment_id: appointmentId,
+      service_id: s.id,
+      service_name: s.name,
+      price: s.price,
+      duration_minutes: s.duration_minutes,
+    }))
+    const { error: insErr } = await admin.from('appointment_services').insert(newRows)
+    if (insErr) {
+      return NextResponse.json({ error: 'Erro ao gravar novos serviços.' }, { status: 500 })
+    }
   }
 
   // Atualiza os campos denormalizados em appointments (primeiro serviço
@@ -431,7 +458,9 @@ export async function PATCH(
     .eq('reference_id', appointmentId)
     .eq('item_type', 'appointment')
 
-  for (const it of apptInvItems ?? []) {
+  // Mesmos serviços: a comanda não muda (preço, desconto da linha e rateio
+  // do combo ficam como estavam).
+  for (const it of mesmosServicos ? [] : apptInvItems ?? []) {
     const { data: inv } = await admin
       .from('invoices')
       .select('id, status, manual_discount')

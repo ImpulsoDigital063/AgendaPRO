@@ -137,6 +137,9 @@ export default function FaturarComandaModal({
   // vendido junto). Este modal nunca lia a comanda — mostrava só o serviço e
   // fechava conta de R$290 dizendo R$195 (Eduardo 22/07).
   const [jaNaComanda, setJaNaComanda] = useState<ChargedProduct[]>([])
+  // "Desconto geral" já lançado na comanda (ComandaDetalhe) · entra no total
+  // e a rota respeita no fechamento (auditoria 29/09 · A1)
+  const [descontoJaLancado, setDescontoJaLancado] = useState(0)
   const [search, setSearch] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -197,8 +200,12 @@ export default function FaturarComandaModal({
     let cancelled = false
     ;(async () => {
       setJaNaComanda([])
+      setDescontoJaLancado(0)
       const charged = await getApptCharged(supabase, appointmentId)
-      if (!cancelled) setJaNaComanda(charged?.produtos ?? [])
+      if (!cancelled) {
+        setJaNaComanda(charged?.produtos ?? [])
+        setDescontoJaLancado(charged?.descontoGeral ?? 0)
+      }
     })()
     return () => { cancelled = true }
   }, [open, appointmentId, supabase])
@@ -219,7 +226,7 @@ export default function FaturarComandaModal({
   const subtotalServices = useMemo(() => serviceCart.reduce((s, l) => s + l.unit_price, 0), [serviceCart])
   // Já lançado na comanda entra no total · é o que a cliente paga.
   const subtotalJaNaComanda = useMemo(() => jaNaComanda.reduce((s, p) => s + p.total, 0), [jaNaComanda])
-  const total = valorServicoEfetivo + subtotalJaNaComanda + subtotalProds + subtotalServices
+  const total = Math.max(0, valorServicoEfetivo + subtotalJaNaComanda + subtotalProds + subtotalServices - descontoJaLancado)
 
   const svcDisponiveis = useMemo(() => {
     const q = svcSearch.trim().toLowerCase()
@@ -814,6 +821,13 @@ export default function FaturarComandaModal({
                 <span className="text-sm font-bold tabular-nums" style={{ color: '#059669' }}>
                   − {brl(sinalEfetivo)}
                 </span>
+              </div>
+            )}
+
+            {descontoJaLancado > 0 && (
+              <div className="flex justify-between text-xs mb-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+                <span>Desconto geral já lançado na comanda</span>
+                <span className="tabular-nums font-semibold" style={{ color: '#DC2626' }}>− {brl(descontoJaLancado)}</span>
               </div>
             )}
 

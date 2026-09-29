@@ -73,9 +73,9 @@ export async function POST(request: Request) {
       && (typeof manualDiscountRaw !== 'number' || !Number.isFinite(manualDiscountRaw) || manualDiscountRaw < 0)) {
     return NextResponse.json({ error: 'manual_discount inválido' }, { status: 400 })
   }
-  const manualDiscount = typeof manualDiscountRaw === 'number' ? Math.round(manualDiscountRaw * 100) / 100 : 0
+  let manualDiscount = typeof manualDiscountRaw === 'number' ? Math.round(manualDiscountRaw * 100) / 100 : 0
   // De onde sai o desconto (serviço / produto / proporcional · v148).
-  const discountTarget = normalizarAlvo(body.discount_target)
+  let discountTarget = normalizarAlvo(body.discount_target)
 
   const admin = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -242,10 +242,11 @@ export async function POST(request: Request) {
     // Caminho A · reusa invoice da auto-criação
     const { data: existingItem } = await admin
       .from('invoice_items')
-      .select('id, invoice_id, invoice:invoices(id, invoice_number, status, business_id)')
+      .select('id, invoice_id, invoice:invoices(id, invoice_number, status, business_id, manual_discount, discount_target)')
       .eq('id', apptWithExistingItem.invoice_item_id!)
       .maybeSingle()
-    const inv = existingItem?.invoice as { id: string; invoice_number: number; status: string; business_id: string } | { id: string; invoice_number: number; status: string; business_id: string }[] | null
+    type InvA = { id: string; invoice_number: number; status: string; business_id: string; manual_discount: number | null; discount_target: string | null }
+    const inv = existingItem?.invoice as InvA | InvA[] | null
     const invObj = Array.isArray(inv) ? inv[0] : inv
     if (!invObj || invObj.business_id !== businessId) {
       return NextResponse.json({ error: 'invoice_not_accessible' }, { status: 403 })
@@ -258,6 +259,14 @@ export async function POST(request: Request) {
     }
     invoice = { id: invObj.id, invoice_number: invObj.invoice_number }
     isExistingInvoice = true
+    /* Desconto geral que JÁ estava na comanda (dado no ComandaDetalhe) vale
+       quando o Faturar não manda um novo (auditoria 29/09 · A1). Antes o
+       fechamento cobrava cheio e o manual_discount ficava gravado, e o
+       líquido/comissão descontavam o que a cliente não teve. */
+    if (manualDiscountRaw === undefined || manualDiscountRaw === null) {
+      manualDiscount = Math.round(Number(invObj.manual_discount ?? 0) * 100) / 100
+      if (body.discount_target === undefined) discountTarget = normalizarAlvo(invObj.discount_target)
+    }
     // appointments já estão linkados aos invoice_items (trigger fez)
     // só precisamos saber os invoice_item_ids deles
     const allApptInvoiceItemIds = appts.map((a) => a.invoice_item_id).filter(Boolean) as string[]
@@ -551,7 +560,8 @@ export async function POST(request: Request) {
         status: willClose ? 'closed' : 'open',
         closed_at: willClose ? nowIso : null,
         customer_id: customerId,
-        notes: body.notes ?? null,
+        // Observação só muda quando vem no pedido (apagava a da comanda · A1)
+        ...(typeof body.notes === 'string' ? { notes: body.notes } : {}),
       })
       .eq('id', invoice.id)
   } else if (willClose) {
