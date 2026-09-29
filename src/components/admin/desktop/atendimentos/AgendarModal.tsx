@@ -444,19 +444,15 @@ export default function AgendarModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cliente?.id, svcIdsKey])
 
-  // Lock scroll + ESC
+  // Lock scroll · só fecha no X ou no Cancelar (Eduardo 29/09): toque fora e
+  // Esc fechavam e a pessoa perdia o agendamento que estava preenchendo.
   useEffect(() => {
     if (!open) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !saving) onClose()
-    }
-    document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     return () => {
-      document.removeEventListener('keydown', onKey)
       document.body.style.overflow = ''
     }
-  }, [open, saving, onClose])
+  }, [open])
 
   // Operações em linhas de serviço
   function updateLine(uid: string, partial: Partial<ServiceLine>) {
@@ -1510,7 +1506,6 @@ export default function AgendarModal({
       aria-labelledby="agendar-title"
       className="fixed inset-0 z-[300] flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
-      onClick={() => !saving && onClose()}
     >
       <div
         onClick={(e) => e.stopPropagation()}

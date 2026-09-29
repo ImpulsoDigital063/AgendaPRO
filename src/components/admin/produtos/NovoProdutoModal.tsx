@@ -84,20 +84,17 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
 
+  // Só fecha no X ou no Cancelar (Eduardo 29/09): toque fora e Esc fechavam e
+  // a pessoa perdia o cadastro inteiro.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !saving) onClose()
-    }
-    document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     // Carrega marcas e categorias existentes
     fetch('/api/admin/product-brands').then((r) => r.json()).then((d) => setBrands(d.brands ?? []))
     fetch('/api/admin/product-categories').then((r) => r.json()).then((d) => setCategories(d.categories ?? []))
     return () => {
-      document.removeEventListener('keydown', onKey)
       document.body.style.overflow = ''
     }
-  }, [saving, onClose])
+  }, [])
 
   async function criarMarca() {
     const n = newBrand.trim()
@@ -213,7 +210,6 @@ export default function NovoProdutoModal({ businessId: _businessId, onClose, onS
       aria-modal="true"
       className="fixed inset-0 z-[300] flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
-      onClick={() => !saving && onClose()}
     >
       <div
         onClick={(e) => e.stopPropagation()}

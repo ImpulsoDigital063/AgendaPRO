@@ -188,12 +188,8 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
     return () => { vivo = false; clearTimeout(id) }
   }, [termoCliente, buscandoCliente, businessId, supabase])
 
-  useEffect(() => {
-    if (!open) return
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && !salvando && !pagando) onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, salvando, pagando, onClose])
+  // Só fecha no X ou no Fechar (Eduardo 29/09): toque fora e Esc fechavam e a
+  // pessoa perdia a venda que estava montando.
 
   const termo = busca.trim().toLowerCase()
   const listaServicos = servicos.filter((s) => !termo || s.name.toLowerCase().includes(termo))
@@ -410,7 +406,6 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
       aria-label="Registrar venda"
       className="fixed inset-0 z-[250] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
-      onClick={() => !salvando && !pagando && onClose()}
     >
       <div
         onClick={(e) => e.stopPropagation()}
