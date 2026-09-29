@@ -313,6 +313,31 @@ export default async function BusinessPage({
             </p>
           )}
 
+          {/* Negócio de uma profissional só: a seção "Equipe" lá embaixo
+              não aparece (exige 2+), então quem atende sumia da página.
+              Só mostra com foto — sem foto, um círculo com inicial não
+              acrescenta nada ao nome do negócio logo acima. */}
+          {professionals?.length === 1 && professionals[0].photo_url && (
+            <div className="flex items-center gap-3 mt-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={professionals[0].photo_url}
+                alt={professionals[0].name}
+                className="w-11 h-11 rounded-full object-cover flex-shrink-0"
+                style={{
+                  objectPosition: 'center 20%',
+                  border: `2px solid ${hexToRgba(primary, 0.3)}`,
+                }}
+              />
+              <p className="text-sm leading-tight" style={{ color: muted }}>
+                Atendimento com{' '}
+                <span className="font-semibold" style={{ color: text }}>
+                  {professionals[0].name}
+                </span>
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2 mt-4">
             {b.address && (
               // Endereco agora abre Google Maps em nova aba (CIC rodada 6:
