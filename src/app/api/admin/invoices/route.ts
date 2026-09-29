@@ -3,7 +3,7 @@ import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
 import { reservarComanda, RESPOSTA_COMANDA_OCUPADA } from '@/lib/reserva-comanda'
 import { normalizarAlvo } from '@/lib/desconto-geral'
-import { dataBR, horaBR } from '@/lib/date-br'
+import { dataBR, horaBR, todayBR } from '@/lib/date-br'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -252,6 +252,21 @@ export async function POST(request: Request) {
 
   const nowIso = new Date().toISOString()
 
+  // Data da venda (PDV · Eduardo 29/09): lançar atendimento/venda que já
+  // aconteceu e o pagamento que já entrou. Sem data, ou com hoje, nada muda.
+  // Data passada: tudo nasce naquele dia (meio-dia de Brasília) e o serviço
+  // entra como PONTO (fim = início), igual ao "já atendi", pra não bater na
+  // trava de horário ocupado. Futuro nunca: é venda, não agendamento.
+  const dataVendaIn = typeof body.data_venda === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.data_venda) ? body.data_venda as string : null
+  if (dataVendaIn && dataVendaIn > todayBR()) {
+    return NextResponse.json({ error: 'data_futura', detail: 'A data da venda não pode ser depois de hoje.' }, { status: 400 })
+  }
+  const retroativa = !!dataVendaIn && dataVendaIn < todayBR()
+  if (retroativa && appointmentIds.length > 0) {
+    return NextResponse.json({ error: 'data_com_atendimento', detail: 'Data passada só vale pra venda nova, não pra atendimento já marcado.' }, { status: 400 })
+  }
+  const quandoIso = retroativa ? new Date(`${dataVendaIn}T12:00:00-03:00`).toISOString() : nowIso
+
   // 4. UPSERT da invoice:
   //    a) Se appointment já tem invoice_item_id (trigger v70 auto-criou),
   //       reusa a invoice existente · faz UPDATE no estado dela.
@@ -316,6 +331,7 @@ export async function POST(request: Request) {
         customer_id: customerId,
         invoice_number: invoiceNumber,
         status: 'open', // será fechada no fim se willClose
+        ...(retroativa ? { created_at: quandoIso } : {}),
         subtotal,
         discount: 0,
         total,
@@ -385,11 +401,11 @@ export async function POST(request: Request) {
         client_name: nomeCliente,
         professional_id: ps.professional_id ?? null,
         // Dia de Brasília: nowIso é UTC e depois das 21h virava o dia seguinte.
-        sale_date: dataBR(),
+        sale_date: retroativa ? dataVendaIn : dataBR(),
         total: lineTotal,
         discount: 0,
         status: willClose ? 'paid' : 'pending',
-        paid_at: willClose ? nowIso : null,
+        paid_at: willClose ? quandoIso : null,
         payment_method: willClose ? payment!.method : null,
         invoice_id: invoice.id,
         appointment_id: appts[0]?.id ?? null,
@@ -454,12 +470,12 @@ export async function POST(request: Request) {
         professional_id: svcProfId,
         service_id: svc.id,
         service_name: svc.name,
-        appointment_date: dataBR(now),
-        start_time: horaBR(now),
-        end_time: horaBR(end),
+        appointment_date: retroativa ? dataVendaIn : dataBR(now),
+        start_time: retroativa ? '12:00:00' : horaBR(now),
+        end_time: retroativa ? '12:00:00' : horaBR(end),
         status: 'completed',
         total_price: lineTotal,
-        paid_at: willClose ? nowIso : null,
+        paid_at: willClose ? quandoIso : null,
         payment_method: willClose ? payment!.method : null,
       })
       .select('id')
@@ -495,7 +511,7 @@ export async function POST(request: Request) {
         .update({
           ...(isExistingInvoice ? {} : { invoice_item_id: item.id }),
           status: willClose ? 'completed' : 'confirmed',
-          paid_at: willClose ? nowIso : null,
+          paid_at: willClose ? quandoIso : null,
           payment_method: willClose ? payment!.method : null,
         })
         .eq('id', item.reference_id),
@@ -570,7 +586,7 @@ export async function POST(request: Request) {
         card_type: payment.card_type ?? null,
         installments: payment.installments ?? 1,
         fee_percent: payment.fee_percent ?? 0,
-        paid_at: nowIso,
+        paid_at: quandoIso,
       })
     if (payErr) { await rollback(); return NextResponse.json({ error: payErr.message }, { status: 500 }) }
   }
@@ -585,7 +601,7 @@ export async function POST(request: Request) {
         ...(manualDiscount > 0 ? { manual_discount: manualDiscount, discount_target: discountTarget } : {}),
         total: Math.max(0, itemsSubtotal - manualDiscount),
         status: willClose ? 'closed' : 'open',
-        closed_at: willClose ? nowIso : null,
+        closed_at: willClose ? quandoIso : null,
         customer_id: customerId,
         // Observação só muda quando vem no pedido (apagava a da comanda · A1)
         ...(typeof body.notes === 'string' ? { notes: body.notes } : {}),
@@ -595,7 +611,7 @@ export async function POST(request: Request) {
     // Caminho B sem productSales · só fechar
     await admin
       .from('invoices')
-      .update({ status: 'closed', closed_at: nowIso })
+      .update({ status: 'closed', closed_at: quandoIso })
       .eq('id', invoice.id)
   }
 

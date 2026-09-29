@@ -421,6 +421,17 @@ export default function TimelineGridInteractive({
   // isToday só preenche após hidratação · evita mismatch SSR (CIC Onda 5C P0 #1)
   const [todayClient, setTodayClient] = useState<string | null>(null)
   useEffect(() => { setTodayClient(todayBR()) }, [])
+
+  /* Fecha modal (agendar/venda/resgate) SEM perder o dia da agenda. Antes ia
+     pra pathname puro: sem ?date a grade voltava pra hoje e quem estava
+     lançando o dia 2 perdia o lugar a cada agendamento (Eduardo 29/09). Tira
+     só o que é do modal · o dia só muda quando a pessoa troca. */
+  function urlSemModal() {
+    const p = new URLSearchParams(searchParams.toString())
+    for (const k of ['agendar', 'balcao', 'resgatar', 'prof', 'time', 'demo']) p.delete(k)
+    if (!p.get('date')) p.set('date', date)
+    return `${pathname}?${p.toString()}`
+  }
   const isToday = todayClient !== null && date === todayClient
 
   useEffect(() => {
@@ -1520,7 +1531,7 @@ export default function TimelineGridInteractive({
         defaultDate={searchParams.get('date') ?? date}
         defaultTime={searchParams.get('time')}
         onClose={() => {
-          router.replace(pathname)
+          router.replace(urlSemModal())
           router.refresh()
         }}
         demo={searchParams.get('demo') === '1'}
@@ -1537,7 +1548,7 @@ export default function TimelineGridInteractive({
         open={searchParams.get('balcao') === '1'}
         businessId={businessId}
         onClose={() => {
-          router.replace(pathname)
+          router.replace(urlSemModal())
           router.refresh()
         }}
       />
@@ -1547,14 +1558,14 @@ export default function TimelineGridInteractive({
           AgendarModal já com cliente + serviço + resgate ligados (Eduardo 24/07). */}
       {PACOTE_ENABLED && searchParams.get('resgatar') === '1' && (
         <ResgatarPacoteModal
-          onClose={() => { router.replace(pathname) }}
+          onClose={() => { router.replace(urlSemModal()) }}
           onResgatar={(r: ResgateSelecionado) => {
             setResgatePrefill({
               customer: { id: r.customer.id, name: r.customer.name, phone: r.customer.phone ?? '', total_points: null },
               serviceId: r.serviceId,
               balanceId: r.balanceId,
             })
-            router.replace(pathname) // fecha o ?resgatar · o AgendarModal abre por estado
+            router.replace(urlSemModal()) // fecha o ?resgatar · o AgendarModal abre por estado
           }}
         />
       )}
