@@ -145,7 +145,7 @@ export default function AgendarModal({
   open,
   businessId,
   professionals,
-  services,
+  services: servicesProp,
   defaultProfId = null,
   defaultDate = null,
   defaultTime = null,
@@ -163,6 +163,11 @@ export default function AgendarModal({
   const areaBase = pathname?.startsWith('/recepcao') ? '/recepcao' : '/admin'
   const areaPrefix = getAreaPrefix(pathname)
   const supabase = useMemo(() => createClient(), [])
+  // Serviço cadastrado aqui mesmo (Eduardo 29/09) entra na lista sem recarregar
+  const [servicosCriados, setServicosCriados] = useState<Service[]>([])
+  const services = useMemo(() => [...servicesProp, ...servicosCriados], [servicesProp, servicosCriados])
+  const [novoServico, setNovoServico] = useState<{ uid: string; nome: string; preco: string; duracao: string } | null>(null)
+  const [salvandoServico, setSalvandoServico] = useState(false)
 
   // Form state · multi-serviços (V2)
   const [cliente, setCliente] = useState<Customer | null>(null)
@@ -221,7 +226,8 @@ export default function AgendarModal({
   const [prodPickerGroup, setProdPickerGroup] = useState<string | null>(null)
   // quantity: default 1 pro produto vendido junto manual · o combo seta fração
   // (ex: 0,5 pacote de cabelo). A rota /items já aceita numeric (trigger v66).
-  const [prodCart, setProdCart] = useState<{ product_id: string; product_name: string; quantity: number; unit_price: number; commission_type: string | null; commission_value: number | null }[]>([])
+  // doCombo: veio do combo · o valor é o que sobrou do preço do combo, não se edita
+  const [prodCart, setProdCart] = useState<{ product_id: string; product_name: string; quantity: number; unit_price: number; commission_type: string | null; commission_value: number | null; doCombo?: boolean }[]>([])
   const [prodPickerOpen, setProdPickerOpen] = useState(false)
   const [prodSearch, setProdSearch] = useState('')
 
@@ -471,6 +477,32 @@ export default function AgendarModal({
   function precoDoServico(s: Service): number {
     if (empresa && peloConvenio && s.convenio_price != null) return Number(s.convenio_price)
     return Number(s.price ?? 0)
+  }
+
+  async function criarServico() {
+    if (!novoServico) return
+    const nome = novoServico.nome.trim()
+    const preco = novoServico.preco.trim() ? Number(novoServico.preco.replace(/\./g, '').replace(',', '.')) : 0
+    const duracao = parseInt(novoServico.duracao, 10)
+    if (!nome) { setError('Dê um nome ao serviço'); return }
+    if (!Number.isFinite(preco) || preco < 0) { setError('Preço inválido. Use o formato 150,00'); return }
+    if (!duracao || duracao < 5) { setError('Duração mínima de 5 minutos'); return }
+    setSalvandoServico(true)
+    const { data, error: e } = await supabase
+      .from('services')
+      .insert({ business_id: businessId, name: nome, price: preco, duration_minutes: duracao, points: 0, active: true })
+      .select('id, name, price, duration_minutes')
+      .single()
+    setSalvandoServico(false)
+    if (e || !data) { setError('Não foi possível cadastrar o serviço' + (e?.message ? ` (${e.message})` : '')); return }
+    const novo = data as Service
+    setServicosCriados((l) => [...l, novo])
+    const uid = novoServico.uid
+    setNovoServico(null)
+    setError(null)
+    // o serviço novo já cai na linha que pediu o cadastro (preço/duração dele).
+    // Direto, sem handleServicePick: a lista `services` deste render ainda não o tem.
+    updateLine(uid, { serviceId: novo.id, duration: novo.duration_minutes ?? 60, price: precoDoServico(novo), resgateBalanceId: null })
   }
 
   function handleServicePick(uid: string, newServiceId: string) {
@@ -783,7 +815,7 @@ export default function AgendarModal({
     }
 
     setServiceLines(novasLinhas)
-    setProdCart(produtos)
+    setProdCart(produtos.map((p) => ({ ...p, doCombo: true })))
     setComboAplicado({ id: combo.id, name: combo.name, price: Number(combo.price || 0) })
     setComboEscolhas(efetivas)
     setComboRef(combo)
@@ -1733,13 +1765,58 @@ export default function AgendarModal({
                   line={line}
                   services={services}
                   canRemove={serviceLines.length > 1}
-                  onPickService={(id) => handleServicePick(line.uid, id)}
+                  onPickService={(id) => (id === '__novo__'
+                    ? setNovoServico({ uid: line.uid, nome: '', preco: '', duracao: '60' })
+                    : handleServicePick(line.uid, id))}
                   onChangeDuration={(v) => updateLine(line.uid, { duration: v })}
                   onChangePrice={(v) => updateLine(line.uid, { price: v })}
                   onChangeDiscount={(v) => updateLine(line.uid, { discount: v })}
                   onRemove={() => removeLine(line.uid)}
                   peloConvenio={!!empresa && peloConvenio}
                 />
+                {novoServico?.uid === line.uid && (
+                  <div className="rounded-xl p-3 space-y-2 mt-2" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
+                    <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-accent)' }}>Novo serviço</p>
+                    <input
+                      type="text"
+                      autoFocus
+                      value={novoServico.nome}
+                      onChange={(e) => setNovoServico({ ...novoServico, nome: e.target.value })}
+                      placeholder="Nome do serviço"
+                      className="admin-input w-full px-3 py-2 rounded-lg text-sm"
+                    />
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={novoServico.preco}
+                        onChange={(e) => setNovoServico({ ...novoServico, preco: e.target.value.replace(/[^\d.,]/g, '') })}
+                        placeholder="Preço (ex: 150,00)"
+                        className="admin-input flex-1 min-w-0 px-3 py-2 rounded-lg text-sm"
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={5}
+                        step={5}
+                        value={novoServico.duracao}
+                        onChange={(e) => setNovoServico({ ...novoServico, duracao: e.target.value })}
+                        aria-label="Duração em minutos"
+                        className="admin-input w-20 px-3 py-2 rounded-lg text-sm"
+                      />
+                      <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>min</span>
+                    </div>
+                    <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>Comissão, pontos e descrição você ajusta depois em Serviços.</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={criarServico} disabled={salvandoServico} className="flex-1 py-2 rounded-lg text-sm font-bold disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>
+                        {salvandoServico ? 'Salvando…' : 'Cadastrar e usar'}
+                      </button>
+                      <button type="button" onClick={() => setNovoServico(null)} className="px-3 py-2 rounded-lg text-sm font-semibold" style={{ color: 'var(--admin-text-mute)' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {resOpt && (
                   <button
                     type="button"
@@ -1977,7 +2054,11 @@ export default function AgendarModal({
                     {/* Fração (meio pacote de jumbo · Studio Mood) mostra o preço por unidade
                         INTEIRA no input. Sem a conta explícita a pessoa lê R$209,80 e acha que
                         é o que a cliente paga. Izanara perguntou isso em 26/08. */}
-                    {Number(line.quantity ?? 1) !== 1 && (
+                    {line.doCombo ? (
+                      // Material do combo: vale o preço que a dona pôs no combo. O
+                      // "preço por pacote" do rateio (ex. R$209,98) só confundia · Eduardo 29/09
+                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>parte do combo</p>
+                    ) : Number(line.quantity ?? 1) !== 1 && (
                       <p className="text-[11px] tabular-nums mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
                         {line.quantity.toLocaleString('pt-BR')} × {formatBRL(Number(line.unit_price) || 0)} ={' '}
                         <span className="font-bold" style={{ color: 'var(--admin-text)' }}>
@@ -1986,6 +2067,11 @@ export default function AgendarModal({
                       </p>
                     )}
                   </div>
+                  {line.doCombo ? (
+                    <span className="text-sm font-bold text-right tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                      {formatBRL(Number(line.quantity ?? 1) * (Number(line.unit_price) || 0))}
+                    </span>
+                  ) : (
                   <input
                     type="number"
                     min={0}
@@ -1995,6 +2081,7 @@ export default function AgendarModal({
                     className="admin-input px-2 py-1.5 rounded-lg text-sm text-right tabular-nums"
                     aria-label={`Preço ${line.product_name}`}
                   />
+                  )}
                   <button
                     type="button"
                     onClick={() => removeProdLine(idx)}
@@ -2592,6 +2679,7 @@ function ServiceLineBlock({
         }}
       >
         <option value="">Selecionar serviço</option>
+        <option value="__novo__">+ Cadastrar novo serviço</option>
         {services.map((s) => {
           const valor =
             linhaDeConvenio && s.convenio_price != null ? Number(s.convenio_price) : Number(s.price ?? 0)

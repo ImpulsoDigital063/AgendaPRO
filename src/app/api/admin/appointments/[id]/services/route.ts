@@ -160,6 +160,7 @@ export async function GET(
   return NextResponse.json({
     appointment: {
       id: appointment.id,
+      business_id: appointment.business_id,
       status: appointment.status,
       appointment_date: appointment.appointment_date,
       start_time: appointment.start_time,

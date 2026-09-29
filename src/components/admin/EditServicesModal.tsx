@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { IconClose, IconCheck } from '@/components/ui/Icon'
+import { createClient } from '@/lib/supabase/client'
+import { COMBO_SELECT, escolhasPadrao, gruposDeCor, montarCombo, nomeProduto, type Combo } from '@/lib/combo-cores'
 
 type Service = {
   id: string
@@ -55,7 +57,17 @@ export default function EditServicesModal({
   const [invoiceId, setInvoiceId] = useState<string | null>(null)
   const [canSellProducts, setCanSellProducts] = useState(false)
   const [products, setProducts] = useState<{ id: string; name: string; variant: string | null; price: number | null }[]>([])
-  const [productCart, setProductCart] = useState<{ product_id: string; name: string; unit_price: number }[]>([])
+  // quantity: 1 no produto avulso · fração (ex. 0,5) no material do combo.
+  // doCombo marca o que o combo pôs, pra trocar de combo/cor sem duplicar.
+  const [productCart, setProductCart] = useState<{ product_id: string; name: string; unit_price: number; quantity: number; doCombo?: boolean }[]>([])
+  // Combo (Eduardo 29/09): aplicar num atendimento que já existe. Marca o(s)
+  // serviço(s) do combo e põe o material na comanda com a fração e o preço do
+  // rateio · mesma regra do Agendar e do PDV (lib/combo-cores).
+  const [combos, setCombos] = useState<Combo[]>([])
+  const [comboPickerOpen, setComboPickerOpen] = useState(false)
+  const [comboAberto, setComboAberto] = useState<Combo | null>(null)
+  const [escolhas, setEscolhas] = useState<Record<string, string>>({})
+  const [comboAplicado, setComboAplicado] = useState<string | null>(null)
   // Produtos JÁ lançados na comanda aberta (carregados do GET). Sem isso, produto
   // adicionado antes sumia da área de edição e só aparecia na comanda.
   const [comandaProducts, setComandaProducts] = useState<{ item_id: string; name: string; unit_price: number; quantity: number }[]>([])
@@ -107,6 +119,12 @@ export default function EditServicesModal({
         setInvoiceId(data.invoice_id ?? null)
         setComandaProducts(data.comanda_products ?? [])
         setLocked(data.appointment?.locked === true)
+        const bid = data.appointment?.business_id as string | undefined
+        if (bid) {
+          const { data: cb } = await createClient().from('packages').select(COMBO_SELECT).eq('business_id', bid).eq('active', true).eq('kind', 'combo').order('name')
+          // Combo sem serviço não serve aqui: o atendimento precisa de serviço
+          if (!cancelled) setCombos(((cb ?? []) as unknown as Combo[]).filter((c) => (c.package_items ?? []).some((i) => i.service_id)))
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Erro')
       } finally {
@@ -149,10 +167,30 @@ export default function EditServicesModal({
       product_id: p.id,
       name: p.variant ? `${p.name} · ${p.variant}` : p.name,
       unit_price: p.price ?? 0,
+      quantity: 1,
     }])
     setProdSearch('')
     setProdPickerOpen(false)
   }
+  function tocarCombo(c: Combo) {
+    if (gruposDeCor(c).length > 0) { setEscolhas(escolhasPadrao(c)); setComboAberto(c); return }
+    aplicarCombo(c, {})
+  }
+
+  function aplicarCombo(c: Combo, esc: Record<string, string>) {
+    const m = montarCombo(c, esc)
+    // O combo define o atendimento: serviço(s) dele no lugar dos marcados
+    setSelectedIds(new Set(m.servicos.map((s) => s.service_id)))
+    setProductCart((prev) => [
+      ...prev.filter((p) => !p.doCombo),
+      ...m.produtos.map((p) => ({ product_id: p.product_id, name: p.nome, unit_price: p.unit_price, quantity: p.quantity, doCombo: true })),
+    ])
+    setComboAplicado(`${c.name} · ${formatPrice(m.preco)}`)
+    setComboAberto(null)
+    setComboPickerOpen(false)
+    setError(null)
+  }
+
   function removeProduct(idx: number) {
     setProductCart((prev) => prev.filter((_, i) => i !== idx))
   }
@@ -186,7 +224,7 @@ export default function EditServicesModal({
   const selectedServices = services.filter((s) => selectedIds.has(s.id))
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0)
   const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
-  const productsSubtotal = productCart.reduce((sum, p) => sum + (p.unit_price ?? 0), 0)
+  const productsSubtotal = productCart.reduce((sum, p) => sum + (p.unit_price ?? 0) * (p.quantity ?? 1), 0)
   const comandaProdSubtotal = comandaProducts.reduce((sum, p) => sum + (p.unit_price ?? 0) * (p.quantity ?? 1), 0)
   const grandTotal = totalPrice + productsSubtotal + comandaProdSubtotal
   const newEndTime = totalDuration > 0 ? calcEndTime(time || startTime, totalDuration) : null
@@ -231,7 +269,7 @@ export default function EditServicesModal({
           const pr = await fetch(`/api/admin/invoices/${invoiceId}/items`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ product_id: p.product_id, quantity: 1, unit_price: p.unit_price }),
+            body: JSON.stringify({ product_id: p.product_id, quantity: p.quantity ?? 1, unit_price: p.unit_price }),
           })
           if (!pr.ok) {
             const pd = await pr.json().catch(() => ({}))
@@ -262,7 +300,6 @@ export default function EditServicesModal({
     <div
       className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
-      onClick={onClose}
     >
       <div
         className="admin-card w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col"
@@ -452,15 +489,87 @@ export default function EditServicesModal({
                     <div className="space-y-1.5 mt-1.5">
                       {productCart.map((p, idx) => (
                         <div key={idx} className="flex items-center justify-between gap-2 p-2.5 rounded-xl" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
-                          <span className="text-sm truncate" style={{ color: 'var(--admin-text)' }}>{p.name}</span>
+                          <span className="text-sm truncate" style={{ color: 'var(--admin-text)' }}>
+                            {p.quantity !== 1 && <span className="font-bold" style={{ color: 'var(--admin-accent)' }}>{String(p.quantity).replace('.', ',')}× </span>}
+                            {p.name}
+                            {p.doCombo && <span className="text-[10px]" style={{ color: 'var(--admin-text-mute)' }}> · do combo</span>}
+                          </span>
                           <span className="flex items-center gap-2 flex-shrink-0">
-                            <span className="text-sm font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>{formatPrice(p.unit_price)}</span>
+                            <span className="text-sm font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>{formatPrice(p.unit_price * (p.quantity ?? 1))}</span>
                             <button type="button" onClick={() => removeProduct(idx)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ color: '#DC2626' }} aria-label={`Remover ${p.name}`}>
                               <IconClose size={12} />
                             </button>
                           </span>
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {canSellProducts && combos.length > 0 && (
+                    <div className="mt-1.5">
+                      {comboAplicado && (
+                        <p className="text-xs font-semibold mb-1.5" style={{ color: '#16A34A' }}>Combo aplicado · {comboAplicado}</p>
+                      )}
+                      {!comboPickerOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => setComboPickerOpen(true)}
+                          className="w-full py-2.5 rounded-xl text-sm font-bold"
+                          style={{ background: 'color-mix(in srgb, var(--admin-accent) 10%, transparent)', color: 'var(--admin-accent)', border: '1px dashed color-mix(in srgb, var(--admin-accent) 45%, transparent)' }}
+                        >
+                          {comboAplicado ? 'Trocar combo' : '+ Aplicar combo'}
+                        </button>
+                      ) : (
+                        <div className="rounded-xl p-2.5 space-y-2" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {combos.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => tocarCombo(c)}
+                                className="text-left px-3 py-2 rounded-lg"
+                                style={{ background: 'var(--admin-surface)', border: comboAberto?.id === c.id ? '2px solid var(--admin-accent)' : '1px solid var(--admin-border)' }}
+                              >
+                                <span className="block text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }}>{c.name}</span>
+                                <span className="block text-xs tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>{formatPrice(Number(c.price ?? 0))}{gruposDeCor(c).length > 0 ? ' · escolher cor' : ''}</span>
+                              </button>
+                            ))}
+                          </div>
+                          {comboAberto && (
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-accent)' }}>Qual material saiu?</p>
+                              {gruposDeCor(comboAberto).map((g) => (
+                                <div key={g.group} className="flex flex-wrap gap-1.5">
+                                  {g.opcoes.map((o) => {
+                                    const p = o.products
+                                    const controla = p?.track_stock !== false
+                                    const saldo = Number(p?.quantity ?? 0)
+                                    const semSaldo = controla && saldo < Number(o.quantity ?? 0)
+                                    const marcado = escolhas[g.group] === o.product_id
+                                    return (
+                                      <button
+                                        key={o.product_id}
+                                        type="button"
+                                        disabled={semSaldo}
+                                        onClick={() => setEscolhas((e) => ({ ...e, [g.group]: o.product_id as string }))}
+                                        className="px-3 py-1.5 rounded-full text-xs font-bold disabled:opacity-40"
+                                        style={marcado
+                                          ? { background: 'var(--admin-accent)', color: '#fff' }
+                                          : { background: 'var(--admin-surface)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}
+                                      >
+                                        {nomeProduto(p)}{controla ? ` · ${semSaldo ? 'sem estoque' : saldo}` : ''}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              ))}
+                              <button type="button" onClick={() => aplicarCombo(comboAberto, escolhas)} className="w-full py-2 rounded-lg text-sm font-bold" style={{ background: 'var(--admin-accent)', color: '#fff' }}>
+                                Aplicar {formatPrice(montarCombo(comboAberto, escolhas).preco)}
+                              </button>
+                            </div>
+                          )}
+                          <button type="button" onClick={() => { setComboPickerOpen(false); setComboAberto(null) }} className="text-xs underline" style={{ color: 'var(--admin-text-mute)' }}>fechar</button>
+                        </div>
+                      )}
                     </div>
                   )}
                   {canSellProducts && (

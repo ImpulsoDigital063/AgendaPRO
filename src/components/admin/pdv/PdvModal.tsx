@@ -24,7 +24,7 @@ import type { AlvoDesconto } from '@/lib/desconto-geral'
 import { parseValorBR, valorParaCampo } from '@/lib/valor-br'
 import { todayBR } from '@/lib/date-br'
 import NovoProdutoModal from '@/components/admin/produtos/NovoProdutoModal'
-import { ratearCombo, type ComboItemInput } from '@/lib/combo-rateio'
+import { COMBO_SELECT, escolhasPadrao, faltaMaterial, gruposDeCor, montarCombo as montarComboBase, nomeProduto, type Combo, type MaterialCombo } from '@/lib/combo-cores'
 
 type Aba = 'servicos' | 'produtos' | 'combos'
 type Servico = { id: string; name: string; price: number | null }
@@ -35,48 +35,8 @@ type Cliente = { id: string; name: string; phone: string | null }
    carrinho é UMA linha pelo preço do combo; na hora de cobrar abre em
    serviço(s) pelo valor cheio + material com o resto, pela mesma regra do
    agendamento (ratearCombo) · comissão e baixa de estoque saem iguais. */
-type ComboItem = ComboItemInput & {
-  option_group: string | null
-  products?: (NonNullable<ComboItemInput['products']> & { quantity: number | null; track_stock: boolean | null }) | null
-}
-type Combo = { id: string; name: string; price: number | null; package_items: ComboItem[] | null }
-type ParteProduto = { product_id: string; nome: string; quantity: number; unit_price: number; estoque: number | null }
-type PartesCombo = { servicos: { service_id: string; price: number }[]; produtos: ParteProduto[] }
+type PartesCombo = { servicos: { service_id: string; price: number }[]; produtos: MaterialCombo[] }
 type Linha = { key: string; tipo: 'servico' | 'produto' | 'combo'; id: string; nome: string; preco: number; qtd: number; estoque: number | null; partes?: PartesCombo }
-
-/** Um material por grupo de cor: o escolhido, senão o primeiro com saldo, senão o primeiro. */
-function resolverItens(combo: Combo, escolhas: Record<string, string>): ComboItem[] {
-  const itens = combo.package_items ?? []
-  const out: ComboItem[] = []
-  const vistos = new Set<string>()
-  for (const it of itens) {
-    const g = it.option_group
-    if (!g) { out.push(it); continue }
-    if (vistos.has(g)) continue
-    vistos.add(g)
-    const opcoes = itens.filter((x) => x.option_group === g)
-    const escolhido = escolhas[g] ? opcoes.find((x) => x.product_id === escolhas[g]) : undefined
-    const comSaldo = opcoes.find((x) => x.products?.track_stock === false || Number(x.products?.quantity ?? 0) > 0)
-    out.push(escolhido ?? comSaldo ?? opcoes[0])
-  }
-  return out
-}
-
-function gruposDeCor(combo: Combo): { group: string; opcoes: ComboItem[] }[] {
-  const itens = combo.package_items ?? []
-  const ordem: string[] = []
-  for (const it of itens) if (it.option_group && !ordem.includes(it.option_group)) ordem.push(it.option_group)
-  return ordem.map((g) => ({ group: g, opcoes: itens.filter((x) => x.option_group === g) })).filter((x) => x.opcoes.length > 1)
-}
-
-function nomeProduto(p: { name: string; variant: string | null } | null | undefined) {
-  return p ? (p.variant ? `${p.name} · ${p.variant}` : p.name) : ''
-}
-
-/** Material sem saldo pra mais uma unidade do combo (controle ligado). */
-function faltaMaterial(partes: PartesCombo, vezes: number): ParteProduto | null {
-  return partes.produtos.find((p) => p.estoque != null && p.quantity * vezes > p.estoque) ?? null
-}
 
 type Props = {
   open: boolean
@@ -151,7 +111,7 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
         supabase.from('products').select('id, name, variant, price, quantity, track_stock, unit').eq('business_id', businessId).eq('active', true).eq('sale_active', true).order('name'),
         supabase.from('professionals').select('id, name, does_appointments').eq('business_id', businessId).eq('active', true).order('name'),
         // Material vem pelo JOIN: o do combo nem sempre está à venda avulsa (sale_active)
-        supabase.from('packages').select('id, name, price, package_items (service_id, product_id, quantity, unit_price, option_group, services (id, name, price, duration_minutes), products (id, name, variant, price, quantity, track_stock, commission_type, commission_value))').eq('business_id', businessId).eq('active', true).eq('kind', 'combo').order('name'),
+        supabase.from('packages').select(COMBO_SELECT).eq('business_id', businessId).eq('active', true).eq('kind', 'combo').order('name'),
       ])
       if (!vivo) return
       setServicos((s ?? []) as Servico[])
@@ -241,29 +201,15 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
   }
 
   function montarCombo(combo: Combo, esc: Record<string, string>): { nome: string; partes: PartesCombo; preco: number } {
-    const itens = resolverItens(combo, esc)
-    const { servicos, produtos: prods } = ratearCombo(Number(combo.price ?? 0), itens)
-    const porId = new Map(itens.filter((i) => i.products).map((i) => [i.product_id as string, i.products!]))
-    const partes: PartesCombo = {
-      servicos: servicos.map((x) => ({ service_id: x.service_id, price: x.price })),
-      produtos: prods.map((x) => {
-        const pr = porId.get(x.product_id)
-        return { product_id: x.product_id, nome: x.product_name, quantity: x.quantity, unit_price: x.unit_price, estoque: pr?.track_stock === false ? null : Number(pr?.quantity ?? 0) }
-      }),
-    }
-    // Preço da linha = soma do que a comanda vai gravar (sem 1 centavo de diferença do arredondamento)
-    const preco = Math.round((partes.servicos.reduce((t, x) => t + x.price, 0) + partes.produtos.reduce((t, x) => t + x.quantity * x.unit_price, 0)) * 100) / 100
-    const cores = gruposDeCor(combo).length > 0 ? partes.produtos.map((x) => x.nome).join(' + ') : ''
-    return { nome: cores ? `${combo.name} · ${cores}` : combo.name, partes, preco }
+    const m = montarComboBase(combo, esc)
+    return { nome: m.nome, partes: { servicos: m.servicos, produtos: m.produtos }, preco: m.preco }
   }
 
   function tocarCombo(combo: Combo) {
     setAviso(null)
     if (gruposDeCor(combo).length > 0) {
       // Tem cor alternativa: abre a escolha já marcando a que entraria por padrão
-      const efetivas: Record<string, string> = {}
-      for (const it of resolverItens(combo, {})) if (it.option_group && it.product_id) efetivas[it.option_group] = it.product_id
-      setEscolhas(efetivas)
+      setEscolhas(escolhasPadrao(combo))
       setComboAberto(combo)
       return
     }
@@ -277,7 +223,7 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
     setCarrinho((c) => {
       const ja = c.find((x) => x.key === key)
       const vezes = (ja?.qtd ?? 0) + 1
-      const falta = faltaMaterial(partes, vezes)
+      const falta = faltaMaterial(partes.produtos, vezes)
       if (falta) { setAviso(`${falta.nome}: só tem ${falta.estoque} em estoque`); return c }
       if (ja) return c.map((x) => (x === ja ? { ...x, qtd: vezes } : x))
       return [...c, { key, tipo: 'combo', id: combo.id, nome, preco, qtd: 1, estoque: null, partes }]
@@ -292,7 +238,7 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
       const q = x.qtd + delta
       if (q <= 0) return []
       if (x.partes && delta > 0) {
-        const falta = faltaMaterial(x.partes, q)
+        const falta = faltaMaterial(x.partes.produtos, q)
         if (falta) { setAviso(`${falta.nome}: só tem ${falta.estoque} em estoque`); return [x] }
       }
       if (x.estoque != null && q > x.estoque) { setAviso(`${x.nome}: só tem ${x.estoque} em estoque`); return [x] }
