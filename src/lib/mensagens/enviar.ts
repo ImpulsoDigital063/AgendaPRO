@@ -210,6 +210,26 @@ async function pediuPraSair(
      null  → nao deu pra perguntar (rede, provedor fora). MANDA ASSIM MESMO:
              na duvida, tentar entregar e melhor que engolir a mensagem. */
 
+/* DDDs que existem no Brasil (Anatel). 00, 01…10, 20, 23… não existem:
+   número com eles é digitação errada ou placeholder "(00) 0000-0000". */
+const DDD_VALIDOS = new Set([
+  11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35, 37, 38,
+  41, 42, 43, 44, 45, 46, 47, 48, 49, 51, 53, 54, 55, 61, 62, 63, 64, 65, 66, 67, 68, 69,
+  71, 73, 74, 75, 77, 79, 81, 82, 83, 84, 85, 86, 87, 88, 89, 91, 92, 93, 94, 95, 96, 97, 98, 99,
+])
+
+/** 55 + DDD que existe + 8 ou 9 dígitos, e não tudo igual (00000000). */
+export function telefoneBrasileiroValido(tel: string | null | undefined): boolean {
+  const d = (tel ?? '').replace(/\D/g, '')
+  const semPais = d.startsWith('55') ? d.slice(2) : d
+  if (semPais.length !== 10 && semPais.length !== 11) return false
+  if (!DDD_VALIDOS.has(Number(semPais.slice(0, 2)))) return false
+  const numero = semPais.slice(2)
+  if (/^(\d)\1+$/.test(numero)) return false
+  if (numero.length === 9 && numero[0] !== '9') return false
+  return true
+}
+
 export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida> {
   const regra = await regraDe(db, p.businessId, p.tipo)
 
@@ -295,6 +315,32 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
     if (!portao.pode) {
       await concluir('ignorado', 'whatsapp', tel, portao.motivo)
       return { status: 'ignorado', motivo: portao.motivo }
+    }
+
+    /* NÚMERO QUE NÃO VAI CHEGAR (29/09). A Wanessa tinha cliente com
+       (00) 0000-0000 e um número estrangeiro que falhou 4 vezes seguidas:
+       cada tentativa virava "não chegou" de novo. Agora:
+         · telefone mal formado nem vai pra Meta;
+         · número que a Meta devolveu como "sem WhatsApp" (131026) fica
+           PAUSADO por 30 dias — o webhook marca customers.whatsapp_valido.
+           Corrigir o telefone na ficha zera a marca e os avisos voltam.
+           30 dias e não pra sempre: a cliente pode instalar o WhatsApp. */
+    if (paraCliente && !telefoneBrasileiroValido(tel)) {
+      await concluir('ignorado', 'whatsapp', tel, 'telefone_invalido')
+      return { status: 'ignorado', motivo: 'telefone_invalido' }
+    }
+    if (paraCliente && p.customerId) {
+      const { data: cli } = await db
+        .from('customers')
+        .select('whatsapp_valido, whatsapp_checado_em')
+        .eq('id', p.customerId)
+        .maybeSingle()
+      const c = cli as { whatsapp_valido: boolean | null; whatsapp_checado_em: string | null } | null
+      const recente = !!c?.whatsapp_checado_em && Date.now() - new Date(c.whatsapp_checado_em).getTime() < 30 * 86400e3
+      if (c?.whatsapp_valido === false && recente) {
+        await concluir('ignorado', 'whatsapp', tel, 'numero_sem_whatsapp')
+        return { status: 'ignorado', motivo: 'numero_sem_whatsapp' }
+      }
     }
 
     const credCloud = credencialDoSistema()

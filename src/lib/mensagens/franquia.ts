@@ -36,6 +36,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { pacotePorId, PRECO_EXCEDENTE, type Pacote } from './pacotes'
 import { PADRAO } from './tipos'
+import { canalLiberado } from './liberado'
 
 export { PRECO_EXCEDENTE }
 
@@ -217,6 +218,11 @@ export async function podeEnviar(
   db: SupabaseClient,
   businessId: string,
 ): Promise<{ pode: true } | { pode: false; motivo: string }> {
+  /* Beta de verdade (29/09): a lista de liberação só controlava a TELA e o
+     motor mandava pra qualquer um com pacote e regra ligada. Foi assim que
+     a Rosy passou a enviar em 11/09 sem ninguém liberar. */
+  if (!canalLiberado(businessId)) return { pode: false, motivo: 'canal_nao_liberado' }
+
   const { data: sub } = await db
     .from('subscriptions')
     .select('status, refunded_at, grace_ends_at')

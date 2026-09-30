@@ -48,12 +48,16 @@ export const LIBERADOS: string[] = [
      As três foram avisadas por WhatsApp antes deste deploy. Ninguém descobre
      que o sistema fala com a cliente dela depois do fato.
 
-     Rosy Borges ficou FORA desta leva (Eduardo, 10/09): sem chave PIX e com
-     as regras todas desligadas. O pacote dela está ativo no banco, mas sem
-     estar nesta lista nada sai. */
+     Rosy Borges ficou FORA desta leva (Eduardo, 10/09). */
   'b446e158-8aef-4a1f-a0e3-6332c8ef3be0', // Viva Cacheada · salão · sinal 30%
   '645733a0-9902-4858-ab24-17bdec9b5571', // Wanessa Silva Estética · clínica · sinal 30%
   '3ad534b4-a74a-4e5f-aec3-736f73dcd19a', // Gessica Batista Nails · nail · sinal 20%
+
+  /* Rosy Borges · teste (Eduardo, 29/09). Ela JÁ enviava desde 11/09 sem
+     estar aqui: até 29/09 esta lista só mexia na tela, o motor não
+     perguntava. Agora pergunta (franquia.ts · podeEnviar), então quem manda
+     tem que estar listado — senão os avisos dela parariam em silêncio. */
+  '717fd0c2-8387-41bb-befb-f45f258ea51f', // Rosy Borges Beauty Studio · teste
 ]
 
 /** A pergunta que a tela e as rotas fazem. */

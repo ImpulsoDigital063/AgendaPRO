@@ -145,6 +145,14 @@ async function avisarFalha(db: Db, providerId: string, codigo: string | null, mo
   const m = linha as { id: string; business_id: string | null; tipo: string; destino: string | null; customer_id: string | null; appointment_id: string | null } | null
   if (!m?.business_id) return
 
+  /* Sem WhatsApp: marca a cliente pra o motor pausar os próximos avisos
+     desse número por 30 dias (enviar.ts). A ficha zera ao trocar o telefone. */
+  if (codigo === '131026' && m.customer_id) {
+    await db.from('customers')
+      .update({ whatsapp_valido: false, whatsapp_checado_em: new Date().toISOString() })
+      .eq('id', m.customer_id)
+  }
+
   const { data: biz } = await db.from('businesses').select('name, owner_id').eq('id', m.business_id).maybeSingle()
   const negocio = biz as { name: string | null; owner_id: string | null } | null
   const ex = explicarFalha(codigo)

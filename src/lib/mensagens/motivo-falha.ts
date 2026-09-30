@@ -50,6 +50,11 @@ const DO_ENVIO: Record<string, ExplicacaoFalha> = {
     acao: 'Cadastre o telefone na ficha dela.',
     culpaNossa: false,
   },
+  numero_sem_whatsapp: {
+    texto: 'Pausamos os avisos pra esse número: da última vez ele não tinha WhatsApp.',
+    acao: 'Corrija o telefone na ficha dela e os avisos voltam sozinhos.',
+    culpaNossa: false,
+  },
   telefone_invalido: {
     texto: 'O telefone da cliente está incompleto ou errado.',
     acao: 'Corrija o telefone na ficha dela (DDD e o 9 na frente).',
