@@ -8,6 +8,7 @@ import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
 import { ajusteSinalDoPeriodo } from '@/lib/sinal-da-comanda'
+import { vendasPacoteCartao } from '@/lib/queries/vendas-pacote-cartao'
 
 const CATEGORY_LABEL: Record<string, string> = {
   rent: 'Aluguel',
@@ -279,7 +280,10 @@ export default async function FinanceiroPage({
   const paidAppts = appointments.filter((a) => a.paid_at && a.payment_method !== 'courtesy' && a.payment_method !== 'credit' && a.payment_method !== 'points')
   const valorRecebidoAppts = paidAppts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
   const valorRecebidoSales = productSales.reduce((s, p) => s + Number(p.total ?? 0), 0)
-  const valorRecebido = valorRecebidoAppts + valorRecebidoSales + ajusteSinal.somar
+  // Pacote / cartão presente vendidos no período (só comanda + pagamento · 29/09)
+  const pacotesPeriodo = await vendasPacoteCartao(supabase, business.id, startOfDayBR(startStr), startOfDayBR(addDaysBR(endStr, 1)))
+  const valorPacotes = Math.round(pacotesPeriodo.reduce((s, v) => s + v.valor, 0) * 100) / 100
+  const valorRecebido = valorRecebidoAppts + valorRecebidoSales + ajusteSinal.somar + valorPacotes
   const prevPaid = prevAppts.filter((a) => a.paid_at)
   const prevValorRecebidoAppts = prevPaid.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
   const prevValorRecebidoSales = prevProductSales.reduce((s, p) => s + Number(p.total ?? 0), 0)
@@ -562,7 +566,7 @@ export default async function FinanceiroPage({
               appointments={(appointments || []) as unknown as AppointmentRow[]}
               periodo={periodoNorm}
               totalExpenses={despesasPagas}
-              sinaisRecebidos={ajusteSinal.somar}
+              outrosRecebidos={ajusteSinal.somar + valorPacotes}
             />
           </div>
         </div>

@@ -6,6 +6,7 @@ import { IconWallet } from '@/components/ui/Icon'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getSalePaymentSplitMap, getApptPaymentSplitMap, type PaymentShare } from '@/lib/queries/appointment-payment-split'
 import { sinalPorAtendimento, sinaisRecebidos } from '@/lib/sinal-da-comanda'
+import { vendasPacoteCartao } from '@/lib/queries/vendas-pacote-cartao'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
@@ -122,7 +123,18 @@ export default async function RecepcaoCaixaPage() {
     payment_fee_percent: null,
     client_name: `Sinal · ${x.client_name}`,
   }))
-  const todayAppts: AppointmentForCash[] = [...apptsHoje, ...salesHoje, ...sinaisHoje]
+  // Venda de pacote / cartão presente paga hoje (só comanda + pagamento)
+  const pacotesHoje: AppointmentForCash[] = (await vendasPacoteCartao(sbAdmin, business.id, startOfDayBR(today), startOfDayBR(tomorrowISO))).map((v) => ({
+    id: v.id,
+    total_price: v.valor,
+    paid_at: v.paid_at,
+    payment_method: v.payment_method,
+    payment_card_type: null,
+    payment_fee_percent: null,
+    client_name: v.descricao,
+    payment_split: v.payment_split,
+  }))
+  const todayAppts: AppointmentForCash[] = [...apptsHoje, ...salesHoje, ...sinaisHoje, ...pacotesHoje]
 
   // Resumo do dia · atendimentos no dia + a receber (contexto antes de fechar)
   const { data: allTodayAppts } = await supabase
