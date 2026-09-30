@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
+import { reservarComanda } from '@/lib/reserva-comanda'
+import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 
 // 'courtesy' aceito como legacy (V34). UI nova usa 'points' pra resgate
 // de fidelidade. Constraint do banco já aceita os 5 (V37).
@@ -149,6 +152,31 @@ export async function POST(
         }
       }
       novoValor = v
+    }
+  }
+
+  /* Desmarcar pagamento de atendimento cuja COMANDA já tem pagamento
+     (auditoria 29/09): limpava só o atendimento — a comanda seguia fechada
+     com o dinheiro, as telas discordavam, e faturar de novo DUPLICAVA o
+     pagamento. O dinheiro vive na comanda: desfaz por lá. */
+  if (body.paid === false && appt.invoice_item_id) {
+    const { data: itemDesmarcar } = await supabase
+      .from('invoice_items')
+      .select('invoice_id')
+      .eq('id', appt.invoice_item_id)
+      .maybeSingle()
+    if (itemDesmarcar?.invoice_id) {
+      const { count: pagamentosComanda } = await supabase
+        .from('invoice_payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('invoice_id', itemDesmarcar.invoice_id)
+        .or(`notes.is.null,notes.neq.${NOTA_SINAL}`)
+      if ((pagamentosComanda ?? 0) > 0) {
+        return NextResponse.json(
+          { error: 'O pagamento está na comanda. Para desfazer, abra a comanda e use Reabrir ou Cancelar.' },
+          { status: 409 },
+        )
+      }
     }
   }
 
@@ -336,24 +364,68 @@ export async function POST(
             .select('id, status, total')
             .eq('id', item.invoice_id)
             .maybeSingle()
-          if (inv && inv.status === 'open') {
+          /* Comanda com VÁRIOS itens / sinal (auditoria 29/09): antes cobrava
+             invoices.total cheio (o sinal entrava 2x) e só este atendimento
+             ficava pago — os outros atendimentos e os produtos da mesma
+             comanda seguiam "a receber" com a comanda já fechada. Agora usa a
+             mesma regra do "Receber pagamento" da comanda (/invoices/[id]/pay). */
+          if (inv && inv.status === 'open' && (await reservarComanda(admin, inv.id))) {
+            const { data: itens } = await admin
+              .from('invoice_items')
+              .select('item_type, reference_id')
+              .eq('invoice_id', inv.id)
+            const apptIds = (itens ?? []).filter((i) => i.item_type === 'appointment' && i.reference_id).map((i) => i.reference_id as string)
+            const saleIds = (itens ?? []).filter((i) => i.item_type === 'product' && i.reference_id).map((i) => i.reference_id as string)
+
             const { count } = await admin
               .from('invoice_payments')
               .select('id', { count: 'exact', head: true })
               .eq('invoice_id', inv.id)
+              .or(`notes.is.null,notes.neq.${NOTA_SINAL}`)
             if ((count ?? 0) === 0) {
-              await admin.from('invoice_payments').insert({
-                invoice_id: inv.id,
-                payment_method: updates.payment_method,
-                amount: Number(inv.total ?? full.total_price ?? 0),
-                paid_at: updates.paid_at,
-                installments: updates.payment_installments ?? 1,
-                fee_percent: updates.payment_fee_percent ?? 0,
-              })
+              const sinal = await linhasDoSinal(admin, apptIds)
+              const { count: sinalJaLancado } = await admin
+                .from('invoice_payments')
+                .select('id', { count: 'exact', head: true })
+                .eq('invoice_id', inv.id)
+                .eq('notes', NOTA_SINAL)
+              if (!sinalJaLancado && sinal.linhas.length > 0) {
+                await admin.from('invoice_payments').insert(
+                  sinal.linhas.map((l) => ({ invoice_id: inv.id, ...l, installments: 1, fee_percent: 0, notes: NOTA_SINAL })),
+                )
+              }
+              const resto = Math.max(0, Math.round((Number(inv.total ?? full.total_price ?? 0) - sinal.total) * 100) / 100)
+              if (resto > 0) {
+                await admin.from('invoice_payments').insert({
+                  invoice_id: inv.id,
+                  payment_method: updates.payment_method,
+                  amount: resto,
+                  paid_at: updates.paid_at,
+                  device_id: updates.payment_device_id ?? null,
+                  card_brand: updates.payment_card_brand ?? null,
+                  card_type: updates.payment_card_type ?? null,
+                  installments: updates.payment_installments ?? 1,
+                  fee_percent: updates.payment_fee_percent ?? 0,
+                })
+              }
             }
+
+            const outrosAppts = apptIds.filter((a) => a !== id)
+            if (outrosAppts.length > 0) {
+              await admin.from('appointments')
+                .update({ status: 'completed', payment_method: updates.payment_method })
+                .in('id', outrosAppts)
+              await admin.from('appointments').update({ paid_at: updates.paid_at }).in('id', outrosAppts).is('paid_at', null)
+            }
+            if (saleIds.length > 0) {
+              await acertarValorDosProdutosDaComanda(admin, inv.id)
+              await admin.from('sales').update({ status: 'paid', payment_method: updates.payment_method }).in('id', saleIds)
+              await admin.from('sales').update({ paid_at: updates.paid_at }).in('id', saleIds).is('paid_at', null)
+            }
+
             await admin
               .from('invoices')
-              .update({ status: 'closed', closed_at: updates.paid_at })
+              .update({ status: 'closed', closed_at: updates.paid_at, fechando_desde: null })
               .eq('id', inv.id)
           }
         }

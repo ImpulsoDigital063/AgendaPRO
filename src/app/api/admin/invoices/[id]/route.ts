@@ -205,6 +205,42 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
   }
 
+  // 3a. PACOTE vendido nesta comanda (auditoria 29/09): cancelar a comanda
+  //     deixava o pacote ATIVO — a cliente seguia com as sessões sem ter
+  //     pago. Cancela o pacote (só os que ainda não estavam) e devolve ao
+  //     estoque os produtos entregues na venda dele (movimento marcado com o
+  //     id do pacote · vendas anteriores a 29/09 não têm a marca e não voltam).
+  const pacoteIds = (items ?? []).filter((i) => i.item_type === 'package').map((i) => i.reference_id as string).filter(Boolean)
+  if (pacoteIds.length > 0) {
+    const { data: pacotesCancelados, error: pkgErr } = await admin
+      .from('customer_packages')
+      .update({ status: 'cancelled' })
+      .in('id', pacoteIds)
+      .neq('status', 'cancelled')
+      .select('id')
+    if (pkgErr) return NextResponse.json({ error: `package_cancel_failed: ${pkgErr.message}` }, { status: 500 })
+    for (const pc of pacotesCancelados ?? []) {
+      const { data: saidas } = await admin
+        .from('stock_movements')
+        .select('product_id, quantity')
+        .eq('business_id', businessId)
+        .eq('type', 'exit')
+        .like('reason', `%[${pc.id}]`)
+      const entradas = (saidas ?? []).map((m) => ({
+        business_id: businessId,
+        product_id: m.product_id as string,
+        type: 'entry' as const,
+        quantity: Math.abs(Number(m.quantity ?? 0)),
+        reason: 'Cancelamento de comanda (pacote)',
+        created_by: user.id,
+      }))
+      if (entradas.length > 0) {
+        const { error: movErr } = await admin.from('stock_movements').insert(entradas)
+        if (movErr) return NextResponse.json({ error: `stock_revert_failed: ${movErr.message}` }, { status: 500 })
+      }
+    }
+  }
+
   // 3b. Crédito usado nesta comanda volta pra cliente (M3 · 29/09)
   await devolverCreditoDaComanda(admin, id)
 

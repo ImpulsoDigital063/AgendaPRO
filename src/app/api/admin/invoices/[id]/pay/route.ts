@@ -227,6 +227,19 @@ async function postPagar(
   // total), então limpamos os pagamentos antigos antes de registrar os novos.
   // Sem isso, reabrir+pagar de novo empilhava pagamentos duplicados (ex: comanda
   // de R$195 com R$754 registrado). Studio Mood/Izanara 09/06.
+  /* Repagamento de comanda REABERTA (auditoria 29/09): usa a data do
+     pagamento original, não a de hoje. Antes o paid_at de todos os
+     atendimentos/vendas ia pra hoje: o Fluxo de um dia já fechado mudava pra
+     trás e a comissão já paga reaparecia como pendente no mês novo. */
+  const { data: pagosAntes } = await admin
+    .from('invoice_payments')
+    .select('paid_at')
+    .eq('invoice_id', invoiceId)
+    .or(`notes.is.null,notes.neq.${NOTA_SINAL}`)
+    .order('paid_at', { ascending: true })
+    .limit(1)
+  const quando = (pagosAntes?.[0]?.paid_at as string | undefined) ?? nowIso
+
   // A linha do SINAL fica (é dinheiro que entrou em outro dia · 29/09).
   await admin.from('invoice_payments').delete().eq('invoice_id', invoiceId)
     .or(`notes.is.null,notes.neq.${NOTA_SINAL}`)
@@ -251,7 +264,7 @@ async function postPagar(
     card_type: p.card_type ?? null,
     installments: p.installments ?? 1,
     fee_percent: p.fee_percent ?? 0,
-    paid_at: nowIso,
+    paid_at: quando,
   }))
   // Sinal cobriu tudo (ou comanda 100% descontada): não sobra linha a gravar.
   const { error: payErr } = rows.length > 0
@@ -278,11 +291,13 @@ async function postPagar(
 
   // 3. Atualiza appointments → completed + paid_at
   if (apptIds.length > 0) {
+    // paid_at só onde ainda não tem (reaberta mantém o dia original)
     const { error } = await admin
       .from('appointments')
-      .update({ status: 'completed', paid_at: nowIso, payment_method: propagatedMethod })
+      .update({ status: 'completed', payment_method: propagatedMethod })
       .in('id', apptIds)
     if (error) return NextResponse.json({ error: `appointments_update_failed: ${error.message}` }, { status: 500 })
+    await admin.from('appointments').update({ paid_at: quando }).in('id', apptIds).is('paid_at', null)
   }
 
   // 4. Atualiza sales → paid
@@ -291,15 +306,16 @@ async function postPagar(
     await acertarValorDosProdutosDaComanda(admin, invoiceId)
     const { error } = await admin
       .from('sales')
-      .update({ status: 'paid', paid_at: nowIso, payment_method: propagatedMethod })
+      .update({ status: 'paid', payment_method: propagatedMethod })
       .in('id', saleIds)
+    await admin.from('sales').update({ paid_at: quando }).in('id', saleIds).is('paid_at', null)
     if (error) return NextResponse.json({ error: `sales_update_failed: ${error.message}` }, { status: 500 })
   }
 
   // 5. Fecha invoice
   const { error: invErr } = await admin
     .from('invoices')
-    .update({ status: 'closed', closed_at: nowIso, fechando_desde: null })
+    .update({ status: 'closed', closed_at: quando, fechando_desde: null })
     .eq('id', invoiceId)
   if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 })
 

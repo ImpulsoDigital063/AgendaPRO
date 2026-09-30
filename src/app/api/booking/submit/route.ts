@@ -450,7 +450,11 @@ export async function POST(req: NextRequest) {
       client_phone: phone,
       client_email: email,
       service_id: firstService?.id ?? null,
-      service_name: firstService?.name ?? null,
+      // Vários serviços: mesmo padrão do admin ("Corte +1") · antes gravava só
+      // o primeiro e a agenda/comanda mostravam um serviço a menos (29/09).
+      service_name: firstService
+        ? (servicosDb.length > 1 ? `${firstService.name} +${servicosDb.length - 1}` : firstService.name)
+        : null,
       total_price: temPrecoReal ? totalComDesconto : null,
       appointment_date: appointmentDate,
       start_time: startTime,

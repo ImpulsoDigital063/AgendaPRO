@@ -111,6 +111,24 @@ export async function POST(request: Request) {
     expiresAt = d.toISOString()
   }
 
+  // 3b. Comanda existente é validada ANTES de gravar qualquer coisa
+  //     (auditoria 29/09): antes o pacote era criado e o estoque baixado, e
+  //     só depois a comanda fechada/de outro negócio era recusada — o pacote
+  //     ficava ativo sem cobrança e o estoque saía sem volta.
+  if (invoiceIdIn) {
+    const { data: inv } = await admin
+      .from('invoices')
+      .select('id, business_id, status')
+      .eq('id', invoiceIdIn)
+      .maybeSingle()
+    if (!inv || inv.business_id !== businessId) {
+      return NextResponse.json({ error: 'invoice_not_found' }, { status: 404 })
+    }
+    if (inv.status !== 'open') {
+      return NextResponse.json({ error: 'invoice_not_open' }, { status: 400 })
+    }
+  }
+
   // 4. Cria customer_package (sem invoice_item_id ainda · setamos depois)
   const { data: cp, error: cpErr } = await admin
     .from('customer_packages')
@@ -152,51 +170,9 @@ export async function POST(request: Request) {
     }
   }
 
-  // 5b. Produtos do combo → entrega na venda · baixa estoque via stock_movement (exit).
-  //     NÃO vira venda separada: a receita já é o preço do pacote (não duplica).
-  //     O trigger v63 (trg_apply_stock_movement) abate products.quantity sozinho.
-  let stockWarning: string | null = null
-  if (productItems.length > 0) {
-    // Produto sem controle de estoque não baixa (mesma regra da venda · v66).
-    const { data: controle } = await admin
-      .from('products')
-      .select('id, track_stock')
-      .in('id', productItems.map((it) => it.product_id))
-    const semControle = new Set((controle ?? []).filter((p) => p.track_stock === false).map((p) => p.id as string))
-    const movements = productItems.filter((it) => !semControle.has(it.product_id as string)).map((it) => ({
-      business_id: businessId,
-      product_id: it.product_id,
-      type: 'exit',
-      quantity: -Math.abs(Number(it.quantity ?? 0)), // delta negativo = saída
-      reason: `Pacote: ${pkg.name}`,
-      created_by: user.id,
-    }))
-    const { error: mvErr } = movements.length > 0
-      ? await admin.from('stock_movements').insert(movements)
-      : { error: null }
-    if (mvErr) {
-      // Produto já foi entregue fisicamente · não desfaz a venda por falha de estoque.
-      // Sinaliza pro dono ajustar manualmente.
-      stockWarning = mvErr.message
-    }
-  }
-
-  // 6. Resolve invoice (existente OU cria nova só pro pacote)
+  // 6. Resolve invoice (existente já validada no passo 3b · ou cria nova só pro pacote)
   let invoiceId = invoiceIdIn
-  if (invoiceId) {
-    // Valida invoice existente
-    const { data: inv } = await admin
-      .from('invoices')
-      .select('id, business_id, status, customer_id')
-      .eq('id', invoiceId)
-      .maybeSingle()
-    if (!inv || inv.business_id !== businessId) {
-      return NextResponse.json({ error: 'invoice_not_found' }, { status: 404 })
-    }
-    if (inv.status !== 'open') {
-      return NextResponse.json({ error: 'invoice_not_open' }, { status: 400 })
-    }
-  } else {
+  if (!invoiceId) {
     // Cria nova comanda
     const { data: invNumber } = await admin.rpc('next_invoice_number', { p_business_id: businessId })
     const { data: inv, error: invErr } = await admin
@@ -250,6 +226,36 @@ export async function POST(request: Request) {
 
   // 8. Linka customer_package -> invoice_item
   await admin.from('customer_packages').update({ invoice_item_id: invItem.id }).eq('id', cp.id)
+
+  // 8b. Produtos do combo (roda só com o pacote já na comanda · se algo
+  //     antes falhar o pacote é apagado e o estoque não chegou a sair) → entrega na venda · baixa estoque via stock_movement (exit).
+  //     NÃO vira venda separada: a receita já é o preço do pacote (não duplica).
+  //     O trigger v63 (trg_apply_stock_movement) abate products.quantity sozinho.
+  let stockWarning: string | null = null
+  if (productItems.length > 0) {
+    // Produto sem controle de estoque não baixa (mesma regra da venda · v66).
+    const { data: controle } = await admin
+      .from('products')
+      .select('id, track_stock')
+      .in('id', productItems.map((it) => it.product_id))
+    const semControle = new Set((controle ?? []).filter((p) => p.track_stock === false).map((p) => p.id as string))
+    const movements = productItems.filter((it) => !semControle.has(it.product_id as string)).map((it) => ({
+      business_id: businessId,
+      product_id: it.product_id,
+      type: 'exit',
+      quantity: -Math.abs(Number(it.quantity ?? 0)), // delta negativo = saída
+      reason: `Pacote: ${pkg.name} [${cp.id}]`, // id: cancelar a comanda devolve
+      created_by: user.id,
+    }))
+    const { error: mvErr } = movements.length > 0
+      ? await admin.from('stock_movements').insert(movements)
+      : { error: null }
+    if (mvErr) {
+      // Produto já foi entregue fisicamente · não desfaz a venda por falha de estoque.
+      // Sinaliza pro dono ajustar manualmente.
+      stockWarning = mvErr.message
+    }
+  }
 
   // 9. Recalcula totais da invoice (considera manual_discount se já tiver)
   const [{ data: allItems }, { data: invRow }] = await Promise.all([

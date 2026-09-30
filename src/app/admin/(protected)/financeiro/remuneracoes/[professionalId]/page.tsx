@@ -8,12 +8,16 @@ import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getPackageSessionCommission } from '@/lib/queries/package-session-commission'
 import { getGiftCardSessionCommission } from '@/lib/queries/gift-card-session-commission'
 import { todayBR, startOfDayBR } from '@/lib/date-br'
+import { baseLiquidaDaLinha } from '@/lib/produto-desconto'
 
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Dinheiro',
   pix: 'Pix',
+  card: 'Cartão',
   package: 'Pacote (resgate)',
-  credit: 'Cartão de Crédito',
+  gift_card: 'Cartão presente',
+  // 'credit' no sistema é o CRÉDITO da cliente (não cartão) · não gera comissão
+  credit: 'Crédito da cliente',
   credit_card: 'Cartão de Crédito',
   debit: 'Cartão de Débito',
   debit_card: 'Cartão de Débito',
@@ -121,6 +125,15 @@ export default async function RemuneracaoDetalhePage({
     .neq('status', 'cancelled')
     .order('appointment_date', { ascending: false })
 
+  /* Mesmo filtro da LISTA (auditoria 29/09): cortesia, crédito e pontos não
+     geram comissão. O detalhe contava e o total dele não batia com a lista.
+     Sem método (comanda 100% crédito) também fica fora, igual à lista.
+     Convênio não passa por aqui: quem paga é a empresa. */
+  const SEM_COMISSAO = new Set(['courtesy', 'credit', 'points'])
+  const apptsComissao = (appts ?? []).filter(
+    (a) => a.company_id != null || (a.payment_method != null && !SEM_COMISSAO.has(a.payment_method as string)),
+  )
+
   type Row = {
     date: string
     description: string
@@ -142,13 +155,13 @@ export default async function RemuneracaoDetalhePage({
   // já abatido), nunca sobre o bruto. Sem isso o salão paga comissão sobre o
   // dinheiro que o desconto tirou. O desconto vive em invoices.discount ·
   // getApptDiscountMap rateia de volta por appointment (Eduardo 04/07/2026).
-  const apptDisc = await getApptDiscountMap(sb, (appts ?? []).map((a) => a.invoice_item_id))
+  const apptDisc = await getApptDiscountMap(sb, apptsComissao.map((a) => a.invoice_item_id))
 
   /* COMISSÃO EM VALOR FIXO (CAF · 21/08/2026): quando o atendimento tem
      commission_amount gravado, ELE manda — é a foto do valor combinado no dia
      em que o atendimento nasceu. Null (todos os outros negócios) → segue a
      porcentagem de sempre, sem mudar um centavo. */
-  const rows: Row[] = (appts ?? []).map((a) => {
+  const rows: Row[] = apptsComissao.map((a) => {
     const base = Math.max(0, Number(a.total_price ?? 0) - (apptDisc[a.id] ?? 0))
     const fixa = a.commission_amount == null ? null : Number(a.commission_amount)
     /* v134 · porcentagem por SERVIÇO (Studio Isis Melo): o trigger fotografa
@@ -217,19 +230,89 @@ export default async function RemuneracaoDetalhePage({
     })
   }
 
+  /* PRODUTOS (auditoria 29/09): a lista soma comissão de produto e o detalhe
+     mostrava "Produtos R$ 0,00" fixo. Mesma regra da lista: só com regra
+     explícita (percent sobre o líquido da linha · fixed por unidade). */
+  const [{ data: vendas }, { data: pagamentosComissao }, { data: salarios }] = await Promise.all([
+    sb
+      .from('sales')
+      .select('id, paid_at, total, client_name, payment_method, sale_items(product_name, quantity, unit_price, commission_type, commission_value)')
+      .eq('business_id', business.id)
+      .eq('professional_id', professionalId)
+      .eq('type', 'product_sale')
+      .eq('status', 'paid')
+      .not('payment_method', 'in', '(courtesy,credit,points)')
+      .gte('paid_at', from)
+      .lt('paid_at', to)
+      .not('paid_at', 'is', null),
+    sb
+      .from('commission_payments')
+      .select('paid_amount, bonus_amount')
+      .eq('business_id', business.id)
+      .eq('professional_id', professionalId)
+      .gte('period_start', fromDate)
+      .lt('period_start', toDate),
+    sb
+      .from('professional_salaries')
+      .select('amount, paid')
+      .eq('business_id', business.id)
+      .eq('professional_id', professionalId)
+      .gte('date', fromDate)
+      .lt('date', toDate),
+  ])
+  let produtosBruto = 0
+  let produtosLiquido = 0
+  for (const v of vendas ?? []) {
+    const linhas = (v.sale_items ?? []) as { product_name: string | null; quantity: number | null; unit_price: number | null; commission_type: string | null; commission_value: number | null }[]
+    for (const it of linhas) {
+      const base = baseLiquidaDaLinha(v.total as number | null, linhas, it)
+      produtosBruto += Number(it.quantity ?? 0) * Number(it.unit_price ?? 0)
+      produtosLiquido += base
+      let remuneracao: number | null = null
+      if (it.commission_type === 'percent' && it.commission_value != null) remuneracao = (base * Number(it.commission_value)) / 100
+      else if (it.commission_type === 'fixed' && it.commission_value != null) remuneracao = Number(it.quantity ?? 0) * Number(it.commission_value)
+      if (remuneracao == null) continue
+      rows.push({
+        date: v.paid_at as string,
+        description: `${it.product_name ?? 'Produto'} · produto`,
+        client: (v.client_name as string | null) ?? '—',
+        valorBase: base,
+        valorRemuneracao: remuneracao,
+        valorPago: 0,
+        pagamentoPendente: remuneracao,
+        veioDeValorFixo: it.commission_type === 'fixed',
+        percentUsado: it.commission_type === 'percent' ? Number(it.commission_value) : 0,
+        convenio: null,
+        convenioRecebido: true,
+        paymentMethod: v.payment_method as string | null,
+      })
+    }
+  }
+
   rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
+  // Serviços: bruto (sem desconto) × líquido (com desconto) · antes os dois
+  // mostravam o líquido.
+  const servicosBruto = apptsComissao.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
+  const servicosLiquido = apptsComissao.reduce((s, a) => s + Math.max(0, Number(a.total_price ?? 0) - (apptDisc[a.id] ?? 0)), 0)
+
   const totalQty = rows.length
-  const totalBase = rows.reduce((s, r) => s + r.valorBase, 0)
   const totalComissoes = rows.reduce((s, r) => s + r.valorRemuneracao, 0)
-  const totalPago = rows.reduce((s, r) => s + r.valorPago, 0)
+  /* Pago / pendente com a MESMA conta da lista: o que saiu em pagamentos de
+     comissão do mês (+ bônus) e salário. Antes o detalhe olhava só a marca de
+     pago de cada atendimento — pacote e produto nunca ficavam "pagos" e o
+     pendente das duas telas divergia. */
+  const salarioMes = (salarios ?? []).reduce((s, x) => s + Number(x.amount ?? 0), 0)
+  const salarioPago = (salarios ?? []).filter((x) => x.paid === true).reduce((s, x) => s + Number(x.amount ?? 0), 0)
+  const totalPago = (pagamentosComissao ?? []).reduce((s, x) => s + Number(x.paid_amount ?? 0) + Number(x.bonus_amount ?? 0), 0) + salarioPago
+  const totalRemuneracoes = totalComissoes + salarioMes
   /* Convênio que a empresa ainda não pagou não é sacável — mesma regra da
      lista: "pagar quando receber", combinado do Gustavo com a equipe. Sem
      descontar aqui, o detalhe prometeria um saque que o caixa não tem. */
   const totalAguardandoConvenio = rows
     .filter((r) => r.convenio && !r.convenioRecebido)
     .reduce((s, r) => s + r.valorRemuneracao, 0)
-  const totalPendente = Math.max(0, totalComissoes - totalPago - totalAguardandoConvenio)
+  const totalPendente = Math.max(0, totalRemuneracoes - totalPago - totalAguardandoConvenio)
 
   // Por forma de pagamento
   const byMethod: Record<string, number> = {}
@@ -393,25 +476,25 @@ export default async function RemuneracaoDetalhePage({
                 <div className="flex justify-between">
                   <span style={{ color: 'var(--admin-text-mute)' }}>Serviços Sem Desconto</span>
                   <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>
-                    {formatBRL(totalBase)}
+                    {formatBRL(servicosBruto)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span style={{ color: 'var(--admin-text-mute)' }}>Serviços Com Desconto</span>
                   <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>
-                    {formatBRL(totalBase)}
+                    {formatBRL(servicosLiquido)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span style={{ color: 'var(--admin-text-mute)' }}>Produtos Sem Desconto</span>
-                  <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
-                    R$ 0,00
+                  <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                    {formatBRL(produtosBruto)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span style={{ color: 'var(--admin-text-mute)' }}>Produtos Com Desconto</span>
-                  <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
-                    R$ 0,00
+                  <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                    {formatBRL(produtosLiquido)}
                   </span>
                 </div>
 
@@ -424,10 +507,18 @@ export default async function RemuneracaoDetalhePage({
                     {formatBRL(totalComissoes)}
                   </span>
                 </div>
+                {salarioMes > 0 && (
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--admin-text-mute)' }}>Salário</span>
+                  <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-text)' }}>
+                    {formatBRL(salarioMes)}
+                  </span>
+                </div>
+                )}
                 <div className="flex justify-between">
                   <span className="font-bold" style={{ color: 'var(--admin-text)' }}>Total Remunerações</span>
                   <span className="font-bold tabular-nums" style={{ color: 'var(--admin-accent)' }}>
-                    {formatBRL(totalComissoes)}
+                    {formatBRL(totalRemuneracoes)}
                   </span>
                 </div>
 

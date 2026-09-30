@@ -524,12 +524,22 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
         .from('appointments')
         .update({
           ...(isExistingInvoice ? {} : { invoice_item_id: item.id }),
-          status: willClose ? 'completed' : 'confirmed',
+          ...(willClose ? { status: 'completed' } : {}),
           paid_at: willClose ? quandoIso : null,
           payment_method: willClose ? payment!.method : null,
         })
         .eq('id', item.reference_id),
     ))
+    /* "Deixar em aberto" (auditoria 29/09): voltava TODO atendimento pra
+       'confirmed' — um já concluído (atendido) virava "a atender" na agenda.
+       Só sobe quem ainda está pendente; concluído fica concluído. */
+    if (!willClose) {
+      await admin
+        .from('appointments')
+        .update({ status: 'confirmed' })
+        .in('id', insertedApptItems.map((i) => i.reference_id))
+        .eq('status', 'pending')
+    }
   }
 
   // 9. Total autoritativo = soma de TODOS os invoice_items da comanda.
