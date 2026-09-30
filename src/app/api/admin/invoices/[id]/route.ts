@@ -1,3 +1,4 @@
+import { estornarResgates } from '@/lib/resgate-pontos'
 import { NextResponse } from 'next/server'
 import { devolverCreditoDaComanda } from '@/lib/reserva-comanda'
 import { createClient } from '@/lib/supabase/server'
@@ -243,6 +244,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   // 3b. Crédito usado nesta comanda volta pra cliente (M3 · 29/09)
   await devolverCreditoDaComanda(admin, id)
+  // 3c. Pontos resgatados no pagamento voltam pra cliente (29/09)
+  await estornarResgates(admin, apptIds)
 
   // 4. Apagar invoice_payments (pagamento revertido)
   const { error: payDelErr } = await admin

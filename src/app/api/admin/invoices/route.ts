@@ -1,6 +1,7 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
+import { resgatarRecompensa, estornarResgates } from '@/lib/resgate-pontos'
 import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
 import { reservarComanda, RESPOSTA_COMANDA_OCUPADA, comReservaLiberadaNoErro } from '@/lib/reserva-comanda'
 import { normalizarAlvo } from '@/lib/desconto-geral'
@@ -381,8 +382,29 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
   if (!invoice) return NextResponse.json({ error: 'invoice_creation_failed' }, { status: 500 })
 
   // helper: rollback parcial (só apaga invoice se foi criada agora)
+  let resgatouPontos = false
   const rollback = async () => {
+    if (resgatouPontos) await estornarResgates(admin, appts.map((a) => a.id))
     if (!isExistingInvoice && invoice) await admin.from('invoices').delete().eq('id', invoice.id)
+  }
+
+  // 6a. PONTOS = resgate de recompensa (Eduardo 29/09 · lib/resgate-pontos).
+  //     Antes do passo 7 (estoque) pra saldo insuficiente não deixar nada pela
+  //     metade. Resgate anterior destes atendimentos volta antes.
+  if (willClose && appts.length > 0) await estornarResgates(admin, appts.map((a) => a.id))
+  if (payment?.method === 'points') {
+    if (appts.length === 0) {
+      await rollback()
+      return NextResponse.json({ error: 'Pontos só pagam atendimento.' }, { status: 400 })
+    }
+    const r = await resgatarRecompensa(admin, {
+      businessId,
+      customerId,
+      rewardId: (body.payment as { reward_id?: string }).reward_id ?? null,
+      appointmentId: appts[0].id,
+    })
+    if (!r.ok) { await rollback(); return NextResponse.json({ error: r.erro }, { status: 400 }) }
+    resgatouPontos = true
   }
 
   // 6b. Desconto não pode passar da comanda. Confere ANTES do passo 7: depois

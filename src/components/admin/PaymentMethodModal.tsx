@@ -65,6 +65,11 @@ type Props = {
   permiteDesconto?: boolean
   /** Esconde "Pontos" (venda de produto no PDV · Eduardo 28/09). */
   semPontos?: boolean
+  /** Cliente do atendimento · "Pontos" mostra o saldo dela e as recompensas
+   *  (Eduardo 29/09: pontos = resgate de recompensa, não método solto). */
+  customerId?: string | null
+  /** Sem customerId: o servidor acha a cliente pelo atendimento. */
+  appointmentId?: string | null
   /** Comanda tem serviço E produto: pergunta de onde sai o desconto
    *  (Eduardo 28/09 · a comissão depende disso). */
   perguntarOrigemDesconto?: boolean
@@ -73,8 +78,9 @@ type Props = {
   erro?: string | null
   /** 3o argumento so chega quando permiteEditarValor esta ligado e o valor mudou.
    *  4o só quando permiteDesconto está ligado e há desconto > 0.
-   *  5o = de onde sai o desconto (só com perguntarOrigemDesconto). */
-  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number, desconto?: number, origem?: AlvoDesconto) => void
+   *  5o = de onde sai o desconto (só com perguntarOrigemDesconto).
+   *  6o = recompensa escolhida quando method = 'points' (vai no body como reward_id). */
+  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number, desconto?: number, origem?: AlvoDesconto, rewardId?: string) => void
   onClose: () => void
 }
 
@@ -107,6 +113,8 @@ export default function PaymentMethodModal({
   permiteEditarValor = false,
   permiteDesconto = false,
   semPontos = false,
+  customerId = null,
+  appointmentId = null,
   perguntarOrigemDesconto = false,
   erro = null,
   businessId,
@@ -122,11 +130,31 @@ export default function PaymentMethodModal({
   // Step 2 — abre quando escolhe 'card' e businessId existe
   const [cardStep, setCardStep] = useState(false)
 
+  /* PONTOS (Eduardo 29/09): o botão só existe com a fidelidade LIGADA, e
+     escolher = trocar por uma recompensa (o saldo da cliente cai no servidor).
+     Antes aparecia pra todo negócio e só marcava o método: 7 atendimentos
+     saíram de graça sem descontar ponto nenhum. */
+  const [pontosStep, setPontosStep] = useState(false)
+  const [fid, setFid] = useState<{ ativo: boolean; saldo: number | null; recompensas: { id: string; name: string; points_required: number }[] } | null>(null)
+  useEffect(() => {
+    if (!open || semPontos) { setFid(null); return }
+    let vivo = true
+    const q = customerId
+      ? `?customer_id=${encodeURIComponent(customerId)}`
+      : appointmentId ? `?appointment_id=${encodeURIComponent(appointmentId)}` : ''
+    fetch(`/api/admin/fidelidade/contexto${q}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (vivo) setFid(j) })
+      .catch(() => { if (vivo) setFid(null) })
+    return () => { vivo = false }
+  }, [open, semPontos, customerId, appointmentId])
+
   useEffect(() => {
     if (!open) return
     function handler(e: KeyboardEvent) {
       if (e.key === 'Escape' && !loading) {
         if (cardStep) setCardStep(false)
+        else if (pontosStep) setPontosStep(false)
         else onClose()
       }
     }
@@ -136,11 +164,11 @@ export default function PaymentMethodModal({
       window.removeEventListener('keydown', handler)
       document.body.style.overflow = ''
     }
-  }, [open, loading, onClose, cardStep])
+  }, [open, loading, onClose, cardStep, pontosStep])
 
   // Reset cardStep ao fechar
   useEffect(() => {
-    if (!open) setCardStep(false)
+    if (!open) { setCardStep(false); setPontosStep(false) }
   }, [open])
 
   // Portal-mount guard: createPortal precisa de document. Sem essa flag,
@@ -205,6 +233,10 @@ export default function PaymentMethodModal({
       setCardStep(true)
       return
     }
+    if (method === 'points') {
+      setPontosStep(true)
+      return
+    }
     onChoose(method, undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada)
   }
 
@@ -247,6 +279,57 @@ export default function PaymentMethodModal({
             onConfirm={(details) => onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada)}
             onClose={onClose}
           />
+        ) : pontosStep ? (
+          <div className="p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--admin-text-faded, #94A3B8)' }}>
+                  Pagar com pontos
+                </p>
+                <h3 className="text-lg font-bold leading-tight" style={{ color: 'var(--admin-text, #0F172A)' }}>
+                  Qual recompensa {clientName} vai trocar?
+                </h3>
+                <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute, #64748B)' }}>
+                  {fid?.saldo == null ? 'Sem cliente vinculada · não dá pra usar pontos.' : `Saldo: ${fid.saldo.toLocaleString('pt-BR')} pts`}
+                </p>
+              </div>
+              <button type="button" onClick={() => setPontosStep(false)} disabled={loading} className="text-xs font-semibold px-2 py-1 rounded-lg" style={{ color: 'var(--admin-text-mute, #64748B)' }}>
+                Voltar
+              </button>
+            </div>
+            {erro && (
+              <p className="mb-3 text-xs font-semibold rounded-lg px-2.5 py-2" role="alert" style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}>
+                {erro}
+              </p>
+            )}
+            {(fid?.recompensas.length ?? 0) === 0 ? (
+              <p className="text-sm py-4" style={{ color: 'var(--admin-text-mute, #64748B)' }}>
+                Nenhuma recompensa ativa. Cadastre em Configurações › Fidelidade.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                {fid!.recompensas.map((r) => {
+                  const falta = fid!.saldo == null ? null : r.points_required - fid!.saldo
+                  const pode = falta != null && falta <= 0
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      disabled={loading || !pode}
+                      onClick={() => onChoose('points', undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, r.id)}
+                      className="w-full flex items-center justify-between gap-3 p-3 rounded-xl text-left transition-all disabled:opacity-45 active:scale-[0.98]"
+                      style={{ background: 'var(--admin-surface, #F8FAFC)', border: '1.5px solid rgba(245,158,11,0.35)' }}
+                    >
+                      <span className="text-sm font-bold" style={{ color: 'var(--admin-text, #0F172A)' }}>{r.name}</span>
+                      <span className="text-xs font-bold tabular-nums shrink-0" style={{ color: pode ? '#B45309' : 'var(--admin-text-faded, #94A3B8)' }}>
+                        {r.points_required.toLocaleString('pt-BR')} pts{falta != null && falta > 0 ? ` · faltam ${falta.toLocaleString('pt-BR')}` : ''}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         ) : (
           <>
             {/* Header */}
@@ -430,7 +513,7 @@ export default function PaymentMethodModal({
             )}
 
             <div className="grid grid-cols-2 gap-2.5 px-5 pb-3">
-              {METHODS.filter((m) => !(semPontos && m.id === 'points')).map((m) => (
+              {METHODS.filter((m) => m.id !== 'points' || (!semPontos && fid?.ativo === true)).map((m) => (
                 <button
                   key={m.id}
                   type="button"

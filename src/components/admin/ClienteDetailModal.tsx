@@ -59,7 +59,7 @@ type Appointment = {
 type PointsTransaction = {
   id: string
   points: number
-  reason: 'service' | 'referral' | 'review' | 'manual' | 'punctuality' | 'redemption'
+  reason: 'service' | 'referral' | 'review' | 'manual' | 'punctuality' | 'redemption' | 'redemption_reversal'
   created_at: string
   appointment_id: string | null
 }
@@ -93,6 +93,7 @@ const REASON_LABEL: Record<PointsTransaction['reason'], string> = {
   manual: 'Ajuste manual',
   punctuality: 'Pontualidade',
   redemption: 'Resgate',
+  redemption_reversal: 'Resgate devolvido',
 }
 
 type Props = {

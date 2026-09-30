@@ -2,6 +2,7 @@ import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
 import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
+import { resgatarRecompensa, estornarResgates } from '@/lib/resgate-pontos'
 import { reservarComanda, RESPOSTA_COMANDA_OCUPADA, comReservaLiberadaNoErro, devolverCreditoDaComanda } from '@/lib/reserva-comanda'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -67,6 +68,8 @@ async function postPagar(
     card_type?: string | null
     installments?: number | null
     fee_percent?: number | null
+    /** method 'points': recompensa trocada pelos pontos (lib/resgate-pontos) */
+    reward_id?: string | null
   }
   const ALLOWED = ['cash', 'pix', 'card', 'courtesy', 'points', 'credit']
   let payments: PaymentIn[] = []
@@ -80,6 +83,7 @@ async function postPagar(
       card_type: body.card_type ?? null,
       installments: body.installments ?? 1,
       fee_percent: body.fee_percent ?? 0,
+      reward_id: body.reward_id ?? null,
     }]
   }
   if (payments.length === 0 || payments.some((p) => !ALLOWED.includes(p.method))) {
@@ -133,6 +137,22 @@ async function postPagar(
         ? `Soma dos pagamentos (${sumAmounts.toFixed(2)}) não fecha com o que falta receber (${aReceber.toFixed(2)} · R$ ${sinal.total.toFixed(2)} já pagos no sinal)`
         : `Soma dos pagamentos (${sumAmounts.toFixed(2)}) não fecha com o total da comanda (${total.toFixed(2)})`,
     }, { status: 400 })
+  }
+
+  /* PONTOS = resgate de recompensa (Eduardo 29/09 · lib/resgate-pontos).
+     Repagamento devolve o resgate anterior; pagar com pontos resgata de novo. */
+  const apptIdsComanda = (itensAppt ?? []).map((i) => i.reference_id as string).filter(Boolean)
+  await estornarResgates(admin, apptIdsComanda)
+  const pagPontos = normalized.find((p) => p.method === 'points')
+  if (pagPontos) {
+    if (apptIdsComanda.length === 0) return NextResponse.json({ error: 'Pontos só pagam atendimento.' }, { status: 400 })
+    const r = await resgatarRecompensa(admin, {
+      businessId,
+      customerId: (invoice.customer_id as string | null) ?? null,
+      rewardId: pagPontos.reward_id ?? null,
+      appointmentId: apptIdsComanda[0],
+    })
+    if (!r.ok) return NextResponse.json({ error: r.erro }, { status: 400 })
   }
 
   // Repagamento (comanda reaberta): o crédito usado no pagamento anterior

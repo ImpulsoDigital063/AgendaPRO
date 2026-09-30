@@ -293,19 +293,19 @@ export default function FaturarComandaModal({
     return null
   }
 
-  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto) {
+  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string) {
     // Toque duplo: o estado `submitting` só vale no próximo render; a ref
     // barra na hora (auditoria 29/09 · M5 · a rota também reserva a comanda).
     if (enviandoRef.current) return
     enviandoRef.current = true
     try {
-      await enviarFatura(payment, cardDetails, desconto, origem)
+      await enviarFatura(payment, cardDetails, desconto, origem, rewardId)
     } finally {
       enviandoRef.current = false
     }
   }
 
-  async function enviarFatura(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto) {
+  async function enviarFatura(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string) {
     const v = validateBeforeSubmit()
     if (v) { setError(v); return }
     setError(null)
@@ -331,6 +331,7 @@ export default function FaturarComandaModal({
     }
     if (payment !== 'leave_open' && payment !== null) {
       const pay: Record<string, unknown> = { method: payment }
+      if (payment === 'points') pay.reward_id = rewardId
       if (payment === 'card' && cardDetails) {
         pay.device_id = cardDetails.device_id
         pay.card_brand = cardDetails.card_brand
@@ -910,12 +911,13 @@ export default function FaturarComandaModal({
         permiteDesconto
         erro={paymentOpen ? error : null}
         businessId={businessId}
+        appointmentId={appointmentId}
         loading={submitting}
         // Serviço + produto na mesma comanda → pergunta de onde sai o desconto.
         perguntarOrigemDesconto={cart.length > 0 || jaNaComanda.length > 0}
-        onChoose={(method, card, _valor, desconto, origem) => {
+        onChoose={(method, card, _valor, desconto, origem, rewardId) => {
           if (method === null) { setPaymentOpen(false); return }
-          submitInvoice(method, card, desconto, origem)
+          submitInvoice(method, card, desconto, origem, rewardId)
         }}
         onClose={() => setPaymentOpen(false)}
       />

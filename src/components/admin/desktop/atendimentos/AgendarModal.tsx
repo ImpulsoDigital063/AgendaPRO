@@ -1269,7 +1269,7 @@ export default function AgendarModal({
   // Reusa o PaymentMethodModal (pix/dinheiro/cartão+maquininha/pontos). Espelha
   // o completeWithPayment do AppointmentCard: status=completed + paid + snapshot
   // de cartão. method=null = "Pagar depois" (concluído, sem pagamento).
-  async function concludeWithPayment(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails) {
+  async function concludeWithPayment(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, rewardId?: string) {
     if (!payAppt) return
     setSaving(true)
 
@@ -1304,6 +1304,7 @@ export default function AgendarModal({
             card_type: cardDetails?.card_type ?? null,
             installments: cardDetails?.installments ?? 1,
             fee_percent: cardDetails?.fee_percent ?? 0,
+            reward_id: method === 'points' ? rewardId : null,
           }),
         })
         if (!res.ok) {
@@ -1312,6 +1313,11 @@ export default function AgendarModal({
           setError(`Erro ao receber pagamento da comanda · ${j.error ?? `HTTP ${res.status}`}`)
           return
         }
+      } else if (method === 'points') {
+        // Pontos = resgate (servidor desconta o saldo) · sem comanda não há por onde
+        setSaving(false)
+        setError('Não achei a comanda deste atendimento. Receba os pontos pela comanda.')
+        return
       } else {
         // Defensivo: trigger não criou comanda → marca o atendimento pago direto.
         const updates: Record<string, unknown> = {
@@ -2581,9 +2587,11 @@ export default function AgendarModal({
         clientName={payAppt?.name ?? ''}
         totalPrice={payAppt?.total}
         businessId={businessId}
+        appointmentId={payAppt?.id ?? null}
+        erro={payAppt ? error : null}
         loading={saving}
         deferLabel="Manter comanda aberta"
-        onChoose={(method, cardDetails) => concludeWithPayment(method, cardDetails)}
+        onChoose={(method, cardDetails, _v, _d, _o, rewardId) => concludeWithPayment(method, cardDetails, rewardId)}
         onClose={() => {
           // Fecha sem escolher: o agendamento já existe (confirmado). Mostra
           // a tela de sucesso pra não perder o registro.

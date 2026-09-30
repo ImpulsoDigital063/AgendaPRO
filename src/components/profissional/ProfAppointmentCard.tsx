@@ -60,6 +60,8 @@ export default function ProfAppointmentCard({
 }: Props) {
   const [status, setStatus] = useState(appointment.status)
   const [loading, setLoading] = useState(false)
+  // Erro do pagamento dentro do modal (ex.: pontos insuficientes)
+  const [erroPagamento, setErroPagamento] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<null | 'cancelled' | 'no_show'>(null)
   /* v131 · serviço extra na comanda (Studio Isis Melo). O invoice_id não vem
      na listagem: buscamos no clique, a partir do invoice_item do atendimento. */
@@ -120,8 +122,10 @@ export default function ProfAppointmentCard({
     method: PaymentMethodChoice,
     withPunctuality: boolean,
     cardDetails?: CardPaymentDetails,
+    rewardId?: string,
   ) {
     setLoading(true)
+    setErroPagamento(null)
     const res = await fetch('/api/profissional/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -129,6 +133,7 @@ export default function ProfAppointmentCard({
         appointmentId: appointment.id,
         action: 'completed',
         paymentMethod: method,
+        reward_id: method === 'points' ? rewardId : undefined,
         cardDetails: method === 'card' && cardDetails ? {
           device_id: cardDetails.device_id,
           card_brand: cardDetails.card_brand,
@@ -138,6 +143,12 @@ export default function ProfAppointmentCard({
         } : undefined,
       }),
     })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setErroPagamento(d.error ?? 'Não foi possível registrar o pagamento. Tente de novo.')
+      setLoading(false)
+      return
+    }
     if (res.ok) {
       setStatus('completed')
       setPaymentModal(false)
@@ -452,8 +463,10 @@ export default function ProfAppointmentCard({
         punctualityPoints={punctualityBonus}
         loading={loading}
         businessId={appointment.business_id}
-        onChoose={(method, cardDetails) => completeWithPayment(method, withPunctuality, cardDetails)}
-        onClose={() => !loading && setPaymentModal(false)}
+        appointmentId={appointment.id}
+        erro={paymentModal ? erroPagamento : null}
+        onChoose={(method, cardDetails, _v, _d, _o, rewardId) => completeWithPayment(method, withPunctuality, cardDetails, rewardId)}
+        onClose={() => { if (!loading) { setPaymentModal(false); setErroPagamento(null) } }}
       />
     </div>
   )

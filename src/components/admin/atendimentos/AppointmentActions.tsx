@@ -142,13 +142,14 @@ export default function AppointmentActions({
     else router.refresh()
   }
 
-  async function confirmarMetodo(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number) {
+  async function confirmarMetodo(method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number, _desconto?: number, _origem?: unknown, rewardId?: string) {
     if (!method) {
       // null = "Pagar depois" — só fecha o modal
       setPaymentOpen(false)
       return
     }
     const body: Record<string, unknown> = { method }
+    if (method === 'points') body.reward_id = rewardId
     // Rota ignora se vier igual ao atual; so propaga pra comanda quando muda.
     if (podeEditarValor && typeof valor === 'number') body.total_price = valor
     if (method === 'card' && cardDetails) {
@@ -445,6 +446,8 @@ export default function AppointmentActions({
         sinalPago={Number(sinalPago ?? 0)}
         permiteEditarValor={podeEditarValor}
         businessId={businessId}
+        appointmentId={appointmentId}
+        erro={paymentOpen ? error : null}
         loading={loading}
         onChoose={confirmarMetodo}
         onClose={() => setPaymentOpen(false)}

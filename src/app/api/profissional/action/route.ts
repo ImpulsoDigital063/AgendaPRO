@@ -5,6 +5,7 @@ import { sendClientNotification } from '@/lib/email'
 import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
 import { canCompleteAppointment } from '@/lib/appointment-status'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { resgatarRecompensa, estornarResgates } from '@/lib/resgate-pontos'
 
 function getAdminClient() {
   return createServiceClient(
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Profissional não encontrado.' }, { status: 403 })
   }
 
-  const { appointmentId, action, paymentMethod, cardDetails } = await req.json()
+  const { appointmentId, action, paymentMethod, cardDetails, reward_id: rewardId } = await req.json()
 
   if (!appointmentId || !['confirmed', 'cancelled', 'completed', 'no_show'].includes(action)) {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
@@ -166,6 +167,18 @@ export async function POST(req: NextRequest) {
           ? cardDetails.installments
           : 1
     }
+  }
+
+  // PONTOS = resgate de recompensa (Eduardo 29/09 · lib/resgate-pontos)
+  if (paymentMethod != null) await estornarResgates(adminClient, [appointmentId])
+  if (paymentMethod === 'points') {
+    const r = await resgatarRecompensa(adminClient, {
+      businessId: professional.business_id as string,
+      customerId: (appointment as { customer_id?: string | null }).customer_id ?? null,
+      rewardId: typeof rewardId === 'string' ? rewardId : null,
+      appointmentId,
+    })
+    if (!r.ok) return NextResponse.json({ error: r.erro }, { status: 400 })
   }
 
   const { error: updateError } = await adminClient

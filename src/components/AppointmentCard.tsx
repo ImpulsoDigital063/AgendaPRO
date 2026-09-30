@@ -217,11 +217,13 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
     method: PaymentMethodChoice,
     withPunctuality: boolean,
     cardDetails?: CardPaymentDetails,
+    rewardId?: string,
   ) {
     setLoading(true)
     const supabase = createClient()
     if (method != null) {
       const body: Record<string, unknown> = { method }
+      if (method === 'points') body.reward_id = rewardId
       if (method === 'card' && cardDetails) {
         body.device_id = cardDetails.device_id
         body.card_brand = cardDetails.card_brand
@@ -681,7 +683,8 @@ export default function AppointmentCard({ appointment, showDate, nextUp, punctua
         punctualityPoints={punctualityBonus}
         loading={loading}
         businessId={appointment.business_id}
-        onChoose={(method, cardDetails) => completeWithPayment(method, withPunctuality, cardDetails)}
+        appointmentId={appointment.id}
+        onChoose={(method, cardDetails, _v, _d, _o, rewardId) => completeWithPayment(method, withPunctuality, cardDetails, rewardId)}
         onClose={() => { if (!loading) { setPaymentModal(false); setErroPagamento(null) } }}
       />
       {/* Confirmação "atendi com antecedência" — só aparece se o admin

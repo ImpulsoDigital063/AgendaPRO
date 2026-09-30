@@ -167,6 +167,8 @@ export default function VenderPacoteCardModal({ packageId, packageName, price, b
   if (step === 'payment') {
     return (
       <PaymentMethodModal
+        // Pontos só pagam atendimento (resgate de recompensa · 29/09)
+        semPontos
         open
         clientName={customer?.name ?? 'o cliente'}
         totalPrice={price}

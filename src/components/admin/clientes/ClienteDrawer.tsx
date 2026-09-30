@@ -972,6 +972,7 @@ const REASON_LABEL: Record<string, string> = {
   manual: 'Manual',
   punctuality: 'Pontualidade',
   redemption: 'Resgate',
+  redemption_reversal: 'Resgate devolvido',
 }
 
 /**

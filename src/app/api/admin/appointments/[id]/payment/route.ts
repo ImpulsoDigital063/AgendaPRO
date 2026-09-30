@@ -6,6 +6,7 @@ import { checkRateLimit } from '@/lib/rate-limit-api'
 import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
 import { reservarComanda } from '@/lib/reserva-comanda'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
+import { resgatarRecompensa, estornarResgates } from '@/lib/resgate-pontos'
 
 // 'courtesy' aceito como legacy (V34). UI nova usa 'points' pra resgate
 // de fidelidade. Constraint do banco já aceita os 5 (V37).
@@ -44,7 +45,7 @@ export async function POST(
   // Validacao: appointment + business
   const { data: appt } = await supabase
     .from('appointments')
-    .select('id, business_id, professional_id, total_price, invoice_item_id, commission_payment_id')
+    .select('id, business_id, professional_id, customer_id, total_price, invoice_item_id, commission_payment_id')
     .eq('id', id)
     .single()
   if (!appt) return NextResponse.json({ error: 'not_found' }, { status: 404 })
@@ -258,6 +259,25 @@ export async function POST(
   // invoice_payments — senão a comanda registra o valor antigo.
   if (novoValor !== null) updates.total_price = novoValor
 
+  /* PONTOS = resgate de recompensa (Eduardo 29/09 · lib/resgate-pontos).
+     Qualquer resgate anterior deste atendimento volta primeiro (repagar ou
+     desmarcar não pode deixar a cliente sem os pontos). */
+  const adminPts = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+  await estornarResgates(adminPts, [id])
+  if (updates.payment_method === 'points') {
+    const r = await resgatarRecompensa(adminPts, {
+      businessId: appt.business_id as string,
+      customerId: (appt.customer_id as string | null) ?? null,
+      rewardId: typeof body.reward_id === 'string' ? body.reward_id : null,
+      appointmentId: id,
+    })
+    if (!r.ok) return NextResponse.json({ error: r.erro }, { status: 400 })
+  }
+
   const { error: updateErr } = await supabase
     .from('appointments')
     .update(updates)
@@ -265,6 +285,7 @@ export async function POST(
 
   if (updateErr) {
     console.error('payment update error:', updateErr)
+    if (updates.payment_method === 'points') await estornarResgates(adminPts, [id])
     return NextResponse.json({ error: 'update_failed' }, { status: 500 })
   }
 
