@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendPaymentConfirmed, sendRefundProcessed } from '@/lib/email'
 import { sendAlert } from '@/lib/alert'
-import { ativarPacote, trocarPacoteNoCiclo } from '@/lib/mensagens/franquia'
+import { ativarPacote, avisosEmCortesia, trocarPacoteNoCiclo } from '@/lib/mensagens/franquia'
 
 // =====================================================================
 // POST /api/webhooks/asaas
@@ -247,7 +247,12 @@ async function handlePaymentConfirmed(
      Envolvido em try porque o pagamento da MENSALIDADE já foi gravado
      acima: se a recarga falhar, o acesso dela não pode cair junto. O erro
      vai pro log e o saldo é corrigido na mão. */
-  if (avisosRef?.startsWith('avisos:')) {
+  // Cortesia: a cobrança pode ter nascido com "avisos:" antes da correção de
+  // 29/09 (Gessica/Wanessa). Recarregar aqui reiniciaria o pacote em +30 dias
+  // a partir do pagamento e encurtaria a cortesia até 07/11.
+  if (avisosRef?.startsWith('avisos:') && avisosEmCortesia(businessId)) {
+    console.log(`[Asaas Webhook] avisos em cortesia pra ${businessId} — pacote não recarregado`)
+  } else if (avisosRef?.startsWith('avisos:')) {
     const pacoteId = avisosRef.slice('avisos:'.length)
     try {
       const r = await ativarPacote(admin, businessId, pacoteId)

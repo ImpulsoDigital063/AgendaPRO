@@ -396,6 +396,30 @@ export function diferencaDoUpgrade(deId: string, paraId: string): number | null 
    ═══════════════════════════════════════════════════════════════ */
 
 /**
+ * Pacote de avisos em CORTESIA · não entra na cobrança nem é recarregado pelo
+ * pagamento da mensalidade. O pacote segue ativo e enviando.
+ *
+ * Existe porque em 21/09 a Rosy pagou R$79,90 (mensalidade + Avisos Padrão)
+ * sem ter contratado nada — ela usa o teste. E em 28/09 a Gessica e a Wanessa,
+ * cortesia até 07/11, receberam o mesmo PIX de R$79,90. `adicionalDeAvisos`
+ * somava o pacote de qualquer negócio com `avisos_pacote` no banco.
+ *
+ * Quem aceitar contratar sai daqui (Eduardo, 29/09) e passa a pagar junto
+ * com a mensalidade.
+ */
+export const AVISOS_CORTESIA: string[] = [
+  'cd3c7f5a-e657-4ddb-96c7-0a4ff45b63eb', // Studio Marcela Hair · teste do Eduardo
+  '717fd0c2-8387-41bb-befb-f45f258ea51f', // Rosy Borges · teste
+  'b446e158-8aef-4a1f-a0e3-6332c8ef3be0', // Viva Cacheada · beta, cortesia até 07/11
+  '645733a0-9902-4858-ab24-17bdec9b5571', // Wanessa Silva Estética · beta, cortesia até 07/11
+  '3ad534b4-a74a-4e5f-aec3-736f73dcd19a', // Gessica Batista Nails · beta, cortesia até 07/11
+]
+
+export function avisosEmCortesia(businessId: string | null | undefined): boolean {
+  return !!businessId && AVISOS_CORTESIA.includes(businessId)
+}
+
+/**
  * Quanto somar na próxima cobrança do plano por causa dos avisos.
  *
  * Decisão de 28/08: um PIX por mês. Cada cobrança separada é uma chance a
@@ -412,6 +436,7 @@ export async function adicionalDeAvisos(
   db: SupabaseClient,
   businessId: string,
 ): Promise<{ valor: number; pacote: Pacote | null; descricao: string | null }> {
+  if (avisosEmCortesia(businessId)) return { valor: 0, pacote: null, descricao: null }
   const { data } = await db
     .from('businesses')
     .select('avisos_pacote')
