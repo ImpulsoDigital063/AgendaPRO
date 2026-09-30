@@ -23,6 +23,7 @@
      28/08.
    ═══════════════════════════════════════════════════════════════ */
 
+import { useState } from 'react'
 import { WA } from './ui'
 import { IconWhatsapp } from '@/components/ui/Icon'
 
@@ -93,7 +94,26 @@ function Selo({ situacao }: { situacao: ItemConversa['situacao'] }) {
 }
 
 export default function Conversas({ conversas }: { conversas: Conversa[] }) {
+  /* Filtro (Eduardo, 29/09): "mais fácil de ver as que foram e as que não
+     foram". Sem filtro, uma conversa que falhou se perde no meio de dez que
+     chegaram. */
+  const [filtro, setFiltro] = useState<'todas' | 'chegaram' | 'falharam'>('todas')
   if (conversas.length === 0) return null
+  const temFalha = (c: Conversa) => c.itens.some((i) => i.situacao === 'falhou')
+  const nFalharam = conversas.filter(temFalha).length
+  const lista = filtro === 'todas' ? conversas : conversas.filter((c) => (filtro === 'falharam' ? temFalha(c) : !temFalha(c)))
+  const chip = (v: typeof filtro, rot: string, erro = false) => (
+    <button
+      type="button"
+      onClick={() => setFiltro(v)}
+      className="px-3 py-1.5 rounded-full text-[12px] font-bold"
+      style={filtro === v
+        ? { background: erro ? 'var(--admin-danger)' : 'var(--admin-accent)', color: '#fff' }
+        : { background: 'var(--admin-surface)', color: erro ? 'var(--admin-danger)' : 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}
+    >
+      {rot}
+    </button>
+  )
 
   return (
     <div className="mt-1">
@@ -113,8 +133,14 @@ export default function Conversas({ conversas }: { conversas: Conversa[] }) {
         </span>
       </div>
 
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {chip('todas', `Todas (${conversas.length})`)}
+        {chip('chegaram', `Chegaram (${conversas.length - nFalharam})`)}
+        {nFalharam > 0 && chip('falharam', `Não chegaram (${nFalharam})`, true)}
+      </div>
+
       <div className="space-y-2.5">
-        {conversas.map((c) => {
+        {lista.map((c) => {
           const ultimo = c.itens[c.itens.length - 1]
           const falhou = c.itens.some((i) => i.situacao === 'falhou')
           const digitos = (c.telefone || '').replace(/\D/g, '')

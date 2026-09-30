@@ -37,6 +37,9 @@ import crypto from 'node:crypto'
 import { normalizarTelefone, credencialDoSistema, enviarTexto } from '@/lib/mensagens/canal-cloud'
 import { todayBR } from '@/lib/date-br'
 import { sendWebPush } from '@/lib/notify-push'
+import { sendAlert } from '@/lib/alert'
+import { explicarFalha } from '@/lib/mensagens/motivo-falha'
+import { rotuloDoAviso } from '@/lib/mensagens/rotulos'
 
 export const runtime = 'nodejs'
 
@@ -116,7 +119,75 @@ async function gravarStatus(db: Db, st: StatusMeta): Promise<string | null> {
   }
 
   await db.from('message_log').update(campos).eq('provider_id', st.id)
+  if (st.status === 'failed') {
+    await avisarFalha(db, st.id, campos.falha_codigo as string | null, campos.falha_motivo as string).catch(() => null)
+  }
   return st.status
+}
+
+/**
+ * Aviso que NÃO CHEGOU não pode ficar só no banco (Eduardo, 29/09): até
+ * aqui a falha era gravada e ninguém sabia. A Wanessa tinha cliente com
+ * telefone (00) 0000-0000 recebendo tentativa atrás de tentativa.
+ *
+ *  · Problema do número da cliente → push pra DONA, que é quem corrige.
+ *    Um push por número a cada 24h: o mesmo número falhando na véspera e
+ *    no dia não vira dois alarmes pelo mesmo motivo.
+ *  · Problema nosso (conta Meta, template, pagamento) → Telegram pro
+ *    Eduardo. A dona não tem o que fazer e o push só a assustaria.
+ */
+async function avisarFalha(db: Db, providerId: string, codigo: string | null, motivoCru: string) {
+  const { data: linha } = await db
+    .from('message_log')
+    .select('id, business_id, tipo, destino, customer_id, appointment_id')
+    .eq('provider_id', providerId)
+    .maybeSingle()
+  const m = linha as { id: string; business_id: string | null; tipo: string; destino: string | null; customer_id: string | null; appointment_id: string | null } | null
+  if (!m?.business_id) return
+
+  const { data: biz } = await db.from('businesses').select('name, owner_id').eq('id', m.business_id).maybeSingle()
+  const negocio = biz as { name: string | null; owner_id: string | null } | null
+  const ex = explicarFalha(codigo)
+
+  if (ex.culpaNossa) {
+    await sendAlert(
+      `⚠️ Aviso não entregue (problema nosso)\n${negocio?.name ?? m.business_id} · ${rotuloDoAviso(m.tipo)}\nMeta ${codigo ?? '?'}: ${motivoCru}`,
+    )
+    return
+  }
+
+  // Um push por número a cada 24h
+  if (m.destino) {
+    const desde = new Date(Date.now() - 24 * 3600e3).toISOString()
+    const { count } = await db
+      .from('message_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', m.business_id)
+      .eq('destino', m.destino)
+      .gte('falhou_em', desde)
+      .neq('id', m.id)
+    if ((count ?? 0) > 0) return
+  }
+
+  let cliente: string | null = null
+  if (m.customer_id) {
+    const { data } = await db.from('customers').select('name').eq('id', m.customer_id).maybeSingle()
+    cliente = (data as { name?: string } | null)?.name ?? null
+  }
+  if (!cliente && m.appointment_id) {
+    const { data } = await db.from('appointments').select('client_name').eq('id', m.appointment_id).maybeSingle()
+    cliente = (data as { client_name?: string } | null)?.client_name ?? null
+  }
+
+  await avisarDona(
+    db,
+    m.business_id,
+    negocio?.owner_id ?? null,
+    cliente ?? 'Cliente',
+    `${rotuloDoAviso(m.tipo)}: ${ex.texto} ${ex.acao ?? ''}`.trim(),
+    '/admin/whatsapp#nao-chegaram',
+    `Aviso não chegou pra ${cliente ?? 'uma cliente'}`,
+  )
 }
 
 /* ═══ MENSAGEM: o que a cliente mandou ═══════════════════════════ */
