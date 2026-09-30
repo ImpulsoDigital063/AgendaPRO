@@ -72,6 +72,15 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
   const currentTab = searchParams.get('tab')
   const [collapsed, setCollapsed] = useState(false)
 
+  /* Sair da conta (Eduardo, 29/09): o botão tinha saído do menu em 26/05
+     junto com a lanterna, e sobrou só na aba "Eu" — quem não atende nunca
+     entra lá. Mesmo padrão da recepção. */
+  async function sairDaConta() {
+    const { createClient } = await import('@/lib/supabase/client')
+    await createClient().auth.signOut()
+    window.location.href = '/admin/login'
+  }
+
   const groups: SidebarGroup[] = [
     {
       label: 'Painel',
@@ -372,6 +381,23 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
           </Link>
         </div>
       )}
+
+      <div className="px-3 pb-3 flex-shrink-0">
+        <button
+          type="button"
+          onClick={sairDaConta}
+          title="Sair da conta"
+          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-xs text-left"
+          style={{ color: 'var(--admin-text-mute)' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          {!collapsed && <span className="truncate">Sair da conta</span>}
+        </button>
+      </div>
     </aside>
   )
 }
