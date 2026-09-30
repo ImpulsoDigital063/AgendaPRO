@@ -31,6 +31,10 @@
     {
       "path": "/api/cron/canal-saude",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/fechar-dia",
+      "schedule": "0 23 * * *"
     }
   ]
 }

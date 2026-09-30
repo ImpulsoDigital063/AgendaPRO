@@ -326,6 +326,9 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
   /* De quem é a conversa. Preenchido assim que o webhook identifica o
      agendamento/negócio — as respostas saem depois disso. */
   let negocioDaConversa: string | null = null
+  /* Qual horário a resposta responde (29/09). Sem isto o registro dizia
+     "18 confirmaram" e nenhuma linha dizia QUEM confirmou o QUÊ. */
+  let atendimentoDaConversa: string | null = null
 
   /* TODA resposta em texto livre é registrada (22/09/2026). Antes só a
      auto-resposta gravava linha, e ainda assim sem `business_id` e sem
@@ -350,6 +353,7 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
       erro: r.erro ?? null,
       provider_id: r.providerId ?? null,
       business_id: negocioDaConversa,
+      appointment_id: atendimentoDaConversa,
     }
     try {
       if (opcoes?.chave) {
@@ -489,6 +493,7 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
   if (!alvo) return 'sem_agendamento'
   const negocio = alvo.business
   negocioDaConversa = alvo.business_id
+  atendimentoDaConversa = alvo.id
 
   if (acao.tipo === 'confirmar') {
     /* `confirmado_em` alem do status (v146). Escrever so 'confirmed' nao
