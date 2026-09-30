@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { devolverCreditoDaComanda } from '@/lib/reserva-comanda'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
@@ -203,6 +204,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (movErr) return NextResponse.json({ error: `stock_revert_failed: ${movErr.message}` }, { status: 500 })
     }
   }
+
+  // 3b. Crédito usado nesta comanda volta pra cliente (M3 · 29/09)
+  await devolverCreditoDaComanda(admin, id)
 
   // 4. Apagar invoice_payments (pagamento revertido)
   const { error: payDelErr } = await admin

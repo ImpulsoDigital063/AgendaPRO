@@ -2,7 +2,7 @@ import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
 import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
-import { reservarComanda, RESPOSTA_COMANDA_OCUPADA, comReservaLiberadaNoErro } from '@/lib/reserva-comanda'
+import { reservarComanda, RESPOSTA_COMANDA_OCUPADA, comReservaLiberadaNoErro, devolverCreditoDaComanda } from '@/lib/reserva-comanda'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
@@ -135,6 +135,10 @@ async function postPagar(
     }, { status: 400 })
   }
 
+  // Repagamento (comanda reaberta): o crédito usado no pagamento anterior
+  // volta antes de abater de novo — senão a cliente perdia saldo 2x (M3).
+  await devolverCreditoDaComanda(admin, invoiceId)
+
   // 1a. CRÉDITO · valida saldo + abate customer_credits FIFO antes de criar invoice_payment
   const creditTotal = normalized.filter((p) => p.method === 'credit').reduce((s, p) => s + (p.amount ?? 0), 0)
   if (creditTotal > 0) {
@@ -152,7 +156,7 @@ async function postPagar(
     const agoraIso = new Date().toISOString()
     const { data: credits } = await admin
       .from('customer_credits')
-      .select('id, amount')
+      .select('id, amount, origin, date, expires_at, business_id')
       .eq('customer_id', invoice.customer_id)
       .is('used_in_invoice_id', null)
       .is('used_in_appointment_id', null)
@@ -168,11 +172,24 @@ async function postPagar(
     // Abate · marca os créditos como usados até cobrir o valor
     let remaining = creditTotal
     const creditIdsToUse: string[] = []
+    // Auditoria 29/09 (M3): o último crédito era queimado INTEIRO — R$100 de
+    // crédito usado numa conta de R$30 perdia R$70. A sobra volta como crédito
+    // novo, com a mesma origem/data/validade (mesmo padrão do sinal).
+    let sobra: { valor: number; origin: string; date: string; expires_at: string | null; business_id: string } | null = null
     for (const c of (credits ?? [])) {
       if (remaining <= 0.01) break
       const amt = Number(c.amount ?? 0)
       if (amt <= 0) continue
       creditIdsToUse.push(c.id as string)
+      if (amt > remaining + 0.01) {
+        sobra = {
+          valor: Math.round((amt - remaining) * 100) / 100,
+          origin: (c.origin as string) ?? 'other',
+          date: (c.date as string) ?? new Date().toISOString().slice(0, 10),
+          expires_at: (c.expires_at as string | null) ?? null,
+          business_id: c.business_id as string,
+        }
+      }
       remaining -= amt
     }
     // V1 simples: marca todos os créditos consumidos como used_in_invoice_id=invoiceId
@@ -183,6 +200,22 @@ async function postPagar(
         .update({ used_in_invoice_id: invoiceId })
         .in('id', creditIdsToUse)
       if (usedErr) return NextResponse.json({ error: `credit_abate_failed: ${usedErr.message}` }, { status: 500 })
+    }
+    if (sobra && sobra.valor > 0) {
+      const { error: sobraErr } = await admin.from('customer_credits').insert({
+        business_id: sobra.business_id,
+        customer_id: invoice.customer_id,
+        amount: sobra.valor,
+        origin: sobra.origin,
+        date: sobra.date,
+        expires_at: sobra.expires_at,
+        notes: `Sobra de crédito usado na comanda ${invoiceId}`,
+      })
+      if (sobraErr) {
+        // Sem a sobra gravada, devolve os créditos usados (não queima saldo)
+        await admin.from('customer_credits').update({ used_in_invoice_id: null }).in('id', creditIdsToUse)
+        return NextResponse.json({ error: `credit_sobra_failed: ${sobraErr.message}` }, { status: 500 })
+      }
     }
   }
 

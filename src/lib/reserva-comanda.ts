@@ -44,3 +44,20 @@ export async function comReservaLiberadaNoErro(
   if (res.status >= 400 && ctx.reservada) await liberarComanda(admin, ctx.reservada)
   return res
 }
+
+/**
+ * Devolve o crédito usado numa comanda (auditoria 29/09 · M3): cancelar a
+ * comanda ou reabrir e pagar de novo deixava o crédito marcado como usado —
+ * a cliente perdia saldo (e no repagamento perdia duas vezes). A sobra que
+ * foi gerada por essa comanda e ainda não foi usada é apagada (o crédito
+ * original volta inteiro).
+ */
+export async function devolverCreditoDaComanda(admin: SupabaseClient, invoiceId: string): Promise<void> {
+  await admin
+    .from('customer_credits')
+    .delete()
+    .eq('notes', `Sobra de crédito usado na comanda ${invoiceId}`)
+    .is('used_in_invoice_id', null)
+    .is('used_in_appointment_id', null)
+  await admin.from('customer_credits').update({ used_in_invoice_id: null }).eq('used_in_invoice_id', invoiceId)
+}
