@@ -3,9 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
-import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
-import { reservarComanda } from '@/lib/reserva-comanda'
-import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
+import { NOTA_SINAL } from '@/lib/sinal-da-comanda'
+import { fecharComandaDoAtendimento } from '@/lib/fechar-comanda-do-atendimento'
 import { resgatarRecompensa, estornarResgates } from '@/lib/resgate-pontos'
 
 // 'courtesy' aceito como legacy (V34). UI nova usa 'points' pra resgate
@@ -355,105 +354,22 @@ export async function POST(
     }
   }
 
-  // Reconcilia comanda ABERTA (bug Olímpio 09/06): se o atendimento já pertence
-  // a uma comanda (faturada "pagar depois") e agora é pago DIRETO aqui, a comanda
-  // ficava aberta e o valor sumia do "Recebido" (a régua exclui appt com
-  // invoice_item_id, assumindo que conta via pagamento da comanda — que nunca
-  // veio). Aqui fechamos a comanda + registramos o pagamento. Não-fatal: se
-  // falhar, o atendimento segue marcado pago.
+  // Pago direto → fecha a comanda do atendimento (lib/fechar-comanda-do-atendimento)
   if (updates.paid_at) {
-    try {
-      const admin = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { persistSession: false } },
-      )
-      const { data: full } = await admin
-        .from('appointments')
-        .select('invoice_item_id, total_price')
-        .eq('id', id)
-        .maybeSingle()
-      if (full?.invoice_item_id) {
-        const { data: item } = await admin
-          .from('invoice_items')
-          .select('invoice_id')
-          .eq('id', full.invoice_item_id)
-          .maybeSingle()
-        if (item?.invoice_id) {
-          const { data: inv } = await admin
-            .from('invoices')
-            .select('id, status, total')
-            .eq('id', item.invoice_id)
-            .maybeSingle()
-          /* Comanda com VÁRIOS itens / sinal (auditoria 29/09): antes cobrava
-             invoices.total cheio (o sinal entrava 2x) e só este atendimento
-             ficava pago — os outros atendimentos e os produtos da mesma
-             comanda seguiam "a receber" com a comanda já fechada. Agora usa a
-             mesma regra do "Receber pagamento" da comanda (/invoices/[id]/pay). */
-          if (inv && inv.status === 'open' && (await reservarComanda(admin, inv.id))) {
-            const { data: itens } = await admin
-              .from('invoice_items')
-              .select('item_type, reference_id')
-              .eq('invoice_id', inv.id)
-            const apptIds = (itens ?? []).filter((i) => i.item_type === 'appointment' && i.reference_id).map((i) => i.reference_id as string)
-            const saleIds = (itens ?? []).filter((i) => i.item_type === 'product' && i.reference_id).map((i) => i.reference_id as string)
-
-            const { count } = await admin
-              .from('invoice_payments')
-              .select('id', { count: 'exact', head: true })
-              .eq('invoice_id', inv.id)
-              .or(`notes.is.null,notes.neq.${NOTA_SINAL}`)
-            if ((count ?? 0) === 0) {
-              const sinal = await linhasDoSinal(admin, apptIds)
-              const { count: sinalJaLancado } = await admin
-                .from('invoice_payments')
-                .select('id', { count: 'exact', head: true })
-                .eq('invoice_id', inv.id)
-                .eq('notes', NOTA_SINAL)
-              if (!sinalJaLancado && sinal.linhas.length > 0) {
-                await admin.from('invoice_payments').insert(
-                  sinal.linhas.map((l) => ({ invoice_id: inv.id, ...l, installments: 1, fee_percent: 0, notes: NOTA_SINAL })),
-                )
-              }
-              const resto = Math.max(0, Math.round((Number(inv.total ?? full.total_price ?? 0) - sinal.total) * 100) / 100)
-              if (resto > 0) {
-                await admin.from('invoice_payments').insert({
-                  invoice_id: inv.id,
-                  payment_method: updates.payment_method,
-                  amount: resto,
-                  paid_at: updates.paid_at,
-                  device_id: updates.payment_device_id ?? null,
-                  card_brand: updates.payment_card_brand ?? null,
-                  card_type: updates.payment_card_type ?? null,
-                  installments: updates.payment_installments ?? 1,
-                  fee_percent: updates.payment_fee_percent ?? 0,
-                })
-              }
-            }
-
-            const outrosAppts = apptIds.filter((a) => a !== id)
-            if (outrosAppts.length > 0) {
-              await admin.from('appointments')
-                .update({ status: 'completed', payment_method: updates.payment_method })
-                .in('id', outrosAppts)
-              await admin.from('appointments').update({ paid_at: updates.paid_at }).in('id', outrosAppts).is('paid_at', null)
-            }
-            if (saleIds.length > 0) {
-              await acertarValorDosProdutosDaComanda(admin, inv.id)
-              await admin.from('sales').update({ status: 'paid', payment_method: updates.payment_method }).in('id', saleIds)
-              await admin.from('sales').update({ paid_at: updates.paid_at }).in('id', saleIds).is('paid_at', null)
-            }
-
-            await admin
-              .from('invoices')
-              .update({ status: 'closed', closed_at: updates.paid_at, fechando_desde: null })
-              .eq('id', inv.id)
-          }
-        }
-      }
-    } catch (e) {
-      console.error('[payment] reconcile comanda aberta (não-fatal):', e)
-    }
+    const admin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } },
+    )
+    await fecharComandaDoAtendimento(admin, id, {
+      payment_method: updates.payment_method,
+      paid_at: updates.paid_at,
+      payment_device_id: updates.payment_device_id,
+      payment_card_brand: updates.payment_card_brand,
+      payment_card_type: updates.payment_card_type,
+      payment_installments: updates.payment_installments,
+      payment_fee_percent: updates.payment_fee_percent,
+    })
   }
 
   revalidatePath('/admin/financeiro')

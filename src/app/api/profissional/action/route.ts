@@ -6,6 +6,7 @@ import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
 import { canCompleteAppointment } from '@/lib/appointment-status'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { resgatarRecompensa, estornarResgates } from '@/lib/resgate-pontos'
+import { fecharComandaDoAtendimento } from '@/lib/fechar-comanda-do-atendimento'
 
 function getAdminClient() {
   return createServiceClient(
@@ -188,6 +189,21 @@ export async function POST(req: NextRequest) {
 
   if (updateError) {
     return NextResponse.json({ error: 'Erro ao atualizar.' }, { status: 500 })
+  }
+
+  /* Pago pela profissional → fecha a comanda igual à agenda da dona
+     (Eduardo 29/09 · antes marcava só o atendimento: comanda aberta e o
+     dinheiro fora do Fluxo/Início — mesmo defeito dos R$1.245 do Olímpio). */
+  if (updates.paid_at) {
+    await fecharComandaDoAtendimento(adminClient, appointmentId, {
+      payment_method: updates.payment_method ?? null,
+      paid_at: updates.paid_at,
+      payment_device_id: updates.payment_device_id,
+      payment_card_brand: updates.payment_card_brand,
+      payment_card_type: updates.payment_card_type,
+      payment_installments: updates.payment_installments,
+      payment_fee_percent: updates.payment_fee_percent,
+    })
   }
 
   // Registra no activity log
