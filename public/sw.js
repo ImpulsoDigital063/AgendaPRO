@@ -56,7 +56,8 @@
 //   cadastro escondia o tour de todos os outros no mesmo navegador.
 // v142 (02/10): dias avulsos — abrir uma data especifica (ou mudar o horario
 //   de um dia so) sem mexer na semana. Pedido da Wanessa.
-const STATIC_CACHE_VERSION = 'agendapro-static-v142'
+// v143 (02/10): no celular, Dias avulsos sobe pro topo da tela de Horarios.
+const STATIC_CACHE_VERSION = 'agendapro-static-v143'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

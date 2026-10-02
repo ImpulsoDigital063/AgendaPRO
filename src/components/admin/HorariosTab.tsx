@@ -829,6 +829,12 @@ export default function HorariosTab({
         </div>
       )}
 
+      {/* v154 · mobile: Dias avulsos no topo — no fim da tela, depois dos 7 dias,
+          ninguém achava no celular. Desktop segue com a seção lá embaixo. */}
+      <div className="sm:hidden">
+        <DiasAvulsosSection professionals={activeProfessionals} selectedProfId={selectedProfId} isAdmin={isAdmin} />
+      </div>
+
       {/* Quick actions — atalhos primarios (presets de dias/horario) */}
       <div className="flex gap-1.5 flex-wrap">
         <button
@@ -1160,7 +1166,9 @@ export default function HorariosTab({
       )}
 
       {/* v153 · horário especial por data (Wanessa, 30/09) */}
-      <DiasAvulsosSection professionals={activeProfessionals} selectedProfId={selectedProfId} isAdmin={isAdmin} />
+      <div className="hidden sm:block">
+        <DiasAvulsosSection professionals={activeProfessionals} selectedProfId={selectedProfId} isAdmin={isAdmin} />
+      </div>
 
       <StickyActionBar
         dirty={isDirty}
