@@ -33,7 +33,7 @@ import {
   type DayConfig, type Schedule,
 } from '@/lib/horarios-semana'
 import {
-  dataPorExtenso, diaDaSemana, horaCurta, horarioDeCostume, nomeDoMes, periodosValidos, resumoPeriodos, statusDoDia,
+  dataPorExtenso, diaDaSemana, fechadosDe, horaCurta, osOutros, todo, umDia, horarioDeCostume, nomeDoMes, periodosValidos, resumoPeriodos, statusDoDia,
   type Bloqueio, type LinhaData, type Periodo, type StatusDia,
 } from './dados'
 import { Aviso, BotaoPrincipal, BotaoSecundario, CampoHora, Segmento, Sheet, Switch, Toast } from './ui'
@@ -586,7 +586,7 @@ export default function HorariosMobile({ professionals, initialWorkingHours, isA
       <Sheet open={painel?.tipo === 'fecharSemana'} onClose={fecharPainel}>
         {painel?.tipo === 'fecharSemana' && (
           <>
-            <Titulo titulo={`Fechar toda ${DAYS[painel.dia].full.toLowerCase()}?`} sub={`Some do link de agendamento de ${primeiroNome}. Quem já marcou continua marcado.`} />
+            <Titulo titulo={`Fechar ${todo(painel.dia)} ${DAYS[painel.dia].full.toLowerCase()}?`} sub={`Some do link de agendamento de ${primeiroNome}. Quem já marcou continua marcado.`} />
             {erro && <Aviso texto={erro} tom="erro" />}
             <div className="grid grid-cols-2 gap-2.5">
               <BotaoSecundario onClick={fecharPainel} disabled={salvando}>Voltar</BotaoSecundario>
@@ -630,7 +630,7 @@ export default function HorariosMobile({ professionals, initialWorkingHours, isA
                 <>
                   <EditorDia form={form} onChange={setForm} />
                   <p className="text-[13px] leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-                    Só o dia {diaNum} muda. As outras {nomeSemana}s continuam iguais.
+                    Só o dia {diaNum} muda. {osOutros(diaDaSemana(ymd))} continuam iguais.
                   </p>
                   <div className="grid grid-cols-2 gap-2.5">
                     <BotaoSecundario onClick={() => { setEditandoDia(false); setErro(null) }} disabled={salvando}>Cancelar</BotaoSecundario>
@@ -681,12 +681,12 @@ export default function HorariosMobile({ professionals, initialWorkingHours, isA
                       tom="info"
                       texto={st.folgaDeFora.professional_id === null
                         ? 'Esse dia está fechado pra todo o salão. Pra reabrir, mude em Bloqueios.'
-                        : `Esse dia está fechado por uma folga de toda ${nomeSemana}. Pra mudar, use Bloqueios.`}
+                        : `Esse dia está fechado por uma folga de ${todo(diaDaSemana(ymd))} ${nomeSemana}. Pra mudar, use Bloqueios.`}
                     />
                   )}
                   <p className="text-[13px] leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-                    {st.tipo === 'fechado' && `Abre só o dia ${diaNum}. As outras ${nomeSemana}s continuam fechadas.`}
-                    {st.tipo === 'normal' && `Qualquer mudança vale só pro dia ${diaNum}. As outras ${nomeSemana}s continuam iguais.`}
+                    {st.tipo === 'fechado' && `Abre só o dia ${diaNum}. ${osOutros(diaDaSemana(ymd))} continuam ${fechadosDe(diaDaSemana(ymd))}.`}
+                    {st.tipo === 'normal' && `Qualquer mudança vale só pro dia ${diaNum}. ${osOutros(diaDaSemana(ymd))} continuam iguais.`}
                     {st.tipo === 'especial' && 'Esse dia já está com horário diferente da semana.'}
                     {st.tipo === 'folga' && 'Ninguém consegue agendar nesse dia.'}
                   </p>
@@ -770,7 +770,7 @@ export default function HorariosMobile({ professionals, initialWorkingHours, isA
                     ? 'Escolha a data.'
                     : novo.modo === 'folga'
                       ? `Ninguém agenda com ${primeiroNome} em ${dataPorExtenso(novo.data).toLowerCase()}.`
-                      : `Só ${dataPorExtenso(novo.data).toLowerCase()} fica com esse horário. As outras ${DAYS[diaDaSemana(novo.data)].full.toLowerCase()}s não mudam.`}
+                      : `Só ${dataPorExtenso(novo.data).toLowerCase()} fica com esse horário. ${osOutros(diaDaSemana(novo.data))} não mudam.`}
                 </p>
                 <div className="grid grid-cols-2 gap-2.5">
                   <BotaoSecundario onClick={fecharPainel} disabled={salvando}>Cancelar</BotaoSecundario>
@@ -947,7 +947,7 @@ function PainelSemana({
   return (
     <>
       <div className="flex items-center justify-between gap-3">
-        <Titulo titulo={nomeDia} sub={`Toda ${nomeDia.toLowerCase()} · ${nome}`} />
+        <Titulo titulo={nomeDia} sub={`${todo(dia).charAt(0).toUpperCase()}${todo(dia).slice(1)} ${nomeDia.toLowerCase()} · ${nome}`} />
         <Switch on={rascunho.active} onClick={() => onChange({ ...rascunho, active: !rascunho.active })} label="Atende neste dia" />
       </div>
       {rascunho.active ? (
@@ -981,7 +981,7 @@ function PainelSemana({
         </div>
       ) : (
         <p className="text-sm" style={{ color: 'var(--admin-text-mute)' }}>
-          Fechado toda {nomeDia.toLowerCase()}. Pra abrir só uma {nomeDia.toLowerCase()} específica, use o Calendário.
+          Fechado {todo(dia)} {nomeDia.toLowerCase()}. Pra abrir só {umDia(dia)} {dia === 0 || dia === 6 ? 'específico' : 'específica'}, use o Calendário.
         </p>
       )}
       {erro && <Aviso texto={erro} tom="erro" />}

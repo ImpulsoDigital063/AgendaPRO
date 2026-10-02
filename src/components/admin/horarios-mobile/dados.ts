@@ -153,3 +153,19 @@ export function periodosValidos(ps: Periodo[]): string | null {
   }
   return null
 }
+
+/* Domingo e sábado são masculinos ("os outros domingos", "todo sábado");
+   o resto é feminino. Teste de 02/10 pegou "As outras domingos". */
+const MASCULINO = [0, 6]
+export function todo(dow: number) {
+  return MASCULINO.includes(dow) ? 'todo' : 'toda'
+}
+export function osOutros(dow: number) {
+  return `${MASCULINO.includes(dow) ? 'Os outros' : 'As outras'} ${NOMES_DIA[dow].toLowerCase()}s`
+}
+export function fechadosDe(dow: number) {
+  return MASCULINO.includes(dow) ? 'fechados' : 'fechadas'
+}
+export function umDia(dow: number) {
+  return `${MASCULINO.includes(dow) ? 'um' : 'uma'} ${NOMES_DIA[dow].toLowerCase()}`
+}
