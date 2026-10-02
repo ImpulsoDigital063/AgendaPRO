@@ -57,7 +57,8 @@
 // v142 (02/10): dias avulsos — abrir uma data especifica (ou mudar o horario
 //   de um dia so) sem mexer na semana. Pedido da Wanessa.
 // v143 (02/10): no celular, Dias avulsos sobe pro topo da tela de Horarios.
-const STATIC_CACHE_VERSION = 'agendapro-static-v143'
+// v144 (02/10): tela de Horarios nova no celular — Semana compacta + Calendario.
+const STATIC_CACHE_VERSION = 'agendapro-static-v144'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
