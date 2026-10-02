@@ -54,7 +54,9 @@
 //   da Wanessa) e duas perguntas novas nas duvidas frequentes.
 // v119 (23/09): convite do tour passa a ser por NEGOCIO — dispensar num
 //   cadastro escondia o tour de todos os outros no mesmo navegador.
-const STATIC_CACHE_VERSION = 'agendapro-static-v141'
+// v142 (02/10): dias avulsos — abrir uma data especifica (ou mudar o horario
+//   de um dia so) sem mexer na semana. Pedido da Wanessa.
+const STATIC_CACHE_VERSION = 'agendapro-static-v142'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

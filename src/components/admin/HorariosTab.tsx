@@ -3,6 +3,7 @@
 import { todayBR } from '@/lib/date-br'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import DiasAvulsosSection from './DiasAvulsosSection'
 import { createClient } from '@/lib/supabase/client'
 import type { Professional, WorkingHours } from '@/lib/types'
 import { IconCheck, IconInfo, IconClose, IconCopy, IconPlus, IconClock } from '@/components/ui/Icon'
@@ -1157,6 +1158,9 @@ export default function HorariosTab({
           {saveError}
         </div>
       )}
+
+      {/* v153 · horário especial por data (Wanessa, 30/09) */}
+      <DiasAvulsosSection professionals={activeProfessionals} selectedProfId={selectedProfId} isAdmin={isAdmin} />
 
       <StickyActionBar
         dirty={isDirty}

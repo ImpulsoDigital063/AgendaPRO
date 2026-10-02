@@ -243,13 +243,26 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
   // Sem nenhuma delas, cai no padrão 8h-20h.
   const dow = new Date(date + 'T12:00:00Z').getUTCDay()
   const profIdsVisiveis = profs.map((p) => p.id)
-  const { data: horariosData } = profIdsVisiveis.length
-    ? await sb
-        .from('working_hours')
-        .select('professional_id, day_of_week, start_time, end_time')
-        .in('professional_id', profIdsVisiveis)
-        .eq('day_of_week', dow)
-    : { data: [] as { start_time: string; end_time: string }[] }
+  const [{ data: semanalData }, { data: datasData }] = profIdsVisiveis.length
+    ? await Promise.all([
+        sb
+          .from('working_hours')
+          .select('professional_id, day_of_week, start_time, end_time')
+          .in('professional_id', profIdsVisiveis)
+          .eq('day_of_week', dow),
+        // v153 · horário especial da data substitui o semanal daquela profissional
+        sb
+          .from('working_hours_dates')
+          .select('professional_id, start_time, end_time')
+          .in('professional_id', profIdsVisiveis)
+          .eq('date', date),
+      ])
+    : [{ data: [] as { professional_id: string; start_time: string; end_time: string }[] }, { data: [] as { professional_id: string; start_time: string; end_time: string }[] }]
+  const comDataEspecial = new Set((datasData ?? []).map((d) => d.professional_id))
+  const horariosData = [
+    ...(semanalData ?? []).filter((h) => !comDataEspecial.has(h.professional_id)),
+    ...(datasData ?? []),
+  ]
 
   const inicios: number[] = []
   const fins: number[] = []

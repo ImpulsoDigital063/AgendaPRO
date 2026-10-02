@@ -6,6 +6,7 @@ import { useBookingBack } from '@/components/BookingBack'
 import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from '@/lib/types'
 import { maskPhoneInput } from '@/lib/client-display'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
+import { periodosDoDia, type HorarioPorData } from '@/lib/horario-do-dia'
 import {
   IconClock,
   IconSparkles,
@@ -247,6 +248,7 @@ export default function BookingFlow({
   business,
   professionals,
   workingHours,
+  workingHoursDates = [],
   services,
   referralCode,
   prefill,
@@ -255,6 +257,8 @@ export default function BookingFlow({
   business: Business
   professionals: Professional[]
   workingHours: WorkingHours[]
+  /** v153 · horário especial por data (substitui o semanal naquele dia) */
+  workingHoursDates?: HorarioPorData[]
   services: Service[]
   referralCode?: string
   prefill?: Prefill
@@ -397,9 +401,7 @@ export default function BookingFlow({
 
   // Granularidade do dia (step entre horários mostrados). Ex: 15min.
   function getSlotStep(date: Date): number {
-    const wh = workingHours.find(
-      (w) => w.professional_id === professional?.id && w.day_of_week === date.getDay()
-    )
+    const wh = periodosDoDia(workingHours, workingHoursDates, professional?.id, date)[0]
     return wh?.slot_duration || 30
   }
 
@@ -475,10 +477,7 @@ export default function BookingFlow({
   let hojeFechouAposExpediente = false
   for (let i = 0; i < scanLimit; i++) {
     const d = addDays(today, i)
-    const dayOfWeek = d.getDay()
-    const hoursOfDay = workingHours.filter(
-      (wh) => wh.professional_id === professional?.id && wh.day_of_week === dayOfWeek
-    )
+    const hoursOfDay = periodosDoDia(workingHours, workingHoursDates, professional?.id, d)
     if (hoursOfDay.length === 0) continue
     if (i === 0) {
       // Hoje: pré-check rápido — se nenhum período termina depois do
@@ -561,9 +560,7 @@ export default function BookingFlow({
       for (const d of availableDatesRef.current) {
         const dateStr = formatDate(d)
         const dow = d.getDay()
-        const periods = workingHours
-          .filter((w) => w.professional_id === professional.id && w.day_of_week === dow)
-          .sort((a, b) => a.start_time.localeCompare(b.start_time))
+        const periods = periodosDoDia(workingHours, workingHoursDates, professional.id, d)
         if (periods.length === 0) continue
 
         const bloqueados = blocks
@@ -609,7 +606,7 @@ export default function BookingFlow({
     // render — entrariam em loop como dependencia. totalDuration ja cobre a
     // unica entrada variavel delas (servicos escolhidos).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [business.id, professional?.id, janelaFrom, janelaTo, totalDuration, workingHours])
+  }, [business.id, professional?.id, janelaFrom, janelaTo, totalDuration, workingHours, workingHoursDates])
 
   // Qual é o passo anterior a partir do atual. Serve pra seta do header E pro
   // botão VOLTAR do aparelho — os dois passam pelo mesmo caminho.
@@ -853,9 +850,7 @@ export default function BookingFlow({
     // V31: dia pode ter MULTIPLOS periodos (manha + tarde com pausa
     // de almoco). Pega todos e itera abaixo. Ordenacao por start_time
     // garante que o array de slots vem cronologico.
-    const periods = workingHours
-      .filter((w) => w.professional_id === professional?.id && w.day_of_week === dayOfWeek)
-      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+    const periods = periodosDoDia(workingHours, workingHoursDates, professional?.id, date)
 
     if (periods.length === 0) {
       setSlots([])

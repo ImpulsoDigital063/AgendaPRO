@@ -8,6 +8,7 @@ import BookingFlow from '@/components/BookingFlow'
 import type { Business, Professional } from '@/lib/types'
 import { BookingBackProvider, BookingBackButton } from '@/components/BookingBack'
 import { buildBusinessMetadata } from '@/lib/public-metadata'
+import { todayBR } from '@/lib/date-br'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -43,7 +44,7 @@ export default async function AgendarPage({
     .eq('active', true)
     .order('created_at', { ascending: true })
 
-  const [{ data: workingHours }, { data: services }] = await Promise.all([
+  const [{ data: workingHours }, { data: services }, { data: workingHoursDates }] = await Promise.all([
     supabase
       .from('working_hours')
       .select('id, professional_id, day_of_week, start_time, end_time, slot_duration')
@@ -58,6 +59,12 @@ export default async function AgendarPage({
       // marcaria — era o caso da Viva Cacheada, com 60min grátis abertos.
       .eq('public_visible', true)
       .order('name'),
+    // v153 · horário especial por data (de hoje em diante)
+    supabase
+      .from('working_hours_dates')
+      .select('id, professional_id, date, start_time, end_time, slot_duration')
+      .eq('business_id', business.id)
+      .gte('date', todayBR()),
   ])
 
   // Filtra profissionais SEM working_hours configurado — eles nao
@@ -66,9 +73,11 @@ export default async function AgendarPage({
   // sem horarios aparecia no fluxo publico, cliente clicava e via
   // mensagem generica "Sem horario disponivel". Filtro upstream =
   // melhor UX (cliente nao chega nessa parede).
-  const profsWithHours = new Set(
-    (workingHours || []).map((wh) => wh.professional_id)
-  )
+  const profsWithHours = new Set([
+    ...(workingHours || []).map((wh) => wh.professional_id),
+    // quem só atende em dia avulso (v153) também aparece
+    ...(workingHoursDates || []).map((wh) => wh.professional_id),
+  ])
   const professionals = (allProfessionals || []).filter((p) => profsWithHours.has(p.id))
 
   // Prefill vindo do email da fila de espera (?w=<waitlist_id>).
@@ -223,6 +232,7 @@ export default async function AgendarPage({
           business={b}
           professionals={(professionals || []) as Professional[]}
           workingHours={workingHours || []}
+          workingHoursDates={workingHoursDates || []}
           services={services || []}
           referralCode={referralCode}
           prefill={prefill}
