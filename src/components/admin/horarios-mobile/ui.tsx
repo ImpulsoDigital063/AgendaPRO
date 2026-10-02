@@ -19,7 +19,9 @@ export function Sheet({ open, onClose, children }: { open: boolean; onClose: () 
       <div
         role="dialog"
         aria-modal="true"
-        className="rounded-t-[22px] px-4 pt-2.5 flex flex-col gap-3.5 overflow-y-auto"
+        // [&>*]:shrink-0 — sem isso o painel espreme a linha de profissionais
+        // (overflow-x) quando falta altura e ela aparece cortada (print 02/10)
+        className="rounded-t-[22px] px-4 pt-2.5 flex flex-col gap-3.5 overflow-y-auto [&>*]:shrink-0"
         style={{ background: 'var(--admin-surface)', maxHeight: '88vh', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}
       >
         <div className="w-10 h-[5px] rounded-full self-center" style={{ background: 'var(--admin-border-hi)' }} />

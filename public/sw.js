@@ -58,7 +58,8 @@
 //   de um dia so) sem mexer na semana. Pedido da Wanessa.
 // v143 (02/10): no celular, Dias avulsos sobe pro topo da tela de Horarios.
 // v144 (02/10): tela de Horarios nova no celular — Semana compacta + Calendario.
-const STATIC_CACHE_VERSION = 'agendapro-static-v144'
+// v145 (02/10): painel Dia personalizado — linha de profissionais nao corta e campo de data com dica.
+const STATIC_CACHE_VERSION = 'agendapro-static-v145'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

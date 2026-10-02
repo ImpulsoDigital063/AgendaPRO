@@ -704,15 +704,28 @@ export default function HorariosMobile({ professionals, initialWorkingHours, isA
             <Titulo titulo="Dia personalizado" sub="Vale só pra data escolhida. A semana não muda." />
             <label className="flex flex-col gap-1.5 text-xs font-bold tracking-wide" style={{ color: 'var(--admin-text-mute)' }}>
               DATA
-              <input
-                type="date"
-                min={hoje}
-                max={ate}
-                value={novo.data}
-                onChange={(e) => { setNovo({ ...novo, data: e.target.value }); setFolgaPendente(null) }}
-                className="w-full min-w-0 h-[52px] rounded-xl px-3.5 text-[17px] font-semibold"
-                style={{ WebkitAppearance: 'none', appearance: 'none', boxSizing: 'border-box', background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
-              />
+              {/* iPhone mostra o campo de data vazio como uma caixa em branco:
+                  o texto por cima diz o que fazer até escolher */}
+              <span className="relative block">
+                <input
+                  type="date"
+                  min={hoje}
+                  max={ate}
+                  value={novo.data}
+                  onChange={(e) => { setNovo({ ...novo, data: e.target.value }); setFolgaPendente(null) }}
+                  className="w-full min-w-0 h-[52px] rounded-xl px-3.5 text-[17px] font-semibold"
+                  style={{ WebkitAppearance: 'none', appearance: 'none', boxSizing: 'border-box', background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+                />
+                {!novo.data && (
+                  <span
+                    className="absolute inset-y-0 left-3.5 right-3.5 flex items-center justify-between pointer-events-none text-[17px] font-semibold tracking-normal"
+                    style={{ color: 'var(--admin-text-faded)', background: 'var(--admin-input-bg)' }}
+                  >
+                    Toque pra escolher o dia
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                  </span>
+                )}
+              </span>
             </label>
             {professionals.length > 1 && (
               <>
