@@ -36,7 +36,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   taxes: 'Impostos',
   other: 'Outros',
   payment_fee: 'Taxa de Maquininha',
-  commission: 'Comissões da equipe',
+  commission: 'Comissões pagas',
+  commission_due: 'Comissões a pagar',
 }
 
 type ViewKind = 'daily' | 'weekly' | 'monthly' | 'yearly'
@@ -408,12 +409,13 @@ export default async function FluxoCaixaPage({
       if (!key || !data[key]) continue
       geradaPorCol[key] = (geradaPorCol[key] ?? 0) + g.valor
     }
+    // Paga e a pagar em linhas separadas: "pago" só o que ela registrou.
     for (const key of new Set([...Object.keys(pagaPorCol), ...Object.keys(geradaPorCol)])) {
-      const amt = Math.round(Math.max(pagaPorCol[key] ?? 0, geradaPorCol[key] ?? 0) * 100) / 100
-      if (amt <= 0) continue
-      data[key].despesasByCategory.commission =
-        (data[key].despesasByCategory.commission ?? 0) + amt
-      data[key].despesasTotal += amt
+      const paga = Math.round((pagaPorCol[key] ?? 0) * 100) / 100
+      const aPagar = Math.round(Math.max(0, (geradaPorCol[key] ?? 0) - paga) * 100) / 100
+      if (paga > 0) data[key].despesasByCategory.commission = (data[key].despesasByCategory.commission ?? 0) + paga
+      if (aPagar > 0) data[key].despesasByCategory.commission_due = (data[key].despesasByCategory.commission_due ?? 0) + aPagar
+      data[key].despesasTotal += paga + aPagar
     }
   }
 

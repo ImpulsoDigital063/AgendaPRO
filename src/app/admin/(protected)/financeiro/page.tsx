@@ -346,21 +346,24 @@ export default async function FinanceiroPage({
     : [[], []]
   const somaGerada = (l: ComissaoLinha[]) => Math.round(l.reduce((s, x) => s + x.valor, 0) * 100) / 100
   const comissaoGerada = somaGerada(geradasPeriodo)
-  const comissoesPagas = Math.max(comissaoGerada, comissoesPagasRegistradas)
-  const prevComissoesPagas = Math.max(somaGerada(geradasPrev), prevComissoesPagasRegistradas)
+  const comissaoDoPeriodo = Math.max(comissaoGerada, comissoesPagasRegistradas)
+  // O que ainda não foi registrado como pago. Fica FORA de "Despesas pagas"
+  // (confundia: R$384 "pagos" sem ela ter pago nada · Eduardo 02/10), mas sai do lucro.
+  const comissaoAPagar = Math.round((comissaoDoPeriodo - comissoesPagasRegistradas) * 100) / 100
+  const prevComissaoAPagar = Math.max(0, somaGerada(geradasPrev) - prevComissoesPagasRegistradas)
 
   const despesasPagas =
-    expenses.filter((e) => e.paid_at).reduce((s, e) => s + Number(e.amount ?? 0), 0) + comissoesPagas
+    expenses.filter((e) => e.paid_at).reduce((s, e) => s + Number(e.amount ?? 0), 0) + comissoesPagasRegistradas
   const prevDespesasPagas =
     prevExpenses.filter((e) => e.paid_at).reduce((s, e) => s + Number(e.amount ?? 0), 0) +
-    prevComissoesPagas
+    prevComissoesPagasRegistradas
 
   const despesasPendentes = expenses
     .filter((e) => !e.paid_at)
     .reduce((s, e) => s + Number(e.amount ?? 0), 0)
 
-  const lucroLiquido = valorRecebido - despesasPagas
-  const prevLucroLiquido = prevValorRecebido - prevDespesasPagas
+  const lucroLiquido = valorRecebido - despesasPagas - comissaoAPagar
+  const prevLucroLiquido = prevValorRecebido - prevDespesasPagas - prevComissaoAPagar
 
   // Taxas (cartão crédito/débito · fee_percent) · appointments + vendas de produto (v87)
   const totalTaxasAppts = paidAppts.reduce((s, a) => {
@@ -545,12 +548,12 @@ export default async function FinanceiroPage({
     bruto: valorRecebido,
     comissoes: usaComissaoNoFluxo
       ? {
-          total: comissoesPagas,
-          pago: Math.min(comissoesPagasRegistradas, comissoesPagas),
+          total: comissaoDoPeriodo,
+          pago: comissoesPagasRegistradas,
           porProfissional: comissaoPorProfissional(geradasPeriodo),
         }
       : null,
-    despesas: despesasPagas - comissoesPagas,
+    despesas: despesasPagas - comissoesPagasRegistradas,
     lucroLiquido,
     taxas: totalTaxas,
   }
@@ -559,6 +562,9 @@ export default async function FinanceiroPage({
     { label: 'Valor recebido', value: valorRecebido, previous: prevValorRecebido, tone: 'positive' as const, format: 'currency' as const },
     { label: 'A receber', value: valorProgramado, previous: 0, tone: 'neutral' as const, format: 'currency' as const },
     { label: 'Despesas pagas', value: despesasPagas, previous: prevDespesasPagas, tone: 'negative' as const, format: 'currency' as const },
+    ...(usaComissaoNoFluxo
+      ? [{ label: 'Comissão a pagar', value: comissaoAPagar, previous: 0, tone: 'negative' as const, format: 'currency' as const }]
+      : []),
     { label: 'Lucro líquido', value: lucroLiquido, previous: prevLucroLiquido, tone: 'primary' as const, format: 'currency' as const },
     { label: 'Atendimentos', value: qtdAtendimentos, previous: prevQtdAtendimentos, tone: 'neutral' as const, format: 'count' as const },
     { label: 'Ticket médio', value: ticketMedio, previous: prevTicketMedio, tone: 'primary' as const, format: 'currency' as const },
@@ -603,7 +609,7 @@ export default async function FinanceiroPage({
             <FinanceiroView
               appointments={(appointments || []) as unknown as AppointmentRow[]}
               periodo={periodoNorm}
-              totalExpenses={despesasPagas}
+              totalExpenses={despesasPagas + comissaoAPagar}
               outrosRecebidos={ajusteSinal.somar + valorPacotes}
             />
             <div className="mt-4">
