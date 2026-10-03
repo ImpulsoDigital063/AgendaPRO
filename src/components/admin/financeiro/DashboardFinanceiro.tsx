@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import PeriodoPersonalizado from './PeriodoPersonalizado'
+import ComposicaoLiquido, { type Composicao } from './ComposicaoLiquido'
 
 type KpiCard = {
   label: string
@@ -50,6 +51,7 @@ type Props = {
     despesas_pendentes: number
   }
   taxasBreakdown?: TaxasBreakdown
+  composicao?: Composicao
   topProfissionais: RankRow[]
   topServicos: RankRow[]
 }
@@ -94,6 +96,7 @@ export default function DashboardFinanceiro({
   comparativo,
   comparativoTotals,
   taxasBreakdown,
+  composicao,
   topProfissionais,
   topServicos,
 }: Props) {
@@ -218,6 +221,8 @@ export default function DashboardFinanceiro({
           )
         })}
       </div>
+
+      {composicao && <ComposicaoLiquido c={composicao} />}
 
       {/* Card Taxas (só quando há fees) */}
       {taxasBreakdown && taxasBreakdown.taxas > 0 && (

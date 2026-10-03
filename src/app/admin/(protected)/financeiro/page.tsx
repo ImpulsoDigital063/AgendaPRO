@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import FinanceiroView, { type AppointmentRow } from '@/components/admin/FinanceiroView'
 import DashboardFinanceiro from '@/components/admin/financeiro/DashboardFinanceiro'
+import ComposicaoLiquido, { type Composicao } from '@/components/admin/financeiro/ComposicaoLiquido'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
@@ -518,6 +519,20 @@ export default async function FinanceiroPage({
     }
   }
 
+  // Do bruto ao líquido · fecha no mesmo lucroLiquido do card (Izanara 02/10)
+  const composicao: Composicao = {
+    servicos: valorRecebidoAppts,
+    qtdServicos: paidAppts.length,
+    produtos: valorRecebidoSales,
+    qtdProdutos: productSales.length,
+    outros: ajusteSinal.somar + valorPacotes,
+    bruto: valorRecebido,
+    comissoes: usaComissaoNoFluxo ? comissoesPagas : null,
+    despesas: despesasPagas - comissoesPagas,
+    lucroLiquido,
+    taxas: totalTaxas,
+  }
+
   const kpis = [
     { label: 'Valor recebido', value: valorRecebido, previous: prevValorRecebido, tone: 'positive' as const, format: 'currency' as const },
     { label: 'A receber', value: valorProgramado, previous: 0, tone: 'neutral' as const, format: 'currency' as const },
@@ -557,6 +572,7 @@ export default async function FinanceiroPage({
               }
               topProfissionais={topProfissionais}
               topServicos={topServicos}
+              composicao={composicao}
             />
           </div>
 
@@ -568,6 +584,9 @@ export default async function FinanceiroPage({
               totalExpenses={despesasPagas}
               outrosRecebidos={ajusteSinal.somar + valorPacotes}
             />
+            <div className="mt-4">
+              <ComposicaoLiquido c={composicao} />
+            </div>
           </div>
         </div>
       </div>

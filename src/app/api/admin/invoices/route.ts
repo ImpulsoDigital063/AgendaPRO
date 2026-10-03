@@ -655,6 +655,26 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
   // (Hub/Início/Vendas/comissão somam sales.total). Só quando fecha.
   if (willClose) await acertarValorDosProdutosDaComanda(admin, invoice.id)
 
+  // 9d. Caminho A: produto que JÁ estava na comanda não vem no productSales,
+  // então nasceu 'pending' e ficava assim com a comanda fechada e paga — o
+  // valor sumia do Financeiro/Vendas. Mesma regra do /invoices/[id]/pay:
+  // todo produto da comanda fica pago junto (Studio Mood · Ana Paula 02/10).
+  if (willClose) {
+    const { data: itensProduto } = await admin
+      .from('invoice_items')
+      .select('reference_id')
+      .eq('invoice_id', invoice.id)
+      .eq('item_type', 'product')
+    const saleIds = (itensProduto ?? []).map((i) => i.reference_id as string | null).filter((x): x is string => !!x)
+    if (saleIds.length > 0) {
+      await admin.from('sales')
+        .update({ status: 'paid', payment_method: payment!.method })
+        .in('id', saleIds)
+        .neq('status', 'cancelled')
+      await admin.from('sales').update({ paid_at: quandoIso }).in('id', saleIds).is('paid_at', null)
+    }
+  }
+
   // 10. Read-after-write: confere invoice criada
   const { data: confirm } = await admin
     .from('invoices')
