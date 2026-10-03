@@ -12,7 +12,13 @@ export type Composicao = {
   outros: number
   bruto: number
   /** null = conta não desconta comissão (chave comissao_no_fluxo desligada) */
-  comissoes: number | null
+  comissoes: {
+    /** o que sai do líquido: maior entre gerada e paga */
+    total: number
+    /** quanto já foi registrado como pago em Remunerações */
+    pago: number
+    porProfissional: { nome: string; valor: number }[]
+  } | null
   despesas: number
   lucroLiquido: number
   taxas: number
@@ -66,7 +72,22 @@ export default function ComposicaoLiquido({ c }: { c: Composicao }) {
       {c.outros > 0 && <Linha label="Sinal e pacotes" valor={c.outros} />}
       <Linha label="Receita bruta" valor={c.bruto} forte />
 
-      {c.comissoes !== null && <Linha label="Comissões pagas à equipe" valor={c.comissoes} sinal="−" />}
+      {c.comissoes !== null && (
+        <>
+          <Linha label="Comissões da equipe" valor={c.comissoes.total} sinal="−" />
+          {c.comissoes.porProfissional.map((p) => (
+            <div key={p.nome} className="flex items-baseline justify-between gap-3 pl-4 pb-1">
+              <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>{p.nome}</p>
+              <p className="text-xs tabular-nums whitespace-nowrap" style={{ color: 'var(--admin-text-faded)' }}>
+                {formatBRL(p.valor)}
+              </p>
+            </div>
+          ))}
+          <p className="text-xs pl-4 pb-1" style={{ color: 'var(--admin-text-faded)' }}>
+            Já pago {formatBRL(c.comissoes.pago)} · a pagar {formatBRL(Math.max(0, c.comissoes.total - c.comissoes.pago))}
+          </p>
+        </>
+      )}
       <Linha label="Despesas pagas" valor={c.despesas} sinal="−" />
       <Linha label="Lucro líquido" valor={c.lucroLiquido} forte />
 
@@ -77,11 +98,6 @@ export default function ComposicaoLiquido({ c }: { c: Composicao }) {
         </>
       )}
 
-      {c.comissoes !== null && (
-        <p className="text-xs mt-2" style={{ color: 'var(--admin-text-faded)' }}>
-          A comissão sai daqui quando o pagamento dela é registrado em Remunerações.
-        </p>
-      )}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import FinanceiroView, { type AppointmentRow } from '@/components/admin/FinanceiroView'
 import DashboardFinanceiro from '@/components/admin/financeiro/DashboardFinanceiro'
 import ComposicaoLiquido, { type Composicao } from '@/components/admin/financeiro/ComposicaoLiquido'
+import { comissoesGeradas, comissaoPorProfissional, type ComissaoLinha } from '@/lib/comissao-gerada'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
@@ -330,8 +331,23 @@ export default async function FinanceiroPage({
   const somaComissao = (linhas: { paid_amount: number | null; bonus_amount: number | null }[] | null) =>
     (linhas ?? []).reduce((s, c) => s + Number(c.paid_amount ?? 0) + Number(c.bonus_amount ?? 0), 0)
 
-  const comissoesPagas = somaComissao(comissoesPeriodo)
-  const prevComissoesPagas = somaComissao(comissoesPrev)
+  const comissoesPagasRegistradas = somaComissao(comissoesPeriodo)
+  const prevComissoesPagasRegistradas = somaComissao(comissoesPrev)
+
+  /* Comissão é da equipe desde o atendimento, não só quando a dona registra o
+     pagamento (Izanara 02/10). Com a chave, conta o MAIOR entre gerada e paga:
+     quem acerta em dia (Isis Melo) não muda; quem ainda não pagou já vê o
+     líquido de verdade. Mesmas regras de Remunerações (lib/comissao-gerada). */
+  const [geradasPeriodo, geradasPrev] = usaComissaoNoFluxo
+    ? await Promise.all([
+        comissoesGeradas(supabase, business.id, startOfDayBR(startStr), startOfDayBR(addDaysBR(endStr, 1))),
+        comissoesGeradas(supabase, business.id, startOfDayBR(prevStartStr), startOfDayBR(addDaysBR(prevEndStr, 1))),
+      ])
+    : [[], []]
+  const somaGerada = (l: ComissaoLinha[]) => Math.round(l.reduce((s, x) => s + x.valor, 0) * 100) / 100
+  const comissaoGerada = somaGerada(geradasPeriodo)
+  const comissoesPagas = Math.max(comissaoGerada, comissoesPagasRegistradas)
+  const prevComissoesPagas = Math.max(somaGerada(geradasPrev), prevComissoesPagasRegistradas)
 
   const despesasPagas =
     expenses.filter((e) => e.paid_at).reduce((s, e) => s + Number(e.amount ?? 0), 0) + comissoesPagas
@@ -527,7 +543,13 @@ export default async function FinanceiroPage({
     qtdProdutos: productSales.length,
     outros: ajusteSinal.somar + valorPacotes,
     bruto: valorRecebido,
-    comissoes: usaComissaoNoFluxo ? comissoesPagas : null,
+    comissoes: usaComissaoNoFluxo
+      ? {
+          total: comissoesPagas,
+          pago: Math.min(comissoesPagasRegistradas, comissoesPagas),
+          porProfissional: comissaoPorProfissional(geradasPeriodo),
+        }
+      : null,
     despesas: despesasPagas - comissoesPagas,
     lucroLiquido,
     taxas: totalTaxas,

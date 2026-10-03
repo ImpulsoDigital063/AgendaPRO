@@ -60,7 +60,7 @@
 // v144 (02/10): tela de Horarios nova no celular — Semana compacta + Calendario.
 // v145 (02/10): painel Dia personalizado — linha de profissionais nao corta e campo de data com dica.
 // v146 (02/10): Horarios celular — 'todo domingo', 'os outros sabados' (genero certo).
-const STATIC_CACHE_VERSION = 'agendapro-static-v147'
+const STATIC_CACHE_VERSION = 'agendapro-static-v148'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

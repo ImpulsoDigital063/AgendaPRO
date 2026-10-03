@@ -6,6 +6,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import FluxoCaixaTable, { type CashMonth, type MonthCol } from '@/components/admin/financeiro/FluxoCaixaTable'
 import FluxoCaixaViewSelector from '@/components/admin/financeiro/FluxoCaixaViewSelector'
 import ProjecaoFluxo, { type LinhaProjecao, type SemanaProjecao } from '@/components/admin/financeiro/ProjecaoFluxo'
+import { comissoesGeradas } from '@/lib/comissao-gerada'
 import { todayBR, addDaysBR, addMonthsBR, monthBoundsBR } from '@/lib/date-br'
 
 // Source of truth do breakdown:
@@ -35,7 +36,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   taxes: 'Impostos',
   other: 'Outros',
   payment_fee: 'Taxa de Maquininha',
-  commission: 'Comissões pagas',
+  commission: 'Comissões da equipe',
 }
 
 type ViewKind = 'daily' | 'weekly' | 'monthly' | 'yearly'
@@ -386,12 +387,29 @@ export default async function FluxoCaixaPage({
       .gte('paid_at', fullRangeFromDate)
       .lt('paid_at', fullRangeToDate)
 
+    /* Comissão é da equipe desde o atendimento (Izanara 02/10): em cada
+       coluna sai o MAIOR entre a gerada e a paga. Quem acerta em dia não
+       muda; quem ainda não registrou o pagamento já vê o saldo de verdade.
+       Mesma regra do Financeiro (lib/comissao-gerada). */
+    const pagaPorCol: Record<string, number> = {}
     for (const c of comissoes ?? []) {
       if (!c.paid_at) continue
-      const d = new Date(c.paid_at)
-      const key = keyForDate(view, d, cols)
+      const key = keyForDate(view, new Date(c.paid_at), cols)
       if (!key || !data[key]) continue
       const amt = Number(c.paid_amount ?? 0) + Number(c.bonus_amount ?? 0)
+      if (amt <= 0) continue
+      pagaPorCol[key] = (pagaPorCol[key] ?? 0) + amt
+    }
+    const geradaPorCol: Record<string, number> = {}
+    const geradas = await comissoesGeradas(sb, business.id, range.from.toISOString(), range.to.toISOString())
+    for (const g of geradas) {
+      const d = new Date(g.quando.length === 10 ? `${g.quando}T12:00:00-03:00` : g.quando)
+      const key = keyForDate(view, d, cols)
+      if (!key || !data[key]) continue
+      geradaPorCol[key] = (geradaPorCol[key] ?? 0) + g.valor
+    }
+    for (const key of new Set([...Object.keys(pagaPorCol), ...Object.keys(geradaPorCol)])) {
+      const amt = Math.round(Math.max(pagaPorCol[key] ?? 0, geradaPorCol[key] ?? 0) * 100) / 100
       if (amt <= 0) continue
       data[key].despesasByCategory.commission =
         (data[key].despesasByCategory.commission ?? 0) + amt
