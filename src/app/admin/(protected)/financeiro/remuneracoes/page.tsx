@@ -212,6 +212,8 @@ export default async function RemuneracoesPage({
     return total
   }
 
+  const pagaNoAtendimento = (business as { comissao_paga_no_atendimento?: boolean | null }).comissao_paga_no_atendimento === true
+
   // Calcula por prof · inclui recep como contratada (sem comissão)
   const rows: ProfRow[] = (profs ?? []).map((p) => {
     const pct = Number(p.default_commission_percent ?? 40)
@@ -303,7 +305,11 @@ export default async function RemuneracoesPage({
     /* v141 · bônus sai do bolso junto com a comissão: entra no "pago" e
        aparece destacado na coluna, pra dona saber quanto foi prêmio. */
     const bonus = meusPagamentos.reduce((s, cp) => s + Number(cp.bonus_amount ?? 0), 0)
-    const pago = pagoCommissoes + bonus + salariosJaPagos
+    /* v151 · comissão paga no dia do atendimento (Studio Mood): o gerado já
+       conta como pago, sem ela registrar cada Pix aqui. */
+    const comissaoGeradaMes = commissionFromAppts + convenioLiberado + commissionFromPackages + commissionFromSales
+    const pagoComissoesEfetivo = pagaNoAtendimento ? Math.max(pagoCommissoes, comissaoGeradaMes) : pagoCommissoes
+    const pago = pagoComissoesEfetivo + bonus + salariosJaPagos
 
     const valesPendentes = (vouchers ?? [])
       .filter((v) => v.professional_id === p.id)

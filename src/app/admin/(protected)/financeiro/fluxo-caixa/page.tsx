@@ -409,9 +409,12 @@ export default async function FluxoCaixaPage({
       if (!key || !data[key]) continue
       geradaPorCol[key] = (geradaPorCol[key] ?? 0) + g.valor
     }
-    // Paga e a pagar em linhas separadas: "pago" só o que ela registrou.
+    // Paga e a pagar em linhas separadas: "pago" só o que ela registrou —
+    // ou, com v151 (paga no dia do atendimento), tudo que foi gerado.
+    const pagaNoAtendimento = (business as { comissao_paga_no_atendimento?: boolean | null }).comissao_paga_no_atendimento === true
     for (const key of new Set([...Object.keys(pagaPorCol), ...Object.keys(geradaPorCol)])) {
-      const paga = Math.round((pagaPorCol[key] ?? 0) * 100) / 100
+      const registrada = pagaPorCol[key] ?? 0
+      const paga = Math.round((pagaNoAtendimento ? Math.max(registrada, geradaPorCol[key] ?? 0) : registrada) * 100) / 100
       const aPagar = Math.round(Math.max(0, (geradaPorCol[key] ?? 0) - paga) * 100) / 100
       if (paga > 0) data[key].despesasByCategory.commission = (data[key].despesasByCategory.commission ?? 0) + paga
       if (aPagar > 0) data[key].despesasByCategory.commission_due = (data[key].despesasByCategory.commission_due ?? 0) + aPagar

@@ -18,6 +18,8 @@ export type Composicao = {
     /** quanto já foi registrado como pago em Remunerações */
     pago: number
     porProfissional: { nome: string; valor: number }[]
+    /** v151 · paga no dia do atendimento: não existe "a pagar" */
+    pagaNoAtendimento?: boolean
   } | null
   despesas: number
   lucroLiquido: number
@@ -83,6 +85,11 @@ export default function ComposicaoLiquido({ c }: { c: Composicao }) {
               </p>
             </div>
           ))}
+          {c.comissoes.pagaNoAtendimento ? (
+            <p className="text-xs pl-4 pb-1" style={{ color: 'var(--admin-text-faded)' }}>
+              Paga no dia de cada atendimento
+            </p>
+          ) : (<>
           <div className="flex items-baseline justify-between gap-3 pl-4 pb-1">
             <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Já pago</p>
             <p className="text-xs tabular-nums whitespace-nowrap" style={{ color: 'var(--admin-text-faded)' }}>
@@ -99,6 +106,7 @@ export default function ComposicaoLiquido({ c }: { c: Composicao }) {
               {formatBRL(Math.max(0, c.comissoes.total - c.comissoes.pago))}
             </p>
           </div>
+          </>)}
         </>
       )}
       <Linha label="Despesas pagas" valor={c.despesas} sinal="−" />

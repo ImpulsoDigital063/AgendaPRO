@@ -156,6 +156,7 @@ export default async function RemuneracaoDetalhePage({
   // dinheiro que o desconto tirou. O desconto vive em invoices.discount ·
   // getApptDiscountMap rateia de volta por appointment (Eduardo 04/07/2026).
   const apptDisc = await getApptDiscountMap(sb, apptsComissao.map((a) => a.invoice_item_id))
+  const pagaNoAtendimento = (business as { comissao_paga_no_atendimento?: boolean | null }).comissao_paga_no_atendimento === true
 
   /* COMISSÃO EM VALOR FIXO (CAF · 21/08/2026): quando o atendimento tem
      commission_amount gravado, ELE manda — é a foto do valor combinado no dia
@@ -168,7 +169,7 @@ export default async function RemuneracaoDetalhePage({
        commission_percent no dia. Null → porcentagem da pessoa, como sempre. */
     const pctDoAppt = a.commission_percent != null ? Number(a.commission_percent) : pct
     const remuneracao = fixa ?? (base * pctDoAppt) / 100
-    const paid = a.commission_payment_id ? remuneracao : 0
+    const paid = a.commission_payment_id || pagaNoAtendimento ? remuneracao : 0
     const pendente = remuneracao - paid
     return {
       date: a.paid_at!,
@@ -304,7 +305,9 @@ export default async function RemuneracaoDetalhePage({
      pendente das duas telas divergia. */
   const salarioMes = (salarios ?? []).reduce((s, x) => s + Number(x.amount ?? 0), 0)
   const salarioPago = (salarios ?? []).filter((x) => x.paid === true).reduce((s, x) => s + Number(x.amount ?? 0), 0)
-  const totalPago = (pagamentosComissao ?? []).reduce((s, x) => s + Number(x.paid_amount ?? 0) + Number(x.bonus_amount ?? 0), 0) + salarioPago
+  const pagosRegistrados = (pagamentosComissao ?? []).reduce((s, x) => s + Number(x.paid_amount ?? 0) + Number(x.bonus_amount ?? 0), 0)
+  // v151 · paga no dia do atendimento: o gerado já conta como pago (mesma regra da lista)
+  const totalPago = (pagaNoAtendimento ? Math.max(pagosRegistrados, totalComissoes) : pagosRegistrados) + salarioPago
   const totalRemuneracoes = totalComissoes + salarioMes
   /* Convênio que a empresa ainda não pagou não é sacável — mesma regra da
      lista: "pagar quando receber", combinado do Gustavo com a equipe. Sem

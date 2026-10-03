@@ -331,8 +331,8 @@ export default async function FinanceiroPage({
   const somaComissao = (linhas: { paid_amount: number | null; bonus_amount: number | null }[] | null) =>
     (linhas ?? []).reduce((s, c) => s + Number(c.paid_amount ?? 0) + Number(c.bonus_amount ?? 0), 0)
 
-  const comissoesPagasRegistradas = somaComissao(comissoesPeriodo)
-  const prevComissoesPagasRegistradas = somaComissao(comissoesPrev)
+  const pagosRegistrados = somaComissao(comissoesPeriodo)
+  const prevPagosRegistrados = somaComissao(comissoesPrev)
 
   /* Comissão é da equipe desde o atendimento, não só quando a dona registra o
      pagamento (Izanara 02/10). Com a chave, conta o MAIOR entre gerada e paga:
@@ -346,6 +346,13 @@ export default async function FinanceiroPage({
     : [[], []]
   const somaGerada = (l: ComissaoLinha[]) => Math.round(l.reduce((s, x) => s + x.valor, 0) * 100) / 100
   const comissaoGerada = somaGerada(geradasPeriodo)
+  /* v151 · quem paga a equipe no dia do atendimento (Studio Mood) não registra
+     em Remunerações: a comissão gerada já conta como paga. */
+  const pagaNoAtendimento = (business as { comissao_paga_no_atendimento?: boolean | null }).comissao_paga_no_atendimento === true
+  const comissoesPagasRegistradas = pagaNoAtendimento ? Math.max(pagosRegistrados, comissaoGerada) : pagosRegistrados
+  const prevComissoesPagasRegistradas = pagaNoAtendimento
+    ? Math.max(prevPagosRegistrados, somaGerada(geradasPrev))
+    : prevPagosRegistrados
   const comissaoDoPeriodo = Math.max(comissaoGerada, comissoesPagasRegistradas)
   // O que ainda não foi registrado como pago. Fica FORA de "Despesas pagas"
   // (confundia: R$384 "pagos" sem ela ter pago nada · Eduardo 02/10), mas sai do lucro.
@@ -550,6 +557,7 @@ export default async function FinanceiroPage({
       ? {
           total: comissaoDoPeriodo,
           pago: comissoesPagasRegistradas,
+          pagaNoAtendimento,
           porProfissional: comissaoPorProfissional(geradasPeriodo),
         }
       : null,
@@ -562,7 +570,7 @@ export default async function FinanceiroPage({
     { label: 'Valor recebido', value: valorRecebido, previous: prevValorRecebido, tone: 'positive' as const, format: 'currency' as const },
     { label: 'A receber', value: valorProgramado, previous: 0, tone: 'neutral' as const, format: 'currency' as const },
     { label: 'Despesas pagas', value: despesasPagas, previous: prevDespesasPagas, tone: 'negative' as const, format: 'currency' as const },
-    ...(usaComissaoNoFluxo
+    ...(usaComissaoNoFluxo && !pagaNoAtendimento
       ? [{ label: 'Comissão a pagar', value: comissaoAPagar, previous: 0, tone: 'negative' as const, format: 'currency' as const }]
       : []),
     { label: 'Lucro líquido', value: lucroLiquido, previous: prevLucroLiquido, tone: 'primary' as const, format: 'currency' as const },
