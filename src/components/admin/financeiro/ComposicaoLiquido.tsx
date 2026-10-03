@@ -83,9 +83,22 @@ export default function ComposicaoLiquido({ c }: { c: Composicao }) {
               </p>
             </div>
           ))}
-          <p className="text-xs pl-4 pb-1" style={{ color: 'var(--admin-text-faded)' }}>
-            Já pago {formatBRL(c.comissoes.pago)} · a pagar {formatBRL(Math.max(0, c.comissoes.total - c.comissoes.pago))}
-          </p>
+          <div className="flex items-baseline justify-between gap-3 pl-4 pb-1">
+            <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>Já pago</p>
+            <p className="text-xs tabular-nums whitespace-nowrap" style={{ color: 'var(--admin-text-faded)' }}>
+              {formatBRL(c.comissoes.pago)}
+            </p>
+          </div>
+          {/* Em aberto com destaque: é o que a dona ainda deve à equipe (Eduardo 02/10) */}
+          <div
+            className="flex items-baseline justify-between gap-3 ml-4 mb-1 px-3 py-1.5 rounded-lg"
+            style={{ background: 'color-mix(in srgb, #D97706 12%, transparent)' }}
+          >
+            <p className="text-sm font-bold" style={{ color: '#B45309' }}>Comissão a pagar</p>
+            <p className="text-sm font-bold tabular-nums whitespace-nowrap" style={{ color: '#B45309' }}>
+              {formatBRL(Math.max(0, c.comissoes.total - c.comissoes.pago))}
+            </p>
+          </div>
         </>
       )}
       <Linha label="Despesas pagas" valor={c.despesas} sinal="−" />
