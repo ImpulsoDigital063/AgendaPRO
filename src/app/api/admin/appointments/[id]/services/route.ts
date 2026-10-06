@@ -459,6 +459,18 @@ export async function PATCH(
     .eq('reference_id', appointmentId)
     .eq('item_type', 'appointment')
 
+  // Trocou a profissional: a linha do atendimento na comanda acompanha. Sem
+  // isso a comanda seguia "com Graziele" num atendimento que está na agenda
+  // da Sofia (Studio Mood, comanda #36, 06/10). Vale mesmo com os mesmos
+  // serviços · é só o rótulo, preço e rateio não mudam.
+  if (newProfId !== appointment.professional_id && (apptInvItems?.length ?? 0) > 0) {
+    await admin
+      .from('invoice_items')
+      .update({ professional_id: newProfId })
+      .eq('reference_id', appointmentId)
+      .eq('item_type', 'appointment')
+  }
+
   // Mesmos serviços: a comanda não muda (preço, desconto da linha e rateio
   // do combo ficam como estavam).
   for (const it of mesmosServicos ? [] : apptInvItems ?? []) {
