@@ -37,7 +37,7 @@ export default async function SumidosPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, slug, name, description, category, tour_sumidos_em, tour_sumidos_2_em')
+    .select('id, slug, name, description, category, tour_sumidos_em, tour_sumidos_2_em, whatsapp_sumidos_cupom_template')
     .eq('owner_id', user.id)
     .single()
   if (!business) redirect(await destinoSemNegocio())
@@ -222,6 +222,7 @@ export default async function SumidosPage({
             businessSlug={business.slug}
             businessName={business.name}
             businessDescription={business.description}
+            textoSalvo={business.whatsapp_sumidos_cupom_template}
             dias={SUMIDO_DAYS}
             existingCoupons={cuponsComDono}
             sumidosTotal={sumidosTotal}

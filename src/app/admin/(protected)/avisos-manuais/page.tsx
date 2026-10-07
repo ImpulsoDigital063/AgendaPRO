@@ -17,7 +17,7 @@ export default async function AdminAvisosManuaisPage() {
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, category, phone')
+    .select('id, name, slug, description, category, phone')
     .eq('owner_id', user.id)
     .single()
   if (!business) redirect(await destinoSemNegocio())
@@ -52,6 +52,8 @@ export default async function AdminAvisosManuaisPage() {
         <AvisosManuaisPainel
           businessName={business.name}
           businessPhone={business.phone}
+          businessSlug={business.slug}
+          businessDescription={business.description}
           category={business.category}
         />
       </div>

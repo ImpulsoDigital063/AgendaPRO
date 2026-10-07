@@ -31,6 +31,7 @@ import {
 import {
   suggestTemplates, sampleNameFor, fillTemplate, formatDiscount, formatValidity,
 } from '@/lib/coupon-templates'
+import { comTextoSalvo, textoChamarSumido } from '@/lib/textos-manuais'
 import { SUMIDOS_ENVIO_AUTOMATICO } from '@/lib/feature-flags'
 
 /* 0 = TODOS · cumulativo do menor degrau pra cima, e o padrao. As seis faixas
@@ -40,20 +41,10 @@ const TODOS = 0
 const DIAS_OPCOES = [TODOS, 15, 20, 25, 30, 40, 60]
 const TETO_INICIAL = 60
 
-/* Texto do botao "Chamar": chamado simples, SEM desconto. Aprovado pelo
-   Eduardo em 06/09. Nao e' um sistema paralelo de templates — e' uma frase
-   com tres substituicoes, e a dona ainda edita dentro do WhatsApp antes de
-   enviar. O texto COM cupom continua saindo dos modelos de nicho de
-   coupon-templates.ts. */
-const TEXTO_CHAMAR =
-  'Oi {nome}, aqui é do {negocio}. Faz {dias} dias desde seu último horário — quer que eu reserve um pra você?'
-
-function textoChamar(nome: string, dias: number, negocio: string): string {
-  return TEXTO_CHAMAR
-    .replace('{nome}', nome.trim().split(/\s+/)[0] || nome)
-    .replace('{dias}', String(dias))
-    .replace('{negocio}', negocio)
-}
+/* Texto do botao "Chamar": chamado simples, SEM desconto. Desde 07/10/2026
+   (v154) a dona edita em Avisos manuais; vazio = o padrao aprovado pelo
+   Eduardo em 06/09 (DEFAULT_SUMIDOS_TEMPLATE). O texto COM cupom sai do
+   texto salvo dela ou dos modelos de nicho de coupon-templates.ts. */
 
 /* Rotulo da faixa: 15 vira "15-19", 60 vira "60+". */
 function rotuloFaixa(d: number, i: number, lista: readonly number[]): string {
@@ -156,6 +147,9 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
   const [negocio, setNegocio] = useState('')
   const [slug, setSlug] = useState('')
   const [descricao, setDescricao] = useState<string | null>(null)
+  /* Textos salvos em Avisos manuais (v154). null = padrao. */
+  const [textoChamar, setTextoChamar] = useState<string | null>(null)
+  const [textoCupom, setTextoCupom] = useState<string | null>(null)
   /* Envio automatico pelo canal oficial · so aparece pra quem tem pacote. */
   const [envio, setEnvio] = useState<Envio | null>(null)
   const [confirmandoDisparo, setConfirmandoDisparo] = useState(false)
@@ -182,7 +176,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
   const [gerandoLinha, setGerandoLinha] = useState<string | null>(null)
   const [erroLinha, setErroLinha] = useState<Record<string, string>>({})
 
-  const templates = useMemo(() => suggestTemplates(descricao), [descricao])
+  const templates = useMemo(() => comTextoSalvo(textoCupom, suggestTemplates(descricao)), [descricao, textoCupom])
   const sampleName = useMemo(() => sampleNameFor(descricao), [descricao])
 
   const buscar = useCallback(async (d: number) => {
@@ -195,6 +189,8 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
       setNegocio(json.negocio ?? '')
       setSlug(json.slug ?? '')
       setDescricao(json.descricao ?? null)
+      setTextoChamar(json.textos?.sumidos ?? null)
+      setTextoCupom(json.textos?.sumidosCupom ?? null)
       setEnvio(json.envio ?? null)
     } catch {
       setErro('Não consegui carregar a lista. Tenta de novo.')
@@ -490,13 +486,13 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
 
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-              Modelo · {templates.length} sugeridos pro seu nicho
+              {textoCupom ? 'Seu texto e modelos pro seu nicho' : `Modelo · ${templates.length} sugeridos pro seu nicho`}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {templates.map((_, i) => (
                 <button key={i} type="button" onClick={() => setTemplateIdx(i)}
-                  className="w-9 h-9 rounded-lg text-xs font-bold" style={i === templateIdx ? solido : vazio}>
-                  {i + 1}
+                  className={`${textoCupom && i === 0 ? 'px-2.5' : 'w-9'} h-9 rounded-lg text-xs font-bold`} style={i === templateIdx ? solido : vazio}>
+                  {textoCupom ? (i === 0 ? 'Seu texto' : i) : i + 1}
                 </button>
               ))}
             </div>
@@ -785,7 +781,7 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                       {/* Chamar · sem desconto. Texto pre-pronto, editavel na
                           propria janela do WhatsApp antes de enviar. */}
                       <a
-                        href={linkChamar(c.phone, textoChamar(c.name, c.diasSem, negocio))}
+                        href={linkChamar(c.phone, textoChamarSumido(textoChamar, { nome: c.name, dias: c.diasSem, negocio }))}
                         target="_blank" rel="noopener noreferrer"
                         aria-label={`Chamar ${c.name} no WhatsApp`}
                         title="Chamar sem desconto"

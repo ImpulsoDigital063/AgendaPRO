@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
   /* Em paralelo: nada aqui depende do outro. Eram 6 idas ao banco em fila e
      a lista ficava segundos em "Carregando..." (08/09). */
   const [bizRes, ultimosRes] = await Promise.all([
-    supabase.from('businesses').select('name, slug, description').eq('id', businessId).single(),
+    supabase.from('businesses').select('name, slug, description, whatsapp_sumidos_template, whatsapp_sumidos_cupom_template').eq('id', businessId).single(),
     supabase.rpc('ultimo_agendamento_clientes', { p_business_id: businessId }),
   ])
   const biz = bizRes.data
@@ -76,6 +76,11 @@ export async function GET(req: NextRequest) {
   const negocio = biz?.name ?? ''
   const slug = biz?.slug ?? ''
   const descricao = biz?.description ?? null
+  /* Textos editados em Avisos manuais (v154). null = o painel usa o padrao. */
+  const textos = {
+    sumidos: biz?.whatsapp_sumidos_template ?? null,
+    sumidosCupom: biz?.whatsapp_sumidos_cupom_template ?? null,
+  }
 
   /* Mesma primitiva do Reativar: uma linha por cliente com a última data
      QUALQUER — inclui agendamento futuro e cancelado. Quem tem horário
@@ -101,7 +106,7 @@ export async function GET(req: NextRequest) {
     if (d >= de && d < ate) sumidos.set(id, ultima)
   }
   if (sumidos.size === 0) {
-    return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, businessId, clientes: [] })
+    return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, textos, businessId, clientes: [] })
   }
 
   const { data: clients } = await supabase
@@ -210,5 +215,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, businessId, envio, clientes })
+  return NextResponse.json({ dias, ate: ate === Infinity ? null : ate, negocio, slug, descricao, textos, businessId, envio, clientes })
 }

@@ -25,7 +25,7 @@ export default async function CampanhasPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, slug, name, description')
+    .select('id, slug, name, description, whatsapp_birthday_template, whatsapp_sumidos_cupom_template')
     .eq('owner_id', user.id)
     .single()
   if (!business) redirect(await destinoSemNegocio())
@@ -245,6 +245,8 @@ export default async function CampanhasPage({
             businessSlug={business.slug}
             businessName={business.name}
             businessDescription={business.description}
+            textoSumidosCupom={business.whatsapp_sumidos_cupom_template}
+            textoAniversario={business.whatsapp_birthday_template}
             existingCoupons={existingCoupons || []}
             sumidosTotal={sumidosTotal}
             sumidosWithoutCoupon={sumidosWithoutCoupon}

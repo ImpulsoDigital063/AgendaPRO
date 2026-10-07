@@ -9,6 +9,7 @@ import {
   formatDiscount,
   sampleNameFor,
 } from '@/lib/coupon-templates'
+import { comTextoSalvo } from '@/lib/textos-manuais'
 import { initialsFor, avatarGradient } from '@/lib/client-display'
 import { IconWhatsapp, IconCheck } from '@/components/ui/Icon'
 
@@ -16,6 +17,8 @@ type Props = {
   businessSlug: string
   businessName: string
   businessDescription: string | null
+  /** Texto salvo em Avisos manuais (v154). Abre selecionado; null = modelos do nicho. */
+  textoSalvo?: string | null
   /** Total de aniversariantes do mês atual. Calculado server-side. */
   aniversariantesTotal: number
   /** Aniversariantes que ainda não têm cupom ativo (alvo direto da campanha). */
@@ -54,6 +57,7 @@ export default function AniversariantesView({
   businessSlug,
   businessName,
   businessDescription,
+  textoSalvo = null,
   aniversariantesTotal,
   aniversariantesWithoutCoupon,
   mesAtualNome,
@@ -82,7 +86,7 @@ export default function AniversariantesView({
   const [sentMap, setSentMap] = useState<Record<string, boolean>>({})
   const [showAllCoupons, setShowAllCoupons] = useState(false)
 
-  const templates = useMemo(() => suggestBirthdayTemplates(businessDescription), [businessDescription])
+  const templates = useMemo(() => comTextoSalvo(textoSalvo, suggestBirthdayTemplates(businessDescription)), [businessDescription, textoSalvo])
 
   useEffect(() => {
     if (!customMessage || customMessage === templates[templateIdx]) {
@@ -493,7 +497,7 @@ export default function AniversariantesView({
                   border: '1px solid var(--admin-border)',
                 }}
               >
-                Modelo {idx + 1}
+                {textoSalvo?.trim() ? (idx === 0 ? 'Seu texto' : `Modelo ${idx}`) : `Modelo ${idx + 1}`}
               </button>
             ))}
           </div>

@@ -23,6 +23,9 @@ type Props = {
   businessSlug: string
   businessName: string
   businessDescription: string | null
+  /** Textos salvos em Avisos manuais (v154). */
+  textoSumidosCupom?: string | null
+  textoAniversario?: string | null
   /** Prazo de "sumido" escolhido pela dona · vem da page via searchParam. */
   dias: number
 
@@ -61,6 +64,8 @@ export default function CampanhasTabs({
   businessSlug,
   businessName,
   businessDescription,
+  textoSumidosCupom = null,
+  textoAniversario = null,
   dias,
   existingCoupons,
   sumidosTotal,
@@ -139,6 +144,7 @@ export default function CampanhasTabs({
           businessSlug={businessSlug}
           businessName={businessName}
           businessDescription={businessDescription}
+          textoSalvo={textoSumidosCupom}
           dias={dias}
           existingCoupons={existingCoupons}
           sumidosTotal={sumidosTotal}
@@ -153,6 +159,7 @@ export default function CampanhasTabs({
           businessSlug={businessSlug}
           businessName={businessName}
           businessDescription={businessDescription}
+          textoSalvo={textoAniversario}
           aniversariantesTotal={aniversariantesTotal}
           aniversariantesWithoutCoupon={aniversariantesWithoutCoupon}
           mesAtualNome={mesAtualNome}

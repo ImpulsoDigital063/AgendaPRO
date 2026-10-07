@@ -9,6 +9,7 @@ import {
   formatDiscount,
   sampleNameFor,
 } from '@/lib/coupon-templates'
+import { comTextoSalvo } from '@/lib/textos-manuais'
 import { initialsFor, avatarGradient } from '@/lib/client-display'
 import { IconWhatsapp, IconCheck } from '@/components/ui/Icon'
 
@@ -16,6 +17,8 @@ type Props = {
   businessSlug: string
   businessName: string
   businessDescription: string | null
+  /** Texto salvo em Avisos manuais (v154). Abre selecionado; null = modelos do nicho. */
+  textoSalvo?: string | null
   /** Prazo escolhido pela dona · a pagina recalcula tudo em cima dele. */
   dias: number
   /** Lista de quem sumiu, renderizada logo abaixo do seletor. Vem da page
@@ -70,6 +73,7 @@ export default function ReativarSumidosView({
   businessSlug,
   businessName,
   businessDescription,
+  textoSalvo = null,
   dias,
   listaSlot,
   existingCoupons,
@@ -117,7 +121,7 @@ export default function ReativarSumidosView({
      abre so os ativos, Usados so os usados. Antes era uma lista corrida. */
   const [filtroCupom, setFiltroCupom] = useState<'ativos' | 'usados' | 'expirados' | null>(null)
 
-  const templates = useMemo(() => suggestTemplates(businessDescription), [businessDescription])
+  const templates = useMemo(() => comTextoSalvo(textoSalvo, suggestTemplates(businessDescription)), [businessDescription, textoSalvo])
 
   // ROI estimado · taxa de conversão típica 20% (1 em 5 sumidos volta)
   // Custo zero — só o desconto que o dono define
@@ -748,7 +752,7 @@ export default function ReativarSumidosView({
                     : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
                 }
               >
-                Modelo {i + 1}
+                {textoSalvo?.trim() ? (i === 0 ? 'Seu texto' : `Modelo ${i}`) : `Modelo ${i + 1}`}
               </button>
             ))}
           </div>
