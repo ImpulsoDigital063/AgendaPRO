@@ -69,7 +69,7 @@ const INFO: Record<Qual, { rotulo: string; porque: string; padrao: string; icone
   },
 }
 
-const exemplo = (negocio: string, categoria: string | null): TemplateVars => ({
+export const exemplo = (negocio: string, categoria: string | null): TemplateVars => ({
   cliente: 'Maria Silva',
   /* O serviço do exemplo segue o NICHO: clínica lendo "Corte + Escova" na
      própria mensagem parece sistema de salão adaptado. */
