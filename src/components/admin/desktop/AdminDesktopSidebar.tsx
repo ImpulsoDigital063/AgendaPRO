@@ -11,6 +11,7 @@ import {
   IconWallet,
   IconSettings,
   IconWhatsapp,
+  IconPencil,
   IconUser,
   IconTrendingUp,
   IconSparkles,
@@ -105,7 +106,11 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
            usa. Esse pedaco nao depende de canal nenhum.
            Deixar de fora agora e o erro oposto: esconder o que funciona pra
            proteger o que ainda nao foi liberado. */
-        { label: 'Avisos', href: '/admin/whatsapp', Icon: IconWhatsapp },
+        /* 07/10/2026: automatico e manual viraram dois itens. Juntos, o manual
+           ficava no fim da tela do automatico e a Rosy nao achou onde editar o
+           lembrete que ela manda na mao. */
+        { label: 'Avisos automáticos', href: '/admin/whatsapp', Icon: IconWhatsapp },
+        { label: 'Avisos manuais', href: '/admin/avisos-manuais', Icon: IconPencil },
       ],
     },
     {

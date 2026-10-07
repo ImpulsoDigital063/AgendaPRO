@@ -21,6 +21,7 @@ import {
   IconSearch,
   IconClose,
   IconWhatsapp,
+  IconPencil,
   IconLayers,
 } from '@/components/ui/Icon'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
@@ -121,7 +122,11 @@ export default function AdminMobileTopBar({
            dona, e' gratis e ja funciona. Era o unico item "Mensagens" do
            menu e apontava pro tab antigo — foi por ele que o Eduardo caiu na
            tela velha no celular em 31/08. */
-        { label: 'Avisos', href: '/admin/whatsapp', Icon: IconWhatsapp },
+        /* 07/10/2026: automatico e manual viraram dois itens. Juntos, o manual
+           ficava no fim da tela do automatico e a Rosy nao achou onde editar o
+           lembrete que ela manda na mao. */
+        { label: 'Avisos automáticos', href: '/admin/whatsapp', Icon: IconWhatsapp },
+        { label: 'Avisos manuais', href: '/admin/avisos-manuais', Icon: IconPencil },
       ],
     },
     {

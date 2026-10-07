@@ -1,35 +1,29 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import WhatsAppPainel from '@/components/admin/whatsapp/WhatsAppPainel'
+import AvisosManuaisPainel from '@/components/admin/whatsapp/AvisosManuaisPainel'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * Central de WhatsApp — tudo que o negócio manda pela cliente num lugar só.
- *
- * Fica no grupo PAINEL do menu, não em Configurações (Eduardo, 21/08). O
- * motivo é operacional: quando o canal cai, os avisos param em silêncio, e
- * a dona precisa ver isso na primeira tela que abre — não a quatro cliques
- * de distância, numa aba de configuração que ninguém visita.
+ * Avisos manuais — o texto que abre no botão "Enviar WhatsApp" do agendamento.
+ * Separado de /admin/whatsapp (avisos automáticos) em 07/10/2026: ver o
+ * comentário no topo de AvisosManuaisPainel.
  */
-export default async function AdminWhatsAppPage() {
+export default async function AdminAvisosManuaisPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, category, sinal_enabled, tour_avisos_em, tour_avisos_2_em')
+    .select('id, name, category, phone')
     .eq('owner_id', user.id)
     .single()
   if (!business) redirect(await destinoSemNegocio())
 
-  /* O <main> com orbs e vinheta e o mesmo de Clientes, Caixa e Consultas.
-     A primeira versao desta tela nao tinha nada disso e o painel aparecia
-     solto sobre o fundo cru — era o que fazia ela parecer inacabada ao lado
-     das outras. O container e o cabecalho grudado moram dentro do painel,
-     porque o titulo e o botao de voltar mudam conforme a tela de dentro. */
+  /* Mesmo fundo (orbs + vinheta) de /admin/whatsapp, pra as duas telas irmãs
+     parecerem do mesmo sistema. */
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -55,15 +49,10 @@ export default async function AdminWhatsAppPage() {
       />
 
       <div className="relative">
-        <WhatsAppPainel
+        <AvisosManuaisPainel
           businessName={business.name}
+          businessPhone={business.phone}
           category={business.category}
-          /* Tour da aba (v151) e item de leitura da cobranca do sinal. O sinal
-             vem daqui porque nenhuma rota do painel devolvia sinal_enabled —
-             e quem liga e desliga continua sendo a aba Sinal, uma porta so. */
-          tourAvisosVisto={!!business.tour_avisos_em}
-          tourEdicaoVisto={!!business.tour_avisos_2_em}
-          sinalAtivo={business.sinal_enabled === true}
         />
       </div>
     </main>

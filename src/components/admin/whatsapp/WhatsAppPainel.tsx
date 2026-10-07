@@ -69,11 +69,6 @@ import Conversas, { type Conversa } from './Conversas'
 import QuandoSaiCada from './QuandoSaiCada'
 import TourAvisos from './TourAvisos'
 import PerguntasAvisos from './PerguntasAvisos'
-import VoceManda, {
-  VoceMandaLista,
-  type Qual,
-  type TextosManuais,
-} from './VoceManda'
 
 type Canal = {
   configurado: boolean
@@ -133,21 +128,21 @@ const infoDe = (
 })
 
 /** 556392846765 → (63) 9284-6765 */
-function formatarNumero(bruto: string): string {
+export function formatarNumero(bruto: string): string {
   const d = bruto.replace(/\D/g, '')
   const s = d.startsWith('55') ? d.slice(2) : d
   if (s.length < 10) return bruto
   return `(${s.slice(0, 2)}) ${s.slice(2, s.length - 4)}-${s.slice(-4)}`
 }
 
-const CONTAINER = 'max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8'
+export const CONTAINER = 'max-w-lg mx-auto px-4 py-6 lg:max-w-5xl lg:px-8'
 
 /**
  * Cabeçalho grudado no topo, no mesmo desenho do SubPageHeader que todas as
  * outras páginas usam. Mora aqui e não lá porque o botão de voltar muda de
  * natureza: na raiz é link pro painel, nas telas de dentro é volta de pilha.
  */
-function Cabecalho({
+export function Cabecalho({
   titulo,
   subtitulo,
   onVoltar,
@@ -220,14 +215,12 @@ function Seta() {
 
 export default function WhatsAppPainel({
   businessName,
-  businessPhone,
   category,
   tourAvisosVisto = false,
   tourEdicaoVisto = false,
   sinalAtivo = false,
 }: {
   businessName: string
-  businessPhone?: string | null
   category?: string | null
   /** Já viu (ou pulou) o tour da aba — businesses.tour_avisos_em (v151). */
   tourAvisosVisto?: boolean
@@ -242,9 +235,6 @@ export default function WhatsAppPainel({
   /* Nome de exemplo pro cartao da agenda na tela de venda. Vazio ate a API
      voltar; a secao trata isso caindo num neutro. */
   const [clienteExemplo, setClienteExemplo] = useState('Ana')
-  /* Os textos do wa.me — o modo "voce manda". Store diferente das reguas:
-     businesses.whatsapp_*_template, nao message_rules. */
-  const [manuais, setManuais] = useState<TextosManuais | null>(null)
   /* So leitura. Nao existe marcar como lida — ver Respostas.tsx. */
   const [respostas, setRespostas] = useState<Resposta[]>([])
   /* O que já saiu e no que deu (22/09/2026, pergunta da Wanessa: "onde vejo
@@ -256,7 +246,6 @@ export default function WhatsAppPainel({
   const [vista, setVista] = useState<
     | { tela: 'inicio' }
     | { tela: 'mensagens' }
-    | { tela: 'manual'; qual: Qual }
     | { tela: 'aviso'; tipo: string; editar?: boolean }
     | { tela: 'recarga' }
   >({ tela: 'inicio' })
@@ -305,15 +294,6 @@ export default function WhatsAppPainel({
     void fetch('/api/admin/mensagens/conversas')
       .then((r) => r.json())
       .then((j) => setConversas(Array.isArray(j?.conversas) ? j.conversas : []))
-      .catch(() => null)
-    void fetch('/api/admin/messages')
-      .then((r) => r.json())
-      .then((j) =>
-        setManuais({
-          confirmation: String(j?.confirmation ?? ''),
-          reminder: String(j?.reminder ?? ''),
-        }),
-      )
       .catch(() => null)
 
     /* Regras e textos vêm de rotas diferentes e viram UM objeto por aviso:
@@ -432,28 +412,6 @@ export default function WhatsAppPainel({
     }
   }
 
-  async function salvarManual(qual: Qual, corpo: string): Promise<boolean> {
-    try {
-      const r = await fetch('/api/admin/messages', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [qual]: corpo }),
-      })
-      if (!r.ok) return false
-      /* Le de volta o que a rota devolveu, nao o que eu mandei: e a unica
-         prova de que gravou. */
-      const j = await r.json().catch(() => null)
-      setManuais({
-        confirmation: String(j?.confirmation ?? corpo),
-        reminder: String(j?.reminder ?? corpo),
-      })
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const telefoneDela = businessPhone ? formatarNumero(businessPhone) : ''
 
   /* Otimista: some da tela na hora e volta se o servidor recusar. Confirmar
      antes deixaria a dona esperando rede pra fechar um aviso que ela ja leu. */
@@ -471,16 +429,6 @@ export default function WhatsAppPainel({
   }
 
   const listaRespostas = <Respostas T={T} respostas={respostas} onApagar={apagarResposta} />
-
-  const listaVoceManda = (
-    <VoceMandaLista
-      T={T}
-      textos={manuais}
-      negocio={businessName}
-      categoria={category ?? null}
-      onAbrir={(qual) => setVista({ tela: 'manual', qual })}
-    />
-  )
 
   /* Liberacao vem do servidor, por negocio. Enquanto `pacotes` nao chegou,
      trata como NAO liberado: melhor a tela esperar que prometer compra que
@@ -525,32 +473,6 @@ export default function WhatsAppPainel({
         </>
       )
     }
-  }
-
-  if (vista.tela === 'manual') {
-    const qual = vista.qual
-    return (
-      <>
-        <Cabecalho
-          titulo={qual === 'confirmation' ? 'Confirmação' : 'Lembrete'}
-          subtitulo="Você aperta enviar · sai do seu número"
-          onVoltar={() => setVista({ tela: 'inicio' })}
-        />
-        <div className={CONTAINER}>
-          <div className="lg:max-w-2xl">
-            <VoceManda
-              T={T}
-              qual={qual}
-              inicial={manuais?.[qual] ?? ''}
-              negocio={businessName}
-              numero={telefoneDela}
-              categoria={category ?? null}
-              onSalvar={salvarManual}
-            />
-          </div>
-        </div>
-      </>
-    )
   }
 
   if (vista.tela === 'recarga' && pacotes) {
@@ -901,7 +823,6 @@ export default function WhatsAppPainel({
             onContratar={contratar}
             onVerMensagens={() => setVista({ tela: 'mensagens' })}
           />
-          {listaVoceManda}
           {listaRespostas}
         </div>
         {pix && (
@@ -1006,7 +927,6 @@ export default function WhatsAppPainel({
                 aí vê o que aquilo produziu. */}
             <Entregas placar={placar} />
             <Conversas conversas={conversas} />
-            {listaVoceManda}
             {listaRespostas}
             {/* Dúvidas frequentes no fim da aba (10/09): o que o tour não cobre. */}
             <PerguntasAvisos categoria={category ?? null} />

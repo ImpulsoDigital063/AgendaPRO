@@ -41,15 +41,15 @@ type Props = {
   extraProfessionalSlots?: number
 }
 
-/** Leva pra central de WhatsApp e nao deixa rastro no historico. */
+/** Leva pros avisos manuais (o editor do wa.me que morava aqui) sem deixar rastro no historico. */
 function RedirecionaParaWhatsApp() {
   const router = useRouter()
   useEffect(() => {
-    router.replace('/admin/whatsapp')
+    router.replace('/admin/avisos-manuais')
   }, [router])
   return (
     <p className="text-sm px-1" style={{ color: 'var(--admin-text-mute)' }}>
-      As mensagens agora ficam na central de WhatsApp. Levando você para lá…
+      As mensagens agora ficam em Avisos manuais. Levando você para lá…
     </p>
   )
 }
@@ -70,7 +70,7 @@ export default function ConfiguracoesTabs({
 
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo', 'notificacoes']
+  const validTabs: Tab[] = ['negocio', 'profissionais', 'servicos', 'horarios', 'qr-code', 'fidelidade', 'aparencia', 'divulgacao', 'plano', 'importar', 'maquininhas', 'bloqueios', 'fichas-modelo', 'mensagens', 'notificacoes']
   // Resolve alias antes de validar (ex: ?tab=whatsapp → 'qr-code')
   const resolvedTab = rawTab ? (TAB_ALIASES[rawTab] ?? rawTab) : null
   const safeResolvedTab = resolvedTab === 'plano' && hidePlanoForBusiness ? 'negocio' : resolvedTab
