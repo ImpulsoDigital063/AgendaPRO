@@ -370,6 +370,9 @@ export default function AvisosManuaisPainel({
     categoria: category ?? null,
   }
   const [aba, setAba] = useState<Aba>('lembrete')
+  /* Sumidos tem duas mensagens; uma por vez pra aba nao virar tres telas de
+     rolagem no celular (Eduardo, 07/10). */
+  const [sumidosQual, setSumidosQual] = useState<'sumidos' | 'sumidosCupom'>('sumidos')
   const [textos, setTextos] = useState<Textos | null>(null)
   const numero = businessPhone ? formatarNumero(businessPhone) : ''
 
@@ -486,8 +489,34 @@ export default function AvisosManuaisPainel({
 
         {aba === 'sumidos' && (
           <>
-            {editor('sumidos')}
-            {editor('sumidosCupom')}
+            <div
+              className="inline-flex rounded-xl p-1 gap-1 mt-5"
+              role="tablist"
+              aria-label="Qual mensagem de sumidos"
+              style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+            >
+              {([
+                ['sumidos', 'Sem desconto'],
+                ['sumidosCupom', 'Com cupom'],
+              ] as const).map(([id, rotulo]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={sumidosQual === id}
+                  onClick={() => setSumidosQual(id)}
+                  className="text-[13px] font-semibold px-3.5 py-2 rounded-lg transition-colors"
+                  style={
+                    sumidosQual === id
+                      ? { background: WA.fundo, border: `1px solid ${WA.borda}`, color: WA.forte }
+                      : { border: '1px solid transparent', color: 'var(--admin-text-mute)' }
+                  }
+                >
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+            {editor(sumidosQual)}
             <ComoFunciona
               passos={[
                 { icone: <IconCalendar size={16} />, texto: `Abra Sumidos no menu e escolha há quanto tempo ${T.art}s ${T.p} não vêm.` },
