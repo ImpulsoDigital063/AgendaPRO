@@ -386,7 +386,14 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
-      onClick={onClose}
+      /* Fecha só com toque NO FUNDO. O modal de Atendimento Antigo (e
+         qualquer outro aberto daqui) vai por portal pro body, mas o clique
+         dele sobe pela árvore do React até esta div: tocar num campo fechava
+         a ficha inteira (Wanessa, 08/10/2026 · só no celular, o desktop usa
+         o ClienteDrawer). */
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
       <div
         className="admin-card w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col"
