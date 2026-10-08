@@ -593,7 +593,13 @@ function ExpenseFormModal({
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
-      onClick={onClose}
+      /* Fecha só com toque NO FUNDO. O ConfirmActionModal de "Remover"
+         mora aqui dentro (portal, mas filho React): tocar no fundo DELE
+         subia até esta div e fechava o formulário junto, perdendo a edição.
+         Mesmo defeito do ClienteDetailModal (08/10/2026). */
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
       <div
         className="w-full sm:max-w-md p-5 rounded-t-3xl sm:rounded-3xl overflow-y-auto"
