@@ -20,6 +20,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { CONNECTORS, parseBySource, runImport, type ImportSource, type DedupeStrategy } from '@/lib/importers'
+import type { ImportDecisao } from '@/lib/importers/canonical'
 import { parseCsv, parseXlsxBuffer, type SheetRow } from '@/lib/importers/normalize'
 
 async function fileToRows(file: File | null): Promise<SheetRow[] | undefined> {
@@ -51,6 +52,15 @@ export async function POST(req: NextRequest) {
   const source = form.get('source')?.toString() as ImportSource | undefined
   const businessId = form.get('businessId')?.toString()
   const dedupe = (form.get('dedupe')?.toString() ?? 'external-id-then-phone') as DedupeStrategy
+  /* Decisoes da dona pros conflitos de telefone: { [idx]: { acao, telefone? } }.
+     JSON invalido = sem decisoes (o report devolve os conflitos pendentes). */
+  let decisoes: Record<number, ImportDecisao> = {}
+  try {
+    const raw = form.get('decisoes')?.toString()
+    if (raw) decisoes = JSON.parse(raw)
+  } catch {
+    decisoes = {}
+  }
 
   if (!source || !CONNECTORS[source]) {
     return NextResponse.json({ error: `Sistema fonte inválido: "${source}".` }, { status: 400 })
@@ -102,6 +112,7 @@ export async function POST(req: NextRequest) {
     businessId,
     source,
     dedupe,
+    decisoes,
     dryRun: true,
   })
 

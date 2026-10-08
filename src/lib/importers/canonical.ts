@@ -71,6 +71,47 @@ export type DedupeStrategy =
   /** Bate por external_id quando presente, fallback pra telefone. */
   | 'external-id-then-phone'
 
+/* ── CONFLITOS DE TELEFONE (08/10/2026) ──────────────────────────────
+   O telefone é o que identifica a cliente no sistema todo (link público,
+   pontos, sinal, mensagens), então nunca existem duas no mesmo número. Antes
+   a importação decidia sozinha: mesmo telefone = atualizava o cadastro
+   existente com o nome da planilha. Na Wanessa isso transformou a "Gabriela
+   Veras Moraes" em "Lucca Veras Martins" (mãe e filho no mesmo número) sem
+   ninguém ver. Agora cada conflito volta pra tela e a dona decide. */
+
+/** cadastrada = telefone já existe no sistema · repetida = o mesmo telefone
+ *  em mais de uma linha da planilha · parecida = telefone com 1 dígito de
+ *  diferença de uma cliente existente (provável erro de digitação). */
+export type ConflitoTipo = 'cadastrada' | 'repetida' | 'parecida'
+
+/** atualizar = é a mesma pessoa, grava os dados da planilha no cadastro
+ *  existente · criar = cadastra como nova · pular = não importa a linha. */
+export type ImportAcao = 'atualizar' | 'criar' | 'pular'
+
+export type ImportDecisao = {
+  acao: ImportAcao
+  /** Telefone corrigido pela dona. Quando vem, a linha é reavaliada com ele. */
+  telefone?: string
+}
+
+export type ImportConflito = {
+  /** Posição da linha entre as clientes lidas (estável: o arquivo é relido igual no commit). */
+  idx: number
+  tipo: ConflitoTipo
+  linha: { name: string; phone: string }
+  existente?: { id: string; name: string; phone: string }
+  /** repetida: as outras linhas com o mesmo telefone. */
+  outras?: { idx: number; name: string }[]
+  /** Nome da planilha parecido com o do cadastro (mesmo primeiro nome e algo em comum). */
+  nomeParecido: boolean
+  /** Ações que valem pra esse conflito. */
+  acoes: ImportAcao[]
+  /** Decisão recebida, se já tem. */
+  decisao?: ImportDecisao
+  /** Motivo de a decisão recebida não valer (ex.: telefone corrigido inválido). */
+  problema?: string
+}
+
 export type ImportReport = {
   source: ImportSource
   /** Cliente: o que aconteceu na importação. */
@@ -88,6 +129,10 @@ export type ImportReport = {
     invalid: number
   }
   warnings: ImportWarning[]
+  /** Conflitos de telefone (preview e commit). */
+  conflitos?: ImportConflito[]
+  /** Quantos conflitos ainda sem decisão válida. > 0 no commit = nada foi gravado. */
+  pendentes?: number
   /** Tempo total em ms. */
   durationMs: number
 }

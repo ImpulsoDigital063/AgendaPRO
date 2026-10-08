@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import type { ImportSource, ImportReport, DedupeStrategy } from '@/lib/importers'
 import { IconUpload, IconFile, IconClose } from '@/components/ui/Icon'
+import ConflitosImport, { contarPendentes, decisoesSugeridas, type Decisoes } from './importar/ConflitosImport'
 
 type Step = 'upload' | 'preview' | 'done'
 
@@ -21,7 +22,10 @@ export default function ImportarView({
 }) {
   const [step, setStep] = useState<Step>('upload')
   const [clientsFile, setClientsFile] = useState<File | null>(null)
-  const [dedupe, setDedupe] = useState<DedupeStrategy>('external-id-then-phone')
+  /* A escolha unica "atualizar / pular" pra planilha inteira saiu em 08/10:
+     agora cada conflito de telefone e decidido na conferencia. */
+  const dedupe: DedupeStrategy = 'external-id-then-phone'
+  const [decisoes, setDecisoes] = useState<Decisoes>({})
   const [preview, setPreview] = useState<ImportReport | null>(null)
   const [commit, setCommit] = useState<ImportReport | null>(null)
   const [loading, setLoading] = useState(false)
@@ -32,7 +36,32 @@ export default function ImportarView({
     setClientsFile(null)
     setPreview(null)
     setCommit(null)
+    setDecisoes({})
     setError(null)
+  }
+
+  function montarForm(dec: Decisoes): FormData {
+    const form = new FormData()
+    form.set('source', UNIVERSAL_SOURCE)
+    form.set('businessId', businessId)
+    form.set('dedupe', dedupe)
+    form.set('clientsCsv', clientsFile!)
+    form.set('decisoes', JSON.stringify(dec))
+    return form
+  }
+
+  /** Roda a analise (sem gravar). Devolve o report pra quem chamou decidir. */
+  async function analisar(dec: Decisoes): Promise<ImportReport | null> {
+    const res = await fetch('/api/import/preview', { method: 'POST', body: montarForm(dec) })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data?.error ?? 'Erro ao gerar preview.')
+      return null
+    }
+    const rep = data.report as ImportReport
+    setPreview(rep)
+    setDecisoes(decisoesSugeridas(rep.conflitos ?? [], dec))
+    return rep
   }
 
   async function runPreview() {
@@ -40,20 +69,7 @@ export default function ImportarView({
     setLoading(true)
     setError(null)
     try {
-      const form = new FormData()
-      form.set('source', UNIVERSAL_SOURCE)
-      form.set('businessId', businessId)
-      form.set('dedupe', dedupe)
-      form.set('clientsCsv', clientsFile)
-
-      const res = await fetch('/api/import/preview', { method: 'POST', body: form })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data?.error ?? 'Erro ao gerar preview.')
-        return
-      }
-      setPreview(data.report as ImportReport)
-      setStep('preview')
+      if (await analisar({})) setStep('preview')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -66,19 +82,29 @@ export default function ImportarView({
     setLoading(true)
     setError(null)
     try {
-      const form = new FormData()
-      form.set('source', UNIVERSAL_SOURCE)
-      form.set('businessId', businessId)
-      form.set('dedupe', dedupe)
-      form.set('clientsCsv', clientsFile)
-
-      const res = await fetch('/api/import/commit', { method: 'POST', body: form })
+      /* Reconfere antes de gravar: telefone corrigido pode bater em outra
+         cliente, e ai vira conflito novo pra ela decidir. */
+      const conferido = await analisar(decisoes)
+      if (!conferido) return
+      if ((conferido.pendentes ?? 0) > 0) {
+        setError(`Ainda faltam ${conferido.pendentes} pra decidir. Confira as linhas marcadas.`)
+        return
+      }
+      const res = await fetch('/api/import/commit', { method: 'POST', body: montarForm(decisoes) })
       const data = await res.json()
       if (!res.ok) {
         setError(data?.error ?? 'Erro ao importar.')
         return
       }
-      setCommit(data.report as ImportReport)
+      const rep = data.report as ImportReport
+      if ((rep.pendentes ?? 0) > 0) {
+        // Alguem mexeu nos cadastros no meio do caminho: nada foi gravado.
+        setPreview(rep)
+        setDecisoes(decisoesSugeridas(rep.conflitos ?? [], decisoes))
+        setError('Os cadastros mudaram enquanto você conferia. Nada foi gravado: confira de novo.')
+        return
+      }
+      setCommit(rep)
       setStep('done')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -127,27 +153,10 @@ export default function ImportarView({
             onChange={setClientsFile}
           />
 
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">Se já existir cliente com mesmo telefone</legend>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="dedupe"
-                checked={dedupe === 'external-id-then-phone'}
-                onChange={() => setDedupe('external-id-then-phone')}
-              />
-              Atualizar dados (recomendado)
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="dedupe"
-                checked={dedupe === 'skip'}
-                onChange={() => setDedupe('skip')}
-              />
-              Pular sem mexer
-            </label>
-          </fieldset>
+          <p className="text-[12.5px] leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+            Se alguém da planilha já tiver cadastro com o mesmo telefone, você confere na próxima
+            tela e decide o que fazer com cada uma antes de gravar.
+          </p>
 
           <button
             onClick={runPreview}
@@ -167,6 +176,7 @@ export default function ImportarView({
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Pré-visualização</h2>
           <ReportTable report={preview} dryRun />
+          <ConflitosImport conflitos={preview.conflitos ?? []} decisoes={decisoes} onChange={setDecisoes} />
 
           <div className="flex gap-3 pt-2">
             <button
@@ -182,7 +192,7 @@ export default function ImportarView({
             </button>
             <button
               onClick={runCommit}
-              disabled={loading}
+              disabled={loading || contarPendentes(preview.conflitos ?? [], decisoes) > 0}
               className="flex-1 rounded-xl py-3 font-medium transition-opacity disabled:opacity-50"
               style={{
                 background: 'var(--admin-accent, #4f46e5)',
@@ -345,6 +355,9 @@ function ReportTable({ report, dryRun }: { report: ImportReport; dryRun: boolean
           value={report.clients.updated}
         />
         <Stat label="Pulados" value={report.clients.skipped} />
+        {dryRun && (report.pendentes ?? 0) > 0 && (
+          <Stat label="Aguardando você" value={report.pendentes ?? 0} warn />
+        )}
         {report.clients.invalid > 0 && (
           <Stat label="Inválidos" value={report.clients.invalid} warn />
         )}
