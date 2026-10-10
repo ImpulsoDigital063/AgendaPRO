@@ -44,6 +44,8 @@ type Props = {
   /** 01/09/2026 · o aviso de teste virou PÍLULA aqui dentro, no lugar da faixa
    *  de 48px que existia em todas as 41 telas. Ver o comentário no render. */
   trial?: { diasRestantes: number; vencido?: boolean } | null
+  /** v155 · gerente não vê a Assinatura AgendaPRO (item Plano) */
+  ehGerente?: boolean
 }
 
 type NavItem = {
@@ -69,6 +71,7 @@ export default function AdminMobileTopBar({
   vendasBalcao = true,
   cartaoPresente = false,
   trial = null,
+  ehGerente = false,
 }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -179,7 +182,7 @@ export default function AdminMobileTopBar({
         { label: 'QR Code', href: '/admin/configuracoes?tab=qr-code', Icon: IconSettings },
         { label: 'Notificações', href: '/admin/configuracoes?tab=notificacoes', Icon: IconClock },
         { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', Icon: IconTrendingUp },
-        { label: 'Plano', href: '/admin/configuracoes?tab=plano', Icon: IconDollar },
+        ...(ehGerente ? [] : [{ label: 'Plano', href: '/admin/configuracoes?tab=plano', Icon: IconDollar }]),
         { label: 'Importar', href: '/admin/configuracoes?tab=importar', Icon: IconUser },
       ],
     },

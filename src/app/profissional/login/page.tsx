@@ -46,7 +46,7 @@ export default function ProfissionalLoginPage() {
 
     const { data: prof } = await supabase
       .from('professionals')
-      .select('id, role, password_changed, is_receptionist')
+      .select('id, role, password_changed, is_receptionist, is_manager, active')
       .eq('auth_user_id', user.id)
       .single()
 
@@ -60,6 +60,14 @@ export default function ProfissionalLoginPage() {
     // Primeiro login — forca troca de senha
     if (!prof.password_changed) {
       router.push('/profissional/trocar-senha')
+      router.refresh()
+      return
+    }
+
+    // v155 · Gerente: painel do dono (menos assinatura) — antes da recepção,
+    // porque gerente que também é recepção tem acesso maior no /admin
+    if (prof.is_manager && prof.active) {
+      router.push('/admin')
       router.refresh()
       return
     }

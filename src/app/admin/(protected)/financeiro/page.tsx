@@ -11,6 +11,7 @@ import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
 import { ajusteSinalDoPeriodo } from '@/lib/sinal-da-comanda'
 import { vendasPacoteCartao } from '@/lib/queries/vendas-pacote-cartao'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 const CATEGORY_LABEL: Record<string, string> = {
   rent: 'Aluguel',
@@ -110,7 +111,7 @@ export default async function FinanceiroPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('*')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
 
   if (!business) redirect(await destinoSemNegocio())

@@ -7,6 +7,7 @@ import AppointmentActions from '@/components/admin/atendimentos/AppointmentActio
 import AvisosDoAtendimento from '@/components/admin/atendimentos/AvisosDoAtendimento'
 import ClientFichaSection from '@/components/admin/clientes/ClientFichaSection'
 import { getApptCharged } from '@/lib/queries/appointment-charged-total'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export default async function AppointmentDetailPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

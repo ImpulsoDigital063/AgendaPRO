@@ -42,6 +42,8 @@ export default async function AdminLayout({
   let pendingAppointments = 0
   let pendingClaims = 0
   let showOwnerTab = false
+  // v155 · gerente usa o painel do dono, menos a Assinatura AgendaPRO
+  const ehGerente = !!business && business.owner_id !== user.id
   let trial: { diasRestantes: number; plano: string; precoMes: string; vencido?: boolean; diasConcedidos?: number } | null = null
   let cobranca: { diasAteVencer: number; status: 'active' | 'past_due' } | null = null
   let brand: {
@@ -108,6 +110,8 @@ export default async function AdminLayout({
     // de "minha conta pedindo renovação", não "fui expulso". A própria tela de
     // config passa (senão loop); as telas de operação puxam de volta pra o Plano.
     if (subscription.status === 'pending_payment') {
+      // Gerente não paga a assinatura: vai pra tela que manda falar com o dono
+      if (ehGerente) redirect('/admin/bloqueado')
       const pathname = (await headers()).get('x-pathname') || ''
       // Fallback anti-loop: se o header não chegou (x-pathname vazio), cai no
       // comportamento antigo (/admin/bloqueado) — seguro, sem risco de loop.
@@ -195,6 +199,12 @@ export default async function AdminLayout({
     }
   }
 
+  // v155 · faixas de teste/mensalidade são assunto do dono
+  if (ehGerente) {
+    trial = null
+    cobranca = null
+  }
+
   // Sistema light-only (tema dark removido 03/06). Sem leitura de cookie de tema.
   const initialTheme = 'light' as const
 
@@ -225,6 +235,7 @@ export default async function AdminLayout({
           convenios={business?.convenios_enabled === true}
           cartaoPresente={business?.cartao_presente_enabled === true}
           vendasBalcao={business?.vendas_balcao_enabled !== false}
+          ehGerente={ehGerente}
         />
         <div className="admin-shell-content relative z-10">
           {/* Topbar mobile (header + drawer agrupado) · só <lg · coexiste com BottomNav */}
@@ -238,6 +249,7 @@ export default async function AdminLayout({
             cartaoPresente={business?.cartao_presente_enabled === true}
             vendasBalcao={business?.vendas_balcao_enabled !== false}
             trial={trial}
+            ehGerente={ehGerente}
           />
           {/* O InstallBanner SAIU DO LAYOUT (Eduardo, 31/08/2026).
               Montado aqui, ele custava 58px de altura nas 41 telas do admin —

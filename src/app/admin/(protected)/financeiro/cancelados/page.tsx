@@ -5,6 +5,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import CanceladosView from '@/components/admin/CanceladosView'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR, addDaysBR, monthBoundsBR } from '@/lib/date-br'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export default async function CanceladosPage({
   searchParams,
@@ -18,7 +19,7 @@ export default async function CanceladosPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('*')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

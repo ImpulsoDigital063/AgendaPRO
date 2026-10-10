@@ -5,6 +5,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import DespesasView from '@/components/admin/DespesasView'
 import type { Expense } from '@/lib/types'
 import { todayBR, addDaysBR, monthBoundsBR } from '@/lib/date-br'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export default async function DespesasPage({
   searchParams,
@@ -18,7 +19,7 @@ export default async function DespesasPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('*')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

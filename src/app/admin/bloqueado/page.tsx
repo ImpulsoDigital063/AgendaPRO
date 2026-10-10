@@ -4,6 +4,7 @@ import Image from 'next/image'
 import LogoutButton from '@/components/LogoutButton'
 import BillingPlanSelector from '@/components/billing/BillingPlanSelector'
 import AgendaDoDiaBloqueado from '@/components/billing/AgendaDoDiaBloqueado'
+import { getAdminAccess, getCurrentSubscription } from '@/lib/admin-data'
 
 type BlockReason = 'pending_payment' | 'refunded' | 'cancelled' | 'past_due'
 
@@ -13,19 +14,19 @@ export default async function AdminBloqueadoPage() {
 
   if (!user) redirect('/admin/login')
 
+  // v155 · dono OU gerente. Assinatura lida via service role (RLS é só do dono).
+  const acesso = await getAdminAccess(user.id)
+  if (!acesso) redirect('/admin/login')
+
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name, slug')
-    .eq('owner_id', user.id)
+    .eq('id', acesso.businessId)
     .single()
 
   if (!business) redirect('/admin/login')
 
-  const { data: subscription } = await supabase
-    .from('subscriptions')
-    .select('status, plan, refunded_at, cancelled_at, grace_ends_at, pix_link_atual')
-    .eq('business_id', business.id)
-    .single()
+  const subscription = await getCurrentSubscription(business.id)
 
   let reason: BlockReason = 'pending_payment'
 
@@ -94,6 +95,32 @@ export default async function AdminBloqueadoPage() {
     background: 'linear-gradient(135deg, #10B981 0%, #06B6D4 100%)',
     boxShadow: '0 8px 20px -6px rgba(16,185,129,0.5)',
     color: '#fff',
+  }
+
+  // v155 · gerente não paga nem reativa — só fica sabendo e fala com o dono
+  if (acesso.papel === 'gerente') {
+    return (
+      <main
+        className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+        style={auroraBg}
+      >
+        <div className="w-full max-w-sm relative">
+          <div className="text-center mb-5">
+            <Image src="/logo-agendapro-dark-signed.svg" alt="AgendaPRO by Impulso Digital" width={200} height={58} priority />
+          </div>
+          <div className="rounded-3xl p-6 space-y-5" style={cardStyle}>
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-white">Painel pausado</h1>
+              <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+                O acesso de {business.name} está pausado por uma pendência da assinatura.
+                Fale com o responsável pelo negócio pra liberar de novo.
+              </p>
+            </div>
+            <LogoutButton />
+          </div>
+        </div>
+      </main>
+    )
   }
 
   return (

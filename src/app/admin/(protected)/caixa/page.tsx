@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import CaixaView from '@/components/recepcao/CaixaView'
 import { IconWallet } from '@/components/ui/Icon'
-import { getOwnerProfessional } from '@/lib/admin-data'
+import { getOwnerProfessional, negocioDoPainel } from '@/lib/admin-data'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { getSalePaymentSplitMap, getApptPaymentSplitMap, type PaymentShare } from '@/lib/queries/appointment-payment-split'
 import { sinalPorAtendimento, sinaisRecebidos } from '@/lib/sinal-da-comanda'
@@ -50,7 +50,7 @@ export default async function AdminCaixaPage() {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

@@ -5,6 +5,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import EmpresaDetalheView from '@/components/admin/convenios/EmpresaDetalheView'
 import ExtratoEmpresa, { type LinhaExtrato } from '@/components/admin/convenios/ExtratoEmpresa'
 import { monthBoundsBR, todayBR } from '@/lib/date-br'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +29,7 @@ export default async function EmpresaPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name, phone, cnpj, razao_social, email, address, logo_url, logo_documento_url, convenios_enabled')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
   if (!business.convenios_enabled) notFound()

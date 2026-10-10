@@ -39,6 +39,8 @@ type Props = {
   subscriptionPlan: 'solo' | 'equipe'
   /** v78 · slots extras vendidos · soma ao limite do plano (default 0) */
   extraProfessionalSlots?: number
+  /** v155 · gerente não vê a aba Plano (Assinatura AgendaPRO é do dono) */
+  ehGerente?: boolean
 }
 
 /** Leva pros avisos manuais (o editor do wa.me que morava aqui) sem deixar rastro no historico. */
@@ -63,10 +65,11 @@ export default function ConfiguracoesTabs({
   initialCustomers,
   subscriptionPlan,
   extraProfessionalSlots = 0,
+  ehGerente = false,
 }: Props) {
   // Palace tem sistema próprio (R$2.997 one-shot · sem mensalidade).
   // Tab Plano esconde e tentativa de acesso direto via ?tab=plano cai em Negócio.
-  const hidePlanoForBusiness = business.slug === 'palace-nail-spa'
+  const hidePlanoForBusiness = business.slug === 'palace-nail-spa' || ehGerente
 
   const searchParams = useSearchParams()
   const rawTab = searchParams.get('tab')

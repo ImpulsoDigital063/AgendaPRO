@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ImportarView from '@/components/admin/ImportarView'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export default async function ImportarPage() {
   const supabase = await createClient()
@@ -13,7 +14,7 @@ export default async function ImportarPage() {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
 
   if (!business) redirect(await destinoSemNegocio())

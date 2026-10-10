@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/server'
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import FecharDiaView, { type AtendimentoAberto } from '@/components/admin/FecharDiaView'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,7 +39,7 @@ export default async function FecharDiaPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('id')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

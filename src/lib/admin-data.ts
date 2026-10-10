@@ -48,7 +48,8 @@ export const getCurrentBusiness = cache(async (ownerId: string) => {
       .maybeSingle()
 
     if (business) return business
-    if (!error) return null // 0 rows confirmado · cadastro real · não retenta
+    // 0 rows confirmado · não é dono · não retenta. v155: pode ser GERENTE.
+    if (!error) return await negocioQueGerencia(supabase, ownerId)
 
     // Erro transitório · loga e tenta de novo
     if (attempt < delays.length - 1) {
@@ -61,8 +62,63 @@ export const getCurrentBusiness = cache(async (ownerId: string) => {
   return null
 })
 
+/**
+ * v155 · Gerente entra no painel do dono (Studio MOOD, 10/10/2026).
+ *
+ * Gerente = `professionals.is_manager` ativo com login. Acessa o /admin do
+ * negócio que gerencia, menos a Assinatura AgendaPRO. No banco, as policies
+ * `gerente_*` (eh_gerente_do_negocio) liberam as mesmas tabelas.
+ *
+ * Dono vem antes: se a pessoa é dona de um negócio, é esse que abre.
+ */
+async function negocioQueGerencia(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+) {
+  const { data: prof } = await supabase
+    .from('professionals')
+    .select('business_id')
+    .eq('auth_user_id', userId)
+    .eq('active', true)
+    .eq('is_manager', true)
+    .limit(1)
+    .maybeSingle()
+  if (!prof) return null
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('id', prof.business_id)
+    .maybeSingle()
+  return business
+}
+
+export type PapelPainel = 'dono' | 'gerente'
+
+/** Quem é a pessoa no /admin: dona, gerente, ou null (não entra). */
+export const getAdminAccess = cache(async (userId: string): Promise<{ businessId: string; papel: PapelPainel } | null> => {
+  const business = await getCurrentBusiness(userId)
+  if (!business) return null
+  return { businessId: business.id, papel: business.owner_id === userId ? 'dono' : 'gerente' }
+})
+
+/** uuid que não casa com negócio nenhum — a query volta vazia e a página
+ *  cai no redirect que já tinha (destinoSemNegocio). */
+export const NEGOCIO_NENHUM = '00000000-0000-0000-0000-000000000000'
+
+/**
+ * id do negócio que este usuário administra (dono ou gerente).
+ * Substitui o `.eq('owner_id', user.id)` das páginas do admin:
+ *   .eq('id', await negocioDoPainel(user.id))
+ */
+export const negocioDoPainel = cache(async (userId: string) =>
+  (await getAdminAccess(userId))?.businessId ?? NEGOCIO_NENHUM,
+)
+
 export const getCurrentSubscription = cache(async (businessId: string) => {
-  const supabase = await createClient()
+  // v155 · service role: a RLS de `subscriptions` é só do dono, e o layout
+  // precisa do status pro gerente não cair em /admin/bloqueado à toa. O
+  // businessId já foi validado pelo layout (getCurrentBusiness).
+  const supabase = getServiceClient()
   const { data: subscription } = await supabase
     .from('subscriptions')
     .select('*')

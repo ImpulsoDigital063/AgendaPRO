@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import CampanhasTabs from '@/components/admin/CampanhasTabs'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 const MESES_PT = [
   'janeiro','fevereiro','março','abril','maio','junho',
@@ -26,7 +27,7 @@ export default async function CampanhasPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('id, slug, name, description, whatsapp_birthday_template, whatsapp_sumidos_cupom_template')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

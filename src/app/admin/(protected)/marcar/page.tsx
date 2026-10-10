@@ -2,6 +2,7 @@ import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import MarcarAgendamentoForm from '@/components/recepcao/MarcarAgendamentoForm'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,7 @@ export default async function AdminMarcarPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('id, slug, name')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

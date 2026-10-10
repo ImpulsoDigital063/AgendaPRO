@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ConsultasView from '@/components/recepcao/ConsultasView'
 import { IconSearch } from '@/components/ui/Icon'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,7 @@ export default async function AdminConsultasPage() {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

@@ -63,11 +63,13 @@ type Props = {
   convenios?: boolean
   /** v141 · negócio que não vende produto não vê Produtos no menu (CAF). */
   vendasBalcao?: boolean
+  /** v155 · gerente não vê o rodapé "Plano e Pagamento" */
+  ehGerente?: boolean
   /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
   cartaoPresente?: boolean
 }
 
-export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true }: Props) {
+export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true, ehGerente = false }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab')
@@ -367,7 +369,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       </nav>
 
       {/* Footer · Plano · escondido pro Palace (sistema próprio R$2.997 · sem mensalidade) */}
-      {brand.business_slug !== 'palace-nail-spa' && (
+      {brand.business_slug !== 'palace-nail-spa' && !ehGerente && (
         <div
           className="px-3 py-3 flex-shrink-0"
           style={{ borderTop: '1px solid var(--admin-divider)' }}

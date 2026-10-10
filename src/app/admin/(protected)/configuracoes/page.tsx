@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ConfiguracoesTabs from '@/components/admin/ConfiguracoesTabs'
 import SubPageHeader from '@/components/admin/SubPageHeader'
+import { getCurrentSubscription, negocioDoPainel } from '@/lib/admin-data'
 
 // Rótulo de cada seção pro título dinâmico do header (segue o ?tab= do drawer).
 const CONFIG_TAB_LABELS: Record<string, string> = {
@@ -38,7 +39,7 @@ export default async function ConfiguracoesPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('*')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
 
   if (!business) redirect(await destinoSemNegocio())
@@ -54,7 +55,9 @@ export default async function ConfiguracoesPage({
     supabase.from('services').select('*').eq('business_id', business.id).order('name'),
     supabase.from('rewards').select('*').eq('business_id', business.id).order('points_required'),
     supabase.from('customers').select('*').eq('business_id', business.id).order('total_points', { ascending: false }),
-    supabase.from('subscriptions').select('plan, extra_professional_slots').eq('business_id', business.id).single(),
+    // v155 · via service role (getCurrentSubscription): a RLS de subscriptions
+    // é só do dono — pro gerente o plano viria vazio e o limite cairia no Solo
+    getCurrentSubscription(business.id).then((data) => ({ data })),
   ])
 
   // Plano determina limite de profissionais (solo=2, equipe=5).
@@ -106,6 +109,7 @@ export default async function ConfiguracoesPage({
             initialCustomers={customers || []}
             subscriptionPlan={subscriptionPlan}
             extraProfessionalSlots={extraProfessionalSlots}
+            ehGerente={business.owner_id !== user.id}
           />
         </div>
       </div>

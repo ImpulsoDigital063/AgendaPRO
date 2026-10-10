@@ -2,6 +2,7 @@ import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import PdvPagina from '@/components/admin/pdv/PdvPagina'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,7 @@ export default async function VenderProdutoPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
 
-  const { data: business } = await supabase.from('businesses').select('id').eq('owner_id', user.id).single()
+  const { data: business } = await supabase.from('businesses').select('id').eq('id', await negocioDoPainel(user.id)).single()
   if (!business) redirect(await destinoSemNegocio())
 
   return (

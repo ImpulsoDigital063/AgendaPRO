@@ -19,6 +19,7 @@ import ConviteTour2 from '@/components/admin/ConviteTour2'
 import { resolveCategoria } from '@/lib/segmento'
 import { IconClock } from '@/components/ui/Icon'
 import ReativarSumidosView from '@/components/admin/ReativarSumidosView'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /* 06/09/2026 · o prazo deixou de ser fixo. A dona escolhe, e a pagina inteira
    recalcula em cima dele — sumidos, cupons orfaos e ROI. Antes eram 40 cravados,
@@ -38,7 +39,7 @@ export default async function SumidosPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('id, slug, name, description, category, tour_sumidos_em, tour_sumidos_2_em, whatsapp_sumidos_cupom_template')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

@@ -6,6 +6,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import ClientesView from '@/components/admin/ClientesView'
 import { IconUpload } from '@/components/ui/Icon'
 import { todayBR } from '@/lib/date-br'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export default async function ClientesPage() {
   const supabase = await createClient()
@@ -16,7 +17,7 @@ export default async function ClientesPage() {
   const { data: business } = await supabase
     .from('businesses')
     .select('*')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
 
   if (!business) redirect(await destinoSemNegocio())

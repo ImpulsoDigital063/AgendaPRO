@@ -5,6 +5,7 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import AnalisesView from '@/components/admin/AnalisesView'
 import { getApptDiscountMap } from '@/lib/commission-discount'
 import { todayBR, addDaysBR } from '@/lib/date-br'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export default async function AnalisesPage({
   searchParams,
@@ -18,7 +19,7 @@ export default async function AnalisesPage({
   const { data: business } = await supabase
     .from('businesses')
     .select('*')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) redirect(await destinoSemNegocio())
 

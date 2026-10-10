@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import PacotesView from '@/components/admin/pacotes/PacotesView'
 import SubPageHeader from '@/components/admin/SubPageHeader'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +16,7 @@ export default async function PacotesPage() {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
   if (!business) redirect(await destinoSemNegocio())
 

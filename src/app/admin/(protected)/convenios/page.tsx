@@ -5,6 +5,7 @@ import { todayBR } from '@/lib/date-br'
 import { vencimentoDaCompetencia, diasDeAtraso } from '@/lib/convenio-vencimento'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import ConveniosView from '@/components/admin/convenios/ConveniosView'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,7 +35,7 @@ export default async function ConveniosPage() {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name, convenios_enabled')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
 
   if (!business) redirect(await destinoSemNegocio())

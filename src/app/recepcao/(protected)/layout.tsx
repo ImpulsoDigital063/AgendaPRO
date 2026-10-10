@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getAdminAccess } from '@/lib/admin-data'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import InstallBanner from '@/components/admin/InstallBanner'
 import RecepcaoBottomNav from '@/components/recepcao/RecepcaoBottomNav'
@@ -23,6 +24,9 @@ export default async function RecepcaoLayout({
     console.log('[RECEPCAO-LAYOUT] redirect /login · no user')
     redirect('/profissional/login')
   }
+
+  // v155 · gerente que também é recepção mora no /admin (acesso maior)
+  if (await getAdminAccess(user.id)) redirect('/admin')
 
   const { data: professional, error: profError } = await supabase
     .from('professionals')

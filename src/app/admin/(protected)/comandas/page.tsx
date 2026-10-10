@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import ComandasView from '@/components/admin/comandas/ComandasView'
 import { fetchComandaList } from '@/lib/comandas-server'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +16,7 @@ export default async function AdminComandasPage() {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
   if (!business) redirect(await destinoSemNegocio())
 

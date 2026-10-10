@@ -6,6 +6,7 @@ import ComandaDetalhe, { type InvoiceFull } from '@/components/admin/comandas/Co
 import { linhasDoSinal } from '@/lib/sinal-da-comanda'
 import { normalizarAlvo } from '@/lib/desconto-geral'
 import { resolveProductItemSellers } from '@/lib/queries/product-item-sellers'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +18,7 @@ export default async function AdminComandaDetalhePage({ params }: { params: Prom
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name, slug, loyalty_enabled')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
   if (!business) redirect(await destinoSemNegocio())
 

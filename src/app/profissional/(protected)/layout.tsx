@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAdminAccess } from '@/lib/admin-data'
 import { redirect } from 'next/navigation'
 import AdminThemeProvider from '@/components/admin/AdminThemeProvider'
 import ProfissionalBottomNav from '@/components/profissional/ProfissionalBottomNav'
@@ -28,13 +29,8 @@ export default async function ProfissionalLayout({
   // Caso Luana Palace: tem espelho em professionals (pra aparecer na lista)
   // mas o lar dela é /admin. Esse check roda ANTES do select de prof pra
   // pegar até quem tem auth_user_id linkado a espelho de owner.
-  const { data: ownedBusiness } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .maybeSingle()
-
-  if (ownedBusiness) {
+  // v155 · gerente (professionals.is_manager ativo) também mora no /admin.
+  if (await getAdminAccess(user.id)) {
     redirect('/admin')
   }
 
