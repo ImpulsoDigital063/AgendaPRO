@@ -24,6 +24,8 @@ import {
   IconDollar,
 } from '@/components/ui/Icon'
 import OwnerPhotoCard from '@/components/admin/eu/OwnerPhotoCard'
+import ProfFinanceiroView from '@/components/profissional/ProfFinanceiroView'
+import { carregarExtratoProfissional } from '@/lib/extrato-profissional'
 
 /**
  * /admin/eu — Agenda pessoal do dono que também atende.
@@ -270,7 +272,11 @@ async function PersonalUpcomingSection({
   )
 }
 
-export default async function AdminEuPage() {
+export default async function AdminEuPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string; de?: string; ate?: string }>
+}) {
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
 
@@ -281,6 +287,12 @@ export default async function AdminEuPage() {
   // Defesa em profundidade — se o admin não atende, manda pra home.
   // BottomNav já esconde o link, mas alguém digitando a URL caía aqui.
   if (!owner) redirect('/admin')
+
+  const ehGerente = business.owner_id !== user.id
+  const extratoGerente =
+    ehGerente && (owner.employment_type ?? 'commissioned') !== 'employed'
+      ? await carregarExtratoProfissional(await createClient(), owner.id, await searchParams)
+      : null
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -365,9 +377,26 @@ export default async function AdminEuPage() {
         />
       )}
 
-      <Suspense fallback={null}>
-        <PersonalKPIs business={business} owner={owner} />
-      </Suspense>
+      {/* v155 · "Recebido hoje" soma 100% — é o ganho do DONO. Pra gerente que
+          atende, o ganho é a comissão: mostra o mesmo extrato do painel da
+          profissional. Gerente com salário não vê valor (não é dela). */}
+      {!ehGerente ? (
+        <Suspense fallback={null}>
+          <PersonalKPIs business={business} owner={owner} />
+        </Suspense>
+      ) : extratoGerente ? (
+        <section className="relative max-w-lg mx-auto px-4 mb-6">
+          <h2 className="text-sm font-bold mb-2" style={{ color: 'var(--admin-text)' }}>
+            Meus ganhos
+          </h2>
+          <ProfFinanceiroView
+            appointments={extratoGerente.appointmentsLiquidos}
+            periodo={extratoGerente.periodo}
+            commissionPercentage={owner.commission_percentage ?? 0}
+            comissaoValorFixo={business.comissao_valor_fixo === true}
+          />
+        </section>
+      ) : null}
 
       <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
         <Suspense fallback={null}>
