@@ -142,6 +142,7 @@ export default function ConfiguracoesTabs({
           subscriptionPlan={subscriptionPlan}
           extraProfessionalSlots={extraProfessionalSlots}
           canBookSelf={business.professionals_can_book_self ?? false}
+          ehGerente={ehGerente}
           canBookOthers={business.professionals_can_book_others ?? false}
           seeTeamAgenda={business.professionals_see_team_agenda ?? false}
         />

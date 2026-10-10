@@ -37,6 +37,8 @@ type Props = {
   canBookSelf?: boolean
   canBookOthers?: boolean
   seeTeamAgenda?: boolean
+  /** v155 · quem está logado é gerente: não mexe no dono nem cria dono */
+  ehGerente?: boolean
 }
 
 const PLAN_LIMITS: Record<'solo' | 'equipe', number> = {
@@ -55,6 +57,7 @@ export default function ProfissionaisTab({
   canBookSelf = false,
   canBookOthers = false,
   seeTeamAgenda = false,
+  ehGerente = false,
 }: Props) {
   const [filter, setFilter] = useState<Filter>('active')
   const [search, setSearch] = useState('')
@@ -522,6 +525,7 @@ export default function ProfissionaisTab({
           <ProfCard
             key={prof.id}
             prof={prof}
+            ehGerente={ehGerente}
             loadingId={loadingId}
             uploadingId={uploadingId}
             invitingId={invitingId}
@@ -715,6 +719,7 @@ export default function ProfissionaisTab({
         }}
         businessId={businessId}
         professional={detailDrawerProf}
+        ehGerente={ehGerente}
         onSaved={(saved) => {
           if (detailDrawerProf) {
             // edit · substitui na lista
@@ -777,6 +782,7 @@ type ProfCardProps = {
   copyToClipboard: (text: string, field: string) => void
   /** v79 · abre drawer com form completo Salão99-style pra editar */
   openDetails: (prof: Professional) => void
+  ehGerente?: boolean
 }
 
 function ProfCard(p: ProfCardProps) {
@@ -870,6 +876,9 @@ function ProfCard(p: ProfCardProps) {
   const isEditingCommissionInline = p.editingCommission === prof.id
   const isInteractingInline = isEditingNameInline || isEditingCommissionInline || p.invitingId === prof.id
   const hasInviteFeedback = !!p.inviteResult && p.inviteResult.profId === prof.id
+
+  // v155 · gerente vê o cartão do dono, mas não mexe (o banco também trava)
+  if (p.ehGerente && (isOwner || prof.is_owner === true)) actions.length = 0
 
   return (
     <div

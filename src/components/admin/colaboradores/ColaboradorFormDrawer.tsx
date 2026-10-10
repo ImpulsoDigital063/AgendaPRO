@@ -30,6 +30,8 @@ type Props = {
   businessId: string
   professional: Professional | null
   onSaved: (prof: Professional) => void
+  /** v155 · gerente não marca ninguém como Proprietário */
+  ehGerente?: boolean
 }
 
 /** Estado do form · espelha colunas v79 + identificação básica */
@@ -159,6 +161,7 @@ export default function ColaboradorFormDrawer({
   businessId,
   professional,
   onSaved,
+  ehGerente = false,
 }: Props) {
   const supabase = createClient()
   const isEdit = !!professional
@@ -348,7 +351,9 @@ export default function ColaboradorFormDrawer({
               Cargos podem se acumular (ex: Proprietário que também é Gerente).
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <CheckOption checked={form.is_owner} onChange={(v) => update('is_owner', v)} label="Proprietário" />
+              {!ehGerente && (
+                <CheckOption checked={form.is_owner} onChange={(v) => update('is_owner', v)} label="Proprietário" />
+              )}
               <CheckOption checked={form.is_manager} onChange={(v) => update('is_manager', v)} label="Gerente" />
               <CheckOption checked={form.is_professional} onChange={(v) => update('is_professional', v)} label="Profissional" />
               <CheckOption checked={form.is_attendant} onChange={(v) => update('is_attendant', v)} label="Atendente (recepção)" />
