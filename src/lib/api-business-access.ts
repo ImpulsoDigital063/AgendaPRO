@@ -1,4 +1,6 @@
 import type { createClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
+import { areaDaApi, areasBloqueadas } from '@/lib/permissoes-gerente'
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>
 
@@ -37,14 +39,21 @@ export async function resolveBusinessIdOperacao(
 
   const { data: prof } = await supabase
     .from('professionals')
-    .select('business_id, is_receptionist, is_manager')
+    .select('business_id, is_receptionist, is_manager, gerente_areas_bloqueadas')
     .eq('auth_user_id', user.id)
     .eq('active', true)
     .maybeSingle()
   if (!prof) return null
 
-  // Gerente (v155) e recepção (v47) sempre operam
-  if (prof.is_manager === true || prof.is_receptionist === true) return prof.business_id
+  // Gerente (v155) e recepção (v47) sempre operam — gerente, menos nas
+  // áreas que a dona tirou dela (v156)
+  if (prof.is_manager === true) {
+    const bloqueadas = areasBloqueadas(prof.gerente_areas_bloqueadas)
+    const area = bloqueadas.length ? areaDaApi((await headers()).get('x-pathname') ?? '') : null
+    if (!area || !bloqueadas.includes(area)) return prof.business_id
+    if (prof.is_receptionist !== true) return null
+  }
+  if (prof.is_receptionist === true) return prof.business_id
 
   const { data: biz } = await supabase
     .from('businesses')

@@ -23,6 +23,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Professional } from '@/lib/types'
 import { IconClose, IconCheck } from '@/components/ui/Icon'
+import { AREAS_GERENTE } from '@/lib/permissoes-gerente'
 
 type Props = {
   open: boolean
@@ -41,6 +42,8 @@ type FormState = {
   email: string
   is_owner: boolean
   is_manager: boolean
+  /** v156 · áreas que a gerente NÃO acessa */
+  gerente_areas_bloqueadas: string[]
   is_professional: boolean
   is_attendant: boolean
   does_appointments: boolean
@@ -81,6 +84,7 @@ const EMPTY: FormState = {
   email: '',
   is_owner: false,
   is_manager: false,
+  gerente_areas_bloqueadas: [],
   is_professional: true,
   is_attendant: false,
   does_appointments: true,
@@ -118,6 +122,7 @@ function fromProfessional(p: Professional): FormState {
     email: p.email ?? '',
     is_owner: !!p.is_owner,
     is_manager: !!p.is_manager,
+    gerente_areas_bloqueadas: p.gerente_areas_bloqueadas ?? [],
     is_professional: p.is_professional !== false,
     is_attendant: !!p.is_attendant || !!p.is_receptionist,
     does_appointments: p.does_appointments !== false,
@@ -194,7 +199,12 @@ export default function ColaboradorFormDrawer({
       nickname: nz(form.nickname),
       email: nz(form.email),
       is_owner: form.is_owner,
-      is_manager: form.is_manager,
+      // v156 · quem é gerente e o que acessa é decisão do dono (o banco
+      // também trava): quando quem edita é gerente, nem manda esses campos
+      ...(ehGerente ? {} : {
+        is_manager: form.is_manager,
+        gerente_areas_bloqueadas: form.is_manager ? form.gerente_areas_bloqueadas : [],
+      }),
       is_professional: form.is_professional,
       is_attendant: form.is_attendant,
       // Mantém is_receptionist como espelho pra compat v47 (RLS depende)
@@ -354,12 +364,40 @@ export default function ColaboradorFormDrawer({
               {!ehGerente && (
                 <CheckOption checked={form.is_owner} onChange={(v) => update('is_owner', v)} label="Proprietário" />
               )}
-              <CheckOption checked={form.is_manager} onChange={(v) => update('is_manager', v)} label="Gerente" />
+              {!ehGerente && (
+                <CheckOption checked={form.is_manager} onChange={(v) => update('is_manager', v)} label="Gerente" />
+              )}
               <CheckOption checked={form.is_professional} onChange={(v) => update('is_professional', v)} label="Profissional" />
               <CheckOption checked={form.is_attendant} onChange={(v) => update('is_attendant', v)} label="Atendente (recepção)" />
             </div>
           </Section>
 
+          {/* v156 · O que a gerente acessa · só o dono vê e mexe */}
+          {form.is_manager && !ehGerente && (
+            <Section title="O que a gerente acessa" defaultOpen>
+              <p className="text-[11px] mb-2" style={{ color: 'var(--admin-text-mute)' }}>
+                Desligue o que ela não deve ver. Agenda e atendimentos ficam sempre liberados, e a assinatura do sistema é só sua.
+              </p>
+              <div className="space-y-1.5">
+                {AREAS_GERENTE.map((a) => (
+                  <CheckOption
+                    key={a.id}
+                    checked={!form.gerente_areas_bloqueadas.includes(a.id)}
+                    onChange={(v) =>
+                      update(
+                        'gerente_areas_bloqueadas',
+                        v
+                          ? form.gerente_areas_bloqueadas.filter((x) => x !== a.id)
+                          : [...form.gerente_areas_bloqueadas, a.id],
+                      )
+                    }
+                    label={a.label}
+                    description={a.desc}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
           {/* 3. Trabalho · tipo de contrato + comissão (só se Comissionado) */}
           <Section title="Trabalho" defaultOpen>
             <p className="text-[11px] mb-2" style={{ color: 'var(--admin-text-mute)' }}>

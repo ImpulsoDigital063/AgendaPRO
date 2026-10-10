@@ -23,7 +23,9 @@ import {
   getPendingAppointmentsCount,
   getPendingClaimsCount,
   getOwnerProfessional,
+  getAdminAccess,
 } from '@/lib/admin-data'
+import { podeAbrir } from '@/lib/permissoes-gerente'
 
 export default async function AdminLayout({
   children,
@@ -44,6 +46,15 @@ export default async function AdminLayout({
   let showOwnerTab = false
   // v155 · gerente usa o painel do dono, menos a Assinatura AgendaPRO
   const ehGerente = !!business && business.owner_id !== user.id
+  // v156 · áreas que a dona tirou desta gerente (dono: [])
+  const bloqueadas = ehGerente ? (await getAdminAccess(user.id))?.bloqueadas ?? [] : []
+  if (bloqueadas.length) {
+    const pathname = (await headers()).get('x-pathname') || ''
+    // Configurações decide por aba, dentro da própria tela (o pathname não traz ?tab)
+    if (pathname && !pathname.startsWith('/admin/configuracoes') && !podeAbrir(pathname, bloqueadas)) {
+      redirect('/admin/inicio?sem_acesso=1')
+    }
+  }
   let trial: { diasRestantes: number; plano: string; precoMes: string; vencido?: boolean; diasConcedidos?: number } | null = null
   let cobranca: { diasAteVencer: number; status: 'active' | 'past_due' } | null = null
   let brand: {
@@ -236,6 +247,7 @@ export default async function AdminLayout({
           cartaoPresente={business?.cartao_presente_enabled === true}
           vendasBalcao={business?.vendas_balcao_enabled !== false}
           ehGerente={ehGerente}
+          bloqueadas={bloqueadas}
         />
         <div className="admin-shell-content relative z-10">
           {/* Topbar mobile (header + drawer agrupado) · só <lg · coexiste com BottomNav */}
@@ -250,6 +262,7 @@ export default async function AdminLayout({
             vendasBalcao={business?.vendas_balcao_enabled !== false}
             trial={trial}
             ehGerente={ehGerente}
+            bloqueadas={bloqueadas}
           />
           {/* O InstallBanner SAIU DO LAYOUT (Eduardo, 31/08/2026).
               Montado aqui, ele custava 58px de altura nas 41 telas do admin —

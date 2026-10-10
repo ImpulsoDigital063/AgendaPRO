@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ConfiguracoesTabs from '@/components/admin/ConfiguracoesTabs'
 import SubPageHeader from '@/components/admin/SubPageHeader'
-import { getCurrentSubscription, negocioDoPainel } from '@/lib/admin-data'
+import { getAdminAccess, getCurrentSubscription, negocioDoPainel } from '@/lib/admin-data'
 
 // Rótulo de cada seção pro título dinâmico do header (segue o ?tab= do drawer).
 const CONFIG_TAB_LABELS: Record<string, string> = {
@@ -114,6 +114,7 @@ export default async function ConfiguracoesPage({
             subscriptionPlan={subscriptionPlan}
             extraProfessionalSlots={extraProfessionalSlots}
             ehGerente={business.owner_id !== user.id}
+            bloqueadas={(await getAdminAccess(user.id))?.bloqueadas ?? []}
           />
         </div>
       </div>

@@ -98,6 +98,8 @@ export type Professional = {
   // v79 · cargos múltiplos (não exclusivos · Luana é owner+manager)
   is_owner?: boolean
   is_manager?: boolean
+  /** v156 · áreas do /admin que a gerente NÃO acessa (vazio = todas) */
+  gerente_areas_bloqueadas?: string[]
   is_professional?: boolean
   is_attendant?: boolean
   // v79 · atribuições (independentes do cargo)

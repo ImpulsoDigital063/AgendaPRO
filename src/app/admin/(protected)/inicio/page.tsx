@@ -390,7 +390,12 @@ async function ReviewClaimsSection({ businessId }: { businessId: string }) {
 // Page
 // ============================================================
 
-export default async function AdminInicioPage() {
+export default async function AdminInicioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sem_acesso?: string }>
+}) {
+  const { sem_acesso: semAcesso } = await searchParams
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
 
@@ -472,6 +477,14 @@ export default async function AdminInicioPage() {
 
         {/* Novidade do sinal (06/08) · some pra quem ja ligou, pra quem
             dispensou e depois de 31/08. */}
+        {/* v156 · gerente abriu uma área que a dona não liberou (o layout manda pra cá) */}
+        {semAcesso === '1' && (
+          <div className="rounded-2xl px-4 py-3" style={{ background: 'color-mix(in srgb, var(--admin-warn) 12%, var(--admin-surface))', border: '1px solid color-mix(in srgb, var(--admin-warn) 35%, transparent)' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>Essa área não está liberada pra você</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>Quem libera é o responsável pelo negócio, no seu cadastro de colaborador.</p>
+          </div>
+        )}
+
         <NovidadeSinalCard sinalAtivo={business.sinal_enabled === true} />
 
         {/* Novidade da aba Sumidos (08/09) · some pra quem ja entrou la,

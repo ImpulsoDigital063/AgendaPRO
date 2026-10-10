@@ -21,6 +21,7 @@ import MaquininhasTab from './MaquininhasTab'
 import BloqueiosTab from './BloqueiosTab'
 import FichasModeloTab from './FichasModeloTab'
 import NotificacoesTab from './NotificacoesTab'
+import { podeAbrir } from '@/lib/permissoes-gerente'
 
 type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas' | 'bloqueios' | 'fichas-modelo' | 'mensagens' | 'notificacoes'
 
@@ -41,6 +42,8 @@ type Props = {
   extraProfessionalSlots?: number
   /** v155 · gerente não vê a aba Plano (Assinatura AgendaPRO é do dono) */
   ehGerente?: boolean
+  /** v156 · áreas que a dona tirou da gerente */
+  bloqueadas?: string[]
 }
 
 /** Leva pros avisos manuais (o editor do wa.me que morava aqui) sem deixar rastro no historico. */
@@ -66,6 +69,7 @@ export default function ConfiguracoesTabs({
   subscriptionPlan,
   extraProfessionalSlots = 0,
   ehGerente = false,
+  bloqueadas = [],
 }: Props) {
   // Palace tem sistema próprio (R$2.997 one-shot · sem mensalidade).
   // Tab Plano esconde e tentativa de acesso direto via ?tab=plano cai em Negócio.
@@ -122,6 +126,16 @@ export default function ConfiguracoesTabs({
   // Nicho vem de `category` (lista fechada), com fallback pra descrição só
   // quando ela ainda é literalmente uma categoria antiga. Ver lib/segmento.
   const categoriaDoNegocio = resolveCategoria(business)
+
+  // v156 · aba de uma área que a dona tirou da gerente (endereço digitado)
+  if (!podeAbrir(`/admin/configuracoes?tab=${activeTab}`, bloqueadas)) {
+    return (
+      <div className="rounded-2xl p-6 text-center" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
+        <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>Essa área não está liberada pra você</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>Quem libera é o responsável pelo negócio, no seu cadastro de colaborador.</p>
+      </div>
+    )
+  }
 
   return (
     <div>

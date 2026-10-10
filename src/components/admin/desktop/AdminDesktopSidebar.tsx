@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/Icon'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import { ehNovidade } from '@/lib/novidades'
+import { podeAbrir } from '@/lib/permissoes-gerente'
 
 type Brand = {
   business_name?: string | null
@@ -65,11 +66,13 @@ type Props = {
   vendasBalcao?: boolean
   /** v155 · gerente não vê o rodapé "Plano e Pagamento" */
   ehGerente?: boolean
+  /** v156 · áreas que a dona tirou da gerente */
+  bloqueadas?: string[]
   /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
   cartaoPresente?: boolean
 }
 
-export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true, ehGerente = false }: Props) {
+export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true, ehGerente = false, bloqueadas = [] }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab')
@@ -201,6 +204,13 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
     return pathname.startsWith(path)
   }
 
+
+  // v156 · gerente só vê as áreas que a dona liberou (mapa em permissoes-gerente)
+  const gruposVisiveis = bloqueadas.length
+    ? groups
+        .map((g) => ({ ...g, items: g.items.filter((i) => !i.href || podeAbrir(i.href, bloqueadas)) }))
+        .filter((g) => g.items.length > 0)
+    : groups
   return (
     <aside
       className="admin-desktop-sidebar hidden lg:flex flex-col"
@@ -270,7 +280,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
 
       {/* Nav · agrupado por seção */}
       <nav className="flex-1 overflow-y-auto py-2 px-2">
-        {groups.map((group, gIdx) => (
+        {gruposVisiveis.map((group, gIdx) => (
           <div key={gIdx} className={gIdx > 0 ? 'mt-3' : ''}>
             {!collapsed && (
               <p

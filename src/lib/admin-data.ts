@@ -1,4 +1,6 @@
 import { cache } from 'react'
+import { headers } from 'next/headers'
+import { areaDaApi, areasBloqueadas, type AreaGerente } from '@/lib/permissoes-gerente'
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -94,11 +96,25 @@ async function negocioQueGerencia(
 
 export type PapelPainel = 'dono' | 'gerente'
 
-/** Quem é a pessoa no /admin: dona, gerente, ou null (não entra). */
-export const getAdminAccess = cache(async (userId: string): Promise<{ businessId: string; papel: PapelPainel } | null> => {
+/** Quem é a pessoa no /admin: dona, gerente, ou null (não entra).
+ *  `bloqueadas` = áreas que a dona tirou da gerente (v156 · dono: sempre []). */
+export const getAdminAccess = cache(async (userId: string): Promise<{
+  businessId: string
+  papel: PapelPainel
+  bloqueadas: AreaGerente[]
+} | null> => {
   const business = await getCurrentBusiness(userId)
   if (!business) return null
-  return { businessId: business.id, papel: business.owner_id === userId ? 'dono' : 'gerente' }
+  if (business.owner_id === userId) return { businessId: business.id, papel: 'dono', bloqueadas: [] }
+  const supabase = await createClient()
+  const { data: prof } = await supabase
+    .from('professionals')
+    .select('gerente_areas_bloqueadas')
+    .eq('auth_user_id', userId)
+    .eq('business_id', business.id)
+    .eq('active', true)
+    .maybeSingle()
+  return { businessId: business.id, papel: 'gerente', bloqueadas: areasBloqueadas(prof?.gerente_areas_bloqueadas) }
 })
 
 /** uuid que não casa com negócio nenhum — a query volta vazia e a página
@@ -110,9 +126,17 @@ export const NEGOCIO_NENHUM = '00000000-0000-0000-0000-000000000000'
  * Substitui o `.eq('owner_id', user.id)` das páginas do admin:
  *   .eq('id', await negocioDoPainel(user.id))
  */
-export const negocioDoPainel = cache(async (userId: string) =>
-  (await getAdminAccess(userId))?.businessId ?? NEGOCIO_NENHUM,
-)
+export const negocioDoPainel = cache(async (userId: string) => {
+  const acesso = await getAdminAccess(userId)
+  if (!acesso) return NEGOCIO_NENHUM
+  // v156 · API de uma área que a dona tirou da gerente → sem negócio (a rota
+  // recusa como sempre recusou quem não é dono). x-pathname vem do middleware.
+  if (acesso.bloqueadas.length) {
+    const area = areaDaApi((await headers()).get('x-pathname') ?? '')
+    if (area && acesso.bloqueadas.includes(area)) return NEGOCIO_NENHUM
+  }
+  return acesso.businessId
+})
 
 export const getCurrentSubscription = cache(async (businessId: string) => {
   // v155 · service role: a RLS de `subscriptions` é só do dono, e o layout

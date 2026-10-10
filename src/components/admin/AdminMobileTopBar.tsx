@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/Icon'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import { ehNovidade } from '@/lib/novidades'
+import { podeAbrir } from '@/lib/permissoes-gerente'
 
 type Props = {
   businessName: string | null
@@ -46,6 +47,8 @@ type Props = {
   trial?: { diasRestantes: number; vencido?: boolean } | null
   /** v155 · gerente não vê a Assinatura AgendaPRO (item Plano) */
   ehGerente?: boolean
+  /** v156 · áreas que a dona tirou da gerente */
+  bloqueadas?: string[]
 }
 
 type NavItem = {
@@ -72,6 +75,7 @@ export default function AdminMobileTopBar({
   cartaoPresente = false,
   trial = null,
   ehGerente = false,
+  bloqueadas = [],
 }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -205,6 +209,13 @@ export default function AdminMobileTopBar({
     return pathname.startsWith(path)
   }
 
+
+  // v156 · gerente só vê as áreas que a dona liberou (mapa em permissoes-gerente)
+  const gruposVisiveis = bloqueadas.length
+    ? groups
+        .map((g) => ({ ...g, items: g.items.filter((i) => podeAbrir(i.href, bloqueadas)) }))
+        .filter((g) => g.items.length > 0)
+    : groups
   return (
     <>
       {/* Top bar fixa · só mobile (<lg) */}
@@ -314,7 +325,7 @@ export default function AdminMobileTopBar({
             </div>
 
             <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
-              {groups.map((group) => (
+              {gruposVisiveis.map((group) => (
                 <div key={group.label}>
                   <p
                     className="text-[10px] font-bold uppercase tracking-widest px-3 mb-1.5"
