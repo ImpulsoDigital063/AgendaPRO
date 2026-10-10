@@ -14,16 +14,18 @@ import TourGuiado, { acharAlvo, type PassoTour } from './TourGuiado'
 import TourFinal from './TourFinal'
 import { hrefDaParada, limparIdParada, montarRoteiro, TOTAL_PARTES } from '@/lib/tour-sistema'
 
-type Props = { categoria: string | null; vendeProduto: boolean; businessId: string }
+type Props = { categoria: string | null; vendeProduto: boolean; businessId: string; ehGerente?: boolean }
 
-export default function TourSistema({ categoria, vendeProduto, businessId }: Props) {
+export default function TourSistema({ categoria, vendeProduto, businessId, ehGerente = false }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
   const tourId = limparIdParada(params.get('tour'))
   const tab = params.get('tab')
 
-  const roteiro = useMemo(() => montarRoteiro({ categoria, vendeProduto }), [categoria, vendeProduto])
+  const roteiro = useMemo(() => montarRoteiro({ categoria, vendeProduto, ehGerente }), [categoria, vendeProduto, ehGerente])
+  // gerente tem 5 partes (sem "Seu plano")
+  const totalPartes = ehGerente ? Math.max(...roteiro.map((p) => p.parte)) : TOTAL_PARTES
   const idx = roteiro.findIndex((p) => p.id === tourId)
   const parada = idx >= 0 ? roteiro[idx] : null
   const proxima = idx >= 0 ? roteiro[idx + 1] ?? null : null
@@ -106,7 +108,7 @@ export default function TourSistema({ categoria, vendeProduto, businessId }: Pro
 
   const contador = parada.parte === 0
     ? 'Conheça seu sistema'
-    : `Parte ${parada.parte} de ${TOTAL_PARTES} · ${parada.nomeParte}`
+    : `Parte ${parada.parte} de ${totalPartes} · ${parada.nomeParte}`
 
   return (
     <TourGuiado

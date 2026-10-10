@@ -479,7 +479,7 @@ export default async function AdminInicioPage() {
         <NovidadeSumidosCard jaEntrou={!!business.tour_sumidos_em} />
 
         {/* Tour 'Conheça seu sistema' · em revisão, só negócios liberados. */}
-        {tourSistemaLiberado(business) && (
+        {tourSistemaLiberado(business, business.owner_id !== user.id) && (
           <Suspense fallback={null}><TourSistemaCard businessId={business.id as string} /></Suspense>
         )}
 

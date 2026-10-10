@@ -280,12 +280,13 @@ export default async function AdminLayout({
           )}
           {children}
           {/* Tour 'Conheça seu sistema' (13/09/2026) · só negócios liberados. */}
-          {business && tourSistemaLiberado(business) && (
+          {business && tourSistemaLiberado(business, ehGerente) && (
             <Suspense fallback={null}>
               <TourSistema
                 categoria={resolveCategoria(business)}
                 vendeProduto={business.vendas_balcao_enabled !== false}
                 businessId={business.id as string}
+                ehGerente={ehGerente}
               />
             </Suspense>
           )}

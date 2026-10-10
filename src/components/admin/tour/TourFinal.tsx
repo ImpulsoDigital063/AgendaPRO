@@ -99,6 +99,8 @@ export default function TourFinal({ partes, linkWhatsApp, businessId, onFechar }
           ))}
         </ul>
 
+        {/* v155 · gerente termina sem a call (linkWhatsApp vazio): é conversa com a dona */}
+        {linkWhatsApp && (<>
         <div
           className="rounded-2xl p-4 mt-4 flex items-start gap-3"
           style={{
@@ -135,6 +137,7 @@ export default function TourFinal({ partes, linkWhatsApp, businessId, onFechar }
         >
           <IconWhatsApp /> Marcar minha call no WhatsApp
         </a>
+        </>)}
         <button
           type="button"
           onClick={onFechar}

@@ -30,8 +30,12 @@ export const TOUR_SISTEMA_CADASTRO_DESDE = '2026-09-13T03:00:00Z'
 
 export function tourSistemaLiberado(
   business: { id?: string | null; created_at?: string | null } | null | undefined,
+  /** v155 · gerente chega no painel do dono sem conhecer: vê o tour em
+      qualquer negócio, mesmo nos antigos (Marília/Studio MOOD, 10/10/2026). */
+  ehGerente = false,
 ): boolean {
   if (!business?.id) return false
+  if (ehGerente) return true
   if (TOUR_SISTEMA_LIBERADOS.includes(business.id)) return true
   return !!business.created_at && business.created_at >= TOUR_SISTEMA_CADASTRO_DESDE
 }
@@ -83,7 +87,7 @@ const WHATSAPP_SUPORTE = '5563992920080'
     pra esta parada. */
 export const PARADA_DEPOIS_DA_DEMO_AGENDAR = 'balcao-venda'
 
-export function montarRoteiro(opts: { categoria: string | null; vendeProduto: boolean }): ParadaTour[] {
+export function montarRoteiro(opts: { categoria: string | null; vendeProduto: boolean; ehGerente?: boolean }): ParadaTour[] {
   const t = termoPessoa(opts.categoria)
   const paradas: ParadaTour[] = [
     {
@@ -396,6 +400,18 @@ export function montarRoteiro(opts: { categoria: string | null; vendeProduto: bo
       ],
     },
   )
+
+  /* v155 · gerente não vê a Assinatura: o tour termina no link, sem a
+     parte de planos e sem a call comercial (que é com a dona). */
+  if (opts.ehGerente) {
+    const link = paradas.find((p) => p.id === 'link')
+    if (link) link.seguir = 'Concluir'
+    paradas.push({
+      id: 'fim', final: true, parte: 5, nomeParte: 'Agendamento online',
+      href: '/admin/inicio', seguir: '', baloes: [],
+    })
+    return paradas
+  }
 
   paradas.push(
     /* ── Parte 6 · Seu plano ── */

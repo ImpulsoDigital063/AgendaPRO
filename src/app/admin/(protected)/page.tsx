@@ -7,7 +7,6 @@ import {
   getOnboardingState,
 } from '@/lib/admin-data'
 import WelcomeModal from '@/components/admin/onboarding/WelcomeModal'
-import OnboardingChecklist from '@/components/admin/onboarding/OnboardingChecklist'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import { todayBR } from '@/lib/date-br'
 
@@ -78,19 +77,8 @@ export default async function AdminPage({
         />
       )}
 
-      {/* Onboarding checklist · só enquanto não completou tudo · acima da agenda */}
-      {/* v143 · a dona pode fechar de vez (businesses.onboarding_dispensado) */}
-      {!onboarding.done && business.onboarding_dispensado !== true && (
-        <div className="relative px-3 md:px-6 pt-3 md:pt-6">
-          <OnboardingChecklist
-            items={onboarding.items}
-            percent={onboarding.percent}
-            done={onboarding.done}
-            slug={business.slug}
-            businessId={business.id}
-          />
-        </div>
-      )}
+      {/* Card "Primeiros passos" (OnboardingChecklist) SAIU em 10/10/2026:
+          o tour "Conheça seu sistema" faz esse papel (decisão do Eduardo). */}
 
       {/* AVISOS SAÍRAM DAQUI (Eduardo, 31/08/2026) · cada aba tem um papel:
           Início é a casa da informação e dos avisos, Atendimentos é a grade.
