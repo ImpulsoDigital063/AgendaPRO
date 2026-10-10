@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { variacoesDeTelefone, mesmoTelefone } from '@/lib/phone-variants'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * POST /api/admin/customers
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
   let { data: business } = await supabase
     .from('businesses')
     .select('id')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
 
   if (!business) {

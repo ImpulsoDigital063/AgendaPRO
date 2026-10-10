@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notifyClient } from '@/lib/whatsapp'
 import { sendClientNotification } from '@/lib/email'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export async function POST(req: NextRequest) {
   const rl = checkRateLimit(req, { key: 'notify-client', limit: 60, windowSeconds: 60 })
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Verifica ownership
-  if (appointment.business?.owner_id !== user.id) {
+  if ((await negocioDoPainel(user.id)) !== appointment.business_id) { // v155 · dono ou gerente
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
   }
 

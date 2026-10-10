@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { fichasDisponiveis } from '@/lib/fichas/disponiveis'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 async function getOwnerBusiness(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
   /* slug entra porque a visibilidade agora também pode ser por negócio
      (fichas exclusivas de um cliente) — ver lib/fichas/disponiveis.ts */
-  const { data } = await supabase.from('businesses').select('id, slug, description, category, enabled_niche_fichas').eq('owner_id', user.id).maybeSingle()
+  const { data } = await supabase.from('businesses').select('id, slug, description, category, enabled_niche_fichas').eq('id', await negocioDoPainel(user.id)).maybeSingle()
   return data
 }
 

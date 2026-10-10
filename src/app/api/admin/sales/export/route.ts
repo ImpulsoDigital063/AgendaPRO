@@ -3,6 +3,7 @@ import { fetchAll } from '@/lib/fetch-all'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * GET /api/admin/sales/export?q=...&status=...&from=YYYY-MM-DD&to=...&prof=ID
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
   if (!business) return NextResponse.json({ error: 'business_not_found' }, { status: 404 })
 

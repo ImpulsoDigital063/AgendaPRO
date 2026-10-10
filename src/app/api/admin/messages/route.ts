@@ -17,6 +17,7 @@ import {
   DEFAULT_REMINDER_TEMPLATE,
 } from '@/lib/message-templates'
 import { DEFAULT_SUMIDOS_TEMPLATE, padraoAniversario, padraoSumidosCupom } from '@/lib/textos-manuais'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 type Linha = {
   whatsapp_confirmation_template?: string | null
@@ -50,7 +51,7 @@ async function resolveOwnerBusiness(userId: string) {
   const { data } = await admin
     .from('businesses')
     .select('id, description, whatsapp_confirmation_template, whatsapp_reminder_template, whatsapp_birthday_template, whatsapp_sumidos_template, whatsapp_sumidos_cupom_template')
-    .eq('owner_id', userId)
+    .eq('id', await negocioDoPainel(userId))
     .maybeSingle()
   return { admin, business: data }
 }

@@ -8,6 +8,7 @@ import { normalizarAlvo } from '@/lib/desconto-geral'
 import { dataBR, horaBR, todayBR } from '@/lib/date-br'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 // POST /api/admin/invoices
 // Cria comanda fechando atendimentos + vendas de produto avulsas.
@@ -46,7 +47,7 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
   const { data: ownerBusiness } = await supabase
     .from('businesses')
     .select('id')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
 
   // v98k · dono, recepção OU profissional (esta só com a flag de equipe ligada)
@@ -711,7 +712,7 @@ export async function GET(request: Request) {
   const { data: ownerBusiness } = await supabase
     .from('businesses')
     .select('id')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
 
   // v98k · mesma regra da criação (dono, recepção ou profissional com flag)

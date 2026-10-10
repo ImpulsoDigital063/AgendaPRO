@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 function getAdminClient() {
   return createServiceClient(
@@ -59,7 +60,7 @@ export async function GET(
       .from('businesses')
       .select('id')
       .eq('id', appointment.business_id)
-      .eq('owner_id', user.id)
+      .eq('id', await negocioDoPainel(user.id))
       .maybeSingle(),
     admin
       .from('professionals')

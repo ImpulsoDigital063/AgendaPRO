@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { buildStandaloneWhatsappText } from '@/lib/coupon-templates'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 const DISCOUNT_TYPES = new Set(['fixed', 'percent'])
 const COUPON_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, slug, name')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) return NextResponse.json({ error: 'business_not_found' }, { status: 404 })
 
@@ -157,7 +158,7 @@ export async function GET(req: NextRequest) {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, slug')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) return NextResponse.json({ error: 'business_not_found' }, { status: 404 })
 

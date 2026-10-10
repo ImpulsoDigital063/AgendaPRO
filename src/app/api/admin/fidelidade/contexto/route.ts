@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { contextoFidelidade } from '@/lib/resgate-pontos'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * GET /api/admin/fidelidade/contexto?customer_id=... | ?appointment_id=...
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  const { data: owner } = await supabase.from('businesses').select('id').eq('owner_id', user.id).maybeSingle()
+  const { data: owner } = await supabase.from('businesses').select('id').eq('id', await negocioDoPainel(user.id)).maybeSingle()
   let businessId = owner?.id as string | undefined
   if (!businessId) {
     const { data: prof } = await supabase

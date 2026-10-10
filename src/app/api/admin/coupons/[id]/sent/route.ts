@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * POST /api/admin/coupons/[id]/sent
@@ -32,7 +33,7 @@ export async function POST(
     .from('businesses')
     .select('id')
     .eq('id', coupon.business_id)
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
 
   let authorized = !!ownerBusiness

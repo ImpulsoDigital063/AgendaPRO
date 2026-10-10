@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/server'
 import { CONNECTORS, parseBySource, runImport, type ImportSource, type DedupeStrategy } from '@/lib/importers'
 import type { ImportDecisao } from '@/lib/importers/canonical'
 import { parseCsv, parseXlsxBuffer, type SheetRow } from '@/lib/importers/normalize'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 async function fileToRows(file: File | null): Promise<SheetRow[] | undefined> {
   if (!file) return undefined
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
   if (bizErr) {
     return NextResponse.json({ error: 'Erro ao validar negócio.' }, { status: 500 })
   }
-  if (!business || business.owner_id !== user.id) {
+  if (!business || (await negocioDoPainel(user.id)) !== business.id) { // v155 · dono ou gerente
     return NextResponse.json({ error: 'Acesso negado.' }, { status: 403 })
   }
 

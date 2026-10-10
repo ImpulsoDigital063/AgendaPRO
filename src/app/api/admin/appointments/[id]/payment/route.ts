@@ -6,6 +6,7 @@ import { checkRateLimit } from '@/lib/rate-limit-api'
 import { NOTA_SINAL } from '@/lib/sinal-da-comanda'
 import { fecharComandaDoAtendimento } from '@/lib/fechar-comanda-do-atendimento'
 import { resgatarRecompensa, estornarResgates } from '@/lib/resgate-pontos'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 // 'courtesy' aceito como legacy (V34). UI nova usa 'points' pra resgate
 // de fidelidade. Constraint do banco já aceita os 5 (V37).
@@ -64,7 +65,7 @@ export async function POST(
       .from('businesses')
       .select('id')
       .eq('id', appt.business_id)
-      .eq('owner_id', user.id)
+      .eq('id', await negocioDoPainel(user.id))
       .maybeSingle(),
     supabase
       .from('professionals')

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * POST /api/admin/appointments/[id]/atendido
@@ -52,7 +53,7 @@ export async function POST(
   // Mesma régua de autorização do pagamento: dono, recepção, ou a profissional
   // no que é dela (no da colega só se o negócio liberou).
   const [{ data: business }, { data: prof }, { data: biz }] = await Promise.all([
-    supabase.from('businesses').select('id').eq('id', appt.business_id).eq('owner_id', user.id).maybeSingle(),
+    supabase.from('businesses').select('id').eq('id', appt.business_id).eq('id', await negocioDoPainel(user.id)).maybeSingle(),
     supabase
       .from('professionals')
       .select('id, is_receptionist')

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 function getAdminClient() {
   return createServiceClient(
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   const business = claim.business as unknown as { owner_id: string; points_for_review: number | null } | null
 
-  if (!business || business.owner_id !== user.id) {
+  if (!business || (await negocioDoPainel(user.id)) !== claim.business_id) { // v155 · dono ou gerente
     return NextResponse.json({ error: 'Sem permissão.' }, { status: 403 })
   }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * GET /api/admin/agenda/mes?mes=YYYY-MM[&only=profId][&exclude=id,id]
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'mes inválido (use YYYY-MM)' }, { status: 400 })
   }
 
-  const { data: owner } = await supabase.from('businesses').select('id').eq('owner_id', user.id).maybeSingle()
+  const { data: owner } = await supabase.from('businesses').select('id').eq('id', await negocioDoPainel(user.id)).maybeSingle()
   let businessId = owner?.id ?? null
   if (!businessId) {
     const { data: prof } = await supabase

@@ -17,6 +17,7 @@ import {
   defaultTemplate,
   type TemplateVars,
 } from '@/lib/message-templates'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 function getAdminClient() {
   return createServiceClient(
@@ -69,7 +70,7 @@ export async function GET(
   ])
   const business = ownerRes.data
   const isOwner = !!business && (await admin
-    .from('businesses').select('id').eq('id', appt.business_id).eq('owner_id', user.id).maybeSingle()).data != null
+    .from('businesses').select('id').eq('id', appt.business_id).eq('id', await negocioDoPainel(user.id)).maybeSingle()).data != null
   const isProfOfAppt = !!profRes.data && profRes.data.business_id === appt.business_id && profRes.data.id === appt.professional_id
   const isRecepOfBiz = !!profRes.data && profRes.data.business_id === appt.business_id && profRes.data.is_receptionist === true
   // 30/07 · quando o negócio liberou a equipe a marcar uma pela outra, faz

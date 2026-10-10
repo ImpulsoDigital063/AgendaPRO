@@ -29,6 +29,7 @@ import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { TEMPLATES, validarCorpo, nomeMetaDoNegocio } from '@/lib/mensagens/templates-cloud'
 import type { TipoMensagem } from '@/lib/mensagens/tipos'
 import { ROTULO_AVISO } from '@/lib/mensagens/rotulos'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export const runtime = 'nodejs'
 
@@ -58,7 +59,8 @@ async function donoOuNada(): Promise<{ businessId: string } | { erro: NextRespon
   if (!businessId) return { erro: NextResponse.json({ error: 'sem_acesso' }, { status: 403 }) }
   const { data: { user } } = await supabase.auth.getUser()
   const { data: neg } = await supabase.from('businesses').select('owner_id').eq('id', businessId).maybeSingle()
-  if (!user || (neg as { owner_id?: string } | null)?.owner_id !== user.id) {
+  // v155 · dono ou gerente
+  if (!user || !neg || (await negocioDoPainel(user.id)) !== businessId) {
     return { erro: NextResponse.json({ error: 'so_o_dono_edita' }, { status: 403 }) }
   }
   return { businessId }

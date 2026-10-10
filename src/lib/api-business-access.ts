@@ -7,7 +7,7 @@ type ServerClient = Awaited<ReturnType<typeof createClient>>
  *
  * Aceita, nesta ordem:
  *   1. dono do negócio
- *   2. recepcionista ativa
+ *   2. gerente ativo (v155) ou recepcionista ativa
  *   3. profissional ativa — SÓ se o negócio ligou `professionals_can_book_others`
  *
  * Por que a flag manda no caso 3: ela é a decisão explícita da dona de que a
@@ -37,14 +37,14 @@ export async function resolveBusinessIdOperacao(
 
   const { data: prof } = await supabase
     .from('professionals')
-    .select('business_id, is_receptionist')
+    .select('business_id, is_receptionist, is_manager')
     .eq('auth_user_id', user.id)
     .eq('active', true)
     .maybeSingle()
   if (!prof) return null
 
-  // Recepção sempre opera (v47)
-  if (prof.is_receptionist === true) return prof.business_id
+  // Gerente (v155) e recepção (v47) sempre operam
+  if (prof.is_manager === true || prof.is_receptionist === true) return prof.business_id
 
   const { data: biz } = await supabase
     .from('businesses')

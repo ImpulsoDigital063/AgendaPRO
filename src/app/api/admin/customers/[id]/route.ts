@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { variacoesDeTelefone, telefoneCanonico } from '@/lib/phone-variants'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 // Valida que a string é uma data ISO REAL (não só "regex passa").
 // "2024-02-30" passa no regex YYYY-MM-DD mas não existe — Date corrige
@@ -62,7 +63,7 @@ export async function GET(
       .from('businesses')
       .select('id, slug')
       .eq('id', customer.business_id)
-      .eq('owner_id', user.id)
+      .eq('id', await negocioDoPainel(user.id))
       .maybeSingle(),
     supabase
       .from('professionals')
@@ -426,7 +427,7 @@ export async function PATCH(
       .from('businesses')
       .select('id')
       .eq('id', customer.business_id)
-      .eq('owner_id', user.id)
+      .eq('id', await negocioDoPainel(user.id))
       .maybeSingle(),
     supabase
       .from('professionals')

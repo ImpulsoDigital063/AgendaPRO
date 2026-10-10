@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 function getAdminClient() {
   return createServiceClient(
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Negócio não encontrado.' }, { status: 404 })
   }
 
-  const isOwner = business.owner_id === user.id
+  const isOwner = business.id === (await negocioDoPainel(user.id)) // v155 · dono ou gerente
 
   let isProfessional = false
   if (!isOwner) {

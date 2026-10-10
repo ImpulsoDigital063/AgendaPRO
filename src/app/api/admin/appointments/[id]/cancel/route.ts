@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * POST /api/admin/appointments/[id]/cancel
@@ -53,7 +54,7 @@ export async function POST(
       .from('businesses')
       .select('id')
       .eq('id', appt.business_id)
-      .eq('owner_id', user.id)
+      .eq('id', await negocioDoPainel(user.id))
       .maybeSingle(),
     supabase
       .from('professionals')

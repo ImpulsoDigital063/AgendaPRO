@@ -3,6 +3,7 @@ import { getPackageSessionCommission } from '@/lib/queries/package-session-commi
 import { getGiftCardSessionCommission } from '@/lib/queries/gift-card-session-commission'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 // POST /api/admin/commission-payments
 // Body: { professionalId, appointmentIds, periodStart, periodEnd, paidAmount, notes? }
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
   const { data: ownerBusiness } = await supabase
     .from('businesses')
     .select('id')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
 
   let businessId = ownerBusiness?.id ?? null

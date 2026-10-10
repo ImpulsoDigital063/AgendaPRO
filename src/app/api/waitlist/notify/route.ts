@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 // Dispara notificacao da fila quando o dono cancela um agendamento pelo admin.
 // Auth obrigatoria (barbeiro autenticado, dono do business).
@@ -23,13 +24,13 @@ export async function POST(req: NextRequest) {
 
   const { data: appointment } = await supabase
     .from('appointments')
-    .select('professional_id, appointment_date, start_time, business:businesses(owner_id)')
+    .select('professional_id, appointment_date, start_time, business_id, business:businesses(owner_id)')
     .eq('id', appointmentId)
     .single()
 
   const appt = appointment as typeof appointment & { business: { owner_id: string } | null }
 
-  if (!appt?.business || appt.business.owner_id !== user.id) {
+  if (!appt?.business || (await negocioDoPainel(user.id)) !== appt.business_id) { // v155 · dono ou gerente
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
   }
 

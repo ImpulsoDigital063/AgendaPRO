@@ -8,6 +8,7 @@ import { checkRateLimit } from '@/lib/rate-limit-api'
    QUEM RECEBE o cupom — cliente com grafia diferente entre `customers` e
    `clients` simplesmente nunca era alcancada. */
 import { telefoneCanonico } from '@/lib/phone-variants'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /** Dias entre duas datas YYYY-MM-DD, sem fuso no meio — mesma conta da rota
  *  /api/admin/sumidos, pra campanha e lista usarem a mesma régua. */
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, slug, name, description')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) return NextResponse.json({ error: 'business_not_found' }, { status: 404 })
 

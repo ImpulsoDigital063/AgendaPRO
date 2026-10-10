@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { monthBoundsBR } from '@/lib/date-br'
 import { enviarExtratoConvenio } from '@/lib/email'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name, phone, razao_social, convenios_enabled')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
   if (!business) return NextResponse.json({ error: 'negocio_nao_encontrado' }, { status: 404 })
   if (!business.convenios_enabled) return NextResponse.json({ error: 'convenio_desligado' }, { status: 403 })

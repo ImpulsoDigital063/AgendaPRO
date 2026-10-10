@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * POST · lança um atendimento ANTIGO na ficha do cliente (v121 · 20/08/2026).
@@ -18,7 +19,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
-  const { data: owner } = await supabase.from('businesses').select('id').eq('owner_id', user.id).maybeSingle()
+  const { data: owner } = await supabase.from('businesses').select('id').eq('id', await negocioDoPainel(user.id)).maybeSingle()
   if (owner) return owner.id
   const { data: prof } = await supabase
     .from('professionals')

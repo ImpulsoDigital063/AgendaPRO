@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
@@ -20,7 +21,7 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
   const { data: business } = await supabase
     .from('businesses')
     .select('id')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .single()
   if (!business) return NextResponse.json({ error: 'business_not_found' }, { status: 404 })
 

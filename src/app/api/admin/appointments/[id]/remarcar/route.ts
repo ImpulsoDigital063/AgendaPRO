@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { blockAppliesTo, blockTimeToMinutes, type BlockRow } from '@/lib/blocks'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * POST /api/admin/appointments/[id]/remarcar
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // ─── Autorização ────────────────────────────────────────────────────────
   const [{ data: dono }, { data: prof }, { data: biz }] = await Promise.all([
-    supabase.from('businesses').select('id').eq('id', appt.business_id).eq('owner_id', user.id).maybeSingle(),
+    supabase.from('businesses').select('id').eq('id', appt.business_id).eq('id', await negocioDoPainel(user.id)).maybeSingle(),
     supabase.from('professionals').select('id, is_receptionist').eq('business_id', appt.business_id).eq('auth_user_id', user.id).eq('active', true).maybeSingle(),
     supabase.from('businesses').select('professionals_can_book_others').eq('id', appt.business_id).maybeSingle(),
   ])

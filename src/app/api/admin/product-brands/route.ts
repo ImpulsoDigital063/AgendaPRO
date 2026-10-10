@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 async function resolveBusinessId(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ): Promise<string | null> {
   const { data: business } = await supabase
-    .from('businesses').select('id').eq('owner_id', userId).maybeSingle()
+    .from('businesses').select('id').eq('id', await negocioDoPainel(userId)).maybeSingle()
   if (business?.id) return business.id
   const { data: prof } = await supabase
     .from('professionals').select('business_id, is_receptionist')

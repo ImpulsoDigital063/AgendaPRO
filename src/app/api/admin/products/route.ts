@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
  * GET /api/admin/products
@@ -211,7 +212,7 @@ async function resolveBusinessId(
   const { data: business } = await supabase
     .from('businesses')
     .select('id')
-    .eq('owner_id', userId)
+    .eq('id', await negocioDoPainel(userId))
     .maybeSingle()
   if (business?.id) return business.id
 

@@ -32,6 +32,7 @@ import { podeEnviar } from '@/lib/mensagens/franquia'
 import { enviar } from '@/lib/mensagens/enviar'
 import { UNIDADES_POR_TIPO } from '@/lib/mensagens/custo-sumidos'
 import { SUMIDOS_ENVIO_AUTOMATICO } from '@/lib/feature-flags'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 const DIAS_OPCOES = [15, 20, 25, 30, 40, 60]
 const TETO_POR_CHAMADA = 60
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
   const { data: biz } = await supabase
     .from('businesses')
     .select('id, name, phone')
-    .eq('owner_id', user.id)
+    .eq('id', await negocioDoPainel(user.id))
     .maybeSingle()
   if (!biz) return NextResponse.json({ error: 'only_owner' }, { status: 403 })
 

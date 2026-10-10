@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { negocioDoPainel } from '@/lib/admin-data'
 
 function getAdminClient() {
   return createServiceClient(
@@ -22,8 +23,8 @@ export async function POST(req: NextRequest) {
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
+    .select('id, owner_id')
+    .eq('id', await negocioDoPainel(user.id))
     .single()
 
   if (!business) return NextResponse.json({ error: 'Negócio não encontrado.' }, { status: 403 })
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
   const adminClient = getAdminClient()
   const { data: prof } = await adminClient
     .from('professionals')
-    .select('id, name, email, auth_user_id, role')
+    .select('id, name, email, auth_user_id, role, is_owner')
     .eq('id', professionalId)
     .eq('business_id', business.id)
     .single()
@@ -49,7 +50,8 @@ export async function POST(req: NextRequest) {
   if (!prof.auth_user_id) {
     return NextResponse.json({ error: 'Esse profissional ainda não tem acesso. Use "Dar acesso".' }, { status: 409 })
   }
-  if (prof.role === 'owner') {
+  // v155 · gerente também chega aqui: a conta do dono nunca é resetada por esta rota
+  if (prof.role === 'owner' || prof.is_owner === true || prof.auth_user_id === business.owner_id) {
     return NextResponse.json({ error: 'Não é possível resetar a senha do próprio dono por aqui.' }, { status: 403 })
   }
 
