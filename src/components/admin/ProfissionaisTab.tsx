@@ -1020,6 +1020,15 @@ function ProfCard(p: ProfCardProps) {
                     color="var(--brand-primary, #3B82F6)"
                   />
                 )}
+                {/* v155 · gerente acessa o painel do dono (menos assinatura) —
+                    a dona precisa ver na lista quem tem esse acesso */}
+                {prof.is_manager && !isOwner && (
+                  <Pill
+                    label="Gerente"
+                    bg="color-mix(in srgb, var(--brand-primary, #3B82F6) 12%, transparent)"
+                    color="var(--brand-primary, #3B82F6)"
+                  />
+                )}
                 {prof.is_receptionist && (
                   <Pill
                     label="Recepção"

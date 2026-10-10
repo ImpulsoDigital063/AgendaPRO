@@ -17,6 +17,8 @@
 // (não é cacheado) e o CSS novo do deploy morreu no caminho. O fetch abaixo
 // não tinha .catch(), então qualquer oscilação de rede matava o recurso em vez
 // de tentar o cache. Mesmo sintoma de 03/06, que na época pegou o JS.
+// v159 (10/10): v155 Gerente entra no /admin (menos Assinatura) · menu, Configuracoes
+//   e Colaboradores mudaram.
 // v101 (08/09): dedupe de telefone (painel + importacao) e ficha de cilios
 //   liberada pra categoria 'Cilios e sobrancelhas'. Bump porque a aba de
 //   Configuracoes mudou.
@@ -60,7 +62,7 @@
 // v144 (02/10): tela de Horarios nova no celular — Semana compacta + Calendario.
 // v145 (02/10): painel Dia personalizado — linha de profissionais nao corta e campo de data com dica.
 // v146 (02/10): Horarios celular — 'todo domingo', 'os outros sabados' (genero certo).
-const STATIC_CACHE_VERSION = 'agendapro-static-v158'
+const STATIC_CACHE_VERSION = 'agendapro-static-v159'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

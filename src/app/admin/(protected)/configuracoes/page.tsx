@@ -96,7 +96,11 @@ export default async function ConfiguracoesPage({
       />
 
       <div className="relative">
-        <SubPageHeader title={sectionTitle} subtitle={`Configurações · ${business.name}`} />
+        <SubPageHeader
+          // v155 · gerente que abre ?tab=plano cai em Negócio — o título acompanha
+          title={tab === 'plano' && business.owner_id !== user.id ? (CONFIG_TAB_LABELS.negocio ?? 'Negócio') : sectionTitle}
+          subtitle={`Configurações · ${business.name}`}
+        />
         {/* Container responsivo · sm: cobre landscape do celular + tablet
             (vale pra Profissionais e todas as abas de config) */}
         <div className="max-w-lg mx-auto px-4 py-6 sm:max-w-5xl sm:px-6 lg:max-w-6xl lg:px-8">
