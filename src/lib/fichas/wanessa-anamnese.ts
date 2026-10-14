@@ -148,6 +148,7 @@ export const WANESSA_ANAMNESE_FEMININA: NicheFicha = {
   slug: 'wanessa-anamnese-feminina',
   name: 'Anamnese · Feminina',
   businessSlugs: WANESSA,
+  clientePreenche: true,
   sections: secoes('feminina'),
 }
 
@@ -155,5 +156,6 @@ export const WANESSA_ANAMNESE_MASCULINA: NicheFicha = {
   slug: 'wanessa-anamnese-masculina',
   name: 'Anamnese · Masculina',
   businessSlugs: WANESSA,
+  clientePreenche: true,
   sections: secoes('masculina'),
 }

@@ -5,6 +5,7 @@ import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { carimbar, acharCpf, acharNome } from '@/lib/ficha-assinatura'
 import { fichaVisivelPara } from '@/lib/fichas/disponiveis'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { subirImagensDaFicha } from '@/lib/fichas/salvar-imagens'
 
 async function getBusinessId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser()
@@ -32,7 +33,6 @@ function getAdmin() {
   )
 }
 
-const BUCKET = 'fichas'
 
 // POST · salva (ou edita) uma ficha de nicho. Imagens (data:image webp) sobem
 // pro Storage; no banco fica só o link.
@@ -64,22 +64,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!cust || cust.business_id !== businessId) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   // Sobe imagens (data:image) pro Storage, troca pelo link público
-  const values: Record<string, unknown> = { ...body.values }
-  try {
-    for (const [k, v] of Object.entries(values)) {
-      if (typeof v !== 'string' || !v.startsWith('data:image')) continue
-      const m = /^data:(image\/[\w.+-]+);base64,(.+)$/.exec(v)
-      if (!m) continue
-      const ext = m[1].split('/')[1].replace('+xml', '')
-      const buf = Buffer.from(m[2], 'base64')
-      const path = `${businessId}/${customerId}/${crypto.randomUUID()}.${ext}`
-      const { error: upErr } = await admin.storage.from(BUCKET).upload(path, buf, { contentType: m[1], upsert: false })
-      if (upErr) return NextResponse.json({ error: 'upload_failed: ' + upErr.message }, { status: 500 })
-      values[k] = admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
-    }
-  } catch (e) {
-    return NextResponse.json({ error: 'upload_error: ' + (e as Error).message }, { status: 500 })
-  }
+  const subida = await subirImagensDaFicha(admin, businessId, customerId, { ...body.values })
+  if (subida.erro) return NextResponse.json({ error: subida.erro }, { status: 500 })
+  const values = subida.values
 
   /* Carimbo do ato quando a ficha vem assinada. Sem isso a ficha é um
      formulário digital qualquer: numa discussão, o que sustenta não é a

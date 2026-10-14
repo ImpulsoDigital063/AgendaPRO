@@ -38,6 +38,9 @@ type Props = {
   /* Prévia do modelo (Configurações → Fichas Modelo): dá pra preencher e
      gerar PDF pra ver como sai, mas nada é salvo nem assinado. */
   modelo?: boolean
+  /* A própria cliente preenchendo pelo link (v157, página /ficha/[token]):
+     só o botão de assinar e enviar — sem PDF, sem rascunho, sem cancelar. */
+  cliente?: boolean
   /* Diagramas do proprio negocio (businesses.ficha_imagens), por chave. Quando
      existe um pra este mapeamento, ele vence o desenho embutido: e o mesmo
      desenho que a clinica ja usa no papel, nao uma imitacao nossa. */
@@ -75,7 +78,7 @@ function ParamInput({
   )
 }
 
-export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel, fichaImagens, marca, modelo }: Props) {
+export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel, fichaImagens, marca, modelo, cliente }: Props) {
   const [values, setValues] = useState<FichaValues>(initialValues ?? {})
   const [pdfBusy, setPdfBusy] = useState(false)
   const setVal = (k: string, v: FichaValues[string]) => setValues((p) => ({ ...p, [k]: v }))
@@ -117,12 +120,14 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
       return
     }
     if (exigencias.assinaturaNome && !str(exigencias.assinaturaNome)) {
-      setAviso('A assinatura do paciente ainda está em branco.')
+      setAviso(cliente ? 'Falta a sua assinatura, no final da ficha.' : 'A assinatura do paciente ainda está em branco.')
       return
     }
     /* Confirmação explícita porque é o ponto sem volta: daqui pra frente uma
        correção não edita, cria versão nova apontando pra esta. */
-    if (!confirm('Depois de assinada, esta ficha não pode mais ser alterada. Uma correção vira uma versão nova, e as duas ficam no histórico.\n\nConfirma a assinatura?')) return
+    if (!confirm(cliente
+      ? 'Confere se está tudo certo? Depois de enviar, a ficha não pode mais ser alterada por aqui.\n\nAssinar e enviar?'
+      : 'Depois de assinada, esta ficha não pode mais ser alterada. Uma correção vira uma versão nova, e as duas ficam no histórico.\n\nConfirma a assinatura?')) return
     setAviso(null)
     onSave(values, { assinar: true })
   }
@@ -132,10 +137,10 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
       {/* Ações */}
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>{ficha.name}</h3>
-        <div className="flex gap-2 flex-shrink-0">
+        {!cliente && <div className="flex gap-2 flex-shrink-0">
           <button type="button" onClick={onCancel} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>{modelo ? 'Fechar' : 'Cancelar'}</button>
           {!modelo && <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>{saving ? 'Salvando…' : 'Salvar Ficha'}</button>}
-        </div>
+        </div>}
       </div>
 
       {/* Identificação (do cadastro) */}
@@ -280,6 +285,11 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
           Separado em dois grupos: à esquerda o que gera documento (PDF/envio),
           à direita o que decide o destino da ficha. Sem a separação vira uma
           fileira de cinco botões iguais e a profissional erra no toque. */}
+      {cliente ? (
+        <button type="button" onClick={onAssinar} disabled={saving} className="w-full py-3.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>
+          <IconCheck size={16} /> {saving ? 'Enviando…' : 'Assinar e enviar'}
+        </button>
+      ) : (
       <div className="flex items-center justify-between gap-2 pb-2 flex-wrap">
         <div className="flex gap-2">
           <button type="button" onClick={onImprimir} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{pdfBusy ? '…' : 'Imprimir'}</button>
@@ -300,6 +310,7 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
           )}
         </div>
       </div>
+      )}
     </div>
   )
 }

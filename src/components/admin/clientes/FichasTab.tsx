@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { IconPlus, IconTrash, IconCheck } from '@/components/ui/Icon'
+import { IconPlus, IconTrash, IconCheck, IconWhatsapp } from '@/components/ui/Icon'
+import { telefoneCanonico } from '@/lib/phone-variants'
 import DrawCanvas from './DrawCanvas'
 import FichaDedicada, { type FichaValues } from './FichaDedicada'
 import type { MarcaPdf } from './useFichaPdf'
@@ -35,6 +36,8 @@ type Response = {
   data: Record<string, unknown>
   created_at: string
   niche_slug?: string | null
+  /* null = a própria cliente preencheu pelo link (v157) */
+  filled_by_user_id?: string | null
   template?: Template
 }
 
@@ -75,7 +78,7 @@ export default function FichasTab({ customerId }: Props) {
       sb.from('client_form_templates').select('*').eq('active', true).order('name'),
       sb
         .from('client_form_responses')
-        .select('id, template_id, data, created_at, niche_slug, template:client_form_templates(id, name, fields)')
+        .select('id, template_id, data, created_at, niche_slug, filled_by_user_id, template:client_form_templates(id, name, fields)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false }),
       sb.from('customers').select('name, phone, birthday, business:businesses(slug, name, phone, address, brand_primary, brand_logo_url, ficha_rodape, description, category, enabled_niche_fichas, ficha_imagens)').eq('id', customerId).maybeSingle(),
@@ -108,8 +111,55 @@ export default function FichasTab({ customerId }: Props) {
 
   useEffect(() => {
     load()
+    carregarConvites()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId])
+
+  /* LINK PRA CLIENTE PREENCHER (v157, pedido da Wanessa 14/10): ela recebe a
+     ficha no WhatsApp e responde antes de chegar — a profissional já prepara
+     a bancada sabendo de alergia e pele sensível. */
+  const [convites, setConvites] = useState<{ id: string; niche_slug: string; created_at: string }[]>([])
+  const [enviandoConvite, setEnviandoConvite] = useState<string | null>(null)
+  const [linkSemFone, setLinkSemFone] = useState<string | null>(null)
+
+  async function carregarConvites() {
+    const r = await fetch(`/api/admin/customers/${customerId}/ficha-convite`).catch(() => null)
+    const j = r?.ok ? await r.json().catch(() => null) : null
+    setConvites(j?.convites ?? [])
+  }
+
+  async function mandarPraCliente(nf: NicheFicha) {
+    setError(null)
+    setLinkSemFone(null)
+    setEnviandoConvite(nf.slug)
+    /* Abre a aba JÁ no toque: aberta depois do await, o Safari do iPhone/iPad
+       bloqueia como pop-up. */
+    const fone = telefoneCanonico(customer?.phone ?? '')
+    const aba = fone ? window.open('', '_blank') : null
+    try {
+      const r = await fetch(`/api/admin/customers/${customerId}/ficha-convite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nicheSlug: nf.slug }),
+      })
+      const j = await r.json().catch(() => null)
+      if (!r.ok || !j?.url) { aba?.close(); setError('Não foi possível gerar o link da ficha. Tente de novo.'); return }
+      const primeiro = (customer?.name ?? '').trim().split(/\s+/)[0]
+      const texto = `Olá${primeiro ? `, ${primeiro}` : ''}! Antes do seu atendimento, preencha sua ficha por este link (leva poucos minutos):\n\n${j.url}\n\nO link vale por 7 dias.`
+      if (fone) {
+        const wa = `https://wa.me/55${fone}?text=${encodeURIComponent(texto)}`
+        if (aba) aba.location.href = wa
+        else window.location.href = wa
+      } else {
+        setLinkSemFone(j.url)
+        navigator.clipboard?.writeText(j.url).catch(() => {})
+      }
+      setPickerOpen(false)
+      carregarConvites()
+    } finally {
+      setEnviandoConvite(null)
+    }
+  }
 
   function openTemplate(t: Template) {
     setEditingTemplate(t)
@@ -318,7 +368,7 @@ export default function FichasTab({ customerId }: Props) {
         <p className="text-center text-sm py-10" style={{ color: 'var(--admin-text-mute)' }}>
           Carregando…
         </p>
-      ) : responses.length === 0 ? (
+      ) : responses.length === 0 && convites.length === 0 && !linkSemFone ? (
         <div
           className="rounded-2xl p-10 text-center"
           style={{ background: 'var(--admin-surface)', border: '1px dashed var(--admin-border)' }}
@@ -338,6 +388,18 @@ export default function FichasTab({ customerId }: Props) {
         </div>
       ) : (
         <div className="space-y-2">
+          {linkSemFone && (
+            <div className="rounded-2xl p-3 text-xs" style={{ background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', color: 'var(--admin-text)' }}>
+              Cliente sem telefone no cadastro. Link copiado — cole na conversa com ela:
+              <p className="mt-1 break-all font-mono" style={{ color: 'var(--admin-text-mute)' }}>{linkSemFone}</p>
+            </div>
+          )}
+          {convites.map((c) => (
+            <div key={c.id} className="rounded-2xl p-3 flex items-center gap-2 text-xs" style={{ background: 'var(--admin-surface)', border: '1px dashed var(--admin-border-hi, var(--admin-border))', color: 'var(--admin-text-mute)' }}>
+              <IconWhatsapp size={14} />
+              <span><strong style={{ color: 'var(--admin-text)' }}>{NICHE_FICHAS[c.niche_slug]?.name ?? 'Ficha'}</strong> · enviada pra cliente em {formatDate(c.created_at)} · aguardando ela preencher</span>
+            </div>
+          ))}
           {responses.map((r) => r.niche_slug && NICHE_FICHAS[r.niche_slug] ? (
             <div
               key={r.id}
@@ -346,7 +408,9 @@ export default function FichasTab({ customerId }: Props) {
             >
               <div className="min-w-0">
                 <h4 className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{NICHE_FICHAS[r.niche_slug].name}</h4>
-                <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>Preenchida em {formatDate(r.created_at)}</p>
+                <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+                  {r.filled_by_user_id === null ? 'Preenchida pela cliente' : 'Preenchida'} em {formatDate(r.created_at)}
+                </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button type="button" onClick={() => setNicheState({ ficha: NICHE_FICHAS[r.niche_slug!], responseId: r.id, initialValues: r.data as FichaValues })} className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}>Abrir / Editar</button>
@@ -435,16 +499,27 @@ export default function FichasTab({ customerId }: Props) {
             {availableNiches.length > 0 && (
               <div className="space-y-2 mb-3">
                 {availableNiches.map((nf) => (
-                  <button
-                    key={nf.slug}
-                    type="button"
-                    onClick={() => { setNicheState({ ficha: nf, responseId: null }); setPickerOpen(false); setError(null) }}
-                    className="w-full text-left p-3 rounded-xl"
-                    style={{ background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--admin-accent) 30%, transparent)' }}
-                  >
-                    <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{nf.name}</p>
-                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>Ficha dedicada · layout próprio (mapeamento + assinatura)</p>
-                  </button>
+                  <div key={nf.slug} className="rounded-xl" style={{ background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--admin-accent) 30%, transparent)' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setNicheState({ ficha: nf, responseId: null }); setPickerOpen(false); setError(null) }}
+                      className="w-full text-left p-3"
+                    >
+                      <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{nf.name}</p>
+                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>Preencher agora</p>
+                    </button>
+                    {nf.clientePreenche && (
+                      <button
+                        type="button"
+                        onClick={() => mandarPraCliente(nf)}
+                        disabled={enviandoConvite !== null}
+                        className="w-full flex items-center gap-1.5 px-3 py-2 text-xs font-bold disabled:opacity-50"
+                        style={{ color: 'var(--admin-accent)', borderTop: '1px solid color-mix(in srgb, var(--admin-accent) 20%, transparent)' }}
+                      >
+                        <IconWhatsapp size={14} /> {enviandoConvite === nf.slug ? 'Gerando link…' : 'Mandar pra cliente preencher'}
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}

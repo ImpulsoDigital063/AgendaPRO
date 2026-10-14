@@ -64,5 +64,12 @@ export type NicheFicha = {
    * verdades.
    */
   businessSlugs?: string[]
+  /**
+   * A CLIENTE pode preencher sozinha, pelo link no celular (v157, 14/10/2026).
+   * Só ficha que ela responde inteira: anamnese/histórico. Protocolo com
+   * desenho, plano de tratamento, contrato com valores e termo com dados da
+   * clínica ficam de fora — quem preenche é a profissional.
+   */
+  clientePreenche?: boolean
   sections: FichaSection[]
 }

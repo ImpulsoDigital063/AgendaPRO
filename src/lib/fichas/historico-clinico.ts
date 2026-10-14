@@ -17,6 +17,8 @@ export const HISTORICO_CLINICO_FICHA: NicheFicha = {
   slug: 'historico-clinico',
   name: 'Histórico Clínico',
   segments: ['Clínica estética', 'Clínica', 'Estética', 'Estética avançada', 'Biomedicina'],
+  // A paciente responde sozinha pelo link (v157): é só pergunta sobre ela.
+  clientePreenche: true,
   sections: [
     {
       kind: 'fields',
