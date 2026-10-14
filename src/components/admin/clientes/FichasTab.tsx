@@ -11,6 +11,7 @@ import FichaDedicada, { type FichaValues } from './FichaDedicada'
 import type { MarcaPdf } from './useFichaPdf'
 import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { fichasDisponiveis } from '@/lib/fichas/disponiveis'
+import { marcaDoNegocio } from '@/lib/fichas/marca'
 import type { NicheFicha } from '@/lib/fichas/types'
 
 type FieldDef = {
@@ -85,19 +86,7 @@ export default function FichasTab({ customerId }: Props) {
     const biz = Array.isArray(custRow?.business) ? custRow?.business[0] : custRow?.business
     setBusinessCategory(biz?.category ?? biz?.description ?? null)
     setBusinessSlug(biz?.slug ?? null)
-    setMarca({
-      nome: biz?.name ?? null,
-      /* logo/cor DO IMPRESSO vencem as da marca digital: o material de
-         papel do negocio pode usar outra versao da logo e outro tom, que e o
-         caso da clinica (painel #6B6C55, kit impresso #8A957F). */
-      logoUrl: biz?.ficha_rodape?.logo ?? biz?.brand_logo_url ?? null,
-      corPrimaria: biz?.brand_primary ?? null,
-      corFaixa: biz?.ficha_rodape?.cor ?? null,
-      telefone: biz?.phone ?? null,
-      endereco: biz?.address ?? null,
-      rodapeLinha: biz?.ficha_rodape?.linha ?? null,
-      rodapeNota: biz?.ficha_rodape?.nota ?? null,
-    })
+    setMarca(marcaDoNegocio(biz))
     setNicheEnabled(biz?.enabled_niche_fichas ?? null)
     setFichaImagens(biz?.ficha_imagens ?? null)
     setTemplates((tplRes.data ?? []) as Template[])

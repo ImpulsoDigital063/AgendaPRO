@@ -35,6 +35,9 @@ type Props = {
   /* Marca do negócio pro PDF/impressão (logo, cor, rodapé). Vem do cadastro
      dele — a tela não decide nada de identidade visual. */
   marca?: MarcaPdf
+  /* Prévia do modelo (Configurações → Fichas Modelo): dá pra preencher e
+     gerar PDF pra ver como sai, mas nada é salvo nem assinado. */
+  modelo?: boolean
   /* Diagramas do proprio negocio (businesses.ficha_imagens), por chave. Quando
      existe um pra este mapeamento, ele vence o desenho embutido: e o mesmo
      desenho que a clinica ja usa no papel, nao uma imitacao nossa. */
@@ -72,7 +75,7 @@ function ParamInput({
   )
 }
 
-export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel, fichaImagens, marca }: Props) {
+export default function FichaDedicada({ ficha, customer, initialValues, saving, error, onSave, onCancel, fichaImagens, marca, modelo }: Props) {
   const [values, setValues] = useState<FichaValues>(initialValues ?? {})
   const [pdfBusy, setPdfBusy] = useState(false)
   const setVal = (k: string, v: FichaValues[string]) => setValues((p) => ({ ...p, [k]: v }))
@@ -130,8 +133,8 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>{ficha.name}</h3>
         <div className="flex gap-2 flex-shrink-0">
-          <button type="button" onClick={onCancel} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Cancelar</button>
-          <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>{saving ? 'Salvando…' : 'Salvar Ficha'}</button>
+          <button type="button" onClick={onCancel} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>{modelo ? 'Fechar' : 'Cancelar'}</button>
+          {!modelo && <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>{saving ? 'Salvando…' : 'Salvar Ficha'}</button>}
         </div>
       </div>
 
@@ -281,13 +284,13 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
         <div className="flex gap-2">
           <button type="button" onClick={onImprimir} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{pdfBusy ? '…' : 'Imprimir'}</button>
           <button type="button" onClick={onExport} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{pdfBusy ? '…' : 'PDF'}</button>
-          <button type="button" onClick={onSend} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 disabled:opacity-50" style={{ background: '#25D366', color: '#fff' }}><IconWhatsapp size={14} /> Enviar</button>
+          {!modelo && <button type="button" onClick={onSend} disabled={pdfBusy} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 disabled:opacity-50" style={{ background: '#25D366', color: '#fff' }}><IconWhatsapp size={14} /> Enviar</button>}
         </div>
         <div className="flex gap-2 items-center">
-          <button type="button" onClick={onCancel} disabled={saving} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Cancelar</button>
+          <button type="button" onClick={onCancel} disabled={saving} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>{modelo ? 'Fechar' : 'Cancelar'}</button>
           {/* Só ficha com campo de assinatura pode ser fechada. As outras (ex.:
               evolução livre) continuam só salvando. */}
-          {exigencias.assinaturaNome ? (
+          {modelo ? null : exigencias.assinaturaNome ? (
             <>
               <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}>{saving ? '…' : 'Salvar'}</button>
               <button type="button" onClick={onAssinar} disabled={saving} className="px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}><IconCheck size={14} /> {saving ? 'Salvando…' : 'Assinar e fechar'}</button>

@@ -18,7 +18,12 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { IconPlus, IconTrash, IconPencil, IconCheck, IconClose, IconChevronDown } from '@/components/ui/Icon'
+import { IconPlus, IconTrash, IconPencil, IconCheck, IconClose, IconChevronDown, IconEye, IconUpload } from '@/components/ui/Icon'
+import FichaDedicada from './clientes/FichaDedicada'
+import { NICHE_FICHAS } from '@/lib/fichas/registry'
+import { marcaDoNegocio, type MarcaRow } from '@/lib/fichas/marca'
+import { createClient } from '@/lib/supabase/client'
+import { compressImage } from '@/lib/compress-image'
 
 type FieldDef = {
   name: string
@@ -174,7 +179,42 @@ export default function FichasModeloTab() {
   const [formFields, setFormFields] = useState<FieldDef[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [niche, setNiche] = useState<{ available: { slug: string; name: string }[]; enabled: string[] | null }>({ available: [], enabled: null })
+  const [niche, setNiche] = useState<{ available: { slug: string; name: string }[]; enabled: string[] | null; businessId?: string; marca?: MarcaRow }>({ available: [], enabled: null })
+  /* Prévia: tocar no nome abre o modelo como a profissional vai ver (e o PDF
+     com o cabeçalho do negócio). O selo Ativa/Desativada segue ligando e
+     desligando — são dois toques diferentes. */
+  const [previa, setPrevia] = useState<string | null>(null)
+  const [logoBusy, setLogoBusy] = useState(false)
+  const [logoErro, setLogoErro] = useState<string | null>(null)
+  const logoAtual = niche.marca?.ficha_rodape?.logo ?? niche.marca?.brand_logo_url ?? null
+
+  /* Logo do cabeçalho das fichas (14/10/2026). Mesmo caminho da capa em
+     Aparência: comprime no navegador, sobe pro business-covers na pasta do
+     negócio e a rota grava o link. Nome com carimbo de tempo pra o PDF não
+     pegar a logo velha do cache. */
+  async function enviarLogo(file: File) {
+    if (!niche.businessId) return
+    setLogoErro(null)
+    setLogoBusy(true)
+    try {
+      const r = await compressImage(file, 'cover')
+      if (!r.ok) { setLogoErro(r.reason); return }
+      const ext = (r.file.name.split('.').pop() || 'webp').toLowerCase()
+      const path = `${niche.businessId}/logo-ficha-${Date.now()}.${ext}`
+      const sb = createClient()
+      const up = await sb.storage.from('business-covers').upload(path, r.file, { upsert: true, cacheControl: '3600', contentType: r.file.type })
+      if (up.error) { setLogoErro('Não foi possível enviar a imagem: ' + up.error.message); return }
+      await salvarLogo(sb.storage.from('business-covers').getPublicUrl(path).data.publicUrl)
+    } finally {
+      setLogoBusy(false)
+    }
+  }
+  async function salvarLogo(url: string | null) {
+    const res = await fetch('/api/admin/niche-fichas', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logo: url }) })
+    const j = await res.json().catch(() => null)
+    if (!res.ok || !j?.ok) { setLogoErro('Não foi possível salvar a logo. Tente de novo.'); return }
+    setNiche((p) => (p.marca ? { ...p, marca: { ...p.marca, ficha_rodape: j.ficha_rodape } } : p))
+  }
 
   function nicheOn(slug: string) { return niche.enabled === null ? true : niche.enabled.includes(slug) }
   async function toggleNiche(slug: string) {
@@ -537,31 +577,113 @@ export default function FichasModeloTab() {
   // ═══════════════════════════════════════════════════════════════════
   return (
     <div className="space-y-4">
+      {niche.businessId && (
+        <div className="rounded-2xl p-4" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
+          <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Logo no cabeçalho das fichas</p>
+          <p className="text-xs mt-1 mb-3" style={{ color: 'var(--admin-text-mute)' }}>
+            Sai no topo de toda ficha impressa ou em PDF. Use a logo do seu papel timbrado, de preferência deitada (horizontal).
+          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div
+              className="h-16 w-40 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
+              style={{ background: '#fff', border: '1px solid var(--admin-border)' }}
+            >
+              {logoAtual
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={logoAtual} alt="Logo do cabeçalho" className="max-h-full max-w-full object-contain p-1.5" />
+                : <span className="text-[11px]" style={{ color: '#94a3b8' }}>Sem logo</span>}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <label
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer ${logoBusy ? 'opacity-50 pointer-events-none' : ''}`}
+                style={{ background: 'var(--admin-accent)', color: '#fff' }}
+              >
+                <IconUpload size={14} /> {logoBusy ? 'Enviando…' : logoAtual ? 'Trocar logo' : 'Enviar logo'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) enviarLogo(f) }}
+                />
+              </label>
+              {niche.marca?.ficha_rodape?.logo && (
+                <button
+                  type="button"
+                  onClick={() => { if (confirm('Tirar a logo do cabeçalho das fichas?')) salvarLogo(null) }}
+                  disabled={logoBusy}
+                  className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+                  style={{ color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
+                >
+                  Remover
+                </button>
+              )}
+            </div>
+          </div>
+          {logoErro && <p className="text-xs mt-2" style={{ color: 'var(--admin-danger,#EF4444)' }}>{logoErro}</p>}
+        </div>
+      )}
+
+      {previa && NICHE_FICHAS[previa] && (
+        <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center sm:p-6">
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setPrevia(null)} />
+          <div
+            className="relative w-full sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto sm:rounded-2xl p-4 sm:p-6"
+            style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wider mb-3 px-3 py-2 rounded-lg" style={{ color: 'var(--admin-accent)', background: 'color-mix(in srgb, var(--admin-accent) 10%, transparent)' }}>
+              Modelo · pode preencher pra testar e gerar o PDF, nada é salvo
+            </p>
+            <FichaDedicada
+              key={previa}
+              ficha={NICHE_FICHAS[previa]}
+              customer={null}
+              modelo
+              marca={marcaDoNegocio(niche.marca)}
+              onSave={() => {}}
+              onCancel={() => setPrevia(null)}
+            />
+          </div>
+        </div>
+      )}
+
       {niche.available.length > 0 && (
         <div className="rounded-2xl p-4" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
           <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Fichas prontas do seu segmento</p>
           <p className="text-xs mt-1 mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-            Aparecem quando você abre a ficha de um cliente. Desmarque as que você não usa.
+            Aparecem quando você abre a ficha de um cliente. Toque no nome pra ver o modelo e no selo pra ativar ou desativar.
           </p>
           <div className="space-y-2">
             {niche.available.map((nf) => {
               const on = nicheOn(nf.slug)
               return (
-                <button
+                <div
                   key={nf.slug}
-                  type="button"
-                  onClick={() => toggleNiche(nf.slug)}
-                  className="w-full flex items-center justify-between gap-3 p-3 rounded-xl text-left transition-colors"
+                  className="w-full flex items-center justify-between gap-2 p-1.5 rounded-xl transition-colors"
                   style={{ background: 'var(--admin-surface-hi)', border: `1px solid ${on ? 'var(--admin-accent)' : 'var(--admin-border)'}` }}
                 >
-                  <span className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>{nf.name}</span>
-                  <span
-                    className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
+                  <button
+                    type="button"
+                    onClick={() => setPrevia(nf.slug)}
+                    className="flex-1 min-w-0 flex items-center gap-2 p-1.5 rounded-lg text-left"
+                    title="Ver o modelo"
+                  >
+                    {/* No celular o "Ver modelo" fica só no olho: com o texto, o
+                        nome da ficha cortava em "Anamnese · Femini…". */}
+                    <span className="text-sm font-semibold sm:truncate" style={{ color: 'var(--admin-text)' }}>{nf.name}</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold flex-shrink-0" style={{ color: 'var(--admin-accent)' }}>
+                      <IconEye size={14} /> <span className="hidden sm:inline">Ver modelo</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleNiche(nf.slug)}
+                    className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0 mr-1.5"
                     style={{ background: on ? 'color-mix(in srgb, var(--admin-accent) 16%, transparent)' : 'transparent', color: on ? 'var(--admin-accent)' : 'var(--admin-text-mute)', border: on ? 'none' : '1px solid var(--admin-border)' }}
+                    aria-label={on ? `Desativar ${nf.name}` : `Ativar ${nf.name}`}
                   >
                     {on ? 'Ativa' : 'Desativada'}
-                  </span>
-                </button>
+                  </button>
+                </div>
               )
             })}
           </div>
