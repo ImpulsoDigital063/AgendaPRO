@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { IconPlus, IconTrash, IconPencil, IconCheck, IconClose, IconChevronDown, IconEye, IconUpload } from '@/components/ui/Icon'
 import FichaDedicada from './clientes/FichaDedicada'
@@ -623,8 +624,11 @@ export default function FichasModeloTab() {
         </div>
       )}
 
-      {previa && NICHE_FICHAS[previa] && (
-        <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center sm:p-6">
+      {/* Portal no body: dentro da tela de Configurações a prévia ficava presa
+          na área de conteúdo e o menu lateral do desktop cobria a borda
+          esquerda dela (visto pelo Eduardo na conta da Wanessa, 14/10). */}
+      {previa && NICHE_FICHAS[previa] && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-stretch sm:items-center justify-center sm:p-6">
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setPrevia(null)} />
           <div
             className="relative w-full sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto sm:rounded-2xl p-4 sm:p-6"
@@ -643,7 +647,8 @@ export default function FichasModeloTab() {
               onCancel={() => setPrevia(null)}
             />
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {niche.available.length > 0 && (
