@@ -7,6 +7,7 @@
  * com Web Share nativo + fallback wa.me, igual ao useComandaPdf.
  */
 
+import { telefoneCanonico } from '@/lib/phone-variants'
 import type { NicheFicha, FichaSection } from '@/lib/fichas/types'
 import type { FichaValues } from './FichaDedicada'
 
@@ -459,6 +460,8 @@ export async function shareFichaPdf(args: { ficha: NicheFicha; values: FichaValu
     } catch { /* cancelou ou sem suporte → fallback */ }
   }
   pdf.save(filename)
-  const phone = (args.customer?.phone ?? '').replace(/\D/g, '')
-  if (phone) window.open(`https://wa.me/${phone}?text=${encodeURIComponent(args.text)}`, '_blank', 'noopener,noreferrer')
+  /* wa.me exige o DDI. O cadastro guarda "(91) 99999-9999" ou só os dígitos,
+     sem 55 — o link abria o WhatsApp num número que não existe (14/10). */
+  const phone = telefoneCanonico(args.customer?.phone ?? '')
+  if (phone) window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(args.text)}`, '_blank', 'noopener,noreferrer')
 }

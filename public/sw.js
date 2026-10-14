@@ -17,6 +17,7 @@
 // (não é cacheado) e o CSS novo do deploy morreu no caminho. O fetch abaixo
 // não tinha .catch(), então qualquer oscilação de rede matava o recurso em vez
 // de tentar o cache. Mesmo sintoma de 03/06, que na época pegou o JS.
+// v166 (14/10): botão Enviar da ficha (computador) abre o WhatsApp da cliente com 55.
 // v165 (14/10): prévia do modelo em portal, acima do menu lateral do desktop.
 // v164 (14/10): Fichas Modelo ganha "ver modelo" (prévia + PDF) e upload da logo do cabeçalho das fichas.
 // v163 (14/10): fichas exclusivas da Wanessa (anamnese feminina/masculina + plano de tratamento) e exclusivas primeiro na lista.
@@ -70,7 +71,7 @@
 // v144 (02/10): tela de Horarios nova no celular — Semana compacta + Calendario.
 // v145 (02/10): painel Dia personalizado — linha de profissionais nao corta e campo de data com dica.
 // v146 (02/10): Horarios celular — 'todo domingo', 'os outros sabados' (genero certo).
-const STATIC_CACHE_VERSION = 'agendapro-static-v165'
+const STATIC_CACHE_VERSION = 'agendapro-static-v166'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
