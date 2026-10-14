@@ -63,7 +63,7 @@ export default function FichaClienteView({ token, estado, dados }: Props) {
           <header className="text-center space-y-3">
             {dados.logo
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={dados.logo} alt={dados.negocio} className="mx-auto max-h-20 max-w-[70%] object-contain" />
+              ? <img src={dados.logo} alt={dados.negocio} className="mx-auto h-24 w-auto max-w-[70%] object-contain" />
               : <p className="text-lg font-bold" style={{ color: '#0F172A' }}>{dados.negocio}</p>}
             {!enviada && (
               <p className="text-sm" style={{ color: '#475569' }}>
