@@ -17,6 +17,7 @@ import {
   IconWhatsapp,
   IconClose,
   IconUsers,
+  IconFile,
 } from '@/components/ui/Icon'
 
 type Prefill = {
@@ -318,6 +319,8 @@ export default function BookingFlow({
   // v112 · sinal: o server devolve o PIX pronto quando o negocio exige
   const [pixSinal, setPixSinal] = useState<{ valor: number; copiaECola: string; token?: string; appointmentId?: string } | null>(null)
   // v113 · credito abatido do sinal. Sem mostrar, o valor "some" e ela estranha.
+  /* v159 · fichas que o negócio oferece pra cliente nova, com o link já pronto. */
+  const [fichasOferta, setFichasOferta] = useState<{ nome: string; url: string }[]>([])
   const [creditoSinal, setCreditoSinal] = useState<{ aplicado: number; sinalCheio: number | null; quitado: boolean; sobra: number } | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -1101,6 +1104,7 @@ export default function BookingFlow({
         ...(res.pix as { valor: number; copiaECola: string; token?: string }),
         appointmentId: res.appointmentId as string | undefined,
       })
+    if (Array.isArray(res.fichas)) setFichasOferta(res.fichas as { nome: string; url: string }[])
     if (res.credito) {
       const c = res.credito as { aplicado: number; sinalCheio: number | null; quitado: boolean; sobra?: number }
       setCreditoSinal({ ...c, sobra: Number(c.sobra ?? 0) })
@@ -1365,6 +1369,48 @@ export default function BookingFlow({
             )}
           </div>
         </div>
+
+        {/* FICHA (v159) · a cliente está com o celular na mão: preenche agora e
+            a profissional já prepara a bancada antes dela chegar. Feminina e
+            Masculina viram dois botões — ela escolhe a dela. */}
+        {fichasOferta.length > 0 && (
+          <div
+            className="rounded-2xl p-4 space-y-3"
+            style={{
+              background: 'color-mix(in srgb, var(--brand-primary, #3B82F6) 10%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--brand-primary, #3B82F6) 28%, transparent)',
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white"
+                style={{ background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6), var(--brand-secondary, #06B6D4))' }}
+              >
+                <IconFile size={18} />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-sm" style={{ color: C.text }}>Preencha sua ficha agora</p>
+                <p className="text-xs mt-0.5" style={{ color: C.mute }}>
+                  Leva poucos minutos e você assina pelo celular. Assim já preparamos tudo pro seu atendimento.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              {fichasOferta.map((f) => (
+                <a
+                  key={f.url}
+                  href={f.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center rounded-xl py-3 text-sm font-bold text-white transition-transform active:scale-[0.98]"
+                  style={{ background: 'linear-gradient(135deg, var(--brand-primary, #3B82F6), var(--brand-secondary, #06B6D4))' }}
+                >
+                  {fichasOferta.length > 1 ? `Preencher: ${f.nome}` : 'Preencher minha ficha'}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* E) Adicionar à agenda */}
         {gcalUrl && (

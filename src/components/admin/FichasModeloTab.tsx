@@ -16,7 +16,7 @@
  *   · Visual SaaS premium · empty state · ícones inline · estado salvo
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { IconPlus, IconTrash, IconPencil, IconCheck, IconClose, IconChevronDown, IconEye, IconUpload } from '@/components/ui/Icon'
@@ -180,7 +180,7 @@ export default function FichasModeloTab() {
   const [formFields, setFormFields] = useState<FieldDef[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [niche, setNiche] = useState<{ available: { slug: string; name: string }[]; enabled: string[] | null; businessId?: string; marca?: MarcaRow }>({ available: [], enabled: null })
+  const [niche, setNiche] = useState<{ available: { slug: string; name: string; clientePreenche?: boolean }[]; enabled: string[] | null; oferecer?: string[]; businessId?: string; marca?: MarcaRow }>({ available: [], enabled: null })
   /* Prévia: tocar no nome abre o modelo como a profissional vai ver (e o PDF
      com o cabeçalho do negócio). O selo Ativa/Desativada segue ligando e
      desligando — são dois toques diferentes. */
@@ -218,6 +218,32 @@ export default function FichasModeloTab() {
   }
 
   function nicheOn(slug: string) { return niche.enabled === null ? true : niche.enabled.includes(slug) }
+  /* v159 · "Oferecer pra cliente nova": a ficha aparece na confirmação do
+     link público e nos atalhos do cadastro/agendamento. Nasce desligado. */
+  /* Ref com a lista mais recente: dois toques seguidos (Feminina e
+     Masculina) liam o mesmo estado velho e o segundo apagava o primeiro —
+     pego no teste da v159. */
+  const oferecerRef = useRef<string[]>([])
+  const filaRef = useRef<Promise<void>>(Promise.resolve())
+  useEffect(() => { oferecerRef.current = niche.oferecer ?? [] }, [niche.oferecer])
+  async function toggleOferecer(slug: string) {
+    const atual = oferecerRef.current
+    const next = atual.includes(slug) ? atual.filter((s) => s !== slug) : [...atual, slug]
+    oferecerRef.current = next
+    setNiche((p) => ({ ...p, oferecer: next }))
+    /* Fila: um POST por vez, na ordem dos toques — senão o pedido velho pode
+       chegar depois do novo e gravar a lista antiga. */
+    const envio = filaRef.current.then(() =>
+      fetch('/api/admin/niche-fichas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oferecer: next }) }),
+    )
+    filaRef.current = envio.then(() => undefined, () => undefined)
+    const r = await envio
+    const j = await r.json().catch(() => null)
+    /* Só aplica a resposta se nenhum toque mais novo passou na frente. */
+    if (oferecerRef.current !== next) return
+    if (r.ok && Array.isArray(j?.oferecer)) { oferecerRef.current = j.oferecer; setNiche((p) => ({ ...p, oferecer: j.oferecer })) }
+    else { oferecerRef.current = atual; setNiche((p) => ({ ...p, oferecer: atual })) }
+  }
   async function toggleNiche(slug: string) {
     const base = niche.enabled === null ? niche.available.map((a) => a.slug) : [...niche.enabled]
     const next = base.includes(slug) ? base.filter((s) => s !== slug) : [...base, slug]
@@ -663,9 +689,10 @@ export default function FichasModeloTab() {
               return (
                 <div
                   key={nf.slug}
-                  className="w-full flex items-center justify-between gap-2 p-1.5 rounded-xl transition-colors"
+                  className="rounded-xl transition-colors"
                   style={{ background: 'var(--admin-surface-hi)', border: `1px solid ${on ? 'var(--admin-accent)' : 'var(--admin-border)'}` }}
                 >
+                <div className="w-full flex items-center justify-between gap-2 p-1.5">
                   <button
                     type="button"
                     onClick={() => setPrevia(nf.slug)}
@@ -688,6 +715,30 @@ export default function FichasModeloTab() {
                   >
                     {on ? 'Ativa' : 'Desativada'}
                   </button>
+                </div>
+                {nf.clientePreenche && on && (() => {
+                  const oferece = (niche.oferecer ?? []).includes(nf.slug)
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => toggleOferecer(nf.slug)}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
+                      style={{ borderTop: '1px solid var(--admin-border)' }}
+                      aria-pressed={oferece}
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold" style={{ color: 'var(--admin-text)' }}>Oferecer pra cliente nova</span>
+                        <span className="block text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>Aparece quando ela agenda pelo link e ao cadastrar ou agendar pelo painel</span>
+                      </span>
+                      <span
+                        className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
+                        style={{ background: oferece ? 'color-mix(in srgb, var(--admin-accent) 16%, transparent)' : 'transparent', color: oferece ? 'var(--admin-accent)' : 'var(--admin-text-mute)', border: oferece ? 'none' : '1px solid var(--admin-border)' }}
+                      >
+                        {oferece ? 'Ligado' : 'Desligado'}
+                      </span>
+                    </button>
+                  )
+                })()}
                 </div>
               )
             })}

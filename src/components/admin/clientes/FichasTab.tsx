@@ -7,6 +7,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconPlus, IconTrash, IconCheck, IconWhatsapp } from '@/components/ui/Icon'
 import { telefoneCanonico } from '@/lib/phone-variants'
+import { mandarFichaPraCliente } from '@/lib/fichas/mandar-cliente'
 import DrawCanvas from './DrawCanvas'
 import FichaDedicada, { type FichaValues } from './FichaDedicada'
 import type { MarcaPdf } from './useFichaPdf'
@@ -132,28 +133,10 @@ export default function FichasTab({ customerId }: Props) {
     setError(null)
     setLinkSemFone(null)
     setEnviandoConvite(nf.slug)
-    /* Abre a aba JÁ no toque: aberta depois do await, o Safari do iPhone/iPad
-       bloqueia como pop-up. */
-    const fone = telefoneCanonico(customer?.phone ?? '')
-    const aba = fone ? window.open('', '_blank') : null
     try {
-      const r = await fetch(`/api/admin/customers/${customerId}/ficha-convite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nicheSlug: nf.slug }),
-      })
-      const j = await r.json().catch(() => null)
-      if (!r.ok || !j?.url) { aba?.close(); setError('Não foi possível gerar o link da ficha. Tente de novo.'); return }
-      // Texto vem montado do servidor: o padrão ou o que a dona editou em Avisos manuais → Ficha
-      const texto = typeof j.mensagem === 'string' && j.mensagem ? j.mensagem : j.url
-      if (fone) {
-        const wa = `https://wa.me/55${fone}?text=${encodeURIComponent(texto)}`
-        if (aba) aba.location.href = wa
-        else window.location.href = wa
-      } else {
-        setLinkSemFone(j.url)
-        navigator.clipboard?.writeText(j.url).catch(() => {})
-      }
+      const r = await mandarFichaPraCliente(customerId, nf.slug, { temTelefone: Boolean(telefoneCanonico(customer?.phone ?? '')) })
+      if (!r.ok) { setError('Não foi possível gerar o link da ficha. Tente de novo.'); return }
+      if (r.semTelefone) setLinkSemFone(r.semTelefone)
       setPickerOpen(false)
       carregarConvites()
     } finally {

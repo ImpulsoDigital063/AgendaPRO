@@ -22,7 +22,7 @@ const carregar = cache(async (token: string): Promise<{ estado: Estado; dados: D
   const admin = createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
   const { data: conv } = await admin
     .from('ficha_convites')
-    .select('business_id, customer_id, niche_slug, expires_at, used_at, cancelado_em')
+    .select('business_id, customer_id, niche_slug, expires_at, used_at, cancelado_em, grupo')
     .eq('token_hash', hashToken(token))
     .maybeSingle()
   if (!conv || !NICHE_FICHAS[conv.niche_slug]?.clientePreenche) return { estado: 'invalido', dados: null, negocio: null, logo: null }
@@ -38,6 +38,12 @@ const carregar = cache(async (token: string): Promise<{ estado: Estado; dados: D
   const logo = biz?.logo_url ?? biz?.brand_logo_url ?? rodape?.logo ?? null
   const negocio = biz?.name ?? null
   if (conv.used_at) return { estado: 'usado', dados: null, negocio, logo }
+  /* Cancelado porque a cliente respondeu a outra do grupo (Feminina ×
+     Masculina, v159): pra ela, a ficha "já foi enviada", não "expirou". */
+  if (conv.cancelado_em && conv.grupo) {
+    const { count } = await admin.from('ficha_convites').select('id', { count: 'exact', head: true }).eq('grupo', conv.grupo).not('used_at', 'is', null)
+    if ((count ?? 0) > 0) return { estado: 'usado', dados: null, negocio, logo }
+  }
   if (conv.cancelado_em || new Date(conv.expires_at) < new Date()) return { estado: 'expirado', dados: null, negocio, logo }
   return {
     estado: 'ok',

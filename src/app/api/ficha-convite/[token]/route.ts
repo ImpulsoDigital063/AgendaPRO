@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
   const { data: conv } = await admin
     .from('ficha_convites')
-    .select('id, business_id, customer_id, niche_slug, expires_at, used_at, cancelado_em')
+    .select('id, business_id, customer_id, niche_slug, expires_at, used_at, cancelado_em, grupo')
     .eq('token_hash', hashToken(token))
     .maybeSingle()
   if (!conv) return NextResponse.json({ error: 'link_invalido' }, { status: 404 })
@@ -74,6 +74,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   }).select('id').single()
   if (error || !ins) { await liberar(); return NextResponse.json({ error: 'falha_ao_salvar' }, { status: 500 }) }
   await admin.from('ficha_convites').update({ response_id: ins.id }).eq('id', conv.id)
+  /* Oferecidas juntas (Feminina + Masculina, v159): respondeu uma, as outras
+     do grupo saem de "aguardando" e o link delas morre. */
+  if (conv.grupo) {
+    await admin.from('ficha_convites')
+      .update({ cancelado_em: new Date().toISOString() })
+      .eq('grupo', conv.grupo).neq('id', conv.id).is('used_at', null)
+  }
 
   /* Aviso pra dona. AWAIT obrigatório: a Vercel congela a invocação quando a
      resposta sai (mesma lição do claim-review). Falha aqui não desfaz nada. */

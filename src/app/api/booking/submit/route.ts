@@ -7,6 +7,7 @@ import { todayBR } from '@/lib/date-br'
 import { limparSinaisVencidos } from '@/lib/sinal-expira'
 import { generateSinalToken } from '@/lib/token'
 import { confirmarAgendamento } from '@/lib/mensagens/confirmar'
+import { criarConvite, fichasParaOferecer } from '@/lib/fichas/oferta'
 
 /**
  * POST /api/booking/submit
@@ -647,9 +648,29 @@ export async function POST(req: NextRequest) {
     }
   })
 
+  /* FICHA NA TELA DE CONFIRMAÇÃO (v159). A cliente acabou de agendar e está
+     com o celular na mão: se o negócio oferece ficha pra cliente nova e ela
+     ainda não respondeu, a tela já mostra "Preencha sua ficha agora". Fica
+     ANTES da resposta porque o link vai nela; qualquer falha aqui não pode
+     derrubar um agendamento que já está gravado. */
+  const fichas: { nome: string; url: string }[] = []
+  if (customerId) {
+    try {
+      const ofertas = await fichasParaOferecer(db, businessId, customerId)
+      const grupo = ofertas.length > 1 ? crypto.randomUUID() : null
+      for (const f of ofertas) {
+        const r = await criarConvite(db, { businessId, customerId, nicheSlug: f.slug, criadoPor: null, origem: 'agendamento', grupo, baseUrl })
+        if ('url' in r) fichas.push({ nome: f.name, url: r.url })
+      }
+    } catch (err) {
+      console.error('booking submit · oferta de ficha falhou (agendamento segue):', err)
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     appointmentId: appointment.id,
+    fichas,
     referralCode: referralCodeOut,
     pointsEarned,
     pix,

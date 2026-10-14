@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import OferecerFicha from '@/components/admin/clientes/OferecerFicha'
 import { useRouter, usePathname } from 'next/navigation'
 import { getAreaPrefix, areaSemTelasInternas } from '@/lib/area-prefix'
 import { createClient } from '@/lib/supabase/client'
@@ -1506,6 +1507,18 @@ export default function AgendarModal({
                     </>
                   )}
                 </p>
+              </div>
+            )}
+
+            {/* FICHA (v159) · cliente acabou de ser agendada: a dona manda a
+                ficha em 1 toque, e ela responde antes de chegar. Só aparece
+                se o negócio oferece ficha e a cliente ainda não respondeu. */}
+            {(createdCustomerId ?? cliente?.id) && (
+              <div className="mt-3">
+                <OferecerFicha
+                  customerId={(createdCustomerId ?? cliente?.id) as string}
+                  temTelefone={Boolean((cliente?.phone ?? '').replace(/\D/g, ''))}
+                />
               </div>
             )}
           </div>

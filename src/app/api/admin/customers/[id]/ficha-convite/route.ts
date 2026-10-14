@@ -3,9 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { fichaVisivelPara } from '@/lib/fichas/disponiveis'
-import { gerarToken, hashToken, VALIDADE_DIAS } from '@/lib/fichas/convite'
+import { criarConvite, fichasParaOferecer } from '@/lib/fichas/oferta'
 import { negocioDoPainel } from '@/lib/admin-data'
 import { textoFichaCliente } from '@/lib/textos-manuais'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 /* LINK PRA CLIENTE PREENCHER A FICHA (v157). Quem gera: dono, recepção ou
    profissional ativa — o mesmo grupo que preenche a ficha no balcão
@@ -44,22 +45,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!fichaVisivelPara(ficha, { categoria: biz?.category ?? biz?.description ?? null, slug: biz?.slug ?? null })) {
     return NextResponse.json({ error: 'niche_not_available' }, { status: 403 })
   }
-  const { data: cust } = await admin.from('customers').select('id, business_id, name').eq('id', customerId).maybeSingle()
+  const { data: cust } = await admin.from('customers').select('id, business_id, name, phone').eq('id', customerId).maybeSingle()
   if (!cust || cust.business_id !== businessId) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
-  const token = gerarToken()
-  const expiresAt = new Date(Date.now() + VALIDADE_DIAS * 86_400_000).toISOString()
-  const { error } = await admin.from('ficha_convites').insert({
-    business_id: businessId,
-    customer_id: customerId,
-    niche_slug: nicheSlug,
-    token_hash: hashToken(token),
-    criado_por: user.id,
-    expires_at: expiresAt,
+  const criado = await criarConvite(admin, {
+    businessId, customerId, nicheSlug, criadoPor: user.id, origem: 'painel', baseUrl: new URL(request.url).origin,
   })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  const url = `${new URL(request.url).origin}/ficha/${token}`
+  if ('erro' in criado) return NextResponse.json({ error: criado.erro }, { status: 500 })
+  const { url, expiresAt } = criado
   /* A mensagem sai montada daqui, com o texto que a DONA salvou em Avisos
      manuais (v158). Assim profissional e recepção mandam o mesmo texto, sem
      precisar ler a coluna do negócio pelo navegador. */
@@ -69,7 +62,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ficha: ficha.name,
     link: url,
   })
-  return NextResponse.json({ ok: true, url, mensagem, expiresAt })
+  /* Link do WhatsApp montado aqui também (v159): os três lugares que mandam
+     a ficha (aba Fichas, cadastro, agendamento) só abrem o que vem pronto. */
+  const fone = telefoneCanonico(cust.phone ?? '')
+  const whatsapp = fone ? `https://wa.me/55${fone}?text=${encodeURIComponent(mensagem)}` : null
+  return NextResponse.json({ ok: true, url, mensagem, whatsapp, expiresAt })
 }
 
 // GET → convites ainda abertos dessa cliente (pra tela mostrar "aguardando")
@@ -80,14 +77,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const businessId = await getBusinessId(supabase, user.id)
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const { id: customerId } = await params
-  const { data } = await getAdmin()
-    .from('ficha_convites')
-    .select('id, niche_slug, created_at, expires_at')
-    .eq('business_id', businessId)
-    .eq('customer_id', customerId)
-    .is('used_at', null)
-    .is('cancelado_em', null)
-    .gt('expires_at', new Date().toISOString())
-    .order('created_at', { ascending: false })
-  return NextResponse.json({ convites: data ?? [] })
+  const admin = getAdmin()
+  const { data: cust } = await admin.from('customers').select('business_id').eq('id', customerId).maybeSingle()
+  if (!cust || cust.business_id !== businessId) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  const [{ data }, oferta] = await Promise.all([
+    admin
+      .from('ficha_convites')
+      .select('id, niche_slug, created_at, expires_at, origem')
+      .eq('business_id', businessId)
+      .eq('customer_id', customerId)
+      .is('used_at', null)
+      .is('cancelado_em', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false }),
+    fichasParaOferecer(admin, businessId, customerId),
+  ])
+  /* `oferecer` (v159): o que os atalhos do painel (cadastro e agendamento)
+     mostram — fichas que o negócio oferece e a cliente ainda não respondeu. */
+  return NextResponse.json({ convites: data ?? [], oferecer: oferta.map((f) => ({ slug: f.slug, name: f.name })) })
 }

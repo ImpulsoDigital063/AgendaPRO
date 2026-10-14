@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import OferecerFicha from './OferecerFicha'
 import { IconClose, IconChevronDown, IconChevronRight } from '@/components/ui/Icon'
 
 type Props = {
@@ -148,8 +149,12 @@ export default function NovoClienteModal({ onClose, onSuccess }: Props) {
     }
     const data = await res.json().catch(() => ({}))
     setSubmitting(false)
-    onSuccess(data.customer?.id)
+    /* v159 · antes de fechar, vê se tem ficha pra oferecer (OferecerFicha
+       decide). Sem oferta, fecha na hora como sempre fechou. */
+    if (data.customer?.id) setCriada({ id: data.customer.id as string, temTelefone: Boolean(phone.replace(/\D/g, '')) })
+    else onSuccess(data.customer?.id)
   }
+  const [criada, setCriada] = useState<{ id: string; temTelefone: boolean } | null>(null)
 
   // Portal guard pra SSR. Sem isso, createPortal explode no build.
   const [portalReady, setPortalReady] = useState(false)
@@ -173,6 +178,40 @@ export default function NovoClienteModal({ onClose, onSuccess }: Props) {
   }, [onClose])
 
   if (!portalReady) return null
+
+  /* CLIENTE CADASTRADA · oferta da ficha em 1 toque (v159). OferecerFicha
+     avisa se não há nada a oferecer e aí o modal fecha sozinho. */
+  if (criada && portalReady) {
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[320] flex items-end sm:items-center justify-center p-0 sm:p-4"
+        style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+        onClick={() => onSuccess(criada.id)}
+      >
+        <div
+          className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4"
+          style={{ background: 'var(--admin-popover-bg, #FFFFFF)', border: '1px solid var(--admin-popover-border, #E2E8F0)', boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>Cliente cadastrada!</h3>
+          <OferecerFicha
+            customerId={criada.id}
+            temTelefone={criada.temTelefone}
+            onPronto={(tem) => { if (!tem) onSuccess(criada.id) }}
+          />
+          <button
+            type="button"
+            onClick={() => onSuccess(criada.id)}
+            className="w-full rounded-xl py-3 text-sm font-bold"
+            style={{ color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+          >
+            Concluir
+          </button>
+        </div>
+      </div>,
+      document.body,
+    )
+  }
 
   return createPortal(
     <div
