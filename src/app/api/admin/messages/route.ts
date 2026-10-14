@@ -4,7 +4,7 @@
  *   v154, aniversário / sumidos / sumidos com cupom)
  *
  * Só o DONO edita. Read-after-write no PATCH (λ.prova-na-fonte).
- * Body PATCH: { confirmation?, reminder?, birthday?, sumidos?, sumidosCupom? } (string|null)
+ * Body PATCH: { confirmation?, reminder?, birthday?, sumidos?, sumidosCupom?, ficha? } (string|null)
  *   string vazia / null → volta pro padrão (grava NULL).
  */
 
@@ -16,7 +16,7 @@ import {
   DEFAULT_CONFIRMATION_TEMPLATE,
   DEFAULT_REMINDER_TEMPLATE,
 } from '@/lib/message-templates'
-import { DEFAULT_SUMIDOS_TEMPLATE, padraoAniversario, padraoSumidosCupom } from '@/lib/textos-manuais'
+import { DEFAULT_FICHA_TEMPLATE, DEFAULT_SUMIDOS_TEMPLATE, padraoAniversario, padraoSumidosCupom } from '@/lib/textos-manuais'
 import { negocioDoPainel } from '@/lib/admin-data'
 
 type Linha = {
@@ -25,6 +25,7 @@ type Linha = {
   whatsapp_birthday_template?: string | null
   whatsapp_sumidos_template?: string | null
   whatsapp_sumidos_cupom_template?: string | null
+  whatsapp_ficha_template?: string | null
 } | null
 
 /* '' = usa o padrão. Mesmo formato no GET e no retorno do PATCH. */
@@ -35,6 +36,7 @@ function textos(b: Linha) {
     birthday: b?.whatsapp_birthday_template ?? '',
     sumidos: b?.whatsapp_sumidos_template ?? '',
     sumidosCupom: b?.whatsapp_sumidos_cupom_template ?? '',
+    ficha: b?.whatsapp_ficha_template ?? '',
   }
 }
 
@@ -50,7 +52,7 @@ async function resolveOwnerBusiness(userId: string) {
   const admin = getAdminClient()
   const { data } = await admin
     .from('businesses')
-    .select('id, description, whatsapp_confirmation_template, whatsapp_reminder_template, whatsapp_birthday_template, whatsapp_sumidos_template, whatsapp_sumidos_cupom_template')
+    .select('id, description, whatsapp_confirmation_template, whatsapp_reminder_template, whatsapp_birthday_template, whatsapp_sumidos_template, whatsapp_sumidos_cupom_template, whatsapp_ficha_template')
     .eq('id', await negocioDoPainel(userId))
     .maybeSingle()
   return { admin, business: data }
@@ -75,6 +77,7 @@ export async function GET(req: NextRequest) {
       birthday: padraoAniversario(business.description),
       sumidos: DEFAULT_SUMIDOS_TEMPLATE,
       sumidosCupom: padraoSumidosCupom(business.description),
+      ficha: DEFAULT_FICHA_TEMPLATE,
     },
   })
 }
@@ -103,6 +106,8 @@ export async function PATCH(req: NextRequest) {
   if ('birthday' in body) payload.whatsapp_birthday_template = norm(body.birthday)
   if ('sumidos' in body) payload.whatsapp_sumidos_template = norm(body.sumidos)
   if ('sumidosCupom' in body) payload.whatsapp_sumidos_cupom_template = norm(body.sumidosCupom)
+  // v158 · texto do link da ficha pra cliente preencher
+  if ('ficha' in body) payload.whatsapp_ficha_template = norm(body.ficha)
   if (Object.keys(payload).length === 0) {
     return NextResponse.json({ error: 'Nada pra salvar.' }, { status: 400 })
   }
@@ -118,7 +123,7 @@ export async function PATCH(req: NextRequest) {
   // λ.prova-na-fonte · relê e devolve o que ficou gravado
   const { data: after } = await admin
     .from('businesses')
-    .select('whatsapp_confirmation_template, whatsapp_reminder_template, whatsapp_birthday_template, whatsapp_sumidos_template, whatsapp_sumidos_cupom_template')
+    .select('whatsapp_confirmation_template, whatsapp_reminder_template, whatsapp_birthday_template, whatsapp_sumidos_template, whatsapp_sumidos_cupom_template, whatsapp_ficha_template')
     .eq('id', business.id)
     .maybeSingle()
 

@@ -144,8 +144,8 @@ export default function FichasTab({ customerId }: Props) {
       })
       const j = await r.json().catch(() => null)
       if (!r.ok || !j?.url) { aba?.close(); setError('Não foi possível gerar o link da ficha. Tente de novo.'); return }
-      const primeiro = (customer?.name ?? '').trim().split(/\s+/)[0]
-      const texto = `Olá${primeiro ? `, ${primeiro}` : ''}! Antes do seu atendimento, preencha sua ficha por este link (leva poucos minutos):\n\n${j.url}\n\nO link vale por 7 dias.`
+      // Texto vem montado do servidor: o padrão ou o que a dona editou em Avisos manuais → Ficha
+      const texto = typeof j.mensagem === 'string' && j.mensagem ? j.mensagem : j.url
       if (fone) {
         const wa = `https://wa.me/55${fone}?text=${encodeURIComponent(texto)}`
         if (aba) aba.location.href = wa

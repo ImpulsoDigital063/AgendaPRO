@@ -5,6 +5,7 @@ import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { fichaVisivelPara } from '@/lib/fichas/disponiveis'
 import { gerarToken, hashToken, VALIDADE_DIAS } from '@/lib/fichas/convite'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { textoFichaCliente } from '@/lib/textos-manuais'
 
 /* LINK PRA CLIENTE PREENCHER A FICHA (v157). Quem gera: dono, recepção ou
    profissional ativa — o mesmo grupo que preenche a ficha no balcão
@@ -39,11 +40,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!ficha.clientePreenche) return NextResponse.json({ error: 'ficha_nao_e_da_cliente' }, { status: 400 })
 
   const admin = getAdmin()
-  const { data: biz } = await admin.from('businesses').select('slug, category, description').eq('id', businessId).maybeSingle()
+  const { data: biz } = await admin.from('businesses').select('slug, category, description, name, whatsapp_ficha_template').eq('id', businessId).maybeSingle()
   if (!fichaVisivelPara(ficha, { categoria: biz?.category ?? biz?.description ?? null, slug: biz?.slug ?? null })) {
     return NextResponse.json({ error: 'niche_not_available' }, { status: 403 })
   }
-  const { data: cust } = await admin.from('customers').select('id, business_id').eq('id', customerId).maybeSingle()
+  const { data: cust } = await admin.from('customers').select('id, business_id, name').eq('id', customerId).maybeSingle()
   if (!cust || cust.business_id !== businessId) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   const token = gerarToken()
@@ -58,8 +59,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const origem = new URL(request.url).origin
-  return NextResponse.json({ ok: true, url: `${origem}/ficha/${token}`, expiresAt })
+  const url = `${new URL(request.url).origin}/ficha/${token}`
+  /* A mensagem sai montada daqui, com o texto que a DONA salvou em Avisos
+     manuais (v158). Assim profissional e recepção mandam o mesmo texto, sem
+     precisar ler a coluna do negócio pelo navegador. */
+  const mensagem = textoFichaCliente(biz?.whatsapp_ficha_template, {
+    nome: cust.name ?? '',
+    negocio: biz?.name ?? '',
+    ficha: ficha.name,
+    link: url,
+  })
+  return NextResponse.json({ ok: true, url, mensagem, expiresAt })
 }
 
 // GET → convites ainda abertos dessa cliente (pra tela mostrar "aguardando")

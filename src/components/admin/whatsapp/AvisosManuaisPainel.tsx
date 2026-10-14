@@ -28,10 +28,12 @@ import {
 } from '@/lib/message-templates'
 import { fillTemplate, sampleNameFor } from '@/lib/coupon-templates'
 import {
+  DEFAULT_FICHA_TEMPLATE,
   DEFAULT_SUMIDOS_TEMPLATE,
   padraoAniversario,
   padraoSumidosCupom,
   textoChamarSumido,
+  textoFichaCliente,
 } from '@/lib/textos-manuais'
 import { IconArrowRight, IconCalendar, IconCheck, IconGift, IconWhatsapp } from '@/components/ui/Icon'
 import { Cabecalho, CONTAINER, formatarNumero } from './WhatsAppPainel'
@@ -40,8 +42,8 @@ import { Chip, TituloSecao, WA } from './ui'
 import TelaWhatsApp from './TelaWhatsApp'
 
 /** Chave = campo do GET/PATCH de /api/admin/messages. */
-type Chave = 'reminder' | 'birthday' | 'sumidos' | 'sumidosCupom'
-type Aba = 'lembrete' | 'aniversario' | 'sumidos'
+type Chave = 'reminder' | 'birthday' | 'sumidos' | 'sumidosCupom' | 'ficha'
+type Aba = 'lembrete' | 'aniversario' | 'sumidos' | 'ficha'
 type Textos = Record<Chave, string>
 
 type Ctx = {
@@ -117,6 +119,26 @@ const CONFIG: Record<Chave, Config> = {
     padrao: (c) => padraoSumidosCupom(c.descricao),
     variaveis: VARS_CUPOM,
     previa: previaCupom,
+  },
+  /* v158 · link da ficha pra cliente preencher antes de chegar (v157). */
+  ficha: {
+    titulo: 'Ficha pra preencher antes',
+    descricao: (c) =>
+      `Vai junto com o link da ficha quando você toca em “Mandar pra cliente preencher”. ${c.T.art.toUpperCase()} ${c.T.s} responde e assina pelo celular.`,
+    padrao: () => DEFAULT_FICHA_TEMPLATE,
+    variaveis: (c) => [
+      { token: '{nome}', label: `Nome d${c.T.art} ${c.T.s}` },
+      { token: '{negocio}', label: 'Nome do negócio' },
+      { token: '{ficha}', label: 'Nome da ficha' },
+      { token: '{link}', label: 'Link da ficha' },
+    ],
+    previa: (texto, c) =>
+      textoFichaCliente(texto, {
+        nome: sampleNameFor(c.descricao),
+        negocio: c.negocio || 'Seu Negócio',
+        ficha: 'Anamnese',
+        link: 'agendapro.net.br/ficha/…',
+      }),
   },
 }
 
@@ -385,9 +407,10 @@ export default function AvisosManuaisPainel({
           birthday: String(j?.birthday ?? ''),
           sumidos: String(j?.sumidos ?? ''),
           sumidosCupom: String(j?.sumidosCupom ?? ''),
+          ficha: String(j?.ficha ?? ''),
         }),
       )
-      .catch(() => setTextos({ reminder: '', birthday: '', sumidos: '', sumidosCupom: '' }))
+      .catch(() => setTextos({ reminder: '', birthday: '', sumidos: '', sumidosCupom: '', ficha: '' }))
   }, [])
 
   function onSalvo(chave: Chave, texto: string) {
@@ -409,6 +432,7 @@ export default function AvisosManuaisPainel({
     { id: 'lembrete', rotulo: 'Lembrete' },
     { id: 'aniversario', rotulo: 'Aniversário' },
     { id: 'sumidos', rotulo: 'Sumidos' },
+    { id: 'ficha', rotulo: 'Ficha' },
   ]
 
   const dicas = [
@@ -440,7 +464,10 @@ export default function AvisosManuaisPainel({
                 role="tab"
                 aria-selected={aba === a.id}
                 onClick={() => setAba(a.id)}
-                className={`admin-tab flex-1 ${aba === a.id ? 'admin-tab-active' : ''}`}
+                /* Com a 4ª aba (Ficha, v158) o padding padrão de .admin-tab
+                   estourava 390px e a página inteira rolava pro lado. No
+                   celular aperta o padding; do sm em diante volta ao de sempre. */
+                className={`admin-tab flex-1 min-w-0 px-1.5! text-[13px]! sm:px-4! sm:text-sm! ${aba === a.id ? 'admin-tab-active' : ''}`}
               >
                 {a.rotulo}
               </button>
@@ -530,6 +557,25 @@ export default function AvisosManuaisPainel({
                 },
               ]}
               link={{ href: '/admin/sumidos', rotulo: 'Abrir Sumidos' }}
+            />
+          </>
+        )}
+
+        {aba === 'ficha' && (
+          <>
+            {editor('ficha')}
+            <ComoFunciona
+              passos={[
+                { icone: <IconCalendar size={16} />, texto: `Abra ${T.art} ${T.s} (ou o atendimento ${T.de}) e vá em Fichas → Adicionar Ficha.` },
+                {
+                  icone: <IconWhatsapp size={16} />,
+                  texto: <>Embaixo da anamnese, toque em {forte('Mandar pra cliente preencher')}: o seu WhatsApp abre com esta mensagem e o link.</>,
+                },
+                {
+                  icone: <IconCheck size={16} />,
+                  texto: `${T.art.toUpperCase()} ${T.s} responde e assina no celular. Você recebe um aviso e a ficha já aparece pronta.`,
+                },
+              ]}
             />
           </>
         )}
