@@ -54,7 +54,7 @@ export default async function RecepEuPage() {
           Meus atendimentos
         </h1>
         <p className="text-[13px] mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-          Só a sua agenda. A do salão inteiro fica no Início.
+          Só a sua agenda. A da equipe inteira fica no Início.
         </p>
       </header>
 

@@ -293,14 +293,14 @@ export default async function SinalPage({
               Seu horário está garantido
             </p>
             <p className="text-xs" style={{ color: mute }}>
-              Você avisou que já pagou o sinal. {business?.name ?? 'O salão'} está
+              Você avisou que já pagou o sinal. {business?.name ?? 'O estabelecimento'} está
               conferindo — não precisa pagar de novo.
             </p>
             {linkZap && (
               <p className="text-xs pt-1" style={{ color: mute }}>
                 Se ainda não pagou,{' '}
                 <a href={linkZap} className="underline font-semibold" style={{ color: primary }}>
-                  fale com {business?.name ?? 'o salão'}
+                  fale com {business?.name ?? 'o estabelecimento'}
                 </a>
                 .
               </p>
@@ -363,7 +363,7 @@ export default async function SinalPage({
                 className="block w-full rounded-xl py-3 text-center text-sm font-semibold"
                 style={{ background: 'transparent', color: mute, border: `1px solid ${border}` }}
               >
-                Falar com o salão
+                Falar no WhatsApp
               </a>
             )}
           </>

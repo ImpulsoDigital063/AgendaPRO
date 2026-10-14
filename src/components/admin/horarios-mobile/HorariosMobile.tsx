@@ -680,7 +680,7 @@ export default function HorariosMobile({ professionals, initialWorkingHours, isA
                     <Aviso
                       tom="info"
                       texto={st.folgaDeFora.professional_id === null
-                        ? 'Esse dia está fechado pra todo o salão. Pra reabrir, mude em Bloqueios.'
+                        ? 'Esse dia está fechado pra todo o negócio. Pra reabrir, mude em Bloqueios.'
                         : `Esse dia está fechado por uma folga de ${todo(diaDaSemana(ymd))} ${nomeSemana}. Pra mudar, use Bloqueios.`}
                     />
                   )}

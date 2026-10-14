@@ -481,7 +481,7 @@ export default function SinalView() {
               />
               <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
                 É o nome que o cliente vê no app do banco. Use o titular da conta,
-                não o nome do salão.
+                não o nome do negócio.
               </p>
             </div>
             <div style={{ width: 120 }}>

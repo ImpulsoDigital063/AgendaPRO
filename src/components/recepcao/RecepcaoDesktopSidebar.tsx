@@ -157,7 +157,7 @@ export default function RecepcaoDesktopSidebar({
                 className="block text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: 'var(--admin-accent)' }}
               >
-                {pessoaNome ?? (tambemAtende ? 'Painel do salão' : 'Painel da Recepção')}
+                {pessoaNome ?? (tambemAtende ? 'Painel do negócio' : 'Painel da Recepção')}
               </span>
             </span>
           )}

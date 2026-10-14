@@ -17,7 +17,7 @@ export default function RecepQRCodeCard({ slug }: { slug: string }) {
   return (
     <div className="admin-card p-4">
       <p className="text-xs font-semibold uppercase tracking-widest mb-3 inline-flex items-center gap-1.5" style={{ color: 'var(--admin-text-faded)' }}>
-        <IconShare size={12} /> QR Code do salão
+        <IconShare size={12} /> QR Code do negócio
       </p>
       <div className="flex items-center gap-3">
         <div
@@ -28,7 +28,7 @@ export default function RecepQRCodeCard({ slug }: { slug: string }) {
         </div>
         <div className="min-w-0">
           <p className="text-xs leading-tight" style={{ color: 'var(--admin-text-2)' }}>
-            Cliente escaneia e cai direto na página de agendamento do salão.
+            Cliente escaneia e cai direto na página de agendamento do negócio.
           </p>
           <a
             href={url}

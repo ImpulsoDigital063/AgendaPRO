@@ -80,7 +80,7 @@ export default function RecepcaoMobileTopBar({
     {
       label: 'Dia a dia',
       items: [
-        { label: 'Agenda do salão', href: '/recepcao', exact: true, Icon: IconHome },
+        { label: 'Agenda da equipe', href: '/recepcao', exact: true, Icon: IconHome },
         { label: 'Comandas', href: '/recepcao/comandas', Icon: IconFile },
         { label: 'Consultas', href: '/recepcao/consultas', Icon: IconSearch },
       ],
@@ -117,7 +117,7 @@ export default function RecepcaoMobileTopBar({
     ...(podeEditarHorario
       ? [
           {
-            label: 'Salão',
+            label: 'Negócio',
             items: [{ label: 'Horários', href: '/recepcao/horarios', Icon: IconClock }],
           },
         ]
@@ -165,7 +165,7 @@ export default function RecepcaoMobileTopBar({
             <Image src={brandLogoUrl} alt={businessName ?? ''} width={28} height={28} className="rounded" />
           ) : null}
           <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
-            {businessName ?? 'Salão'}
+            {businessName ?? 'Negócio'}
           </p>
         </div>
 
@@ -202,10 +202,10 @@ export default function RecepcaoMobileTopBar({
                 ) : null}
                 <div className="min-w-0">
                   <p className="text-sm font-bold truncate" style={{ color: 'var(--admin-text)' }}>
-                    {businessName ?? 'Salão'}
+                    {businessName ?? 'Negócio'}
                   </p>
                   <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--admin-accent)' }}>
-                    {pessoaNome ?? (tambemAtende ? 'Painel do salão' : 'Painel da Recepção')}
+                    {pessoaNome ?? (tambemAtende ? 'Painel do negócio' : 'Painel da Recepção')}
                   </p>
                 </div>
               </div>

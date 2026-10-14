@@ -94,7 +94,7 @@ export default function FidelidadeOnboardingCard({ category, initialDismissed = 
         >
           O programa de fidelidade é onde a maioria dos donos perde dinheiro de bobeira.
           Cliente ganha <strong style={{ color: 'var(--admin-text)' }}>pontos</strong> por agendar/pagar e troca em
-          <strong style={{ color: 'var(--admin-text)' }}> recompensas</strong> que você define (corte grátis, 20% off, brinde, etc).
+          <strong style={{ color: 'var(--admin-text)' }}> recompensas</strong> que você define (serviço grátis, 20% off, brinde, etc).
           Bem usado, é a alavanca mais barata pra fazer cliente voltar 3-5× mais.
         </p>
 

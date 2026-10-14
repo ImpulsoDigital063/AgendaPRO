@@ -132,7 +132,7 @@ const PRESETS: Preset[] = [
     label: 'Feriado',
     Icon: IconStar,
     color: '#EC4899',
-    description: 'Data específica · todo o salão',
+    description: 'Data específica · todo o negócio',
     apply: (today) => ({
       block_type: 'specific',
       professional_id: '',
@@ -308,7 +308,7 @@ export default function BloqueiosTab({ businessId, professionals }: Props) {
   }
 
   function profName(profId: string | null): string {
-    if (!profId) return 'Todo o salão'
+    if (!profId) return 'Todo o negócio'
     return professionals.find((p) => p.id === profId)?.name ?? 'Profissional'
   }
 
@@ -479,7 +479,7 @@ export default function BloqueiosTab({ businessId, professionals }: Props) {
               onChange={(e) => setForm({ ...form, professional_id: e.target.value })}
               className="admin-input w-full text-sm py-2 px-2"
             >
-              <option value="">Todo o salão</option>
+              <option value="">Todo o negócio</option>
               {activeProfs.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}

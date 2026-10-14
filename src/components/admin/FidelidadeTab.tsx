@@ -948,7 +948,7 @@ export default function FidelidadeTab({
             type="text"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Nome (ex: Corte grátis)"
+            placeholder="Nome (ex: Sessão grátis)"
             className="admin-input w-full px-3 py-2.5 text-sm"
           />
           <input
@@ -1362,7 +1362,7 @@ export default function FidelidadeTab({
               {
                 n: 5,
                 title: 'Trocar por recompensas',
-                body: 'Configure aqui em cima quais recompensas o cliente pode trocar (corte grátis, desconto, produto). Você define nome e custo. Cliente acumula pontos como quiser e troca pelo que prefere.',
+                body: 'Configure aqui em cima quais recompensas o cliente pode trocar (serviço grátis, desconto, produto). Você define nome e custo. Cliente acumula pontos como quiser e troca pelo que prefere.',
               },
             ].map((item) => (
               <div key={item.n} className="flex gap-3">
@@ -1428,7 +1428,7 @@ export default function FidelidadeTab({
                   Fale na hora:{' '}
                   <em>
                     &ldquo;Tu pode ganhar pontos avaliando a gente no Google e indicando amigo
-                    pelo link da agenda. Troca por corte grátis depois.&rdquo;
+                    pelo link da agenda. Troca por um serviço grátis depois.&rdquo;
                   </em>{' '}
                   Cliente que conhece o programa indica mais.
                 </p>

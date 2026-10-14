@@ -383,7 +383,7 @@ export default function BloqueiosProfView({
       {doSalao.length > 0 && (
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
-            Do salão
+            Do negócio
           </p>
           <div className="space-y-2">
             {doSalao.map((b) => (

@@ -657,7 +657,7 @@ export default function HorariosTab({
             horários que aparece pro cliente (ex: 30min mostra 09:00, 09:30, 10:00…).
           </p>
           <p>
-            A <strong>duração real</strong> vem do serviço escolhido. Cliente escolhe um corte de
+            A <strong>duração real</strong> vem do serviço escolhido. Cliente escolhe um serviço de
             1h em 9:30 → ocupa 9:30–10:30 → o slot das 10:00 fica indisponível pra outro cliente
             (porque já tá ocupado). O sistema bloqueia sozinho.
           </p>
