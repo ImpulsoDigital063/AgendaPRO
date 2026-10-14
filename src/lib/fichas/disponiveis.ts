@@ -32,6 +32,10 @@ export function fichaVisivelPara(
   return ficha.segments.some((s) => s.toLowerCase() === cat)
 }
 
+/* As exclusivas do negócio vêm primeiro (14/10/2026): são o papel do próprio
+   cliente, a ficha que ele mais abre. No fim de uma lista de 18 ela sumia
+   atrás dos modelos genéricos. Fora isso a ordem segue a do registry. */
 export function fichasDisponiveis(opts: { categoria: string | null; slug: string | null }): NicheFicha[] {
-  return Object.values(NICHE_FICHAS).filter((f) => fichaVisivelPara(f, opts))
+  const visiveis = Object.values(NICHE_FICHAS).filter((f) => fichaVisivelPara(f, opts))
+  return [...visiveis.filter((f) => f.businessSlugs?.length), ...visiveis.filter((f) => !f.businessSlugs?.length)]
 }

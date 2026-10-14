@@ -15,6 +15,8 @@ import { LOBULOPLASTIA_FICHA } from './lobuloplastia'
 import { EVOLUCAO_LIVRE_FICHA } from './evolucao-livre'
 import { USO_DE_IMAGEM_FICHA } from './uso-de-imagem'
 import { CONTRATO_SERVICOS_FICHA } from './contrato-servicos'
+import { WANESSA_ANAMNESE_FEMININA, WANESSA_ANAMNESE_MASCULINA } from './wanessa-anamnese'
+import { WANESSA_PLANO_TRATAMENTO } from './wanessa-plano-tratamento'
 
 /**
  * Registro de todas as fichas de nicho. Pra adicionar um nicho novo: cria a
@@ -45,4 +47,9 @@ export const NICHE_FICHAS: Record<string, NicheFicha> = {
   'evolucao-livre': EVOLUCAO_LIVRE_FICHA,
   'uso-de-imagem': USO_DE_IMAGEM_FICHA,
   'contrato-servicos': CONTRATO_SERVICOS_FICHA,
+  /* Exclusivas da Wanessa Silva Estetica (14/10): o papel dela, por
+     `businessSlugs`. Nenhum outro negocio enxerga. */
+  'wanessa-anamnese-feminina': WANESSA_ANAMNESE_FEMININA,
+  'wanessa-anamnese-masculina': WANESSA_ANAMNESE_MASCULINA,
+  'wanessa-plano-tratamento': WANESSA_PLANO_TRATAMENTO,
 }
