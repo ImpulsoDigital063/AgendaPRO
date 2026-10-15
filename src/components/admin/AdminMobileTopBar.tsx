@@ -186,7 +186,6 @@ export default function AdminMobileTopBar({
         { label: 'QR Code', href: '/admin/configuracoes?tab=qr-code', Icon: IconSettings },
         { label: 'Notificações', href: '/admin/configuracoes?tab=notificacoes', Icon: IconClock },
         { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', Icon: IconTrendingUp },
-        ...(ehGerente ? [] : [{ label: 'Plano', href: '/admin/configuracoes?tab=plano', Icon: IconDollar }]),
         { label: 'Importar', href: '/admin/configuracoes?tab=importar', Icon: IconUser },
       ],
     },
@@ -372,6 +371,21 @@ export default function AdminMobileTopBar({
             </div>
 
             <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--admin-divider)' }}>
+              {/* Plano no rodapé, discreto, igual ao desktop (Eduardo, 15/10): no
+                  meio de Configurações a dona não achava onde pagar a mensalidade. */}
+              {!ehGerente && (
+                <Link
+                  href="/admin/configuracoes?tab=plano"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm"
+                  style={{ color: 'var(--admin-text-mute)', minHeight: 44 }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                  <span>Plano e Pagamento</span>
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={sairDaConta}

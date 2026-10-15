@@ -204,10 +204,19 @@ async function handlePaymentConfirmed(
   // Primeira ativação? (antes do update — o setup_paid_at ainda reflete o estado
   // pré-pagamento). Usado pra destacar "cliente novo" no alerta Telegram.
   const isFirstPayment = !sub.setup_paid_at
-  const baseDate =
-    sub.pago_ate && new Date(sub.pago_ate) > now ? new Date(sub.pago_ate) : now
-  const novoPagoAte = new Date(baseDate)
-  novoPagoAte.setMonth(novoPagoAte.getMonth() + coberturaMeses)
+  /* Renovação conta do VENCIMENTO, não do dia em que pagou (15/10, Studio
+     MOOD): com "base = hoje" quem pagava atrasado empurrava a data — dia 08
+     virou 13, 20, 29 em quatro meses. Só volta pra "hoje" no primeiro
+     pagamento (fim do teste) ou quando o atraso é tão grande que o vencimento
+     + cobertura já passou, senão a dona pagaria e seguiria bloqueada. */
+  const renovaDoVencimento = (() => {
+    if (isFirstPayment || !sub.pago_ate) return null
+    const d = new Date(sub.pago_ate)
+    d.setMonth(d.getMonth() + coberturaMeses)
+    return d > now ? d : null
+  })()
+  const novoPagoAte = renovaDoVencimento ?? new Date(now)
+  if (!renovaDoVencimento) novoPagoAte.setMonth(novoPagoAte.getMonth() + coberturaMeses)
 
   const updatePayload: Record<string, unknown> = {
     status: 'active',
