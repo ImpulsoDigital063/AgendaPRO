@@ -3,13 +3,14 @@ import { createClient } from '@/lib/supabase/server'
 import { fichasDisponiveis } from '@/lib/fichas/disponiveis'
 import { negocioDoPainel } from '@/lib/admin-data'
 import { MARCA_COLS, type FichaRodape } from '@/lib/fichas/marca'
+import { ONDE_OFERECER } from '@/lib/fichas/oferta'
 
 async function getOwnerBusiness(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
   /* slug entra porque a visibilidade agora também pode ser por negócio
      (fichas exclusivas de um cliente) — ver lib/fichas/disponiveis.ts */
-  const { data } = await supabase.from('businesses').select(`id, slug, description, category, enabled_niche_fichas, fichas_oferecer, ${MARCA_COLS}`).eq('id', await negocioDoPainel(user.id)).maybeSingle()
+  const { data } = await supabase.from('businesses').select(`id, slug, description, category, enabled_niche_fichas, fichas_oferecer, fichas_oferecer_onde, ${MARCA_COLS}`).eq('id', await negocioDoPainel(user.id)).maybeSingle()
   return data
 }
 
@@ -23,6 +24,8 @@ export async function GET() {
       .map((nf) => ({ slug: nf.slug, name: nf.name, clientePreenche: Boolean(nf.clientePreenche) })),
     // v159 · fichas oferecidas pra cliente nova (vazio = desligado)
     oferecer: (biz.fichas_oferecer as string[] | null) ?? [],
+    // v160 · onde oferecer: 'link' | 'cadastro' | 'agendamento'
+    oferecerOnde: (biz.fichas_oferecer_onde as string[] | null) ?? [],
     // null = todas ativas (default); array = seleção explícita
     enabled: (biz.enabled_niche_fichas as string[] | null) ?? null,
     /* Marca do PDF, pra prévia do modelo sair com o mesmo cabeçalho do
@@ -43,18 +46,25 @@ export async function POST(request: Request) {
   const biz = await getOwnerBusiness(supabase)
   if (!biz) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const body = await request.json().catch(() => null)
-  /* v159 · { oferecer: string[] } liga/desliga "Oferecer pra cliente nova".
-     Só entra ficha que o negócio enxerga E que a cliente preenche sozinha. */
-  if (body && Array.isArray(body.oferecer)) {
-    const podem = new Set(
-      fichasDisponiveis({ categoria: biz.category ?? biz.description, slug: biz.slug })
-        .filter((f) => f.clientePreenche).map((f) => f.slug),
-    )
-    const oferecer = [...new Set(body.oferecer.filter((s: unknown): s is string => typeof s === 'string' && podem.has(s)))]
-    const { error } = await supabase.from('businesses').update({ fichas_oferecer: oferecer }).eq('id', biz.id)
+  /* "Ficha antes do atendimento" (v159/v160) · { oferecer?: string[],
+     oferecerOnde?: string[] }. `oferecer` = QUAL ficha (só as que o negócio
+     enxerga e a cliente preenche sozinha); `oferecerOnde` = ONDE aparece. */
+  if (body && (Array.isArray(body.oferecer) || Array.isArray(body.oferecerOnde))) {
+    const upd: Record<string, string[]> = {}
+    if (Array.isArray(body.oferecer)) {
+      const podem = new Set(
+        fichasDisponiveis({ categoria: biz.category ?? biz.description, slug: biz.slug })
+          .filter((f) => f.clientePreenche).map((f) => f.slug),
+      )
+      upd.fichas_oferecer = [...new Set(body.oferecer.filter((s: unknown): s is string => typeof s === 'string' && podem.has(s)))] as string[]
+    }
+    if (Array.isArray(body.oferecerOnde)) {
+      upd.fichas_oferecer_onde = [...new Set(body.oferecerOnde.filter((s: unknown): s is string => typeof s === 'string' && (ONDE_OFERECER as string[]).includes(s)))] as string[]
+    }
+    const { error } = await supabase.from('businesses').update(upd).eq('id', biz.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    const { data: depois } = await supabase.from('businesses').select('fichas_oferecer').eq('id', biz.id).maybeSingle()
-    return NextResponse.json({ ok: true, oferecer: depois?.fichas_oferecer ?? [] })
+    const { data: depois } = await supabase.from('businesses').select('fichas_oferecer, fichas_oferecer_onde').eq('id', biz.id).maybeSingle()
+    return NextResponse.json({ ok: true, oferecer: depois?.fichas_oferecer ?? [], oferecerOnde: depois?.fichas_oferecer_onde ?? [] })
   }
   if (!body || !Array.isArray(body.enabled)) return NextResponse.json({ error: 'invalid_body' }, { status: 400 })
   /* Só deixa ligar o que o negócio pode ver. Sem isso, um dono conseguiria

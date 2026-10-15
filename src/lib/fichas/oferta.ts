@@ -4,6 +4,10 @@ import { fichaVisivelPara } from './disponiveis'
 import { gerarToken, hashToken, VALIDADE_DIAS } from './convite'
 import type { NicheFicha } from './types'
 
+/** Onde a ficha é oferecida (v160) — a dona liga cada um em Fichas Modelo. */
+export type OndeOferecer = 'link' | 'cadastro' | 'agendamento'
+export const ONDE_OFERECER: OndeOferecer[] = ['link', 'cadastro', 'agendamento']
+
 /**
  * OFERECER A FICHA PRA CLIENTE (v159, 14/10/2026). Só servidor.
  *
@@ -20,14 +24,16 @@ export async function fichasParaOferecer(
   admin: SupabaseClient,
   businessId: string,
   customerId: string,
+  onde: OndeOferecer,
 ): Promise<NicheFicha[]> {
   const { data: biz } = await admin
     .from('businesses')
-    .select('slug, category, description, enabled_niche_fichas, fichas_oferecer')
+    .select('slug, category, description, enabled_niche_fichas, fichas_oferecer, fichas_oferecer_onde')
     .eq('id', businessId)
     .maybeSingle()
   const oferecer = (biz?.fichas_oferecer as string[] | null) ?? []
-  if (!biz || oferecer.length === 0) return []
+  const lugares = (biz?.fichas_oferecer_onde as string[] | null) ?? []
+  if (!biz || oferecer.length === 0 || !lugares.includes(onde)) return []
   const ligadas = biz.enabled_niche_fichas as string[] | null
   const candidatas = oferecer
     .map((s) => NICHE_FICHAS[s])

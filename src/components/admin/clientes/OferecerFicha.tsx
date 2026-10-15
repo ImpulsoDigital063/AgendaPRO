@@ -16,10 +16,13 @@ import { mandarFichaPraCliente } from '@/lib/fichas/mandar-cliente'
 export default function OferecerFicha({
   customerId,
   temTelefone,
+  onde,
   onPronto,
 }: {
   customerId: string
   temTelefone: boolean
+  /** Qual atalho é este (v160) — a dona liga cada lugar em Fichas Modelo. */
+  onde: 'cadastro' | 'agendamento'
   /** Avisa o pai se há (true) ou não (false) o que oferecer, depois de carregar. */
   onPronto?: (temOferta: boolean) => void
 }) {
@@ -31,7 +34,7 @@ export default function OferecerFicha({
 
   useEffect(() => {
     let vivo = true
-    fetch(`/api/admin/customers/${customerId}/ficha-convite`)
+    fetch(`/api/admin/customers/${customerId}/ficha-convite?onde=${onde}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (!vivo) return

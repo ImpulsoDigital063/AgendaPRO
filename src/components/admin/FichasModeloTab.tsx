@@ -18,6 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { IconPlus, IconTrash, IconPencil, IconCheck, IconClose, IconChevronDown, IconEye, IconUpload } from '@/components/ui/Icon'
 import FichaDedicada from './clientes/FichaDedicada'
@@ -180,7 +181,7 @@ export default function FichasModeloTab() {
   const [formFields, setFormFields] = useState<FieldDef[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [niche, setNiche] = useState<{ available: { slug: string; name: string; clientePreenche?: boolean }[]; enabled: string[] | null; oferecer?: string[]; businessId?: string; marca?: MarcaRow }>({ available: [], enabled: null })
+  const [niche, setNiche] = useState<{ available: { slug: string; name: string; clientePreenche?: boolean }[]; enabled: string[] | null; oferecer?: string[]; oferecerOnde?: string[]; businessId?: string; marca?: MarcaRow }>({ available: [], enabled: null })
   /* Prévia: tocar no nome abre o modelo como a profissional vai ver (e o PDF
      com o cabeçalho do negócio). O selo Ativa/Desativada segue ligando e
      desligando — são dois toques diferentes. */
@@ -220,29 +221,33 @@ export default function FichasModeloTab() {
   function nicheOn(slug: string) { return niche.enabled === null ? true : niche.enabled.includes(slug) }
   /* v159 · "Oferecer pra cliente nova": a ficha aparece na confirmação do
      link público e nos atalhos do cadastro/agendamento. Nasce desligado. */
-  /* Ref com a lista mais recente: dois toques seguidos (Feminina e
-     Masculina) liam o mesmo estado velho e o segundo apagava o primeiro —
-     pego no teste da v159. */
-  const oferecerRef = useRef<string[]>([])
+  /* "FICHA ANTES DO ATENDIMENTO" (v159/v160) · qual ficha e onde oferecer.
+     Refs com a lista mais recente + fila de POST: dois toques seguidos
+     liam o mesmo estado velho e o segundo apagava o primeiro (pego no teste
+     da v159), e um POST velho chegando depois do novo gravaria a lista antiga. */
+  const ofertaRef = useRef<{ oferecer: string[]; oferecerOnde: string[] }>({ oferecer: [], oferecerOnde: [] })
   const filaRef = useRef<Promise<void>>(Promise.resolve())
-  useEffect(() => { oferecerRef.current = niche.oferecer ?? [] }, [niche.oferecer])
-  async function toggleOferecer(slug: string) {
-    const atual = oferecerRef.current
-    const next = atual.includes(slug) ? atual.filter((s) => s !== slug) : [...atual, slug]
-    oferecerRef.current = next
-    setNiche((p) => ({ ...p, oferecer: next }))
-    /* Fila: um POST por vez, na ordem dos toques — senão o pedido velho pode
-       chegar depois do novo e gravar a lista antiga. */
+  useEffect(() => { ofertaRef.current = { oferecer: niche.oferecer ?? [], oferecerOnde: niche.oferecerOnde ?? [] } }, [niche.oferecer, niche.oferecerOnde])
+  async function alternarOferta(campo: 'oferecer' | 'oferecerOnde', valor: string) {
+    const antes = ofertaRef.current
+    const lista = antes[campo]
+    const next = { ...antes, [campo]: lista.includes(valor) ? lista.filter((v) => v !== valor) : [...lista, valor] }
+    ofertaRef.current = next
+    setNiche((p) => ({ ...p, ...next }))
     const envio = filaRef.current.then(() =>
-      fetch('/api/admin/niche-fichas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oferecer: next }) }),
+      fetch('/api/admin/niche-fichas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [campo]: next[campo] }) }),
     )
     filaRef.current = envio.then(() => undefined, () => undefined)
-    const r = await envio
-    const j = await r.json().catch(() => null)
-    /* Só aplica a resposta se nenhum toque mais novo passou na frente. */
-    if (oferecerRef.current !== next) return
-    if (r.ok && Array.isArray(j?.oferecer)) { oferecerRef.current = j.oferecer; setNiche((p) => ({ ...p, oferecer: j.oferecer })) }
-    else { oferecerRef.current = atual; setNiche((p) => ({ ...p, oferecer: atual })) }
+    const r = await envio.catch(() => null)
+    const j = r ? await r.json().catch(() => null) : null
+    if (ofertaRef.current !== next) return // um toque mais novo já passou na frente
+    if (r?.ok && Array.isArray(j?.[campo])) {
+      ofertaRef.current = { ...next, [campo]: j[campo] }
+      setNiche((p) => ({ ...p, [campo]: j[campo] }))
+    } else {
+      ofertaRef.current = antes
+      setNiche((p) => ({ ...p, ...antes }))
+    }
   }
   async function toggleNiche(slug: string) {
     const base = niche.enabled === null ? niche.available.map((a) => a.slug) : [...niche.enabled]
@@ -604,6 +609,91 @@ export default function FichasModeloTab() {
   // ═══════════════════════════════════════════════════════════════════
   return (
     <div className="space-y-4">
+      {/* FICHA ANTES DO ATENDIMENTO (v160, Eduardo 15/10) · a dona decide numa
+          área só QUAL ficha vai pra cliente preencher e ONDE ela aparece. Só
+          lista fichas que a cliente responde sozinha e que estão ativas. */}
+      {(() => {
+        const daCliente = niche.available.filter((f) => f.clientePreenche && nicheOn(f.slug))
+        if (daCliente.length === 0) return null
+        const escolhidas = niche.oferecer ?? []
+        const onde = niche.oferecerOnde ?? []
+        const LUGARES: { id: string; titulo: string; texto: string }[] = [
+          { id: 'link', titulo: 'No link de agendamento', texto: 'Depois de agendar pelo seu link, ela já preenche na tela de confirmação.' },
+          { id: 'cadastro', titulo: 'Ao cadastrar uma cliente', texto: 'Aparece o botão pra mandar pelo WhatsApp logo depois do cadastro.' },
+          { id: 'agendamento', titulo: 'Ao agendar pelo painel', texto: 'Aparece o botão na tela de atendimento criado.' },
+        ]
+        const selo = (ligado: boolean, rotulos: [string, string] = ['Ligado', 'Desligado']) => (
+          <span
+            className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
+            style={{ background: ligado ? 'color-mix(in srgb, var(--admin-accent) 16%, transparent)' : 'transparent', color: ligado ? 'var(--admin-accent)' : 'var(--admin-text-mute)', border: ligado ? 'none' : '1px solid var(--admin-border)' }}
+          >
+            {ligado ? rotulos[0] : rotulos[1]}
+          </span>
+        )
+        return (
+          <div className="rounded-2xl p-4" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
+            <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Ficha antes do atendimento</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
+              A cliente preenche e assina pelo celular antes de chegar, e você recebe um aviso quando ela terminar.
+            </p>
+
+            <p className="text-[11px] font-bold uppercase tracking-wider mt-4 mb-2" style={{ color: 'var(--admin-text-faded)' }}>Qual ficha enviar</p>
+            <div className="space-y-2">
+              {daCliente.map((f) => {
+                const marcada = escolhidas.includes(f.slug)
+                return (
+                  <button
+                    key={f.slug}
+                    type="button"
+                    onClick={() => alternarOferta('oferecer', f.slug)}
+                    aria-pressed={marcada}
+                    className="w-full flex items-center justify-between gap-2 p-3 rounded-xl text-left"
+                    style={{ background: 'var(--admin-surface-hi)', border: `1px solid ${marcada ? 'var(--admin-accent)' : 'var(--admin-border)'}` }}
+                  >
+                    <span className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>{f.name}</span>
+                    {selo(marcada, ['Envia', 'Não envia'])}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+              {escolhidas.length > 1 ? 'Com mais de uma marcada, a cliente escolhe a dela.' : 'Marque mais de uma se quiser que a cliente escolha (ex.: feminina ou masculina).'}
+            </p>
+
+            <p className="text-[11px] font-bold uppercase tracking-wider mt-4 mb-2" style={{ color: 'var(--admin-text-faded)' }}>Onde oferecer</p>
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--admin-border)', opacity: escolhidas.length ? 1 : 0.55 }}>
+              {LUGARES.map((l, i) => {
+                const ligado = escolhidas.length > 0 && onde.includes(l.id)
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => alternarOferta('oferecerOnde', l.id)}
+                    disabled={escolhidas.length === 0}
+                    aria-pressed={ligado}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left disabled:cursor-not-allowed"
+                    style={{ background: 'var(--admin-surface-hi)', borderTop: i ? '1px solid var(--admin-border)' : 'none' }}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>{l.titulo}</span>
+                      <span className="block text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>{l.texto}</span>
+                    </span>
+                    {selo(ligado)}
+                  </button>
+                )
+              })}
+            </div>
+            {escolhidas.length === 0 && (
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>Escolha a ficha acima pra ligar.</p>
+            )}
+
+            <Link href="/admin/avisos-manuais" className="inline-block text-xs font-semibold mt-4 underline" style={{ color: 'var(--admin-accent)' }}>
+              Mudar o texto que vai no WhatsApp
+            </Link>
+          </div>
+        )
+      })()}
+
       {niche.businessId && (
         <div className="rounded-2xl p-4" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
           <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Logo no cabeçalho das fichas</p>
@@ -716,29 +806,6 @@ export default function FichasModeloTab() {
                     {on ? 'Ativa' : 'Desativada'}
                   </button>
                 </div>
-                {nf.clientePreenche && on && (() => {
-                  const oferece = (niche.oferecer ?? []).includes(nf.slug)
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => toggleOferecer(nf.slug)}
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
-                      style={{ borderTop: '1px solid var(--admin-border)' }}
-                      aria-pressed={oferece}
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-xs font-semibold" style={{ color: 'var(--admin-text)' }}>Oferecer pra cliente nova</span>
-                        <span className="block text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>Aparece quando ela agenda pelo link e ao cadastrar ou agendar pelo painel</span>
-                      </span>
-                      <span
-                        className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
-                        style={{ background: oferece ? 'color-mix(in srgb, var(--admin-accent) 16%, transparent)' : 'transparent', color: oferece ? 'var(--admin-accent)' : 'var(--admin-text-mute)', border: oferece ? 'none' : '1px solid var(--admin-border)' }}
-                      >
-                        {oferece ? 'Ligado' : 'Desligado'}
-                      </span>
-                    </button>
-                  )
-                })()}
                 </div>
               )
             })}

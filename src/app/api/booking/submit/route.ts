@@ -656,7 +656,7 @@ export async function POST(req: NextRequest) {
   const fichas: { nome: string; url: string }[] = []
   if (customerId) {
     try {
-      const ofertas = await fichasParaOferecer(db, businessId, customerId)
+      const ofertas = await fichasParaOferecer(db, businessId, customerId, 'link')
       const grupo = ofertas.length > 1 ? crypto.randomUUID() : null
       for (const f of ofertas) {
         const r = await criarConvite(db, { businessId, customerId, nicheSlug: f.slug, criadoPor: null, origem: 'agendamento', grupo, baseUrl })

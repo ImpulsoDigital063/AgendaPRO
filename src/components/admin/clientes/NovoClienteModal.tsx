@@ -197,6 +197,7 @@ export default function NovoClienteModal({ onClose, onSuccess }: Props) {
           <OferecerFicha
             customerId={criada.id}
             temTelefone={criada.temTelefone}
+            onde="cadastro"
             onPronto={(tem) => { if (!tem) onSuccess(criada.id) }}
           />
           <button

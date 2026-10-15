@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { fichaVisivelPara } from '@/lib/fichas/disponiveis'
-import { criarConvite, fichasParaOferecer } from '@/lib/fichas/oferta'
+import { criarConvite, fichasParaOferecer, ONDE_OFERECER, type OndeOferecer } from '@/lib/fichas/oferta'
 import { negocioDoPainel } from '@/lib/admin-data'
 import { textoFichaCliente } from '@/lib/textos-manuais'
 import { telefoneCanonico } from '@/lib/phone-variants'
@@ -70,7 +70,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 }
 
 // GET → convites ainda abertos dessa cliente (pra tela mostrar "aguardando")
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
@@ -90,7 +90,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .is('cancelado_em', null)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false }),
-    fichasParaOferecer(admin, businessId, customerId),
+    /* ?onde=cadastro|agendamento (v160): cada atalho só oferece se a dona
+       ligou aquele lugar. Sem `onde` (aba Fichas), não oferece nada. */
+    (() => {
+      const onde = new URL(request.url).searchParams.get('onde') as OndeOferecer | null
+      return onde && ONDE_OFERECER.includes(onde) ? fichasParaOferecer(admin, businessId, customerId, onde) : Promise.resolve([])
+    })(),
   ])
   /* `oferecer` (v159): o que os atalhos do painel (cadastro e agendamento)
      mostram — fichas que o negócio oferece e a cliente ainda não respondeu. */

@@ -1518,6 +1518,7 @@ export default function AgendarModal({
                 <OferecerFicha
                   customerId={(createdCustomerId ?? cliente?.id) as string}
                   temTelefone={Boolean((cliente?.phone ?? '').replace(/\D/g, ''))}
+                  onde="agendamento"
                 />
               </div>
             )}
