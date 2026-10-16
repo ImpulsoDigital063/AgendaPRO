@@ -131,6 +131,7 @@ const CONFIG: Record<Chave, Config> = {
       { token: '{negocio}', label: 'Nome do negócio' },
       { token: '{ficha}', label: 'Nome da ficha' },
       { token: '{link}', label: 'Link da ficha' },
+      { token: '{atendimento}', label: 'Horário (quando sai do agendamento)' },
     ],
     previa: (texto, c) =>
       textoFichaCliente(texto, {
@@ -138,6 +139,7 @@ const CONFIG: Record<Chave, Config> = {
         negocio: c.negocio || 'Seu Negócio',
         ficha: 'Anamnese',
         link: 'agendapro.net.br/ficha/…',
+        atendimento: 'Seu horário de Limpeza de pele está marcado pra sexta, 16/10, às 09:00.',
       }),
   },
 }

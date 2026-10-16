@@ -76,7 +76,7 @@ export default function FichaClienteView({ token, estado, dados, marca }: Props)
         true,
         marca?.whatsapp ? { href: marca.whatsapp, rotulo: 'Pedir um novo link' } : null,
       )}
-      {estado === 'usado' && aviso('Ficha já enviada', 'Essa ficha já foi preenchida e assinada. Obrigada!', true)}
+      {estado === 'usado' && aviso('Ficha já enviada', 'Essa ficha já foi preenchida e assinada.', true)}
 
       {estado === 'ok' && dados && ficha && (
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
@@ -94,7 +94,7 @@ export default function FichaClienteView({ token, estado, dados, marca }: Props)
           </header>
 
           {enviada ? (
-            aviso('Ficha enviada!', `Obrigada${dados.primeiroNome ? `, ${dados.primeiroNome}` : ''}. ${dados.negocio || 'A clínica'} já recebeu suas respostas.`)
+            aviso('Ficha enviada!', `Tudo certo${dados.primeiroNome ? `, ${dados.primeiroNome}` : ''}! ${dados.negocio || 'A clínica'} já recebeu suas respostas.`)
           ) : (
             <div className="rounded-2xl p-4 sm:p-6" style={{ background: '#fff', border: '1px solid #E2E8F0' }}>
               <FichaDedicada

@@ -48,22 +48,52 @@ export function textoChamarSumido(
    validade no texto — é atrito; quem abrir depois de 7 dias vê a página de
    "peça um novo link". */
 export const DEFAULT_FICHA_TEMPLATE =
-  'Oi {nome}, tudo bem? Aqui é {negocio}.\n\n' +
+  'Oi, {nome}! Tudo bem? Aqui é da {negocio}.{atendimento}\n\n' +
   'Pra deixar tudo pronto pro seu atendimento, preencha sua ficha por este link. ' +
   'Leva poucos minutos e você assina pelo próprio celular:\n\n' +
   '{link}\n\n' +
   'Qualquer dúvida, é só me chamar por aqui.'
 
-/** Preenche o texto da ficha. Se a dona apagar o {link} do texto, o link vai no fim mesmo assim. */
+/** Primeiro nome com a inicial maiúscula: cadastro "edu" sai "Edu" (16/10). */
+export function primeiroNome(nome: string | null | undefined): string {
+  const p = (nome ?? '').trim().split(/\s+/)[0] ?? ''
+  return p ? p.charAt(0).toLocaleUpperCase('pt-BR') + p.slice(1) : ''
+}
+
+/* "Aqui é da {negocio}" vira "do" quando o nome começa por palavra masculina
+   (Studio, Espaço, Salão…), pra não sair "da Studio Marcela" (16/10). */
+const MASCULINOS = ['studio', 'estúdio', 'estudio', 'espaço', 'espaco', 'instituto', 'salão', 'salao', 'centro', 'ateliê', 'atelie', 'atelier', 'consultório', 'consultorio', 'spa', 'núcleo', 'nucleo', 'empório', 'emporio', 'clube', 'lounge']
+function ajustaArtigo(t: string, negocio: string): string {
+  const primeira = negocio.trim().split(/\s+/)[0]?.toLocaleLowerCase('pt-BR') ?? ''
+  if (!MASCULINOS.includes(primeira)) return t
+  return t.replace(/\b([Dd])a \{negocio\}/g, (_, d: string) => `${d}o {negocio}`)
+}
+
+/**
+ * Preenche o texto da ficha. {atendimento} vira " Seu horário de X está
+ * marcado pra sexta, 16/10, às 09:00." quando a ficha sai da tela do
+ * agendamento, e some nos outros lugares. Se a dona apagar o {link} do texto,
+ * o link vai no fim mesmo assim.
+ */
 export function textoFichaCliente(
   modelo: string | null | undefined,
-  vars: { nome: string; negocio: string; ficha: string; link: string },
+  vars: { nome: string; negocio: string; ficha: string; link: string; atendimento?: string },
 ): string {
-  let t = (modelo?.trim() || DEFAULT_FICHA_TEMPLATE)
-    .replace(/\{nome\}/g, vars.nome.trim().split(/\s+/)[0] || vars.nome)
+  let t = ajustaArtigo(modelo?.trim() || DEFAULT_FICHA_TEMPLATE, vars.negocio)
+    .replace(/\{nome\}/g, primeiroNome(vars.nome) || vars.nome)
     .replace(/\{negocio\}/g, vars.negocio)
     .replace(/\{ficha\}/g, vars.ficha)
+    .replace(/\{atendimento\}/g, vars.atendimento ? ` ${vars.atendimento}` : '')
   if (t.includes('{link}')) t = t.replace(/\{link\}/g, vars.link)
   else t = `${t}\n\n${vars.link}`
   return t
+}
+
+const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+/** "Seu horário de Lipoenzimática está marcado pra sexta, 16/10, às 09:00." */
+export function fraseAtendimento(a: { servico?: string | null; data: string; hora: string }): string {
+  const [y, m, d] = a.data.split('-').map(Number)
+  const dia = DIAS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]
+  const quando = `${dia}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}, às ${a.hora.slice(0, 5)}`
+  return a.servico ? `Seu horário de ${a.servico} está marcado pra ${quando}.` : `Seu horário está marcado pra ${quando}.`
 }

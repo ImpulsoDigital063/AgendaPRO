@@ -5,7 +5,7 @@ import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { fichaVisivelPara } from '@/lib/fichas/disponiveis'
 import { criarConvite, fichasParaOferecer, ONDE_OFERECER, type OndeOferecer } from '@/lib/fichas/oferta'
 import { negocioDoPainel } from '@/lib/admin-data'
-import { textoFichaCliente } from '@/lib/textos-manuais'
+import { textoFichaCliente, fraseAtendimento } from '@/lib/textos-manuais'
 import { telefoneCanonico } from '@/lib/phone-variants'
 
 /* LINK PRA CLIENTE PREENCHER A FICHA (v157). Quem gera: dono, recepção ou
@@ -25,7 +25,7 @@ function getAdmin() {
   return createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
 }
 
-// POST { nicheSlug } → { url, expiresAt }
+// POST { nicheSlug, appointmentId? } → { url, expiresAt }
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -48,6 +48,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { data: cust } = await admin.from('customers').select('id, business_id, name, phone').eq('id', customerId).maybeSingle()
   if (!cust || cust.business_id !== businessId) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
+  /* Mandou de novo a mesma ficha: o link anterior morre (16/10). Senão ficam
+     vários links valendo e a cliente pode preencher duas vezes. */
+  await admin.from('ficha_convites').update({ cancelado_em: new Date().toISOString() })
+    .eq('business_id', businessId).eq('customer_id', customerId).eq('niche_slug', nicheSlug)
+    .is('used_at', null).is('cancelado_em', null)
+
+  /* Saiu da tela do agendamento: a mensagem já diz o horário (16/10), e a dona
+     não precisa mandar o lembrete separado. */
+  let atendimento: string | undefined
+  const appointmentId = typeof body?.appointmentId === 'string' ? body.appointmentId : ''
+  if (appointmentId) {
+    const { data: ap } = await admin.from('appointments').select('business_id, customer_id, appointment_date, start_time, service_name')
+      .eq('id', appointmentId).maybeSingle()
+    if (ap && ap.business_id === businessId && ap.customer_id === customerId && ap.appointment_date && ap.start_time) {
+      atendimento = fraseAtendimento({ servico: ap.service_name, data: ap.appointment_date, hora: ap.start_time })
+    }
+  }
+
   const criado = await criarConvite(admin, {
     businessId, customerId, nicheSlug, criadoPor: user.id, origem: 'painel', baseUrl: new URL(request.url).origin,
   })
@@ -61,6 +79,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     negocio: biz?.name ?? '',
     ficha: ficha.name,
     link: url,
+    atendimento,
   })
   /* Link do WhatsApp montado aqui também (v159): os três lugares que mandam
      a ficha (aba Fichas, cadastro, agendamento) só abrem o que vem pronto. */

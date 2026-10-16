@@ -11,14 +11,14 @@
 export async function mandarFichaPraCliente(
   customerId: string,
   nicheSlug: string,
-  opts: { temTelefone: boolean },
+  opts: { temTelefone: boolean; appointmentId?: string | null },
 ): Promise<{ ok: true; semTelefone?: string } | { ok: false }> {
   const aba = opts.temTelefone ? window.open('', '_blank') : null
   try {
     const r = await fetch(`/api/admin/customers/${customerId}/ficha-convite`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nicheSlug }),
+      body: JSON.stringify({ nicheSlug, appointmentId: opts.appointmentId ?? undefined }),
     })
     const j = await r.json().catch(() => null)
     if (!r.ok || !j?.url) { aba?.close(); return { ok: false } }

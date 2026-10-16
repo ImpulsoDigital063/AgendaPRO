@@ -5,6 +5,7 @@ import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { hashToken, tokenValido } from '@/lib/fichas/convite'
 import FichaClienteView from './FichaClienteView'
 import { telefoneCanonico } from '@/lib/phone-variants'
+import { primeiroNome } from '@/lib/textos-manuais'
 
 /* PÁGINA PÚBLICA (v157) · a cliente abre o link do WhatsApp e preenche a
    ficha no celular. Mostra o MÍNIMO: logo e nome da clínica, primeiro nome
@@ -58,7 +59,7 @@ const carregar = cache(async (token: string): Promise<{ estado: Estado; dados: D
     logo,
     dados: {
       slug: conv.niche_slug,
-      primeiroNome: (cust?.name ?? '').trim().split(/\s+/)[0] ?? '',
+      primeiroNome: primeiroNome(cust?.name),
       negocio: negocio ?? '',
       logo,
       cor: biz?.brand_primary ?? null,

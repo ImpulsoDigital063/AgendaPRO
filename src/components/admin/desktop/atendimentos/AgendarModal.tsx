@@ -1519,6 +1519,7 @@ export default function AgendarModal({
                   customerId={(createdCustomerId ?? cliente?.id) as string}
                   temTelefone={Boolean((cliente?.phone ?? '').replace(/\D/g, ''))}
                   onde="agendamento"
+                  appointmentId={createdId}
                 />
               </div>
             )}

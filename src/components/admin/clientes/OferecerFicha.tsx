@@ -18,6 +18,7 @@ export default function OferecerFicha({
   temTelefone,
   onde,
   onPronto,
+  appointmentId,
 }: {
   customerId: string
   temTelefone: boolean
@@ -25,6 +26,8 @@ export default function OferecerFicha({
   onde: 'cadastro' | 'agendamento'
   /** Avisa o pai se há (true) ou não (false) o que oferecer, depois de carregar. */
   onPronto?: (temOferta: boolean) => void
+  /** Atendimento recém-criado: a mensagem já sai com o horário. */
+  appointmentId?: string | null
 }) {
   const [oferta, setOferta] = useState<{ slug: string; name: string }[] | null>(null)
   const [enviando, setEnviando] = useState<string | null>(null)
@@ -54,7 +57,7 @@ export default function OferecerFicha({
   async function mandar(slug: string, nome: string) {
     setErro(false)
     setEnviando(slug)
-    const r = await mandarFichaPraCliente(customerId, slug, { temTelefone })
+    const r = await mandarFichaPraCliente(customerId, slug, { temTelefone, appointmentId })
     setEnviando(null)
     if (!r.ok) { setErro(true); return }
     if (r.semTelefone) setSemTelefone(r.semTelefone)

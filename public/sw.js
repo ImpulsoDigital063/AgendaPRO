@@ -79,7 +79,8 @@
 // v145 (02/10): painel Dia personalizado — linha de profissionais nao corta e campo de data com dica.
 // v146 (02/10): Horarios celular — 'todo domingo', 'os outros sabados' (genero certo).
 // v176 (16/10): cartao da ficha sem 'ela' (serve pra homem) + presets de esmalteria so pra Nail designer.
-const STATIC_CACHE_VERSION = 'agendapro-static-v176'
+// v177 (16/10): texto da ficha no WhatsApp com nome maiusculo, do/da, horario do atendimento + link anterior cancelado.
+const STATIC_CACHE_VERSION = 'agendapro-static-v177'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
