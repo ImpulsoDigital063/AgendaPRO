@@ -10,6 +10,19 @@ import { PADRAO, type TipoMensagem } from '@/lib/mensagens/tipos'
 import { credencialDoSistema } from '@/lib/mensagens/canal-cloud'
 import { unidadesDaFranquia } from '@/lib/mensagens/templates-cloud'
 import { consumoDoMes } from '@/lib/mensagens/franquia'
+import { ehModoBotao } from '@/lib/mensagens/botao-confirmar'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+
+/* `businesses` com o cliente do usuário: a recepção passa no
+   resolveBusinessIdOperacao mas não tem policy de UPDATE no negócio — a
+   gravação voltaria vazia, sem erro. O acesso já foi checado antes. */
+function admin() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+}
 
 /* Só os gatilhos que a varredura JÁ executa. Mostrar interruptor de coisa
    não implementada é prometer na tela o que o motor não faz — o dono liga,
@@ -45,11 +58,12 @@ export async function GET() {
 
      Movimento real dos últimos 90 dias, não média de mercado. */
   const de = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10)
-  const [{ count: atend90 }, { count: clientes }, consumo] = await Promise.all([
+  const [{ count: atend90 }, { count: clientes }, consumo, { data: neg }] = await Promise.all([
     supabase.from('appointments').select('id', { count: 'exact', head: true })
       .eq('business_id', businessId).gte('appointment_date', de),
     supabase.from('customers').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
     consumoDoMes(supabase, businessId).catch(() => null),
+    admin().from('businesses').select('botao_confirmar').eq('id', businessId).maybeSingle(),
   ])
   const atendimentosMes = Math.round((atend90 ?? 0) / 3)
   /* Aniversário e retorno são por CLIENTE, não por atendimento: espalham no
@@ -71,6 +85,11 @@ export async function GET() {
        manda nada. Deixar ela descobrir sozinha depois de uma semana é o
        jeito mais rápido de queimar a confiança na funcionalidade. */
     canal_ligado: credencialDoSistema() !== null,
+    /* Quantas vezes o "Confirmar presença" vai (v162). Vale pro negócio
+       inteiro, não por aviso: "só na primeira" é uma regra ENTRE os avisos. */
+    modoBotao: ehModoBotao((neg as { botao_confirmar?: unknown } | null)?.botao_confirmar)
+      ? (neg as { botao_confirmar: string }).botao_confirmar
+      : 'sempre',
     regras: DISPONIVEIS.map((tipo) => {
       const r = porTipo.get(tipo)
       return {
@@ -100,6 +119,31 @@ export async function PUT(req: NextRequest) {
   if (!businessId) return NextResponse.json({ error: 'sem_acesso' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
+
+  /* ── Botão de confirmar: escolha do negócio, não de um aviso ── */
+  if (body?.modoBotao !== undefined) {
+    if (!ehModoBotao(body.modoBotao)) {
+      return NextResponse.json({ error: 'modo_invalido' }, { status: 400 })
+    }
+    const db = admin()
+    const { error } = await db
+      .from('businesses')
+      .update({ botao_confirmar: body.modoBotao })
+      .eq('id', businessId)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    /* Lê de volta: a tela só mostra "salvo" com o que está no banco. */
+    const { data: lido } = await db
+      .from('businesses')
+      .select('botao_confirmar')
+      .eq('id', businessId)
+      .maybeSingle()
+    const gravado = (lido as { botao_confirmar?: string } | null)?.botao_confirmar
+    if (gravado !== body.modoBotao) {
+      return NextResponse.json({ error: 'nao_gravou' }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true, modoBotao: gravado })
+  }
+
   const tipo = body?.tipo as TipoMensagem
   if (!DISPONIVEIS.includes(tipo)) {
     return NextResponse.json({ error: 'tipo_invalido' }, { status: 400 })
@@ -114,13 +158,29 @@ export async function PUT(req: NextRequest) {
   const offset = Number(body?.offsetMinutos)
   const hora = typeof body?.horaDoDia === 'string' ? body.horaDoDia.slice(0, 5) : null
 
+  /* 🔴 GRAVA SÓ O QUE VEIO (16/10/2026). A tela manda um campo por vez —
+     `{ enabled }` no interruptor, `{ offsetMinutos }` no horário. A versão
+     anterior montava a linha inteira a partir do corpo, então mudar o
+     horário do lembrete do dia gravava `enabled: false` (o campo não veio)
+     e DESLIGAVA o aviso; ligar/desligar zerava o horário escolhido. Agora
+     o que não veio fica como está no banco. */
+  const { data: atual } = await supabase
+    .from('message_rules')
+    .select('enabled, offset_minutos, hora_do_dia')
+    .eq('business_id', businessId)
+    .eq('tipo', tipo)
+    .maybeSingle()
+
   const { error } = await supabase.from('message_rules').upsert(
     {
       business_id: businessId,
       tipo,
-      enabled: body?.enabled === true,
-      offset_minutos: Number.isFinite(offset) ? offset : PADRAO[tipo].offsetMinutos,
-      hora_do_dia: hora && /^\d{2}:\d{2}$/.test(hora) ? hora : PADRAO[tipo].horaDoDia,
+      enabled: typeof body?.enabled === 'boolean' ? body.enabled : atual?.enabled === true,
+      offset_minutos: Number.isFinite(offset)
+        ? offset
+        : (atual?.offset_minutos ?? PADRAO[tipo].offsetMinutos),
+      hora_do_dia:
+        hora && /^\d{2}:\d{2}$/.test(hora) ? hora : (atual?.hora_do_dia ?? PADRAO[tipo].horaDoDia),
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'business_id,tipo' },

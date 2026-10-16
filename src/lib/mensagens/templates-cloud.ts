@@ -47,6 +47,10 @@ export type DefTemplate = {
    *  sem este bloco, o botão de pagar some e o link morre. */
   botoesMeta?: Record<string, unknown>[]
   botoes?: string[]
+  /** Gêmeo aprovado SEM botões — mesmo corpo, byte a byte (conferido na
+   *  Meta em 16/10). É o que sai quando o negócio escolheu não pedir a
+   *  confirmação de novo (v162, `botao-confirmar.ts`). */
+  semBotao?: string
 }
 
 /* Param vazio faz a Meta recusar a mensagem inteira (131008). Um traço
@@ -109,6 +113,7 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
     categoria: 'UTILITY',
     params: (v) => [nome(v.cliente), t(v.salao), t(v.data), t(v.hora), servicoCom(v), fone(v)],
     botoes: ['confirmar', 'remarcar'],
+    semBotao: 'agendapro_confirmacao_v2',
   },
   /* ── SINAL PENDENTE ───────────────────────────────────────────
      Submetido em 01/09 e ACEITO com os dois tipos de botão no mesmo
@@ -164,7 +169,9 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
      01/09 e aprovado em 02/09, mas saiu SEM os botões — corpo idêntico, dois
      QUICK_REPLY a menos. Trocar seria downgrade: perderia o "Confirmar
      presença" E a abertura da janela de 24h que ele traz. O mesmo vale pro
-     `agendapro_lembrete_dia_v2`. Os dois ficam órfãos na conta de propósito. */
+     `agendapro_lembrete_dia_v2`. Desde a v162 os dois (e o
+     `agendapro_confirmacao_v2`) voltaram a ter uso: são o `semBotao`, o que
+     sai quando o negócio escolheu não pedir a confirmação de novo. */
   lembrete_vespera: {
     nome: 'agendapro_lembrete_vespera',
     campos: ['nome da cliente', 'nome do seu negócio', 'data', 'horário', 'serviço', 'seu telefone'],
@@ -174,6 +181,7 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
     categoria: 'UTILITY',
     params: (v) => [nome(v.cliente), t(v.salao), t(v.data), t(v.hora), servicoCom(v), fone(v)],
     botoes: ['confirmar', 'remarcar'],
+    semBotao: 'agendapro_lembrete_vespera_v2',
   },
   lembrete_dia: {
     nome: 'agendapro_lembrete_dia',
@@ -184,6 +192,7 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
     categoria: 'UTILITY',
     params: (v) => [nome(v.cliente), t(v.salao), t(v.hora), servicoCom(v), fone(v)],
     botoes: ['confirmar', 'remarcar'],
+    semBotao: 'agendapro_lembrete_dia_v2',
   },
   aniversario: {
     nome: 'agendapro_aniversario',

@@ -19,7 +19,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { PADRAO, DESTINATARIO, EH_PROMOCIONAL, type Regra, type TipoMensagem } from './tipos'
 import { type Variaveis } from './textos'
 import { credencialDoSistema, enviarTemplate, normalizarTelefone } from './canal-cloud'
-import { resolverTemplate, payloadsDosBotoes, botoesDoTipo, unidadesDaFranquia } from './templates-cloud'
+import { TEMPLATES, resolverTemplate, payloadsDosBotoes, botoesDoTipo, unidadesDaFranquia } from './templates-cloud'
+import { decidirBotao } from './botao-confirmar'
 import { podeEnviar } from './franquia'
 
 
@@ -360,12 +361,27 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
       return { status: 'ignorado', motivo: 'sem_template_aprovado' }
     }
 
+    /* BOTÃO DE CONFIRMAR (v162) — quantas vezes é escolha do negócio.
+       Sem botão, sai o gêmeo aprovado sem botões; omitir só o payload deixava
+       o botão na tela dela, solto (o defeito do `com_botao` da v127).
+
+       Texto próprio da dona (template dela aprovado) não tem gêmeo: o botão
+       aparece de qualquer jeito, então o payload vai junto pra que o toque
+       continue apontando pro horário certo. */
+    const comBotao = await decidirBotao(db, {
+      businessId: p.businessId,
+      tipo: p.tipo,
+      appointmentId: p.appointmentId,
+      chave: p.chave,
+    })
+    const textoProprio = def.nome !== TEMPLATES[p.tipo]?.nome
+    const tiraBotao = !comBotao && !!def.semBotao && !textoProprio
+
     const r = await enviarTemplate(credCloud, tel, {
-      nome: def.nome,
+      nome: tiraBotao ? def.semBotao! : def.nome,
       idioma: def.idioma,
       params: def.params(p.variaveis),
-      payloadsBotoes:
-        regra.comBotao === false ? undefined : payloadsDosBotoes(p.tipo, p.appointmentId),
+      payloadsBotoes: tiraBotao ? undefined : payloadsDosBotoes(p.tipo, p.appointmentId),
       /* Tem precedência sobre `payloadsBotoes` quando existe. O sinal é o
          único tipo que mistura link com resposta rápida — o índice de cada
          botão depende dos dois tipos juntos, então não dá pra derivar de
@@ -377,6 +393,12 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
       /* 'enviado' aqui segue significando "a Meta aceitou". Quem vai gravar
          entrega de verdade é o webhook de status (sent/delivered/read). */
       await concluir('enviado', 'whatsapp', tel, undefined, r.providerId)
+      /* Marca SÓ depois de a Meta aceitar: o modo 'primeira' conta quantos
+         avisos deste horário já saíram com botão, e um envio que falhou não
+         pediu nada a ninguém. */
+      if (def.botoes) {
+        await db.from('message_log').update({ com_botao: !tiraBotao }).eq('chave', p.chave)
+      }
       return { status: 'enviado', canal: 'whatsapp' }
     }
     if (p.enviarEmail && p.destino.email) {

@@ -16,6 +16,22 @@ import { useState } from 'react'
 import TourAvisos from './TourAvisos'
 import type { TermoPessoa } from '@/lib/segmento'
 import { Chip } from './ui'
+import type { ModoBotao } from '@/lib/mensagens/botao-confirmar'
+
+const ROTULO_MODO: Record<ModoBotao, string> = {
+  primeira: 'só na primeira mensagem.',
+  ate_confirmar: 'até confirmar.',
+  sempre: 'em todos os avisos.',
+  nao: 'não vai.',
+}
+
+/** A prévia mostra o caso comum: no modo "primeira", quem leva o botão é a
+ *  confirmação, que é o primeiro aviso de quase todo horário. */
+function mostraBotao(modo: ModoBotao, tipo: string): boolean {
+  if (modo === 'nao') return false
+  if (modo === 'primeira') return tipo === 'confirmacao'
+  return true
+}
 import TelaWhatsApp from './TelaWhatsApp'
 
 export type Aviso = {
@@ -24,7 +40,6 @@ export type Aviso = {
   porque: string
   quando: string
   enabled: boolean
-  comBotao: boolean
   temBotao: boolean
   offsetMinutos: number
   previa: string
@@ -53,7 +68,7 @@ export default function AvisoDetalhe({
   T,
   aviso,
   numeroCanal,
-  onBotao,
+  modoBotao,
   onHorario,
   onEnviarTexto,
   categoria = null,
@@ -65,7 +80,8 @@ export default function AvisoDetalhe({
   aviso: Aviso
   /** Numero oficial de onde o aviso sai. NAO e o do salao. */
   numeroCanal: string
-  onBotao: (v: boolean) => void
+  /** Quantas vezes o "Confirmar presença" vai — escolha do negócio (v162). */
+  modoBotao: ModoBotao
   onHorario: (horas: number) => void
   onEnviarTexto: (corpo: string) => Promise<string[] | null>
   /** Pro tour de edição falar de "cliente", "paciente"... */
@@ -127,7 +143,9 @@ export default function AvisoDetalhe({
             avatar="/agendapro-icon.svg"
             texto={aviso.previa}
             botoes={
-              aviso.temBotao && aviso.comBotao ? ['Confirmar presença', 'Preciso remarcar'] : undefined
+              aviso.temBotao && mostraBotao(modoBotao, aviso.tipo)
+                ? ['Confirmar presença', 'Preciso remarcar']
+                : undefined
             }
           />
           <p className="text-[11px] mt-2 leading-relaxed max-w-sm" style={{ color: 'var(--admin-text-faded)' }}>
@@ -254,23 +272,17 @@ export default function AvisoDetalhe({
         <div
           className="admin-card mt-5 px-4 py-3.5 space-y-3"
         >
+          {/* Era uma caixinha "deixar confirmar pelo botão" — desmarcada, o
+              botão continuava na mensagem (v127). Virou escolha do negócio,
+              na tela de avisos, porque "só na primeira" é regra ENTRE eles. */}
           {aviso.temBotao && (
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={aviso.comBotao}
-                onChange={(e) => onBotao(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span className="text-[13px] leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-                <strong style={{ color: 'var(--admin-text)' }}>
-                  {`Deixar ${T.art} ${T.s} confirmar pelo botão`}
-                </strong>
-                <span className="block text-[11px] mt-0.5">
-                  {`${T.pron.charAt(0).toUpperCase()}${T.pron.slice(1)} toca em "Confirmar presença" e o horário é confirmado sozinho.`}
-                </span>
+            <p className="text-[13px] leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+              <strong style={{ color: 'var(--admin-text)' }}>Botão de confirmar: </strong>
+              {ROTULO_MODO[modoBotao]}
+              <span className="block text-[11px] mt-0.5">
+                Muda em Avisos automáticos, logo abaixo da lista. Vale pra todos os avisos.
               </span>
-            </label>
+            </p>
           )}
 
           {aviso.tipo === 'lembrete_dia' && (

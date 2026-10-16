@@ -69,6 +69,8 @@ import Conversas, { type Conversa } from './Conversas'
 import QuandoSaiCada from './QuandoSaiCada'
 import TourAvisos from './TourAvisos'
 import PerguntasAvisos from './PerguntasAvisos'
+import BotaoConfirmar from './BotaoConfirmar'
+import { ehModoBotao, type ModoBotao } from '@/lib/mensagens/botao-confirmar'
 
 type Canal = {
   configurado: boolean
@@ -250,6 +252,7 @@ export default function WhatsAppPainel({
     | { tela: 'recarga' }
   >({ tela: 'inicio' })
   const [salvando, setSalvando] = useState(false)
+  const [modoBotao, setModoBotao] = useState<ModoBotao>('sempre')
   const [erroCompra, setErroCompra] = useState<string | null>(null)
   /* Vira true quando o Asaas nao conhece esse negocio ainda. A rota
      responde `needs_customer_data` e a tela abre os dois campos. */
@@ -303,6 +306,7 @@ export default function WhatsAppPainel({
       fetch('/api/admin/mensagens/regras').then((r) => r.json()).catch(() => null),
       fetch('/api/admin/mensagens/templates').then((r) => r.json()).catch(() => null),
     ]).then(([reg, tpl]) => {
+      if (ehModoBotao(reg?.modoBotao)) setModoBotao(reg.modoBotao)
       const ex = (tpl as { exemplo?: { cliente?: string } } | null)?.exemplo?.cliente
       if (ex) setClienteExemplo(ex)
       const textos = new Map<string, Record<string, unknown>>(
@@ -323,8 +327,7 @@ export default function WhatsAppPainel({
             porque: info.porque,
             quando: tipo === 'lembrete_dia' ? `${horas}h antes` : info.quando,
             enabled: r.enabled === true,
-            comBotao: r.comBotao !== false,
-            temBotao: tipo === 'lembrete_vespera' || tipo === 'lembrete_dia',
+            temBotao: tipo === 'confirmacao' || tipo === 'lembrete_vespera' || tipo === 'lembrete_dia',
             offsetMinutos: Number(r.offsetMinutos ?? 0),
             previa: String(t.previa ?? ''),
             corpoPadrao: String(t.corpoPadrao ?? ''),
@@ -354,6 +357,28 @@ export default function WhatsAppPainel({
       })
       if (!r.ok) throw new Error('falhou')
     } catch {
+      carregar()
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  /* Grava e só confirma com o que voltou do banco (a rota relê). Otimista
+     na tela, como os interruptores; se falhar, recarrega o que está salvo. */
+  async function salvarModoBotao(m: ModoBotao) {
+    const antes = modoBotao
+    setModoBotao(m)
+    setSalvando(true)
+    try {
+      const r = await fetch('/api/admin/mensagens/regras', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modoBotao: m }),
+      })
+      const j = await r.json().catch(() => null)
+      if (!r.ok || j?.modoBotao !== m) throw new Error('falhou')
+    } catch {
+      setModoBotao(antes)
       carregar()
     } finally {
       setSalvando(false)
@@ -460,7 +485,7 @@ export default function WhatsAppPainel({
                 T={T}
                 aviso={a}
                 numeroCanal={canal?.numero ? formatarNumero(canal.numero) : '(63) 9284-6765'}
-                onBotao={(v) => salvarRegra(a.tipo, { comBotao: v })}
+                modoBotao={modoBotao}
                 onHorario={(h) => salvarRegra(a.tipo, { offsetMinutos: -h * 60 })}
                 onEnviarTexto={(corpo) => enviarTexto(a.tipo, corpo)}
                 categoria={category ?? null}
@@ -680,6 +705,8 @@ export default function WhatsAppPainel({
         ))}
       </Lista>
       </div>
+
+      <BotaoConfirmar T={T} modo={modoBotao} salvando={salvando} onMudar={salvarModoBotao} />
 
       {sinalItem}
 
