@@ -71,6 +71,9 @@ export type TermoPessoa = {
 }
 
 const CLIENTE: TermoPessoa = { s: 'cliente', p: 'clientes', art: 'a', poss: 'sua', possP: 'suas', de: 'dela', pron: 'ela' }
+/* Barbearia: a base é masculina, e "a cliente / ela" lia como sistema de
+   salão adaptado — o mesmo motivo do paciente (16/10/2026). */
+const CLIENTE_M: TermoPessoa = { s: 'cliente', p: 'clientes', art: 'o', poss: 'seu', possP: 'seus', de: 'dele', pron: 'ele' }
 const PACIENTE: TermoPessoa = { s: 'paciente', p: 'pacientes', art: 'o', poss: 'seu', possP: 'seus', de: 'dele', pron: 'ele' }
 const ALUNO: TermoPessoa = { s: 'aluno', p: 'alunos', art: 'o', poss: 'seu', possP: 'seus', de: 'dele', pron: 'ele' }
 
@@ -83,6 +86,8 @@ export function termoPessoa(categoria: string | null | undefined): TermoPessoa {
       return PACIENTE
     case 'Personal trainer':
       return ALUNO
+    case 'Barbearia':
+      return CLIENTE_M
     default:
       return CLIENTE
   }

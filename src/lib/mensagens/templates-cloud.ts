@@ -21,7 +21,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { TipoMensagem } from './tipos'
-import { formatarTelefone, type Variaveis } from './textos'
+import { formatarTelefone, nomeCurto, type Variaveis } from './textos'
 import { generateSinalToken } from '@/lib/token'
 
 export type DefTemplate = {
@@ -62,7 +62,7 @@ const t = (s: string | null | undefined, alt = '-') => {
 
 /* Só o primeiro nome. "Oi Maria das Graças Ferreira" não é como ninguém
    fala com cliente. Mesma regra do textos.ts. */
-const nome = (s: string) => (s || '').trim().split(/\s+/)[0] || 'tudo bem'
+const nome = (s: string) => nomeCurto(s) || 'tudo bem'
 
 /* Telefone formatado na hora de montar, não como foi salvo: no banco ele
    aparece de todo jeito porque cada dono digita como quer. Os 29 negócios
@@ -86,7 +86,7 @@ const fone = (v: Variaveis) =>
    Sem profissional definida (o campo aceita nulo), sai so o servico. */
 const servicoCom = (v: Variaveis) => {
   const servico = t(v.servico, 'seu horário')
-  const quem = (v.profissional ?? '').trim().split(/\s+/)[0]
+  const quem = nomeCurto(v.profissional)
   return quem ? `${servico} com ${quem}` : servico
 }
 

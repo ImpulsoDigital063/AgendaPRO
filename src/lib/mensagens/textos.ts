@@ -61,7 +61,19 @@ export function formatarTelefone(bruto: string): string {
   if (semDDI.length === 10) return `(${semDDI.slice(0, 2)}) ${semDDI.slice(2, 6)}-${semDDI.slice(6)}`
   return bruto
 }
-const primeiroNome = (nome: string) => (nome || '').trim().split(/\s+/)[0] || 'tudo bem'
+/* Título vem junto com o nome (16/10/2026). A CAF tem "Dra Elaine Rebolo"
+   cadastrada, e cortar na primeira palavra fazia a mensagem dizer
+   "Sessão com Dra". Com título, ficam as duas: "Dra Elaine". */
+const TITULO = /^(dr|dra|drª|prof|profa|profª|sr|sra)\.?$/i
+
+/** Primeiro nome, ou título + primeiro nome. '' quando não tem nome. */
+export function nomeCurto(nome: string | null | undefined): string {
+  const p = (nome ?? '').trim().split(/\s+/).filter(Boolean)
+  if (!p.length) return ''
+  return TITULO.test(p[0]) && p[1] ? `${p[0]} ${p[1]}` : p[0]
+}
+
+const primeiroNome = (nome: string) => nomeCurto(nome) || 'tudo bem'
 
 /** Rodapé: para onde responder, e como sair. */
 function rodape(v: Variaveis, promocional: boolean): string {

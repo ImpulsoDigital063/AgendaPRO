@@ -22,6 +22,7 @@
    recepção não decide isso, mesma régua do financeiro e dos pacotes.
    ═══════════════════════════════════════════════════════════════ */
 
+import { nomeCurto } from '@/lib/mensagens/textos'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -194,7 +195,7 @@ async function exemploDoNegocio(
   if (!a) return EXEMPLO_NEUTRO
 
   const prof = Array.isArray(a.professional) ? a.professional[0] : a.professional
-  const primeiro = (s: string | null | undefined) => (s ?? '').trim().split(/\s+/)[0] ?? ''
+  const primeiro = nomeCurto
 
   return {
     cliente: primeiro(a.client_name) || EXEMPLO_NEUTRO.cliente,
