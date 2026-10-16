@@ -95,7 +95,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       for (const d of devices ?? []) {
         const r = await sendWebPush(
           { endpoint: d.endpoint as string, p256dh: d.p256dh as string, auth: d.auth as string },
-          { titulo: 'Ficha preenchida pela cliente', corpo: `${cust?.name || 'Uma cliente'} preencheu e assinou: ${ficha.name}.`, url: '/admin/clientes' },
+          { titulo: 'Ficha preenchida pela cliente', corpo: `${cust?.name ? cust.name.trim().charAt(0).toLocaleUpperCase('pt-BR') + cust.name.trim().slice(1) : 'Uma cliente'} preencheu e assinou: ${ficha.name}.`, url: '/admin/clientes' },
         )
         if (r.gone) mortas.push(d.endpoint as string)
       }
