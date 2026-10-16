@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendPaymentConfirmed, sendRefundProcessed } from '@/lib/email'
 import { sendAlert } from '@/lib/alert'
+import { renovarVencimento } from '@/lib/billing'
 import { ativarPacote, avisosEmCortesia, trocarPacoteNoCiclo } from '@/lib/mensagens/franquia'
 
 // =====================================================================
@@ -188,7 +189,7 @@ async function handlePaymentConfirmed(
 
   const { data: sub } = await admin
     .from('subscriptions')
-    .select('id, pago_ate, setup_paid_at, status')
+    .select('id, pago_ate, setup_paid_at, status, dia_vencimento')
     .eq('business_id', businessId)
     .single()
 
@@ -204,23 +205,19 @@ async function handlePaymentConfirmed(
   // Primeira ativação? (antes do update — o setup_paid_at ainda reflete o estado
   // pré-pagamento). Usado pra destacar "cliente novo" no alerta Telegram.
   const isFirstPayment = !sub.setup_paid_at
-  /* Renovação conta do VENCIMENTO, não do dia em que pagou (15/10, Studio
-     MOOD): com "base = hoje" quem pagava atrasado empurrava a data — dia 08
-     virou 13, 20, 29 em quatro meses. Só volta pra "hoje" no primeiro
-     pagamento (fim do teste) ou quando o atraso é tão grande que o vencimento
-     + cobertura já passou, senão a dona pagaria e seguiria bloqueada. */
-  const renovaDoVencimento = (() => {
-    if (isFirstPayment || !sub.pago_ate) return null
-    const d = new Date(sub.pago_ate)
-    d.setMonth(d.getMonth() + coberturaMeses)
-    return d > now ? d : null
-  })()
-  const novoPagoAte = renovaDoVencimento ?? new Date(now)
-  if (!renovaDoVencimento) novoPagoAte.setMonth(novoPagoAte.getMonth() + coberturaMeses)
+  // Data fixa: renova no dia original do cliente, pague quando pagar (lib/billing).
+  const renovado = renovarVencimento({
+    pagoAte: sub.pago_ate,
+    diaVencimento: sub.dia_vencimento,
+    meses: coberturaMeses,
+    primeiroPagamento: isFirstPayment,
+  })
+  const novoPagoAte = new Date(renovado.pagoAte)
 
   const updatePayload: Record<string, unknown> = {
     status: 'active',
-    pago_ate: novoPagoAte.toISOString(),
+    pago_ate: renovado.pagoAte,
+    dia_vencimento: renovado.diaVencimento,
     asaas_payment_id_atual: payment.id,
     pix_link_atual: null,
     grace_ends_at: null,
@@ -290,7 +287,7 @@ async function handleRecurringPayment(
 
   const { data: sub } = await admin
     .from('subscriptions')
-    .select('id, status, business_id, current_period_end, setup_paid_at, pago_ate')
+    .select('id, status, business_id, current_period_end, setup_paid_at, pago_ate, dia_vencimento')
     .eq('asaas_subscription_id', payment.subscription)
     .single()
 
@@ -304,15 +301,22 @@ async function handleRecurringPayment(
 
   const now = new Date()
   const isFirstPayment = !sub.setup_paid_at
-  const baseDate =
-    sub.pago_ate && new Date(sub.pago_ate) > now ? new Date(sub.pago_ate) : now
-  const periodEnd = new Date(baseDate)
-  periodEnd.setMonth(periodEnd.getMonth() + 1)
+  /* Mesma data fixa do PIX. Era "base = hoje" aqui também: a Viva Cacheada
+     teve o cartão de agosto passando só em 17/09, junto com o de setembro, e o
+     pago_ate pulou pra 17/11 com outubro ainda em aberto (corrigido 15/10). */
+  const renovado = renovarVencimento({
+    pagoAte: sub.pago_ate,
+    diaVencimento: sub.dia_vencimento,
+    meses: 1,
+    primeiroPagamento: isFirstPayment,
+  })
+  const periodEnd = new Date(renovado.pagoAte)
 
   const updatePayload: Record<string, unknown> = {
     status: 'active',
     asaas_payment_id_atual: payment.id,
-    pago_ate: periodEnd.toISOString(),
+    pago_ate: renovado.pagoAte,
+    dia_vencimento: renovado.diaVencimento,
     grace_ends_at: null,
     public_blocked_at: null,
     provider: 'asaas',

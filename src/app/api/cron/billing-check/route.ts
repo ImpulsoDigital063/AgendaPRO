@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { diasAteVencer } from '@/lib/billing'
-import { createPayment, getNextDueDate } from '@/lib/asaas'
+import { diasAteVencer, dueDateDaCobranca } from '@/lib/billing'
+import { createPayment } from '@/lib/asaas'
 import { sendBillingReminderD3, sendBillingOverdue, sendTrialEndingSoon, sendTrialEnded } from '@/lib/email'
 import { calcularPreco, type ModalidadeKey, type PlanoTipo } from '@/config/pricing'
 import { adicionalDeAvisos } from '@/lib/mensagens/franquia'
@@ -120,7 +120,8 @@ export async function GET(req: NextRequest) {
           customer: sub.asaas_customer_id,
           billingType: 'PIX',
           value: valorTotal,
-          dueDate: getNextDueDate(3), // vence em 3 dias
+          // Vence NO dia fixo do cliente (= pago_ate), não "hoje + 3" em UTC.
+          dueDate: dueDateDaCobranca(sub.pago_ate),
           description:
             `AgendaPRO ${sub.plan === 'solo' ? 'Solo' : 'Equipe'} — renovação ${sub.plan_modalidade}` +
             (avisos.descricao ? ` + ${avisos.descricao}` : ''),

@@ -9,8 +9,8 @@ import {
   createPayment,
   findCustomerByExternalReference,
   listPaymentsByCustomer,
-  getNextDueDate,
 } from '@/lib/asaas'
+import { dueDateDaCobranca } from '@/lib/billing'
 
 // =====================================================================
 // GET /api/billing/pix-atual
@@ -160,7 +160,8 @@ export async function GET(req: NextRequest) {
     customer: asaasCustomerId,
     billingType: 'PIX',
     value: valorTotal,
-    dueDate: getNextDueDate(1),
+    // Vence no dia fixo do cliente; já vencido → amanhã (Asaas não aceita passado).
+    dueDate: dueDateDaCobranca(sub.pago_ate),
     description:
       `AgendaPRO ${plan === 'solo' ? 'Solo' : 'Equipe'} — renovação ${modalidade}` +
       (avisos.descricao ? ` + ${avisos.descricao}` : ''),
