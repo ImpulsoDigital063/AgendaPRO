@@ -181,7 +181,7 @@ export default function FichasModeloTab() {
   const [formFields, setFormFields] = useState<FieldDef[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [niche, setNiche] = useState<{ available: { slug: string; name: string; clientePreenche?: boolean }[]; enabled: string[] | null; oferecer?: string[]; oferecerOnde?: string[]; businessId?: string; marca?: MarcaRow }>({ available: [], enabled: null })
+  const [niche, setNiche] = useState<{ available: { slug: string; name: string; clientePreenche?: boolean }[]; enabled: string[] | null; oferecer?: string[]; oferecerOnde?: string[]; businessId?: string; marca?: MarcaRow; categoria?: string | null }>({ available: [], enabled: null })
   /* Prévia: tocar no nome abre o modelo como a profissional vai ver (e o PDF
      com o cabeçalho do negócio). O selo Ativa/Desativada segue ligando e
      desligando — são dois toques diferentes. */
@@ -256,6 +256,11 @@ export default function FichasModeloTab() {
     await fetch('/api/admin/niche-fichas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }) })
     router.refresh()
   }
+
+  /* Os 6 presets são de esmalteria e spa dos pés (16/10, Eduardo viu numa
+     clínica). Mostra só pra Nail designer ou negócio sem categoria; antes da
+     resposta chegar fica escondido, pra não piscar. */
+  const mostraPresets = niche.categoria !== undefined && (!niche.categoria || /nail|unha|esmalt|podo|spa/i.test(niche.categoria))
 
   async function load() {
     setLoading(true)
@@ -829,7 +834,7 @@ export default function FichasModeloTab() {
       </div>
 
       {/* Empty state · 6 presets premium em grid */}
-      {!loading && templates.length === 0 && (
+      {!loading && templates.length === 0 && mostraPresets && (
         <div className="space-y-3">
           <div className="rounded-2xl p-4" style={{
             background: 'color-mix(in srgb, var(--admin-accent) 8%, transparent)',
@@ -944,7 +949,7 @@ export default function FichasModeloTab() {
           ))}
 
           {/* Botão "Ver modelos prontos" sempre disponível quando já tem templates */}
-          <details className="mt-4">
+          {mostraPresets && <details className="mt-4">
             <summary
               className="cursor-pointer text-xs font-semibold py-2 px-3 rounded-lg inline-flex items-center gap-1.5"
               style={{ color: 'var(--admin-accent)' }}
@@ -976,7 +981,7 @@ export default function FichasModeloTab() {
                 </button>
               ))}
             </div>
-          </details>
+          </details>}
         </div>
       )}
     </div>

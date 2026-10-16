@@ -73,23 +73,23 @@ export default function OferecerFicha({
         <div className="flex items-start gap-2 text-sm" style={{ color: 'var(--admin-text)' }}>
           <span style={{ color: 'var(--admin-accent)' }}><IconCheck size={18} /></span>
           <div className="min-w-0">
-            <p className="font-semibold">{enviada} enviada pra ela preencher.</p>
+            <p className="font-semibold">{enviada} enviada pra preencher.</p>
             {semTelefone ? (
               <p className="text-xs mt-1" style={{ color: 'var(--admin-text-mute)' }}>
-                Ela não tem telefone no cadastro. O link foi copiado, cole na conversa:
+                Sem telefone no cadastro. O link foi copiado, cole na conversa:
                 <span className="block mt-1 break-all font-mono">{semTelefone}</span>
               </p>
             ) : (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>Você recebe um aviso quando ela terminar.</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>Você recebe um aviso quando terminar.</p>
             )}
           </div>
         </div>
       ) : (
         <>
           <div>
-            <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Mandar a ficha pra ela preencher?</p>
+            <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Mandar a ficha pra preencher?</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-              Ela responde e assina pelo celular antes de chegar.
+              Responde e assina pelo celular antes de chegar.
             </p>
           </div>
           <div className="grid gap-2">

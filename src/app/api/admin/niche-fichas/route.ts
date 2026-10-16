@@ -28,6 +28,8 @@ export async function GET() {
     oferecerOnde: (biz.fichas_oferecer_onde as string[] | null) ?? [],
     // null = todas ativas (default); array = seleção explícita
     enabled: (biz.enabled_niche_fichas as string[] | null) ?? null,
+    // os presets de esmalteria só aparecem pra quem é do ramo (16/10)
+    categoria: (biz.category as string | null) ?? null,
     /* Marca do PDF, pra prévia do modelo sair com o mesmo cabeçalho do
        documento real (lib/fichas/marca.ts). */
     businessId: biz.id,
