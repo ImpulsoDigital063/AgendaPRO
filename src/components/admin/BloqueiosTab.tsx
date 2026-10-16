@@ -346,7 +346,12 @@ export default function BloqueiosTab({ businessId, professionals }: Props) {
   }, [blocks])
 
   const activeProfs = useMemo(
-    () => professionals.filter((p) => p.active && !p.is_receptionist),
+    /* Fica de fora só quem é recepção e NÃO atende. Antes bastava ser
+       recepção pra sumir, e quem acumula as duas funções (dona que também
+       atende, colaboradora que atende e recebe) não aparecia pra bloquear:
+       na Ivna Loyola (16/10) só a Marcilene, das 4 que atendem, aparecia.
+       Mesma regra de comissao-gerada.ts. */
+    () => professionals.filter((p) => p.active && !(p.is_receptionist === true && p.does_appointments !== true)),
     [professionals],
   )
 
