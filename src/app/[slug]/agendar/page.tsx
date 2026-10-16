@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { generateCancelToken } from '@/lib/token'
 import { notFound } from 'next/navigation'
+import { seguirAtalho } from '@/lib/atalho-slug'
 import Link from 'next/link'
 import Image from 'next/image'
 import BookingFlow from '@/components/BookingFlow'
@@ -35,7 +36,10 @@ export default async function AgendarPage({
     .eq('slug', slug)
     .single()
 
-  if (!business) notFound()
+  if (!business) {
+    await seguirAtalho(supabase, slug, '/agendar', await searchParams)
+    notFound()
+  }
 
   const { data: allProfessionals } = await supabase
     .from('professionals')

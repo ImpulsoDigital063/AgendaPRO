@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
 import { notFound } from 'next/navigation'
+import { seguirAtalho } from '@/lib/atalho-slug'
 import { JsonLd, localBusinessJsonLd } from '@/lib/jsonld'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -65,7 +66,10 @@ export default async function BusinessPage({
     .eq('slug', slug)
     .single()
 
-  if (!business) notFound()
+  if (!business) {
+    await seguirAtalho(supabase, slug, '', await searchParams)
+    notFound()
+  }
 
   // Valida cupom (se vier ?cupom=X) — server-side, sem expor lógica
   let appliedCoupon: { code: string; discount_type: 'fixed' | 'percent'; discount_value: number } | null = null

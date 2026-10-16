@@ -1,3 +1,4 @@
+import { ehAtalho } from '@/lib/atalho-slug'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
     .eq('slug', slug)
     .maybeSingle()
 
-  if (data) {
+  if (data || (await ehAtalho(supabase, slug))) {
     return NextResponse.json({ ok: false, reason: 'taken' })
   }
 

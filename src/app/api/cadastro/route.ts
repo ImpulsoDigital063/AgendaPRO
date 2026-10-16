@@ -1,3 +1,4 @@
+import { ehAtalho } from '@/lib/atalho-slug'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
     .eq('slug', slug)
     .single()
 
-  if (existing) {
+  if (existing || (await ehAtalho(supabase, slug))) {
     return NextResponse.json({ error: 'Esse endereço (slug) já está em uso. Escolha outro.' }, { status: 409 })
   }
 

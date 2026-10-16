@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import { seguirAtalho } from '@/lib/atalho-slug'
 import Link from 'next/link'
 import Image from 'next/image'
 import { IconArrowLeft } from '@/components/ui/Icon'
@@ -29,7 +30,10 @@ export default async function MeusPontosPage({
     .eq('slug', slug)
     .single()
 
-  if (!business) notFound()
+  if (!business) {
+    await seguirAtalho(supabase, slug, '/meus-pontos', undefined)
+    notFound()
+  }
 
   // Lista TODAS as recompensas ativas — antes era so cheapestReward
   // (mais barata), mas CIC rodada 6 reportou que cliente publico via
