@@ -42,6 +42,10 @@ export default async function AgendarPage({
     .select('id, name, photo_url, active, business_id, created_at')
     .eq('business_id', business.id)
     .eq('active', true)
+    /* Só quem "Executa Atendimentos" (16/10). A página do negócio (/[slug])
+       já filtrava; esta, onde a cliente ESCOLHE a profissional, não — e a
+       recepcionista da Ivna Loyola aparecia pra marcar horário. */
+    .eq('does_appointments', true)
     .order('created_at', { ascending: true })
 
   const [{ data: workingHours }, { data: services }, { data: workingHoursDates }] = await Promise.all([
