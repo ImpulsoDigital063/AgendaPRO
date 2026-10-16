@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server'
-import { calcularSinal, gerarBRCode } from '@/lib/pix-brcode'
+import { COLUNAS_REGRA_SINAL, gerarBRCode, valorDoSinal } from '@/lib/pix-brcode'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { variacoesDeTelefone } from '@/lib/phone-variants'
@@ -346,7 +346,7 @@ export async function POST(req: NextRequest) {
      percentual de um valor que ainda nao existe. */
   const { data: negocio } = await db
     .from('businesses')
-    .select('sinal_enabled, sinal_percent, pix_key, pix_receiver_name, pix_city')
+    .select(`sinal_enabled, pix_key, pix_receiver_name, pix_city, ${COLUNAS_REGRA_SINAL}`)
     .eq('id', businessId)
     .maybeSingle()
 
@@ -373,7 +373,7 @@ export async function POST(req: NextRequest) {
     !!totalComDesconto &&
     totalComDesconto > 0
   const sinalCheio = exigeSinal
-    ? calcularSinal(totalComDesconto as number, Number(negocio?.sinal_percent ?? 0))
+    ? valorDoSinal(totalComDesconto as number, negocio)
     : null
 
   /* CRÉDITO ABATE O SINAL (v113 · decisão do Eduardo, 05/08).

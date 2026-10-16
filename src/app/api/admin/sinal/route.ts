@@ -49,7 +49,7 @@ export async function GET() {
   const [{ data: negocio }, { data: pendentes }] = await Promise.all([
     supabase
       .from('businesses')
-      .select('pix_key, pix_receiver_name, pix_city, sinal_enabled, sinal_percent, sinal_cancel_horas, sinal_credito_dias, sinal_expira_minutos, sinal_balcao_padrao, name, phone')
+      .select('pix_key, pix_receiver_name, pix_city, sinal_enabled, sinal_percent, sinal_modo, sinal_valor_fixo, sinal_faixa_acima, sinal_faixa_valor, sinal_cancel_horas, sinal_credito_dias, sinal_expira_minutos, sinal_balcao_padrao, name, phone')
       .eq('id', businessId)
       .single(),
     supabase
@@ -155,6 +155,11 @@ export async function GET() {
       cidade: negocio?.pix_city ?? '',
       ativo: negocio?.sinal_enabled ?? false,
       percentual: negocio?.sinal_percent ?? 50,
+      /* v163 · valor fixo (Ivna): R$30, e R$100 acima de R$500. */
+      modo: negocio?.sinal_modo === 'fixo' ? 'fixo' : 'percentual',
+      valorFixo: negocio?.sinal_valor_fixo ?? null,
+      faixaAcima: negocio?.sinal_faixa_acima ?? null,
+      faixaValor: negocio?.sinal_faixa_valor ?? null,
       cancelHoras: negocio?.sinal_cancel_horas ?? 24,
       creditoDias: negocio?.sinal_credito_dias ?? 30,
       expiraMinutos: negocio?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN,
@@ -191,8 +196,30 @@ export async function PUT(req: NextRequest) {
   if (body.ativo === true && !pixKey) {
     return NextResponse.json({ error: 'Informe a chave PIX antes de ativar o sinal.' }, { status: 400 })
   }
-  if (!Number.isFinite(percentual) || percentual < 1 || percentual > 100) {
+  /* v163 · no modo fixo a porcentagem não é usada, mas fica guardada: se a
+     dona voltar pra porcentagem, encontra a que tinha. */
+  const modo = body.modo === 'fixo' ? 'fixo' : 'percentual'
+  const percentualOk = Number.isFinite(percentual) && percentual >= 1 && percentual <= 100
+  if (modo === 'percentual' && !percentualOk) {
     return NextResponse.json({ error: 'O percentual precisa ficar entre 1 e 100.' }, { status: 400 })
+  }
+  const dinheiro = (v: unknown) => {
+    const n = Number(v)
+    return v === null || v === undefined || v === '' || !Number.isFinite(n) || n <= 0 ? null : Math.round(n * 100) / 100
+  }
+  const valorFixo = dinheiro(body.valorFixo)
+  const faixaAcima = dinheiro(body.faixaAcima)
+  const faixaValor = dinheiro(body.faixaValor)
+  if (modo === 'fixo') {
+    if (!valorFixo) {
+      return NextResponse.json({ error: 'Informe o valor do sinal.' }, { status: 400 })
+    }
+    if (!!faixaAcima !== !!faixaValor) {
+      return NextResponse.json(
+        { error: 'Pra cobrar outro valor nos atendimentos mais caros, preencha os dois campos: acima de quanto e quanto cobrar.' },
+        { status: 400 },
+      )
+    }
   }
 
   /* Prazo pra pagar (v115). O CHECK do banco recusa fora de 5 min–7 dias, mas
@@ -212,7 +239,11 @@ export async function PUT(req: NextRequest) {
       pix_receiver_name: typeof body.recebedor === 'string' ? body.recebedor.trim() || null : null,
       pix_city: typeof body.cidade === 'string' ? body.cidade.trim() || null : null,
       sinal_enabled: body.ativo === true,
-      sinal_percent: Math.round(percentual),
+      ...(percentualOk ? { sinal_percent: Math.round(percentual) } : {}),
+      sinal_modo: modo,
+      ...(modo === 'fixo'
+        ? { sinal_valor_fixo: valorFixo, sinal_faixa_acima: faixaAcima, sinal_faixa_valor: faixaValor }
+        : {}),
       sinal_cancel_horas: Number.isFinite(Number(body.cancelHoras)) ? Math.max(0, Math.round(Number(body.cancelHoras))) : 24,
       sinal_credito_dias: Number.isFinite(Number(body.creditoDias)) ? Math.max(1, Math.round(Number(body.creditoDias))) : 30,
       sinal_expira_minutos: Number.isFinite(expiraMinutos) ? Math.round(expiraMinutos) : SINAL_EXPIRA_PADRAO_MIN,

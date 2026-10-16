@@ -164,3 +164,37 @@ export function calcularSinal(precoTotal: number, percentual: number): number {
   if (!precoTotal || !percentual) return 0
   return Math.round(precoTotal * (percentual / 100) * 100) / 100
 }
+
+/* SINAL EM VALOR FIXO (v163) · pedido da Ivna Loyola em 16/10.
+   ───────────────────────────────────────────────────────────────
+   "Cobramos uma taxa de agendamento, fixa no valor de R$30, e para
+   procedimentos acima de R$500 uma taxa fixa de R$100." Ela cobra assim há
+   anos e não quer porcentagem: nenhum percentual único dá R$30 na
+   sobrancelha de R$30 e R$100 no preenchimento de R$890.
+
+   A faixa compara com o total do horário (todos os serviços somados, já com
+   desconto) — é o mesmo número de que a porcentagem sai. "Acima de" é
+   estritamente maior: R$500 cravado paga o valor de baixo.
+
+   O sinal nunca passa do preço: buço de R$10 com sinal fixo de R$30 cobra
+   R$10, senão a cliente pagaria de entrada mais que o procedimento. */
+export type RegraSinal = {
+  sinal_modo?: string | null
+  sinal_percent?: number | null
+  sinal_valor_fixo?: number | null
+  sinal_faixa_acima?: number | null
+  sinal_faixa_valor?: number | null
+}
+
+/** Colunas de `businesses` que `valorDoSinal` precisa. */
+export const COLUNAS_REGRA_SINAL = 'sinal_modo, sinal_percent, sinal_valor_fixo, sinal_faixa_acima, sinal_faixa_valor'
+
+export function valorDoSinal(precoTotal: number, regra: RegraSinal | null | undefined): number {
+  if (!precoTotal || precoTotal <= 0 || !regra) return 0
+  if (regra.sinal_modo !== 'fixo') return calcularSinal(precoTotal, Number(regra.sinal_percent ?? 0))
+  const acima = regra.sinal_faixa_acima == null ? null : Number(regra.sinal_faixa_acima)
+  const valorFaixa = Number(regra.sinal_faixa_valor ?? 0)
+  const fixo = acima != null && valorFaixa > 0 && precoTotal > acima ? valorFaixa : Number(regra.sinal_valor_fixo ?? 0)
+  if (!fixo || fixo <= 0) return 0
+  return Math.round(Math.min(fixo, precoTotal) * 100) / 100
+}

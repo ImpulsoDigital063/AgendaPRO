@@ -48,6 +48,11 @@ type Config = {
   cidade: string
   ativo: boolean
   percentual: number
+  /* v163 · sinal em valor fixo, com faixa opcional (Ivna, 16/10) */
+  modo: 'percentual' | 'fixo'
+  valorFixo: number | null
+  faixaAcima: number | null
+  faixaValor: number | null
   cancelHoras: number
   creditoDias: number
   expiraMinutos: number
@@ -108,6 +113,11 @@ export default function SinalView() {
      virava Number('') = 0 e o zero voltava sozinho — o dono não conseguia
      limpar pra digitar outro valor (Eduardo, 05/08, testando no iPhone). */
   const [percentTexto, setPercentTexto] = useState('')
+  /* Valores do modo fixo, também como texto e pelo mesmo motivo. Aceitam
+     vírgula ("30,50"); a conversão pra número é só na hora de salvar. */
+  const [fixoTexto, setFixoTexto] = useState('')
+  const [faixaAcimaTexto, setFaixaAcimaTexto] = useState('')
+  const [faixaValorTexto, setFaixaValorTexto] = useState('')
   /* Tipo da chave não tem coluna no banco — é derivado do que já está salvo
      e serve pra normalizar na hora de gravar. Evita migration só pra isso. */
   const [tipoChave, setTipoChave] = useState<TipoChavePix>('celular')
@@ -117,6 +127,9 @@ export default function SinalView() {
     if (r?.config) {
       setCfg(r.config)
       setPercentTexto(String(r.config.percentual ?? ''))
+      setFixoTexto(paraTexto(r.config.valorFixo))
+      setFaixaAcimaTexto(paraTexto(r.config.faixaAcima))
+      setFaixaValorTexto(paraTexto(r.config.faixaValor))
       setPendentes(r.pendentes ?? [])
       // Pré-seleciona o tipo pela cara da chave já salva (11 dígitos desempata
       // pelo dígito verificador de CPF). Sem chave, começa em celular, que é o
@@ -134,7 +147,14 @@ export default function SinalView() {
     const r = await fetch('/api/admin/sinal', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...cfg, percentual: Number(percentTexto), tipoChave }),
+      body: JSON.stringify({
+        ...cfg,
+        percentual: Number(percentTexto),
+        valorFixo: deTexto(fixoTexto),
+        faixaAcima: deTexto(faixaAcimaTexto),
+        faixaValor: deTexto(faixaValorTexto),
+        tipoChave,
+      }),
     }).then((x) => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { setErro(r?.error || 'Não consegui salvar.'); return }
@@ -484,21 +504,75 @@ export default function SinalView() {
                 não o nome do negócio.
               </p>
             </div>
-            <div style={{ width: 120 }}>
+          </div>
+
+          {/* v163 · como o valor do sinal é calculado. Porcentagem é o de
+              sempre; valor fixo veio da Ivna Loyola (16/10), que cobra R$30 e
+              R$100 nos procedimentos acima de R$500 — nenhuma porcentagem
+              única chega nesses dois números. */}
+          <div>
+            <label className="admin-label">Como cobrar o sinal</label>
+            <div className="flex gap-2">
+              {[
+                { v: 'percentual' as const, l: 'Porcentagem' },
+                { v: 'fixo' as const, l: 'Valor fixo' },
+              ].map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setCfg({ ...cfg, modo: opt.v })}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                  style={{
+                    background: cfg.modo === opt.v ? 'var(--admin-accent)' : 'transparent',
+                    color: cfg.modo === opt.v ? '#fff' : 'var(--admin-text-2)',
+                    border: '1px solid var(--admin-border)',
+                  }}
+                >
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {cfg.modo !== 'fixo' ? (
+            <div style={{ width: 140 }}>
               <label className="admin-label">Percentual</label>
               <div className="relative">
                 <input
                   type="text"
                   inputMode="numeric"
                   value={percentTexto}
-                  onChange={(e) => setPercentTexto(e.target.value.replace(/D/g, '').slice(0, 3))}
+                  onChange={(e) => setPercentTexto(e.target.value.replace(/\D/g, '').slice(0, 3))}
                   placeholder="30"
                   className="admin-input w-full px-3 py-2.5 text-sm pr-7"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--admin-text-faded)' }}>%</span>
               </div>
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                Do valor do atendimento.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div style={{ width: 160 }}>
+                <label className="admin-label">Valor do sinal</label>
+                <CampoReais valor={fixoTexto} onChange={setFixoTexto} placeholder="30" />
+              </div>
+              <div>
+                <label className="admin-label">Valor diferente nos atendimentos mais caros (opcional)</label>
+                <div className="flex gap-2 items-center text-sm" style={{ color: 'var(--admin-text-2)' }}>
+                  <span className="shrink-0">Acima de</span>
+                  <CampoReais valor={faixaAcimaTexto} onChange={setFaixaAcimaTexto} placeholder="500" />
+                  <span className="shrink-0">cobrar</span>
+                  <CampoReais valor={faixaValorTexto} onChange={setFaixaValorTexto} placeholder="100" />
+                </div>
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-faded)' }}>
+                  Conta o total do horário, somando os serviços. Em branco, todo atendimento paga o
+                  mesmo valor. O sinal nunca passa do preço do atendimento.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Regra de cancelamento (v113). Os números vêm da Wanessa — 24h e 30
               dias — mas são dela: clínica de procedimento caro pode querer 48h,
@@ -642,4 +716,31 @@ export default function SinalView() {
       </section>
     </div>
   )
+}
+
+/* Campo de dinheiro do modo fixo (v163): texto livre com vírgula, "R$" na
+   frente. Só dígitos e uma vírgula entram. */
+function CampoReais({ valor, onChange, placeholder }: { valor: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div className="relative flex-1 min-w-0">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--admin-text-faded)' }}>R$</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={valor}
+        onChange={(e) => onChange(e.target.value.replace(/[^\d,]/g, '').replace(/,(?=.*,)/g, '').slice(0, 9))}
+        placeholder={placeholder}
+        className="admin-input w-full pl-9 pr-3 py-2.5 text-sm"
+      />
+    </div>
+  )
+}
+
+function paraTexto(v: number | null | undefined): string {
+  return v == null ? '' : String(v).replace('.', ',')
+}
+
+function deTexto(t: string): number | null {
+  const n = Number(t.replace(',', '.'))
+  return t.trim() && Number.isFinite(n) && n > 0 ? n : null
 }

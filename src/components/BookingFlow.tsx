@@ -1868,7 +1868,7 @@ export default function BookingFlow({
           Diz QUEM pede (o salão, não o AgendaPRO), QUANTO antes de ela investir
           tempo, e que o restante fica pro dia — senão ela pode achar que é o
           valor inteiro adiantado. */}
-      {business.sinal_enabled && Number(business.sinal_percent) > 0 && (
+      {business.sinal_enabled && textoDoSinal(business) && (
         <div
           className="rounded-2xl px-4 py-3 mb-4 flex items-start gap-2.5"
           style={{ background: `${C.surfaceHi}`, border: `1px solid ${C.border}` }}
@@ -1876,7 +1876,7 @@ export default function BookingFlow({
           <span className="text-lg leading-none mt-0.5">💳</span>
           <p className="text-xs leading-relaxed" style={{ color: C.text }}>
             Para confirmar o horário, {business.name} pede um sinal de{' '}
-            <strong>{business.sinal_percent}% do valor</strong>, pago no PIX ao fim do
+            <strong>{textoDoSinal(business)}</strong>, pago no PIX ao fim do
             agendamento. O restante fica para o dia do atendimento.
           </p>
         </div>
@@ -2641,4 +2641,17 @@ export default function BookingFlow({
       )}
     </div>
   )
+}
+
+/* Como o aviso do topo descreve o sinal (v163). No modo fixo diz o valor e,
+   se houver, a faixa: "R$ 30 (R$ 100 para atendimentos acima de R$ 500)".
+   null = nada a cobrar, e o aviso não aparece. */
+function textoDoSinal(b: Business): string | null {
+  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: Number.isInteger(v) ? 0 : 2 })
+  if (b.sinal_modo !== 'fixo') return Number(b.sinal_percent) > 0 ? `${b.sinal_percent}% do valor` : null
+  const fixo = Number(b.sinal_valor_fixo ?? 0)
+  if (!(fixo > 0)) return null
+  const acima = Number(b.sinal_faixa_acima ?? 0)
+  const faixa = Number(b.sinal_faixa_valor ?? 0)
+  return acima > 0 && faixa > 0 ? `${brl(fixo)} (${brl(faixa)} para atendimentos acima de ${brl(acima)})` : brl(fixo)
 }

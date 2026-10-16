@@ -43,6 +43,11 @@ export type Business = {
      surpresa ruim (Eduardo, 05/08). */
   sinal_enabled?: boolean
   sinal_percent?: number
+  /* v163 · sinal em valor fixo (Ivna). Conta em valorDoSinal(), pix-brcode.ts */
+  sinal_modo?: string | null
+  sinal_valor_fixo?: number | null
+  sinal_faixa_acima?: number | null
+  sinal_faixa_valor?: number | null
   /* v113 · usados no aviso de política de cancelamento da página pública.
      Regra ditada pela Wanessa (05/08): cancelou com folga vira crédito com
      validade; em cima da hora, perde. Ver src/lib/sinal-cancelamento.ts */

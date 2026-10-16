@@ -8,6 +8,7 @@ import RecurringBlock from '@/components/admin/RecurringBlock'
 import { buildRecurringDates, buildRecurringDatesByWeekdays, type FreqRecorrencia } from '@/lib/recorrencia'
 import { logActivity } from '@/lib/activity-log'
 import { prazoSinalLabel, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
+import { COLUNAS_REGRA_SINAL, valorDoSinal, type RegraSinal } from '@/lib/pix-brcode'
 import {
   IconArrowLeft,
   IconCheck,
@@ -214,7 +215,7 @@ export default function MarcarAgendamentoForm({
   const [sinalCfg, setSinalCfg] = useState<{
     enabled: boolean
     temPix: boolean
-    percent: number
+    regra: RegraSinal
     expiraMinutos: number
     balcaoPadrao: boolean
   } | null>(null)
@@ -281,7 +282,7 @@ export default function MarcarAgendamentoForm({
     let cancelado = false
     supabase
       .from('businesses')
-      .select('convenios_enabled, recorrencia_dias_semana, sinal_enabled, sinal_percent, pix_key, sinal_expira_minutos, sinal_balcao_padrao')
+      .select(`convenios_enabled, recorrencia_dias_semana, sinal_enabled, pix_key, sinal_expira_minutos, sinal_balcao_padrao, ${COLUNAS_REGRA_SINAL}`)
       .eq('id', businessId)
       .maybeSingle()
       .then(({ data }) => {
@@ -291,7 +292,7 @@ export default function MarcarAgendamentoForm({
         setSinalCfg({
           enabled: data?.sinal_enabled === true,
           temPix: !!data?.pix_key,
-          percent: Number(data?.sinal_percent ?? 0),
+          regra: data ?? {},
           expiraMinutos: Number(data?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN),
           balcaoPadrao: data?.sinal_balcao_padrao === true,
         })
@@ -419,7 +420,7 @@ export default function MarcarAgendamentoForm({
       Number(valorDoAtendimento ?? 0) > 0 &&
       sinalDecisao
     const valorSinal = cobraSinal
-      ? Math.round(Number(valorDoAtendimento ?? 0) * (Number(sinalCfg?.percent ?? 0) / 100) * 100) / 100
+      ? valorDoSinal(Number(valorDoAtendimento ?? 0), sinalCfg?.regra)
       : null
 
     const linhas = datas.map((d, idx) => ({
@@ -950,9 +951,7 @@ export default function MarcarAgendamentoForm({
                       }}
                     >
                       Cobrar{' '}
-                      {(
-                        Math.round(Number(valorDoAtendimento ?? 0) * (sinalCfg.percent / 100) * 100) / 100
-                      ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {valorDoSinal(Number(valorDoAtendimento ?? 0), sinalCfg.regra).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </button>
                     <button
                       type="button"

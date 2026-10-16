@@ -11,6 +11,7 @@ import { logActivity } from '@/lib/activity-log'
 import { ratearCombo } from '@/lib/combo-rateio'
 import { textoPrazo as textoPrazoCobranca } from '@/lib/sinal-cobranca'
 import { prazoSinalLabel, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
+import { COLUNAS_REGRA_SINAL, valorDoSinal, type RegraSinal } from '@/lib/pix-brcode'
 // Recorrência mora em lib/componente próprios desde 20/08 — o formulário do
 // mobile usa o mesmo cálculo e o mesmo bloco de UI.
 import RecurringBlock from '@/components/admin/RecurringBlock'
@@ -202,7 +203,7 @@ export default function AgendarModal({
   const [sinalCfg, setSinalCfg] = useState<{
     enabled: boolean
     temPix: boolean
-    percent: number
+    regra: RegraSinal
     expiraMinutos: number
     balcaoPadrao: boolean
   } | null>(null)
@@ -292,7 +293,7 @@ export default function AgendarModal({
     let vivo = true
     supabase
       .from('businesses')
-      .select('sinal_enabled, sinal_percent, pix_key, sinal_expira_minutos, sinal_balcao_padrao')
+      .select(`sinal_enabled, pix_key, sinal_expira_minutos, sinal_balcao_padrao, ${COLUNAS_REGRA_SINAL}`)
       .eq('id', businessId)
       .maybeSingle()
       .then(({ data }) => {
@@ -300,7 +301,7 @@ export default function AgendarModal({
         setSinalCfg({
           enabled: data.sinal_enabled === true,
           temPix: !!data.pix_key,
-          percent: Number(data.sinal_percent ?? 0),
+          regra: data,
           expiraMinutos: Number(data.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN),
           balcaoPadrao: data.sinal_balcao_padrao === true,
         })
@@ -1036,7 +1037,7 @@ export default function AgendarModal({
        o que reservar nem pra quem mandar cobranca. */
     const { data: cfgSinal } = await supabase
       .from('businesses')
-      .select('sinal_enabled, sinal_percent, pix_key')
+      .select(`sinal_enabled, pix_key, ${COLUNAS_REGRA_SINAL}`)
       .eq('id', businessId)
       .maybeSingle()
     /* Cliente de confiança não paga sinal (v118) · marcado na ficha dela.
@@ -1065,7 +1066,7 @@ export default function AgendarModal({
       valorTotal > 0 &&
       sinalDecisao
     const valorSinal = cobraSinal
-      ? Math.round(valorTotal * (Number(cfgSinal?.sinal_percent ?? 0) / 100) * 100) / 100
+      ? valorDoSinal(valorTotal, cfgSinal)
       : null
 
     // Insert TODOS os appointments da série em batch
@@ -2310,7 +2311,7 @@ export default function AgendarModal({
                   }}
                 >
                   Cobrar{' '}
-                  {(Math.round(valorTotal * (sinalCfg.percent / 100) * 100) / 100).toLocaleString('pt-BR', {
+                  {valorDoSinal(valorTotal, sinalCfg.regra).toLocaleString('pt-BR', {
                     style: 'currency',
                     currency: 'BRL',
                   })}
