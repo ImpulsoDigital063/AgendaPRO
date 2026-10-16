@@ -9,6 +9,7 @@ import { buildRecurringDates, buildRecurringDatesByWeekdays, type FreqRecorrenci
 import { logActivity } from '@/lib/activity-log'
 import { prazoSinalLabel, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 import { COLUNAS_REGRA_SINAL, valorDoSinal, type RegraSinal } from '@/lib/pix-brcode'
+import { textoPrazo } from '@/lib/sinal-cobranca'
 import {
   IconArrowLeft,
   IconCheck,
@@ -219,6 +220,19 @@ export default function MarcarAgendamentoForm({
     expiraMinutos: number
     balcaoPadrao: boolean
   } | null>(null)
+  /* COBRAR O SINAL LOGO DEPOIS DE MARCAR (16/10) · o desktop (AgendarModal)
+     já trazia "Cobrar no WhatsApp" na tela de sucesso; aqui o form voltava
+     direto pra agenda e a dona tinha que lembrar de ir na aba Sinal antes do
+     prazo vencer. Achado gravando o tutorial da Ivna Loyola, que usa o iPhone.
+     Preenchido = mostra a tela de cobrança em vez de redirecionar. */
+  const [cobrancaPos, setCobrancaPos] = useState<{
+    valor: number
+    link: string | null
+    linkPagamento: string | null
+    minutosPraVencer: number | null
+    cliente: string
+  } | null>(null)
+  const [copiouLink, setCopiouLink] = useState(false)
   /* Começa em NÃO cobrar; sobe pra sim só se a config do negócio mandar. */
   const [sinalDecisao, setSinalDecisao] = useState(false)
   const [clienteIsenta, setClienteIsenta] = useState(false)
@@ -512,6 +526,30 @@ export default function MarcarAgendamentoForm({
       })
     }
 
+    /* Sobrou sinal a cobrar: segura a navegação e oferece o WhatsApp na hora.
+       A rota responde cobrar:false quando o crédito da cliente quitou tudo. */
+    if (valorSinal && valorSinal > 0 && inserted?.id) {
+      try {
+        const cc = await fetch(`/api/admin/sinal/cobranca?appointmentId=${inserted.id}`)
+        const cd = await cc.json().catch(() => ({}))
+        if (cc.ok && cd.cobrar) {
+          setCobrancaPos({
+            valor: Number(cd.valor),
+            link: cd.link ?? null,
+            linkPagamento: cd.linkPagamento ?? null,
+            minutosPraVencer: typeof cd.minutosPraVencer === 'number' ? cd.minutosPraVencer : null,
+            cliente: cliente.name,
+          })
+          return
+        }
+      } catch {
+        // não-fatal: a aba Sinal continua listando quem está devendo
+      }
+    }
+    irPraAgenda()
+  }
+
+  function irPraAgenda() {
     // Redirect baseado na área que abriu o form.
     // Admin volta pra /admin (timeline) · recep volta pra /recepcao.
     // Usar location.href força full nav · evita route guard rejeitar Adm em /recepcao.
@@ -526,6 +564,64 @@ export default function MarcarAgendamentoForm({
       router.push('/recepcao')
       router.refresh()
     }
+  }
+
+  if (cobrancaPos) {
+    const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    return (
+      <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
+        <div className="max-w-lg md:max-w-2xl mx-auto px-4 md:px-6 pt-10 pb-10 text-center">
+          <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center text-2xl" style={{ background: 'color-mix(in srgb, #10B981 16%, transparent)', color: '#059669' }}>✓</div>
+          <h1 className="text-xl font-bold mt-4" style={{ color: 'var(--admin-text)' }}>Horário marcado</h1>
+          <div
+            className="mt-5 rounded-xl px-4 py-4 text-left"
+            style={{ background: 'color-mix(in srgb, #F59E0B 12%, transparent)', border: '1px solid color-mix(in srgb, #F59E0B 34%, transparent)' }}
+          >
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--admin-text)' }}>
+              O horário de <strong>{cobrancaPos.cliente}</strong> está <strong>reservado</strong> até o sinal de{' '}
+              <strong>{brl(cobrancaPos.valor)}</strong> cair
+              {typeof cobrancaPos.minutosPraVencer === 'number' && cobrancaPos.minutosPraVencer > 0 && (
+                <> — você tem {textoPrazo(cobrancaPos.minutosPraVencer)} pra cobrar</>
+              )}
+              .
+            </p>
+            {cobrancaPos.link ? (
+              <a
+                href={cobrancaPos.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 block w-full rounded-xl py-3 text-center text-sm font-bold"
+                style={{ background: '#25D366', color: '#fff' }}
+              >
+                Cobrar no WhatsApp
+              </a>
+            ) : (
+              /* Sem telefone não dá pra abrir conversa — resta o link pra ela
+                 mandar pelo canal que usar com essa cliente. */
+              <button
+                type="button"
+                onClick={() => { navigator.clipboard?.writeText(cobrancaPos.linkPagamento ?? ''); setCopiouLink(true) }}
+                className="mt-3 block w-full rounded-xl py-3 text-center text-sm font-bold"
+                style={{ background: 'var(--admin-accent)', color: '#fff' }}
+              >
+                {copiouLink ? 'Link copiado' : 'Copiar link de pagamento'}
+              </button>
+            )}
+            <p className="text-[11px] mt-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+              A mensagem já vai pronta, com o valor e o link do PIX. Se preferir mandar depois, ela fica na aba Sinal.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={irPraAgenda}
+            className="mt-4 w-full rounded-xl py-3 text-sm font-semibold"
+            style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}
+          >
+            Voltar pra agenda
+          </button>
+        </div>
+      </main>
+    )
   }
 
   return (
