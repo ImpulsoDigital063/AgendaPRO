@@ -37,6 +37,9 @@ type Pendente = {
   /* v141 · o horário já foi solto pra outra cliente marcar. Não é o mesmo que
      "vencido": entre vencer e soltar existe o aviso + a folga da v140. */
   horarioLiberado: boolean
+  /* A cliente tocou "Já paguei" (página ou WhatsApp). O horário já está
+     confirmado e não cai mais; falta só a dona conferir o extrato. */
+  sinal_declarado_em?: string | null
   nomeNegocio: string | null
   linkPagamento: string | null
   horaLimite: string | null
@@ -337,7 +340,15 @@ export default function SinalView() {
                           solto" pedem decisões diferentes: no primeiro ainda dá
                           pra cobrar e segurar, no segundo é resgate — o horário
                           está aberto pra outra cliente marcar neste instante. */}
-                      {p.horarioLiberado ? (
+                      {/* 16/10 · quem já disse que pagou aparecia igual a quem não
+                          pagou ("Segura o horário por mais 3h59"). O relógio dela
+                          parou na declaração, e a dona veio aqui pelo push
+                          justamente pra conferir — tem que estar escrito. */}
+                      {p.sinal_declarado_em ? (
+                        <p className="text-[11px] mt-1 font-bold" style={{ color: '#16A34A' }}>
+                          Disse que pagou — confira no seu banco e toque em Recebi
+                        </p>
+                      ) : p.horarioLiberado ? (
                         <p className="text-[11px] mt-1 font-bold" style={{ color: '#DC2626' }}>
                           Venceu — o horário já voltou pra agenda
                         </p>

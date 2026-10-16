@@ -29,6 +29,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { verifySinalToken } from '@/lib/token'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { avisarDona } from '@/lib/avisar-dona'
 
 export const runtime = 'nodejs'
 
@@ -73,6 +74,30 @@ export async function POST(req: NextRequest) {
      cancelado. A tela trata os três como "está resolvido, não paga de
      novo" — dizer erro pra quem tocou duas vezes seria pior. */
   const gravouAgora = (data ?? []).length > 0
+
+  /* Avisa a dona, igual ao "Já paguei" do WhatsApp (webhook). Só na
+     primeira declaração: tocar de novo não manda outro push. Falha no
+     aviso não desfaz a declaração — o horário já está garantido. */
+  if (gravouAgora) {
+    const { data: ap } = await db
+      .from('appointments')
+      .select('client_name, start_time, business_id, businesses(owner_id)')
+      .eq('id', id)
+      .maybeSingle()
+    const dono = (ap?.businesses as { owner_id?: string | null } | null)?.owner_id ?? null
+    if (ap?.business_id) {
+      const quem = (ap.client_name as string | null) ?? 'Uma cliente'
+      await avisarDona(
+        db,
+        ap.business_id as string,
+        dono,
+        quem,
+        `${quem} disse que pagou o sinal do horário de ${String(ap.start_time).slice(0, 5)}. Confira e marque como recebido.`,
+        '/admin/financeiro/sinal',
+        'Sinal: confira o pagamento',
+      ).catch(() => null)
+    }
+  }
 
   return NextResponse.json({ ok: true, gravouAgora })
 }

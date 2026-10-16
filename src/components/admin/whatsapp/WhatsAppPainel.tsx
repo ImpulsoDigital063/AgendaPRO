@@ -604,7 +604,7 @@ export default function WhatsAppPainel({
         <Linha
           primeira
           delay={80 + avisos.length * 60}
-          onClick={() => router.push('/admin/sinal')}
+          onClick={() => router.push('/admin/financeiro/sinal')}
           icone={
             <IconeAviso ativo={sinalAtivo}>
               <IconWallet size={19} />

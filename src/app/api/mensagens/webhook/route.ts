@@ -36,7 +36,7 @@ import { createClient as createServiceClient, type SupabaseClient } from '@supab
 import crypto from 'node:crypto'
 import { normalizarTelefone, credencialDoSistema, enviarTexto } from '@/lib/mensagens/canal-cloud'
 import { todayBR } from '@/lib/date-br'
-import { sendWebPush } from '@/lib/notify-push'
+import { avisarDona } from '@/lib/avisar-dona'
 import { sendAlert } from '@/lib/alert'
 import { explicarFalha } from '@/lib/mensagens/motivo-falha'
 import { rotuloDoAviso } from '@/lib/mensagens/rotulos'
@@ -286,34 +286,6 @@ async function acharPorTelefone(db: Db, fone: string): Promise<Appt | null> {
  * mensagem do pacote dela — e o aviso de que alguém escreveu não pode
  * custar mais caro que a mensagem original.
  */
-async function avisarDona(
-  db: Db,
-  businessId: string,
-  ownerId: string | null,
-  quem: string,
-  texto: string,
-  /* O sinal precisa cair na tela de sinal, não na de mensagens: o que a
-     dona tem que fazer é conferir o PIX e marcar "Recebi". */
-  destino = '/admin/whatsapp',
-  titulo?: string,
-) {
-  if (!ownerId) return
-  const { data: devices } = await db
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .eq('user_id', ownerId)
-  for (const d of (devices ?? []) as { endpoint: string; p256dh: string; auth: string }[]) {
-    await sendWebPush(
-      { endpoint: d.endpoint, p256dh: d.p256dh, auth: d.auth },
-      {
-        titulo: titulo ?? `${quem} respondeu o aviso`,
-        corpo: texto.slice(0, 140),
-        url: destino,
-      },
-    ).catch(() => null)
-  }
-}
-
 async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
   const fone = m.from ? normalizarTelefone(m.from) : null
   if (!fone) return 'sem_telefone'
@@ -561,7 +533,7 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
       negocio?.owner_id ?? null,
       alvo.client_name ?? 'Uma cliente',
       `${alvo.client_name ?? 'Uma cliente'} disse que pagou o sinal do horário de ${String(alvo.start_time).slice(0, 5)}. Confira e marque como recebido.`,
-      '/admin/sinal',
+      '/admin/financeiro/sinal',
       'Sinal: confira o pagamento',
     )
     /* Texto aprovado pelo Eduardo em 04/09, depois de o "Já paguei" passar a
