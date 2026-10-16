@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NICHE_FICHAS } from '@/lib/fichas/registry'
 import { hashToken, tokenValido } from '@/lib/fichas/convite'
 import FichaClienteView from './FichaClienteView'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 /* PÁGINA PÚBLICA (v157) · a cliente abre o link do WhatsApp e preenche a
    ficha no celular. Mostra o MÍNIMO: logo e nome da clínica, primeiro nome
@@ -17,7 +18,7 @@ type Dados = { slug: string; primeiroNome: string; negocio: string; logo: string
 
 /* `cache`: a página e a prévia do link (generateMetadata) leem o mesmo
    convite numa ida só ao banco. */
-const carregar = cache(async (token: string): Promise<{ estado: Estado; dados: Dados | null; negocio: string | null; logo: string | null }> => {
+const carregar = cache(async (token: string): Promise<{ estado: Estado; dados: Dados | null; negocio: string | null; logo: string | null; whatsapp?: string | null }> => {
   if (!tokenValido(token)) return { estado: 'invalido', dados: null, negocio: null, logo: null }
   const admin = createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
   const { data: conv } = await admin
@@ -28,7 +29,7 @@ const carregar = cache(async (token: string): Promise<{ estado: Estado; dados: D
   if (!conv || !NICHE_FICHAS[conv.niche_slug]?.clientePreenche) return { estado: 'invalido', dados: null, negocio: null, logo: null }
 
   const [{ data: biz }, { data: cust }] = await Promise.all([
-    admin.from('businesses').select('name, logo_url, brand_logo_url, brand_primary, ficha_rodape').eq('id', conv.business_id).maybeSingle(),
+    admin.from('businesses').select('name, phone, logo_url, brand_logo_url, brand_primary, ficha_rodape').eq('id', conv.business_id).maybeSingle(),
     admin.from('customers').select('name').eq('id', conv.customer_id).maybeSingle(),
   ])
   /* Na TELA vale a logo do app (feita pra tela). A do impresso (ficha_rodape)
@@ -44,7 +45,13 @@ const carregar = cache(async (token: string): Promise<{ estado: Estado; dados: D
     const { count } = await admin.from('ficha_convites').select('id', { count: 'exact', head: true }).eq('grupo', conv.grupo).not('used_at', 'is', null)
     if ((count ?? 0) > 0) return { estado: 'usado', dados: null, negocio, logo }
   }
-  if (conv.cancelado_em || new Date(conv.expires_at) < new Date()) return { estado: 'expirado', dados: null, negocio, logo }
+  if (conv.cancelado_em || new Date(conv.expires_at) < new Date()) {
+    /* Link vencido: botão pra cliente pedir outro direto no WhatsApp do
+       negócio, em vez de só mandar ela "pedir pra clínica" e se virar. */
+    const fone = telefoneCanonico(biz?.phone ?? '')
+    const whatsapp = fone ? `https://wa.me/55${fone}?text=${encodeURIComponent('Oi! O link da minha ficha expirou. Pode me mandar um novo?')}` : null
+    return { estado: 'expirado', dados: null, negocio, logo, whatsapp }
+  }
   return {
     estado: 'ok',
     negocio,
@@ -84,6 +91,6 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 
 export default async function FichaClientePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
-  const { estado, dados } = await carregar(token)
-  return <FichaClienteView token={token} estado={estado} dados={dados} />
+  const { estado, dados, negocio, logo, whatsapp } = await carregar(token)
+  return <FichaClienteView token={token} estado={estado} dados={dados} marca={{ negocio, logo, whatsapp: whatsapp ?? null }} />
 }

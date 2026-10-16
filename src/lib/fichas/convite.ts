@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'crypto'
 import type { NicheFicha } from './types'
+import { chaveDetalheSaude } from './chaves'
 
 /**
  * LINK PRA CLIENTE PREENCHER A FICHA (v157, 14/10/2026).
@@ -52,8 +53,8 @@ export function soCamposDaFicha(ficha: NicheFicha, values: Record<string, unknow
   for (const s of ficha.sections) {
     if (s.kind === 'fields') s.fields.forEach((f) => { nomes.add(f.name) })
     if (s.kind === 'mapping') { nomes.add(s.drawName); s.params.forEach((f) => { nomes.add(f.name) }) }
-    // FichaDedicada grava os marcados em values[title] e o detalhe em 'saude_detalhe'
-    if (s.kind === 'health') { nomes.add(s.title); nomes.add('saude_detalhe') }
+    // FichaDedicada grava os marcados em values[title] e o detalhe na chave da seção
+    if (s.kind === 'health') { nomes.add(s.title); nomes.add(chaveDetalheSaude(ficha, s)) }
     if (s.kind === 'term') s.consents.forEach((c) => { nomes.add(c.name) })
     if (s.kind === 'signature') nomes.add(s.name)
   }

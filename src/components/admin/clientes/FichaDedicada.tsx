@@ -19,6 +19,8 @@ import type { NicheFicha, FichaParam } from '@/lib/fichas/types'
 import DrawCanvas from './DrawCanvas'
 import { IconCheck, IconWhatsapp } from '@/components/ui/Icon'
 import { downloadFichaPdf, shareFichaPdf, imprimirFichaPdf, type MarcaPdf } from './useFichaPdf'
+import { chaveDetalheSaude } from '@/lib/fichas/chaves'
+import { maskPhone } from '@/lib/client-display'
 
 export type FichaValues = Record<string, string | string[] | boolean>
 
@@ -49,24 +51,31 @@ type Props = {
 
 const SECTION_TITLE = 'text-[11px] font-bold uppercase tracking-wider pb-1 mb-3'
 const FIELD_LABEL = 'text-[10px] font-bold uppercase tracking-wider block mb-1'
+/* Na página da CLIENTE (/ficha/[token]) a pergunta é o conteúdo, não um
+   rótulo: em 10px maiúsculo e cinza claro ela era difícil de ler no celular
+   (auditoria visual 15/10). Lá vira texto normal, maior e escuro. */
+const FIELD_LABEL_CLIENTE = 'text-[15px] leading-snug font-medium block mb-1.5'
 
 function ParamInput({
   param,
   value,
   onChange,
   disabled,
+  leitura,
 }: {
   param: FichaParam
   value: string
   onChange: (v: string) => void
   disabled?: boolean
+  /** Página da cliente: pergunta em texto legível. */
+  leitura?: boolean
 }) {
   return (
     <div>
-      <label className={FIELD_LABEL} style={{ color: 'var(--admin-text-faded)' }}>{param.label}</label>
+      <label className={leitura ? FIELD_LABEL_CLIENTE : FIELD_LABEL} style={{ color: leitura ? 'var(--admin-text)' : 'var(--admin-text-faded)' }}>{param.label}</label>
       {param.type === 'select' ? (
         <select className="admin-input w-full px-3 py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-          <option value="">—</option>
+          <option value="">{leitura ? 'Selecione' : '—'}</option>
           {(param.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
       ) : param.type === 'textarea' ? (
@@ -135,8 +144,11 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
   return (
     <div className="space-y-4">
       {/* Ações */}
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-base font-bold" style={{ color: 'var(--admin-text)' }}>{ficha.name}</h3>
+      {/* flex-wrap: no celular o nome da ficha quebrava em duas linhas
+          espremido entre Cancelar e Salvar (auditoria 15/10). Agora, se não
+          couber, os botões descem pra linha de baixo. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <h3 className="text-base font-bold min-w-0" style={{ color: 'var(--admin-text)' }}>{ficha.name}</h3>
         {!cliente && <div className="flex gap-2 flex-shrink-0">
           <button type="button" onClick={onCancel} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>{modelo ? 'Fechar' : 'Cancelar'}</button>
           {!modelo && <button type="button" onClick={() => onSave(values)} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50" style={{ background: 'var(--admin-accent)', color: '#fff' }}>{saving ? 'Salvando…' : 'Salvar Ficha'}</button>}
@@ -147,7 +159,7 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
       {customer && (
         <div className="rounded-xl px-3 py-2 flex items-center gap-2 flex-wrap" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}>
           <span className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{customer.name}</span>
-          {customer.phone && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{customer.phone}</span>}
+          {customer.phone && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{maskPhone(customer.phone)}</span>}
           {customer.birthday && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>· nasc. {new Date(customer.birthday + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
         </div>
       )}
@@ -183,8 +195,8 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
                 </div>
                 {section.detailLabel && (
                   <div className="mt-3">
-                    <label className={FIELD_LABEL} style={{ color: 'var(--admin-text-faded)' }}>{section.detailLabel}</label>
-                    <textarea className="admin-input w-full px-3 py-2 text-sm" rows={2} value={str('saude_detalhe')} onChange={(e) => setVal('saude_detalhe', e.target.value)} disabled={saving} />
+                    <label className={cliente ? FIELD_LABEL_CLIENTE : FIELD_LABEL} style={{ color: cliente ? 'var(--admin-text)' : 'var(--admin-text-faded)' }}>{section.detailLabel}</label>
+                    <textarea className="admin-input w-full px-3 py-2 text-sm" rows={2} value={str(chaveDetalheSaude(ficha, section))} onChange={(e) => setVal(chaveDetalheSaude(ficha, section), e.target.value)} disabled={saving} />
                   </div>
                 )}
               </section>
@@ -216,7 +228,7 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
                     }
                   >
                     {section.params.map((p) => (
-                      <ParamInput key={p.name} param={p} value={str(p.name)} onChange={(v) => setVal(p.name, v)} disabled={saving} />
+                      <ParamInput leitura={cliente} key={p.name} param={p} value={str(p.name)} onChange={(v) => setVal(p.name, v)} disabled={saving} />
                     ))}
                   </div>
                 </div>
@@ -240,7 +252,7 @@ export default function FichaDedicada({ ficha, customer, initialValues, saving, 
                   }
                 >
                   {section.fields.map((p) => (
-                    <ParamInput key={p.name} param={p} value={str(p.name)} onChange={(v) => setVal(p.name, v)} disabled={saving} />
+                    <ParamInput leitura={cliente} key={p.name} param={p} value={str(p.name)} onChange={(v) => setVal(p.name, v)} disabled={saving} />
                   ))}
                 </div>
               </section>

@@ -459,7 +459,9 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                     </p>
                   )}
                   <p className="text-xs" style={{ color: 'var(--admin-text-faded)' }}>
-                    Cliente desde {formatDate(customer.created_at.split('T')[0])}
+                    {/* Fuso de Brasília (15/10): split('T')[0] pegava a data em UTC
+                        e cliente cadastrada depois das 21h aparecia com o dia seguinte. */}
+                    Cliente desde {new Date(customer.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' })}
                   </p>
                   {customer.import_source && (
                     <p

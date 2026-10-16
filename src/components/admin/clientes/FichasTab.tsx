@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { IconPlus, IconTrash, IconCheck, IconWhatsapp } from '@/components/ui/Icon'
 import { telefoneCanonico } from '@/lib/phone-variants'
 import { mandarFichaPraCliente } from '@/lib/fichas/mandar-cliente'
+import { maskPhone } from '@/lib/client-display'
 import DrawCanvas from './DrawCanvas'
 import FichaDedicada, { type FichaValues } from './FichaDedicada'
 import type { MarcaPdf } from './useFichaPdf'
@@ -129,7 +130,17 @@ export default function FichasTab({ customerId }: Props) {
     setConvites(j?.convites ?? [])
   }
 
-  async function mandarPraCliente(nf: NicheFicha) {
+  async function cancelarConvite(id: string) {
+    await fetch(`/api/admin/customers/${customerId}/ficha-convite?conviteId=${id}`, { method: 'DELETE' }).catch(() => null)
+  }
+  /* Reenviar = link novo pelo WhatsApp e o antigo cai. Útil quando a cliente
+     perdeu a mensagem ou o link venceu. */
+  async function reenviarConvite(c: { id: string; niche_slug: string }) {
+    const nf = NICHE_FICHAS[c.niche_slug]
+    if (!nf) return
+    await mandarPraCliente(nf, c.id)
+  }
+  async function mandarPraCliente(nf: NicheFicha, substituiConvite?: string) {
     setError(null)
     setLinkSemFone(null)
     setEnviandoConvite(nf.slug)
@@ -137,6 +148,7 @@ export default function FichasTab({ customerId }: Props) {
       const r = await mandarFichaPraCliente(customerId, nf.slug, { temTelefone: Boolean(telefoneCanonico(customer?.phone ?? '')) })
       if (!r.ok) { setError('Não foi possível gerar o link da ficha. Tente de novo.'); return }
       if (r.semTelefone) setLinkSemFone(r.semTelefone)
+      if (substituiConvite) await cancelarConvite(substituiConvite)
       setPickerOpen(false)
       carregarConvites()
     } finally {
@@ -247,7 +259,7 @@ export default function FichasTab({ customerId }: Props) {
   const identHeader = customer ? (
     <div className="rounded-xl px-3 py-2 flex items-center gap-2 flex-wrap" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}>
       <span className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>{customer.name}</span>
-      {customer.phone && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{customer.phone}</span>}
+      {customer.phone && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>{maskPhone(customer.phone)}</span>}
       {customer.birthday && <span className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>· nasc. {new Date(customer.birthday + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
     </div>
   ) : null
@@ -378,9 +390,22 @@ export default function FichasTab({ customerId }: Props) {
             </div>
           )}
           {convites.map((c) => (
-            <div key={c.id} className="rounded-2xl p-3 flex items-center gap-2 text-xs" style={{ background: 'var(--admin-surface)', border: '1px dashed var(--admin-border-hi, var(--admin-border))', color: 'var(--admin-text-mute)' }}>
+            <div key={c.id} className="rounded-2xl p-3 flex flex-wrap items-center gap-2 text-xs" style={{ background: 'var(--admin-surface)', border: '1px dashed var(--admin-border-hi, var(--admin-border))', color: 'var(--admin-text-mute)' }}>
               <IconWhatsapp size={14} />
-              <span><strong style={{ color: 'var(--admin-text)' }}>{NICHE_FICHAS[c.niche_slug]?.name ?? 'Ficha'}</strong> · enviada pra cliente em {formatDate(c.created_at)} · aguardando ela preencher</span>
+              <span className="flex-1 min-w-0"><strong style={{ color: 'var(--admin-text)' }}>{NICHE_FICHAS[c.niche_slug]?.name ?? 'Ficha'}</strong> · enviada pra cliente em {formatDate(c.created_at)} · aguardando ela preencher</span>
+              <span className="flex items-center gap-1 flex-shrink-0">
+                <button type="button" onClick={() => reenviarConvite(c)} disabled={enviandoConvite !== null} className="px-2 py-1 rounded-lg text-[11px] font-bold disabled:opacity-50" style={{ color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}>
+                  {enviandoConvite === c.niche_slug ? '…' : 'Reenviar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => { if (!confirm('Cancelar este link? Ela não vai mais conseguir abrir a ficha por ele.')) return; await cancelarConvite(c.id); carregarConvites() }}
+                  className="px-2 py-1 rounded-lg text-[11px] font-bold"
+                  style={{ color: 'var(--admin-text-mute)' }}
+                >
+                  Cancelar
+                </button>
+              </span>
             </div>
           ))}
           {responses.map((r) => r.niche_slug && NICHE_FICHAS[r.niche_slug] ? (

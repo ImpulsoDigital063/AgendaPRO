@@ -101,3 +101,27 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
      mostram — fichas que o negócio oferece e a cliente ainda não respondeu. */
   return NextResponse.json({ convites: data ?? [], oferecer: oferta.map((f) => ({ slug: f.slug, name: f.name })) })
 }
+
+// DELETE ?conviteId= → cancela um link que ainda espera a cliente (o link
+// morre: a página passa a dizer "expirou"). Usado no "Cancelar" e no
+// "Reenviar" da aba Fichas, que gera um novo e derruba o antigo.
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const businessId = await getBusinessId(supabase, user.id)
+  if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const { id: customerId } = await params
+  const conviteId = new URL(request.url).searchParams.get('conviteId') ?? ''
+  const { data, error } = await getAdmin()
+    .from('ficha_convites')
+    .update({ cancelado_em: new Date().toISOString() })
+    .eq('id', conviteId)
+    .eq('business_id', businessId)
+    .eq('customer_id', customerId)
+    .is('used_at', null)
+    .select('id')
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data?.length) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  return NextResponse.json({ ok: true })
+}

@@ -10,6 +10,7 @@
 import { telefoneCanonico } from '@/lib/phone-variants'
 import type { NicheFicha, FichaSection } from '@/lib/fichas/types'
 import type { FichaValues } from './FichaDedicada'
+import { chaveDetalheSaude } from '@/lib/fichas/chaves'
 
 type Customer = { name: string; phone: string | null; birthday: string | null } | null
 
@@ -170,6 +171,11 @@ function hexToRgb(hex?: string | null): [number, number, number] | null {
 }
 
 async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Customer, dateIso?: string, carimbo?: CarimboPdf, marca?: MarcaPdf) {
+  /* FICHA EM BRANCO (auditoria 15/10): sem nenhuma resposta, o PDF saía só
+     com os títulos das seções — inútil pra imprimir e entregar pra cliente
+     preencher à mão. Em branco, cada pergunta sai com espaço pra escrever e as
+     opções com "(  )", no estilo do papel. Ficha preenchida não muda. */
+  const emBranco = !Object.values(values ?? {}).some((v) => (Array.isArray(v) ? v.length > 0 : typeof v === 'boolean' ? v : String(v ?? '').trim() !== ''))
   const { default: jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
   const W = doc.internal.pageSize.getWidth()
@@ -272,7 +278,23 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
     doc.text(t.toUpperCase(), mX, y); y += 2
     doc.setDrawColor(229, 231, 235); doc.line(mX, y, W - mX, y); y += 6
   }
-  const kv = (label: string, value: string) => {
+  const kv = (label: string, value: string, opcoes?: string[]) => {
+    if (!value && emBranco) {
+      doc.setFont(fonte, 'bold'); doc.setFontSize(9); doc.setTextColor(75, 85, 99)
+      const labelLines = doc.splitTextToSize(label, cw)
+      if (opcoes?.length) {
+        const ops = doc.splitTextToSize(opcoes.map((o) => `(   ) ${o}`).join('      '), cw)
+        ensure(labelLines.length * 4.5 + ops.length * 5 + 4)
+        doc.text(labelLines, mX, y); y += labelLines.length * 4.5 + 0.5
+        doc.setFont(fonte, 'normal'); doc.setFontSize(9.5); doc.setTextColor(31, 41, 55)
+        doc.text(ops, mX, y); y += ops.length * 5 + 2.5
+      } else {
+        ensure(labelLines.length * 4.5 + 9)
+        doc.text(labelLines, mX, y); y += labelLines.length * 4.5 + 4
+        doc.setDrawColor(190, 190, 190); doc.setLineWidth(0.2); doc.line(mX, y, W - mX, y); y += 5
+      }
+      return
+    }
     if (!value) return
     doc.setFont(fonte, 'bold'); doc.setFontSize(9); doc.setTextColor(107, 114, 128)
     // Rótulo largo (textarea de procedimento etc.) não cabe na coluna de 45mm →
@@ -316,19 +338,37 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
     if (s.kind === 'health') {
       sectionTitle(s.title)
       const marked = Array.isArray(values[s.title]) ? (values[s.title] as string[]) : []
-      para(marked.length ? marked.join('  ·  ') : 'Nenhum item marcado', 10, [31, 41, 55])
-      const det = typeof values['saude_detalhe'] === 'string' ? (values['saude_detalhe'] as string) : ''
+      if (emBranco) {
+        /* Duas colunas, um item por linha: corrido, o "(   )" ficava no fim
+           de uma linha e o item começava na outra. */
+        const colW = (cw - 6) / 2
+        doc.setFont(fonte, 'normal'); doc.setFontSize(9.5); doc.setTextColor(31, 41, 55)
+        for (let i = 0; i < s.items.length; i += 2) {
+          const a = doc.splitTextToSize(`(   )  ${s.items[i]}`, colW)
+          const b2 = s.items[i + 1] ? doc.splitTextToSize(`(   )  ${s.items[i + 1]}`, colW) : []
+          const alt = Math.max(a.length, b2.length) * 4.4 + 1.6
+          ensure(alt)
+          doc.text(a, mX, y)
+          if (b2.length) doc.text(b2, mX + colW + 6, y)
+          y += alt
+        }
+        y += 1
+      }
+      else para(marked.length ? marked.join('  ·  ') : 'Nenhum item marcado', 10, [31, 41, 55])
+      const chave = chaveDetalheSaude(ficha, s)
+      const det = typeof values[chave] === 'string' ? (values[chave] as string) : ''
       if (det) { y += 1; kv('Detalhes', det) }
+      else if (emBranco && s.detailLabel) { y += 1; kv(s.detailLabel, '') }
       y += 2
     } else if (s.kind === 'mapping') {
       sectionTitle(s.title)
       const map = values[s.drawName]
       if (isImg(map)) await image(map as string, 120, 70)
-      for (const p of s.params) kv(p.label, typeof values[p.name] === 'string' ? (values[p.name] as string) : '')
+      for (const p of s.params) kv(p.label, typeof values[p.name] === 'string' ? (values[p.name] as string) : '', p.type === 'select' ? p.options : undefined)
       y += 2
     } else if (s.kind === 'fields') {
       sectionTitle(s.title)
-      for (const p of s.fields) kv(p.label, typeof values[p.name] === 'string' ? (values[p.name] as string) : '')
+      for (const p of s.fields) kv(p.label, typeof values[p.name] === 'string' ? (values[p.name] as string) : '', p.type === 'select' ? p.options : undefined)
       y += 2
     } else if (s.kind === 'term') {
       sectionTitle(s.title)
@@ -346,6 +386,7 @@ async function buildPdf(ficha: NicheFicha, values: FichaValues, customer: Custom
       sectionTitle(s.label)
       const sig = values[s.name]
       if (isImg(sig)) await image(sig as string, 80, 40)
+      else if (emBranco) { ensure(18); y += 14; doc.setDrawColor(120, 120, 120); doc.setLineWidth(0.3); doc.line(mX, y, mX + 90, y); y += 6 }
     }
   }
 
