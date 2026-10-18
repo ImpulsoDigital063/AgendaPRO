@@ -24,6 +24,7 @@
 // v169 (14/10): texto do WhatsApp da ficha editável em Avisos manuais → Ficha (v158).
 // v168 (14/10): link da ficha com prévia da clínica no WhatsApp e logo do app na página.
 // v167 (14/10): link pra cliente preencher e assinar a ficha no celular (/ficha/[token], v157).
+// v185 (18/10): Financeiro volta a descontar as despesas pagas (consulta pedia expenses.paid_at, que não existe).
 // v184 (18/10): cadastro neutro (Espaço Aurora, categorias em ordem alfabética) e tela final fala do teste de 7 dias, não de pagamento.
 // v166 (14/10): botão Enviar da ficha (computador) abre o WhatsApp da cliente com 55.
 // v165 (14/10): prévia do modelo em portal, acima do menu lateral do desktop.
@@ -81,7 +82,7 @@
 // v146 (02/10): Horarios celular — 'todo domingo', 'os outros sabados' (genero certo).
 // v176 (16/10): cartao da ficha sem 'ela' (serve pra homem) + presets de esmalteria so pra Nail designer.
 // v177 (16/10): texto da ficha no WhatsApp com nome maiusculo, do/da, horario do atendimento + link anterior cancelado.
-const STATIC_CACHE_VERSION = 'agendapro-static-v184'
+const STATIC_CACHE_VERSION = 'agendapro-static-v185'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

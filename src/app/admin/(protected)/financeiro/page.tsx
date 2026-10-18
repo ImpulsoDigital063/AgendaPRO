@@ -175,15 +175,17 @@ export default async function FinanceiroPage({
       .lte('appointment_date', prevEndStr),
     supabase
       .from('expenses')
-      .select('amount, category, paid_at, occurred_at')
+      .select('amount, category, status, occurred_at')
       .eq('business_id', business.id)
       // v104 · só saída REALIZADA. Conta programada ainda não saiu do caixa.
+      // 18/10: expenses NÃO tem paid_at (pedir essa coluna derrubava a consulta inteira e zerava as despesas
+      // do painel desde 19/05). Paga = status 'paid'.
       .eq('status', 'paid')
       .gte('occurred_at', startStr)
       .lte('occurred_at', endStr),
     supabase
       .from('expenses')
-      .select('amount, paid_at')
+      .select('amount, status')
       .eq('business_id', business.id)
       .eq('status', 'paid')
       .gte('occurred_at', prevStartStr)
@@ -361,13 +363,13 @@ export default async function FinanceiroPage({
   const prevComissaoAPagar = Math.max(0, somaGerada(geradasPrev) - prevComissoesPagasRegistradas)
 
   const despesasPagas =
-    expenses.filter((e) => e.paid_at).reduce((s, e) => s + Number(e.amount ?? 0), 0) + comissoesPagasRegistradas
+    expenses.filter((e) => e.status === 'paid').reduce((s, e) => s + Number(e.amount ?? 0), 0) + comissoesPagasRegistradas
   const prevDespesasPagas =
-    prevExpenses.filter((e) => e.paid_at).reduce((s, e) => s + Number(e.amount ?? 0), 0) +
+    prevExpenses.filter((e) => e.status === 'paid').reduce((s, e) => s + Number(e.amount ?? 0), 0) +
     prevComissoesPagasRegistradas
 
   const despesasPendentes = expenses
-    .filter((e) => !e.paid_at)
+    .filter((e) => e.status !== 'paid')
     .reduce((s, e) => s + Number(e.amount ?? 0), 0)
 
   const lucroLiquido = valorRecebido - despesasPagas - comissaoAPagar
