@@ -8,7 +8,8 @@ import Image from 'next/image'
 import { gaCadastroConcluido } from '@/lib/ga-event'
 import { CATEGORIAS } from '@/lib/segmento'
 
-const CATEGORIES = CATEGORIAS
+// ordem alfabética (Outro por último): nenhum ramo aparece na frente por escolha nossa
+const CATEGORIES = [...CATEGORIAS].sort((a, b) => (a === 'Outro' ? 1 : b === 'Outro' ? -1 : a.localeCompare(b, 'pt-BR')))
 
 function slugify(text: string) {
   return text
@@ -269,7 +270,7 @@ export default function CadastroPage() {
 
             <h2 className="text-xl font-bold text-white mb-1">Conta criada!</h2>
             <p className="text-sm text-slate-400 mb-4">
-              Sua conta em <span className="text-white font-semibold">{businessName}</span> está pronta. Última etapa: liberar o painel.
+              Sua conta em <span className="text-white font-semibold">{businessName}</span> está pronta. Seu teste de 7 dias grátis já começou, sem cartão.
             </p>
 
             <div
@@ -280,7 +281,7 @@ export default function CadastroPage() {
               }}
             >
               <p className="text-[10px] uppercase tracking-wide text-slate-500 mb-1 font-semibold">
-                Seu link público (libera após pagamento)
+                Seu link de agendamento (já está no ar)
               </p>
               <p className="text-sm text-emerald-300 font-medium truncate">{publicUrl}</p>
             </div>
@@ -290,7 +291,7 @@ export default function CadastroPage() {
               className="w-full py-3.5 rounded-xl font-bold text-white text-sm transition-all"
               style={ctaStyle}
             >
-              Escolher plano e liberar painel →
+              Entrar no meu painel →
             </button>
           </div>
 
@@ -368,7 +369,7 @@ export default function CadastroPage() {
                 type="text"
                 value={businessName}
                 onChange={(e) => handleBusinessNameChange(e.target.value)}
-                placeholder="Ex: Barbearia do João"
+                placeholder="Ex: Espaço Aurora"
                 className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none text-sm"
                 style={inputStyle}
               />
@@ -491,7 +492,7 @@ export default function CadastroPage() {
               >
                 <option value="" style={{ color: '#000' }}>Selecione (opcional)</option>
                 <option value="agenda" style={{ color: '#000' }}>Organizar minha agenda · marcação de horários</option>
-                <option value="loja_vendas" style={{ color: '#000' }}>Gerir loja · vendas, estoque, financeiro</option>
+                <option value="loja_vendas" style={{ color: '#000' }}>Controlar vendas, estoque e financeiro</option>
                 <option value="ambos" style={{ color: '#000' }}>Os dois com igual importância</option>
                 <option value="indeciso" style={{ color: '#000' }}>Ainda explorando o que preciso</option>
               </select>
@@ -541,7 +542,7 @@ export default function CadastroPage() {
                 type="text"
                 value={ownerName}
                 onChange={(e) => setOwnerName(e.target.value)}
-                placeholder="Como aparece pro cliente — ex: Olímpio"
+                placeholder="Como aparece pro cliente — ex: Ana Lima"
                 autoComplete="name"
                 className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none text-sm"
                 style={inputStyle}
