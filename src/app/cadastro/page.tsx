@@ -474,7 +474,7 @@ export default function CadastroPage() {
                 <option value="instagram" style={{ color: '#000' }}>Instagram</option>
                 <option value="tiktok" style={{ color: '#000' }}>TikTok</option>
                 <option value="chatgpt_ia" style={{ color: '#000' }}>ChatGPT ou outra IA</option>
-                <option value="salao99_migrante" style={{ color: '#000' }}>Vim do Salão99</option>
+                <option value="salao99_migrante" style={{ color: '#000' }}>Vim de outro sistema</option>
                 <option value="whatsapp_organico" style={{ color: '#000' }}>WhatsApp / contato direto</option>
                 <option value="outro" style={{ color: '#000' }}>Outro</option>
               </select>
