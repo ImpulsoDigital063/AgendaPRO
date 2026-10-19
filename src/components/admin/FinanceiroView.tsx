@@ -46,7 +46,7 @@ function formatPrice(value: number) {
 const PERIODO_LABEL: Record<string, string> = {
   hoje: 'Hoje',
   semana: 'Últimos 7 dias',
-  mes: 'Este mês',
+  mes: 'Últimos 30 dias', // dateRange('mes') = 30 dias corridos, igual ao painel do notebook
   custom: 'Período escolhido',
 }
 
@@ -290,13 +290,15 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
           mensal-acumulada-até-hoje, dando número enganoso (-R$ 1k+
           quando receita do dia é R$ 0). Faz sentido só na escala
           completa do ciclo financeiro. */}
-      {periodo === 'mes' && (
+      {periodo === 'mes' && (() => {
+        const lucroReal = totalLiquido - totalExpenses
+        return (
         <Link
           href="/admin/financeiro/despesas"
           className="block rounded-2xl p-4 transition-transform active:scale-[0.99]"
           style={{
             background:
-              totalRealizado - totalExpenses >= 0
+              lucroReal >= 0
                 ? 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))'
                 : 'linear-gradient(135deg, rgba(239,68,68,0.14), rgba(239,68,68,0.04))',
             border: '1px solid var(--admin-border)',
@@ -305,16 +307,23 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>
-                Lucro real do mês
+                Lucro real · 30 dias
               </p>
               <p
                 className="text-3xl font-extrabold mt-1 leading-none tabular-nums"
-                style={{ color: totalRealizado - totalExpenses >= 0 ? '#10B981' : '#EF4444' }}
+                style={{ color: lucroReal >= 0 ? '#10B981' : '#EF4444' }}
               >
-                {formatPrice(totalRealizado - totalExpenses)}
+                {formatPrice(lucroReal)}
               </p>
               <p className="text-[11px] mt-2" style={{ color: 'var(--admin-text-mute)' }}>
                 {formatPrice(totalRealizado)} <span style={{ color: 'var(--admin-text-faded)' }}>recebido</span>
+                {totalTaxas > 0 && (
+                  <>
+                    {' · '}
+                    <span style={{ color: '#EF4444' }}>− {formatPrice(totalTaxas)}</span>{' '}
+                    <span style={{ color: 'var(--admin-text-faded)' }}>taxas</span>
+                  </>
+                )}
                 {' · '}
                 <span style={{ color: '#EF4444' }}>− {formatPrice(totalExpenses)}</span>{' '}
                 <span style={{ color: 'var(--admin-text-faded)' }}>despesas</span>
@@ -326,7 +335,8 @@ export default function FinanceiroView({ appointments, periodo, totalExpenses = 
             </div>
           </div>
         </Link>
-      )}
+        )
+      })()}
 
       {/* Card de Taxas · Líquido — só se houve fees descontadas */}
       {totalTaxas > 0 && (

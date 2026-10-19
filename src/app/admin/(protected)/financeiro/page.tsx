@@ -30,6 +30,7 @@ const METHOD_LABEL: Record<string, string> = {
   credit_card: 'Cartão de Crédito',
   debit: 'Cartão de Débito',
   debit_card: 'Cartão de Débito',
+  card: 'Cartão',
   transfer: 'Transferência',
   other: 'Não classificado',
   null: 'Não classificado',
@@ -42,6 +43,7 @@ const METHOD_COLORS: Record<string, string> = {
   credit_card: '#3B82F6',
   debit: '#8B5CF6',
   debit_card: '#8B5CF6',
+  card: '#3B82F6',
   transfer: '#F59E0B',
   other: '#6B7280',
 }
@@ -445,13 +447,17 @@ export default async function FinanceiroPage({
 
   // Donut · formas de pagamento · soma appts + produtos
   const methodTotals = new Map<string, number>()
+  // Cartão é gravado como 'card' + payment_card_type (credit/debit): separa igual ao
+  // painel do celular. Sem o tipo informado, fica "Cartão" (antes aparecia "card" cru).
+  const metodo = (m: string | null | undefined, tipo: string | null | undefined) =>
+    m === 'card' && (tipo === 'credit' || tipo === 'debit') ? tipo : (m ?? 'other')
   for (const a of appointments) {
     if (!a.paid_at) continue
-    const m = (a.payment_method as string) ?? 'other'
+    const m = metodo(a.payment_method as string, a.payment_card_type as string)
     methodTotals.set(m, (methodTotals.get(m) ?? 0) + Number(a.total_price ?? 0))
   }
   for (const s of productSales) {
-    const m = (s.payment_method as string) ?? 'other'
+    const m = metodo(s.payment_method as string, s.payment_card_type as string)
     methodTotals.set(m, (methodTotals.get(m) ?? 0) + Number(s.total ?? 0))
   }
   const formasPagamento = Array.from(methodTotals.entries())

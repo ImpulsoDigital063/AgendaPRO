@@ -509,7 +509,8 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
         service_name: svc.name,
         appointment_date: retroativa ? dataVendaIn : dataBR(now),
         start_time: retroativa ? '12:00:00' : horaBR(now),
-        end_time: retroativa ? '12:00:00' : horaBR(end),
+        // perto da meia-noite o fim "vira o dia" e fica antes do início (banco recusa): segura em 23:59
+        end_time: retroativa ? '12:00:00' : horaBR(end) > horaBR(now) ? horaBR(end) : '23:59:00',
         status: 'completed',
         total_price: lineTotal,
         paid_at: willClose ? quandoIso : null,

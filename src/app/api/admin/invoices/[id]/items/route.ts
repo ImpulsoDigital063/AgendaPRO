@@ -215,7 +215,11 @@ export async function POST(
     const start_time = horaBR(now)
     const duration = Number(service.duration_minutes ?? 30)
     const end = new Date(now.getTime() + duration * 60000)
-    const end_time = horaBR(end)
+    // Perto da meia-noite o fim "vira o dia" (23:46 + 60 min = 00:46) e fica antes do
+    // início: o banco recusava (range lower bound > upper) e a comanda travava em
+    // "Adicionando…" (achado 18/10, 23:46). O atendimento é do mesmo dia: segura em 23:59.
+    const fimNoDia = horaBR(end)
+    const end_time = fimNoDia > start_time ? fimNoDia : '23:59:00'
 
     // Data do serviço extra = data do ATENDIMENTO ORIGINAL da comanda, não o dia
     // do clique. Serviço adicionado depois (ex: lembrou de uma remoção) cai no

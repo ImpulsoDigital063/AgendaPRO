@@ -270,31 +270,107 @@ export default async function DetalhamentoPage({
 
     rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   } else {
-    let q = sb
-      .from('expenses')
-      .select('occurred_at, amount, description, category')
-      .eq('business_id', business.id)
-      // v104 · detalhamento do REALIZADO: conta programada não entra aqui.
-      .eq('status', 'paid')
-      .gte('occurred_at', from.toISOString().slice(0, 10))
-      .lt('occurred_at', to.toISOString().slice(0, 10))
-      .order('occurred_at', { ascending: false })
+    // Despesas do REALIZADO = mesma conta do fluxo-caixa: despesas pagas + taxa de
+    // maquininha dos pagamentos em cartão (comanda, atendimento direto e venda avulsa).
+    // Antes: pedia expenses.description (a coluna é `name`) → o banco devolvia erro,
+    // a lista vinha vazia (R$ 0,00) e as taxas nunca apareciam aqui.
+    const soTaxas = sp.category === 'payment_fee'
+    if (!soTaxas) {
+      let q = sb
+        .from('expenses')
+        .select('occurred_at, amount, name, category')
+        .eq('business_id', business.id)
+        // v104 · detalhamento do REALIZADO: conta programada não entra aqui.
+        .eq('status', 'paid')
+        .gte('occurred_at', fromYmd)
+        .lt('occurred_at', toYmd)
+        .order('occurred_at', { ascending: false })
 
-    if (sp.category) {
-      q = q.eq('category', sp.category)
+      if (sp.category) {
+        q = q.eq('category', sp.category)
+      }
+
+      const { data } = await q
+
+      rows = (data ?? []).map((e) => {
+        const row = e as unknown as { occurred_at: string; amount: number; name: string | null; category: string | null }
+        return {
+          date: row.occurred_at,
+          description: row.name ?? '—',
+          amount: Number(row.amount ?? 0),
+          origin_label: row.category ? (CATEGORY_LABELS[row.category] ?? row.category) : null,
+        }
+      })
     }
 
-    const { data } = await q
-
-    rows = (data ?? []).map((e) => {
-      const row = e as unknown as { occurred_at: string; amount: number; description: string | null; category: string | null }
-      return {
-        date: row.occurred_at,
-        description: row.description ?? '—',
-        amount: Number(row.amount ?? 0),
-        origin_label: row.category ? (CATEGORY_LABELS[row.category] ?? row.category) : null,
+    if (!sp.category || soTaxas) {
+      const tipoCartao = (t: string | null) => (t === 'credit' ? 'Cartão de Crédito' : t === 'debit' ? 'Cartão de Débito' : 'Cartão')
+      const [{ data: invFee }, { data: apptFee }, { data: saleFee }] = await Promise.all([
+        sb
+          .from('invoice_payments')
+          .select('paid_at, amount, card_type, fee_percent, invoice:invoices!inner(id, invoice_number, business_id, customer:customers(name))')
+          .eq('invoice.business_id', business.id)
+          .eq('payment_method', 'card')
+          .gt('fee_percent', 0)
+          .gte('paid_at', fromISO)
+          .lt('paid_at', toISO),
+        sb
+          .from('appointments')
+          .select('paid_at, total_price, client_name, payment_card_type, payment_fee_percent')
+          .eq('business_id', business.id)
+          .is('invoice_item_id', null)
+          .eq('payment_method', 'card')
+          .gt('payment_fee_percent', 0)
+          .gte('paid_at', fromISO)
+          .lt('paid_at', toISO),
+        sb
+          .from('sales')
+          .select('paid_at, total, payment_card_type, payment_fee_percent, customer:customers(name)')
+          .eq('business_id', business.id)
+          .eq('type', 'product_sale')
+          .eq('status', 'paid')
+          .is('invoice_id', null)
+          .eq('payment_method', 'card')
+          .gt('payment_fee_percent', 0)
+          .gte('paid_at', fromISO)
+          .lt('paid_at', toISO),
+      ])
+      type Nome = { name: string | null } | { name: string | null }[] | null
+      const nomeDe = (c: Nome) => (Array.isArray(c) ? c[0] : c)?.name ?? '—'
+      for (const p of invFee ?? []) {
+        type InvShape = { id: string; invoice_number: number; customer: Nome }
+        const row = p as unknown as { paid_at: string; amount: number | null; card_type: string | null; fee_percent: number | null; invoice: InvShape | InvShape[] | null }
+        const inv = Array.isArray(row.invoice) ? row.invoice[0] : row.invoice
+        if (!inv) continue
+        rows.push({
+          date: row.paid_at,
+          description: `Taxa da maquininha · ${nomeDe(inv.customer)} · ${tipoCartao(row.card_type)} ${Number(row.fee_percent)}%`,
+          amount: (Number(row.amount ?? 0) * Number(row.fee_percent ?? 0)) / 100,
+          origin_label: `Comanda #${inv.invoice_number}`,
+          origin_href: `/admin/comandas/${inv.id}`,
+        })
       }
-    })
+      for (const a of apptFee ?? []) {
+        const row = a as unknown as { paid_at: string; total_price: number | null; client_name: string | null; payment_card_type: string | null; payment_fee_percent: number | null }
+        rows.push({
+          date: row.paid_at,
+          description: `Taxa da maquininha · ${row.client_name ?? '—'} · ${tipoCartao(row.payment_card_type)} ${Number(row.payment_fee_percent)}%`,
+          amount: (Number(row.total_price ?? 0) * Number(row.payment_fee_percent ?? 0)) / 100,
+          origin_label: 'Atendimento direto',
+        })
+      }
+      for (const v of saleFee ?? []) {
+        const row = v as unknown as { paid_at: string; total: number | null; payment_card_type: string | null; payment_fee_percent: number | null; customer: Nome }
+        rows.push({
+          date: row.paid_at,
+          description: `Taxa da maquininha · ${nomeDe(row.customer)} · ${tipoCartao(row.payment_card_type)} ${Number(row.payment_fee_percent)}%`,
+          amount: (Number(row.total ?? 0) * Number(row.payment_fee_percent ?? 0)) / 100,
+          origin_label: 'Venda avulsa',
+        })
+      }
+    }
+
+    rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   }
 
   const total = rows.reduce((s, r) => s + r.amount, 0)
