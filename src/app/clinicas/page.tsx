@@ -7,11 +7,11 @@
    dados estruturados. Preços vêm de src/config/pricing.ts (fonte única).
    ═══════════════════════════════════════════════════════════ */
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { Montserrat, Cormorant_Garamond } from 'next/font/google'
 import { JsonLd, faqJsonLd, breadcrumbJsonLd, softwareApplicationJsonLd, organizationJsonLd, SITE_URL } from '@/lib/jsonld'
 import { PRICING, calcularPreco } from '@/config/pricing'
 import { preload } from 'react-dom'
+import { CtaTestar, CtaLink } from '@/components/lp-clinicas/Cta'
 import Filme, { HeroAparelhos } from '@/components/lp-clinicas/Filme'
 
 // só 'latin': já cobre á, ã, ç, é, õ (latin-ext eram 2 arquivos de fonte a mais no carregamento)
@@ -67,7 +67,7 @@ export default function Clinicas() {
         <div className="hero-aparelhos"><HeroAparelhos /></div>
         <div className="hero-acoes">
           <div className="hero-botoes">
-            <Link href={CADASTRO} style={botao} className="hero-botao">Testar {PRICING.trial.dias} dias grátis</Link>
+            <CtaTestar local="topo" style={botao} className="hero-botao">Testar {PRICING.trial.dias} dias grátis</CtaTestar>
             <a href="#agenda" style={{ ...botao, background: 'rgba(255,255,255,0.75)', color: TAUPE }} className="hero-botao">▶ Ver por dentro</a>
           </div>
           <p className="hero-nota">sem cartão · sem fidelidade · garantia de {PRICING.garantia.diasReembolso} dias</p>
@@ -142,7 +142,9 @@ export default function Clinicas() {
               <p style={{ margin: '8px 0 16px', fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 38 }}>{pl.preco}{pl.preco.startsWith('R$') && <span style={{ fontSize: 16, fontWeight: 600 }}>/mês</span>}</p>
               {pl.ano && <p style={{ margin: '-10px 0 14px', fontSize: 14, opacity: 0.8 }}>{pl.ano}</p>}
               <ul style={{ margin: '0 0 22px', paddingLeft: 18, lineHeight: 1.7 }}>{pl.itens.map((i) => <li key={i}>{i}</li>)}</ul>
-              <Link href={pl.href} style={{ ...botao, background: pl.destaque ? CREME : TAUPE, color: pl.destaque ? TAUPE : CREME, fontSize: 16 }}>{pl.cta}</Link>
+              {pl.href === '/especialista'
+                ? <CtaLink local={`plano-${pl.nome.toLowerCase().replace(/\s+/g, '-')}`} href={pl.href} destino="especialista" style={{ ...botao, background: pl.destaque ? CREME : TAUPE, color: pl.destaque ? TAUPE : CREME, fontSize: 16 }}>{pl.cta}</CtaLink>
+                : <CtaTestar local={`plano-${pl.nome.toLowerCase()}`} style={{ ...botao, background: pl.destaque ? CREME : TAUPE, color: pl.destaque ? TAUPE : CREME, fontSize: 16 }}>{pl.cta}</CtaTestar>}
             </div>
           ))}
         </div>
@@ -157,7 +159,7 @@ export default function Clinicas() {
             <p style={{ margin: '10px 0 0', fontSize: 16, lineHeight: 1.55, color: MARROM }}>{f.a}</p>
           </details>
         ))}
-        <div style={{ textAlign: 'center', marginTop: 40 }}><Link href={CADASTRO} style={botao}>Testar {PRICING.trial.dias} dias grátis</Link></div>
+        <div style={{ textAlign: 'center', marginTop: 40 }}><CtaTestar local="final" style={botao}>Testar {PRICING.trial.dias} dias grátis</CtaTestar></div>
       </section>
     </main>
   )

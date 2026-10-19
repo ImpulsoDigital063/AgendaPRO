@@ -12,6 +12,8 @@
    ═══════════════════════════════════════════════════════════ */
 import React, { useEffect, useRef, useState } from 'react'
 import { IPhone, IPad, MacBook, JanelaSistema, ConversaWhatsApp, Lupa, Assinatura, faixa, Passo } from './aparelhos'
+import { CtaTestar, FaixaCta } from './Cta'
+import { gaCapitulo } from '@/lib/ga-event'
 
 const C = (s: string) => `/clinicas/cap1/${s}.webp`
 const CREME = '#F7F2EB', TAUPE = '#5E544B'
@@ -1887,6 +1889,23 @@ export default function Filme() {
     window.addEventListener('wheel', parar, opts); window.addEventListener('touchstart', parar, opts); window.addEventListener('keydown', parar)
     return () => { cancelAnimationFrame(raf); window.removeEventListener('wheel', parar); window.removeEventListener('touchstart', parar); window.removeEventListener('keydown', parar) }
   }, [assistindo])
+  useEffect(() => {
+    const vistos = new Set<string>()
+    let pendente = false
+    const conferir = () => {
+      pendente = false
+      const els = [...document.querySelectorAll<HTMLElement>('[data-filme]')]
+      els.forEach((el, i) => {
+        const nome = el.id.replace('filme-', '')
+        const prog = (window.scrollY - el.offsetTop) / Math.max(1, el.offsetHeight - window.innerHeight)
+        if (prog > 0.02 && !vistos.has(`i:${nome}`)) { vistos.add(`i:${nome}`); gaCapitulo('inicio', nome, i + 1) }
+        if (prog > 0.9 && !vistos.has(`f:${nome}`)) { vistos.add(`f:${nome}`); gaCapitulo('fim', nome, i + 1) }
+      })
+    }
+    const aoRolar = () => { if (!pendente) { pendente = true; window.setTimeout(conferir, 400) } }
+    window.addEventListener('scroll', aoRolar, { passive: true })
+    return () => window.removeEventListener('scroll', aoRolar)
+  }, [])
   const assistir = () => {
     const el = alvoAssistir()
     if (el && window.scrollY < el.offsetTop - 10) window.scrollTo({ top: el.offsetTop, behavior: 'smooth' })
@@ -1899,17 +1918,29 @@ export default function Filme() {
         <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'safe center', gap: 4, overflowX: 'auto', scrollbarWidth: 'none', maskImage: 'linear-gradient(90deg, #000 88%, transparent)' }}>
           {CAPITULOS.map((c) => <a key={c.id} href={`#${c.id}`} style={{ padding: '6px 10px', borderRadius: 999, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', color: TAUPE, textDecoration: 'none', background: 'rgba(255,255,255,0.7)' }}>{c.nome}</a>)}
         </div>
-        <button type="button" onClick={() => (assistindo ? setAssistindo(false) : assistir())} style={{ padding: '6px 12px', borderRadius: 999, border: 0, fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', flex: 'none', color: '#fff', background: TAUPE, cursor: 'pointer' }}>{assistindo ? '❚❚ Pausar' : '▶ Assistir'}</button>
+        <button type="button" onClick={() => (assistindo ? setAssistindo(false) : assistir())} aria-label={assistindo ? 'Pausar' : 'Assistir o capítulo'} style={{ padding: '6px 12px', borderRadius: 999, border: `1.5px solid ${TAUPE}`, fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', flex: 'none', color: TAUPE, background: 'transparent', cursor: 'pointer' }}>{assistindo ? '❚❚' : '▶'}<span className="nav-rotulo">{assistindo ? ' Pausar' : ' Assistir'}</span></button>
+        <CtaTestar local="nav" style={{ padding: '7px 14px', borderRadius: 999, fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', flex: 'none', color: '#fff', background: TAUPE, textDecoration: 'none' }}>Testar grátis</CtaTestar>
+        <style>{'@media (max-width: 599px){.nav-rotulo{display:none}}'}</style>
       </nav>
+      {/* depois de cada capítulo, uma faixa curta pra testar: quem já se convenceu não precisa rolar o filme inteiro */}
       <CapAgenda reduzir={reduzir} />
+      <FaixaCta local="depois-agenda" titulo={<>Quer a sua agenda <Ouro>assim</Ouro>?</>} />
       <CapAntes reduzir={reduzir} />
+      <FaixaCta local="depois-ficha" titulo={<>Ficha assinada no celular, <Ouro>sem papel</Ouro></>} />
       <CapComanda reduzir={reduzir} />
+      <FaixaCta local="depois-comanda" titulo={<>Comanda e pagamento <Ouro>sem caderno</Ouro></>} />
       <CapClube reduzir={reduzir} />
+      <FaixaCta local="depois-clube" titulo={<>Dê um motivo pra ela <Ouro>voltar</Ouro></>} />
       <CapCampanhas reduzir={reduzir} />
+      <FaixaCta local="depois-campanhas" titulo={<>Traga de volta <Ouro>quem sumiu</Ouro></>} />
       <CapFinanceiro reduzir={reduzir} />
+      <FaixaCta local="depois-financeiro" titulo={<>Saiba quanto <Ouro>sobra de verdade</Ouro></>} />
       <CapEquipe reduzir={reduzir} />
+      <FaixaCta local="depois-equipe" titulo={<>Cada um no seu lugar, <Ouro>você no controle</Ouro></>} />
       <CapPacotes reduzir={reduzir} />
+      <FaixaCta local="depois-pacotes" titulo={<>Venda o tratamento <Ouro>inteiro</Ouro></>} />
       <CapVitrine reduzir={reduzir} />
+      <FaixaCta local="depois-mais" titulo={<>Tudo isso num <Ouro>sistema só</Ouro></>} />
       <CapSuporte reduzir={reduzir} />
       <style>{'@keyframes cursorPisca{50%{opacity:0}}@keyframes pulsar{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}'}</style>
     </>

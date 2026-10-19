@@ -41,3 +41,13 @@ export function gaCadastroConcluido(dados: { nicho?: string | null; canal?: stri
     canal_declarado: dados.canal || 'nao_informado',
   })
 }
+
+/** Clique num botão de teste/planos da LP. `local` diz QUAL botão (topo, nav, depois de um capítulo, plano). */
+export function gaCtaClique(local: string, destino: 'cadastro' | 'planos' | 'especialista' = 'cadastro') {
+  gaEvent('cta_clique', { local, destino })
+}
+
+/** Até onde a pessoa assiste o "filme" da LP: início e fim de cada capítulo (uma vez por visita). */
+export function gaCapitulo(momento: 'inicio' | 'fim', capitulo: string, ordem: number) {
+  gaEvent(`capitulo_${momento}`, { capitulo, ordem })
+}
