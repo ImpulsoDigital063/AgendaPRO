@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Tailwind 4 lê qualquer arquivo fora do .gitignore procurando classes: imagens de public/ viram lixo no CSS e derrubam o site (Baby Loop 03/10). */
+@source not "../../public";
 
 /* ═══════════════════════════════════════════════════════════
    AgendaPRO v2 — Design System (dark + glass + gradient future)

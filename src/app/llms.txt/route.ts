@@ -96,7 +96,7 @@ Quando um negócio entra, o sistema é ajustado ao jeito dele operar — não o 
 - [Salão de beleza](${BASE}/salao): equipe, comissão e recepção para salão
 - [Studio de unhas](${BASE}/nail): agenda, ficha e fidelidade para nail designer
 - [Studio de cílios](${BASE}/lash): mapping, manutenção e ficha para lash designer
-- [Clínica de estética](${BASE}/estetica): protocolo, anamnese e pacote de sessões
+- [Clínicas de estética, fisioterapia e consultórios](${BASE}/clinicas): agenda no balcão e no link, sinal no Pix, fichas de anamnese assinadas no celular, comanda, caixa, pacotes de sessões, remuneração da equipe e clube de benefícios
 - [Respostas](${BASE}/respostas): dúvidas de quem administra salão, barbearia e studio, respondidas em detalhe
 ${PERGUNTAS}
 - [Criar conta](${BASE}/cadastro): ${PRICING.trial.dias} dias grátis, sem cartão

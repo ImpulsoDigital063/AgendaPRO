@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // /estetica virou /clinicas (18/10/2026): 301 pra levar o ranking e os links antigos
+  async redirects() {
+    return [{ source: '/estetica', destination: '/clinicas', statusCode: 301 }]
+  },
+
   async headers() {
     return [
       // Rotas de auth/redirect-sensitive NÃO podem ser cacheadas pelo CDN

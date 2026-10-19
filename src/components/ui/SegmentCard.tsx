@@ -43,7 +43,7 @@ const CONFIG: Record<Segment, {
     accent:  '#06B6D4',
     accent2: '#10B981',
     bgGrad:  'linear-gradient(160deg, #051A1C 0%, #03101A 60%, #050B14 100%)',
-    href:    '/estetica',
+    href:    '/clinicas',
   },
   nail: {
     tag:     'NAIL DESIGNERS',

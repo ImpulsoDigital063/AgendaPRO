@@ -6,7 +6,7 @@ import { SITE_URL as BASE } from '@/lib/site-url'
 
 // Contas internas: demos de gravação/teste e a conta tutorial. São páginas
 // reais e funcionais, mas não são negócio de ninguém — não entram no índice.
-const SLUGS_INTERNOS = new Set(['studio-marcela', 'studio-larissa', 'demo-lash'])
+const SLUGS_INTERNOS = new Set(['studio-marcela', 'studio-larissa', 'demo-lash', 'barbearia-teste', 'clinica-teste-fichas'])
 
 // Revalida 1x por hora: cliente novo entra no sitemap sozinho, sem redeploy.
 export const revalidate = 3600
@@ -31,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/`, lastModified: agora, changeFrequency: 'weekly', priority: 1 },
     { url: `${BASE}/barbearia`, lastModified: agora, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/salao`, lastModified: agora, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${BASE}/estetica`, lastModified: agora, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${BASE}/clinicas`, lastModified: agora, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${BASE}/nail`, lastModified: agora, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/lash`, lastModified: agora, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/respostas`, lastModified: agora, changeFrequency: 'weekly', priority: 0.8 },

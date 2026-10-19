@@ -17,6 +17,8 @@ const mono = JetBrains_Mono({
   subsets: ["latin"],
   display: 'swap',
   weight: ['400', '600'],
+  // usada em poucas telas do painel: carrega quando aparecer, sem pré-carregar em toda página
+  preload: false,
 });
 
 export const metadata: Metadata = {

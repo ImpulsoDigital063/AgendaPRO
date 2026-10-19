@@ -1028,7 +1028,7 @@ export default async function SalaoPage() {
                 <Link href="/barbearia" className="block text-slate-400 hover:text-white transition-colors">Barbearia</Link>
                 <Link href="/salao" className="block text-slate-300 hover:text-white transition-colors">Salão</Link>
                 <Link href="/nail" className="block text-slate-400 hover:text-white transition-colors">Nail</Link>
-                <Link href="/estetica" className="block text-slate-400 hover:text-white transition-colors">Estética</Link>
+                <Link href="/clinicas" className="block text-slate-400 hover:text-white transition-colors">Clínicas</Link>
                 <Link href="/respostas" className="block text-slate-400 hover:text-white transition-colors">Respostas</Link>
               </div>
               <div className="space-y-2">

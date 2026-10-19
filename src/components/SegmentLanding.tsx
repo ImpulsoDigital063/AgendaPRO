@@ -359,7 +359,7 @@ export default function SegmentLanding({ config }: { config: SegmentConfig }) {
           <div className="flex flex-wrap gap-4 text-xs text-slate-400">
             <Link href="/barbearia" className="hover:text-white">Barbearia</Link>
             <Link href="/salao" className="hover:text-white">Salão</Link>
-            <Link href="/estetica" className="hover:text-white">Estética</Link>
+            <Link href="/clinicas" className="hover:text-white">Clínicas</Link>
             <Link href="/nail" className="hover:text-white">Nail</Link>
             <Link href="/admin/login" className="hover:text-white">Entrar</Link>
           </div>

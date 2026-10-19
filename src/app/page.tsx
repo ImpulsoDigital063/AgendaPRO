@@ -326,7 +326,7 @@ export default async function HomePage() {
             {([
               { slug: 'barbearia', src: '/images/lp/barbearia.jpg', alt: 'Barbeiro fazendo corte', label: 'Barbearia',     accent: '#F59E0B' },
               { slug: 'salao',     src: '/images/lp/salao.jpg',     alt: 'Cabeleireira penteando cliente', label: 'Salão',        accent: '#A855F7' },
-              { slug: 'estetica',  src: '/images/lp/estetica.jpg',  alt: 'Esteticista aplicando máscara facial', label: 'Estética',     accent: '#06B6D4' },
+              { slug: 'clinicas',  src: '/images/lp/estetica.jpg',  alt: 'Esteticista aplicando máscara facial', label: 'Clínicas',     accent: '#06B6D4' },
               { slug: 'nail',      src: '/images/lp/nail.jpg',      alt: 'Manicure trabalhando em unhas',  label: 'Nail Designer', accent: '#EC4899' },
             ] as const).map((nicho) => (
               <Link
@@ -1323,7 +1323,7 @@ export default async function HomePage() {
               <Link href="/barbearia" className="text-slate-400 hover:text-white transition-colors">Barbearia</Link>
               <Link href="/salao" className="text-slate-400 hover:text-white transition-colors">Salão</Link>
               <Link href="/nail" className="text-slate-400 hover:text-white transition-colors">Nail</Link>
-              <Link href="/estetica" className="text-slate-400 hover:text-white transition-colors">Estética</Link>
+              <Link href="/clinicas" className="text-slate-400 hover:text-white transition-colors">Clínicas</Link>
               <Link href="/lash" className="text-slate-400 hover:text-white transition-colors">Cílios</Link>
               <Link href="/respostas" className="text-slate-400 hover:text-white transition-colors">Respostas</Link>
               <Link href="/privacidade" className="text-slate-400 hover:text-white transition-colors">Privacidade</Link>
