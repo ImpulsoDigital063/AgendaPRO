@@ -835,7 +835,7 @@ export default function CaixaView({
             ? `ATENÇÃO: ${pendingCount} atendimento${pendingCount !== 1 ? 's' : ''} ainda sem pagamento (${formatBRL(pendingValueCents)}).`
             : '',
           ``,
-          `Após fechar, só Marko consegue reabrir.`,
+          `Confira antes de fechar: depois de fechado, o caixa do dia não pode ser reaberto.`,
         ].filter(Boolean).join('\n')}
         confirmLabel="Sim, fechar"
         cancelLabel="Voltar"
