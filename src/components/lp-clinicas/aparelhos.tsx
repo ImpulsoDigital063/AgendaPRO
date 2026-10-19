@@ -90,7 +90,7 @@ export const IPhone: React.FC<{ p: number; w: number; passos?: Passo[]; toques?:
             {passos.length > 0 && <div style={{ position: 'absolute', left: 0, right: 0, top: desce * (iw / 390), height: ih }}><Tela passos={passos} p={p} w={iw} h={ih} /></div>}
             {naRolagem && rolagem && (
               <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#fff' }}>
-                <img src={rolagem.img} alt="" decoding="async" style={{ position: 'absolute', left: 0, top: (desce - ry) * k, width: iw, height: rolagem.alturaCss * k, maxWidth: 'none' }} />
+                <img src={rolagem.img} alt="" decoding="async" style={{ position: 'absolute', left: 0, top: desce * k, transform: `translateY(${-ry * k}px)`, width: iw, height: rolagem.alturaCss * k, maxWidth: 'none' }} />
                 {rolagem.cabecalho > 0 && <div style={{ position: 'absolute', left: 0, top: desce * k, width: iw, height: rolagem.cabecalho * k, overflow: 'hidden' }}>
                   <img src={rolagem.img} alt="" decoding="async" style={{ position: 'absolute', left: 0, top: 0, width: iw, height: rolagem.alturaCss * k, maxWidth: 'none' }} />
                 </div>}

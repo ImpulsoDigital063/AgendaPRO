@@ -1916,18 +1916,93 @@ export default function Filme() {
   )
 }
 
-/** topo: os aparelhos da clínica parados, já na cena (computador com a agenda, celular com o link) */
+/** topo: os aparelhos da clínica parados, já na cena (computador com a agenda, celular com o link).
+    Desenhados num palco fixo e só ESCALADOS pra caber no espaço que sobra na primeira tela:
+    escala é transform (não empurra nada, sem salto de layout) e o palco nunca corta. */
+// três arranjos com os MESMOS aparelhos (notebook 600, celular 250): só muda onde ficam e a escala do palco.
+// O arranjo e a escala saem de um script mínimo que roda ANTES da primeira pintura (logo depois da caixa):
+// o topo já nasce no tamanho certo, sem esconder nada até o React carregar (isso atrasava o LCP).
+//  · largo (computador/tablet deitado): notebook com o celular ao lado
+//  · alto (tela larga e alta): celular na frente do lado esquerdo; o card da reserva, no meio da agenda, fica à vista
+//  · torre (celular em pé, Eduardo 19/10: "traga a tela do celular mais pra cima"): celular grande na frente, logo abaixo do título
+const PALCOS = {
+  largo: { w: 830, h: 560, mac: [0, 70], fone: [580, 20], fs: 1 },
+  alto: { w: 660, h: 600, mac: [60, 0], fone: [0, 85], fs: 1 },
+  torre: { w: 600, h: 860, mac: [0, 0], fone: [0, 170], fs: 1.3 },
+}
+const MEDIR_PALCO = `(function(c){if(!c)return;var P=${JSON.stringify(Object.fromEntries(Object.entries(PALCOS).map(([t, v]) => [t, [v.w, v.h]])))};var W=c.clientWidth,H=c.clientHeight;function e(t){return Math.min(W/P[t][0],H/P[t][1])}var t=(W<560&&H>W*1.15)?'torre':(e('alto')>e('largo')*1.12?'alto':'largo');c.setAttribute('data-palco',t);c.style.setProperty('--hs',String(e(t)))})`
+const CSS_PALCO = Object.entries(PALCOS).map(([t, v]) => `[data-palco=${t}] .hp-palco{width:${v.w}px;height:${v.h}px}[data-palco=${t}] .hp-mac{left:${v.mac[0]}px;top:${v.mac[1]}px}[data-palco=${t}] .hp-fone{left:${v.fone[0]}px;top:${v.fone[1]}px;transform:scale(${v.fs})}`).join('') +
+  '.hp-palco{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(var(--hs,0))}[data-palco=torre] .hp-palco{top:0;transform-origin:50% 0;transform:translate(-50%,0) scale(var(--hs,0))}.hp-mac,.hp-fone{position:absolute;transform-origin:0 0}'
+/* o topo EM MOVIMENTO (Eduardo 19/10: "impressionar já no primeiro momento"): loop de 13 s com a rota REAL do cap. 1
+   (a Beatriz agenda pelo link: serviço → profissional → dia → 14:30 → dados → confirmar) e, quando ela confirma,
+   a reserva dela aparece na agenda do notebook (Camila, ter 20/10, 14:30 · tela gravada depois dessa reserva;
+   o quadro "antes" é a mesma tela sem o card). Mesmo relógio do cap. 1, comprimido: d (0,535→0,9) vira t (0,04→0,60). */
+const LOOP_S = 11
+// até os dados digitados (0,79) no ritmo do cap. 1; daí até o toque em Confirmar, mais rápido (sem tela parada)
+const mt = (d: number) => (d <= 0.79 ? 0.04 + ((d - 0.535) * 0.48) / 0.255 : 0.52 + ((d - 0.79) * 0.08) / 0.11)
+const HERO_FONE: Passo[] = passosLink.map((s) => ({ ...s, de: s.de === 0 ? 0 : mt(s.de) }))
+const HERO_TOQUES = toquesLink.map((t) => ({ ...t, em: mt(t.em) }))
+const HERO_CAMPOS = [{ x: 46, y: 404, w: 300, h: 36, texto: '(11) 97731-2845', de: mt(0.745), ate: mt(0.765), vazio: '(99) 99999-9999', some: mt(0.79) }, { x: 46, y: 492, w: 300, h: 36, texto: 'Beatriz Lima', de: mt(0.768), ate: mt(0.785), vazio: 'Ex: João Silva', some: mt(0.79) }]
+const CHEGOU = 0.62 // a reserva aparece na agenda (logo depois do Confirmar, em 0,6)
+const CARD = { x: 861, y: 405, w: 274, h: 225 } // card da Beatriz na tela de 1440 × 900
+const IMGS_HERO = [...new Set([...passosLink.map((s) => s.img), C('hero-card')])]
 export function HeroAparelhos() {
-  const w = useLargura()
-  const largo = w >= 900
+  const caixa = useRef<HTMLDivElement>(null)
+  const [t, setT] = useState(0)
+  const reduzir = useReduzir()
+  useEffect(() => {
+    const el = caixa.current
+    if (!el) return
+    // mesma conta do script inicial, refeita quando a caixa muda de tamanho (girar o celular, redimensionar)
+    const medir = new Function('c', `${MEDIR_PALCO}(c)`) as (c: HTMLElement) => void
+    const ro = new ResizeObserver(() => medir(el)); ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  // relógio: ~30 quadros/s, só com o topo à vista e a aba aberta; as telas do loop baixam depois do primeiro quadro
+  useEffect(() => {
+    if (reduzir) { setT(0.9); return }
+    const el = caixa.current
+    if (!el) return
+    const precarga = window.setTimeout(() => IMGS_HERO.forEach((u) => { const i = new Image(); i.src = u }), 1200)
+    let visivel = true, raf = 0, ultimo = 0, acumulado = 0
+    const io = new IntersectionObserver(([e]) => { visivel = e.isIntersecting }); io.observe(el)
+    const passo = (agora: number) => {
+      raf = requestAnimationFrame(passo)
+      const dt = ultimo ? agora - ultimo : 0; ultimo = agora
+      if (!visivel || document.hidden || dt > 250) return
+      acumulado += dt
+      if (acumulado < 33) return
+      setT((v) => (v + acumulado / 1000 / LOOP_S) % 1); acumulado = 0
+    }
+    raf = requestAnimationFrame(passo)
+    return () => { cancelAnimationFrame(raf); io.disconnect(); window.clearTimeout(precarga) }
+  }, [reduzir])
+  const MAC = 600, FONE = 250
+  const bz = MAC * 0.022, k = (MAC - bz * 2) / 1440
+  const brilho = faixa(t, CHEGOU, CHEGOU + 0.03) * (1 - faixa(t, 0.93, 0.98))
+  const selo = faixa(t, CHEGOU + 0.02, CHEGOU + 0.05) * (1 - faixa(t, 0.93, 0.97))
   return (
-    <div style={{ position: 'relative', width: '100%', maxWidth: 1000, margin: '0 auto', height: largo ? 520 : w * 0.95 }}>
-      <div style={{ position: 'absolute', left: largo ? 0 : '2%', right: largo ? 120 : '18%', top: 0 }}>
-        <MacBook p={1} w={largo ? 820 : w * 0.8} passos={[{ img: C('b-01-agenda'), de: 0 }]} rotulo="Agenda da clínica no computador" />
+    <>
+      <div ref={caixa} suppressHydrationWarning style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0 }}>
+        <div className="hp-palco">
+          <div className="hp-mac">
+            <MacBook p={t} w={MAC} passos={[{ img: C('hero-agenda-antes'), de: 0 }]} rotulo="Agenda da clínica no computador: a reserva feita pelo link aparece na hora" />
+            {/* a reserva chegando: o card dela (recorte da tela gravada depois da reserva) + anel dourado + selo.
+                Recorte pequeno por cima: a tela inteira não troca, então não vira um "maior elemento" novo */}
+            <img src={C('hero-card')} alt="" aria-hidden decoding="async" style={{ position: 'absolute', left: bz + CARD.x * k, top: bz * 1.4 + CARD.y * k, width: CARD.w * k, height: CARD.h * k, maxWidth: 'none', opacity: faixa(t, CHEGOU, CHEGOU + 0.012) * (1 - faixa(t, 0.97, 0.995)), transform: `scale(${1.1 - 0.1 * faixa(t, CHEGOU, CHEGOU + 0.03)})` }} />
+            <div aria-hidden style={{ position: 'absolute', left: bz + CARD.x * k - 4, top: bz * 1.4 + CARD.y * k - 4, width: CARD.w * k + 8, height: CARD.h * k + 8, borderRadius: 10, boxShadow: `0 0 0 ${3 * brilho}px #C9974A, 0 0 ${28 * brilho}px rgba(201,151,74,${0.7 * brilho})`, opacity: brilho, transform: `scale(${1.08 - 0.08 * faixa(t, CHEGOU, CHEGOU + 0.03)})`, pointerEvents: 'none' }} />
+            <div aria-hidden style={{ position: 'absolute', left: bz + (CARD.x + CARD.w / 2) * k, top: bz * 1.4 + CARD.y * k - 40, translate: '-50% 0', padding: '7px 13px', borderRadius: 999, background: TAUPE, color: CREME, fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', boxShadow: '0 14px 30px rgba(60,48,38,0.3)', opacity: selo, transform: `translateY(${(1 - selo) * 12}px) scale(${0.9 + 0.1 * selo})` }}>
+              <span style={{ color: '#E3C28E' }}>●</span> Nova reserva pelo link · 14:30
+            </div>
+          </div>
+          <div className="hp-fone" style={{ filter: 'drop-shadow(0 30px 40px rgba(60,48,38,0.28))' }}>
+            <IPhone p={t} w={FONE} passos={HERO_FONE} toques={HERO_TOQUES} campos={HERO_CAMPOS} rotulo="Cliente agendando pelo link da clínica no celular: serviço, profissional, dia, horário e confirmação" />
+          </div>
+        </div>
       </div>
-      <div style={{ position: 'absolute', right: largo ? 20 : '2%', top: largo ? 90 : w * 0.22 }}>
-        <IPhone p={1} w={largo ? 230 : w * 0.34} passos={[{ img: C('r-02-link-sem-modal'), de: 0 }]} rotulo="Link de agendamento da clínica no celular" />
-      </div>
-    </div>
+      {/* roda assim que o HTML chega, antes da primeira pintura: escolhe o arranjo e a escala */}
+      <script dangerouslySetInnerHTML={{ __html: `${MEDIR_PALCO}(document.currentScript&&document.currentScript.previousElementSibling)` }} />
+      <style>{CSS_PALCO}</style>
+    </>
   )
 }

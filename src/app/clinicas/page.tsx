@@ -50,27 +50,51 @@ const botao: React.CSSProperties = { display: 'inline-block', padding: '16px 30p
 export default function Clinicas() {
   const { solo, equipe } = PRICING
   // as 2 telas do topo são o maior elemento da página (LCP): baixam junto com o HTML, na frente de tudo
-  preload('/clinicas/cap1/b-01-agenda.webp', { as: 'image', fetchPriority: 'high' })
+  preload('/clinicas/cap1/hero-agenda-antes.webp', { as: 'image', fetchPriority: 'high' })
   preload('/clinicas/cap1/r-02-link-sem-modal.webp', { as: 'image', fetchPriority: 'high' })
   return (
     <main className={`${display.variable} ${serif.variable}`} style={{ background: CREME, color: TAUPE, minHeight: '100vh', overflowX: 'clip' }}>
       <JsonLd data={[organizationJsonLd(), softwareApplicationJsonLd(), faqJsonLd(FAQS, URL), breadcrumbJsonLd([{ nome: 'Início', url: SITE_URL }, { nome: 'Clínicas', url: URL }])]} />
 
-      {/* topo */}
-      <header style={{ padding: '56px 16px 24px', textAlign: 'center', background: 'radial-gradient(1100px 500px at 15% -10%, rgba(201,151,74,0.22), transparent), radial-gradient(900px 500px at 100% 110%, rgba(133,122,111,0.16), transparent)' }}>
-        <p style={{ margin: '0 0 14px', fontWeight: 700, fontSize: 14, letterSpacing: 6, color: MARROM }}>ESTÉTICA · FISIOTERAPIA · CONSULTÓRIOS</p>
-        <h1 style={{ margin: '0 auto', maxWidth: 900, fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 'clamp(34px, 6.4vw, 72px)', letterSpacing: -2, lineHeight: 1 }}>
-          Sua clínica organizada, <span style={ouro}>do agendamento ao caixa</span>
-        </h1>
-        <p style={{ margin: '18px auto 26px', maxWidth: 640, fontSize: 'clamp(17px, 2.2vw, 21px)', lineHeight: 1.5 }}>
-          Agenda pelo balcão e pelo link, sinal no Pix, fichas assinadas no celular, comanda, caixa e clube de benefícios. Tudo num lugar só, com suporte de gente que ajusta o sistema ao seu jeito.
-        </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link href={CADASTRO} style={botao}>Testar {PRICING.trial.dias} dias grátis</Link>
-          <a href="#agenda" style={{ ...botao, background: 'rgba(255,255,255,0.75)', color: TAUPE }}>▶ Ver por dentro</a>
+      {/* topo · 1ª tela inteira, sem rolar (Eduardo 19/10): assimétrico, texto à esquerda e aparelhos à direita no
+          computador e no tablet deitado; no celular e no tablet em pé, texto em cima e aparelhos no espaço que sobra */}
+      <header className="hero-clinicas" style={{ background: 'radial-gradient(1100px 500px at 15% -10%, rgba(201,151,74,0.22), transparent), radial-gradient(900px 500px at 100% 110%, rgba(133,122,111,0.16), transparent)' }}>
+        <div className="hero-texto">
+          <p className="hero-kicker">ESTÉTICA · FISIOTERAPIA · CONSULTÓRIOS</p>
+          <h1 className="hero-h1">Sua clínica organizada, <span style={ouro}>do agendamento ao caixa</span></h1>
+          <p className="hero-sub">Agenda pelo balcão e pelo link, sinal no Pix, fichas assinadas no celular, comanda, caixa e clube de benefícios. Tudo num lugar só, com suporte de gente que ajusta o sistema ao seu jeito.</p>
         </div>
-        <p style={{ margin: '14px 0 34px', fontSize: 14, color: MARROM }}>sem cartão · sem fidelidade · garantia de {PRICING.garantia.diasReembolso} dias</p>
-        <HeroAparelhos />
+        <div className="hero-aparelhos"><HeroAparelhos /></div>
+        <div className="hero-acoes">
+          <div className="hero-botoes">
+            <Link href={CADASTRO} style={botao} className="hero-botao">Testar {PRICING.trial.dias} dias grátis</Link>
+            <a href="#agenda" style={{ ...botao, background: 'rgba(255,255,255,0.75)', color: TAUPE }} className="hero-botao">▶ Ver por dentro</a>
+          </div>
+          <p className="hero-nota">sem cartão · sem fidelidade · garantia de {PRICING.garantia.diasReembolso} dias</p>
+        </div>
+        <style>{`
+          .hero-clinicas { box-sizing: border-box; height: 100svh; min-height: 560px; display: flex; flex-direction: column; padding: 24px 16px 8px; gap: 8px; text-align: center; }
+          .hero-texto, .hero-acoes { flex: none; }
+          .hero-kicker { margin: 0 0 10px; font-weight: 700; font-size: 12px; letter-spacing: 4px; color: ${MARROM}; }
+          .hero-h1 { margin: 0 auto; max-width: 900px; font-family: var(--font-display); font-weight: 900; font-size: clamp(30px, 8.4vw, 72px); letter-spacing: -1.5px; line-height: 1.02; }
+          .hero-sub { margin: 12px auto 16px; max-width: 640px; font-size: clamp(15px, 4vw, 21px); line-height: 1.45; }
+          .hero-botoes { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+          .hero-botao { padding: 13px 20px !important; font-size: 16px !important; }
+          .hero-nota { margin: 10px 0 0; font-size: 13px; color: ${MARROM}; }
+          .hero-aparelhos { flex: 1; min-height: 0; }
+          /* celular (Eduardo 19/10): o aparelho sobe pra logo abaixo do título; o parágrafo sai e os botões ficam embaixo, lado a lado */
+          @media (max-width: 599px) { .hero-sub { display: none; } .hero-botoes { flex-wrap: nowrap; } .hero-botao { padding: 12px 16px !important; font-size: 15px !important; white-space: nowrap; } .hero-nota { margin-top: 8px; } }
+          @media (min-width: 600px) { .hero-clinicas { padding: 40px 32px 16px; } .hero-botao { padding: 16px 30px !important; font-size: 18px !important; } }
+          /* computador e tablet deitado: assimétrico, texto à esquerda, aparelhos à direita */
+          @media (min-width: 900px) and (min-aspect-ratio: 1/1) {
+            .hero-clinicas { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); grid-template-rows: 1fr auto auto 1fr; grid-template-areas: '. ap' 'tx ap' 'ac ap' '. ap'; align-items: center; column-gap: 3vw; row-gap: 0; padding: 24px max(28px, 3.5vw) 24px; text-align: left; }
+            .hero-texto { grid-area: tx; } .hero-acoes { grid-area: ac; } .hero-aparelhos { grid-area: ap; }
+            .hero-h1 { margin: 0; font-size: clamp(38px, 4.2vw, 72px); }
+            .hero-sub { margin: 18px 0 26px; font-size: clamp(16px, 1.45vw, 21px); }
+            .hero-botoes { justify-content: flex-start; }
+            .hero-aparelhos { height: min(88svh, 52vw); }
+          }
+        `}</style>
       </header>
 
       <Filme />

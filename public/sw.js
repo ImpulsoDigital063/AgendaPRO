@@ -24,6 +24,7 @@
 // v169 (14/10): texto do WhatsApp da ficha editável em Avisos manuais → Ficha (v158).
 // v168 (14/10): link da ficha com prévia da clínica no WhatsApp e logo do app na página.
 // v167 (14/10): link pra cliente preencher e assinar a ficha no celular (/ficha/[token], v157).
+// v190 (19/10): /clinicas com o topo em movimento (cliente agenda no celular, reserva chega na agenda) e assimétrico em toda tela.
 // v189 (19/10): página /clinicas (filme por rolagem), /estetica → /clinicas, sitemap sem contas de teste.
 // v188 (19/10): Remunerações — bônus entra no valor total (antes abatia a comissão pendente e o resumo ficava menor), pagamento desconta os vales em aberto (e baixa o vale), comissão do pagamento sobre o LÍQUIDO igual à tela (antes preço cheio), pendente do resumo sem "−R$ 0,00".
 // v187 (19/10): Financeiro — "card" vira Crédito/Débito no notebook, detalhamento de despesas do fluxo volta (coluna name + taxas de maquininha), lucro real do celular desconta taxas e rótulo vira "Últimos 30 dias"; serviço extra na comanda perto da meia-noite não quebra mais.
@@ -86,7 +87,7 @@
 // v146 (02/10): Horarios celular — 'todo domingo', 'os outros sabados' (genero certo).
 // v176 (16/10): cartao da ficha sem 'ela' (serve pra homem) + presets de esmalteria so pra Nail designer.
 // v177 (16/10): texto da ficha no WhatsApp com nome maiusculo, do/da, horario do atendimento + link anterior cancelado.
-const STATIC_CACHE_VERSION = 'agendapro-static-v189'
+const STATIC_CACHE_VERSION = 'agendapro-static-v190'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
