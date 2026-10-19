@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconArrowLeft, IconCheck } from '@/components/ui/Icon'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 
 type PendingItem = {
   id: string
@@ -15,6 +16,9 @@ type PendingItem = {
   total_price: number | null
   commissionValue: number
 }
+
+/** v188 · vale (adiantamento) em aberto: entra descontado no pagamento da comissão */
+type ValeAberto = { id: string; description: string | null; date: string | null; amount: number }
 
 type Props = {
   professionalId: string
@@ -59,6 +63,8 @@ export default function RegistrarPagamentoModal({
   const [notes, setNotes] = useState('')
   const [paymentDate, setPaymentDate] = useState(todayBR())
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [vales, setVales] = useState<ValeAberto[]>([])
+  const [valesMarcados, setValesMarcados] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -77,7 +83,7 @@ export default function RegistrarPagamentoModal({
       toEnd.setDate(toEnd.getDate() + 1)
       const { data, error: err } = await sb
         .from('appointments')
-        .select('id, paid_at, service_name, client_name, total_price, commission_amount')
+        .select('id, paid_at, service_name, client_name, total_price, commission_amount, commission_percent, invoice_item_id')
         .eq('professional_id', professionalId)
         .gte('paid_at', fromIso)
         .lt('paid_at', toEnd.toISOString())
@@ -91,6 +97,10 @@ export default function RegistrarPagamentoModal({
         return
       }
 
+      // v188 · mesma base da tela de Remunerações: comissão sobre o LÍQUIDO (desconto
+      // da comanda rateado) e % gravada no atendimento. Antes era preço cheio × % do
+      // cadastro: com desconto na comanda, pagava a mais (Larissa R$624 × R$616,29).
+      const descontos = await getApptDiscountMap(sb, (data ?? []).map((a) => a.invoice_item_id))
       const normalized: PendingItem[] = (data ?? []).map((a) => ({
         id: a.id,
         paid_at: a.paid_at!,
@@ -106,11 +116,23 @@ export default function RegistrarPagamentoModal({
         commissionValue:
           a.commission_amount != null
             ? Number(a.commission_amount)
-            : (Number(a.total_price ?? 0) * defaultCommissionPercent) / 100,
+            : (Math.max(0, Number(a.total_price ?? 0) - (descontos[a.id] ?? 0)) *
+                (a.commission_percent != null ? Number(a.commission_percent) : defaultCommissionPercent)) / 100,
       }))
 
       setItems(normalized)
       setSelectedIds(new Set(normalized.map((i) => i.id)))
+
+      // vales em aberto dessa pessoa: vêm marcados pra descontar (dá pra desmarcar)
+      const { data: vs } = await sb
+        .from('professional_vouchers')
+        .select('id, description, date, amount')
+        .eq('professional_id', professionalId)
+        .is('used_in_payment_id', null)
+        .order('date', { ascending: true })
+      const abertos = (vs ?? []).map((v) => ({ id: v.id, description: v.description, date: v.date, amount: Number(v.amount ?? 0) }))
+      setVales(abertos)
+      setValesMarcados(new Set(abertos.map((v) => v.id)))
       setLoading(false)
     }
     load()
@@ -119,11 +141,15 @@ export default function RegistrarPagamentoModal({
 
   const selectedItems = items.filter((i) => selectedIds.has(i.id))
   const totalSelected = selectedItems.reduce((s, i) => s + i.commissionValue, 0)
+  // vale já saiu do caixa antes: desconta do que se paga agora (nunca abaixo de zero)
+  const totalVales = vales.filter((v) => valesMarcados.has(v.id)).reduce((s, v) => s + v.amount, 0)
+  const valesUsados = Math.min(totalVales, totalSelected)
+  const pagarAgora = Math.max(0, totalSelected - valesUsados)
 
-  // Sync paymentAmount when total changes
+  // Sync paymentAmount (o que sai agora) when total changes
   useEffect(() => {
-    setPaymentAmount(totalSelected.toFixed(2).replace('.', ','))
-  }, [totalSelected])
+    setPaymentAmount(pagarAgora.toFixed(2).replace('.', ','))
+  }, [pagarAgora])
 
   function toggle(id: string) {
     setSelectedIds((prev) => {
@@ -135,11 +161,20 @@ export default function RegistrarPagamentoModal({
   }
 
   async function submit() {
-    const paidAmount = parseFloat(paymentAmount.replace(',', '.')) || 0
+    const agora = parseFloat(paymentAmount.replace(',', '.')) || 0
+    // comissão quitada = o que sai agora + os vales descontados (que já tinham saído)
+    const paidAmount = Math.round((agora + valesUsados) * 100) / 100
     if (paidAmount <= 0) {
       setError('Informe um valor de pagamento maior que zero')
       return
     }
+    if (totalVales > totalSelected) {
+      // baixar vale "pela metade" perderia a sobra: a dona decide (desmarca o vale ou seleciona mais)
+      setError('O vale é maior que a comissão selecionada: desmarque o vale ou selecione mais atendimentos')
+      return
+    }
+    const valeIds = valesUsados > 0 ? vales.filter((v) => valesMarcados.has(v.id)).map((v) => v.id) : []
+    const notaVales = valeIds.length > 0 ? `Vales descontados: ${formatBRL(valesUsados)}` : ''
     setSubmitting(true)
     setError(null)
     const res = await fetch('/api/admin/commission-payments', {
@@ -151,7 +186,8 @@ export default function RegistrarPagamentoModal({
         periodStart,
         periodEnd,
         paidAmount,
-        notes: notes.trim() || null,
+        voucherIds: valeIds,
+        notes: [notes.trim(), notaVales].filter(Boolean).join(' · ') || null,
         paidAt: new Date(paymentDate + 'T12:00:00').toISOString(),
       }),
     })
@@ -336,9 +372,35 @@ export default function RegistrarPagamentoModal({
                     <b>{selectedIds.size}</b> {selectedIds.size === 1 ? 'remuneração selecionada' : 'remunerações selecionadas'}
                   </p>
                   <p className="text-xl font-bold tabular-nums mt-1" style={{ color: 'var(--admin-accent)' }}>
-                    Valor a pagar: {formatBRL(totalSelected)}
+                    {vales.length > 0 ? 'Comissão' : 'Valor a pagar'}: {formatBRL(totalSelected)}
                   </p>
                 </div>
+
+                {/* v188 · vales em aberto descontados deste pagamento */}
+                {vales.length > 0 && (
+                  <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--admin-text-faded)' }}>
+                      Vales em aberto · descontar deste pagamento
+                    </p>
+                    {vales.map((v) => (
+                      <label key={v.id} className="flex items-center gap-2 py-1.5 text-sm cursor-pointer" style={{ color: 'var(--admin-text-2)' }}>
+                        <input
+                          type="checkbox"
+                          checked={valesMarcados.has(v.id)}
+                          disabled={submitting}
+                          onChange={() => setValesMarcados((prev) => { const n = new Set(prev); if (n.has(v.id)) n.delete(v.id); else n.add(v.id); return n })}
+                          className="w-4 h-4"
+                        />
+                        <span className="flex-1">{v.description || 'Vale'}{v.date ? ` · ${formatDate(v.date + 'T12:00:00')}` : ''}</span>
+                        <span className="font-semibold tabular-nums" style={{ color: 'var(--admin-danger,#EF4444)' }}>− {formatBRL(v.amount)}</span>
+                      </label>
+                    ))}
+                    <div className="flex items-center justify-between pt-2 mt-1 text-sm font-bold" style={{ borderTop: '1px solid var(--admin-divider)', color: 'var(--admin-text)' }}>
+                      <span>Você paga agora</span>
+                      <span className="tabular-nums" style={{ color: 'var(--admin-accent)' }}>{formatBRL(pagarAgora)}</span>
+                    </div>
+                  </div>
+                )}
 
                 {error && (
                   <p
@@ -391,7 +453,7 @@ export default function RegistrarPagamentoModal({
                       className="admin-input w-full px-3 py-2 text-sm tabular-nums"
                     />
                     <p className="text-[10px] mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                      Pode editar pra pagar valor parcial · default = total selecionado
+                      {vales.length > 0 ? 'O que sai agora (já sem os vales) · pode editar pra pagar parcial' : 'Pode editar pra pagar valor parcial · default = total selecionado'}
                     </p>
                   </div>
                 </div>

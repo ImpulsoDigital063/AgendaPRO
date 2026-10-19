@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getPackageSessionCommission } from '@/lib/queries/package-session-commission'
 import { getGiftCardSessionCommission } from '@/lib/queries/gift-card-session-commission'
+import { getApptDiscountMap } from '@/lib/commission-discount'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { negocioDoPainel } from '@/lib/admin-data'
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
   if (hasCommission) {
   const { data: appts } = await admin
     .from('appointments')
-    .select('id, business_id, professional_id, total_price, commission_payment_id, commission_amount, commission_percent')
+    .select('id, business_id, professional_id, total_price, commission_payment_id, commission_amount, commission_percent, invoice_item_id')
     .in('id', body.appointmentIds)
 
   if (!appts || appts.length === 0) {
@@ -112,12 +113,15 @@ export async function POST(request: Request) {
        commission_amount (R$ · CAF) manda sobre tudo;
        commission_percent (% · Studio Isis Melo) manda sobre o % da pessoa;
        nenhum dos dois → porcentagem do cadastro, como sempre foi. */
+  /* v188 · base LÍQUIDA (desconto da comanda rateado), igual à tela de Remunerações
+     e ao modal — getApptDiscountMap é a régua de todas as telas de remuneração. */
+  const descontos = await getApptDiscountMap(admin, appts.map((a) => (a as { invoice_item_id?: string | null }).invoice_item_id))
   totalAmount = appts.reduce((s, a) => {
     const fixa = (a as { commission_amount?: number | null }).commission_amount
     if (fixa != null) return s + Number(fixa)
     const pctAppt = (a as { commission_percent?: number | null }).commission_percent
     const pctUsado = pctAppt != null ? Number(pctAppt) : pct
-    return s + (Number(a.total_price ?? 0) * pctUsado) / 100
+    return s + (Math.max(0, Number(a.total_price ?? 0) - (descontos[a.id] ?? 0)) * pctUsado) / 100
   }, 0)
   apptCount = appts.length
 
@@ -132,6 +136,19 @@ export async function POST(request: Request) {
   const baseExtra =
     (pkgComm[body.professionalId]?.base ?? 0) + (giftComm[body.professionalId]?.base ?? 0)
   totalAmount += (baseExtra * pct) / 100
+  }
+
+  /* v188 · vales (adiantamentos) descontados neste pagamento. Só vale em aberto,
+     do mesmo negócio e da mesma pessoa. O paidAmount que chega já é a comissão
+     quitada (dinheiro de agora + vales), então o "pendente" da tela fecha. */
+  const voucherIds: string[] = Array.isArray(body.voucherIds) ? body.voucherIds.filter((v: unknown) => typeof v === 'string') : []
+  if (voucherIds.length > 0) {
+    const { data: vales } = await admin
+      .from('professional_vouchers')
+      .select('id, business_id, professional_id, used_in_payment_id')
+      .in('id', voucherIds)
+    const ruim = (vales ?? []).length !== voucherIds.length || (vales ?? []).some((v) => v.business_id !== businessId || v.professional_id !== body.professionalId || v.used_in_payment_id !== null)
+    if (ruim) return NextResponse.json({ error: 'invalid_voucher' }, { status: 400 })
   }
 
   // Cria commission_payment
@@ -167,6 +184,20 @@ export async function POST(request: Request) {
       // Rollback
       await admin.from('commission_payments').delete().eq('id', payment.id)
       return NextResponse.json({ error: linkErr.message }, { status: 500 })
+    }
+  }
+
+  // Baixa os vales descontados (saem de "vales pendentes")
+  if (voucherIds.length > 0) {
+    const { error: valeErr } = await admin
+      .from('professional_vouchers')
+      .update({ used_in_payment_id: payment.id })
+      .in('id', voucherIds)
+      .is('used_in_payment_id', null)
+    if (valeErr) {
+      if (appointmentIds.length > 0) await admin.from('appointments').update({ commission_payment_id: null }).eq('commission_payment_id', payment.id)
+      await admin.from('commission_payments').delete().eq('id', payment.id)
+      return NextResponse.json({ error: valeErr.message }, { status: 500 })
     }
   }
 

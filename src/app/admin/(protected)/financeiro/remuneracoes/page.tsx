@@ -289,6 +289,14 @@ export default async function RemuneracoesPage({
       .filter((sa) => sa.professional_id === p.id && sa.paid === true)
       .reduce((s, sa) => s + Number(sa.amount ?? 0), 0)
 
+    const meusPagamentos = (payments ?? []).filter((cp) => cp.professional_id === p.id)
+    /* v141 · bônus sai do bolso junto com a comissão: entra no "pago" e
+       aparece destacado na coluna, pra dona saber quanto foi prêmio.
+       v188 · e entra também no Valor Total: antes só entrava no pago, então o
+       bônus abatia a comissão pendente (bônus de R$100 = comissão R$100 "paga")
+       e o Pendente do resumo do mês ficava menor que o devido. */
+    const bonus = meusPagamentos.reduce((s, cp) => s + Number(cp.bonus_amount ?? 0), 0)
+
     /* Valor Total = tudo que ele produziu no mês, convênio em aberto incluído —
        é o retrato do trabalho dele. O que separa o sacável do preso é o
        `pendente` logo abaixo, que desconta o em aberto. */
@@ -298,13 +306,10 @@ export default async function RemuneracoesPage({
       convenioEmAberto +
       commissionFromPackages +
       commissionFromSales +
-      salariosCadastrados
+      salariosCadastrados +
+      bonus
 
-    const meusPagamentos = (payments ?? []).filter((cp) => cp.professional_id === p.id)
     const pagoCommissoes = meusPagamentos.reduce((s, cp) => s + Number(cp.paid_amount ?? 0), 0)
-    /* v141 · bônus sai do bolso junto com a comissão: entra no "pago" e
-       aparece destacado na coluna, pra dona saber quanto foi prêmio. */
-    const bonus = meusPagamentos.reduce((s, cp) => s + Number(cp.bonus_amount ?? 0), 0)
     /* v151 · comissão paga no dia do atendimento (Studio Mood): o gerado já
        conta como pago, sem ela registrar cada Pix aqui. */
     const comissaoGeradaMes = commissionFromAppts + convenioLiberado + commissionFromPackages + commissionFromSales
@@ -341,10 +346,12 @@ export default async function RemuneracoesPage({
   const totalComissaoPacotes = rows.reduce((s, r) => s + r.commissionFromPackages, 0)
   const totalComissaoProdutos = rows.reduce((s, r) => s + r.commissionFromSales, 0)
   const totalSalarios = rows.reduce((s, r) => s + r.salarios, 0)
+  const totalBonus = rows.reduce((s, r) => s + (r.bonus ?? 0), 0)
   const totalPago = rows.reduce((s, r) => s + r.pago, 0)
   const totalValesPendentes = rows.reduce((s, r) => s + r.valesPendentes, 0)
   const totalConvenioEmAberto = rows.reduce((s, r) => s + (r.convenioEmAberto ?? 0), 0)
-  const pendentePagamento = totalRemuneracoes - totalPago - totalConvenioEmAberto
+  // centavo de sobra no float aparecia como "−R$ 0,00"; nunca negativo, igual à linha de cada profissional
+  const pendentePagamento = Math.max(0, Math.round((totalRemuneracoes - totalPago - totalConvenioEmAberto) * 100) / 100)
 
   const prev = shiftMonth(year, month0, -1)
   const next = shiftMonth(year, month0, 1)
@@ -495,6 +502,14 @@ export default async function RemuneracoesPage({
                 <span style={{ color: 'var(--admin-text-mute)' }}>Salários cadastrados</span>
                 <span className="tabular-nums" style={{ color: 'var(--admin-text-2)' }}>
                   {formatBRL(totalSalarios)}
+                </span>
+              </div>
+            )}
+            {totalBonus > 0 && (
+              <div className="flex justify-between text-[12px]">
+                <span style={{ color: 'var(--admin-text-mute)' }}>Bônus</span>
+                <span className="tabular-nums" style={{ color: 'var(--admin-text-2)' }}>
+                  {formatBRL(totalBonus)}
                 </span>
               </div>
             )}
