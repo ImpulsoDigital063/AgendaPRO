@@ -51,12 +51,15 @@ const nextConfig: NextConfig = {
               // widget nao desenha, o formulario nunca recebe token e o cadastro
               // fica pedindo "confirme que voce nao e um robo" pra sempre — sem
               // ter o que clicar. Pego em 21/08 tentando cadastrar em localhost.
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
+              // Google Analytics (19/10/2026): o gtag.js vem do googletagmanager e manda os hits pro
+              // google-analytics / analytics.google (fetch/beacon e pixel). Sem isso o CSP bloqueava
+              // o script e o GA não registrava NENHUMA visita do site.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://www.googletagmanager.com",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://*.supabase.co",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.google-analytics.com https://*.googletagmanager.com",
               "font-src 'self'",
               // Sentry: cliente envia eventos pra ingest do projeto (*.sentry.io e *.ingest.sentry.io)
-              "connect-src 'self' https://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io",
+              "connect-src 'self' https://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
               // Web Worker via blob: pra compressImage (upload de foto de produto/perfil)
               // Sem isso, navegador bloqueia o worker e a compressão trava silenciosa.
               "worker-src 'self' blob:",
