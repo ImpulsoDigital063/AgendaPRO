@@ -33,8 +33,12 @@ export async function GET(req: NextRequest) {
   const hoje = todayBR()
   const agora = new Date(Date.now() - 3 * 3600e3).toISOString().slice(11, 19)
 
+  /* Com o canal liberado pra todos (20/10), o escopo deixou de ser a lista
+     e passou a ser quem tem pacote de avisos: é onde a pergunta "os avisos
+     reduziram falta?" existe. Sem isso, os 40 donos ganhariam um push novo
+     às 20h sem ninguém ter decidido. */
   let qb = db.from('businesses').select('id, owner_id')
-  if (!CANAL_LIBERADO) qb = qb.in('id', LIBERADOS)
+  qb = CANAL_LIBERADO ? qb.gt('avisos_unidades', 0) : qb.in('id', LIBERADOS)
   const { data: negocios } = await qb
 
   const feito: { negocio: string; abertos: number; pushes: number }[] = []

@@ -25,8 +25,14 @@
    Priscila em 24/08.
    ═══════════════════════════════════════════════════════════════ */
 
-/** Chave mestra. `true` libera para TODOS os negócios. */
-export const CANAL_LIBERADO = false
+/** Chave mestra. `true` libera para TODOS os negócios.
+
+    LIGADA em 20/10/2026 (Eduardo): a prova pedida acima foi feita no beta
+    (Wanessa, Gessica e Viva Cacheada recebendo desde 10/09, `entregue_em`
+    gravado). Liberar = todo negócio pode CONTRATAR o pacote na aba Avisos.
+    Nada sai pra cliente de ninguém sem pacote pago e regra ligada — quem
+    decide isso é o `podeEnviar` (franquia.ts), não esta chave. */
+export const CANAL_LIBERADO = true
 
 /**
  * Liberados individualmente, mesmo com a chave mestra desligada.
