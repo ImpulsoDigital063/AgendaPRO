@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 function getAdminClient() {
   return createServiceClient(
@@ -82,12 +83,14 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. Localiza o customer pelo phone+business
-  const { data: customer } = await admin
+  const { data: achados } = await admin
     .from('customers')
     .select('id, total_points')
     .eq('business_id', appointment.business_id)
-    .eq('phone', appointment.client_phone)
-    .single()
+    .eq('fone', telefoneCanonico(appointment.client_phone ?? ''))
+    .order('created_at', { ascending: true })
+    .limit(1)
+  const customer = achados?.[0] ?? null
 
   if (!customer) {
     // Cliente ainda não existe no programa de fidelidade — só marca a flag.

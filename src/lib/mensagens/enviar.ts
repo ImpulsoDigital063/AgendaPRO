@@ -22,6 +22,7 @@ import { credencialDoSistema, enviarTemplate, normalizarTelefone } from './canal
 import { TEMPLATES, resolverTemplate, payloadsDosBotoes, botoesDoTipo, unidadesDaFranquia } from './templates-cloud'
 import { decidirBotao } from './botao-confirmar'
 import { podeEnviar } from './franquia'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 
 export type Destino = {
@@ -186,7 +187,7 @@ async function pediuPraSair(
   const { data } = await db
     .from('message_optout')
     .select('id')
-    .eq('telefone', fone)
+    .eq('fone', telefoneCanonico(fone))
     .or(`business_id.eq.${businessId},business_id.is.null`)
     .limit(1)
   return (data?.length ?? 0) > 0

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { todayBR, addDaysBR, startOfDayBR } from '@/lib/date-br'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 /**
  * Helpers cacheados via React cache() — deduplica queries Supabase
@@ -452,13 +453,13 @@ export const getFocoDoDia = unstable_cache(
         .from('clients')
         .select('phone')
         .in('id', sumidoClientIds)
-      const phones = (sumidoClients || []).map((c) => c.phone)
+      const phones = (sumidoClients || []).map((c) => telefoneCanonico(c.phone ?? '')).filter(Boolean)
       if (phones.length > 0) {
         const { data: customersOfBusiness } = await admin
           .from('customers')
           .select('id')
           .eq('business_id', businessId)
-          .in('phone', phones)
+          .in('fone', phones)
 
         // Cupons ativos pra business
         const { data: allActiveCoupons } = await admin

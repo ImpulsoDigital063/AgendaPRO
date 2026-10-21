@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
 import { sendWebPush } from '@/lib/notify-push'
-import { variacoesDeTelefone } from '@/lib/phone-variants'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 function getAdminClient() {
   return createServiceClient(
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     .from('customers')
     .select('id, name, phone')
     .eq('business_id', businessId)
-    .in('phone', variacoesDeTelefone(phone))
+    .eq('fone', telefoneCanonico(phone))
     .order('created_at', { ascending: true })
     .limit(1)
   let customer = achadas?.[0] ?? null

@@ -93,7 +93,7 @@ export async function GET(
   const { data: clientsDoTelefone } = await supabase
     .from('clients')
     .select('id')
-    .in('phone', variacoesDeTelefone(customer.phone))
+    .eq('fone', telefoneCanonico(customer.phone))
 
   const filtros = [`customer_id.eq.${customer.id}`]
   for (const c of clientsDoTelefone ?? []) filtros.push(`client_id.eq.${c.id}`)
@@ -452,7 +452,7 @@ export async function PATCH(
       .from('customers')
       .select('id, name')
       .eq('business_id', customer.business_id)
-      .in('phone', variacoesDeTelefone(phoneNovo))
+      .eq('fone', telefoneCanonico(phoneNovo))
       .neq('id', id)
       .limit(1)
       .maybeSingle()
@@ -483,20 +483,21 @@ export async function PATCH(
      reapontamos só os agendamentos deste negócio. */
   const pendentes: Record<string, number> = {}
   if (trocaTelefone && phoneNovo) {
-    const antigas = variacoesDeTelefone(phoneAntigo)
+    const antigas = variacoesDeTelefone(phoneAntigo) // gift_cards ainda não tem `fone`
+    const foneAntigo = telefoneCanonico(phoneAntigo)
     const biz = customer.business_id
 
     await supabase.from('appointments').update({ client_phone: phoneNovo }).eq('business_id', biz).eq('customer_id', id)
-    await supabase.from('appointments').update({ client_phone: phoneNovo }).eq('business_id', biz).in('client_phone', antigas)
+    await supabase.from('appointments').update({ client_phone: phoneNovo }).eq('business_id', biz).eq('fone', foneAntigo)
     await supabase.from('sales').update({ client_phone: phoneNovo }).eq('business_id', biz).eq('customer_id', id)
-    await supabase.from('waitlist').update({ client_phone: phoneNovo }).eq('business_id', biz).in('client_phone', antigas)
+    await supabase.from('waitlist').update({ client_phone: phoneNovo }).eq('business_id', biz).eq('fone', foneAntigo)
     await supabase.from('review_claims').update({ customer_phone: phoneNovo }).eq('business_id', biz).eq('customer_id', id)
     await supabase.from('coupon_redemptions').update({ customer_phone: phoneNovo }).eq('customer_id', id)
     await supabase.from('gift_cards').update({ buyer_phone: phoneNovo }).eq('business_id', biz).in('buyer_phone', antigas)
-    await supabase.from('message_optout').update({ telefone: phoneNovo }).eq('business_id', biz).in('telefone', antigas)
+    await supabase.from('message_optout').update({ telefone: phoneNovo }).eq('business_id', biz).eq('fone', foneAntigo)
 
-    const { data: cliUniv } = await supabase.from('clients').select('id').eq('phone', phoneNovo).maybeSingle()
-    let clientIdNovo = cliUniv?.id ?? null
+    const { data: cliUniv } = await supabase.from('clients').select('id').eq('fone', telefoneCanonico(phoneNovo)).order('created_at', { ascending: true }).limit(1)
+    let clientIdNovo = cliUniv?.[0]?.id ?? null
     if (!clientIdNovo) {
       const { data: criado } = await supabase
         .from('clients')
@@ -569,7 +570,7 @@ export async function PATCH(
     await supabase
       .from('clients')
       .update(clientsUpdate)
-      .eq('phone', trocaTelefone && phoneNovo ? phoneNovo : customer.phone)
+      .eq('fone', telefoneCanonico(trocaTelefone && phoneNovo ? phoneNovo : customer.phone))
   }
 
   return NextResponse.json({

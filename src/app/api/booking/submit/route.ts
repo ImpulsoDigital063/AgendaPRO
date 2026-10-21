@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { COLUNAS_REGRA_SINAL, gerarBRCode, valorDoSinal } from '@/lib/pix-brcode'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
-import { variacoesDeTelefone } from '@/lib/phone-variants'
+import { telefoneCanonico } from '@/lib/phone-variants'
 import { todayBR } from '@/lib/date-br'
 import { limparSinaisVencidos } from '@/lib/sinal-expira'
 import { generateSinalToken } from '@/lib/token'
@@ -247,14 +247,14 @@ export async function POST(req: NextRequest) {
       .select('id, phone')
       .eq('id', returningClientId)
       .maybeSingle()
-    if (dono && (dono.phone || '').trim() === phone) clientId = dono.id
+    if (dono && telefoneCanonico(dono.phone || '') === telefoneCanonico(phone)) clientId = dono.id
   }
   if (!clientId) {
     // Casa por qualquer formato do mesmo número (ver phone-variants.ts).
     const { data: achados } = await db
       .from('clients')
       .select('id, created_at')
-      .in('phone', variacoesDeTelefone(phone))
+      .eq('fone', telefoneCanonico(phone))
       .order('created_at', { ascending: true })
       .limit(1)
     const existing = achados?.[0] ?? null
@@ -279,7 +279,7 @@ export async function POST(req: NextRequest) {
     .from('customers')
     .select('id, total_points, birthday, created_at')
     .eq('business_id', businessId)
-    .in('phone', variacoesDeTelefone(phone))
+    .eq('fone', telefoneCanonico(phone))
     .order('created_at', { ascending: true })
     .limit(1)
   const existingCustomer = customersAchados?.[0] ?? null

@@ -5,6 +5,7 @@ import { todayBR, addDaysBR } from '@/lib/date-br'
 import SubPageHeader from '@/components/admin/SubPageHeader'
 import CampanhasTabs from '@/components/admin/CampanhasTabs'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 const MESES_PT = [
   'janeiro','fevereiro','março','abril','maio','junho',
@@ -117,13 +118,13 @@ export default async function CampanhasPage({
       .select('id, phone')
       .in('id', sumidoClientIds)
 
-    const phones = (sumidoClients || []).map((c) => c.phone)
+    const phones = (sumidoClients || []).map((c) => telefoneCanonico(c.phone ?? '')).filter(Boolean)
     const { data: customersOfBusiness } = phones.length > 0
       ? await supabase
           .from('customers')
           .select('id, phone')
           .eq('business_id', business.id)
-          .in('phone', phones)
+          .in('fone', phones)
       : { data: [] }
 
     sumidosTotal = (customersOfBusiness || []).length

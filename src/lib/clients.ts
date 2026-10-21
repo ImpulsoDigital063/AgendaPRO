@@ -1,4 +1,5 @@
 import type { createClient } from '@/lib/supabase/client'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 type Supa = ReturnType<typeof createClient>
 
@@ -25,12 +26,13 @@ export async function resolveClientId(
 ): Promise<string | null> {
   const p = (phone || '').trim()
   if (!p) return null
-  const { data: existing } = await supabase
+  const { data: achados } = await supabase
     .from('clients')
     .select('id')
-    .eq('phone', p)
-    .maybeSingle()
-  if (existing) return existing.id
+    .eq('fone', telefoneCanonico(p))
+    .order('created_at', { ascending: true })
+    .limit(1)
+  if (achados?.[0]) return achados[0].id
   const { data: created } = await supabase
     .from('clients')
     .insert({ name: (name || '').trim() || 'Cliente', phone: p, email: null })

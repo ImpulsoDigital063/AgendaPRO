@@ -652,7 +652,7 @@ export default function AgendarModal({
       }
       if (term.length >= 2) {
         if (digits.length >= 3) {
-          query = query.ilike('phone', `%${digits}%`)
+          query = query.ilike('fone', `%${digits}%`)
         } else {
           query = query.ilike('name', `%${term}%`)
         }

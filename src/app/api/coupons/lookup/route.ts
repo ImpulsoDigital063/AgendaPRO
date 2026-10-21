@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit-api'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 /**
  * GET /api/coupons/lookup?code=X&business_id=Y
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
       .from('coupon_redemptions')
       .select('id')
       .eq('coupon_id', coupon.id)
-      .eq('customer_phone', phoneDigits)
+      .eq('fone', telefoneCanonico(phoneDigits))
       .maybeSingle()
     if (existing) {
       return NextResponse.json({ valid: false, reason: 'used_by_phone' })

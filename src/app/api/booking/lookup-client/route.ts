@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
-import { variacoesDeTelefone } from '@/lib/phone-variants'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 /**
  * GET /api/booking/lookup-client?phone=<raw>
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const { data: achados } = await db
     .from('clients')
     .select('id, name, phone, email, created_at')
-    .in('phone', variacoesDeTelefone(raw))
+    .eq('fone', telefoneCanonico(raw))
     .order('created_at', { ascending: true })
     .limit(1)
   const data = achados?.[0] ?? null

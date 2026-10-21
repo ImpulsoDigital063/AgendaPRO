@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
 import { generateCancelToken } from '@/lib/token'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 function getAdminClient() {
   return createServiceClient(
@@ -42,22 +43,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Negócio não encontrado.' }, { status: 404 })
   }
 
-  // Match tolerante: tenta exato primeiro (rápido), senão fetch + filtra por dígitos.
-  let { data: customer } = await adminClient
+  // Casa pela coluna `fone` (v165): qualquer formato do mesmo número.
+  const { data: achados } = await adminClient
     .from('customers')
     .select('id, name, phone, total_points, referral_code')
     .eq('business_id', businessId)
-    .eq('phone', phoneDigits)
-    .maybeSingle()
-
-  if (!customer) {
-    const { data: candidates } = await adminClient
-      .from('customers')
-      .select('id, name, phone, total_points, referral_code')
-      .eq('business_id', businessId)
-    customer =
-      (candidates || []).find((c) => (c.phone || '').replace(/\D/g, '') === phoneDigits) || null
-  }
+    .eq('fone', telefoneCanonico(phoneDigits))
+    .order('created_at', { ascending: true })
+    .limit(1)
+  const customer = achados?.[0] ?? null
 
   if (!customer) {
     return NextResponse.json({

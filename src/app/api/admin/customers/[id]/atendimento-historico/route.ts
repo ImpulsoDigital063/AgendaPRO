@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 /**
  * POST · lança um atendimento ANTIGO na ficha do cliente (v121 · 20/08/2026).
@@ -110,7 +111,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   let clientId: string | null = null
   const phone = (cust.phone ?? '').trim()
   if (phone) {
-    const { data: existing } = await admin.from('clients').select('id').eq('phone', phone).maybeSingle()
+    const { data: achados } = await admin.from('clients').select('id').eq('fone', telefoneCanonico(phone)).order('created_at', { ascending: true }).limit(1)
+    const existing = achados?.[0] ?? null
     if (existing) {
       clientId = existing.id
     } else {

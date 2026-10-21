@@ -20,6 +20,7 @@ import { resolveCategoria } from '@/lib/segmento'
 import { IconClock } from '@/components/ui/Icon'
 import ReativarSumidosView from '@/components/admin/ReativarSumidosView'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 /* 06/09/2026 · o prazo deixou de ser fixo. A dona escolhe, e a pagina inteira
    recalcula em cima dele — sumidos, cupons orfaos e ROI. Antes eram 40 cravados,
@@ -124,13 +125,13 @@ export default async function SumidosPage({
       .select('id, phone')
       .in('id', sumidoClientIds)
 
-    const phones = (sumidoClients || []).map((c) => c.phone)
+    const phones = (sumidoClients || []).map((c) => telefoneCanonico(c.phone ?? '')).filter(Boolean)
     const { data: customersOfBusiness } = phones.length > 0
       ? await supabase
           .from('customers')
           .select('id, phone')
           .eq('business_id', business.id)
-          .in('phone', phones)
+          .in('fone', phones)
       : { data: [] }
 
     sumidosTotal = (customersOfBusiness || []).length
@@ -175,13 +176,13 @@ export default async function SumidosPage({
       .from('clients')
       .select('id, phone')
       .in('id', aindaSumidoClientIds)
-    const sumidoPhones = (sumidoClients || []).map((c) => c.phone)
+    const sumidoPhones = (sumidoClients || []).map((c) => telefoneCanonico(c.phone ?? '')).filter(Boolean)
     const { data: sumidoCustomers } = sumidoPhones.length > 0
       ? await supabase
           .from('customers')
           .select('id')
           .eq('business_id', business.id)
-          .in('phone', sumidoPhones)
+          .in('fone', sumidoPhones)
       : { data: [] }
     for (const c of sumidoCustomers || []) sumidoCustomerIds.add(c.id)
   }

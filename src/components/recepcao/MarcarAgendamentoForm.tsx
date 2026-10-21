@@ -120,7 +120,7 @@ export default function MarcarAgendamentoForm({
         .limit(20)
       if (digits.length >= 3) {
         // busca por telefone
-        query = query.ilike('phone', `%${digits}%`)
+        query = query.ilike('fone', `%${digits}%`)
       } else {
         // busca por nome
         query = query.ilike('name', `%${term}%`)

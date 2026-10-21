@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 function getAdminClient() {
   return createServiceClient(
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
     .from('appointments')
     .select('professional_id')
     .eq('business_id', claim.business_id)
-    .eq('client_phone', customer.phone)
+    .eq('fone', telefoneCanonico(customer.phone ?? ''))
     .eq('status', 'completed')
     .order('appointment_date', { ascending: false })
     .order('start_time', { ascending: false })

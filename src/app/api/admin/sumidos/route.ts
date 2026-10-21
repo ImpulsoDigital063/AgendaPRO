@@ -24,7 +24,7 @@ import { todayBR } from '@/lib/date-br'
    grafias do mesmo numero ((63) 98800-0003 e 63988000003) sao a MESMA
    pessoa; comparando cru viravam duas, e a cliente com cupom ativo aparecia
    sem marcador e ganhava um segundo desconto. Regra cravada em 08/09. */
-import { telefoneCanonico, variacoesDeTelefone } from '@/lib/phone-variants'
+import { telefoneCanonico } from '@/lib/phone-variants'
 import { canalLiberado } from '@/lib/mensagens/liberado'
 import { consumoDoMes, podeEnviar } from '@/lib/mensagens/franquia'
 import { UNIDADES_POR_TIPO } from '@/lib/mensagens/custo-sumidos'
@@ -119,13 +119,14 @@ export async function GET(req: NextRequest) {
   /* Busca por TODAS as grafias plausiveis — usa indice, nao varre. */
   const variacoes = new Set<string>()
   for (const c of clients ?? []) {
-    if (c.phone) for (const v of variacoesDeTelefone(c.phone as string)) variacoes.add(v)
+    const f = c.phone ? telefoneCanonico(c.phone as string) : ''
+    if (f) variacoes.add(f)
   }
   const fonesDaLista = Array.from(variacoes)
   const agoraIso = new Date().toISOString()
   const [custsRes, cuponsRes] = await Promise.all([
     fonesDaLista.length
-      ? supabase.from('customers').select('id, phone').eq('business_id', businessId).in('phone', fonesDaLista)
+      ? supabase.from('customers').select('id, phone').eq('business_id', businessId).in('fone', fonesDaLista)
       : Promise.resolve({ data: [] as { id: string; phone: string }[] }),
     supabase
       .from('coupons')

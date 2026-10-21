@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { generateCancelToken } from '@/lib/token'
 import { notFound } from 'next/navigation'
+import { telefoneCanonico } from '@/lib/phone-variants'
 import { seguirAtalho } from '@/lib/atalho-slug'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -118,7 +119,7 @@ export default async function AgendarPage({
         .from('appointments')
         .select('id, start_time')
         .eq('business_id', business.id)
-        .eq('client_phone', w.client_phone)
+        .eq('fone', telefoneCanonico(w.client_phone ?? ''))
         .eq('appointment_date', prefillDate)
         .eq('status', 'confirmed')
         .order('start_time')
