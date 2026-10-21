@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { AlvoDesconto } from '@/lib/desconto-geral'
+import { descontoDaRecompensa, type Recompensa } from '@/lib/resgate-pontos'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconCheck, IconArrowLeft } from '@/components/ui/Icon'
 import {
@@ -135,7 +136,7 @@ export default function PaymentMethodModal({
      Antes aparecia pra todo negócio e só marcava o método: 7 atendimentos
      saíram de graça sem descontar ponto nenhum. */
   const [pontosStep, setPontosStep] = useState(false)
-  const [fid, setFid] = useState<{ ativo: boolean; saldo: number | null; recompensas: { id: string; name: string; points_required: number }[] } | null>(null)
+  const [fid, setFid] = useState<{ ativo: boolean; saldo: number | null; recompensas: Recompensa[] } | null>(null)
   useEffect(() => {
     if (!open || semPontos) { setFid(null); return }
     let vivo = true
@@ -202,8 +203,11 @@ export default function PaymentMethodModal({
      desconto; abre com "Dar desconto". Mesmo parse do valor editável. */
   const [descontoAberto, setDescontoAberto] = useState(false)
   const [descontoTexto, setDescontoTexto] = useState('')
+  /* v167 · recompensa de % ou R$ vira este desconto; o resgate dos pontos vai
+     junto com o método escolhido (reward_id), não como método "Pontos". */
+  const [recompensaDesconto, setRecompensaDesconto] = useState<Recompensa | null>(null)
   useEffect(() => {
-    if (open) { setDescontoAberto(false); setDescontoTexto('') }
+    if (open) { setDescontoAberto(false); setDescontoTexto(''); setRecompensaDesconto(null) }
   }, [open])
   const desconto = (() => {
     if (!permiteDesconto || !descontoAberto) return 0
@@ -237,7 +241,7 @@ export default function PaymentMethodModal({
       setPontosStep(true)
       return
     }
-    onChoose(method, undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada)
+    onChoose(method, undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, recompensaDesconto?.id)
   }
 
   /* O que entra AGORA, na mão de quem está no balcão. O sinal já entrou antes
@@ -276,7 +280,7 @@ export default function PaymentMethodModal({
             clientName={clientName}
             loading={loading}
             onBack={() => setCardStep(false)}
-            onConfirm={(details) => onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada)}
+            onConfirm={(details) => onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, recompensaDesconto?.id)}
             onClose={onClose}
           />
         ) : pontosStep ? (
@@ -310,17 +314,39 @@ export default function PaymentMethodModal({
               <div className="space-y-2 max-h-[50vh] overflow-y-auto">
                 {fid!.recompensas.map((r) => {
                   const falta = fid!.saldo == null ? null : r.points_required - fid!.saldo
-                  const pode = falta != null && falta <= 0
+                  const ehDesconto = r.tipo !== 'gratis'
+                  // Desconto só onde o modal grava desconto (comanda). Nas
+                  // outras portas a recompensa aparece, mas manda pra comanda.
+                  const pode = falta != null && falta <= 0 && (!ehDesconto || permiteDesconto)
+                  const valorDoDesconto = ehDesconto ? descontoDaRecompensa(r, Number(valorEfetivo ?? 0)) : 0
                   return (
                     <button
                       key={r.id}
                       type="button"
                       disabled={loading || !pode}
-                      onClick={() => onChoose('points', undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, r.id)}
+                      onClick={() => {
+                        if (!ehDesconto) {
+                          onChoose('points', undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, r.id)
+                          return
+                        }
+                        setRecompensaDesconto(r)
+                        setDescontoAberto(true)
+                        setDescontoTexto(valorDoDesconto.toFixed(2).replace('.', ','))
+                        setPontosStep(false)
+                      }}
                       className="w-full flex items-center justify-between gap-3 p-3 rounded-xl text-left transition-all disabled:opacity-45 active:scale-[0.98]"
                       style={{ background: 'var(--admin-surface, #F8FAFC)', border: '1.5px solid rgba(245,158,11,0.35)' }}
                     >
-                      <span className="text-sm font-bold" style={{ color: 'var(--admin-text, #0F172A)' }}>{r.name}</span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold" style={{ color: 'var(--admin-text, #0F172A)' }}>{r.name}</span>
+                        <span className="block text-[11px] mt-0.5" style={{ color: 'var(--admin-text-mute, #64748B)' }}>
+                          {!ehDesconto
+                            ? 'Atendimento pago com pontos'
+                            : !permiteDesconto
+                              ? 'Desconto · use em Faturar atendimento'
+                              : `Desconto de ${valorDoDesconto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · o resto a cliente paga`}
+                        </span>
+                      </span>
                       <span className="text-xs font-bold tabular-nums shrink-0" style={{ color: pode ? '#B45309' : 'var(--admin-text-faded, #94A3B8)' }}>
                         {r.points_required.toLocaleString('pt-BR')} pts{falta != null && falta > 0 ? ` · faltam ${falta.toLocaleString('pt-BR')}` : ''}
                       </span>
@@ -446,6 +472,19 @@ export default function PaymentMethodModal({
                   </button>
                 ) : (
                   <>
+                    {recompensaDesconto && (
+                      <div className="flex items-center justify-between gap-2 mb-2 px-3 py-2 rounded-xl text-xs" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', color: '#B45309' }}>
+                        <span className="min-w-0 truncate font-semibold">★ {recompensaDesconto.name} · {recompensaDesconto.points_required} pts</span>
+                        <button
+                          type="button"
+                          onClick={() => { setRecompensaDesconto(null); setDescontoTexto(''); setDescontoAberto(false) }}
+                          disabled={loading}
+                          className="shrink-0 font-bold underline"
+                        >
+                          Tirar
+                        </button>
+                      </div>
+                    )}
                     <label
                       className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5"
                       style={{ color: 'var(--admin-text-faded, #94A3B8)' }}

@@ -3,66 +3,46 @@
 import { useEffect, useState } from 'react'
 
 /**
- * Resgate de pontos fora da ficha (21/10). Wanessa: "aparece que tá
- * disponível, mas não me dá a opção de usar os pontos". O resgate só existia
- * em Clientes; o momento em que a cliente pergunta é na cobrança. Aqui ele
- * aparece no fechar da comanda e no atendimento da grade.
+ * Pontos da cliente na comanda e no atendimento (21/10). Wanessa: "aparece
+ * que tá disponível, mas não me dá a opção de usar os pontos".
  *
- * Mesma rota de leitura e mesmo /redeem da ficha: um extrato só. Some
- * quando o negócio não tem recompensa ou a rota nega (área do profissional).
- * Resgatar pede um segundo toque, porque dentro da comanda o dedo escorrega.
+ * Só MOSTRA. Até a v195 este bloco também resgatava, mas por fora da
+ * cobrança: descontava os pontos sem ligar ao atendimento nem mexer no
+ * valor, e dava pra resgatar aqui e de novo no pagamento. O resgate tem um
+ * caminho só, "Receber pagamento → Pontos", que liga ao atendimento, aplica
+ * o desconto da recompensa (v167) e devolve os pontos se a comanda reabrir.
  */
-type Reward = { id: string; name: string; points_required: number }
+type Reward = { id: string; name: string; points_required: number; tipo?: string; desconto?: number | null }
 
-export default function ResgatePontos({ customerId, nota }: { customerId: string; nota?: string }) {
+function rotulo(r: Reward): string {
+  if (r.tipo === 'percentual') return `${String(r.desconto ?? 0).replace('.', ',')}% de desconto`
+  if (r.tipo === 'valor') return `${Number(r.desconto ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} de desconto`
+  return 'grátis'
+}
+
+export default function ResgatePontos({ customerId, dica }: { customerId: string; dica: string }) {
   const [rewards, setRewards] = useState<Reward[]>([])
   const [saldo, setSaldo] = useState<number | null>(null)
-  const [escolhida, setEscolhida] = useState<Reward | null>(null)
-  const [enviando, setEnviando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
-  const [sucesso, setSucesso] = useState<string | null>(null)
-  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     let cancelado = false
-    fetch('/api/admin/customers/' + customerId, { cache: 'no-store' })
+    fetch(`/api/admin/fidelidade/contexto?customer_id=${encodeURIComponent(customerId)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((data) => {
-        if (cancelado || !data) return
-        setRewards((data.rewards ?? []) as Reward[])
-        setSaldo(Number(data.customer?.total_points ?? 0))
+        if (cancelado || !data?.ativo) return
+        setRewards((data.recompensas ?? []) as Reward[])
+        setSaldo(data.saldo == null ? null : Number(data.saldo))
       })
     return () => { cancelado = true }
-  }, [customerId, reload])
+  }, [customerId])
 
   if (saldo === null || rewards.length === 0) return null
-
-  async function confirmar() {
-    if (!escolhida) return
-    setEnviando(true)
-    setErro(null)
-    const res = await fetch('/api/admin/customers/' + customerId + '/redeem', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reward_id: escolhida.id }),
-    })
-    setEnviando(false)
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      setErro(j.error ?? 'Não deu pra resgatar')
-      return
-    }
-    setSucesso(escolhida.name + ' resgatado!')
-    setEscolhida(null)
-    setReload((k) => k + 1)
-  }
-
-  const ordenadas = [...rewards].sort((a, b) => a.points_required - b.points_required)
+  const disponiveis = rewards.filter((r) => saldo >= r.points_required)
 
   return (
     <div className="rounded-2xl p-4" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
-      <div className="flex items-center justify-between mb-2.5">
+      <div className="flex items-center justify-between">
         <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
           Pontos da cliente
         </p>
@@ -70,67 +50,22 @@ export default function ResgatePontos({ customerId, nota }: { customerId: string
           {saldo} pts
         </p>
       </div>
-
-      {escolhida ? (
-        <div className="space-y-2">
-          <p className="text-xs" style={{ color: 'var(--admin-text-2)' }}>
-            Resgatar <strong>{escolhida.name}</strong> por {escolhida.points_required} pontos?
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={confirmar}
-              disabled={enviando}
-              className="flex-1 py-2 rounded-xl text-xs font-bold disabled:opacity-50"
-              style={{ background: 'var(--admin-accent)', color: '#fff' }}
-            >
-              {enviando ? 'Resgatando…' : 'Sim, resgatar'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEscolhida(null)}
-              disabled={enviando}
-              className="px-4 py-2 rounded-xl text-xs font-semibold"
-              style={{ border: '1px solid var(--admin-border)', color: 'var(--admin-text-mute)' }}
-            >
-              Voltar
-            </button>
-          </div>
-        </div>
+      {disponiveis.length > 0 ? (
+        <>
+          <ul className="mt-2 space-y-1">
+            {disponiveis.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-2 text-xs">
+                <span className="min-w-0 truncate font-semibold" style={{ color: 'var(--admin-text-2)' }}>★ {r.name}</span>
+                <span className="shrink-0 tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>{r.points_required} pts · {rotulo(r)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] mt-2.5" style={{ color: 'var(--admin-text-mute)' }}>{dica}</p>
+        </>
       ) : (
-        <div className="space-y-1.5">
-          {ordenadas.map((r) => {
-            const pode = saldo >= r.points_required
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => { setSucesso(null); setErro(null); setEscolhida(r) }}
-                disabled={!pode}
-                className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between disabled:opacity-40"
-                style={{
-                  background: pode ? 'color-mix(in srgb, var(--admin-accent) 14%, transparent)' : 'transparent',
-                  color: pode ? 'var(--admin-accent)' : 'var(--admin-text-faded)',
-                  border: '1px solid ' + (pode ? 'color-mix(in srgb, var(--admin-accent) 30%, transparent)' : 'var(--admin-border)'),
-                }}
-              >
-                <span className="truncate text-left">{r.name}</span>
-                <span className="flex-shrink-0 ml-2">
-                  {r.points_required} pts{!pode && ' · faltam ' + (r.points_required - saldo)}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {sucesso && (
-        <p className="text-xs mt-2.5 font-semibold" style={{ color: '#10B981' }}>
-          {sucesso}{nota ? ' ' + nota : ''}
+        <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+          Ainda não dá pra trocar: a recompensa mais barata custa {Math.min(...rewards.map((r) => r.points_required))} pts.
         </p>
-      )}
-      {erro && (
-        <p className="text-xs mt-2.5" style={{ color: 'var(--admin-danger,#EF4444)' }}>{erro}</p>
       )}
     </div>
   )

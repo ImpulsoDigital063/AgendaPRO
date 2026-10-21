@@ -440,6 +440,21 @@ export default async function FluxoCaixaPage({
     if (!key || !data[key]) continue
     data[key].descontosTotal = (data[key].descontosTotal ?? 0) + Number(inv.discount ?? 0)
   }
+  // v167 · atendimento pago com PONTOS (recompensa grátis) também é valor que
+  // a dona abriu mão · não é receita, mas tem que aparecer escrito no fluxo.
+  const { data: pagosComPontos } = await sb
+    .from('invoice_payments')
+    .select('amount, paid_at, invoice:invoices!inner(business_id)')
+    .eq('invoice.business_id', business.id)
+    .eq('payment_method', 'points')
+    .gte('paid_at', range.from.toISOString())
+    .lt('paid_at', range.to.toISOString())
+  for (const p of pagosComPontos ?? []) {
+    if (!p.paid_at) continue
+    const key = keyForDate(view, emBR(p.paid_at as string), cols)
+    if (!key || !data[key]) continue
+    data[key].descontosTotal = (data[key].descontosTotal ?? 0) + Number(p.amount ?? 0)
+  }
 
   let acc = saldoAcumulado
   for (const c of cols) {

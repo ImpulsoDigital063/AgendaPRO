@@ -178,6 +178,7 @@ export async function POST(req: NextRequest) {
       customerId: (appointment as { customer_id?: string | null }).customer_id ?? null,
       rewardId: typeof rewardId === 'string' ? rewardId : null,
       appointmentId,
+      uso: 'pagamento',
     })
     if (!r.ok) return NextResponse.json({ error: r.erro }, { status: 400 })
   }

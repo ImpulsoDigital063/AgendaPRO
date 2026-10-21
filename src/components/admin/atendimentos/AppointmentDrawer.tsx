@@ -435,7 +435,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
 
               {/* Resgate de pontos aqui também (21/10) · antes só na ficha. */}
               {!ehAreaProfissional && data.customer_id && (
-                <ResgatePontos customerId={data.customer_id} />
+                <ResgatePontos customerId={data.customer_id} dica="Pra usar: Faturar atendimento → Receber pagamento → Pontos." />
               )}
 
               {/* SINAL PENDENTE (v112c) · Eduardo: "tive que ir na aba sinal

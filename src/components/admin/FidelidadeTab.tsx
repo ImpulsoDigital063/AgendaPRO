@@ -73,9 +73,74 @@ type RewardForm = {
   name: string
   description: string
   points_required: string
+  tipo: 'gratis' | 'percentual' | 'valor'
+  desconto: string
 }
 
-const emptyRewardForm: RewardForm = { name: '', description: '', points_required: '' }
+const emptyRewardForm: RewardForm = { name: '', description: '', points_required: '', tipo: 'gratis', desconto: '' }
+
+/* v167 · o que a recompensa vale na hora de cobrar. Sem isso, pagar com
+   "Pontos" zerava a comanda inteira até pra "Desconto 10%" (Wanessa, 21/10). */
+function descontoDoForm(f: RewardForm): number | null {
+  if (f.tipo === 'gratis') return null
+  const n = Number(f.desconto.replace(/\./g, '').replace(',', '.'))
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null
+}
+function formOk(f: RewardForm): boolean {
+  if (!f.name.trim() || !f.points_required) return false
+  if (f.tipo === 'gratis') return true
+  const d = descontoDoForm(f)
+  return d != null && (f.tipo !== 'percentual' || d <= 100)
+}
+function rotuloTipoRecompensa(r: { tipo?: string; desconto?: number | null }): string {
+  if (r.tipo === 'percentual') return `Desconto de ${String(r.desconto ?? 0).replace('.', ',')}%`
+  if (r.tipo === 'valor') return `Desconto de ${Number(r.desconto ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+  return 'Serviço grátis'
+}
+
+function CampoTipoRecompensa({ f, set }: { f: RewardForm; set: (f: RewardForm) => void }) {
+  const opcoes = [['gratis', 'Serviço grátis'], ['percentual', 'Desconto %'], ['valor', 'Desconto R$']] as const
+  return (
+    <div>
+      <label className="admin-label">O que a cliente ganha</label>
+      <div className="grid grid-cols-3 gap-1.5">
+        {opcoes.map(([v, rot]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => set({ ...f, tipo: v })}
+            className="py-2 rounded-lg text-xs font-bold"
+            style={f.tipo === v
+              ? { background: 'var(--admin-accent)', color: '#fff' }
+              : { background: 'var(--admin-input-bg)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}
+          >
+            {rot}
+          </button>
+        ))}
+      </div>
+      {f.tipo !== 'gratis' && (
+        <div className="relative mt-2">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold pointer-events-none" style={{ color: 'var(--admin-text-mute)' }}>
+            {f.tipo === 'percentual' ? '%' : 'R$'}
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={f.desconto}
+            onChange={(e) => set({ ...f, desconto: e.target.value.replace(/[^\d.,]/g, '') })}
+            placeholder={f.tipo === 'percentual' ? 'ex: 10' : 'ex: 30,00'}
+            className="admin-input w-full pl-10 pr-3 py-2.5 text-sm"
+          />
+        </div>
+      )}
+      <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
+        {f.tipo === 'gratis'
+          ? 'Na cobrança, o atendimento é pago com os pontos.'
+          : 'Na cobrança, vira desconto na comanda e a cliente paga o resto normalmente.'}
+      </p>
+    </div>
+  )
+}
 
 function formatRelativeDay(iso: string) {
   const then = new Date(iso).getTime()
@@ -412,7 +477,7 @@ export default function FidelidadeTab({
   }
 
   async function handleAdd() {
-    if (!form.name.trim() || !form.points_required) return
+    if (!formOk(form)) return
     setSaving(true)
     const { data, error } = await supabase
       .from('rewards')
@@ -421,6 +486,8 @@ export default function FidelidadeTab({
         name: form.name.trim(),
         description: form.description.trim() || null,
         points_required: parseInt(form.points_required),
+        tipo: form.tipo,
+        desconto: descontoDoForm(form),
         active: true,
       })
       .select()
@@ -438,11 +505,13 @@ export default function FidelidadeTab({
       name: reward.name,
       description: reward.description ?? '',
       points_required: String(reward.points_required),
+      tipo: reward.tipo ?? 'gratis',
+      desconto: reward.desconto != null ? String(reward.desconto).replace('.', ',') : '',
     })
   }
 
   async function handleSaveEdit(id: string) {
-    if (!editForm.name.trim() || !editForm.points_required) return
+    if (!formOk(editForm)) return
     setLoadingId(id)
     const { error } = await supabase
       .from('rewards')
@@ -450,6 +519,8 @@ export default function FidelidadeTab({
         name: editForm.name.trim(),
         description: editForm.description.trim() || null,
         points_required: parseInt(editForm.points_required),
+        tipo: editForm.tipo,
+        desconto: descontoDoForm(editForm),
       })
       .eq('id', id)
     if (!error) {
@@ -461,6 +532,8 @@ export default function FidelidadeTab({
                 name: editForm.name.trim(),
                 description: editForm.description.trim() || null,
                 points_required: parseInt(editForm.points_required),
+                tipo: editForm.tipo,
+                desconto: descontoDoForm(editForm),
               }
             : r,
         ),
@@ -988,9 +1061,10 @@ export default function FidelidadeTab({
               </p>
             )}
           </div>
+          <CampoTipoRecompensa f={form} set={setForm} />
           <button
             onClick={handleAdd}
-            disabled={saving || !form.name.trim() || !form.points_required}
+            disabled={saving || !formOk(form)}
             className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
             style={{
               background:
@@ -1536,10 +1610,11 @@ function RewardCard({
             className="admin-input w-full px-3 py-2.5 text-sm"
           />
         </div>
+        <CampoTipoRecompensa f={editForm} set={setEditForm} />
         <div className="flex gap-2">
           <button
             onClick={onSaveEdit}
-            disabled={isLoading || !editForm.name.trim() || !editForm.points_required}
+            disabled={isLoading || !formOk(editForm)}
             className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 transition-colors"
             style={{ background: 'var(--admin-accent)', color: '#fff' }}
           >
@@ -1617,6 +1692,8 @@ function RewardCard({
           >
             {reward.points_required.toLocaleString('pt-BR')} pts
           </span>
+          <span aria-hidden>·</span>
+          <span>{rotuloTipoRecompensa(reward)}</span>
           {!reward.active && (
             <>
               <span aria-hidden>·</span>

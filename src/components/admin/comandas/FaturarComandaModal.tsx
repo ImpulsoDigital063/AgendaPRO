@@ -334,7 +334,8 @@ export default function FaturarComandaModal({
     }
     if (payment !== 'leave_open' && payment !== null) {
       const pay: Record<string, unknown> = { method: payment }
-      if (payment === 'points') pay.reward_id = rewardId
+      // v167 · recompensa de desconto vai com o método real (pix, cartão...)
+      if (rewardId) pay.reward_id = rewardId
       if (payment === 'card' && cardDetails) {
         pay.device_id = cardDetails.device_id
         pay.card_brand = cardDetails.card_brand
@@ -441,10 +442,10 @@ export default function FaturarComandaModal({
 
           {/* Conteúdo */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {/* Resgate na cobrança (21/10) · é aqui que a cliente pergunta
-                "posso usar meus pontos?". O desconto da recompensa entra
-                na comanda como hoje: a recompensa é só um nome. */}
-            {customerId && <ResgatePontos customerId={customerId} nota="Lance o desconto aqui na comanda." />}
+            {/* Pontos na cobrança (21/10) · é aqui que a cliente pergunta
+                "posso usar meus pontos?". O bloco só mostra; o resgate é no
+                Receber pagamento → Pontos, que aplica o desconto (v167). */}
+            {customerId && <ResgatePontos customerId={customerId} dica="Pra usar: toque em Receber pagamento e escolha Pontos." />}
             {/* Linha do atendimento · fixa */}
             <div className="rounded-xl p-3" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}>
               <div className="flex items-center justify-between gap-3">

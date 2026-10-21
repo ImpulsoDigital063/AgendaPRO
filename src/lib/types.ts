@@ -236,6 +236,9 @@ export type Reward = {
   points_required: number
   active: boolean
   created_at: string
+  /** v167 · 'gratis' paga com pontos; 'percentual'/'valor' vira desconto na comanda. */
+  tipo?: 'gratis' | 'percentual' | 'valor'
+  desconto?: number | null
 }
 
 export type PointsTransaction = {

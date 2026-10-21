@@ -1,7 +1,7 @@
 import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
-import { resgatarRecompensa, estornarResgates } from '@/lib/resgate-pontos'
+import { resgatarRecompensa, estornarResgates, motivoDaRecompensa } from '@/lib/resgate-pontos'
 import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
 import { reservarComanda, RESPOSTA_COMANDA_OCUPADA, comReservaLiberadaNoErro } from '@/lib/reserva-comanda'
 import { normalizarAlvo } from '@/lib/desconto-geral'
@@ -392,20 +392,34 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
   // 6a. PONTOS = resgate de recompensa (Eduardo 29/09 · lib/resgate-pontos).
   //     Antes do passo 7 (estoque) pra saldo insuficiente não deixar nada pela
   //     metade. Resgate anterior destes atendimentos volta antes.
-  if (willClose && appts.length > 0) await estornarResgates(admin, appts.map((a) => a.id))
-  if (payment?.method === 'points') {
+  if (willClose && appts.length > 0) {
+    await estornarResgates(admin, appts.map((a) => a.id))
+    await admin.from('invoices').update({ discount_reason: null }).eq('id', invoice.id)
+  }
+  /* v167 · recompensa 'gratis' paga com o método Pontos; recompensa de % ou
+     R$ chega com o método real (pix, cartão...) e o desconto já calculado no
+     manual_discount: aqui só desconta os pontos e grava o motivo, que o fluxo
+     de caixa mostra escrito. */
+  const rewardIdPedido = (body.payment as { reward_id?: string } | null)?.reward_id ?? null
+  if (payment?.method === 'points' || (payment && rewardIdPedido)) {
     if (appts.length === 0) {
       await rollback()
       return NextResponse.json({ error: 'Pontos só pagam atendimento.' }, { status: 400 })
     }
+    if (payment.method !== 'points' && !(manualDiscount > 0)) {
+      await rollback()
+      return NextResponse.json({ error: 'A recompensa é desconto: falta o valor do desconto na comanda.' }, { status: 400 })
+    }
     const r = await resgatarRecompensa(admin, {
       businessId,
       customerId,
-      rewardId: (body.payment as { reward_id?: string }).reward_id ?? null,
+      rewardId: rewardIdPedido,
       appointmentId: appts[0].id,
+      uso: payment.method === 'points' ? 'pagamento' : 'desconto',
     })
     if (!r.ok) { await rollback(); return NextResponse.json({ error: r.erro }, { status: 400 }) }
     resgatouPontos = true
+    await admin.from('invoices').update({ discount_reason: motivoDaRecompensa(r.recompensa) }).eq('id', invoice.id)
   }
 
   // 6b. Desconto não pode passar da comanda. Confere ANTES do passo 7: depois

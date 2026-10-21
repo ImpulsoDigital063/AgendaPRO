@@ -68,7 +68,7 @@ function keyToRange(key: string): { from: string; to: string; label: string } {
   return { from: ymd(start), to: ymd(end), label: ymd(start).slice(0, 7) }
 }
 
-function drillHref(key: string, type: 'receitas' | 'despesas', extra?: { method?: string; category?: string }) {
+function drillHref(key: string, type: 'receitas' | 'despesas' | 'descontos', extra?: { method?: string; category?: string }) {
   const r = keyToRange(key)
   const params = new URLSearchParams({ from: r.from, to: r.to, type })
   if (extra?.method) params.set('method', extra.method)
@@ -389,7 +389,7 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
               <tr style={{ borderTop: '1px solid var(--admin-divider)' }}>
                 <td className="px-4 py-2 text-xs italic" style={{ color: 'var(--admin-text-mute)' }}>
                   Descontos concedidos
-                  <span className="not-italic" title="Cupons + descontos manuais. Já abatidos da receita acima — informativo."> ⓘ</span>
+                  <span className="not-italic" title="Cupons, descontos manuais e recompensas de pontos. Já fora da receita acima — informativo. Toque no valor pra ver o motivo de cada um."> ⓘ</span>
                 </td>
                 {months.map((m) => {
                   const v = data[m.key]?.descontosTotal ?? 0
@@ -399,7 +399,9 @@ export default function FluxoCaixaTable({ months, data, methodLabels, categoryLa
                       className="px-4 py-2 text-right tabular-nums text-xs"
                       style={{ color: v > 0 ? 'var(--admin-accent)' : 'var(--admin-text-faded)' }}
                     >
-                      {v > 0 ? `− ${formatBRL(v)}` : formatBRL(0)}
+                      {v > 0 ? (
+                        <a href={drillHref(m.key, 'descontos')} className="underline decoration-dotted underline-offset-2">− {formatBRL(v)}</a>
+                      ) : formatBRL(0)}
                     </td>
                   )
                 })}

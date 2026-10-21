@@ -221,7 +221,7 @@ export default async function AppointmentDetailPage({
 
         {/* Ficha do cliente · abre o FichasTab aqui dentro do atendimento */}
         {appt.customer_id && (
-          <ResgatePontos customerId={appt.customer_id as string} />
+          <ResgatePontos customerId={appt.customer_id as string} dica="Pra usar: Faturar atendimento → Receber pagamento → Pontos." />
         )}
 
         {appt.customer_id && (

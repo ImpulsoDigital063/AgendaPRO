@@ -11,7 +11,7 @@ type SearchParams = {
   month?: string // YYYY-MM (legado · ainda aceito)
   from?: string  // YYYY-MM-DD
   to?: string    // YYYY-MM-DD (exclusivo)
-  type?: 'receitas' | 'despesas'
+  type?: 'receitas' | 'despesas' | 'descontos'
   method?: string
   category?: string
 }
@@ -269,7 +269,7 @@ export default async function DetalhamentoPage({
     }
 
     rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  } else {
+  } else if (type === 'despesas') {
     // Despesas do REALIZADO = mesma conta do fluxo-caixa: despesas pagas + taxa de
     // maquininha dos pagamentos em cartão (comanda, atendimento direto e venda avulsa).
     // Antes: pedia expenses.description (a coluna é `name`) → o banco devolvia erro,
@@ -373,9 +373,61 @@ export default async function DetalhamentoPage({
     rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   }
 
+  /* v167 · DESCONTOS com o motivo escrito (Eduardo 21/10: "descrever esses
+     descontos também no fluxo de caixa"). Desconto da comanda (cupom, manual
+     ou recompensa de %/R$) + atendimento pago com pontos (recompensa grátis). */
+  if (type === 'descontos') {
+    type Nome = { name: string | null } | { name: string | null }[] | null
+    const nomeDe = (c: Nome) => (Array.isArray(c) ? c[0] : c)?.name ?? 'Cliente'
+    const [{ data: comDesconto }, { data: comPontos }] = await Promise.all([
+      sb
+        .from('invoices')
+        .select('id, invoice_number, discount, closed_at, discount_reason, customer:customers(name)')
+        .eq('business_id', business.id)
+        .eq('status', 'closed')
+        .gt('discount', 0)
+        .gte('closed_at', fromISO)
+        .lt('closed_at', toISO),
+      sb
+        .from('invoice_payments')
+        .select('amount, paid_at, invoice:invoices!inner(id, invoice_number, business_id, discount_reason, customer:customers(name))')
+        .eq('invoice.business_id', business.id)
+        .eq('payment_method', 'points')
+        .gte('paid_at', fromISO)
+        .lt('paid_at', toISO),
+    ])
+    for (const i of comDesconto ?? []) {
+      const row = i as unknown as { id: string; invoice_number: number; discount: number; closed_at: string; discount_reason: string | null; customer: Nome }
+      // Comanda paga com pontos guarda o motivo "Pago com pontos" · o desconto
+      // dela (se houver) é outro, manual.
+      const motivo = row.discount_reason && !row.discount_reason.startsWith('Pago com pontos') ? row.discount_reason : 'Desconto na comanda'
+      rows.push({
+        date: row.closed_at,
+        description: `${motivo} · ${nomeDe(row.customer)}`,
+        amount: Number(row.discount ?? 0),
+        origin_label: `Comanda #${row.invoice_number}`,
+        origin_href: `/admin/comandas/${row.id}`,
+      })
+    }
+    for (const p of comPontos ?? []) {
+      type InvShape = { id: string; invoice_number: number; discount_reason: string | null; customer: Nome }
+      const row = p as unknown as { amount: number | null; paid_at: string; invoice: InvShape | InvShape[] | null }
+      const inv = Array.isArray(row.invoice) ? row.invoice[0] : row.invoice
+      if (!inv) continue
+      rows.push({
+        date: row.paid_at,
+        description: `${inv.discount_reason ?? 'Pago com pontos'} · ${nomeDe(inv.customer)}`,
+        amount: Number(row.amount ?? 0),
+        origin_label: `Comanda #${inv.invoice_number}`,
+        origin_href: `/admin/comandas/${inv.id}`,
+      })
+    }
+    rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }
+
   const total = rows.reduce((s, r) => s + r.amount, 0)
-  const tone = type === 'receitas' ? '#059669' : 'var(--admin-danger,#EF4444)'
-  const title = type === 'receitas' ? 'Receitas' : 'Despesas'
+  const tone = type === 'receitas' ? '#059669' : type === 'descontos' ? 'var(--admin-accent)' : 'var(--admin-danger,#EF4444)'
+  const title = type === 'receitas' ? 'Receitas' : type === 'descontos' ? 'Descontos concedidos' : 'Despesas'
   const filterLabel = sp.method
     ? ` · ${METHOD_LABELS[sp.method] ?? sp.method}`
     : sp.category
@@ -421,7 +473,7 @@ export default async function DetalhamentoPage({
                   origin_label: r.origin_label ?? null,
                 }))}
                 filename={`fluxo-caixa-${type}-${periodLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-                signedAmount={type === 'despesas' ? '-' : ''}
+                signedAmount={type !== 'receitas' ? '-' : ''}
               />
             </div>
           </div>
@@ -462,7 +514,7 @@ export default async function DetalhamentoPage({
                         className="text-sm font-bold tabular-nums flex-shrink-0"
                         style={{ color: tone }}
                       >
-                        {type === 'despesas' ? '- ' : ''}{formatBRL(r.amount)}
+                        {type !== 'receitas' ? '- ' : ''}{formatBRL(r.amount)}
                       </span>
                     </div>
                     <p className="text-sm" style={{ color: 'var(--admin-text)' }}>
@@ -489,7 +541,7 @@ export default async function DetalhamentoPage({
                 <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'var(--admin-surface-hi)' }}>
                   <span className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>Total</span>
                   <span className="text-sm font-bold tabular-nums" style={{ color: tone }}>
-                    {type === 'despesas' ? '- ' : ''}{formatBRL(total)}
+                    {type !== 'receitas' ? '- ' : ''}{formatBRL(total)}
                   </span>
                 </div>
               </div>
@@ -538,7 +590,7 @@ export default async function DetalhamentoPage({
                           className="px-4 py-3 text-right tabular-nums font-bold"
                           style={{ color: tone }}
                         >
-                          {type === 'despesas' ? '- ' : ''}{formatBRL(r.amount)}
+                          {type !== 'receitas' ? '- ' : ''}{formatBRL(r.amount)}
                         </td>
                       </tr>
                     ))}
@@ -547,7 +599,7 @@ export default async function DetalhamentoPage({
                         Total
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-bold" style={{ color: tone }}>
-                        {type === 'despesas' ? '- ' : ''}{formatBRL(total)}
+                        {type !== 'receitas' ? '- ' : ''}{formatBRL(total)}
                       </td>
                     </tr>
                   </tbody>

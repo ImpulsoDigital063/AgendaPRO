@@ -11,7 +11,25 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * Desfazer o pagamento (cancelar/repagar comanda, desmarcar) devolve.
  */
 
-export type Recompensa = { id: string; name: string; points_required: number }
+/* Tipo da recompensa (v167 · 21/10): 'gratis' paga o atendimento com pontos;
+   'percentual' e 'valor' viram DESCONTO na comanda e o resto paga normal —
+   entra no faturamento, no caixa e na comissão pelo que a cliente pagou. */
+export type TipoRecompensa = 'gratis' | 'percentual' | 'valor'
+export type Recompensa = { id: string; name: string; points_required: number; tipo: TipoRecompensa; desconto: number | null }
+
+/** R$ que a recompensa abate de uma comanda de `base` reais. 0 pra 'gratis'. */
+export function descontoDaRecompensa(r: Pick<Recompensa, 'tipo' | 'desconto'>, base: number): number {
+  const b = Math.max(0, Number(base) || 0)
+  const v = Number(r.desconto ?? 0)
+  if (r.tipo === 'percentual') return Math.round(Math.min(b, (b * v) / 100) * 100) / 100
+  if (r.tipo === 'valor') return Math.round(Math.min(b, v) * 100) / 100
+  return 0
+}
+
+/** Texto do motivo do desconto (fluxo de caixa). */
+export function motivoDaRecompensa(r: Pick<Recompensa, 'name' | 'points_required' | 'tipo'>): string {
+  return (r.tipo === 'gratis' ? 'Pago com pontos · ' : 'Resgate de pontos · ') + r.name + ' (' + r.points_required + ' pts)'
+}
 
 export async function contextoFidelidade(
   db: SupabaseClient,
@@ -21,7 +39,7 @@ export async function contextoFidelidade(
   const { data: biz } = await db.from('businesses').select('loyalty_enabled').eq('id', businessId).maybeSingle()
   if (!biz?.loyalty_enabled) return { ativo: false, saldo: null, recompensas: [] }
   const [{ data: rewards }, { data: cli }] = await Promise.all([
-    db.from('rewards').select('id, name, points_required').eq('business_id', businessId).eq('active', true).order('points_required'),
+    db.from('rewards').select('id, name, points_required, tipo, desconto').eq('business_id', businessId).eq('active', true).order('points_required'),
     customerId
       ? db.from('customers').select('total_points, business_id').eq('id', customerId).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -37,9 +55,13 @@ export async function contextoFidelidade(
  */
 export async function resgatarRecompensa(
   db: SupabaseClient,
-  args: { businessId: string; customerId: string | null; rewardId: string | null | undefined; appointmentId: string | null },
-): Promise<{ ok: true; custo: number; nome: string } | { ok: false; erro: string }> {
-  const { businessId, customerId, rewardId, appointmentId } = args
+  args: {
+    businessId: string; customerId: string | null; rewardId: string | null | undefined; appointmentId: string | null
+    /** 'pagamento' = método Pontos (só recompensa grátis) · 'desconto' = vira desconto na comanda (só % ou R$). */
+    uso?: 'pagamento' | 'desconto'
+  },
+): Promise<{ ok: true; custo: number; nome: string; recompensa: Recompensa } | { ok: false; erro: string }> {
+  const { businessId, customerId, rewardId, appointmentId, uso } = args
   if (!rewardId) return { ok: false, erro: 'Escolha a recompensa que a cliente está trocando pelos pontos.' }
   if (!customerId) return { ok: false, erro: 'Pagamento com pontos precisa de cliente vinculada.' }
 
@@ -48,12 +70,20 @@ export async function resgatarRecompensa(
 
   const { data: reward } = await db
     .from('rewards')
-    .select('id, name, points_required, active')
+    .select('id, name, points_required, active, tipo, desconto')
     .eq('id', rewardId)
     .eq('business_id', businessId)
     .maybeSingle()
   if (!reward || !reward.active) return { ok: false, erro: 'Recompensa não encontrada ou desativada.' }
   const custo = Number(reward.points_required ?? 0)
+  const tipo = ((reward.tipo as string) ?? 'gratis') as TipoRecompensa
+  if (uso === 'pagamento' && tipo !== 'gratis') {
+    return { ok: false, erro: `"${reward.name}" é desconto: aplique na comanda e receba o restante pela forma de pagamento da cliente.` }
+  }
+  if (uso === 'desconto' && tipo === 'gratis') {
+    return { ok: false, erro: `"${reward.name}" é serviço grátis: use a forma de pagamento Pontos.` }
+  }
+  const recompensa: Recompensa = { id: reward.id as string, name: reward.name as string, points_required: custo, tipo, desconto: reward.desconto == null ? null : Number(reward.desconto) }
 
   for (let tentativa = 0; tentativa < 3; tentativa++) {
     const { data: cli } = await db
@@ -80,7 +110,7 @@ export async function resgatarRecompensa(
       reason: 'redemption',
       appointment_id: appointmentId,
     })
-    return { ok: true, custo, nome: reward.name as string }
+    return { ok: true, custo, nome: reward.name as string, recompensa }
   }
   return { ok: false, erro: 'O saldo de pontos mudou durante o pagamento. Tente de novo.' }
 }

@@ -2,7 +2,7 @@ import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { acertarValorDosProdutosDaComanda } from '@/lib/produto-desconto'
 import { NextResponse } from 'next/server'
 import { linhasDoSinal, NOTA_SINAL } from '@/lib/sinal-da-comanda'
-import { resgatarRecompensa, estornarResgates } from '@/lib/resgate-pontos'
+import { resgatarRecompensa, estornarResgates, motivoDaRecompensa } from '@/lib/resgate-pontos'
 import { reservarComanda, RESPOSTA_COMANDA_OCUPADA, comReservaLiberadaNoErro, devolverCreditoDaComanda } from '@/lib/reserva-comanda'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -143,6 +143,8 @@ async function postPagar(
      Repagamento devolve o resgate anterior; pagar com pontos resgata de novo. */
   const apptIdsComanda = (itensAppt ?? []).map((i) => i.reference_id as string).filter(Boolean)
   await estornarResgates(admin, apptIdsComanda)
+  // v167 · motivo some com o resgate antigo; volta só se pagar com pontos de novo
+  await admin.from('invoices').update({ discount_reason: null }).eq('id', invoiceId)
   const pagPontos = normalized.find((p) => p.method === 'points')
   if (pagPontos) {
     if (apptIdsComanda.length === 0) return NextResponse.json({ error: 'Pontos só pagam atendimento.' }, { status: 400 })
@@ -151,8 +153,10 @@ async function postPagar(
       customerId: (invoice.customer_id as string | null) ?? null,
       rewardId: pagPontos.reward_id ?? null,
       appointmentId: apptIdsComanda[0],
+      uso: 'pagamento',
     })
     if (!r.ok) return NextResponse.json({ error: r.erro }, { status: 400 })
+    await admin.from('invoices').update({ discount_reason: motivoDaRecompensa(r.recompensa) }).eq('id', invoiceId)
   }
 
   // Repagamento (comanda reaberta): o crédito usado no pagamento anterior
