@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
 import { sendWebPush } from '@/lib/notify-push'
+import { variacoesDeTelefone } from '@/lib/phone-variants'
 
 function getAdminClient() {
   return createServiceClient(
@@ -45,12 +46,17 @@ export async function POST(req: NextRequest) {
   // Busca o customer; se não existir, CRIA (avaliação é vantagem pro negócio
   // mesmo de quem nunca agendou — Eduardo 05/06). Quem avalia já começa com
   // saldo; se agendar depois, o mesmo telefone reaproveita o cadastro.
-  let { data: customer } = await adminClient
+  // Procura em todos os formatos do número: a ficha do link tem máscara e
+  // aqui chega só dígito. Com .eq exato a Kamilly (Wanessa, 21/10) virou duas
+  // fichas, e a avaliação caiu na ficha nova, sem os pontos dos atendimentos.
+  const { data: achadas } = await adminClient
     .from('customers')
     .select('id, name, phone')
     .eq('business_id', businessId)
-    .eq('phone', phone.trim())
-    .maybeSingle()
+    .in('phone', variacoesDeTelefone(phone))
+    .order('created_at', { ascending: true })
+    .limit(1)
+  let customer = achadas?.[0] ?? null
 
   if (!customer) {
     const { data: created, error: createErr } = await adminClient
