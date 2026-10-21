@@ -296,19 +296,19 @@ export default function FaturarComandaModal({
     return null
   }
 
-  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string) {
+  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string, restMethod?: 'pix' | 'cash' | 'card') {
     // Toque duplo: o estado `submitting` só vale no próximo render; a ref
     // barra na hora (auditoria 29/09 · M5 · a rota também reserva a comanda).
     if (enviandoRef.current) return
     enviandoRef.current = true
     try {
-      await enviarFatura(payment, cardDetails, desconto, origem, rewardId)
+      await enviarFatura(payment, cardDetails, desconto, origem, rewardId, restMethod)
     } finally {
       enviandoRef.current = false
     }
   }
 
-  async function enviarFatura(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string) {
+  async function enviarFatura(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string, restMethod?: 'pix' | 'cash' | 'card') {
     const v = validateBeforeSubmit()
     if (v) { setError(v); return }
     setError(null)
@@ -336,7 +336,8 @@ export default function FaturarComandaModal({
       const pay: Record<string, unknown> = { method: payment }
       // v167 · recompensa de desconto vai com o método real (pix, cartão...)
       if (rewardId) pay.reward_id = rewardId
-      if (payment === 'card' && cardDetails) {
+      if (payment === 'points' && restMethod) pay.rest_method = restMethod
+      if ((payment === 'card' || restMethod === 'card') && cardDetails) {
         pay.device_id = cardDetails.device_id
         pay.card_brand = cardDetails.card_brand
         pay.card_type = cardDetails.card_type
@@ -923,9 +924,11 @@ export default function FaturarComandaModal({
         loading={submitting}
         // Serviço + produto na mesma comanda → pergunta de onde sai o desconto.
         perguntarOrigemDesconto={cart.length > 0 || jaNaComanda.length > 0}
-        onChoose={(method, card, _valor, desconto, origem, rewardId) => {
+        // Recompensa grátis paga só o atendimento (21/10): o resto pede método.
+        valorAtendimento={valorServicoEfetivo}
+        onChoose={(method, card, _valor, desconto, origem, rewardId, restMethod) => {
           if (method === null) { setPaymentOpen(false); return }
-          submitInvoice(method, card, desconto, origem, rewardId)
+          submitInvoice(method, card, desconto, origem, rewardId, restMethod)
         }}
         onClose={() => setPaymentOpen(false)}
       />

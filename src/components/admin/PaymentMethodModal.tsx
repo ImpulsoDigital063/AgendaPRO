@@ -81,7 +81,10 @@ type Props = {
    *  4o só quando permiteDesconto está ligado e há desconto > 0.
    *  5o = de onde sai o desconto (só com perguntarOrigemDesconto).
    *  6o = recompensa escolhida quando method = 'points' (vai no body como reward_id). */
-  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number, desconto?: number, origem?: AlvoDesconto, rewardId?: string) => void
+  onChoose: (method: PaymentMethodChoice, cardDetails?: CardPaymentDetails, valor?: number, desconto?: number, origem?: AlvoDesconto, rewardId?: string, restMethod?: 'pix' | 'cash' | 'card') => void
+  /** Valor dos atendimentos da comanda (21/10). Recompensa grátis paga só
+   *  isso; o resto (produto, serviço extra) pede um método (7º do onChoose). */
+  valorAtendimento?: number | null
   onClose: () => void
 }
 
@@ -110,6 +113,7 @@ export default function PaymentMethodModal({
   clientName,
   totalPrice,
   sinalPago = 0,
+  valorAtendimento = null,
   sinalDeclarado = null,
   permiteEditarValor = false,
   permiteDesconto = false,
@@ -136,6 +140,9 @@ export default function PaymentMethodModal({
      Antes aparecia pra todo negócio e só marcava o método: 7 atendimentos
      saíram de graça sem descontar ponto nenhum. */
   const [pontosStep, setPontosStep] = useState(false)
+  // Recompensa grátis escolhida numa comanda que tem mais que o atendimento.
+  const [restoGratis, setRestoGratis] = useState<Recompensa | null>(null)
+  useEffect(() => { if (!open || !pontosStep) setRestoGratis(null) }, [open, pontosStep])
   const [fid, setFid] = useState<{ ativo: boolean; saldo: number | null; recompensas: Recompensa[] } | null>(null)
   useEffect(() => {
     if (!open || semPontos) { setFid(null); return }
@@ -252,6 +259,13 @@ export default function PaymentMethodModal({
       ? Math.max(0, Math.round((totalPrice - sinalPago - desconto) * 100) / 100)
       : totalPrice
   const priceLabel = formatPrice(aReceberAgora)
+  const cobertoPorPontos = valorAtendimento == null || aReceberAgora == null
+    ? null
+    : Math.round(Math.min(aReceberAgora, valorAtendimento) * 100) / 100
+  const restoDosPontos = cobertoPorPontos == null || aReceberAgora == null
+    ? 0
+    : Math.round((aReceberAgora - cobertoPorPontos) * 100) / 100
+  const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   return createPortal(
     <div
@@ -276,13 +290,52 @@ export default function PaymentMethodModal({
             businessId={businessId}
             // Taxa da maquininha incide sobre o que passa NA maquininha: o
             // sinal já entrou por PIX e não paga taxa de cartão.
-            totalPrice={aReceberAgora}
+            totalPrice={restoGratis ? restoDosPontos : aReceberAgora}
             clientName={clientName}
             loading={loading}
             onBack={() => setCardStep(false)}
-            onConfirm={(details) => onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, recompensaDesconto?.id)}
+            onConfirm={(details) => restoGratis
+              ? onChoose('points', details, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, restoGratis.id, 'card')
+              : onChoose('card', details, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, recompensaDesconto?.id)}
             onClose={onClose}
           />
+        ) : pontosStep && restoGratis ? (
+          <div className="p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--admin-text-faded, #94A3B8)' }}>
+              Pagar com pontos
+            </p>
+            <h3 className="text-lg font-bold leading-tight" style={{ color: 'var(--admin-text, #0F172A)' }}>
+              Como {clientName} paga o resto?
+            </h3>
+            <div className="mt-3 p-3 rounded-xl text-sm" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}>
+              <p style={{ color: '#B45309' }}>
+                <strong>★ {restoGratis.name}</strong> paga o atendimento: <strong>{brl(cobertoPorPontos ?? 0)}</strong>
+              </p>
+              <p className="mt-1" style={{ color: 'var(--admin-text-2, #475569)' }}>
+                O resto da comanda fica em <strong>{brl(restoDosPontos)}</strong>.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-3">
+              {([['pix', 'Pix'], ['cash', 'Dinheiro'], ['card', 'Cartão']] as const).map(([m, rot]) => (
+                <button
+                  key={m}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    if (m === 'card' && businessId) { setCardStep(true); return }
+                    onChoose('points', undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, restoGratis.id, m)
+                  }}
+                  className="py-3 rounded-xl text-sm font-bold disabled:opacity-45"
+                  style={{ background: 'var(--admin-surface, #F8FAFC)', border: '1.5px solid var(--admin-border, #E2E8F0)', color: 'var(--admin-text, #0F172A)' }}
+                >
+                  {rot}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => setRestoGratis(null)} disabled={loading} className="mt-3 text-xs font-semibold" style={{ color: 'var(--admin-text-mute, #64748B)' }}>
+              ← Escolher outra recompensa
+            </button>
+          </div>
         ) : pontosStep ? (
           <div className="p-5">
             <div className="flex items-start justify-between mb-3">
@@ -326,6 +379,8 @@ export default function PaymentMethodModal({
                       disabled={loading || !pode}
                       onClick={() => {
                         if (!ehDesconto) {
+                          // Comanda com mais que o atendimento: pergunta o resto.
+                          if (restoDosPontos > 0) { setRestoGratis(r); return }
                           onChoose('points', undefined, campoValor ? valorEfetivo ?? undefined : undefined, descontoEnviado, origemEnviada, r.id)
                           return
                         }

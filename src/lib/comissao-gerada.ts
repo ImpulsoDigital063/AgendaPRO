@@ -45,7 +45,8 @@ export async function comissoesGeradas(
       .from('appointments')
       .select('id, professional_id, paid_at, total_price, invoice_item_id, commission_amount, commission_percent')
       .eq('business_id', businessId)
-      .not('payment_method', 'in', '(courtesy,credit,points)')
+      // Pago com PONTOS gera comissão (Eduardo 21/10: "sai do bolso do dono").
+      .not('payment_method', 'in', '(courtesy,credit)')
       .gte('paid_at', fromIso)
       .lt('paid_at', toIso)
       .not('paid_at', 'is', null),

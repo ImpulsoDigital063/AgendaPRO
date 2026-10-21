@@ -18,6 +18,8 @@ const METHOD_LABELS: Record<string, string> = {
   gift_card: 'Cartão presente',
   // 'credit' no sistema é o CRÉDITO da cliente (não cartão) · não gera comissão
   credit: 'Crédito da cliente',
+  // Pago com pontos gera comissão sobre o valor do serviço (Eduardo 21/10)
+  points: 'Pontos (recompensa)',
   credit_card: 'Cartão de Crédito',
   debit: 'Cartão de Débito',
   debit_card: 'Cartão de Débito',
@@ -129,7 +131,9 @@ export default async function RemuneracaoDetalhePage({
      geram comissão. O detalhe contava e o total dele não batia com a lista.
      Sem método (comanda 100% crédito) também fica fora, igual à lista.
      Convênio não passa por aqui: quem paga é a empresa. */
-  const SEM_COMISSAO = new Set(['courtesy', 'credit', 'points'])
+  // Pontos SAIU daqui em 21/10 (Eduardo): serviço pago com pontos mantém a
+  // comissão sobre o valor do serviço — o custo é do dono, não da profissional.
+  const SEM_COMISSAO = new Set(['courtesy', 'credit'])
   const apptsComissao = (appts ?? []).filter(
     (a) => a.company_id != null || (a.payment_method != null && !SEM_COMISSAO.has(a.payment_method as string)),
   )

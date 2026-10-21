@@ -93,7 +93,7 @@ export default async function RemuneracoesPage({
       .from('appointments')
       .select('id, professional_id, paid_at, total_price, invoice_item_id, commission_amount, commission_percent')
       .eq('business_id', business.id)
-      .not('payment_method', 'in', '(courtesy,credit,points)') // cortesia não gera comissão
+      .not('payment_method', 'in', '(courtesy,credit)') // cortesia não gera comissão · PONTOS gera (Eduardo 21/10)
       .gte('paid_at', from)
       .lt('paid_at', to)
       .not('paid_at', 'is', null)

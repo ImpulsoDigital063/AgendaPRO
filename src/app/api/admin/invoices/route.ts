@@ -259,11 +259,16 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
   }
 
   // Validar pagamento (se vier)
-  type PaymentIn = { method: 'cash'|'pix'|'card'|'courtesy'|'points'; device_id?: string|null; card_brand?: string|null; card_type?: string|null; installments?: number|null; fee_percent?: number|null }
+  /* rest_method (21/10): recompensa grátis paga SÓ o atendimento (Eduardo:
+     "a recompensa paga o que ela cobrir"); produto ou serviço extra da mesma
+     comanda a cliente paga neste método. Campos de cartão valem pro resto. */
+  type PaymentIn = { method: 'cash'|'pix'|'card'|'courtesy'|'points'; rest_method?: 'cash'|'pix'|'card'|null; device_id?: string|null; card_brand?: string|null; card_type?: string|null; installments?: number|null; fee_percent?: number|null }
   const payment: PaymentIn | null = body.payment && ['cash','pix','card','courtesy','points'].includes(body.payment.method)
     ? body.payment
     : null
   const willClose = payment !== null
+  // Produto e serviço extra: com recompensa grátis, ficam no método do resto (21/10).
+  const metodoDoResto = payment?.method === 'points' && payment.rest_method ? payment.rest_method : payment?.method ?? null
 
   const nowIso = new Date().toISOString()
 
@@ -410,6 +415,17 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
       await rollback()
       return NextResponse.json({ error: 'A recompensa é desconto: falta o valor do desconto na comanda.' }, { status: 400 })
     }
+    // Grátis com produto/serviço extra na comanda: o resto precisa de método.
+    // Checa ANTES do passo 7 (estoque), que o rollback não desfaz.
+    if (payment.method === 'points' && !['cash', 'pix', 'card'].includes(payment.rest_method ?? '')) {
+      const { data: itensDaComanda } = await admin.from('invoice_items').select('item_type, reference_id').eq('invoice_id', invoice.id)
+      const ids = new Set(appts.map((x) => x.id))
+      const temOutros = (itensDaComanda ?? []).some((i) => !(i.item_type === 'appointment' && ids.has(i.reference_id as string)))
+      if (productSales.length > 0 || extraServices.length > 0 || temOutros) {
+        await rollback()
+        return NextResponse.json({ error: 'A recompensa paga só o atendimento. Escolha como a cliente paga o resto da comanda.' }, { status: 400 })
+      }
+    }
     const r = await resgatarRecompensa(admin, {
       businessId,
       customerId,
@@ -457,7 +473,7 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
         discount: 0,
         status: willClose ? 'paid' : 'pending',
         paid_at: willClose ? quandoIso : null,
-        payment_method: willClose ? payment!.method : null,
+        payment_method: willClose ? metodoDoResto : null,
         invoice_id: invoice.id,
         appointment_id: appts[0]?.id ?? null,
         created_by: user.id,
@@ -528,7 +544,7 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
         status: 'completed',
         total_price: lineTotal,
         paid_at: willClose ? quandoIso : null,
-        payment_method: willClose ? payment!.method : null,
+        payment_method: willClose ? metodoDoResto : null,
       })
       .select('id')
       .single()
@@ -591,7 +607,7 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
   // ANTES de inserir o pagamento e reusamos a mesma leitura na recalc (9b).
   const { data: allItems } = await admin
     .from('invoice_items')
-    .select('total, discount')
+    .select('total, discount, item_type, reference_id')
     .eq('invoice_id', invoice.id)
   const itemsSubtotal = (allItems ?? []).reduce((s, r) => s + Number(r.total ?? 0), 0)
   const itemsDiscount = (allItems ?? []).reduce((s, r) => s + Number(r.discount ?? 0), 0)
@@ -625,12 +641,31 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
 
   // invoice_payments (se pagou) · amount = comanda inteira menos o sinal já pago
   if (payment) {
-    const restante = Math.max(0, payableTotal - totalSinal)
+    const restanteTotal = Math.max(0, payableTotal - totalSinal)
+    /* Pontos (recompensa grátis) cobrem só o valor dos atendimentos; o que
+       sobrar (produto, serviço extra) vira uma linha no método do resto. */
+    let restante = restanteTotal
+    let metodoDaLinha: string = payment.method
+    if (payment.method === 'points') {
+      const doAtendimento = new Set(appts.map((x) => x.id)) // serviço extra não entra: a recompensa cobre o atendimento
+      const valorAtendimentos = (allItems ?? []).filter((r) => r.item_type === 'appointment' && doAtendimento.has(r.reference_id as string)).reduce((s, r) => s + Number(r.total ?? 0), 0)
+      const porPontos = Math.round(Math.min(restanteTotal, valorAtendimentos) * 100) / 100
+      const resto = Math.round((restanteTotal - porPontos) * 100) / 100
+      if (resto > 0) {
+        if (!payment.rest_method) { await rollback(); return NextResponse.json({ error: 'A recompensa paga só o atendimento. Escolha como a cliente paga o resto da comanda.' }, { status: 400 }) }
+        const { error: ptsErr } = await admin.from('invoice_payments').insert({
+          invoice_id: invoice.id, payment_method: 'points', amount: porPontos, installments: 1, fee_percent: 0, paid_at: quandoIso,
+        })
+        if (ptsErr) { await rollback(); return NextResponse.json({ error: ptsErr.message }, { status: 500 }) }
+        restante = resto
+        metodoDaLinha = payment.rest_method
+      }
+    }
     const { error: payErr } = await admin
       .from('invoice_payments')
       .insert({
         invoice_id: invoice.id,
-        payment_method: payment.method,
+        payment_method: metodoDaLinha,
         amount: restante,
         device_id: payment.device_id ?? null,
         card_brand: payment.card_brand ?? null,
@@ -684,7 +719,7 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
     const saleIds = (itensProduto ?? []).map((i) => i.reference_id as string | null).filter((x): x is string => !!x)
     if (saleIds.length > 0) {
       await admin.from('sales')
-        .update({ status: 'paid', payment_method: payment!.method })
+        .update({ status: 'paid', payment_method: metodoDoResto })
         .in('id', saleIds)
         .neq('status', 'cancelled')
       await admin.from('sales').update({ paid_at: quandoIso }).in('id', saleIds).is('paid_at', null)
