@@ -59,6 +59,8 @@ type Props = {
   sinalDeclarado?: { valor: number; quando: string } | null
   appointmentProfessionalId: string | null
   customerName: string
+  /** Ficha da cliente · mostra os pontos e o resgate aqui (21/10). */
+  customerId?: string | null
   businessId: string
   /** v100b · libera editar o valor do serviço aqui. Fica com dono e recepção. */
   podeEditarValor?: boolean
@@ -70,6 +72,7 @@ type Props = {
 }
 
 import { getApptCharged, type ChargedProduct } from '@/lib/queries/appointment-charged-total'
+import ResgatePontos from '@/components/admin/fidelidade/ResgatePontos'
 
 function brl(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -99,7 +102,7 @@ const selectStyle: React.CSSProperties = {
 
 export default function FaturarComandaModal({
   open, appointmentId, appointmentServiceName, appointmentTotal, appointmentProfessionalId, podeEditarValor = false, sinalPago = 0, sinalDeclarado = null,
-  customerName, businessId, onClose, onPago,
+  customerName, customerId = null, businessId, onClose, onPago,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -438,6 +441,10 @@ export default function FaturarComandaModal({
 
           {/* Conteúdo */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            {/* Resgate na cobrança (21/10) · é aqui que a cliente pergunta
+                "posso usar meus pontos?". O desconto da recompensa entra
+                na comanda como hoje: a recompensa é só um nome. */}
+            {customerId && <ResgatePontos customerId={customerId} nota="Lance o desconto aqui na comanda." />}
             {/* Linha do atendimento · fixa */}
             <div className="rounded-xl p-3" style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}>
               <div className="flex items-center justify-between gap-3">

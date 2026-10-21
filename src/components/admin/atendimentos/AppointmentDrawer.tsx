@@ -8,6 +8,7 @@ import { IconClose, IconCalendar, IconClock, IconDollar, IconUser, IconExternalL
 import AppointmentActions from './AppointmentActions'
 import AvisosDoAtendimento from './AvisosDoAtendimento'
 import ClientFichaSection from '../clientes/ClientFichaSection'
+import ResgatePontos from '@/components/admin/fidelidade/ResgatePontos'
 import Link from 'next/link'
 
 type Props = {
@@ -432,6 +433,11 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                 <ClientFichaSection customerId={data.customer_id} />
               )}
 
+              {/* Resgate de pontos aqui também (21/10) · antes só na ficha. */}
+              {!ehAreaProfissional && data.customer_id && (
+                <ResgatePontos customerId={data.customer_id} />
+              )}
+
               {/* SINAL PENDENTE (v112c) · Eduardo: "tive que ir na aba sinal
                   pra poder autorizar, sendo que podia mostrar na grade".
                   Certo — quem abre o atendimento pra ver ja deveria poder
@@ -533,6 +539,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                   backHref={`/admin?date=${data.appointment_date}`}
                   customerName={data.client_name ?? customer?.name ?? 'Cliente'}
                   customerPhone={data.client_phone ?? customer?.phone ?? null}
+                  customerId={data.customer_id}
                   businessId={businessId}
                   startTime={data.start_time}
                   totalPrice={data.total_price}

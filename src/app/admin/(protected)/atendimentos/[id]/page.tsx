@@ -6,6 +6,7 @@ import { IconArrowLeft, IconCalendar, IconClock, IconDollar, IconUser } from '@/
 import AppointmentActions from '@/components/admin/atendimentos/AppointmentActions'
 import AvisosDoAtendimento from '@/components/admin/atendimentos/AvisosDoAtendimento'
 import ClientFichaSection from '@/components/admin/clientes/ClientFichaSection'
+import ResgatePontos from '@/components/admin/fidelidade/ResgatePontos'
 import { getApptCharged } from '@/lib/queries/appointment-charged-total'
 import { negocioDoPainel } from '@/lib/admin-data'
 
@@ -220,6 +221,10 @@ export default async function AppointmentDetailPage({
 
         {/* Ficha do cliente · abre o FichasTab aqui dentro do atendimento */}
         {appt.customer_id && (
+          <ResgatePontos customerId={appt.customer_id as string} />
+        )}
+
+        {appt.customer_id && (
           <ClientFichaSection customerId={appt.customer_id as string} />
         )}
 
@@ -235,6 +240,7 @@ export default async function AppointmentDetailPage({
             backHref={backHref}
             customerName={appt.client_name ?? customer?.name ?? 'Cliente'}
             customerPhone={appt.client_phone ?? customer?.phone ?? null}
+            customerId={(appt.customer_id as string | null) ?? null}
             businessId={business.id}
             startTime={appt.start_time as string}
             totalPrice={valorCobrado}

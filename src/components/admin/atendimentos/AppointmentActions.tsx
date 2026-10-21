@@ -16,6 +16,8 @@ type Props = {
   backHref: string
   customerName: string
   customerPhone: string | null
+  /** Ficha da cliente · libera o resgate de pontos no fechar da comanda (21/10). */
+  customerId?: string | null
   /** businessId obrigatório pra step de cartão (maquininha/bandeira/taxa). */
   businessId: string
   /** Hora de início (HH:MM) · necessária pro modal de editar serviços recalcular fim. */
@@ -72,6 +74,7 @@ export default function AppointmentActions({
   backHref,
   customerName,
   customerPhone,
+  customerId = null,
   businessId,
   startTime,
   totalPrice,
@@ -492,6 +495,7 @@ export default function AppointmentActions({
         onPago={onPago ? ({ total }) => onPago({ paid_at: new Date().toISOString(), total_price: total }) : undefined}
         appointmentProfessionalId={professionalId ?? null}
         customerName={customerName}
+        customerId={customerId}
         businessId={businessId}
         onClose={() => {
           setFaturarOpen(false)
