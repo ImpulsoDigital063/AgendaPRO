@@ -383,12 +383,56 @@ export async function PATCH(
   }
 
   // Aplica mudanças. Não há transação client-side no supabase-js — fazemos
-  // sequencial e retornamos erro se qualquer etapa falhar. Em caso de
-  // falha após DELETE mas antes de INSERT/UPDATE, o appointment ficaria
-  // sem services — o cron auto-complete não falha por isso e o admin
-  // re-edita. Trade-off aceito pra evitar RPC só pra essa transação.
+  // sequencial. O appointment vai PRIMEIRO: se o banco recusar (sobreposição),
+  // nada foi trocado. Antes a lista de serviços era regravada antes e ficava
+  // trocada com o agendamento antigo · a edição seguinte via "mesmos
+  // serviços" e mantinha o preço velho (Wanessa, Ana Caroline, 22/10).
+
+  // Atualiza os campos denormalizados em appointments (primeiro serviço
+  // vira service_id/service_name pra retrocompat com card simples).
+  // force=true marca manual_overlap_accepted · constraint v60 e trigger v171
+  // deixam passar. Sem force a marca volta a false (salvamento normal checa).
+  const first = services[0]
+  const updatePayload: Record<string, unknown> = {
+    service_id: first.id,
+    service_name: services.length === 1 ? first.name : `${first.name} +${services.length - 1}`,
+    total_price: totalPrice,
+    appointment_date: newDate,
+    start_time: newStartTimeFull,
+    end_time: newEndTime,
+    professional_id: newProfId,
+  }
+  if (newNotes !== undefined) {
+    updatePayload.notes = newNotes
+  }
+  updatePayload.manual_overlap_accepted = force
+  const { error: updErr } = await admin
+    .from('appointments')
+    .update(updatePayload)
+    .eq('id', appointmentId)
+
+  if (updErr) {
+    // 23P01 = no_overlap_appointments (defesa em profundidade)
+    const code = (updErr as { code?: string }).code
+    if (code === '23P01') {
+      return NextResponse.json(
+        { error: 'Sobreposição com outro agendamento — diminua a duração.' },
+        { status: 409 },
+      )
+    }
+    // P0001 = trigger check_appointment_overlap (pega o que o pre-check não viu)
+    if (code === 'P0001' && !force) {
+      return NextResponse.json(
+        { error: 'Conflita com outro agendamento nesse horário. Você pode salvar mesmo assim ou diminuir serviços.', canForce: true },
+        { status: 409 },
+      )
+    }
+    return NextResponse.json({ error: 'Erro ao atualizar agendamento.' }, { status: 500 })
+  }
 
   // Mesmos serviços: a lista (com os preços de quando foi marcado) fica.
+  // Se falhar aqui o appointment já tem o serviço novo e a lista não bate ·
+  // a próxima edição deixa de ver "mesmos serviços" e recalcula pelo catálogo.
   if (!mesmosServicos) {
     const { error: delErr } = await admin
       .from('appointment_services')
@@ -409,43 +453,6 @@ export async function PATCH(
     if (insErr) {
       return NextResponse.json({ error: 'Erro ao gravar novos serviços.' }, { status: 500 })
     }
-  }
-
-  // Atualiza os campos denormalizados em appointments (primeiro serviço
-  // vira service_id/service_name pra retrocompat com card simples).
-  // Quando force=true, marca manual_overlap_accepted=true · constraint v60
-  // nao bloqueia o par com o appointment conflitante.
-  const first = services[0]
-  const updatePayload: Record<string, unknown> = {
-    service_id: first.id,
-    service_name: services.length === 1 ? first.name : `${first.name} +${services.length - 1}`,
-    total_price: totalPrice,
-    appointment_date: newDate,
-    start_time: newStartTimeFull,
-    end_time: newEndTime,
-    professional_id: newProfId,
-  }
-  if (newNotes !== undefined) {
-    updatePayload.notes = newNotes
-  }
-  if (force) {
-    updatePayload.manual_overlap_accepted = true
-  }
-  const { error: updErr } = await admin
-    .from('appointments')
-    .update(updatePayload)
-    .eq('id', appointmentId)
-
-  if (updErr) {
-    // 23P01 = no_overlap_appointments (defesa em profundidade)
-    const code = (updErr as { code?: string }).code
-    if (code === '23P01') {
-      return NextResponse.json(
-        { error: 'Sobreposição com outro agendamento — diminua a duração.' },
-        { status: 409 },
-      )
-    }
-    return NextResponse.json({ error: 'Erro ao atualizar agendamento.' }, { status: 500 })
   }
 
   // Sincroniza a(s) comanda(s) ABERTA(S) com os novos serviços. O invoice_item
