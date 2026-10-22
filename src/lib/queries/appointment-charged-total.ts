@@ -54,8 +54,19 @@ export async function getApptChargedMap(
   sb: SupabaseClient,
   appointmentIds: (string | null | undefined)[],
 ): Promise<Record<string, ApptCharged>> {
-  const out: Record<string, ApptCharged> = {}
+  /* 21/10/2026 · em lotes: .in() com centenas de ids estoura a URL e volta 400
+     calado. Cada lote lê as comandas inteiras que toca, então o valor de cada
+     atendimento não muda. */
   const ids = [...new Set(appointmentIds.filter((x): x is string => !!x))]
+  const out: Record<string, ApptCharged> = {}
+  for (let i = 0; i < ids.length; i += 150) {
+    Object.assign(out, await cobradoDoLote(sb, ids.slice(i, i + 150)))
+  }
+  return out
+}
+
+async function cobradoDoLote(sb: SupabaseClient, ids: string[]): Promise<Record<string, ApptCharged>> {
+  const out: Record<string, ApptCharged> = {}
   if (ids.length === 0) return out
 
   // 1) appointment → invoice

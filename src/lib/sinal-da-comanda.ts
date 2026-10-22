@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { composicaoDoSinal } from './sinal-cancelamento'
+import { composicaoDoSinal, composicaoDosSinais } from './sinal-cancelamento'
 
 /**
  * Linhas de pagamento do SINAL já pago dos atendimentos de uma comanda.
@@ -78,8 +78,9 @@ export async function sinaisRecebidos(
     .gte('sinal_pago_at', inicioIso)
     .lt('sinal_pago_at', fimIso)
   const out: { id: string; valor: number; paid_at: string; client_name: string }[] = []
+  const comp = await composicaoDosSinais(db, (data ?? []) as { id: string; sinal_valor: number | null; sinal_pago_at: string | null }[])
   for (const a of data ?? []) {
-    const c = await composicaoDoSinal(db, a.id as string)
+    const c = comp[a.id as string]
     if (c.emDinheiro > 0) {
       out.push({ id: a.id as string, valor: c.emDinheiro, paid_at: a.sinal_pago_at as string, client_name: (a.client_name as string) ?? 'Cliente' })
     }
@@ -103,15 +104,17 @@ export async function ajusteSinalDoPeriodo(
 ): Promise<{ subtrair: Record<string, number>; somar: number }> {
   const subtrair: Record<string, number> = {}
   const dentro = (iso: string) => iso >= inicioIso && iso < fimIso
-  if (apptIdsDoPeriodo.length > 0) {
+  // Em lotes de 150 (21/10/2026): .in() gigante estoura a URL e volta 400 calado.
+  for (let i = 0; i < apptIdsDoPeriodo.length; i += 150) {
     const { data } = await db
       .from('appointments')
       .select('id, sinal_valor, sinal_pago_at')
-      .in('id', apptIdsDoPeriodo)
+      .in('id', apptIdsDoPeriodo.slice(i, i + 150))
       .gt('sinal_valor', 0)
       .not('sinal_pago_at', 'is', null)
+    const comp = await composicaoDosSinais(db, (data ?? []) as { id: string; sinal_valor: number | null; sinal_pago_at: string | null }[])
     for (const a of data ?? []) {
-      const c = await composicaoDoSinal(db, a.id as string)
+      const c = comp[a.id as string]
       const v = dentro(new Date(a.sinal_pago_at as string).toISOString()) ? c.emCredito : c.total
       if (v > 0) subtrair[a.id as string] = v
     }

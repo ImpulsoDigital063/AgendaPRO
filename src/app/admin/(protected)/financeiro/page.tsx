@@ -5,12 +5,9 @@ import SubPageHeader from '@/components/admin/SubPageHeader'
 import FinanceiroView, { type AppointmentRow } from '@/components/admin/FinanceiroView'
 import DashboardFinanceiro from '@/components/admin/financeiro/DashboardFinanceiro'
 import ComposicaoLiquido, { type Composicao } from '@/components/admin/financeiro/ComposicaoLiquido'
-import { comissoesGeradas, comissaoPorProfissional, type ComissaoLinha } from '@/lib/comissao-gerada'
-import { getApptDiscountMap } from '@/lib/commission-discount'
-import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
-import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
-import { ajusteSinalDoPeriodo } from '@/lib/sinal-da-comanda'
-import { vendasPacoteCartao } from '@/lib/queries/vendas-pacote-cartao'
+import { comissaoPorProfissional } from '@/lib/comissao-gerada'
+import { todayBR } from '@/lib/date-br'
+import { receitaDoPeriodo, despesasDoPeriodo } from '@/lib/financeiro/resumo-do-periodo'
 import { negocioDoPainel } from '@/lib/admin-data'
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -147,249 +144,42 @@ export default async function FinanceiroPage({
   const prevStartStr = prevStart.toISOString().slice(0, 10)
   const prevEndStr = prevEnd.toISOString().slice(0, 10)
 
-  // Queries em paralelo · range atual + range anterior + créditos + vendas de produto
-  const [
-    apptsCur,
-    apptsPrev,
-    expensesCur,
-    expensesPrev,
-    creditsRes,
-    productSalesCur,
-    productSalesPrev,
-  ] = await Promise.all([
-    supabase
-      .from('appointments')
-      .select(`
-        id, client_name, client_phone, appointment_date, start_time,
-        status, service_name, total_price, paid_at, payment_method, invoice_item_id,
-        payment_card_type, payment_card_brand, payment_fee_percent, payment_installments,
-        professional:professionals(id, name, commission_percentage, employment_type)
-      `)
-      .eq('business_id', business.id)
-      .gte('appointment_date', startStr)
-      .lte('appointment_date', endStr)
-      .order('appointment_date', { ascending: false }),
-    supabase
-      .from('appointments')
-      .select('id, total_price, paid_at, payment_method, status, appointment_date, invoice_item_id')
-      .eq('business_id', business.id)
-      .gte('appointment_date', prevStartStr)
-      .lte('appointment_date', prevEndStr),
-    supabase
-      .from('expenses')
-      .select('amount, category, status, occurred_at')
-      .eq('business_id', business.id)
-      // v104 · só saída REALIZADA. Conta programada ainda não saiu do caixa.
-      // 18/10: expenses NÃO tem paid_at (pedir essa coluna derrubava a consulta inteira e zerava as despesas
-      // do painel desde 19/05). Paga = status 'paid'.
-      .eq('status', 'paid')
-      .gte('occurred_at', startStr)
-      .lte('occurred_at', endStr),
-    supabase
-      .from('expenses')
-      .select('amount, status')
-      .eq('business_id', business.id)
-      .eq('status', 'paid')
-      .gte('occurred_at', prevStartStr)
-      .lte('occurred_at', prevEndStr),
+  /* 21/10/2026 · receita e despesas saem de lib/financeiro/resumo-do-periodo,
+     a MESMA conta pros dois períodos (antes o anterior era somado por outra
+     regra e o "% vs anterior" não comparava igual com igual) e pra tela
+     "Pergunte ao seu negócio". Mudou a conta? Muda lá, nunca aqui. */
+  const [cur, prev, despCur, despPrev, creditsRes] = await Promise.all([
+    receitaDoPeriodo(supabase, business.id, startStr, endStr),
+    receitaDoPeriodo(supabase, business.id, prevStartStr, prevEndStr),
+    despesasDoPeriodo(supabase, business, startStr, endStr),
+    despesasDoPeriodo(supabase, business, prevStartStr, prevEndStr),
     supabase
       .from('customer_credits')
       .select('amount, used_in_invoice_id')
       .eq('business_id', business.id),
-    // Vendas de produto pagas no range atual · soma na receita + KPIs (exclui cortesia)
-    supabase
-      .from('sales')
-      .select(`
-        id, sale_date, total, paid_at, payment_method, payment_card_type, payment_fee_percent, professional_id,
-        professional:professionals(id, name),
-        sale_items(product_name, quantity, unit_price)
-      `)
-      .eq('business_id', business.id)
-      .eq('type', 'product_sale')
-      .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit,points)')
-      .gte('sale_date', startStr)
-      .lte('sale_date', endStr),
-    supabase
-      .from('sales')
-      .select('total, sale_date, paid_at, payment_method')
-      .eq('business_id', business.id)
-      .eq('type', 'product_sale')
-      .eq('status', 'paid')
-      .not('payment_method', 'in', '(courtesy,credit,points)')
-      .gte('sale_date', prevStartStr)
-      .lte('sale_date', prevEndStr),
   ])
 
-  const appointments = apptsCur.data ?? []
-  const prevAppts = apptsPrev.data ?? []
-  const expenses = expensesCur.data ?? []
-  const prevExpenses = expensesPrev.data ?? []
+  const appointments = cur.appointments
+  const prevAppts = prev.appointments
+  const productSales = cur.productSales
+  const prevProductSales = prev.productSales
+  const expenses = despCur.expenses
   const credits = creditsRes.data ?? []
-  const productSales = productSalesCur.data ?? []
-  const prevProductSales = productSalesPrev.data ?? []
+  const paidAppts = cur.paidAppts
+  const { valorRecebidoAppts, valorRecebidoSales, valorPacotes, valorRecebido, valorProgramado, qtdAtendimentos, ticketMedio, totalTaxas } = cur
+  const sinalDeFora = cur.sinalDeFora
+  const prevValorRecebido = prev.valorRecebido
+  const prevQtdAtendimentos = prev.qtdAtendimentos
+  const prevTicketMedio = prev.ticketMedio
 
-  // λ.valor-liquido: normaliza total_price pro LÍQUIDO (cupom da comanda já
-  // abatido) UMA vez · todas as somas, top profs/serviços, donut e buckets
-  // abaixo saem líquidos sem tocar cada ponto. Desconto vive em
-  // invoices.discount → getApptDiscountMap rateia (Eduardo 04/07/2026).
-  const [discCur, discPrev, chargedCur, chargedPrev] = await Promise.all([
-    getApptDiscountMap(supabase, appointments.map((a) => a.invoice_item_id)),
-    getApptDiscountMap(supabase, prevAppts.map((a) => a.invoice_item_id)),
-    // Valor cobrado quando a comanda tem produto (combo / vendido junto) —
-    // total_price é só o serviço. Normalizado aqui junto com o desconto, no
-    // mesmo ponto único (Eduardo 22/07).
-    getApptChargedMap(supabase, appointments.map((a) => a.id as string)),
-    getApptChargedMap(supabase, prevAppts.map((a) => a.id as string)),
-  ])
-  // ATENÇÃO (Eduardo 22/07): total_price fica com o valor do SERVIÇO líquido.
-  // NÃO enfiar o produto aqui — esta página soma `productSales` à parte
-  // (valorRecebidoSales), e sobrescrever total_price com o total da comanda
-  // contava o produto DUAS vezes (combo de R$290 virava R$385). Também
-  // inflava Top Serviços / Top Profissionais, que leem este mesmo array.
-  // O valor cobrado vai num campo SEPARADO, usado só onde as sales não
-  // entram (ex: "a receber", que olha comanda ABERTA — venda ainda pendente).
-  const normalizar = <T extends { id: string; total_price: number | null }>(
-    rows: T[],
-    disc: Record<string, number>,
-    charged: Record<string, { charged: number; produtos: unknown[] }>,
-  ) => {
-    for (const a of rows) {
-      a.total_price = Math.max(0, Number(a.total_price ?? 0) - (disc[a.id] ?? 0))
-      const c = charged[a.id as string]
-      ;(a as T & { charged_total?: number | null }).charged_total =
-        c && c.produtos.length > 0 ? c.charged : null
-    }
-  }
-  normalizar(appointments, discCur, chargedCur)
-  normalizar(prevAppts, discPrev, chargedPrev)
-
-  // Cálculos · receita = appointments pagos + vendas de produto pagas
-  // Receita real exclui cortesia (bonificação não conta como faturamento)
-  /* Sinal (decisão 29/09): conta no dia em que caiu. Sai do atendimento pago
-     do período o sinal que caiu fora dele (e a parte em crédito, que nunca é
-     receita); entra o sinal em dinheiro recebido no período de atendimento
-     que não está aqui. Mexe na própria lista pra o painel do celular
-     (FinanceiroView) somar igual. */
-  const pagosDoPeriodo = appointments.filter((a) => a.paid_at)
-  const ajusteSinal = await ajusteSinalDoPeriodo(
-    supabase,
-    business.id,
-    pagosDoPeriodo.map((a) => a.id as string),
-    startOfDayBR(startStr),
-    startOfDayBR(addDaysBR(endStr, 1)),
-  )
-  for (const a of pagosDoPeriodo) {
-    const tirar = ajusteSinal.subtrair[a.id as string] ?? 0
-    if (tirar > 0) a.total_price = Math.max(0, Number(a.total_price ?? 0) - tirar)
-  }
-
-  const paidAppts = appointments.filter((a) => a.paid_at && a.payment_method !== 'courtesy' && a.payment_method !== 'credit' && a.payment_method !== 'points')
-  const valorRecebidoAppts = paidAppts.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
-  const valorRecebidoSales = productSales.reduce((s, p) => s + Number(p.total ?? 0), 0)
-  // Pacote / cartão presente vendidos no período (só comanda + pagamento · 29/09)
-  const pacotesPeriodo = await vendasPacoteCartao(supabase, business.id, startOfDayBR(startStr), startOfDayBR(addDaysBR(endStr, 1)))
-  const valorPacotes = Math.round(pacotesPeriodo.reduce((s, v) => s + v.valor, 0) * 100) / 100
-  const valorRecebido = valorRecebidoAppts + valorRecebidoSales + ajusteSinal.somar + valorPacotes
-  const prevPaid = prevAppts.filter((a) => a.paid_at)
-  const prevValorRecebidoAppts = prevPaid.reduce((s, a) => s + Number(a.total_price ?? 0), 0)
-  const prevValorRecebidoSales = prevProductSales.reduce((s, p) => s + Number(p.total ?? 0), 0)
-  const prevValorRecebido = prevValorRecebidoAppts + prevValorRecebidoSales
-
-  const naoPagos = appointments.filter((a) => !a.paid_at && a.status !== 'cancelled')
-  // "A receber" usa o valor da COMANDA: a venda do produto ainda está pendente
-  // e não entra em productSales (que só conta pagas) — sem isso, promete R$195
-  // numa conta de R$290.
-  const valorProgramado = naoPagos.reduce(
-    (s, a) => s + Number((a as typeof a & { charged_total?: number | null }).charged_total ?? a.total_price ?? 0),
-    0,
-  )
-
-  const qtdAtendimentos = paidAppts.length
-  const prevQtdAtendimentos = prevPaid.length
-  const ticketMedio = qtdAtendimentos > 0 ? valorRecebido / qtdAtendimentos : 0
-  const prevTicketMedio = prevQtdAtendimentos > 0 ? prevValorRecebido / prevQtdAtendimentos : 0
-
-  /* v142 · comissão paga à equipe sai do caixa e passa a contar como despesa
-     (chave comissao_no_fluxo, default false). Sem a chave, `comissoesPagas`
-     fica 0 e todo o financeiro fica idêntico ao de sempre. */
-  const usaComissaoNoFluxo =
-    (business as { comissao_no_fluxo?: boolean | null }).comissao_no_fluxo === true
-
-  const [{ data: comissoesPeriodo }, { data: comissoesPrev }] = usaComissaoNoFluxo
-    ? await Promise.all([
-        supabase
-          .from('commission_payments')
-          .select('paid_amount, bonus_amount')
-          .eq('business_id', business.id)
-          .gte('paid_at', startStr)
-          .lte('paid_at', endStr + 'T23:59:59'),
-        supabase
-          .from('commission_payments')
-          .select('paid_amount, bonus_amount')
-          .eq('business_id', business.id)
-          .gte('paid_at', prevStartStr)
-          .lte('paid_at', prevEndStr + 'T23:59:59'),
-      ])
-    : [{ data: [] }, { data: [] }]
-
-  const somaComissao = (linhas: { paid_amount: number | null; bonus_amount: number | null }[] | null) =>
-    (linhas ?? []).reduce((s, c) => s + Number(c.paid_amount ?? 0) + Number(c.bonus_amount ?? 0), 0)
-
-  const pagosRegistrados = somaComissao(comissoesPeriodo)
-  const prevPagosRegistrados = somaComissao(comissoesPrev)
-
-  /* Comissão é da equipe desde o atendimento, não só quando a dona registra o
-     pagamento (Izanara 02/10). Com a chave, conta o MAIOR entre gerada e paga:
-     quem acerta em dia (Isis Melo) não muda; quem ainda não pagou já vê o
-     líquido de verdade. Mesmas regras de Remunerações (lib/comissao-gerada). */
-  const [geradasPeriodo, geradasPrev] = usaComissaoNoFluxo
-    ? await Promise.all([
-        comissoesGeradas(supabase, business.id, startOfDayBR(startStr), startOfDayBR(addDaysBR(endStr, 1))),
-        comissoesGeradas(supabase, business.id, startOfDayBR(prevStartStr), startOfDayBR(addDaysBR(prevEndStr, 1))),
-      ])
-    : [[], []]
-  const somaGerada = (l: ComissaoLinha[]) => Math.round(l.reduce((s, x) => s + x.valor, 0) * 100) / 100
-  const comissaoGerada = somaGerada(geradasPeriodo)
-  /* v151 · quem paga a equipe no dia do atendimento (Studio Mood) não registra
-     em Remunerações: a comissão gerada já conta como paga. */
-  const pagaNoAtendimento = (business as { comissao_paga_no_atendimento?: boolean | null }).comissao_paga_no_atendimento === true
-  const comissoesPagasRegistradas = pagaNoAtendimento ? Math.max(pagosRegistrados, comissaoGerada) : pagosRegistrados
-  const prevComissoesPagasRegistradas = pagaNoAtendimento
-    ? Math.max(prevPagosRegistrados, somaGerada(geradasPrev))
-    : prevPagosRegistrados
-  const comissaoDoPeriodo = Math.max(comissaoGerada, comissoesPagasRegistradas)
-  // O que ainda não foi registrado como pago. Fica FORA de "Despesas pagas"
-  // (confundia: R$384 "pagos" sem ela ter pago nada · Eduardo 02/10), mas sai do lucro.
-  const comissaoAPagar = Math.round((comissaoDoPeriodo - comissoesPagasRegistradas) * 100) / 100
-  const prevComissaoAPagar = Math.max(0, somaGerada(geradasPrev) - prevComissoesPagasRegistradas)
-
-  const despesasPagas =
-    expenses.filter((e) => e.status === 'paid').reduce((s, e) => s + Number(e.amount ?? 0), 0) + comissoesPagasRegistradas
-  const prevDespesasPagas =
-    prevExpenses.filter((e) => e.status === 'paid').reduce((s, e) => s + Number(e.amount ?? 0), 0) +
-    prevComissoesPagasRegistradas
-
-  const despesasPendentes = expenses
-    .filter((e) => e.status !== 'paid')
-    .reduce((s, e) => s + Number(e.amount ?? 0), 0)
+  const { usaComissaoNoFluxo, pagaNoAtendimento, comissoesPagasRegistradas, comissaoDoPeriodo, comissaoAPagar, despesasPagas } = despCur
+  const geradasPeriodo = despCur.geradas
+  const prevDespesasPagas = despPrev.despesasPagas
+  // Só despesa paga é lida (v104), então pendente é sempre 0 aqui.
+  const despesasPendentes = 0
 
   const lucroLiquido = valorRecebido - despesasPagas - comissaoAPagar
-  const prevLucroLiquido = prevValorRecebido - prevDespesasPagas - prevComissaoAPagar
-
-  // Taxas (cartão crédito/débito · fee_percent) · appointments + vendas de produto (v87)
-  const totalTaxasAppts = paidAppts.reduce((s, a) => {
-    const pct = Number(a.payment_fee_percent ?? 0)
-    const price = Number(a.total_price ?? 0)
-    return s + (price * pct) / 100
-  }, 0)
-  const totalTaxasSales = productSales.reduce((s, p) => {
-    const pct = Number((p as { payment_fee_percent?: number | null }).payment_fee_percent ?? 0)
-    const price = Number(p.total ?? 0)
-    return s + (price * pct) / 100
-  }, 0)
-  const totalTaxas = totalTaxasAppts + totalTaxasSales
-  const lucroPosTaxas = lucroLiquido - totalTaxas
+  const prevLucroLiquido = prevValorRecebido - prevDespesasPagas - despPrev.comissaoAPagar
 
   const creditosTotal = credits
     .filter((c) => !c.used_in_invoice_id)
@@ -560,7 +350,7 @@ export default async function FinanceiroPage({
     qtdServicos: paidAppts.length,
     produtos: valorRecebidoSales,
     qtdProdutos: productSales.length,
-    outros: ajusteSinal.somar + valorPacotes,
+    outros: sinalDeFora + valorPacotes,
     bruto: valorRecebido,
     comissoes: usaComissaoNoFluxo
       ? {
@@ -627,7 +417,7 @@ export default async function FinanceiroPage({
               appointments={(appointments || []) as unknown as AppointmentRow[]}
               periodo={periodoNorm}
               totalExpenses={despesasPagas + comissaoAPagar}
-              outrosRecebidos={ajusteSinal.somar + valorPacotes}
+              outrosRecebidos={sinalDeFora + valorPacotes}
             />
             <div className="mt-4">
               <ComposicaoLiquido c={composicao} />

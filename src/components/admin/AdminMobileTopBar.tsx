@@ -111,6 +111,8 @@ export default function AdminMobileTopBar({
       label: 'Painel',
       items: [
         { label: 'Início', href: '/admin/inicio', Icon: IconHome, exact: true },
+        // 21/10/2026 · perguntas prontas sobre o negócio, sem IA (mesma entrada no desktop)
+        { label: 'Pergunte ao negócio', href: '/admin/perguntas', Icon: IconSparkles },
         { label: 'Atendimentos', href: '/admin', Icon: IconCalendar, badge: pendingAppointments, exact: true },
         ...(showOwnerTab ? [{ label: 'Eu (meus ganhos)', href: '/admin/eu', Icon: IconUser }] : []),
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },

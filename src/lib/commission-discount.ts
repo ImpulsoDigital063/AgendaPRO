@@ -22,8 +22,21 @@ export async function getApptDiscountMap(
   sb: SupabaseClient,
   apptInvoiceItemIds: (string | null | undefined)[],
 ): Promise<Record<string, number>> {
+  /* 21/10/2026 · em lotes: .in() com centenas de ids estoura a URL e volta 400
+     calado (desconto some sem erro). Lote é seguro: cada um lê TODOS os itens
+     das comandas que toca, então o rateio de cada atendimento não muda. */
+  const ids = [...new Set(apptInvoiceItemIds.filter((x): x is string => !!x))]
   const out: Record<string, number> = {}
-  const ids = apptInvoiceItemIds.filter((x): x is string => !!x)
+  for (let i = 0; i < ids.length; i += LOTE_IDS) {
+    Object.assign(out, await descontoDoLote(sb, ids.slice(i, i + LOTE_IDS)))
+  }
+  return out
+}
+
+const LOTE_IDS = 150
+
+async function descontoDoLote(sb: SupabaseClient, ids: string[]): Promise<Record<string, number>> {
+  const out: Record<string, number> = {}
   if (ids.length === 0) return out
 
   /* 28/09/2026 · o desconto do atendimento = desconto da PRÓPRIA linha +

@@ -92,6 +92,8 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       label: 'Painel',
       items: [
         { label: 'Início', href: '/admin/inicio', exact: true, Icon: IconHome },
+        // 21/10/2026 · perguntas prontas sobre o negócio, sem IA (mesma entrada no celular)
+        { label: 'Pergunte ao negócio', href: '/admin/perguntas', Icon: IconSparkles },
         { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },

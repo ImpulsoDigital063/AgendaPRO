@@ -143,6 +143,38 @@ export async function composicaoDoSinal(
 }
 
 /**
+ * composicaoDoSinal de VÁRIOS atendimentos de uma vez (21/10/2026). Mesma
+ * regra, em 2 consultas por lote em vez de 3 por atendimento: o Financeiro e
+ * o "Pergunte ao seu negócio" levavam ~15 s num mês com 18 sinais.
+ * Recebe as linhas já lidas (sinal_valor, sinal_pago_at).
+ */
+export async function composicaoDosSinais(
+  db: SupabaseClient,
+  appts: { id: string; sinal_valor: number | null; sinal_pago_at: string | null }[],
+): Promise<Record<string, { total: number; emCredito: number; emDinheiro: number }>> {
+  const out: Record<string, { total: number; emCredito: number; emDinheiro: number }> = {}
+  const comSinal = appts.filter((a) => a.sinal_pago_at && Number(a.sinal_valor ?? 0) > 0)
+  for (const a of appts) out[a.id] = { total: 0, emCredito: 0, emDinheiro: 0 }
+  const NOTA = (id: string) => `Sobra de crédito usado no sinal ${id}`
+  // Lote de 50: a lista de notas é texto longo e .in() gigante volta 400 calado.
+  for (let i = 0; i < comSinal.length; i += 50) {
+    const lote = comSinal.slice(i, i + 50)
+    const [{ data: consumidos }, { data: sobras }] = await Promise.all([
+      db.from('customer_credits').select('amount, used_in_appointment_id').in('used_in_appointment_id', lote.map((a) => a.id)),
+      db.from('customer_credits').select('amount, notes').in('notes', lote.map((a) => NOTA(a.id))),
+    ])
+    for (const a of lote) {
+      const total = Number(a.sinal_valor ?? 0)
+      const usado = (consumidos ?? []).filter((c) => c.used_in_appointment_id === a.id).reduce((s, c) => s + Number(c.amount ?? 0), 0)
+      const devolvido = (sobras ?? []).filter((c) => c.notes === NOTA(a.id)).reduce((s, c) => s + Number(c.amount ?? 0), 0)
+      const emCredito = Math.min(total, Math.max(0, Math.round((usado - devolvido) * 100) / 100))
+      out[a.id] = { total, emCredito, emDinheiro: Math.round((total - emCredito) * 100) / 100 }
+    }
+  }
+  return out
+}
+
+/**
  * Aplica a regra: cria o crédito quando é o caso. Idempotente — se já
  * existe crédito gerado por este cancelamento, não cria outro (cancelar
  * duas vezes por duplo clique não pode virar dinheiro dobrado).
