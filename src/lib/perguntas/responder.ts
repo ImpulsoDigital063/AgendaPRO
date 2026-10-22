@@ -92,7 +92,7 @@ const aoRotulo = (r: string) => (r.startsWith('o ') ? `ao ${r.slice(2)}` : r.sta
 const comparacao = (atual: number, antes: number, rotAnt: string, dinheiro = true) => {
   const v = pct(atual, antes)
   const fmt = dinheiro ? brl(antes) : String(antes)
-  if (v === null) return antes === 0 && atual > 0 ? `Não teve nada pra comparar em ${rotAnt.replace(/^os? /, '')}.` : ''
+  if (v === null) return antes === 0 && atual > 0 ? `Nada pra comparar com ${rotAnt}.` : ''
   if (v === 0) return `Igual ${aoRotulo(rotAnt)} (${fmt}).`
   return `${Math.abs(v)}% ${v > 0 ? 'a mais' : 'a menos'} que ${rotAnt} (${fmt}).`
 }
