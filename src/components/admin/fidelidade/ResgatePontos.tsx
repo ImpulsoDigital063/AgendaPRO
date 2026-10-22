@@ -64,7 +64,7 @@ export default function ResgatePontos({ customerId, dica }: { customerId: string
         </>
       ) : (
         <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-          Ainda não dá pra trocar: a recompensa mais barata custa {Math.min(...rewards.map((r) => r.points_required))} pts.
+          Faltam {Math.min(...rewards.map((r) => r.points_required)) - saldo} pts para a primeira recompensa.
         </p>
       )}
     </div>
