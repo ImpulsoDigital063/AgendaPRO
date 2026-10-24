@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { IconCheck, IconClose, IconArrowRight } from '@/components/ui/Icon'
+import { TEMA_CLINICA } from '@/lib/vitrine/tema-publico'
 
 type Props = {
   appointmentId: string
@@ -20,6 +21,8 @@ type Props = {
     expiraEm: string | null
   } | null
   isDark: boolean
+  /** clínica com vitrine: creme da marca e botão escuro dela, sem o vermelho do padrão */
+  clinica?: boolean
 }
 
 export default function CancelarConfirm({
@@ -30,6 +33,7 @@ export default function CancelarConfirm({
   businessPhone,
   decisaoSinal,
   isDark,
+  clinica = false,
 }: Props) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
     alreadyCancelled ? 'done' : 'idle'
@@ -53,11 +57,11 @@ export default function CancelarConfirm({
     }
   }
 
-  const surface = isDark ? 'rgba(255,255,255,0.04)' : '#FFFFFF'
-  const surfaceHi = isDark ? 'rgba(255,255,255,0.07)' : '#F8FAFC'
-  const border = isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'
-  const text = isDark ? '#F1F5F9' : '#0F172A'
-  const mute = isDark ? '#94A3B8' : '#64748B'
+  const surface = clinica ? TEMA_CLINICA.surface : isDark ? 'rgba(255,255,255,0.04)' : '#FFFFFF'
+  const surfaceHi = clinica ? TEMA_CLINICA.fundo : isDark ? 'rgba(255,255,255,0.07)' : '#F8FAFC'
+  const border = clinica ? TEMA_CLINICA.border : isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'
+  const text = clinica ? TEMA_CLINICA.text : isDark ? '#F1F5F9' : '#0F172A'
+  const mute = clinica ? TEMA_CLINICA.mute : isDark ? '#94A3B8' : '#64748B'
 
   if (status === 'done') {
     return (
@@ -196,8 +200,8 @@ export default function CancelarConfirm({
       <button
         onClick={() => setShowConfirm(true)}
         disabled={status === 'loading'}
-        className="w-full rounded-2xl py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
-        style={{
+        className={`w-full ${clinica ? 'rounded-full py-4' : 'rounded-2xl py-3.5'} text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50`}
+        style={clinica ? { background: TEMA_CLINICA.text } : {
           background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
           boxShadow: '0 10px 22px -10px rgba(239,68,68,0.55)',
         }}

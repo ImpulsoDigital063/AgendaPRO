@@ -23,6 +23,14 @@ import { sinalVencido, minutosRestantes, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/s
 import { valorAindaDevido, rotuloLimite } from '@/lib/sinal-saldo'
 import { IconCalendar, IconClock, IconCheck } from '@/components/ui/Icon'
 import CopiarPix from './CopiarPix'
+import Image from 'next/image'
+import { Lora, Manrope } from 'next/font/google'
+import { conteudoDaVitrine } from '@/lib/vitrine/conteudo'
+import { TEMA_CLINICA } from '@/lib/vitrine/tema-publico'
+
+// só usadas quando a clínica tem vitrine (mesmas fontes do site e do agendamento dela)
+const serif = Lora({ subsets: ['latin'], weight: ['500', '600'], variable: '--font-vitrine', display: 'swap' })
+const sans = Manrope({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-vitrine-sans', display: 'swap' })
 
 function getAdminClient() {
   return createServiceClient(
@@ -54,13 +62,15 @@ export async function generateMetadata({
   const db = getAdminClient()
   const { data } = await db
     .from('appointments')
-    .select('sinal_valor, appointment_date, start_time, business:businesses(name)')
+    .select('sinal_valor, appointment_date, start_time, business:businesses(name, slug)')
     .eq('id', id)
     .single()
 
   if (!data) return generico
 
-  const nome = (data.business as unknown as { name: string } | null)?.name ?? 'Agendamento'
+  const neg = data.business as unknown as { name: string; slug: string } | null
+  const nome = neg?.name ?? 'Agendamento'
+  const ogClinica = neg?.slug ? conteudoDaVitrine(neg.slug)?.og?.imagem : undefined
   /* Mesmo valor da página: com crédito parcial, a prévia dizia R$18 e a tela
      R$8 — a cliente via dois preços antes mesmo de abrir o link. */
   const valor = await valorAindaDevido(db, id, data.sinal_valor as number | null)
@@ -86,6 +96,8 @@ export async function generateMetadata({
          assinatura em cima de uma cobrança: a cliente está decidindo pagar
          R$ 14 e lia "a partir de R$ 67/mês". */
       siteName: 'AgendaPRO',
+      // clínica com vitrine: a prévia da cobrança leva a peça dela (logo dourada)
+      ...(ogClinica ? { images: [{ url: ogClinica }] } : {}),
     },
   }
 }
@@ -126,12 +138,16 @@ export default async function SinalPage({
 
   const primary = business?.brand_primary || '#3B82F6'
   const secondary = business?.brand_secondary || '#06B6D4'
-  const isDark = (business?.brand_mode || 'light') === 'dark'
+  // clínica com vitrine: a cobrança tem a cara do site dela (creme, logo dourada)
+  const clinica = business?.slug ? conteudoDaVitrine(business.slug) : null
+  const isDark = !clinica && (business?.brand_mode || 'light') === 'dark'
   const cover = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`
-  const text = isDark ? '#F1F5F9' : '#0F172A'
-  const mute = isDark ? '#94A3B8' : '#64748B'
-  const surface = isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF'
-  const border = isDark ? 'rgba(255,255,255,0.10)' : '#E2E8F0'
+  const text = clinica ? TEMA_CLINICA.text : isDark ? '#F1F5F9' : '#0F172A'
+  const mute = clinica ? TEMA_CLINICA.mute : isDark ? '#94A3B8' : '#64748B'
+  const surface = clinica ? TEMA_CLINICA.surface : isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF'
+  const border = clinica ? TEMA_CLINICA.border : isDark ? 'rgba(255,255,255,0.10)' : '#E2E8F0'
+  // "já avisou que pagou": âmbar no padrão; dourado da marca na clínica
+  const aviso = clinica ? primary : '#F59E0B'
 
   /* O que ela ainda deve EM DINHEIRO — não o sinal cheio. Se o crédito dela
      cobriu parte, essa parte já foi debitada na hora de marcar; pedir o cheio
@@ -197,10 +213,11 @@ export default async function SinalPage({
 
   return (
     <main
-      className="min-h-screen"
+      className={clinica ? `${serif.variable} ${sans.variable} min-h-screen` : 'min-h-screen'}
       style={
         {
-          background: isDark ? '#050713' : '#F8FAFC',
+          background: clinica ? TEMA_CLINICA.fundo : isDark ? '#050713' : '#F8FAFC',
+          ...(clinica ? { fontFamily: 'var(--font-vitrine-sans), sans-serif', fontWeight: 500 } : {}),
           color: text,
           ['--brand-primary' as string]: primary,
           ['--brand-secondary' as string]: secondary,
@@ -210,6 +227,20 @@ export default async function SinalPage({
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
         {/* Nome do salão em cima de tudo: é o que separa cobrança de golpe
             quando o número dela não tem o contato salvo. */}
+        {clinica ? (
+          <div className="rounded-3xl border px-6 py-7 text-center" style={{ background: surface, borderColor: border }}>
+            {clinica.logoDourada ? (
+              <div className="relative mx-auto h-16 w-[140px]">
+                <Image src={clinica.logoDourada} alt={business?.name ?? ''} fill sizes="140px" className="object-contain" priority />
+              </div>
+            ) : (
+              <h1 className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-vitrine), serif' }}>{business?.name}</h1>
+            )}
+            <p className="mt-4 text-[22px] font-semibold leading-tight" style={{ fontFamily: 'var(--font-vitrine), serif', color: text }}>
+              {pago ? 'Sinal confirmado' : declarou ? 'Horário garantido' : cancelado ? 'Horário liberado' : 'Reserva do seu horário'}
+            </p>
+          </div>
+        ) : (
         <div
           className="relative overflow-hidden rounded-3xl p-6 text-white"
           style={{ background: cover, boxShadow: '0 18px 40px -18px rgba(0,0,0,0.45)' }}
@@ -230,6 +261,7 @@ export default async function SinalPage({
           </p>
           <h1 className="relative text-2xl font-bold mt-1">{business?.name ?? 'Agendamento'}</h1>
         </div>
+        )}
 
         {/* O horário, sempre — ela precisa reconhecer o que está pagando. */}
         <div className="rounded-2xl p-4 space-y-2" style={{ background: surface, border: `1px solid ${border}` }}>
@@ -281,11 +313,11 @@ export default async function SinalPage({
         {declarou && (
           <div
             className="rounded-2xl p-5 text-center space-y-2"
-            style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.32)' }}
+            style={clinica ? { background: surface, border: `1px solid ${border}` } : { background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.32)' }}
           >
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center mx-auto"
-              style={{ background: '#F59E0B', color: '#fff' }}
+              style={{ background: aviso, color: '#fff' }}
             >
               <IconCheck size={24} />
             </div>
@@ -340,7 +372,7 @@ export default async function SinalPage({
               className="rounded-2xl p-5 text-center"
               style={{ background: surface, border: `1px solid ${border}` }}
             >
-              <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: mute }}>
+              <p className={clinica ? 'text-sm font-semibold' : 'text-[11px] font-bold uppercase tracking-widest'} style={{ color: mute }}>
                 Sinal pra confirmar
               </p>
               <p className="text-4xl font-extrabold tabular-nums my-1" style={{ color: text }}>

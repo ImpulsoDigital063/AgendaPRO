@@ -12,6 +12,10 @@ type Props = {
 export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) {
   const qrRef = useRef<HTMLDivElement>(null)
   const [origin, setOrigin] = useState('')
+  /* Se o aparelho compartilha: só dá pra saber no aparelho. Lido na renderização,
+     o servidor escrevia um texto no botão e o navegador outro (erro de hidratação). */
+  const [hasShare, setHasShare] = useState(false)
+  useEffect(() => setHasShare(!!navigator.share), [])
   const [copied, setCopied] = useState(false)
   const [shared, setShared] = useState(false)
   const [downloading, setDownloading] = useState(false)
@@ -216,7 +220,6 @@ export default function WhatsAppQRTab({ business, onNavigateToNegocio }: Props) 
     )
   }
 
-  const hasShare = typeof navigator !== 'undefined' && !!navigator.share
 
   return (
     <div className="space-y-4 pb-8">

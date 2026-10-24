@@ -11,6 +11,9 @@ import BrandHeaderLogo from '@/components/admin/BrandHeaderLogo'
 import ProfAppointmentCard from '@/components/profissional/ProfAppointmentCard'
 import ProfTodayList from '@/components/profissional/ProfTodayList'
 import WelcomeCard from '@/components/profissional/WelcomeCard'
+import { painelDaClinica, primeiroNomeDe } from '@/lib/vitrine/painel'
+import BoasVindasClinica from '@/components/admin/brand/BoasVindasClinica'
+import { SinoNotificacoes } from '@/components/notificacoes/CentralNotificacoes'
 import Link from 'next/link'
 import {
   IconCalendar,
@@ -96,9 +99,13 @@ export default async function ProfissionalPage({
      grade sumiu junto de quem tinha autorização pra ver. Com prof_grade_home,
      quem tem ve_agenda enxerga a grade possa marcar ou não — sem os botões de
      ação, quando não puder. Default false: a base segue como está. */
+  /* protótipo · painel da clínica: a lista antiga não é mais usada (Eduardo
+     23/10), a home é sempre a grade pra quem vê agenda. Na Ivna já era (ela
+     libera marcar); o preview na conta de teste é que caía na lista. */
+  const painel = painelDaClinica(business.slug)
   const homeEhGrade =
     professional.ve_agenda !== false &&
-    (canBookSelf || business.prof_grade_home === true)
+    (canBookSelf || business.prof_grade_home === true || !!painel)
 
   // λ.fuso · servidor da Vercel roda em UTC · depois das 21h no Brasil o
   // toISOString cru já estava no dia seguinte e a lista dela pulava um dia
@@ -235,6 +242,12 @@ export default async function ProfissionalPage({
     icon: typeof IconClock
   }>
 
+  // protótipo · clínica com painel próprio: boas-vindas de quem entrou (painel.ts)
+  /* Sem a grade, a home da profissional é uma coluna de celular até no
+     computador. No painel da clínica ela abre a partir do tablet (md, ≥768px);
+     abaixo disso, igual a antes. */
+  const largo = painel ? ' md:max-w-3xl md:px-6 lg:max-w-5xl lg:px-8' : ''
+
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       {/* Glow orbs */}
@@ -257,7 +270,7 @@ export default async function ProfissionalPage({
           Negócio sem autonomia mantém o header antigo inteiro. */}
       <header
         className={`relative max-w-lg mx-auto px-4 ${
-          homeEhGrade ? 'pt-4 pb-3 md:max-w-none md:px-6' : 'pt-7 pb-6'
+          homeEhGrade ? 'pt-4 pb-3 md:max-w-none md:px-6' : `pt-7 pb-6${largo}`
         }`}
       >
         {/* v146 · abaixo de lg quem desenha logo + saída é a ProfissionalMobileTopBar
@@ -266,16 +279,28 @@ export default async function ProfissionalPage({
             "Sair" em duplicidade (o drawer já tem). Em ≥lg a top bar não existe, e aí
             esta linha volta a ser a única — desktop segue idêntico. */}
         <div className={`hidden lg:flex items-center justify-between ${homeEhGrade ? 'mb-3' : 'mb-6'}`}>
+          {painel ? <span /> : (
           <BrandHeaderLogo
             brandLogoUrl={business.brand_logo_url ?? null}
             businessName={business.name}
           />
+          )}
           <div className="flex items-center gap-2">
+            {painel && <SinoNotificacoes base="/profissional" />}
             <ThemeToggle compact />
             <LogoutButton />
           </div>
         </div>
-        {homeEhGrade ? (
+        {painel ? (
+          <BoasVindasClinica
+            nome={professional.name}
+            foto={painel.fotos[primeiroNomeDe(professional.name)] ?? professional.photo_url ?? null}
+            papel={painel.papeis[primeiroNomeDe(professional.name)] ?? null}
+            clinica={business.name}
+            logo={painel.logo}
+            dia={todayFormatted}
+          />
+        ) : homeEhGrade ? (
           // v98g · só o nome. A data completa e a contagem do dia já são o título
           // da grade logo abaixo — repetir aqui era a mesma informação 2x.
           <h1
@@ -303,8 +328,8 @@ export default async function ProfissionalPage({
 
       {/* Stats · saem quando a grade é a home (só ocupavam dobra) */}
       {!homeEhGrade && (
-      <section className="relative max-w-lg mx-auto px-4 mb-6">
-        <div className="grid grid-cols-2 gap-2.5">
+      <section className={`relative max-w-lg mx-auto px-4 mb-6${largo}`}>
+        <div className={`grid grid-cols-2 gap-2.5${painel ? ' md:grid-cols-4 md:gap-3' : ''}`}>
           {stats.map((stat) => {
             const Icon = stat.icon
             return (
@@ -341,7 +366,7 @@ export default async function ProfissionalPage({
           igual ao /admin da dona. Sem grade, nada muda em nenhum breakpoint. */}
       <div
         className={`relative max-w-lg mx-auto px-4 ${
-          homeEhGrade ? 'md:max-w-none md:px-6 space-y-4 pb-2' : 'space-y-6 pb-10'
+          homeEhGrade ? 'md:max-w-none md:px-6 space-y-4 pb-2' : `space-y-6 pb-10${largo}`
         }`}
       >
         {/* Convite pra ativar a notificação no celular DELA (30/07).
@@ -352,15 +377,16 @@ export default async function ProfissionalPage({
             Só faltava o convite — ele existia apenas em /admin, então nenhuma
             das 6 da Realli tinha um device registrado e o push não tinha
             pra onde ir. Dispensável, volta a oferecer em 7 dias. */}
-        <PushEnableBanner />
+        {/* painel da clínica: notificação e primeiro acesso moram em Notificações */}
+        {!painel && <PushEnableBanner />}
 
         {/* Boas-vindas · card de primeiro acesso (dispensável no X) */}
-        <WelcomeCard
+        {!painel && <WelcomeCard
           professionalName={professional.name}
           podeCancelar={podeCancelar}
           podeAgendar={canBookSelf}
           podeAgendarOutras={canBookOthers}
-        />
+        />}
 
         {/* v98g · O botão "Marcar cliente" que existia aqui SAIU: era a mesma
             função do "+ Agendar" que a própria grade tem no header, e apontado

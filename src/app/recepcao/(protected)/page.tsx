@@ -18,6 +18,8 @@ import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import { todayBR } from '@/lib/date-br'
 import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import { Suspense } from 'react'
+import { painelDaClinica, primeiroNomeDe } from '@/lib/vitrine/painel'
+import BoasVindasClinica from '@/components/admin/brand/BoasVindasClinica'
 import {
   IconCalendar,
   IconClock,
@@ -52,7 +54,7 @@ export default async function RecepcaoAgendaPage({
 
   const { data: recep } = await supabase
     .from('professionals')
-    .select('id, name, business:businesses(id, name, slug, brand_logo_url)')
+    .select('id, name, photo_url, business:businesses(id, name, slug, brand_logo_url)')
     .eq('auth_user_id', user.id)
     .eq('is_receptionist', true)
     .single()
@@ -116,6 +118,9 @@ export default async function RecepcaoAgendaPage({
 
   /* v144 · os KPIs do mobile saíram (a grade já os traz no topo). */
 
+  // protótipo · clínica com painel próprio: boas-vindas de quem entrou (painel.ts)
+  const painel = painelDaClinica(business.slug)
+
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -135,9 +140,25 @@ export default async function RecepcaoAgendaPage({
           Vale mesmo pra quem não recebe push de agendamento (o aviso de
           agendamento vai pro profissional e pro dono) — é por esse device que
           chega o aviso de novidade do sistema. Some sozinha quando já ativo. */}
+      {/* painel da clínica: o convite de notificação mora em Notificações */}
+      {!painel && (
       <div className="relative px-4 md:px-6 pt-5 md:pt-6">
         <PushEnableBanner />
       </div>
+      )}
+
+      {painel && (
+        <div className="relative px-4 md:px-6 pt-5 md:pt-6">
+          <BoasVindasClinica
+            nome={recepName}
+            foto={painel.fotos[primeiroNomeDe(recepName)] ?? (recep.photo_url as string | null) ?? null}
+            papel={painel.papeis[primeiroNomeDe(recepName)] ?? 'Recepção'}
+            clinica={business.name}
+            logo={painel.logo}
+            dia={todayFormatted}
+          />
+        </div>
+      )}
 
       {/* ════════════════════════════════════════════════════
           TABLET + DESKTOP (≥md · Letícia opera em iPad)

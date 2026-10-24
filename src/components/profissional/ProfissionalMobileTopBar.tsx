@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { SinoNotificacoes } from '@/components/notificacoes/CentralNotificacoes'
 import {
   IconHome,
   IconCalendar,
@@ -32,6 +33,8 @@ type Props = {
   veAgenda?: boolean
   /** v144 · true = também opera o balcão */
   operaRecepcao?: boolean
+  /** protótipo · sininho de Notificações ('/recepcao' ou '/profissional'); sem ele, slot vazio */
+  notificacoesBase?: string
 }
 
 type NavItem = {
@@ -59,6 +62,7 @@ export default function ProfissionalMobileTopBar({
   podeEditarHorario = true,
   veAgenda = true,
   operaRecepcao = false,
+  notificacoesBase,
 }: Props) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -143,8 +147,8 @@ export default function ProfissionalMobileTopBar({
           </p>
         </div>
 
-        {/* slot direito vazio · mantém o nome centralizado (toggle removido no light-only) */}
-        <div className="w-11" aria-hidden />
+        {/* slot direito · sininho de Notificações (protótipo) ou vazio pra manter o nome centralizado */}
+        {notificacoesBase ? <SinoNotificacoes base={notificacoesBase} /> : <div className="w-11" aria-hidden />}
       </header>
 
       <div className="lg:hidden" style={{ height: 56 }} />

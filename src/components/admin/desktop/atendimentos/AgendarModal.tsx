@@ -12,6 +12,7 @@ import { ratearCombo } from '@/lib/combo-rateio'
 import { textoPrazo as textoPrazoCobranca } from '@/lib/sinal-cobranca'
 import { prazoSinalLabel, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 import { COLUNAS_REGRA_SINAL, valorDoSinal, type RegraSinal } from '@/lib/pix-brcode'
+import { carregarServicoPorProf, duracaoComProf, fazServico, lerServicoPorProf, precoComProf } from '@/lib/servico-por-profissional'
 // Recorrência mora em lib/componente próprios desde 20/08 — o formulário do
 // mobile usa o mesmo cálculo e o mesmo bloco de UI.
 import RecurringBlock from '@/components/admin/RecurringBlock'
@@ -70,6 +71,9 @@ type ServiceLine = {
   /** Quando setado, esta linha é um RESGATE de pacote: entra R$0 na conta e
    *  consome 1 sessão do balance ao salvar. Só vale fora de recorrência. */
   resgateBalanceId?: string | null
+  /** Profissional pra qual a recepção já decidiu o acréscimo (confirmou o preço
+   *  dela ou manteve o do serviço). Trocou de profissional = pergunta de novo. */
+  acrescimoOk?: string | null
 }
 
 function newLine(): ServiceLine {
@@ -174,6 +178,14 @@ export default function AgendarModal({
   // Form state · multi-serviços (V2)
   const [cliente, setCliente] = useState<Customer | null>(null)
   const [profId, setProfId] = useState<string>('')
+  /* v173 · quem faz, preço e tempo de cada profissional: a agenda marca com
+     os mesmos valores que o link da cliente usa (antes valia só o cadastro). */
+  const [porProf, setPorProf] = useState(() => lerServicoPorProf(null))
+  useEffect(() => {
+    let vivo = true
+    carregarServicoPorProf(supabase, businessId).then((r) => { if (vivo) setPorProf(r) })
+    return () => { vivo = false }
+  }, [supabase, businessId])
   /* CONVÊNIO (CAF · 21/08) — mesmo comportamento do formulário do mobile:
      paciente que é funcionário de empresa conveniada faz o atendimento nascer
      vinculado a ela, e a lista de profissionais mostra só quem atende por
@@ -478,7 +490,7 @@ export default function AgendarModal({
    */
   function precoDoServico(s: Service): number {
     if (empresa && peloConvenio && s.convenio_price != null) return Number(s.convenio_price)
-    return Number(s.price ?? 0)
+    return Number(precoComProf(porProf, s, profId) ?? 0)
   }
 
   async function criarServico() {
@@ -515,9 +527,10 @@ export default function AgendarModal({
     }
     updateLine(uid, {
       serviceId: newServiceId,
-      duration: s.duration_minutes ?? 60,
+      duration: duracaoComProf(porProf, s, profId) ?? 60,
       price: precoDoServico(s),
       resgateBalanceId: null, // troca de serviço zera o resgate (pode não ser coberto)
+      acrescimoOk: null, // serviço novo: o acréscimo da profissional é decidido de novo
     })
   }
 
@@ -525,24 +538,31 @@ export default function AgendarModal({
      pelo botão Convênio. Sem isto a linha ficaria com o preço de tabela que foi
      posto antes de o sistema saber que era convênio. Só repreça a linha que
      ainda está com o preço automático — valor digitado na mão é intenção
-     humana e não se sobrescreve. */
+     humana e não se sobrescreve.
+     v173 · mesma regra quando a profissional muda depois do serviço: o preço e
+     o tempo da linha passam pros dela, se ainda forem os automáticos. */
   useEffect(() => {
     setServiceLines((prev) =>
       prev.map((l) => {
-        if (!l.serviceId) return l
+        // combo tem o preço dele (rateado), não o de tabela; e o que a recepção
+        // já decidiu pra esta profissional não volta atrás
+        if (!l.serviceId || comboAplicado || (profId && l.acrescimoOk === profId)) return l
         const s = services.find((x) => x.id === l.serviceId)
-        if (!s || s.convenio_price == null) return l
-        const tabela = Number(s.price ?? 0)
-        const convenio = Number(s.convenio_price)
-        const atual = Number(l.price)
-        const alvo = empresa && peloConvenio ? convenio : tabela
-        const veioDoAutomatico = atual === tabela || atual === convenio
-        if (!veioDoAutomatico || atual === alvo) return l
-        return { ...l, price: alvo }
+        if (!s) return l
+        const precosAuto = [Number(s.price ?? 0), ...Object.values(porProf.precos[s.id] ?? {})]
+        if (s.convenio_price != null) precosAuto.push(Number(s.convenio_price))
+        const duracoesAuto = [s.duration_minutes ?? 60, ...Object.values(porProf.duracoes[s.id] ?? {})]
+        const alvoPreco = precoDoServico(s)
+        const alvoDuracao = duracaoComProf(porProf, s, profId) ?? 60
+        const price = precosAuto.includes(Number(l.price)) ? alvoPreco : l.price
+        const duration = duracoesAuto.includes(Number(l.duration)) ? alvoDuracao : l.duration
+        // decisão do acréscimo era de outra profissional: esquece (pergunta de novo)
+        if (price === l.price && duration === l.duration && !l.acrescimoOk) return l
+        return { ...l, price, duration, acrescimoOk: null }
       })
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [empresa, peloConvenio, services])
+  }, [empresa, peloConvenio, services, profId, porProf, comboAplicado])
 
   function addLine() {
     setServiceLines((prev) => [...prev, newLine()])
@@ -697,7 +717,20 @@ export default function AgendarModal({
   const totalDuration = validLines.reduce((sum, l) => sum + Number(l.duration || 0), 0)
   const subtotalProds = prodCart.reduce((sum, p) => sum + Number(p.unit_price || 0) * Number(p.quantity ?? 1), 0)
   const totalGeral = valorTotal + subtotalProds // serviços + produtos (o que o cliente paga)
-  const canSave = (!!cliente || avulso) && !!profId && validLines.length >= 1 && !!date && !!time && totalDuration > 0
+  // v173 · serviço que a profissional escolhida não faz (cadastro "Quem faz")
+  const linhasForaDela = new Set(validLines.filter((l) => !fazServico(porProf, l.serviceId, profId)).map((l) => l.uid))
+  /* Profissional que cobra MAIS que o preço do serviço: a recepção confirma o
+     valor dela ou mantém o do serviço antes de salvar (Eduardo 24/10). */
+  const acrescimoDaLinha = (l: ServiceLine): { base: number; dela: number } | null => {
+    const s = services.find((x) => x.id === l.serviceId)
+    if (!s || !profId || comboAplicado || l.acrescimoOk === profId) return null
+    if (empresa && peloConvenio && s.convenio_price != null) return null
+    const base = Number(s.price ?? 0)
+    const dela = precoDoServico(s)
+    return dela > base && Number(l.price) === dela ? { base, dela } : null
+  }
+  const linhasComAcrescimo = validLines.filter((l) => acrescimoDaLinha(l))
+  const canSave = (!!cliente || avulso) && !!profId && validLines.length >= 1 && linhasForaDela.size === 0 && linhasComAcrescimo.length === 0 && !!date && !!time && totalDuration > 0
 
   type ProdT = typeof products[number]
   // Agrupa por variant_group_id pro picker (produto → variante). Singles ficam
@@ -1785,7 +1818,7 @@ export default function AgendarModal({
                 <ServiceLineBlock
                   index={idx}
                   line={line}
-                  services={services}
+                  services={services.filter((s) => s.id === line.serviceId || fazServico(porProf, s.id, profId))}
                   canRemove={serviceLines.length > 1}
                   onPickService={(id) => (id === '__novo__'
                     ? setNovoServico({ uid: line.uid, nome: '', preco: '', duracao: '60' })
@@ -1796,6 +1829,41 @@ export default function AgendarModal({
                   onRemove={() => removeLine(line.uid)}
                   peloConvenio={!!empresa && peloConvenio}
                 />
+                {linhasForaDela.has(line.uid) && (
+                  <p className="text-[12px] font-medium" style={{ color: 'var(--admin-danger)' }}>
+                    {professionals.find((p) => p.id === profId)?.name ?? 'Esta profissional'} não faz este serviço. Troque o serviço ou a profissional.
+                  </p>
+                )}
+                {(() => {
+                  const a = acrescimoDaLinha(line)
+                  if (!a) return null
+                  return (
+                    <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--admin-input-bg)', border: '1.5px solid var(--admin-accent)' }}>
+                      <p className="text-[13px]" style={{ color: 'var(--admin-text)' }}>
+                        Com <strong>{professionals.find((p) => p.id === profId)?.name.split(' ')[0]}</strong> este serviço custa{' '}
+                        <strong>{formatBRL(a.dela - a.base)} a mais</strong>.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateLine(line.uid, { acrescimoOk: profId })}
+                          className="flex-1 py-2 rounded-lg text-[13px] font-bold"
+                          style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                        >
+                          Confirmar {formatBRL(a.dela)}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateLine(line.uid, { price: a.base, acrescimoOk: profId })}
+                          className="flex-1 py-2 rounded-lg text-[13px] font-semibold"
+                          style={{ background: 'var(--admin-surface)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+                        >
+                          Manter {formatBRL(a.base)}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })()}
                 {novoServico?.uid === line.uid && (
                   <div className="rounded-xl p-3 space-y-2 mt-2" style={{ background: 'var(--admin-input-bg)', border: '1px solid var(--admin-border)' }}>
                     <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-accent)' }}>Novo serviço</p>

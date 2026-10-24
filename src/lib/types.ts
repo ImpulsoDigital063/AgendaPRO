@@ -18,6 +18,8 @@ export type Business = {
   comissao_valor_fixo?: boolean | null
   /** v131 · % da comissão vem do serviço (Studio Isis Melo) */
   comissao_por_servico?: boolean | null
+  /** v172 · preço do serviço muda conforme a profissional (service_professional_prices) */
+  preco_por_profissional?: boolean | null
   prof_registra_pagamento?: boolean | null
   recorrencia_dias_semana?: boolean | null
   phone: string | null

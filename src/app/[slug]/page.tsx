@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/Icon'
 import PointsTrailModal from '@/components/PointsTrailModal'
 import { buildBusinessMetadata } from '@/lib/public-metadata'
+import { conteudoDaVitrine } from '@/lib/vitrine/conteudo'
+import PaginaClinica from './clinica/page'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -47,6 +49,10 @@ export default async function BusinessPage({
 }) {
   const { slug } = await params
   const { ref, preview, cupom } = await searchParams
+  // Vitrine da clínica (Ivna Loyola, 22/10): o link público abre o site dela,
+  // inclusive o de cupom e de indicação (Black Friday, 24/10). Só a prévia do
+  // admin segue na página padrão.
+  if (conteudoDaVitrine(slug) && !preview) return PaginaClinica({ params, cupom, ref })
   // Propaga ref e cupom pro link de agendar — sem isso o cliente
   // perde o cupom ao clicar "Agendar horário" daqui.
   const agendarParams = new URLSearchParams()

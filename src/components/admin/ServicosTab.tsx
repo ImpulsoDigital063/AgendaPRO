@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Service } from '@/lib/types'
+import type { Professional, Service } from '@/lib/types'
 import { sugestoesDeServico } from '@/lib/segmento'
 import {
   IconCheck,
@@ -18,6 +18,7 @@ import {
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
 import ServicoUsoProdutosModal from '@/components/admin/produtos/ServicoUsoProdutosModal'
+import { SELECT_SERVICO_PROF } from '@/lib/servico-por-profissional'
 
 type Props = {
   businessId: string
@@ -35,7 +36,17 @@ type Props = {
   comissaoPorServico?: boolean
   /** businesses.convenios_enabled · mostra o preço de convênio */
   convenios?: boolean
+  /** v172 · businesses.preco_por_profissional · preço do serviço muda conforme quem atende */
+  precoPorProfissional?: boolean
+  professionals?: Professional[]
 }
+
+/** v172 + v173 · como cada profissional faz o serviço (service_professional_prices).
+    Sem a profissional na lista = faz, com preço e duração do cadastro. */
+type DelaNoServico = { faz: boolean; preco: number | null; duracao: number | null }
+type PorProfDoServico = Record<string, DelaNoServico>
+/** o que está nos campos da edição (texto, como ela digita) */
+type EditPorProf = Record<string, { faz: boolean; preco: string; duracao: string }>
 
 const DURATIONS = [15, 20, 30, 40, 45, 60, 75, 90, 120]
 
@@ -93,7 +104,7 @@ const DESCRIPTION_MAX = 400
 
 type Filter = 'active' | 'inactive' | 'all'
 
-export default function ServicosTab({ businessId, initialServices, category, comissaoFixa = false, comissaoPorServico = false, convenios = false }: Props) {
+export default function ServicosTab({ businessId, initialServices, category, comissaoFixa = false, comissaoPorServico = false, convenios = false, precoPorProfissional = false, professionals = [] }: Props) {
   /** "12,50" → 12.5 · vazio → null (campo não preenchido ≠ zero) */
   const num = (v: string) => (v.trim() ? parseFloat(v.replace(',', '.')) : null)
   const suggestions = useMemo(() => sugestoesDeServico(category), [category])
@@ -115,6 +126,31 @@ export default function ServicosTab({ businessId, initialServices, category, com
   const [search, setSearch] = useState('')
 
   const [confirmDelete, setConfirmDelete] = useState<Service | null>(null)
+
+  /* v172 + v173 · serviço por profissional. Só quem atende entra na lista. Na
+     edição: desmarcada = não faz esse serviço; preço/duração vazios = os do
+     serviço. */
+  const equipe = professionals.filter((p) => p.active && p.does_appointments !== false)
+  const [porProf, setPorProf] = useState<Record<string, PorProfDoServico>>({})
+  const [editPorProf, setEditPorProf] = useState<EditPorProf>({})
+  const [erroPrecos, setErroPrecos] = useState<string | null>(null)
+  const linhaParaDela = (l: { price: unknown; duration_minutes?: unknown; realiza?: unknown }): DelaNoServico => ({
+    faz: l.realiza !== false,
+    preco: l.price === null || l.price === undefined ? null : Number(l.price),
+    duracao: l.duration_minutes ? Number(l.duration_minutes) : null,
+  })
+  useEffect(() => {
+    if (!precoPorProfissional) return
+    createClient()
+      .from('service_professional_prices')
+      .select(SELECT_SERVICO_PROF)
+      .eq('business_id', businessId)
+      .then(({ data }) => {
+        const m: Record<string, PorProfDoServico> = {}
+        for (const l of data ?? []) (m[l.service_id as string] ??= {})[l.professional_id as string] = linhaParaDela(l)
+        setPorProf(m)
+      })
+  }, [businessId, precoPorProfissional])
 
   // v68 · Uso de produtos por serviço (consumo automático)
   const [usoProdutosFor, setUsoProdutosFor] = useState<Service | null>(null)
@@ -227,10 +263,55 @@ export default function ServicosTab({ businessId, initialServices, category, com
       retorno_dias: service.retorno_dias ? String(service.retorno_dias) : '',
     })
     setEditShowCustom(isCustomDuration(service.duration_minutes))
+    const atual = porProf[service.id] ?? {}
+    setEditPorProf(Object.fromEntries(equipe.map((p) => {
+      const d = atual[p.id]
+      return [p.id, {
+        faz: d?.faz ?? true,
+        preco: d?.preco != null ? String(d.preco).replace('.', ',') : '',
+        duracao: d?.duracao != null ? String(d.duracao) : '',
+      }]
+    })))
+    setErroPrecos(null)
+  }
+
+  /* Grava como cada profissional faz o serviço: apaga as linhas dele e põe só
+     quem foge do cadastro (não faz, ou preço/duração dela). Depois relê do
+     banco e é isso que a tela mostra (prova na fonte): se não gravou, a dona
+     vê, em vez de achar que salvou. */
+  async function salvarPorProf(serviceId: string): Promise<boolean> {
+    const linhas = equipe.flatMap((p) => {
+      const e = editPorProf[p.id] ?? { faz: true, preco: '', duracao: '' }
+      const preco = e.faz ? num(e.preco) : null
+      const duracao = e.faz && e.duracao.trim() ? parseInt(e.duracao) : null
+      const precoOk = preco !== null && !Number.isNaN(preco) ? preco : null
+      const duracaoOk = duracao !== null && !Number.isNaN(duracao) && duracao >= 5 ? duracao : null
+      if (e.faz && precoOk === null && duracaoOk === null) return []
+      return [{ business_id: businessId, service_id: serviceId, professional_id: p.id, realiza: e.faz, price: precoOk, duration_minutes: duracaoOk }]
+    })
+    const del = await supabase.from('service_professional_prices').delete().eq('service_id', serviceId)
+    if (del.error) return false
+    if (linhas.length > 0) {
+      const ins = await supabase.from('service_professional_prices').insert(linhas)
+      if (ins.error) return false
+    }
+    const { data, error } = await supabase
+      .from('service_professional_prices')
+      .select(SELECT_SERVICO_PROF)
+      .eq('service_id', serviceId)
+    if (error) return false
+    const doBanco = Object.fromEntries((data ?? []).map((l) => [l.professional_id as string, linhaParaDela(l)]))
+    setPorProf((m) => ({ ...m, [serviceId]: doBanco }))
+    return (data ?? []).length === linhas.length
   }
 
   async function handleSaveEdit(id: string) {
     if (!editForm.name.trim() || !editForm.duration_minutes) return
+    // serviço que ninguém faz sumiria do link sem aviso
+    if (precoPorProfissional && equipe.length > 1 && equipe.every((p) => editPorProf[p.id]?.faz === false)) {
+      setErroPrecos('Marque pelo menos uma profissional que faz este serviço.')
+      return
+    }
     setLoadingId(id)
     const priceValue = editForm.price ? parseFloat(editForm.price.replace(',', '.')) : null
 
@@ -268,6 +349,11 @@ export default function ServicosTab({ businessId, initialServices, category, com
             : s
         )
       )
+      if (precoPorProfissional && !(await salvarPorProf(id))) {
+        setErroPrecos('O serviço foi salvo, mas o que cada profissional faz não. Tente de novo.')
+        setLoadingId(null)
+        return
+      }
       setEditingId(null)
     }
     setLoadingId(null)
@@ -450,6 +536,12 @@ export default function ServicosTab({ businessId, initialServices, category, com
             comissaoPorServico={comissaoPorServico}
             convenios={convenios}
             onUsoProdutos={() => setUsoProdutosFor(service)}
+            precoPorProfissional={precoPorProfissional}
+            equipe={equipe}
+            porProfDoServico={porProf[service.id] ?? {}}
+            editPorProf={editPorProf}
+            setEditPorProf={setEditPorProf}
+            erroPrecos={erroPrecos}
           />
         ))
       )}
@@ -825,6 +917,12 @@ function ServiceCard({
   comissaoFixa = false,
   comissaoPorServico = false,
   convenios = false,
+  precoPorProfissional = false,
+  equipe = [],
+  porProfDoServico = {},
+  editPorProf = {},
+  setEditPorProf,
+  erroPrecos = null,
 }: {
   service: Service
   isEditing: boolean
@@ -843,6 +941,12 @@ function ServiceCard({
   comissaoFixa?: boolean
   comissaoPorServico?: boolean
   convenios?: boolean
+  precoPorProfissional?: boolean
+  equipe?: Professional[]
+  porProfDoServico?: PorProfDoServico
+  editPorProf?: EditPorProf
+  setEditPorProf?: (p: EditPorProf) => void
+  erroPrecos?: string | null
 }) {
   const isLoading = loadingId === service.id
 
@@ -921,6 +1025,70 @@ function ServiceCard({
             </select>
           </div>
         </div>
+
+        {precoPorProfissional && equipe.length > 1 && setEditPorProf && (
+          <div
+            className="rounded-xl p-3 space-y-2.5"
+            style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border)' }}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              Quem faz este serviço
+            </p>
+            <p className="text-[11px] leading-snug" style={{ color: 'var(--admin-text-faded)' }}>
+              Desmarque quem não faz: ela some da escolha da cliente. Preço e tempo em branco = os do serviço
+              {editForm.price.trim() ? ` (R$ ${editForm.price} · ${editForm.duration_minutes} min)` : ` (${editForm.duration_minutes} min)`}.
+            </p>
+            <div className="hidden sm:flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
+              <span className="flex-1">Profissional</span>
+              <span className="w-28 text-right">Preço</span>
+              <span className="w-20 text-right">Tempo (min)</span>
+            </div>
+            {equipe.map((p) => {
+              const e = editPorProf[p.id] ?? { faz: true, preco: '', duracao: '' }
+              const mudar = (m: Partial<typeof e>) => setEditPorProf({ ...editPorProf, [p.id]: { ...e, ...m } })
+              return (
+                <div key={p.id} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                  <label className="flex flex-1 min-w-0 basis-full sm:basis-auto items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={e.faz}
+                      onChange={(ev) => mudar({ faz: ev.target.checked })}
+                      className="h-4 w-4 shrink-0 accent-[var(--admin-accent,#2563EB)]"
+                    />
+                    <span className="truncate text-sm" style={{ color: e.faz ? 'var(--admin-text)' : 'var(--admin-text-faded)' }}>
+                      {p.name}{!e.faz && ' · não faz'}
+                    </span>
+                  </label>
+                  {e.faz && (
+                    <>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={e.preco}
+                        onChange={(ev) => mudar({ preco: ev.target.value })}
+                        placeholder={editForm.price.trim() || '0,00'}
+                        aria-label={`Preço com ${p.name}`}
+                        className="admin-input flex-1 sm:flex-none sm:w-28 px-3 py-2 text-sm text-right"
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={e.duracao}
+                        onChange={(ev) => mudar({ duracao: ev.target.value.replace(/\D/g, '') })}
+                        placeholder={String(editForm.duration_minutes)}
+                        aria-label={`Tempo com ${p.name}, em minutos`}
+                        className="admin-input w-20 px-3 py-2 text-sm text-right"
+                      />
+                    </>
+                  )}
+                </div>
+              )
+            })}
+            {erroPrecos && (
+              <p className="text-[12px] font-medium" style={{ color: 'var(--admin-danger)' }}>{erroPrecos}</p>
+            )}
+          </div>
+        )}
 
         {/* Mesma separação da criação: comissão vale pra todo atendimento,
             convênio é outro assunto. */}
@@ -1173,6 +1341,18 @@ function ServiceCard({
           <span className="tabular-nums">{formatDuration(service.duration_minutes)}</span>
           {/* Sem isso ele configurava preço de convênio e comissão e não via em
               lugar nenhum da lista se tinha ficado gravado. */}
+          {precoPorProfissional && equipe.filter((p) => porProfDoServico[p.id]).map((p) => {
+            const d = porProfDoServico[p.id]
+            const partes = !d.faz
+              ? ['não faz']
+              : [d.preco != null ? formatPrice(d.preco) : null, d.duracao != null ? formatDuration(d.duracao) : null].filter(Boolean)
+            return (
+              <span key={p.id} className="contents">
+                <span aria-hidden>·</span>
+                <span className="tabular-nums">{p.name.split(' ')[0]} {partes.join(' · ')}</span>
+              </span>
+            )
+          })}
           {convenios && service.convenio_price != null && (
             <>
               <span aria-hidden>·</span>

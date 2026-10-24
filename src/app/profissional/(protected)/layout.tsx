@@ -11,6 +11,11 @@ import InstallBanner from '@/components/admin/InstallBanner'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
+import { painelDaClinica } from '@/lib/vitrine/painel'
+import { classesDoPainel, FundoDaClinica } from '@/components/admin/brand/PainelClinica'
+import CentralNotificacoes from '@/components/notificacoes/CentralNotificacoes'
+import PushEnableBanner from '@/components/admin/PushEnableBanner'
+import WelcomeCard from '@/components/profissional/WelcomeCard'
 import { todayBR } from '@/lib/date-br'
 
 export default async function ProfissionalLayout({
@@ -37,7 +42,7 @@ export default async function ProfissionalLayout({
   // Verifica se e um profissional com auth_user_id · puxa brand do business
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, name, business_id, password_changed, employment_type, is_receptionist, does_appointments, ve_agenda, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, prof_edita_horario, recep_edita_horario, vendas_balcao_enabled)')
+    .select('id, name, business_id, password_changed, employment_type, is_receptionist, does_appointments, ve_agenda, business:businesses(name, slug, brand_logo_url, brand_primary, brand_secondary, brand_accent, brand_neutral, prof_edita_horario, recep_edita_horario, vendas_balcao_enabled, prof_cancela_agendamento, professionals_can_book_self, professionals_can_book_others)')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -85,6 +90,9 @@ export default async function ProfissionalLayout({
     prof_edita_horario?: boolean | null
     recep_edita_horario?: boolean | null
     vendas_balcao_enabled?: boolean | null
+    prof_cancela_agendamento?: boolean | null
+    professionals_can_book_self?: boolean | null
+    professionals_can_book_others?: boolean | null
   }
   const businessSlug = business.slug ?? null
 
@@ -97,11 +105,15 @@ export default async function ProfissionalLayout({
   const veAgenda = professional.ve_agenda !== false
   const operaRecepcao = professional.is_receptionist === true
 
+  // protótipo · clínica com vitrine veste a identidade dela no painel (painel.ts)
+  const painel = painelDaClinica(businessSlug)
+
   return (
     <AdminThemeProvider initial={initialTheme}>
       <BrandThemeInjector brand={business} />
       <SlugCacher slug={businessSlug} />
-      <div className="admin-shell" data-admin-theme={initialTheme}>
+      <div className={`admin-shell${painel ? ` ${classesDoPainel}` : ''}`} data-admin-theme={initialTheme}>
+        {painel && <FundoDaClinica monograma={painel.monograma} />}
         {/* Decor scatter · só Palace · mobile+desktop · profissional opera no celular */}
         {businessSlug === 'palace-nail-spa' && (
           <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
@@ -122,10 +134,11 @@ export default async function ProfissionalLayout({
           <>
             <RecepcaoMobileTopBar
               businessName={business.name ?? null}
-              brandLogoUrl={business.brand_logo_url ?? null}
+              brandLogoUrl={painel?.monograma ?? business.brand_logo_url ?? null}
               podeEditarHorario={business.recep_edita_horario === true}
               tambemAtende={professional.does_appointments === true}
               pessoaNome={professional.name as string}
+              notificacoesBase={painel ? '/profissional' : undefined}
               vendeProduto={business.vendas_balcao_enabled !== false}
             />
             <RecepcaoDesktopSidebar
@@ -137,17 +150,20 @@ export default async function ProfissionalLayout({
                 business_slug: business.slug ?? null,
                 brand_logo_url: business.brand_logo_url ?? null,
               }}
+              marcaClinica={painel}
+              notificacoesBase={painel ? '/profissional' : undefined}
             />
           </>
         ) : (
           /* Topbar mobile (header + drawer) · só <lg · coexiste com BottomNav */
           <ProfissionalMobileTopBar
             businessName={business.name ?? null}
-            brandLogoUrl={business.brand_logo_url ?? null}
+            brandLogoUrl={painel?.monograma ?? business.brand_logo_url ?? null}
             employmentType={employmentType}
             podeEditarHorario={podeEditarHorario}
             veAgenda={veAgenda}
             operaRecepcao={operaRecepcao}
+            notificacoesBase={painel ? '/profissional' : undefined}
           />
         )}
         {/* DEPOIS da topbar de propósito (Eduardo 30/07, print do iPhone): a
@@ -156,7 +172,7 @@ export default async function ProfissionalLayout({
             Com o banner ANTES, ele nascia nesses 56px e ficava escondido atrás
             da barra — o próprio card de boas-vindas mandava "toque no banner
             acima" e não tinha banner visível. Não é z-index: é ordem no fluxo. */}
-        <InstallBanner area="profissional" />
+        {!painel && <InstallBanner area="profissional" />}
         {/* SEM z-index aqui de propósito (bug visual reportado por Eduardo 30/07:
             "o modal fica abaixo da barra do header" no mobile).
             `z-10` num elemento posicionado cria CONTEXTO DE EMPILHAMENTO: o
@@ -172,6 +188,22 @@ export default async function ProfissionalLayout({
           className={operaRecepcao ? 'relative md:pl-[240px]' : 'relative'}
           style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}
         >
+          {painel && (
+            <CentralNotificacoes
+              base="/profissional"
+              itens={[
+                <InstallBanner key="instalar" area="profissional" />,
+                <PushEnableBanner key="push" />,
+                <WelcomeCard
+                  key="boas-vindas"
+                  professionalName={professional.name as string}
+                  podeCancelar={business.prof_cancela_agendamento !== false}
+                  podeAgendar={business.professionals_can_book_self === true}
+                  podeAgendarOutras={business.professionals_can_book_others === true}
+                />,
+              ]}
+            />
+          )}
           {children}
         </div>
         {operaRecepcao ? (

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useSearchParams } from 'next/navigation'
 import ThemeToggle from './ThemeToggle'
+import { SinoNotificacoes } from '@/components/notificacoes/CentralNotificacoes'
 import {
   IconHome,
   IconCalendar,
@@ -49,6 +50,8 @@ type Props = {
   ehGerente?: boolean
   /** v156 · áreas que a dona tirou da gerente */
   bloqueadas?: string[]
+  /** protótipo · sininho de Notificações no lugar dos avisos espalhados */
+  notificacoes?: boolean
 }
 
 type NavItem = {
@@ -75,6 +78,7 @@ export default function AdminMobileTopBar({
   cartaoPresente = false,
   trial = null,
   ehGerente = false,
+  notificacoes = false,
   bloqueadas = [],
 }: Props) {
   const pathname = usePathname()
@@ -280,6 +284,7 @@ export default function AdminMobileTopBar({
             {trial.vencido ? 'Teste acabou' : `${trial.diasRestantes} dias`}
           </Link>
         )}
+        {notificacoes && <SinoNotificacoes base="/admin" />}
         <ThemeToggle compact />
       </header>
 

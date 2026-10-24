@@ -171,6 +171,8 @@ export default function ConfiguracoesTabs({
           comissaoFixa={business.comissao_valor_fixo === true}
           comissaoPorServico={business.comissao_por_servico === true}
           convenios={business.convenios_enabled === true}
+          precoPorProfissional={business.preco_por_profissional === true}
+          professionals={professionals}
         />
       )}
 

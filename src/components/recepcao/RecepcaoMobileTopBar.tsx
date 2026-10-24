@@ -15,6 +15,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { SinoNotificacoes } from '@/components/notificacoes/CentralNotificacoes'
 import {
   IconHome,
   IconCalendar,
@@ -41,6 +42,8 @@ type Props = {
   vendeProduto?: boolean
   /** v144 · nome de quem está logada · a tela deixa de anunciar cargo */
   pessoaNome?: string | null
+  /** protótipo · sininho de Notificações ('/recepcao' ou '/profissional'); sem ele, slot vazio */
+  notificacoesBase?: string
 }
 
 type NavItem = {
@@ -58,6 +61,7 @@ export default function RecepcaoMobileTopBar({
   tambemAtende = false,
   vendeProduto = true,
   pessoaNome,
+  notificacoesBase,
 }: Props) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -169,8 +173,8 @@ export default function RecepcaoMobileTopBar({
           </p>
         </div>
 
-        {/* slot direito vazio · mantém o nome centralizado (toggle removido no light-only) */}
-        <div className="w-11" aria-hidden />
+        {/* slot direito · sininho de Notificações (protótipo) ou vazio pra manter o nome centralizado */}
+        {notificacoesBase ? <SinoNotificacoes base={notificacoesBase} /> : <div className="w-11" aria-hidden />}
       </header>
 
       <div className="lg:hidden" style={{ height: 56 }} />

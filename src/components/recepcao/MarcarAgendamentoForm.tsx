@@ -10,6 +10,7 @@ import { logActivity } from '@/lib/activity-log'
 import { prazoSinalLabel, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 import { COLUNAS_REGRA_SINAL, valorDoSinal, type RegraSinal } from '@/lib/pix-brcode'
 import { textoPrazo } from '@/lib/sinal-cobranca'
+import { carregarServicoPorProf, duracaoComProf, fazServico, lerServicoPorProf, precoComProf } from '@/lib/servico-por-profissional'
 import {
   IconArrowLeft,
   IconCheck,
@@ -82,6 +83,30 @@ export default function MarcarAgendamentoForm({
     return professionals.find((p) => p.id === defaultProfId) ?? null
   })
   const [service, setService] = useState<Service | null>(null)
+  /* v173 · quem faz, preço e tempo de cada profissional: a recepção marca com
+     os mesmos valores que o link da cliente usa (antes valia só o cadastro). */
+  const [porProf, setPorProf] = useState(() => lerServicoPorProf(null))
+  useEffect(() => {
+    let vivo = true
+    carregarServicoPorProf(supabase, businessId).then((r) => { if (vivo) setPorProf(r) })
+    return () => { vivo = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId])
+  const duracaoDoAtendimento = service ? duracaoComProf(porProf, service, prof?.id) ?? 60 : 60
+  /* Profissional que cobra MAIS que o preço do serviço: a recepção confirma o
+     valor dela ou mantém o do serviço (Eduardo 24/10 · "avisar na hora"). */
+  const [confirmaServico, setConfirmaServico] = useState<Service | null>(null)
+  const [manterPreco, setManterPreco] = useState(false)
+  function escolherServico(s: Service, manter: boolean) {
+    setService(s)
+    setManterPreco(manter)
+    setConfirmaServico(null)
+    setStep('horario')
+  }
+  // lista do passo "Qual serviço?": só o que ela faz, com o preço e o tempo dela
+  const servicosDela = services
+    .filter((s) => fazServico(porProf, s.id, prof?.id))
+    .map((s) => ({ ...s, price: precoComProf(porProf, s, prof?.id), duration_minutes: duracaoComProf(porProf, s, prof?.id) }))
   const [date, setDate] = useState<string>(() => {
     if (defaultDate && /^\d{4}-\d{2}-\d{2}$/.test(defaultDate)) return defaultDate
     const t = new Date()
@@ -266,8 +291,8 @@ export default function MarcarAgendamentoForm({
   const valorDoAtendimento = useMemo(() => {
     if (!service) return null
     if (empresa && peloConvenio && service.convenio_price != null) return Number(service.convenio_price)
-    return service.price
-  }, [service, empresa, peloConvenio])
+    return manterPreco ? service.price : precoComProf(porProf, service, prof?.id)
+  }, [service, empresa, peloConvenio, porProf, prof?.id, manterPreco])
 
   /* Quem pode atender: com convênio ativo, só os vinculados à empresa. Sem
      convênio (ou desmarcado), a equipe inteira. */
@@ -400,7 +425,7 @@ export default function MarcarAgendamentoForm({
     }
     setError(null)
     setSaving(true)
-    const duration = service.duration_minutes ?? 60
+    const duration = duracaoDoAtendimento
     const [hh, mm] = time.split(':').map(Number)
     const startDate = new Date(`${date}T${time}:00`)
     const endDate = new Date(startDate.getTime() + duration * 60_000)
@@ -817,6 +842,10 @@ export default function MarcarAgendamentoForm({
                 key={p.id}
                 onClick={() => {
                   setProf(p)
+                  // voltou e trocou pra quem não faz o serviço já escolhido
+                  // trocou de profissional: o serviço (e o preço confirmado) é escolhido de novo
+                  setService(null)
+                  setConfirmaServico(null)
                   setStep('servico')
                 }}
                 className="w-full text-left admin-card p-4"
@@ -859,12 +888,40 @@ export default function MarcarAgendamentoForm({
         {/* STEP SERVIÇO */}
         {step === 'servico' && (
           <div className="space-y-2">
-            {services.map((s) => (
+            {confirmaServico && (
+              <div className="admin-card p-3.5 space-y-2.5" style={{ border: '1.5px solid var(--admin-accent)' }}>
+                <p className="text-sm" style={{ color: 'var(--admin-text)' }}>
+                  Com <strong>{prof?.name.split(' ')[0]}</strong>, {confirmaServico.name} custa{' '}
+                  <strong>{brl(Number(precoComProf(porProf, confirmaServico, prof?.id)) - Number(confirmaServico.price ?? 0))} a mais</strong>.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => escolherServico(confirmaServico, false)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                    style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                  >
+                    Confirmar {brl(Number(precoComProf(porProf, confirmaServico, prof?.id)))}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => escolherServico(confirmaServico, true)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                    style={{ background: 'var(--admin-input-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+                  >
+                    Manter {brl(Number(confirmaServico.price ?? 0))}
+                  </button>
+                </div>
+              </div>
+            )}
+            {servicosDela.map((s) => (
               <button
                 key={s.id}
                 onClick={() => {
-                  setService(s)
-                  setStep('horario')
+                  const original = services.find((x) => x.id === s.id) ?? s
+                  const pesaConvenio = !!empresa && peloConvenio && original.convenio_price != null
+                  if (!pesaConvenio && Number(s.price ?? 0) > Number(original.price ?? 0)) setConfirmaServico(original)
+                  else escolherServico(original, false)
                 }}
                 className="w-full text-left admin-card p-3.5"
               >
@@ -889,9 +946,9 @@ export default function MarcarAgendamentoForm({
                 )}
               </button>
             ))}
-            {services.length === 0 && (
+            {servicosDela.length === 0 && (
               <p className="text-sm text-center py-6" style={{ color: 'var(--admin-text-mute)' }}>
-                Nenhum serviço cadastrado.
+                {services.length === 0 ? 'Nenhum serviço cadastrado.' : `${prof?.name ?? 'Esta profissional'} não faz nenhum serviço cadastrado.`}
               </p>
             )}
           </div>
@@ -1105,4 +1162,8 @@ function Row({ label, value }: { label: string; value: string }) {
       </span>
     </div>
   )
+}
+
+function brl(v: number) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }

@@ -97,6 +97,10 @@ export default function AniversariantesView({
 
   const sampleName = useMemo(() => sampleNameFor(businessDescription), [businessDescription])
 
+  /* Prévia: o endereço do site só existe no aparelho. Lido no servidor dava
+     link sem domínio e no navegador com domínio = erro de hidratação. */
+  const [origem, setOrigem] = useState('')
+  useEffect(() => setOrigem(window.location.origin), [])
   const previewMessage = useMemo(() => {
     const sample = customMessage || templates[templateIdx] || ''
     const expiresAt = new Date()
@@ -108,9 +112,9 @@ export default function AniversariantesView({
       negocio: businessName,
       desconto: discountStr,
       validade: validityStr,
-      link: `${typeof window !== 'undefined' ? window.location.origin : ''}/${businessSlug}?cupom=PROABC12`,
+      link: `${origem}/${businessSlug}?cupom=PROABC12`,
     })
-  }, [customMessage, templates, templateIdx, validityDays, discountType, discountValue, businessName, businessSlug, sampleName])
+  }, [customMessage, templates, templateIdx, validityDays, discountType, discountValue, businessName, businessSlug, sampleName, origem])
 
   async function gerarCampanha() {
     setError(null)

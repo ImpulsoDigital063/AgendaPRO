@@ -8,6 +8,7 @@ import { limparSinaisVencidos } from '@/lib/sinal-expira'
 import { generateSinalToken } from '@/lib/token'
 import { confirmarAgendamento } from '@/lib/mensagens/confirmar'
 import { criarConvite, fichasParaOferecer } from '@/lib/fichas/oferta'
+import { lerServicoPorProf, SELECT_SERVICO_PROF, type LinhaServicoProf } from '@/lib/servico-por-profissional'
 
 /**
  * POST /api/booking/submit
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
      pelo mesmo motivo que ele recalcula o preco: numero enviado pelo cliente
      nao e' confiavel. Ver o bloco "DESCONTO DO CUPOM" abaixo. */
   const cupomCode = typeof body.cupom === 'string' ? body.cupom.trim().toUpperCase().slice(0, 32) : ''
+  const pacoteId = typeof body.pacoteId === 'string' && body.pacoteId ? body.pacoteId : null
 
   if (!businessId || !professionalId || !name || !phone || !appointmentDate || !startTime || !endTime) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 })
@@ -135,6 +137,7 @@ export async function POST(req: NextRequest) {
      profissional em cima de outro agendamento. */
   const idsPedidos = services.map((s) => s.id).filter((id) => typeof id === 'string' && id)
   let servicosDb: { id: string; name: string; price: number | null; duration_minutes: number | null; points: number | null }[] = []
+  let pacoteAplicado = false
 
   if (idsPedidos.length > 0) {
     const { data: encontrados } = await db
@@ -161,6 +164,65 @@ export async function POST(req: NextRequest) {
         points: s.points === null || s.points === undefined ? 0 : Number(s.points),
       }
     })
+
+    /* v172 + v173 · serviço por profissional (pedido da Ivna, 22/10). Só com o
+       recurso ligado na conta; a linha em service_professional_prices diz se
+       ESTA profissional faz o serviço, o preço e a duração dela. Sem linha,
+       vale o cadastro. Erro na leitura = segue o cadastro. */
+    const { data: neg } = await db.from('businesses').select('preco_por_profissional').eq('id', businessId).maybeSingle()
+    if (neg?.preco_por_profissional === true) {
+      const { data: proprios } = await db
+        .from('service_professional_prices')
+        .select(SELECT_SERVICO_PROF)
+        .eq('professional_id', professionalId)
+        .in('service_id', idsPedidos)
+      const dela = lerServicoPorProf(proprios as LinhaServicoProf[] | null)
+      // a tela já esconde quem não faz; isto barra o envio montado à mão
+      if (Object.keys(dela.naoFaz).length > 0) {
+        return NextResponse.json({ error: 'servico_fora_da_profissional' }, { status: 400 })
+      }
+      servicosDb = servicosDb.map((s) => ({
+        ...s,
+        price: dela.precos[s.id]?.[professionalId] ?? s.price,
+        duration_minutes: dela.duracoes[s.id]?.[professionalId] ?? s.duration_minutes,
+      }))
+    }
+
+    /* PACOTE AGENDADO PELO LINK (protótipo Ivna, 23/10: "os botões não é pra
+       levar pro sistema?"). A cliente marca os serviços do combo de uma vez e
+       paga o preço DO PACOTE. Só vale se os serviços pedidos forem exatamente
+       os do pacote (cada um 1 vez) e o pacote for deste negócio e estiver
+       ativo; senão o pedido segue com o preço avulso de cada serviço. O preço
+       do pacote é dividido entre os serviços na proporção do preço de cada um
+       (sobra de centavo no último), então comanda, sinal e comissão saem certos
+       sem mudar mais nada. Preço do pacote manda sobre o preço por profissional. */
+    if (pacoteId) {
+      const { data: pac } = await db
+        .from('packages')
+        .select('id, business_id, price, active, package_items(service_id, quantity)')
+        .eq('id', pacoteId)
+        .maybeSingle()
+      const itensPac = (pac?.package_items ?? []) as { service_id: string; quantity: number }[]
+      const mesmosServicos =
+        !!pac && pac.business_id === businessId && pac.active !== false &&
+        itensPac.length === idsPedidos.length &&
+        itensPac.every((i) => i.quantity === 1 && idsPedidos.includes(i.service_id))
+      if (mesmosServicos) {
+        const precoPac = Number(pac!.price)
+        const base = servicosDb.reduce((t, s) => t + (s.price ?? 0), 0)
+        let distribuido = 0
+        servicosDb = servicosDb.map((s, i) => {
+          const fatia = i === servicosDb.length - 1
+            ? Math.round((precoPac - distribuido) * 100) / 100
+            : Math.round((base > 0 ? (precoPac * (s.price ?? 0)) / base : precoPac / servicosDb.length) * 100) / 100
+          distribuido += fatia
+          return { ...s, price: fatia }
+        })
+        pacoteAplicado = true
+      } else {
+        console.warn(`booking submit · pacote ${pacoteId} não confere com os serviços · negócio ${businessId}`)
+      }
+    }
   }
 
   // Total e fim do horário, ambos derivados do banco.
@@ -188,7 +250,8 @@ export async function POST(req: NextRequest) {
      nasce igual, que e' melhor que perder a marcacao da cliente. */
   let cupomAplicado: { id: string; code: string; standalone: boolean } | null = null
   let descontoCupom = 0
-  if (cupomCode && totalServer && totalServer > 0) {
+  // pacote já é o preço promocional: cupom não soma por cima
+  if (!pacoteAplicado && cupomCode && totalServer && totalServer > 0) {
     const { data: cup } = await db
       .from('coupons')
       .select('id, code, business_id, discount_type, discount_value, expires_at, used_at, is_standalone')

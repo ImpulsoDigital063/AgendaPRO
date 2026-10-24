@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { conteudoDaVitrine } from '@/lib/vitrine/conteudo'
 
 /**
  * Prévia (og:) das páginas públicas — a que o WhatsApp mostra quando alguém
@@ -49,7 +50,7 @@ export async function buildBusinessMetadata(
   const partes = [categoria, cidade && cidade.length <= 40 ? cidade : null]
     .filter(Boolean)
     .join(' · ')
-  const descricao =
+  let descricao =
     variante === 'pontos'
       ? `Consulte seu saldo de pontos e suas recompensas. ${partes}`.trim()
       : `Escolha o serviço, veja os horários livres e agende online.${partes ? ` ${partes}.` : ''}`
@@ -66,7 +67,11 @@ export async function buildBusinessMetadata(
      jeito. */
   const foto = (b.cover_url as string | null) || (b.logo_url as string | null) || null
   const fotoServe = !!foto && /\.(png|jpe?g)(\?|$)/i.test(foto)
-  const imagem = fotoServe ? (foto as string) : `/${slug}/opengraph-image`
+  /* Clínica com vitrine (Ivna, 24/10): a prévia é a peça dela — logo dourada e
+     a frase da abertura — no lugar do texto genérico de agendamento. */
+  const og = conteudoDaVitrine(slug)?.og
+  const imagem = og ? og.imagem : fotoServe ? (foto as string) : `/${slug}/opengraph-image`
+  if (og && variante !== 'pontos') descricao = og.descricao
 
   return {
     title: titulo,

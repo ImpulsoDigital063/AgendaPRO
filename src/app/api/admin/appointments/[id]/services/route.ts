@@ -28,6 +28,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { carregarServicoPorProf, duracaoComProf, fazServico, precoComProf } from '@/lib/servico-por-profissional'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { negocioDoPainel } from '@/lib/admin-data'
 
@@ -311,24 +312,6 @@ export async function PATCH(
     return Number.isFinite(d) && d > 0 ? d : 0
   })()
 
-  // Calcula nova duração total + total_price + novo end_time
-  const duracaoCatalogo = services.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0)
-  const totalDurationMin = mesmosServicos && duracaoAtual > 0 ? duracaoAtual : duracaoCatalogo
-  if (totalDurationMin <= 0) {
-    return NextResponse.json(
-      { error: 'Duração total inválida (serviços sem duração configurada).' },
-      { status: 400 },
-    )
-  }
-  const precoCatalogo = services.reduce((sum, s) => sum + (s.price ?? 0), 0)
-  const totalPrice = mesmosServicos && appointment.total_price != null
-    ? Number(appointment.total_price)
-    : precoCatalogo
-
-  // Resolve os novos valores (ausente = mantém o atual).
-  const startStr = (newStartRaw ?? appointment.start_time).slice(0, 5)
-  const newDate = newDateRaw ?? appointment.appointment_date
-
   // Valida profissional novo (se trocou): tem que ser do mesmo negócio e ativo.
   let newProfId = appointment.professional_id
   if (newProfIdRaw && newProfIdRaw !== appointment.professional_id) {
@@ -342,6 +325,49 @@ export async function PATCH(
     }
     newProfId = newProfIdRaw
   }
+
+  /* v173 · quem faz, preço e tempo de QUEM atende (antes valia o do cadastro,
+     e trocar Ilana → Ivna nos cílios deixava o atendimento sem os R$20 dela). */
+  const porProf = await carregarServicoPorProf(admin, appointment.business_id)
+  const foraDela = services.find((s) => !fazServico(porProf, s.id, newProfId))
+  if (foraDela) {
+    return NextResponse.json(
+      { error: `Essa profissional não faz "${foraDela.name}". Troque o serviço ou a profissional.` },
+      { status: 400 },
+    )
+  }
+  const precoCom = (profId: string | null) => services.reduce((sum, s) => sum + (precoComProf(porProf, s, profId) ?? 0), 0)
+  const duracaoCom = (profId: string | null) => services.reduce((sum, s) => sum + (duracaoComProf(porProf, s, profId) ?? 0), 0)
+  /* Mesmos serviços com outra profissional: preço e tempo passam pros dela só
+     se ainda eram os automáticos da anterior. Combo, desconto e valor digitado
+     ficam (mesma regra do modal de agendar). */
+  const trocouProf = newProfId !== appointment.professional_id
+  // a recepção viu o acréscimo da profissional e escolheu manter o preço do serviço
+  const manterPreco = body.manter_preco === true
+  const precoAlvo = manterPreco ? precoCom(null) : precoCom(newProfId)
+  const repreca =
+    mesmosServicos && trocouProf && appointment.total_price != null &&
+    Number(appointment.total_price) === precoCom(appointment.professional_id) &&
+    precoAlvo !== Number(appointment.total_price)
+  const retempo = mesmosServicos && trocouProf && duracaoAtual === duracaoCom(appointment.professional_id)
+  // lista de serviços e comanda regravadas: trocou serviço, ou o preço foi pro dela
+  const reescreve = !mesmosServicos || repreca
+
+  // Calcula nova duração total + total_price + novo end_time
+  const totalDurationMin = mesmosServicos && duracaoAtual > 0 && !retempo ? duracaoAtual : duracaoCom(newProfId)
+  if (totalDurationMin <= 0) {
+    return NextResponse.json(
+      { error: 'Duração total inválida (serviços sem duração configurada).' },
+      { status: 400 },
+    )
+  }
+  const totalPrice = mesmosServicos && appointment.total_price != null && !repreca
+    ? Number(appointment.total_price)
+    : precoAlvo
+
+  // Resolve os novos valores (ausente = mantém o atual).
+  const startStr = (newStartRaw ?? appointment.start_time).slice(0, 5)
+  const newDate = newDateRaw ?? appointment.appointment_date
 
   // Calcula novo end_time. Clamp em 23:59 pra nunca estourar a meia-noite
   // (Postgres recusa intervalo inválido · "sistema antecipa", cravado 19/06).
@@ -430,10 +456,10 @@ export async function PATCH(
     return NextResponse.json({ error: 'Erro ao atualizar agendamento.' }, { status: 500 })
   }
 
-  // Mesmos serviços: a lista (com os preços de quando foi marcado) fica.
+  // Mesmos serviços (e preço mantido): a lista com os preços de quando foi marcado fica.
   // Se falhar aqui o appointment já tem o serviço novo e a lista não bate ·
   // a próxima edição deixa de ver "mesmos serviços" e recalcula pelo catálogo.
-  if (!mesmosServicos) {
+  if (reescreve) {
     const { error: delErr } = await admin
       .from('appointment_services')
       .delete()
@@ -446,8 +472,8 @@ export async function PATCH(
       appointment_id: appointmentId,
       service_id: s.id,
       service_name: s.name,
-      price: s.price,
-      duration_minutes: s.duration_minutes,
+      price: manterPreco ? s.price : precoComProf(porProf, s, newProfId),
+      duration_minutes: duracaoComProf(porProf, s, newProfId),
     }))
     const { error: insErr } = await admin.from('appointment_services').insert(newRows)
     if (insErr) {
@@ -479,9 +505,9 @@ export async function PATCH(
       .eq('item_type', 'appointment')
   }
 
-  // Mesmos serviços: a comanda não muda (preço, desconto da linha e rateio
+  // Mesmos serviços com preço mantido: a comanda não muda (preço, desconto da linha e rateio
   // do combo ficam como estavam).
-  for (const it of mesmosServicos ? [] : apptInvItems ?? []) {
+  for (const it of reescreve ? apptInvItems ?? [] : []) {
     const { data: inv } = await admin
       .from('invoices')
       .select('id, status, manual_discount')

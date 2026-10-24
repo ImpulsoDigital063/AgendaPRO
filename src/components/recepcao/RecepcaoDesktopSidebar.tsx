@@ -18,6 +18,8 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
+import MarcaDaClinica from '@/components/admin/brand/MarcaDaClinica'
+import { ContagemNotificacoes, SinoIcone } from '@/components/notificacoes/CentralNotificacoes'
 import {
   IconHome,
   IconCalendar,
@@ -43,6 +45,8 @@ type SidebarItem = {
   href: string
   exact?: boolean
   Icon: (p: { size?: number }) => ReactNode
+  /** mostra o número de notificações ao lado (CentralNotificacoes) */
+  contagem?: boolean
 }
 
 const ITEMS: SidebarItem[] = [
@@ -63,8 +67,14 @@ export default function RecepcaoDesktopSidebar({
   podeEditarHorario = false,
   tambemAtende = false,
   pessoaNome,
+  marcaClinica = null,
+  notificacoesBase,
 }: {
   brand: Brand
+  /** protótipo · clínica com painel próprio: logo dourada + nome de quem está logada */
+  marcaClinica?: { logo: string; monograma: string } | null
+  /** protótipo · item Notificações com o número (base da rota do layout) */
+  notificacoesBase?: string
   /** v144 · nome de quem está logada · a tela deixa de anunciar cargo */
   pessoaNome?: string | null
   /** v144 · recepção que também atende: atalho pro financeiro DELA */
@@ -81,7 +91,11 @@ export default function RecepcaoDesktopSidebar({
   /* v144 · quem acumula balcão e atendimento precisa alcançar a própria
      comissão — o balcão mostra o dinheiro do salão, não o dela. */
   const items: SidebarItem[] = [
-    ...base,
+    ...base.slice(0, 1),
+    ...(notificacoesBase
+      ? [{ label: 'Notificações', href: `${notificacoesBase}/notificacoes`, Icon: ({ size = 18 }: { size?: number }) => <SinoIcone style={{ width: size, height: size }} />, contagem: true }]
+      : []),
+    ...base.slice(1),
     ...(tambemAtende
       ? [
           { label: 'Meus atendimentos', href: '/recepcao/eu', Icon: IconCalendar },
@@ -122,7 +136,14 @@ export default function RecepcaoDesktopSidebar({
         style={{ borderBottom: '1px solid var(--admin-divider)' }}
       >
         <div className="flex items-center gap-2">
-          {brand.brand_logo_url ? (
+          {marcaClinica ? (
+            <span className="flex-1 min-w-0">
+              <MarcaDaClinica logo={marcaClinica.logo} monograma={marcaClinica.monograma} nome={brand.business_name ?? ''} recolhida={collapsed} />
+              {!collapsed && pessoaNome && (
+                <span className="mt-1.5 block truncate text-[12px] font-semibold" style={{ color: 'var(--admin-text-mute)' }}>{pessoaNome}</span>
+              )}
+            </span>
+          ) : brand.brand_logo_url ? (
             <span
               className="flex-shrink-0 w-9 h-9 rounded-xl overflow-hidden"
               style={{ background: 'var(--admin-surface-hi)' }}
@@ -144,7 +165,7 @@ export default function RecepcaoDesktopSidebar({
               {(brand.business_name ?? 'R').slice(0, 1).toUpperCase()}
             </span>
           )}
-          {!collapsed && (
+          {!collapsed && !marcaClinica && (
             <span className="flex-1 min-w-0">
               <span
                 className="block text-sm font-bold truncate"
@@ -196,6 +217,7 @@ export default function RecepcaoDesktopSidebar({
                 <Icon size={18} />
               </span>
               {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+              {!collapsed && item.contagem && <ContagemNotificacoes />}
             </Link>
           )
         })}

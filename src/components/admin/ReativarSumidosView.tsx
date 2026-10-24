@@ -150,6 +150,10 @@ export default function ReativarSumidosView({
   // cognitivo no preview.
   const sampleName = useMemo(() => sampleNameFor(businessDescription), [businessDescription])
 
+  /* Prévia: o endereço do site só existe no aparelho. Lido no servidor dava
+     link sem domínio e no navegador com domínio = erro de hidratação. */
+  const [origem, setOrigem] = useState('')
+  useEffect(() => setOrigem(window.location.origin), [])
   const previewMessage = useMemo(() => {
     const sample = customMessage || templates[templateIdx] || ''
     const expiresAt = new Date()
@@ -161,9 +165,9 @@ export default function ReativarSumidosView({
       negocio: businessName,
       desconto: discountStr,
       validade: validityStr,
-      link: `${typeof window !== 'undefined' ? window.location.origin : ''}/${businessSlug}?cupom=OIABC123`,
+      link: `${origem}/${businessSlug}?cupom=OIABC123`,
     })
-  }, [customMessage, templates, templateIdx, validityDays, discountType, discountValue, businessName, businessSlug, sampleName])
+  }, [customMessage, templates, templateIdx, validityDays, discountType, discountValue, businessName, businessSlug, sampleName, origem])
 
   // Stats dos cupons existentes
   const couponStats = useMemo(() => {

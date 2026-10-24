@@ -26,6 +26,14 @@ import {
   getAdminAccess,
 } from '@/lib/admin-data'
 import { podeAbrir } from '@/lib/permissoes-gerente'
+import { painelDaClinica } from '@/lib/vitrine/painel'
+import { classesDoPainel, FundoDaClinica } from '@/components/admin/brand/PainelClinica'
+import CentralNotificacoes from '@/components/notificacoes/CentralNotificacoes'
+import InstallBanner from '@/components/admin/InstallBanner'
+import PushEnableBanner from '@/components/admin/PushEnableBanner'
+import NovidadeSinalCard from '@/components/admin/NovidadeSinalCard'
+import NovidadeSumidosCard from '@/components/admin/NovidadeSumidosCard'
+import TourSistemaCard from '@/components/admin/tour/TourSistemaCard'
 
 export default async function AdminLayout({
   children,
@@ -218,12 +226,14 @@ export default async function AdminLayout({
 
   // Sistema light-only (tema dark removido 03/06). Sem leitura de cookie de tema.
   const initialTheme = 'light' as const
+  // protótipo · clínica com vitrine veste a identidade dela no painel (painel.ts)
+  const painel = painelDaClinica(businessSlug)
 
   return (
     <AdminThemeProvider initial={initialTheme}>
       <BrandThemeInjector brand={brand} />
       <SlugCacher slug={businessSlug} />
-      <div className="admin-shell admin-shell--with-sidebar" data-admin-theme={initialTheme}>
+      <div className={`admin-shell admin-shell--with-sidebar${painel ? ` ${classesDoPainel}` : ''}`} data-admin-theme={initialTheme}>
         <AppSplash />
         {/* Mantem o PWA na versao publicada sem a dona precisar saber que
             existe service worker. Ver AtualizadorPWA.tsx. */}
@@ -231,6 +241,7 @@ export default async function AdminLayout({
         {/* Decoração de marca · só desktop · só Palace · pattern scatter sutil
             atrás de todas as views admin. Mobile (Olímpio/Leticia/Erlane prod)
             NÃO renderiza nada. Regra mobile/desktop isolation cravada 19-20/05. */}
+        {painel && <FundoDaClinica monograma={painel.monograma} />}
         {businessSlug === 'palace-nail-spa' && (
           <div
             aria-hidden
@@ -241,6 +252,8 @@ export default async function AdminLayout({
         )}
         <AdminDesktopSidebar
           brand={{ business_name: businessName, business_slug: businessSlug, brand_logo_url: brand.brand_logo_url ?? null }}
+          marcaClinica={painel}
+          notificacoes={!!painel}
           pendingAppointments={pendingAppointments}
           pendingClaims={pendingClaims}
           convenios={business?.convenios_enabled === true}
@@ -253,7 +266,7 @@ export default async function AdminLayout({
           {/* Topbar mobile (header + drawer agrupado) · só <lg · coexiste com BottomNav */}
           <AdminMobileTopBar
             businessName={businessName}
-            brandLogoUrl={brand.brand_logo_url ?? null}
+            brandLogoUrl={painel?.monograma ?? brand.brand_logo_url ?? null}
             pendingAppointments={pendingAppointments}
             pendingClaims={pendingClaims}
             showOwnerTab={showOwnerTab}
@@ -263,6 +276,7 @@ export default async function AdminLayout({
             trial={trial}
             ehGerente={ehGerente}
             bloqueadas={bloqueadas}
+            notificacoes={!!painel}
           />
           {/* O InstallBanner SAIU DO LAYOUT (Eduardo, 31/08/2026).
               Montado aqui, ele custava 58px de altura nas 41 telas do admin —
@@ -289,6 +303,22 @@ export default async function AdminLayout({
             <BillingDueBanner
               diasAteVencer={cobranca.diasAteVencer}
               status={cobranca.status}
+            />
+          )}
+          {/* protótipo · avisos saem do Início e moram em Notificações (painel da clínica).
+              Mesmos componentes, mesma lógica de aparecer/sumir; a central só conta. */}
+          {painel && business && (
+            <CentralNotificacoes
+              base="/admin"
+              itens={[
+                <InstallBanner key="instalar" />,
+                <PushEnableBanner key="push" />,
+                <NovidadeSinalCard key="sinal" sinalAtivo={business.sinal_enabled === true} />,
+                <NovidadeSumidosCard key="sumidos" jaEntrou={!!business.tour_sumidos_em} />,
+                tourSistemaLiberado(business, ehGerente) ? (
+                  <Suspense key="tour" fallback={null}><TourSistemaCard businessId={business.id as string} /></Suspense>
+                ) : null,
+              ]}
             />
           )}
           {children}

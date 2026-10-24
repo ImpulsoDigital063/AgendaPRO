@@ -12,6 +12,8 @@ type Props = {
   brandMode?: 'dark' | 'light'
   slug?: string
   cheapestReward?: { name: string; pointsRequired: number } | null
+  /** vitrine da clínica: troca o azul do card e do botão pela cor dela. Sem isso, o azul de sempre. */
+  destaque?: string
 }
 
 function ratingLabel(r: number): string | null {
@@ -53,6 +55,7 @@ export default function GoogleReviewSection({
   pointsForReview,
   slug,
   cheapestReward,
+  destaque,
 }: Props) {
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
@@ -79,7 +82,7 @@ export default function GoogleReviewSection({
   }
 
   // Azul do Google (não a cor da marca) — pra o card parecer nativo do Google.
-  const brandGradient = 'linear-gradient(135deg, #4285F4 0%, #1A73E8 100%)'
+  const brandGradient = destaque ?? 'linear-gradient(135deg, #4285F4 0%, #1A73E8 100%)'
 
   function renderStars(r: number) {
     return (

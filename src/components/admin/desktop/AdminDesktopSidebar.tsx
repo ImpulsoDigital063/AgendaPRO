@@ -32,6 +32,10 @@ import {
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import { ehNovidade } from '@/lib/novidades'
 import { podeAbrir } from '@/lib/permissoes-gerente'
+import MarcaDaClinica from '@/components/admin/brand/MarcaDaClinica'
+import { SinoIcone, useTotalNotificacoes } from '@/components/notificacoes/CentralNotificacoes'
+
+const IconSino = ({ size = 18 }: { size?: number }) => <SinoIcone style={{ width: size, height: size }} />
 
 type Brand = {
   business_name?: string | null
@@ -70,13 +74,18 @@ type Props = {
   bloqueadas?: string[]
   /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
   cartaoPresente?: boolean
+  /** protótipo · clínica com painel próprio: logo dourada no lugar do quadradinho */
+  marcaClinica?: { logo: string; monograma: string } | null
+  /** protótipo · avisos saem das telas e moram em Notificações (CentralNotificacoes) */
+  notificacoes?: boolean
 }
 
-export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true, ehGerente = false, bloqueadas = [] }: Props) {
+export default function AdminDesktopSidebar({ brand, marcaClinica = null, notificacoes = false, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true, ehGerente = false, bloqueadas = [] }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab')
   const [collapsed, setCollapsed] = useState(false)
+  const totalNotif = useTotalNotificacoes()
 
   /* Sair da conta (Eduardo, 29/09): o botão tinha saído do menu em 26/05
      junto com a lanterna, e sobrou só na aba "Eu" — quem não atende nunca
@@ -92,6 +101,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       label: 'Painel',
       items: [
         { label: 'Início', href: '/admin/inicio', exact: true, Icon: IconHome },
+        ...(notificacoes ? [{ label: 'Notificações', href: '/admin/notificacoes', Icon: IconSino, badge: totalNotif }] : []),
         // 21/10/2026 · perguntas prontas sobre o negócio, sem IA (mesma entrada no celular)
         { label: 'Pergunte ao negócio', href: '/admin/perguntas', Icon: IconSparkles },
         { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
@@ -236,6 +246,21 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       >
         {brand.business_slug === 'palace-nail-spa' ? (
           <PalaceBrandArea collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+        ) : marcaClinica ? (
+          <div className="flex items-center gap-2">
+            <MarcaDaClinica logo={marcaClinica.logo} monograma={marcaClinica.monograma} nome={brand.business_name ?? ''} recolhida={collapsed} />
+            <button
+              type="button"
+              onClick={() => setCollapsed((c) => !c)}
+              aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              className="ml-auto p-1.5 rounded-lg flex-shrink-0"
+              style={{ color: 'var(--admin-text-mute)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {collapsed ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
+              </svg>
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             {brand.brand_logo_url ? (

@@ -11,6 +11,14 @@ import type { Business, Professional } from '@/lib/types'
 import { BookingBackProvider, BookingBackButton } from '@/components/BookingBack'
 import { buildBusinessMetadata } from '@/lib/public-metadata'
 import { todayBR } from '@/lib/date-br'
+import { conteudoDaVitrine, primeiroNome } from '@/lib/vitrine/conteudo'
+import { carregarServicoPorProf, quemFazDosServicos } from '@/lib/servico-por-profissional'
+import { Lora, Manrope } from 'next/font/google'
+
+// vitrine da clínica: mesmas fontes da página da clínica
+// agendamento com a identidade da clínica (Eduardo 22/10): títulos em Lora, resto em Manrope, iguais à página da clínica
+const serif = Lora({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-vitrine', display: 'swap' })
+const sans = Manrope({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-vitrine-sans', display: 'swap' })
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -25,10 +33,13 @@ export default async function AgendarPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ ref?: string; date?: string; time?: string; prof?: string; w?: string; cupom?: string }>
+  searchParams: Promise<{ ref?: string; date?: string; time?: string; prof?: string; w?: string; cupom?: string; servicos?: string; pacote?: string }>
 }) {
   const { slug } = await params
-  const { ref: referralCode, date: prefillDate, time: prefillTime, prof: prefillProf, w: waitlistId, cupom: couponCode } = await searchParams
+  const { ref: referralCode, date: prefillDate, time: prefillTime, prof: prefillProf, w: waitlistId, cupom: couponCode, servicos, pacote: pacoteParam } = await searchParams
+  // vitrine da clínica (protótipo Ivna Loyola): serviços escolhidos na página + visual dela
+  const vitrine = conteudoDaVitrine(slug)
+  let servicosIniciais = vitrine && servicos ? servicos.split(',').filter(Boolean) : undefined
   const supabase = await createClient()
 
   const { data: business } = await supabase
@@ -76,6 +87,29 @@ export default async function AgendarPage({
       .gte('date', todayBR()),
   ])
 
+  /* Pacote vindo do site da clínica (?pacote=id): os serviços dele já entram
+     escolhidos e o preço é o do pacote (o servidor confere e cobra igual). */
+  let pacote: { id: string; nome: string; preco: number; servicos: string[] } | null = null
+  if (vitrine && pacoteParam) {
+    // pacotes não têm leitura pública (RLS): lê com a chave do servidor, como o site da clínica
+    const { data: pac } = await createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+      .from('packages')
+      .select('id, name, price, active, business_id, package_items(service_id, quantity)')
+      .eq('id', pacoteParam)
+      .maybeSingle()
+    const itens = (pac?.package_items ?? []) as { service_id: string; quantity: number }[]
+    if (pac && pac.business_id === business.id && pac.active !== false && itens.length > 0 && itens.every((i) => i.quantity === 1)) {
+      pacote = { id: pac.id as string, nome: pac.name as string, preco: Number(pac.price), servicos: itens.map((i) => i.service_id) }
+      servicosIniciais = pacote.servicos
+    }
+  }
+
+  /* v172 + v173 · serviço por profissional (quem faz, preço e duração de cada
+     uma). Leitura separada do select do negócio de propósito: sem a
+     coluna/tabela no banco, dá erro, vira vazio, e o link segue como sempre. */
+  const porProf = await carregarServicoPorProf(supabase, business.id)
+  const precosPorProfissional = porProf.precos
+
   // Filtra profissionais SEM working_hours configurado — eles nao
   // teriam slot disponivel mesmo se cliente os escolhesse, gerando
   // tela vazia. CIC rodada 4 reportou (item 8.3): prof "Teste QA"
@@ -88,6 +122,8 @@ export default async function AgendarPage({
     ...(workingHoursDates || []).map((wh) => wh.professional_id),
   ])
   const professionals = (allProfessionals || []).filter((p) => profsWithHours.has(p.id))
+  // serviço → quem faz (só os que têm alguém de fora; cadastrado pela dona no painel)
+  const quemFazServico = quemFazDosServicos(porProf.naoFaz, professionals)
 
   // Prefill vindo do email da fila de espera (?w=<waitlist_id>).
   // Busca dados do registro + checa se o cliente já tem outro agendamento no mesmo dia.
@@ -172,6 +208,60 @@ export default async function AgendarPage({
   const isDark = mode === 'dark'
   const cover = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`
 
+  if (vitrine) {
+    const ouro = `linear-gradient(120deg, ${primary} 0%, ${secondary} 48%, ${primary} 100%)`
+    // foto que a clínica mandou + quem faz cada serviço (serviço → ids das profissionais)
+    const equipe = ((professionals || []) as Professional[]).map((p) => ({ ...p, photo_url: vitrine.fotos?.[primeiroNome(p.name)] ?? p.photo_url }))
+    const papeis = Object.fromEntries(equipe.flatMap((p) => (vitrine.bios[primeiroNome(p.name)]?.papel ? [[p.id, vitrine.bios[primeiroNome(p.name)].papel!]] : [])))
+    // tratamento de várias sessões: o nome do serviço traz "(3 sessões)"
+    const sessoes = Object.fromEntries((services || []).flatMap((sv) => {
+      const m = sv.name.match(/(\d+)\s*sess/i)
+      return m && Number(m[1]) > 1 ? [[sv.id, Number(m[1])]] : []
+    }))
+    return (
+      <main
+        className={`${serif.variable} ${sans.variable} tema-vitrine min-h-screen`}
+        style={{ background: '#FAF7F2', color: '#2A2520', fontFamily: 'var(--font-vitrine-sans), sans-serif', fontWeight: 500, ['--brand-primary' as string]: primary, ['--brand-secondary' as string]: secondary } as React.CSSProperties}
+      >
+        <BookingBackProvider>
+          <div className="sticky top-0 z-30 border-b backdrop-blur-xl" style={{ background: '#FAF7F2E6', borderColor: '#E7DECF' }}>
+            <div className="mx-auto flex h-16 max-w-lg lg:max-w-5xl items-center justify-between px-5">
+              {/* no 1º passo volta pra escolha do procedimento, não pra home */}
+              <BookingBackButton slug={`${slug}/clinica/agendar${appliedCoupon || referralCode ? `?${new URLSearchParams({ ...(appliedCoupon ? { cupom: appliedCoupon.code } : {}), ...(referralCode ? { ref: referralCode } : {}) })}` : ''}`} className="flex h-10 w-10 items-center justify-center rounded-full border" style={{ borderColor: '#E7DECF', color: '#2A2520' }} />
+              <div className="relative h-9 w-[80px]">
+                {vitrine.logoDourada && <Image src={vitrine.logoDourada} alt={b.name} fill sizes="80px" className="object-contain" priority />}
+              </div>
+              <span className="w-10" />
+            </div>
+            <div className="h-px" style={{ background: ouro, opacity: 0.6 }} />
+          </div>
+          <div className="mx-auto max-w-lg lg:max-w-5xl">
+            <BookingFlow
+              business={b}
+              professionals={equipe}
+              workingHours={workingHours || []}
+              workingHoursDates={workingHoursDates || []}
+              services={services || []}
+              referralCode={referralCode}
+              prefill={prefill}
+              coupon={appliedCoupon}
+              servicosIniciais={servicosIniciais}
+              tema="vitrine"
+              quemFazServico={quemFazServico}
+              papeis={papeis}
+              sessoes={sessoes}
+              precosPorProfissional={precosPorProfissional}
+              duracoesPorProfissional={porProf.duracoes}
+              pacote={pacote}
+              enderecoExibido={vitrine.mapa ? vitrine.mapa.consulta.replace(/, (?=[^,]*$)/, ' · ') : undefined}
+            />
+            <p className="py-10 text-center text-[10px] font-medium uppercase tracking-[0.3em]" style={{ color: '#B3A897' }}>Agendamento online · AgendaPRO</p>
+          </div>
+        </BookingBackProvider>
+      </main>
+    )
+  }
+
   return (
     <main
       className="min-h-screen"
@@ -246,6 +336,9 @@ export default async function AgendarPage({
           referralCode={referralCode}
           prefill={prefill}
           coupon={appliedCoupon}
+          precosPorProfissional={precosPorProfissional}
+          duracoesPorProfissional={porProf.duracoes}
+          quemFazServico={Object.keys(quemFazServico).length > 0 ? quemFazServico : undefined}
         />
 
         {/* Footer */}

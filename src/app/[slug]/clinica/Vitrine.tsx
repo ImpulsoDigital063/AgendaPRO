@@ -1,0 +1,819 @@
+'use client'
+
+/* VITRINE DA CLÍNICA · parte de tela, v4 (22/10/2026).
+   Padrão das clínicas estudadas (REFERENCIAS-CLINICAS.md): serifa firme sem
+   itálico nos títulos, texto em caixa normal, botão sólido escuro, lista de
+   preço com fio fino, dourado só de acento. Movimento curto e discreto. Regra do Eduardo: o objetivo é o agendamento, então o botão
+   "Agendar" fica visível o tempo todo (topo fixo + barra fixa no celular).
+   Leve: vídeo da abertura começa pela foto, vídeos do carrossel só baixam no
+   toque, mapa só no toque, movimento só com transform/opacity. */
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import type { ConteudoVitrine, Texto } from '@/lib/vitrine/conteudo'
+import GoogleReviewSection from '@/components/GoogleReviewSection'
+
+export type DadosVitrine = {
+  nome: string
+  slug: string
+  descricao: string | null
+  telefone: string | null
+  endereco: string | null
+  logo: string | null
+  capa: string | null
+  instagram: string | null
+  cor: string
+  cor2: string
+  categorias: { nome: string; servicos: { id: string; nome: string; descricao: string | null; preco: number | null; duracao: number | null; foto: string | null }[] }[]
+  equipe: { id: string; nome: string; foto: string | null; dona: boolean }[]
+  pacotes: {
+    id: string
+    nome: string
+    preco: number
+    descricao: string | null
+    itens: { nome: string; qtd: number }[]
+    separado: number | null
+    sessoes: { servico: string | null; qtd: number } | null
+    foto: string | null
+  }[]
+  conteudo: ConteudoVitrine
+  avaliacao: {
+    businessId: string
+    url: string
+    nota: number | null
+    total: number | null
+    pontos: number
+    premio: { name: string; pointsRequired: number } | null
+  } | null
+}
+
+const TINTA = '#2A2520'
+const SUAVE = '#7C7266'
+const LINHA = '#E7DECF'
+const CREME = '#FAF7F2'
+const SERIF = 'font-[family-name:var(--font-vitrine)]'
+const SANS = 'font-[family-name:var(--font-vitrine-sans)]'
+const ROMANOS = ['I', 'II', 'III', 'IV', 'V']
+
+/* "Pedra polida": brilhos radiais em creme e branco, sem imagem e sem filtro
+   (o mármore por feTurbulence saiu como véu cinza no Chrome). */
+const MARMORE = [
+  'radial-gradient(ellipse 60% 45% at 12% 8%, rgba(255,255,255,.95), transparent 70%)',
+  'radial-gradient(ellipse 50% 40% at 88% 92%, rgba(203,170,98,.10), transparent 70%)',
+  'radial-gradient(ellipse 45% 35% at 70% 20%, rgba(236,226,212,.55), transparent 70%)',
+].join(',')
+
+const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
+const tempo = (m: number | null) => (!m ? '' : m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, '0') : ''}`)
+
+const ICONES = {
+  pino: 'M12 21s-6-5.6-6-11a6 6 0 1 1 12 0c0 5.4-6 11-6 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
+  whats: 'M4 20l1.3-3.9A8 8 0 1 1 8 19l-4 1Z',
+  insta: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4Zm5 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm5.5-1.5h.01',
+  play: 'M9 6.5v11l9-5.5-9-5.5Z',
+  seta: 'M4 12h16M14 6l6 6-6 6',
+  // procedimentos (cartões de pacote): mesmo traço fino dos demais
+  olho: 'M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Zm9.5 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 7.6 5 5.6M9.4 6.2 9 4M14.6 6.2 15 4M18 7.6l1-2',
+  labios: 'M3 12c2.5-3.5 5-5 7-4.2.8.3 1.4.8 2 .8s1.2-.5 2-.8c2-.8 4.5.7 7 4.2-2.6 3.6-5.6 5.5-9 5.5S5.6 15.6 3 12Zm0 0h18',
+  seringa: 'M18 3l3 3M19.5 4.5 15 9M16.5 7.5l-9 9-3 .5.5-3 9-9M7.5 13.5 9 15M10 11l1.5 1.5M3 21l1.5-1.5',
+  brilho: 'M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2-1.2 2.3-1.2-2.3L8.5 12l2.3-1.2L12 8.5Z',
+  folha: 'M5 19c0-8 5-14 15-14 0 10-6 15-14 15M5 19l7-7',
+}
+
+/** desenho do procedimento pelo nome (pacote primeiro, depois o 1º item) */
+function iconeDoProcedimento(...nomes: string[]): keyof typeof ICONES {
+  for (const n of nomes) {
+    if (/c[íi]lio|sobrancelh|brow|blefaro|olhar|lash/i.test(n)) return 'olho'
+    // injetável antes de lábios: "preenchimento labial" é seringa, não micropigmentação
+    if (/toxina|preenchimento|botul/i.test(n)) return 'seringa'
+    if (/l[áa]bi/i.test(n)) return 'labios'
+    if (/spa|massagem|banho|escalda/i.test(n)) return 'folha'
+    if (/pele|peeling|limpeza|microagulh/i.test(n)) return 'brilho'
+  }
+  return 'brilho'
+}
+
+function Icone({ nome, cor, className = 'h-5 w-5' }: { nome: keyof typeof ICONES; cor: string; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke={cor} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d={ICONES[nome]} />
+    </svg>
+  )
+}
+
+function Selo() {
+  return (
+    <span className={`${SANS} ml-2 inline-block translate-y-[-2px] rounded-full px-1.5 py-[1px] align-middle text-[9px] font-medium uppercase not-italic tracking-wider`} style={{ background: '#CBAA6226', color: '#8A6A2E' }}>
+      exemplo
+    </span>
+  )
+}
+
+function T({ x }: { x: Texto }) {
+  if (!x.ex) return <>{x.t}</>
+  return (
+    <span className="rounded-sm outline-1 outline-dashed outline-offset-4" style={{ outlineColor: '#CBAA6299' }}>
+      {x.t}
+      <Selo />
+    </span>
+  )
+}
+
+function useVisto<T extends HTMLElement>(margem = '0px 0px -12% 0px') {
+  const ref = useRef<T>(null)
+  const [visto, setVisto] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && (setVisto(true), io.disconnect()), { rootMargin: margem })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [margem])
+  return [ref, visto] as const
+}
+
+/* Aparece devagar, subindo pouco. */
+function Surge({ children, atraso = 0, className = '' }: { children: ReactNode; atraso?: number; className?: string }) {
+  const [ref, visto] = useVisto<HTMLDivElement>()
+  return (
+    <div
+      ref={ref}
+      className={`transition-[opacity,transform] duration-700 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none ${visto ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'} ${className}`}
+      style={{ transitionDelay: `${atraso}ms` }}
+    >
+      {children}
+    </div>
+  )
+}
+
+/* Título que sobe de dentro de uma "cortina" (máscara). */
+function Revela({ children, atraso = 0, className = '' }: { children: ReactNode; atraso?: number; className?: string }) {
+  const [ref, visto] = useVisto<HTMLSpanElement>()
+  return (
+    <span ref={ref} className={`block overflow-hidden pb-[0.12em] ${className}`}>
+      <span
+        className={`block transition-transform duration-1000 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none ${visto ? 'translate-y-0' : 'translate-y-[110%]'}`}
+        style={{ transitionDelay: `${atraso}ms` }}
+      >
+        {children}
+      </span>
+    </span>
+  )
+}
+
+/* Imagem que anda um pouco mais devagar que a rolagem (profundidade). */
+function Profundidade({ children, forca = 50, className = '' }: { children: ReactNode; forca?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let raf = 0
+    const mover = () => {
+      raf = 0
+      const r = el.parentElement!.getBoundingClientRect()
+      const p = (r.top + r.height / 2 - innerHeight / 2) / innerHeight // -1..1 perto do centro
+      el.style.transform = `translate3d(0, ${(p * forca).toFixed(1)}px, 0) scale(1.12)`
+    }
+    const pedir = () => { if (!raf) raf = requestAnimationFrame(mover) }
+    mover()
+    addEventListener('scroll', pedir, { passive: true })
+    return () => { removeEventListener('scroll', pedir); cancelAnimationFrame(raf) }
+  }, [forca])
+  return <div ref={ref} className={`absolute inset-0 will-change-transform ${className}`}>{children}</div>
+}
+
+/* Link secundário: texto com sublinhado dourado que cresce. */
+function Sublinhado({ href, children, cor, externo = false }: { href: string; children: ReactNode; cor: string; externo?: boolean }) {
+  const cls = `${SANS} group relative inline-flex items-center gap-2 whitespace-nowrap pb-1 text-[15px] font-semibold`
+  const conteudo = (
+    <>
+      {children}
+      <Icone nome="seta" cor={cor} className="h-3.5 w-3.5 transition-transform duration-500 group-hover:translate-x-1" />
+      <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-[.35] transition-transform duration-700 group-hover:scale-x-100" style={{ background: cor }} />
+    </>
+  )
+  return externo ? <a href={href} target="_blank" rel="noopener" className={cls} style={{ color: TINTA }}>{conteudo}</a> : <a href={href} className={cls} style={{ color: TINTA }}>{conteudo}</a>
+}
+
+function BotaoAgendar({ href, children = 'Agendar atendimento', className = '' }: { href: string; children?: ReactNode; className?: string }) {
+  return (
+    <Link href={href} className={`${SANS} group relative inline-flex items-center justify-center gap-3 whitespace-nowrap rounded-full px-8 py-4 text-[16px] font-semibold text-white transition-[transform,background] duration-300 hover:-translate-y-0.5 hover:bg-black ${className}`} style={{ background: TINTA }}>
+      <span className="relative">{children}</span>
+      <Icone nome="seta" cor="#fff" className="relative h-4 w-4 transition-transform duration-500 group-hover:translate-x-1" />
+    </Link>
+  )
+}
+
+/* Entrada: o monograma da logo surge com brilho dourado. Só na 1ª visita da sessão, < 1 s. */
+function Entrada({ monograma }: { monograma?: string }) {
+  const [fase, setFase] = useState<'on' | 'saindo' | 'off'>('on')
+  useEffect(() => {
+    let visto = false
+    try { visto = sessionStorage.getItem('vitrine-entrada') === '1'; sessionStorage.setItem('vitrine-entrada', '1') } catch {}
+    if (visto || !monograma || matchMedia('(prefers-reduced-motion: reduce)').matches) { setFase('off'); return }
+    const a = setTimeout(() => setFase('saindo'), 850)
+    const b = setTimeout(() => setFase('off'), 1450)
+    return () => { clearTimeout(a); clearTimeout(b) }
+  }, [monograma])
+  if (fase === 'off' || !monograma) return null
+  return (
+    <div aria-hidden className={`fixed inset-0 z-[60] flex items-center justify-center transition-opacity duration-500 ${fase === 'saindo' ? 'opacity-0' : 'opacity-100'}`} style={{ background: CREME }}>
+      <div className="relative h-28 w-24 animate-[surgeMono_.9s_cubic-bezier(.16,1,.3,1)_both]">
+        <Image src={monograma} alt="" fill sizes="96px" className="object-contain" priority />
+        <span className="absolute inset-0 animate-[brilhoMono_1.1s_ease-in-out_.2s_both] bg-[linear-gradient(105deg,transparent_35%,rgba(255,255,255,.95)_50%,transparent_65%)] bg-[length:250%_100%] mix-blend-screen" style={{ WebkitMaskImage: `url(${monograma})`, maskImage: `url(${monograma})`, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center' }} />
+      </div>
+    </div>
+  )
+}
+
+/* Logo que sobe: começa grande na abertura e, com a rolagem, vai encolhendo
+   até o lugar dela no topo fixo. Um elemento fixo só, posicionado entre as
+   duas "vagas" (abertura e topo) conforme o quanto a página rolou. */
+function LogoQueSobe({ src, alt, vagaTopo, vagaAbertura }: { src: string; alt: string; vagaTopo: RefObject<HTMLElement | null>; vagaAbertura: RefObject<HTMLElement | null> }) {
+  const ref = useRef<HTMLAnchorElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let raf = 0
+    let medida: { top0: number; left0: number; escala0: number; top1: number; left1: number } | null = null
+    const medir = () => {
+      const t = vagaTopo.current?.getBoundingClientRect()
+      const a = vagaAbertura.current?.getBoundingClientRect()
+      if (!t || !a || !t.width) return
+      el.style.width = `${t.width}px`
+      el.style.height = `${t.height}px`
+      // celular: sem vaga na abertura, a logo já nasce pequena no topo
+      if (!a.width) { medida = { top0: t.top, left0: t.left, escala0: 1, top1: t.top, left1: t.left }; return }
+      medida = { top0: a.top + scrollY, left0: a.left, escala0: a.width / t.width, top1: t.top, left1: t.left }
+    }
+    const mover = () => {
+      raf = 0
+      if (!medida) return
+      const { top0, left0, escala0, top1, left1 } = medida
+      const p = Math.min(1, Math.max(0, scrollY / Math.max(1, top0 - top1)))
+      const top = top0 - scrollY > top1 ? top0 - scrollY : top1
+      const left = left0 + (left1 - left0) * p
+      const escala = escala0 + (1 - escala0) * p
+      el.style.transform = `translate3d(${left}px, ${top}px, 0) scale(${escala})`
+      el.style.opacity = '1'
+    }
+    const pedir = () => { if (!raf) raf = requestAnimationFrame(mover) }
+    const remedir = () => { medir(); mover() }
+    remedir()
+    addEventListener('scroll', pedir, { passive: true })
+    addEventListener('resize', remedir)
+    return () => { removeEventListener('scroll', pedir); removeEventListener('resize', remedir); cancelAnimationFrame(raf) }
+  }, [vagaTopo, vagaAbertura])
+  return (
+    <a ref={ref} href="#topo" aria-label={alt} className="fixed left-0 top-0 z-50 block origin-top-left opacity-0 will-change-transform">
+      <Image src={src} alt={alt} fill sizes="(min-width:640px) 240px, 182px" className="object-contain object-left" priority />
+    </a>
+  )
+}
+
+function VideoAbertura({ mp4, poster }: { mp4?: string; poster: string }) {
+  const [pronto, setPronto] = useState(false)
+  return (
+    <>
+      <Image src={poster} alt="" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" priority />
+      {mp4 && (
+        <video className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1500ms] ${pronto ? 'opacity-100' : 'opacity-0'}`} src={mp4} poster={poster} muted loop playsInline autoPlay preload="metadata" onCanPlay={() => setPronto(true)} />
+      )}
+    </>
+  )
+}
+
+function CartaoVideo({ v, cor, ativo, onAtivar }: { v: { src: string; poster: string; titulo: string }; cor: string; ativo: boolean; onAtivar: () => void }) {
+  const ref = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (ativo) el.play().catch(() => {})
+    else el.pause()
+  }, [ativo])
+  return (
+    <figure className="w-[64vw] max-w-[290px] shrink-0 snap-center sm:w-[260px]">
+      <button onClick={onAtivar} className="group relative block aspect-[9/16] w-full overflow-hidden rounded-t-[999px] rounded-b-[6px] bg-[#EFE8DC]" aria-label={`Assistir: ${v.titulo}`}>
+        <video ref={ref} src={v.src} poster={v.poster} playsInline loop muted preload="none" className="h-full w-full object-cover transition-transform duration-[1500ms] group-hover:scale-105" />
+        {!ativo && (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/80 bg-white/20 backdrop-blur-sm transition-transform duration-500 group-hover:scale-110">
+              <Icone nome="play" cor="#fff" className="ml-0.5 h-5 w-5" />
+            </span>
+          </span>
+        )}
+      </button>
+      <figcaption className={`${SANS} mt-4 text-center text-[15px] font-medium`} style={{ color: SUAVE }}>
+        <span style={{ color: cor }}>—</span> {v.titulo}
+      </figcaption>
+    </figure>
+  )
+}
+
+function Mapa({ consulta, cor }: { consulta: string; cor: string }) {
+  const [aberto, setAberto] = useState(false)
+  return (
+    <div className="relative aspect-[4/3] overflow-hidden border sm:aspect-auto sm:h-full sm:min-h-[360px]" style={{ borderColor: LINHA, background: '#F2ECE2' }}>
+      {aberto ? (
+        <iframe title="Mapa da clínica" src={`https://www.google.com/maps?q=${encodeURIComponent(consulta)}&output=embed`} className="absolute inset-0 h-full w-full grayscale-[.35] sepia-[.15]" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+      ) : (
+        <button onClick={() => setAberto(true)} className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ backgroundImage: MARMORE }}>
+          <span className="flex h-16 w-16 items-center justify-center rounded-full border bg-white/70" style={{ borderColor: `${cor}66` }}>
+            <Icone nome="pino" cor={cor} className="h-7 w-7" />
+          </span>
+          <span className={`${SANS} text-[15px] font-semibold`} style={{ color: cor }}>Toque pra ver o mapa</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** quem chegou por link de influencer/campanha (?cupom=) ou de indicação (?ref=):
+    o aviso aparece na abertura e o parâmetro segue em todo botão de agendar. */
+export type Chegada = { query: string; cupom?: { code: string; texto: string }; indicacao?: string }
+
+export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Chegada | null }) {
+  const c = d.conteudo
+  const [aba, setAba] = useState(d.categorias[0]?.nome ?? '')
+  const [videoAtivo, setVideoAtivo] = useState<number | null>(null)
+  const [rolou, setRolou] = useState(false)
+  const [passouAbertura, setPassouAbertura] = useState(false)
+  const vagaTopo = useRef<HTMLAnchorElement>(null)
+  const vagaAbertura = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onScroll = () => { setRolou(scrollY > 40); setPassouAbertura(scrollY > innerHeight * 0.6) }
+    onScroll()
+    addEventListener('scroll', onScroll, { passive: true })
+    return () => removeEventListener('scroll', onScroll)
+  }, [])
+
+  // leva o cupom/indicação junto; sem isso a cliente perdia o desconto no 1º clique
+  const comChegada = (href: string) => (chegada?.query ? `${href}${href.includes('?') ? '&' : '?'}${chegada.query}` : href)
+  const agendar = comChegada(`/${d.slug}/clinica/agendar`) // escolha do procedimento no visual da vitrine
+  const destaque = { color: d.cor } as const
+  const categoria = d.categorias.find((x) => x.nome === aba)
+  // serviço que é tratamento de várias sessões → o pacote dele (preço real das N sessões)
+  const pacoteDoServico = Object.fromEntries(d.pacotes.flatMap((p) => (p.sessoes?.servico ? [[p.sessoes.servico, p]] : [])))
+  const whats = d.telefone ? `https://wa.me/55${d.telefone.replace(/\D/g, '')}` : null
+  const nomeCurto = d.nome.replace(/beauty clinic/i, '').trim()
+  const lugar = c.mapa ? c.mapa.coords ?? `${c.mapa.consulta}${c.mapa.cidade ? `, ${c.mapa.cidade}` : ''}` : ''
+  const destino = encodeURIComponent(lugar)
+  const poster = c.teaser?.poster ?? d.capa ?? ''
+
+  return (
+    <main className={`vitrine-clinica ${SANS} min-h-screen overflow-x-clip ${chegada?.cupom ? 'pb-[110px]' : 'pb-[84px]'} font-normal sm:pb-0`} style={{ background: CREME, color: TINTA }}>
+      <Entrada monograma={c.monograma} />
+      {c.logoDourada && <LogoQueSobe src={c.logoDourada} alt={d.nome} vagaTopo={vagaTopo} vagaAbertura={vagaAbertura} />}
+
+      {/* Topo fixo: o Agendar nunca some */}
+      <header className={`fixed inset-x-0 top-0 z-40 transition-[background,box-shadow,border-color] duration-700 ${rolou ? 'border-b backdrop-blur-xl' : 'border-b border-transparent'}`} style={rolou ? { background: '#FAF7F2E6', borderColor: LINHA } : undefined}>
+        <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between px-5 sm:h-20 sm:px-10">
+          <a ref={vagaTopo} href="#topo" className="relative block h-9 w-[78px] sm:h-11 sm:w-[96px]" aria-label={d.nome}>
+            {/* com logo, a imagem é a do LogoQueSobe; aqui fica só a vaga */}
+            {c.logoDourada ? null : <span className={`${SERIF} text-[15px] font-medium`}>{nomeCurto}</span>}
+          </a>
+          <nav className="hidden items-center gap-8 text-[15px] font-medium lg:flex" style={{ color: TINTA }}>
+            {[['#clinica', 'A clínica'], ['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#equipe', 'Equipe'], ['#onde', 'Onde estamos']].map(([h, t]) => (
+              <a key={h} href={h} className="transition-opacity hover:opacity-60">{t}</a>
+            ))}
+          </nav>
+          <Link href={agendar} className="hidden rounded-full px-5 py-2.5 text-[15px] font-semibold text-white transition-colors hover:bg-black sm:block sm:px-6 sm:py-3" style={{ background: TINTA }}>
+            Agendar
+          </Link>
+        </div>
+      </header>
+
+      {/* Abertura: vídeo do espaço em tela cheia (celular) / painel ao lado (computador) */}
+      <section id="topo" className="relative lg:grid lg:min-h-[100svh] lg:grid-cols-2">
+        <div className="relative h-[58svh] lg:order-2 lg:h-auto">
+          {poster && <VideoAbertura mp4={c.teaser?.mp4} poster={poster} />}
+          <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ background: `linear-gradient(to right, ${CREME} 0%, transparent 22%)` }} />
+          <div aria-hidden className="pointer-events-none absolute inset-5 hidden border lg:block" style={{ borderColor: '#ffffff80' }} />
+        </div>
+
+        <div className="relative px-6 pb-16 pt-10 lg:mt-0 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
+          <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ backgroundImage: MARMORE }} />
+          {c.monograma && (
+            <div aria-hidden className="pointer-events-none absolute -left-10 top-1/2 hidden h-[78%] w-[62%] -translate-y-1/2 opacity-[0.07] lg:block">
+              <Image src={c.monograma} alt="" fill sizes="40vw" className="object-contain" />
+            </div>
+          )}
+          <div className="relative max-w-xl">
+            {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mb-10 hidden h-[84px] sm:block w-[182px] sm:h-[110px] sm:w-[240px]" />}
+            <h1 className={`${SERIF} text-[42px] font-medium leading-[1.05] tracking-[-0.025em] sm:text-[58px] xl:text-[68px]`}>
+              <Revela atraso={150}>{c.titulo.antes}</Revela>
+              <Revela atraso={300}><span style={destaque}>{c.titulo.destaque}</span>{c.titulo.depois ? ` ${c.titulo.depois}` : ''}{c.titulo.ex && <Selo />}</Revela>
+            </h1>
+            <Surge atraso={500}>
+              <p className="mt-6 max-w-md text-[16px] leading-[1.75] sm:text-[17px]" style={{ color: SUAVE }}>
+                <T x={c.subtitulo} />
+              </p>
+            </Surge>
+            {(chegada?.cupom || chegada?.indicacao) && (
+              <Surge atraso={580}>
+                <div className="mt-7 flex items-start gap-3.5 rounded-2xl border px-4 py-3.5" style={{ background: '#FFFFFF', borderColor: d.cor }}>
+                  <svg aria-hidden viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke={d.cor} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    {chegada.cupom
+                      ? <><path d="M20 12v8H4v-8" /><path d="M2 7h20v5H2z" /><path d="M12 22V7" /><path d="M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z" /></>
+                      : <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></>}
+                  </svg>
+                  <p className="text-[15px] leading-snug">
+                    {chegada.cupom ? (
+                      <>
+                        <span className="font-semibold">Cupom {chegada.cupom.code}: {chegada.cupom.texto}.</span>{' '}
+                        <span style={{ color: SUAVE }}>Já vai aplicado quando você agendar.</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold">Indicação de {chegada.indicacao}.</span>{' '}
+                        <span style={{ color: SUAVE }}>Que bom ter você aqui.</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </Surge>
+            )}
+            <Surge atraso={650} className="mt-9 flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-10">
+              <BotaoAgendar href={agendar} className="w-full sm:w-auto" />
+              <Sublinhado href="#servicos" cor={d.cor}>Ver serviços</Sublinhado>
+            </Surge>
+          </div>
+        </div>
+      </section>
+
+      {/* A clínica */}
+      <section id="clinica" className="relative scroll-mt-20 px-6 py-24 sm:px-10 lg:py-36">
+        <div className="mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1.1fr_1fr] lg:gap-24">
+          <div>
+            <h2 className={`${SERIF} text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+              <Revela>{c.proposta.titulo}</Revela>
+              <Revela atraso={120}><span style={destaque}>{c.proposta.destaque}</span></Revela>
+            </h2>
+            <Surge atraso={200}>
+              <p className="mt-8 max-w-lg text-[17px] leading-[1.8]" style={{ color: SUAVE }}><T x={c.proposta.texto} /></p>
+            </Surge>
+            {c.frase && (
+              <Surge atraso={300} className="mt-14">
+                <div style={{ borderColor: d.cor2 }} className="border-l pl-7">
+                  <p className={`${SERIF} text-[26px] leading-snug tracking-[-0.01em] sm:text-[30px]`}>“{c.frase}”</p>
+                  <p className="mt-3 text-[15px] font-semibold" style={{ color: d.cor }}>{d.equipe.find((p) => p.dona)?.nome ?? nomeCurto}</p>
+                </div>
+              </Surge>
+            )}
+          </div>
+          <ol className="lg:pt-24">
+            {c.pilares.map((p, i) => (
+              <Surge key={p.titulo} atraso={i * 140}>
+                <li className="grid grid-cols-[48px_1fr] gap-x-4 border-t py-8" style={{ borderColor: LINHA }}>
+                  <span className={`${SERIF} text-[22px]`} style={{ color: d.cor }}>{ROMANOS[i]}</span>
+                  <div>
+                    <h3 className={`${SERIF} text-[24px] font-medium leading-tight tracking-[-0.01em]`}>{p.titulo}</h3>
+                    <p className="mt-2 text-[15px] leading-[1.75]" style={{ color: SUAVE }}><T x={p.texto} /></p>
+                  </div>
+                </li>
+              </Surge>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* Serviços: carta de spa */}
+      <section id="servicos" className="relative scroll-mt-20 border-y px-6 py-24 sm:px-10 lg:py-36" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
+        <div className="mx-auto max-w-4xl">
+          <h2 className={`${SERIF} text-center text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+            <Revela>O que você <span style={destaque}>procura hoje?</span></Revela>
+          </h2>
+
+          {/* Categorias em pílula: são botões de ação, precisam parecer clicáveis
+              (Eduardo 22/10). Escolhida = marrom cheio, igual ao Agendar. */}
+          <div className="-mx-6 mt-12 overflow-x-auto px-6 py-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
+            <div className="flex w-max gap-2.5 sm:w-full sm:flex-wrap sm:justify-center sm:gap-3">
+              {d.categorias.map((x) => {
+                const ativa = x.nome === aba
+                return (
+                  <button
+                    key={x.nome}
+                    onClick={() => setAba(x.nome)}
+                    aria-pressed={ativa}
+                    className="whitespace-nowrap rounded-full border px-5 py-2.5 text-[15px] font-semibold transition-[background,color,border-color,transform] duration-300 hover:-translate-y-0.5 sm:px-6 sm:py-3"
+                    style={ativa ? { background: TINTA, borderColor: TINTA, color: '#fff' } : { background: '#fff', borderColor: '#D9CEBD', color: TINTA }}
+                  >
+                    {x.nome}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {c.categorias?.[aba] && (
+            <div key={`f-${aba}`} className="mx-auto mt-14 max-w-2xl animate-[entra_.8s_cubic-bezier(.16,1,.3,1)_both] text-center">
+              <p className={`${SERIF} text-[24px] leading-snug tracking-[-0.01em] sm:text-[28px]`}>“{c.categorias[aba].frase}”</p>
+              {c.categorias[aba].texto && <p className="mt-3 text-[15px] leading-relaxed" style={{ color: SUAVE }}>{c.categorias[aba].texto}</p>}
+            </div>
+          )}
+
+          <ul key={aba} className="mt-12">
+            {categoria?.servicos.map((s, i) => (
+              <li key={s.id} className="animate-[entra_.7s_cubic-bezier(.16,1,.3,1)_both]" style={{ animationDelay: `${i * 50}ms` }}>
+                <Link href={comChegada(`/${d.slug}/agendar?servicos=${s.id}`)} className="group flex items-center gap-4 border-b py-5" style={{ borderColor: LINHA }}>
+                  {/* foto do catálogo dela; sem foto, o monograma no lugar (a coluna não pula) */}
+                  <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl sm:h-20 sm:w-20" style={{ background: '#F6F0E6' }}>
+                    {s.foto ? (
+                      <Image src={s.foto} alt={s.nome} fill sizes="80px" className="object-cover transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-110" />
+                    ) : c.monograma ? (
+                      <Image src={c.monograma} alt="" fill sizes="80px" className="object-contain p-4 opacity-60" />
+                    ) : null}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`${SERIF} block text-[19px] font-medium leading-snug tracking-[-0.01em] sm:text-[21px]`}>{s.nome}</span>
+                    {s.descricao && <span className="mt-1 block max-w-xl text-[14px] leading-relaxed" style={{ color: SUAVE }}>{s.descricao}</span>}
+                    {s.duracao ? <span className="mt-1 block text-[13px]" style={{ color: '#A39886' }}>{tempo(s.duracao)}</span> : null}
+                  </span>
+                  <span className="shrink-0 text-right">
+                    {!s.preco && pacoteDoServico[s.id] ? (
+                      <>
+                        <span className="block text-[12px]" style={{ color: SUAVE }}>{pacoteDoServico[s.id].sessoes!.qtd} sessões</span>
+                        <span className="block text-[18px] font-semibold">{brl(pacoteDoServico[s.id].preco)}</span>
+                      </>
+                    ) : s.preco ? (
+                      <>
+                        <span className="block text-[12px]" style={{ color: SUAVE }}>a partir de</span>
+                        <span className="block text-[18px] font-semibold">{brl(s.preco)}</span>
+                      </>
+                    ) : (
+                      <span className="text-[15px]" style={{ color: SUAVE }}>Sob avaliação</span>
+                    )}
+                  </span>
+                  <span className="hidden shrink-0 rounded-full border px-4 py-2 text-[14px] font-semibold transition-colors group-hover:bg-[#2A2520] group-hover:text-white sm:inline-block" style={{ borderColor: TINTA }}>Agendar</span>
+                  <Icone nome="seta" cor={TINTA} className="h-4 w-4 shrink-0 sm:hidden" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-8 text-center text-[13px]" style={{ color: SUAVE }}>
+            <T x={{ t: 'Em alguns procedimentos o valor muda conforme a profissional. Você vê o valor de cada uma na hora de agendar.', ex: true }} />
+          </p>
+          <Surge className="mt-14 text-center"><BotaoAgendar href={agendar} /></Surge>
+        </div>
+      </section>
+
+      {/* Pacotes: os que a clínica cadastrou no sistema, com o preço real.
+          Combo se fecha com a clínica (WhatsApp); tratamento de várias sessões
+          de um serviço só dá pra agendar a 1ª direto. */}
+      {d.pacotes.length > 0 && (
+        <section id="pacotes" className="scroll-mt-20 border-b px-6 py-24 sm:px-10 lg:py-32" style={{ borderColor: LINHA }}>
+          <div className="mx-auto max-w-6xl">
+            <h2 className={`${SERIF} text-center text-[36px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+              <Revela>Pacotes e <span style={destaque}>tratamentos</span></Revela>
+            </h2>
+            <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {d.pacotes.map((p, i) => (
+                <Surge key={p.id} atraso={i * 90} className="h-full">
+                  <article className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-white transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:shadow-[0_22px_44px_-24px_rgba(74,58,32,.38)]" style={{ borderColor: LINHA }}>
+                    {/* faixa do procedimento: desenho dourado sobre a pedra creme, etiqueta e economia */}
+                    <div className={`relative flex items-center justify-center overflow-hidden ${p.foto ? 'h-52' : 'h-36'}`} style={{ background: '#F6F0E6', backgroundImage: MARMORE }}>
+                      {p.foto && (
+                        <>
+                          <Image src={p.foto} alt={p.nome} fill sizes="(min-width:1024px) 380px, (min-width:640px) 50vw, 100vw" className="object-cover transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-105" />
+                        </>
+                      )}
+                      <span className="absolute left-5 top-4 z-10 rounded-full bg-white/90 px-3 py-1 text-[12px] font-semibold" style={{ color: TINTA }}>
+                        {p.sessoes ? `Tratamento · ${p.sessoes.qtd} sessões` : `Pacote · ${p.itens.length} ${p.itens.length === 1 ? 'procedimento' : 'procedimentos'}`}
+                      </span>
+                      {p.separado && p.separado > p.preco && (
+                        <span className="absolute right-5 top-4 z-10 rounded-full px-3 py-1 text-[12px] font-bold text-white" style={{ background: d.cor }}>
+                          Economize {brl(p.separado - p.preco)}
+                        </span>
+                      )}
+                      {!p.foto && <span className="mt-7 flex h-20 w-20 items-center justify-center rounded-full border bg-white/70 transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-110" style={{ borderColor: `${d.cor}55` }}>
+                        <Icone nome={iconeDoProcedimento(p.nome, ...p.itens.map((it) => it.nome))} cor={d.cor} className="h-10 w-10" />
+                      </span>}
+                    </div>
+                    <div className="flex flex-1 flex-col p-7 pt-6">
+                    <h3 className={`${SERIF} text-[23px] font-medium leading-tight tracking-[-0.01em]`}>{p.nome}</h3>
+                    {p.descricao && <p className="mt-3 line-clamp-5 text-[14px] leading-relaxed" style={{ color: SUAVE }}>{p.descricao}</p>}
+                    {!p.sessoes && (
+                      <ul className="mt-5 space-y-3">
+                        {p.itens.map((it) => (
+                          <li key={it.nome} className="flex items-start gap-3 text-[15px] leading-snug">
+                            <span className="mt-[1px] flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: '#F6F0E6' }}>
+                              <Icone nome={iconeDoProcedimento(it.nome)} cor={d.cor} className="h-3.5 w-3.5" />
+                            </span>
+                            <span>{it.qtd > 1 ? `${it.qtd}x ` : ''}{it.nome}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-auto pt-7">
+                      {p.separado && <p className="text-[14px]" style={{ color: SUAVE }}>de <span className="line-through">{brl(p.separado)}</span> por</p>}
+                      <p className="text-[30px] font-bold tracking-[-0.02em]">{brl(p.preco)}</p>
+                      <div className="mt-5 flex flex-col gap-3">
+                        {/* tudo leva pro agendamento: tratamento marca a 1ª sessão; combo marca
+                            os serviços juntos pelo preço do pacote (o servidor confere) */}
+                        <Link
+                          href={comChegada(p.sessoes?.servico ? `/${d.slug}/agendar?servicos=${p.sessoes.servico}` : `/${d.slug}/agendar?pacote=${p.id}`)}
+                          className="rounded-full py-3 text-center text-[15px] font-semibold text-white transition-colors hover:bg-black"
+                          style={{ background: TINTA }}
+                        >
+                          {p.sessoes?.servico ? 'Agendar a 1ª sessão' : 'Agendar este pacote'}
+                        </Link>
+                        {whats && (
+                          <a href={`${whats}?text=${encodeURIComponent(`Olá! Tenho uma dúvida sobre o pacote ${p.nome}.`)}`} target="_blank" rel="noopener" className="text-center text-[14px] font-medium underline-offset-4 hover:underline" style={{ color: SUAVE }}>
+                            Dúvidas? Fale no WhatsApp
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    </div>
+                  </article>
+                </Surge>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Destaque: foto grande */}
+      {c.destaque && (
+        <section className="relative lg:grid lg:min-h-[92svh] lg:grid-cols-2">
+          <div className="relative h-[78svh] overflow-hidden lg:h-auto">
+            <Profundidade forca={60}>
+              <Image src={c.destaque.foto} alt={c.destaque.sobre} fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
+            </Profundidade>
+            <div aria-hidden className="pointer-events-none absolute inset-5 border" style={{ borderColor: '#ffffff70' }} />
+          </div>
+          <div className="flex flex-col justify-center px-6 py-20 sm:px-10 lg:px-20 xl:px-28">
+            <h2 className={`${SERIF} text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[52px]`}>
+              <Revela>{c.destaque.titulo}</Revela>
+              <Revela atraso={120}><span style={destaque}>{c.destaque.destaque}</span></Revela>
+            </h2>
+            <Surge atraso={200}><p className="mt-7 max-w-md text-[17px] leading-[1.8]" style={{ color: SUAVE }}>{c.destaque.texto}</p></Surge>
+            <Surge atraso={300} className="mt-10"><BotaoAgendar href={agendar}>{c.destaque.botao}</BotaoAgendar></Surge>
+          </div>
+        </section>
+      )}
+
+      {/* Vídeos */}
+      {c.videos.length > 0 && (
+        <section id="videos" className="scroll-mt-20 border-t py-24 lg:py-36" style={{ borderColor: LINHA }}>
+          <div className="px-6">
+            <h2 className={`${SERIF} text-center text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+              <Revela>Veja de perto <span style={destaque}>o nosso trabalho</span></Revela>
+            </h2>
+          </div>
+          <div className="mt-16 flex snap-x snap-mandatory gap-6 overflow-x-auto px-[18vw] pb-2 [scrollbar-width:none] sm:justify-center sm:gap-8 sm:px-10">
+            {c.videos.map((v, i) => (
+              <Surge key={v.src} atraso={i * 120}>
+                <CartaoVideo v={v} cor={d.cor} ativo={videoAtivo === i} onAtivar={() => setVideoAtivo(i)} />
+              </Surge>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Equipe */}
+      <section id="equipe" className="scroll-mt-20 border-t px-6 py-24 sm:px-10 lg:py-36" style={{ borderColor: LINHA, backgroundColor: '#FDFBF8' }}>
+        <div className="mx-auto max-w-6xl">
+          <h2 className={`${SERIF} text-center text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+            <Revela>Quem vai <span style={destaque}>cuidar de você</span></Revela>
+          </h2>
+          <div className="mt-20 grid gap-16 sm:grid-cols-2 lg:grid-cols-3 lg:gap-12">
+            {d.equipe.map((p, i) => {
+              const bio = c.bios[p.nome] ?? c.bios[p.nome.trim().split(/\s+/)[0]]
+              return (
+                <Surge key={p.id} atraso={i * 150}>
+                  <article className="group text-center">
+                    <div className="relative mx-auto h-56 w-56">
+                      <span aria-hidden className="absolute -inset-3 rounded-full border transition-transform duration-[1200ms] group-hover:rotate-45" style={{ borderColor: `${d.cor2}99`, borderStyle: 'solid' }} />
+                      <span aria-hidden className="absolute -inset-3 rounded-full border-t" style={{ borderColor: d.cor }} />
+                      <div className="relative h-full w-full overflow-hidden rounded-full bg-[#EFE8DC]">
+                        {p.foto ? (
+                          <Image src={p.foto} alt={p.nome} fill sizes="224px" className="object-cover transition-transform duration-[1500ms] group-hover:scale-105" />
+                        ) : (
+                          <span className={`${SERIF} flex h-full items-center justify-center text-[56px]`} style={{ color: d.cor }}>{p.nome[0]}</span>
+                        )}
+                      </div>
+                    </div>
+                    <h3 className={`${SERIF} mt-9 text-[26px] font-medium leading-tight tracking-[-0.01em]`}>{p.nome}</h3>
+                    <p className="mt-2 text-[15px] font-semibold" style={{ color: d.cor }}>{bio?.papel ?? (p.dona ? 'Fundadora' : 'Especialista')}</p>
+                    <p className="mx-auto mt-4 max-w-xs text-[14px] leading-[1.75]" style={{ color: SUAVE }}>
+                      <T x={bio?.texto ?? { t: 'Formação, especialidades e o jeito de atender entram aqui, a partir do áudio que ela mandar.', ex: true }} />
+                    </p>
+                  </article>
+                </Surge>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Avaliação no Google + pontos: o mesmo componente da página pública
+          (grava pelo /api/claim-review), só com a cor da clínica */}
+      {d.avaliacao && (
+        <section id="avaliacoes" className="scroll-mt-20 border-t px-6 py-24 sm:px-10 lg:py-32" style={{ borderColor: LINHA }}>
+          <div className="mx-auto max-w-xl">
+            <h2 className={`${SERIF} text-center text-[36px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[46px]`}>
+              <Revela>{d.avaliacao.pontos > 0 ? <>Avalie e ganhe <span style={destaque}>{d.avaliacao.pontos} pontos</span></> : <>Conte como foi <span style={destaque}>sua experiência</span></>}</Revela>
+            </h2>
+            <Surge atraso={150} className="mt-12">
+              <div style={{ ['--brand-primary' as string]: d.cor } as CSSProperties}>
+                <GoogleReviewSection
+                  businessId={d.avaliacao.businessId}
+                  googleMapsUrl={d.avaliacao.url}
+                  rating={d.avaliacao.nota}
+                  reviewsCount={d.avaliacao.total}
+                  pointsForReview={d.avaliacao.pontos}
+                  brandMode="light"
+                  slug={d.slug}
+                  cheapestReward={d.avaliacao.premio}
+                  destaque={TINTA}
+                />
+              </div>
+            </Surge>
+          </div>
+        </section>
+      )}
+
+      {/* Onde estamos + Instagram */}
+      <section id="onde" className="scroll-mt-20 border-t px-6 py-24 sm:px-10 lg:py-36" style={{ borderColor: LINHA }}>
+        <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
+          <div>
+            <h2 className={`${SERIF} text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+              <Revela>Venha nos <span style={destaque}>visitar</span></Revela>
+            </h2>
+            <Surge atraso={150}>
+              {d.endereco && (
+                <p className="mt-8 flex gap-4 text-[16px] leading-[1.75]" style={{ color: SUAVE }}>
+                  <Icone nome="pino" cor={d.cor} className="mt-1 h-5 w-5 shrink-0" />
+                  {/* endereço do conteúdo da clínica (formatado); o do cadastro pode vir sem maiúsculas */}
+                  <span>{c.mapa?.consulta ?? d.endereco}{c.mapa?.cidade ? `, ${c.mapa.cidade}` : ''}{c.mapa?.confirmar && <Selo />}</span>
+                </p>
+              )}
+              {c.horario && <p className="mt-3 pl-9 text-[16px]" style={{ color: SUAVE }}><T x={c.horario} /></p>}
+              <div className="mt-10 flex flex-col gap-5">
+                {c.mapa && <Sublinhado href={`https://www.google.com/maps/dir/?api=1&destination=${destino}`} cor={d.cor} externo>Como chegar</Sublinhado>}
+                {whats && <Sublinhado href={whats} cor={d.cor} externo>Falar no WhatsApp</Sublinhado>}
+                {d.instagram && <Sublinhado href={d.instagram} cor={d.cor} externo>@{c.instagram?.usuario ?? 'instagram'}</Sublinhado>}
+              </div>
+            </Surge>
+          </div>
+          {c.mapa && <Surge atraso={150} className="h-full"><Mapa consulta={lugar} cor={d.cor} /></Surge>}
+        </div>
+      </section>
+
+      {/* Fecho */}
+      <section className="relative overflow-hidden border-t px-6 py-28 text-center sm:px-10 lg:py-40" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
+        {c.monograma && (
+          <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[120%] w-[70%] -translate-x-1/2 -translate-y-1/2 opacity-[0.06]">
+            <Image src={c.monograma} alt="" fill sizes="70vw" className="object-contain" />
+          </div>
+        )}
+        <div className="relative mx-auto max-w-3xl">
+          <h2 className={`${SERIF} text-[42px] font-medium leading-[1.06] tracking-[-0.025em] sm:text-[62px]`}>
+            <Revela>Seu horário</Revela>
+            <Revela atraso={120}><span style={destaque}>está te esperando</span></Revela>
+          </h2>
+          <Surge atraso={200}><p className="mx-auto mt-6 max-w-md text-[16px] leading-[1.75]" style={{ color: SUAVE }}>Escolha o procedimento, a profissional e o melhor horário pra você.</p></Surge>
+          <Surge atraso={300} className="mt-11"><BotaoAgendar href={agendar} /></Surge>
+        </div>
+      </section>
+
+      <footer className="border-t px-6 py-12 text-center sm:px-10" style={{ borderColor: LINHA }}>
+        {c.logoDourada && <div className="relative mx-auto h-14 w-[120px]"><Image src={c.logoDourada} alt={d.nome} fill sizes="120px" className="object-contain" /></div>}
+        <p className="mt-6 text-[13px]" style={{ color: '#B3A897' }}>Agendamento online · AgendaPRO</p>
+      </footer>
+
+      {/* WhatsApp flutuante (padrão das clínicas brasileiras do estudo). No
+          celular fica acima da barra do Agendar e só aparece depois da abertura. Número = telefone do cadastro. */}
+      {whats && (
+        <a
+          href={`${whats}?text=${encodeURIComponent('Olá! Vim pelo site e queria tirar uma dúvida.')}`}
+          target="_blank"
+          rel="noopener"
+          aria-label="Falar no WhatsApp"
+          className={`fixed bottom-[104px] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-[0_10px_28px_-8px_rgba(0,0,0,.35)] transition-[opacity,transform] duration-300 hover:scale-105 sm:pointer-events-auto sm:bottom-6 sm:right-6 sm:translate-y-0 sm:opacity-100 ${passouAbertura ? '' : 'pointer-events-none translate-y-3 opacity-0'}`}
+          style={{ background: '#25D366' }}
+        >
+          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden>
+            <path d="M4 20l1.3-3.9A8 8 0 1 1 8 19l-4 1Z" stroke="#fff" strokeWidth={1.6} strokeLinejoin="round" />
+            <path d="M9.2 8.2c-.4.5-.5 1.2-.1 2.1.7 1.6 2 2.9 3.6 3.6.9.4 1.6.3 2.1-.1l.4-.5c.2-.3.1-.6-.2-.8l-1.2-.7c-.3-.2-.6-.1-.8.1l-.3.4c-.9-.4-1.6-1.1-2-2l.4-.3c.2-.2.3-.5.1-.8l-.7-1.2c-.2-.3-.5-.4-.8-.2l-.5.4Z" fill="#fff" />
+          </svg>
+        </a>
+      )}
+
+      {/* Celular: Agendar fixo embaixo o tempo todo */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:hidden" style={{ background: '#FAF7F2EB', borderColor: LINHA }}>
+        {/* veio pelo link do cupom: o aviso da abertura fica abaixo da dobra no celular, então o desconto aparece aqui desde o 1º segundo */}
+        {chegada?.cupom && (
+          <p className="mb-2 text-center text-[13px] font-semibold" style={{ color: d.cor }}>
+            Cupom {chegada.cupom.code} · {chegada.cupom.texto} aplicado
+          </p>
+        )}
+        <Link href={agendar} className="flex items-center justify-center gap-3 rounded-full py-4 text-[16px] font-semibold text-white" style={{ background: TINTA }}>
+          Agendar atendimento <Icone nome="seta" cor="#fff" className="h-4 w-4" />
+        </Link>
+      </div>
+    </main>
+  )
+}

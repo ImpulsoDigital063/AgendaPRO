@@ -1306,3 +1306,60 @@ select.admin-input:focus {
 @media (prefers-reduced-motion: reduce) {
   .admin-sinal-pulse { animation: none; }
 }
+
+
+/* VITRINE DA CLÍNICA (protótipo Ivna Loyola, 22/10/2026) · animações da página e
+   tema creme/dourado do /[slug]/agendar. Ficam aqui e não em <style> dentro do
+   componente: extensão de modo escuro do navegador mexe no <style> da página e
+   dá aviso de hidratação. */
+@keyframes entra { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes surgeMono { from { opacity: 0; transform: scale(.92); filter: blur(6px) } to { opacity: 1; transform: none; filter: none } }
+@keyframes brilhoMono { from { background-position: 130% 0 } to { background-position: -130% 0 } }
+@media (prefers-reduced-motion: reduce) { .vitrine-clinica * { animation: none !important; transition: none !important } }
+/* títulos das etapas na serifa da marca; cantos e pesos do tema */
+.tema-vitrine h2:not(.uppercase), .tema-vitrine h3 { font-family: var(--font-vitrine), serif; font-weight: 600; letter-spacing: -0.015em; }
+/* sem caixa alta espaçada no tema da clínica (estudo de clínicas, 22/10): rótulos em texto normal, um pouco maiores */
+.tema-vitrine .uppercase { text-transform: none; letter-spacing: 0; }
+.tema-vitrine h2.uppercase { font-weight: 600; font-size: 14px; }
+.tema-vitrine .text-\[10px\].uppercase, .tema-vitrine .text-\[11px\].uppercase, .tema-vitrine .text-xs.uppercase { font-size: 13px; }
+.tema-vitrine span[style*="16,185,129"], .tema-vitrine span[style*="16, 185, 129"] { background: rgba(164,126,59,.12) !important; color: #A47E3B !important; }
+.tema-vitrine h2:not(.uppercase) { font-size: 1.45rem; line-height: 1.15; } @media (min-width: 640px) { .tema-vitrine h2:not(.uppercase) { font-size: 1.65rem; } }
+.tema-vitrine button, .tema-vitrine input { font-family: inherit; }
+.tema-vitrine .rounded-2xl, .tema-vitrine .rounded-xl { border-radius: 14px; }
+.tema-vitrine .font-bold { font-weight: 700; }
+.tema-vitrine .font-semibold { font-weight: 700; } .tema-vitrine .font-medium { font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════════
+   PAINEL DA CLÍNICA (protótipo Ivna Loyola, 23/10) · a mesma identidade
+   da página da clínica no painel da dona, da recepção e das profissionais.
+   Só vale dentro de `.painel-clinica` (ver src/lib/vitrine/painel.ts):
+   nenhuma outra conta sente. Celular e computador iguais de propósito:
+   é paleta e fonte, não layout.
+═══════════════════════════════════════════════════════════ */
+.admin-shell.painel-clinica {
+  --admin-bg:            #FAF7F2;
+  --admin-bg-deep:       #F5EFE6;
+  --admin-surface:       #FFFFFF;
+  --admin-surface-hi:    #FDFBF8;
+  --admin-surface-hover: #F5EFE6;
+  --admin-popover-border: #D9CCB6;
+  --admin-border:        #E7DECF;
+  --admin-border-hi:     #D9CCB6;
+  --admin-text:          #2A2520;
+  --admin-text-2:        #4A433B;
+  --admin-text-mute:     #7C7266;
+  --admin-text-faded:    #A89C8B;
+  --admin-divider:       #F0E9DD;
+  --admin-input-bg:      #FDFBF8;
+  --admin-shadow:        0 10px 40px rgba(74, 58, 32, 0.08);
+  --admin-bottomnav-bg:  rgba(250, 247, 242, 0.94);
+  font-family: var(--font-painel-sans), ui-sans-serif, system-ui, sans-serif;
+}
+.painel-clinica h1:not(.uppercase),
+.painel-clinica h2:not(.uppercase),
+.painel-clinica .painel-titulo {
+  font-family: var(--font-painel-serif), Georgia, serif;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.painel-clinica button, .painel-clinica input, .painel-clinica select, .painel-clinica textarea { font-family: inherit; }

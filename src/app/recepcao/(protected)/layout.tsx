@@ -9,6 +9,10 @@ import RecepcaoDesktopSidebar from '@/components/recepcao/RecepcaoDesktopSidebar
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
+import { painelDaClinica } from '@/lib/vitrine/painel'
+import { classesDoPainel, FundoDaClinica } from '@/components/admin/brand/PainelClinica'
+import CentralNotificacoes from '@/components/notificacoes/CentralNotificacoes'
+import PushEnableBanner from '@/components/admin/PushEnableBanner'
 
 export default async function RecepcaoLayout({
   children,
@@ -71,18 +75,23 @@ export default async function RecepcaoLayout({
   const brand = business
   const businessSlug = business.slug ?? null
 
+  // protótipo · clínica com vitrine veste a identidade dela no painel (painel.ts)
+  const painel = painelDaClinica(businessSlug)
+
   return (
     <AdminThemeProvider initial={initialTheme}>
       <BrandThemeInjector brand={brand} />
       <SlugCacher slug={businessSlug} />
-      <div className="admin-shell" data-admin-theme={initialTheme}>
+      <div className={`admin-shell${painel ? ` ${classesDoPainel}` : ''}`} data-admin-theme={initialTheme}>
+        {painel && <FundoDaClinica monograma={painel.monograma} />}
         {/* Decor scatter sutil · só Palace · funciona em mobile+desktop (Leticia opera no celular) */}
         {businessSlug === 'palace-nail-spa' && (
           <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
             <BrandDecorBackground pattern="scatter" brand={businessSlug} opacity={0.02} />
           </div>
         )}
-        <InstallBanner area="profissional" />
+        {/* painel da clínica: o convite de instalar mora em Notificações */}
+        {!painel && <InstallBanner area="profissional" />}
 
         {/* Sidebar tablet+desktop · fixa em ≥md · Letícia opera em iPad */}
         {/* v133 · aba Horários só pra negócio que passou essa decisão pra recepção */}
@@ -90,10 +99,11 @@ export default async function RecepcaoLayout({
             Sem isto, Comandas, Produtos e Pacotes eram inalcançáveis no mobile. */}
         <RecepcaoMobileTopBar
           businessName={business.name ?? null}
-          brandLogoUrl={business.brand_logo_url ?? null}
+          brandLogoUrl={painel?.monograma ?? business.brand_logo_url ?? null}
           podeEditarHorario={(business as { recep_edita_horario?: boolean | null }).recep_edita_horario === true}
           tambemAtende={professional.does_appointments === true}
           pessoaNome={professional.name as string}
+          notificacoesBase={painel ? '/recepcao' : undefined}
           vendeProduto={(business as { vendas_balcao_enabled?: boolean | null }).vendas_balcao_enabled !== false}
         />
         <RecepcaoDesktopSidebar
@@ -105,6 +115,8 @@ export default async function RecepcaoLayout({
             business_slug: business.slug ?? null,
             brand_logo_url: business.brand_logo_url ?? null,
           }}
+          marcaClinica={painel}
+          notificacoesBase={painel ? '/recepcao' : undefined}
         />
 
         {/* Main area · padding-bottom pra tabbar mobile · padding-left pra sidebar tablet+ */}
@@ -112,6 +124,12 @@ export default async function RecepcaoLayout({
           className="relative z-10 md:pl-[240px]"
           style={{ paddingBottom: 'calc(108px + env(safe-area-inset-bottom))' }}
         >
+          {painel && (
+            <CentralNotificacoes
+              base="/recepcao"
+              itens={[<InstallBanner key="instalar" area="profissional" />, <PushEnableBanner key="push" />]}
+            />
+          )}
           {children}
         </div>
 

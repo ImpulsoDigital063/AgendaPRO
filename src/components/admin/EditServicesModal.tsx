@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { IconClose, IconCheck } from '@/components/ui/Icon'
 import { createClient } from '@/lib/supabase/client'
+import { carregarServicoPorProf, duracaoComProf, fazServico, lerServicoPorProf, precoComProf } from '@/lib/servico-por-profissional'
 import { COMBO_SELECT, escolhasPadrao, gruposDeCor, montarCombo, nomeProduto, type Combo } from '@/lib/combo-cores'
 
 type Service = {
@@ -51,6 +52,12 @@ export default function EditServicesModal({
   const [date, setDate] = useState('')
   const [time, setTime] = useState(startTime.slice(0, 5))
   const [professionalId, setProfessionalId] = useState('')
+  // v173 · quem faz, preço e tempo de cada profissional (o servidor grava assim)
+  const [porProf, setPorProf] = useState(() => lerServicoPorProf(null))
+  const [original, setOriginal] = useState<{ prof: string; ids: string } | null>(null)
+  const [decisaoPreco, setDecisaoPreco] = useState<'confirmar' | 'manter' | null>(null)
+  // trocou profissional ou serviço: o acréscimo é decidido de novo
+  useEffect(() => { setDecisaoPreco(null) }, [professionalId, selectedIds])
   const [notes, setNotes] = useState('')
   // Produto na comanda · exclusivo do plano Equipe. Só aparece se houver
   // comanda aberta (invoiceId) pra receber o produto.
@@ -115,6 +122,7 @@ export default function EditServicesModal({
         if (appt.appointment_date) setDate(appt.appointment_date)
         if (appt.start_time) setTime(String(appt.start_time).slice(0, 5))
         if (appt.professional_id) setProfessionalId(appt.professional_id)
+        setOriginal({ prof: appt.professional_id ?? '', ids: [...(data.currentServiceIds || [])].sort().join(',') })
         setNotes(appt.notes || '')
         setInvoiceId(data.invoice_id ?? null)
         setComandaProducts(data.comanda_products ?? [])
@@ -124,6 +132,8 @@ export default function EditServicesModal({
           const { data: cb } = await createClient().from('packages').select(COMBO_SELECT).eq('business_id', bid).eq('active', true).eq('kind', 'combo').order('name')
           // Combo sem serviço não serve aqui: o atendimento precisa de serviço
           if (!cancelled) setCombos(((cb ?? []) as unknown as Combo[]).filter((c) => (c.package_items ?? []).some((i) => i.service_id)))
+          const pp = await carregarServicoPorProf(createClient(), bid)
+          if (!cancelled) setPorProf(pp)
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Erro')
@@ -221,9 +231,24 @@ export default function EditServicesModal({
     return list.slice(0, 30)
   })()
 
-  const selectedServices = services.filter((s) => selectedIds.has(s.id))
+  const profDaVez = professionalId || null
+  const servicosDela = services.map((s) => ({
+    ...s,
+    price: precoComProf(porProf, s, profDaVez),
+    duration_minutes: duracaoComProf(porProf, s, profDaVez) ?? s.duration_minutes,
+  }))
+  const selectedServices = servicosDela.filter((s) => selectedIds.has(s.id))
+  const foraDela = selectedServices.filter((s) => !fazServico(porProf, s.id, profDaVez))
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0)
-  const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
+  /* Mudou profissional ou serviço e a profissional cobra MAIS que o preço do
+     serviço: a recepção confirma o valor dela ou mantém o do serviço antes de
+     salvar (Eduardo 24/10 · "avisar na hora"). */
+  const totalDela = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
+  const totalCadastro = services.filter((s) => selectedIds.has(s.id)).reduce((sum, s) => sum + (s.price ?? 0), 0)
+  const mudou = !!original && (professionalId !== original.prof || Array.from(selectedIds).sort().join(',') !== original.ids)
+  const acrescimo = mudou ? totalDela - totalCadastro : 0
+  const pendenteAcrescimo = acrescimo > 0 && decisaoPreco === null
+  const totalPrice = acrescimo > 0 && decisaoPreco === 'manter' ? totalCadastro : totalDela
   const productsSubtotal = productCart.reduce((sum, p) => sum + (p.unit_price ?? 0) * (p.quantity ?? 1), 0)
   const comandaProdSubtotal = comandaProducts.reduce((sum, p) => sum + (p.unit_price ?? 0) * (p.quantity ?? 1), 0)
   const grandTotal = totalPrice + productsSubtotal + comandaProdSubtotal
@@ -248,6 +273,7 @@ export default function EditServicesModal({
           appointment_date: date || undefined,
           professional_id: professionalId || undefined,
           notes,
+          manter_preco: acrescimo > 0 && decisaoPreco === 'manter',
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -423,7 +449,12 @@ export default function EditServicesModal({
                   </p>
                 ) : (
                   <div className="space-y-2 mt-1.5">
-                    {services.map((s) => {
+                    {foraDela.length > 0 && (
+                      <p className="text-[12px] font-medium" style={{ color: 'var(--admin-danger)' }}>
+                        {professionals.find((p) => p.id === professionalId)?.name ?? 'Essa profissional'} não faz {foraDela.map((s) => s.name).join(', ')}. Troque o serviço ou a profissional.
+                      </p>
+                    )}
+                    {servicosDela.filter((s) => selectedIds.has(s.id) || fazServico(porProf, s.id, profDaVez)).map((s) => {
                       const checked = selectedIds.has(s.id)
                       return (
                         <button
@@ -697,6 +728,33 @@ export default function EditServicesModal({
               </div>
             </div>
 
+            {pendenteAcrescimo && (
+              <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--admin-input-bg)', border: '1.5px solid var(--admin-accent)' }}>
+                <p className="text-[13px]" style={{ color: 'var(--admin-text)' }}>
+                  Com <strong>{professionals.find((p) => p.id === professionalId)?.name.split(' ')[0]}</strong> fica{' '}
+                  <strong>{formatPrice(acrescimo)} a mais</strong> que o preço do serviço.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDecisaoPreco('confirmar')}
+                    className="flex-1 py-2 rounded-lg text-[13px] font-bold"
+                    style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                  >
+                    Confirmar {formatPrice(totalDela)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDecisaoPreco('manter')}
+                    className="flex-1 py-2 rounded-lg text-[13px] font-semibold"
+                    style={{ background: 'var(--admin-surface)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+                  >
+                    Manter {formatPrice(totalCadastro)}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {error && (
               <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>
             )}
@@ -735,7 +793,7 @@ export default function EditServicesModal({
               <button
                 type="button"
                 onClick={() => salvar(conflict !== null)}
-                disabled={saving || selectedIds.size === 0}
+                disabled={saving || selectedIds.size === 0 || pendenteAcrescimo}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
                 style={{
                   background: conflict ? '#D97706' : 'var(--admin-accent)',

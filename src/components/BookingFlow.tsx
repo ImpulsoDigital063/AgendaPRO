@@ -7,6 +7,8 @@ import { Business, Professional, WorkingHours, TimeSlot, Service, Client } from 
 import { maskPhoneInput } from '@/lib/client-display'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
 import { periodosDoDia, type HorarioPorData } from '@/lib/horario-do-dia'
+import { textoDoSinal } from '@/lib/texto-do-sinal'
+import { valorDoSinal } from '@/lib/pix-brcode'
 import {
   IconClock,
   IconSparkles,
@@ -254,6 +256,15 @@ export default function BookingFlow({
   referralCode,
   prefill,
   coupon,
+  servicosIniciais,
+  tema,
+  quemFazServico,
+  papeis,
+  sessoes,
+  precosPorProfissional,
+  duracoesPorProfissional,
+  pacote,
+  enderecoExibido,
 }: {
   business: Business
   professionals: Professional[]
@@ -264,12 +275,42 @@ export default function BookingFlow({
   referralCode?: string
   prefill?: Prefill
   coupon?: AppliedCoupon
+  /** vitrine da clínica · serviços já escolhidos na página (?servicos=), pula a 1ª etapa */
+  servicosIniciais?: string[]
+  /** vitrine da clínica · paleta creme/dourado da página da clínica (protótipo Ivna Loyola) */
+  tema?: 'vitrine'
+  /** vitrine da clínica · serviço → ids de quem faz (sem a chave = todas fazem) */
+  quemFazServico?: Record<string, string[]>
+  /** vitrine da clínica · especialidade embaixo do nome (id → "Lash e Designer de Sobrancelhas") */
+  papeis?: Record<string, string>
+  /** vitrine da clínica · serviço que é tratamento de várias sessões (id → nº de sessões) */
+  sessoes?: Record<string, number>
+  /** v172 · serviço → profissional → preço (sem a chave = preço do cadastro) */
+  precosPorProfissional?: Record<string, Record<string, number>>
+  /** v173 · serviço → profissional → duração em minutos (sem a chave = a do cadastro) */
+  duracoesPorProfissional?: Record<string, Record<string, number>>
+  /** pacote escolhido no site da clínica: estes serviços juntos saem pelo preço dele */
+  pacote?: { id: string; nome: string; preco: number; servicos: string[] } | null
+  /** vitrine: endereço já formatado (o do cadastro pode vir sem maiúsculas) */
+  enderecoExibido?: string
 }) {
   const hasServices = services.length > 0
   const hasMultipleProfessionals = professionals.length > 1
   const isDark = (business.brand_mode || 'light') === 'dark'
   // Paleta unificada — todos os steps usam essas vars pra consistência dark/light
-  const C = isDark
+  const C = tema === 'vitrine'
+    ? {
+        text:    '#2A2520',
+        body:    '#4A433B',
+        mute:    '#7C7266',
+        faded:   '#A89C8B',
+        surface: '#FFFFFF',
+        surfaceHi: '#FDFBF8',
+        border:  '#E7DECF',
+        borderHi:'#D9CCB6',
+        input:   '#FFFFFF',
+      }
+    : isDark
     ? {
         text:    '#F1F5F9',
         body:    '#CBD5E1',
@@ -300,6 +341,8 @@ export default function BookingFlow({
   // Serviços iniciais: se prefill traz service_ids da fila, pré-seleciona
   const initialServices: Service[] = prefill?.serviceIds?.length
     ? services.filter((s) => prefill.serviceIds.includes(s.id))
+    : servicosIniciais?.length
+    ? services.filter((s) => servicosIniciais.includes(s.id))
     : []
   const profMatchesPrefill = !!prefill && initialProf.id === prefill.professionalId
 
@@ -314,6 +357,12 @@ export default function BookingFlow({
   const [step, setStep] = useState<Step>(initialStep)
   const [selectedServices, setSelectedServices] = useState<Service[]>(initialServices)
   const [selectedProfessional, setSelectedProfessional] = useState<Professional>(initialProf)
+  // vitrine: só aparece quem faz TODOS os serviços escolhidos
+  const equipeDoServico = quemFazServico
+    ? professionals.filter((p) => selectedServices.every((sv) => !quemFazServico[sv.id] || quemFazServico[sv.id].includes(p.id)))
+    : professionals
+  // vitrine: ninguém aparece marcado antes de ela escolher (o 1º da lista parecia pré-escolhido)
+  const [escolheuProf, setEscolheuProf] = useState(tema !== 'vitrine')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   // v112 · sinal: o server devolve o PIX pronto quando o negocio exige
@@ -388,14 +437,55 @@ export default function BookingFlow({
   // Profissional ativo selecionado
   const professional = selectedProfessional
 
+  /* v172 · preço por profissional. Vale o preço de quem vai atender: antes de
+     ela escolher, mostra o preço do cadastro. O servidor recalcula do mesmo jeito. */
+  const precoCom = (s: Service, profId: string | null | undefined): number | null => {
+    const proprio = profId ? precosPorProfissional?.[s.id]?.[profId] : undefined
+    return proprio !== undefined ? proprio : s.price
+  }
+  // v173 · duração por profissional: mesma regra do preço (sem a chave = a do cadastro)
+  const duracaoCom = (s: Service, profId: string | null | undefined): number =>
+    (profId ? duracoesPorProfissional?.[s.id]?.[profId] : undefined) ?? s.duration_minutes
+  const profDoPreco = escolheuProf ? professional?.id : null
+  const servicosAvulsos = selectedServices.map((s) => ({ ...s, price: precoCom(s, profDoPreco), duration_minutes: duracaoCom(s, profDoPreco) }))
+  /* Pacote: só vale com exatamente os serviços dele. O preço do pacote é dividido
+     na proporção de cada um (sobra no último) — a mesma conta do servidor. */
+  const pacoteVale =
+    !!pacote && pacote.servicos.length === selectedServices.length && selectedServices.every((s) => pacote.servicos.includes(s.id))
+  const somaAvulsa = servicosAvulsos.reduce((t, s) => t + (s.price ?? 0), 0)
+  const servicosComPreco = !pacoteVale
+    ? servicosAvulsos
+    : (() => {
+        let ja = 0
+        return servicosAvulsos.map((s, i) => {
+          const fatia = i === servicosAvulsos.length - 1
+            ? Math.round((pacote!.preco - ja) * 100) / 100
+            : Math.round((somaAvulsa > 0 ? (pacote!.preco * (s.price ?? 0)) / somaAvulsa : pacote!.preco / servicosAvulsos.length) * 100) / 100
+          ja += fatia
+          return { ...s, price: fatia }
+        })
+      })()
+  // etapa da profissional: o valor de cada uma só aparece quando muda de uma pra outra
+  const totalCom = (profId: string) => (pacoteVale ? pacote!.preco : selectedServices.reduce((a, s) => a + (precoCom(s, profId) ?? 0), 0))
+  /* Profissional que cobra MAIS que o preço do serviço: a cliente confirma
+     antes de seguir (Eduardo 24/10 · "avisar na hora"). Mais barato segue direto. */
+  const acrescimoCom = (profId: string) => (pacoteVale ? 0 : totalCom(profId) - selectedServices.reduce((a, s) => a + (s.price ?? 0), 0))
+  const [confirmaProf, setConfirmaProf] = useState<Professional | null>(null)
+  // no pacote o preço é um só, seja quem for
+  const precoVariaPorProf = !pacoteVale && selectedServices.some((s) => Object.keys(precosPorProfissional?.[s.id] ?? {}).length > 0)
+
   // Totais calculados dos serviços selecionados
-  const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0)
-  const subtotal = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0)
+  const totalDuration = servicosAvulsos.reduce((sum, s) => sum + s.duration_minutes, 0)
+  const duracaoTotalCom = (profId: string | null | undefined) => selectedServices.reduce((sum, s) => sum + duracaoCom(s, profId), 0)
+  // o tempo só aparece no cartão de cada uma quando muda entre quem faz
+  const duracaoVariaPorProf = new Set(equipeDoServico.map((p) => duracaoTotalCom(p.id))).size > 1
+  const subtotal = servicosComPreco.reduce((sum, s) => sum + (s.price ?? 0), 0)
   const totalPoints = selectedServices.reduce((sum, s) => sum + (s.points ?? 0), 0)
-  const hasPrice = selectedServices.some((s) => s.price !== null)
+  const hasPrice = servicosComPreco.some((s) => s.price !== null)
 
   // Cupom aplicado: calcula desconto sobre subtotal
-  const couponDiscount = coupon
+  // pacote já é o preço promocional: cupom não soma (o servidor faz igual)
+  const couponDiscount = coupon && !pacoteVale
     ? coupon.discount_type === 'fixed'
       ? Math.min(coupon.discount_value, subtotal)
       : Math.min((subtotal * coupon.discount_value) / 100, subtotal)
@@ -403,14 +493,16 @@ export default function BookingFlow({
   const totalPrice = Math.max(0, subtotal - couponDiscount)
 
   // Granularidade do dia (step entre horários mostrados). Ex: 15min.
-  function getSlotStep(date: Date): number {
-    const wh = periodosDoDia(workingHours, workingHoursDates, professional?.id, date)[0]
+  function getSlotStep(date: Date, profId = professional?.id): number {
+    const wh = periodosDoDia(workingHours, workingHoursDates, profId, date)[0]
     return wh?.slot_duration || 30
   }
 
   // Duração real do agendamento (soma dos serviços). Se nada escolhido, cai no step.
-  function getServiceDuration(date: Date): number {
-    return totalDuration > 0 ? totalDuration : getSlotStep(date)
+  // v173 · com a duração de QUEM atende
+  function getServiceDuration(date: Date, profId = professional?.id): number {
+    const dur = duracaoTotalCom(profId)
+    return dur > 0 ? dur : getSlotStep(date, profId)
   }
 
   /* v122 · rotulo — "8h 30min" nao e como ninguem fala de um servico que toma
@@ -530,13 +622,13 @@ export default function BookingFlow({
       return
     }
     let cancelado = false
-    ;(async () => {
+    async function diasCheiosDe(profId: string): Promise<Set<string> | null> {
       const avail = await fetch(
-        `/api/booking/availability?business=${business.id}&professional=${professional.id}&from=${janelaFrom}&to=${janelaTo}`
+        `/api/booking/availability?business=${business.id}&professional=${profId}&from=${janelaFrom}&to=${janelaTo}`
       )
         .then((r) => r.json())
         .catch(() => null)
-      if (cancelado || !avail) return // rede caiu: nao marca nada, dia segue clicavel
+      if (!avail) return null // rede caiu: nao marca nada, dia segue clicavel
 
       const appts = (avail.appointments ?? []) as {
         appointment_date: string
@@ -563,7 +655,7 @@ export default function BookingFlow({
       for (const d of availableDatesRef.current) {
         const dateStr = formatDate(d)
         const dow = d.getDay()
-        const periods = periodosDoDia(workingHours, workingHoursDates, professional.id, d)
+        const periods = periodosDoDia(workingHours, workingHoursDates, profId, d)
         if (periods.length === 0) continue
 
         const bloqueados = blocks
@@ -586,21 +678,25 @@ export default function BookingFlow({
 
         const temLivre = janelasDoDia(
           periods,
-          getServiceDuration(d),
+          getServiceDuration(d, profId),
           business.servico_longo_atravessa_intervalo === true
         ).some((p) =>
           generateSlots(
             p.start_time,
             p.end_time,
-            getSlotStep(d),
-            getServiceDuration(d),
+            getSlotStep(d, profId),
+            getServiceDuration(d, profId),
             booked,
             minStartMin
           ).some((s) => s.available)
         )
         if (!temLivre) cheios.add(dateStr)
       }
-      if (!cancelado) setFullDays(cheios)
+      return cheios
+    }
+    ;(async () => {
+      const cheios = await diasCheiosDe(professional.id)
+      if (!cancelado && cheios) setFullDays(cheios)
     })()
     return () => {
       cancelado = true
@@ -754,7 +850,13 @@ export default function BookingFlow({
     // re-render = scroll funciona consistente.
   }
 
-  function handleSelectProfessional(prof: Professional) {
+  function handleSelectProfessional(prof: Professional, confirmado = false) {
+    if (!confirmado && acrescimoCom(prof.id) > 0) {
+      setConfirmaProf(prof)
+      return
+    }
+    setConfirmaProf(null)
+    setEscolheuProf(true)
     setSelectedProfessional(prof)
     setSelectedDate(null)
     setSelectedTime(null)
@@ -844,24 +946,14 @@ export default function BookingFlow({
     setStep('form')
   }, [step, slots, loadingSlots, prefill])
 
-  async function handleSelectDate(date: Date) {
-    setSelectedDate(date)
-    setSelectedTime(null)
-    setLoadingSlots(true)
-
+  // Horários de UMA profissional num dia.
+  async function horariosDe(profId: string | undefined, date: Date) {
     const dayOfWeek = date.getDay()
     // V31: dia pode ter MULTIPLOS periodos (manha + tarde com pausa
     // de almoco). Pega todos e itera abaixo. Ordenacao por start_time
     // garante que o array de slots vem cronologico.
-    const periods = periodosDoDia(workingHours, workingHoursDates, professional?.id, date)
-
-    if (periods.length === 0) {
-      setSlots([])
-      setSlotsEmptyReason('full')
-      setLoadingSlots(false)
-      setStep('time')
-      return
-    }
+    const periods = periodosDoDia(workingHours, workingHoursDates, profId, date)
+    if (periods.length === 0) return { generated: [] as TimeSlot[], maxPeriodLength: 0, serviceDuration: 0 }
 
     // Inclui completed alem de pending/confirmed: agendamento futuro
     // marcado completed por engano ainda ocupa slot. Se nao incluir,
@@ -876,7 +968,7 @@ export default function BookingFlow({
     // Leitura via rota server (service_role) — appointments e business_blocks
     // têm RLS travado (fix de segurança Fase 1). Slots seguem gerados no client.
     const avail = await fetch(
-      `/api/booking/availability?business=${business.id}&professional=${professional.id}&date=${dateStr}`
+      `/api/booking/availability?business=${business.id}&professional=${profId}&date=${dateStr}`
     )
       .then((r) => r.json())
       .catch(() => ({ appointments: [], blocks: [] }))
@@ -906,8 +998,8 @@ export default function BookingFlow({
       })),
       ...blockedRanges,
     ]
-    const step = getSlotStep(date)
-    const serviceDuration = getServiceDuration(date)
+    const step = getSlotStep(date, profId)
+    const serviceDuration = getServiceDuration(date, profId)
 
     // Se o dia selecionado é hoje, filtra slots que já passaram + buffer
     // de antecedência. Cliente não consegue agendar pras próximas
@@ -930,15 +1022,24 @@ export default function BookingFlow({
     const generated = janelas.flatMap((p) =>
       generateSlots(p.start_time, p.end_time, step, serviceDuration, booked, minStartMin)
     )
+    const maxPeriodLength = Math.max(
+      ...janelas.map((p) => toMinutes(p.end_time) - toMinutes(p.start_time))
+    )
+    return { generated, maxPeriodLength, serviceDuration }
+  }
+
+  async function handleSelectDate(date: Date) {
+    setSelectedDate(date)
+    setSelectedTime(null)
+    setLoadingSlots(true)
+
+    const { generated, maxPeriodLength, serviceDuration } = await horariosDe(professional?.id, date)
 
     // Diagnóstico do "vazio": se a duração total dos serviços é maior
     // que o maior período do dia, é IMPOSSÍVEL caber. UI mostra mensagem
     // específica ("tira serviços ou outro dia"). Senão, é caso "lotado".
     if (generated.length === 0) {
-      const maxPeriodLength = Math.max(
-        ...janelas.map((p) => toMinutes(p.end_time) - toMinutes(p.start_time))
-      )
-      setSlotsEmptyReason(serviceDuration > maxPeriodLength ? 'duration' : 'full')
+      setSlotsEmptyReason(maxPeriodLength > 0 && serviceDuration > maxPeriodLength ? 'duration' : 'full')
     } else {
       setSlotsEmptyReason(null)
     }
@@ -1064,7 +1165,7 @@ export default function BookingFlow({
         clientPhone: clientPhone.trim(),
         clientEmail: clientEmail.trim() || null,
         clientBirthday: clientBirthday.trim(),
-        services: selectedServices.map((s) => ({
+        services: servicosComPreco.map((s) => ({
           id: s.id,
           name: s.name,
           price: s.price,
@@ -1080,7 +1181,8 @@ export default function BookingFlow({
         /* So o CODIGO. O servidor busca o cupom e recalcula o desconto por
            conta propria — mandar o valor daqui seria confiar na tela, que e'
            exatamente o que a rota evita ao recalcular o preco. */
-        cupom: coupon?.code ?? null,
+        cupom: pacoteVale ? null : coupon?.code ?? null,
+        pacoteId: pacoteVale ? pacote!.id : null,
       }),
     })
       .then((r) => r.json())
@@ -1215,7 +1317,7 @@ export default function BookingFlow({
       .join(' · ')
 
     return (
-      <div className="p-4 space-y-4" style={{ color: C.text }}>
+      <div className={`p-4 space-y-4 ${tema === 'vitrine' ? 'lg:mx-auto lg:max-w-lg' : ''}`} style={{ color: C.text }}>
         {/* SINAL (v112) · vem ANTES do hero: enquanto o PIX não cai, essa é a
             única coisa que importa na tela. Comemorar "agendado!" em cima de um
             horário que ainda pode cair seria mentir pra cliente. */}
@@ -1336,10 +1438,10 @@ export default function BookingFlow({
                 )}
                 {/* serviços */}
                 <div className="space-y-1">
-                  {selectedServices.map((s) => (
+                  {servicosComPreco.map((s) => (
                     <div key={s.id} className="flex items-center justify-between text-sm">
                       <span className="opacity-95">{s.name}</span>
-                      {s.price !== null && (
+                      {s.price !== null && !pacoteVale && (
                         <span className="font-semibold tabular-nums">{formatPrice(s.price)}</span>
                       )}
                     </div>
@@ -1348,6 +1450,12 @@ export default function BookingFlow({
                     <div className="flex items-center justify-between text-sm" style={{ color: '#A7F3D0' }}>
                       <span>Cupom {coupon.code}</span>
                       <span className="tabular-nums">− {formatPrice(couponDiscount)}</span>
+                    </div>
+                  )}
+                  {pacoteVale && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="opacity-95">{pacote!.nome}</span>
+                      {somaAvulsa > pacote!.preco && <span className="tabular-nums line-through opacity-70">{formatPrice(somaAvulsa)}</span>}
                     </div>
                   )}
                   {hasPrice && (selectedServices.length > 1 || (coupon && couponDiscount > 0)) && (
@@ -1763,8 +1871,24 @@ export default function BookingFlow({
   const showStepper = stepKeys.length > 1
   const showStickyBar = step === 'service' && selectedServices.length > 0
 
-  return (
-    <div className={`p-4 space-y-6 ${showStickyBar ? 'pb-32' : ''}`}>
+  // vitrine da clínica · horários por período do dia (Manhã/Tarde/Noite)
+  const gradePeriodos: { nome: string | null; slots: TimeSlot[]; livres: number }[] =
+    tema === 'vitrine'
+      ? [
+          { nome: 'Manhã', slots: slots.filter((s) => toMinutes(s.time) < 12 * 60) },
+          { nome: 'Tarde', slots: slots.filter((s) => toMinutes(s.time) >= 12 * 60 && toMinutes(s.time) < 18 * 60) },
+          { nome: 'Noite', slots: slots.filter((s) => toMinutes(s.time) >= 18 * 60) },
+        ]
+          .filter((g) => g.slots.length > 0)
+          .map((g) => ({ ...g, livres: g.slots.filter((s) => s.available).length }))
+      : [{ nome: null, slots, livres: 0 }]
+  // vitrine da clínica · dia lotado oferece o próximo dia com vaga
+  const proximoDiaLivre = selectedDate
+    ? availableDates.find((d) => d > selectedDate && !isSameLocalDay(d, selectedDate) && !fullDays.has(formatDate(d))) ?? null
+    : null
+
+  const fluxo = (
+    <div className={`p-4 space-y-6 ${showStickyBar ? 'pb-32' : ''} ${tema === 'vitrine' ? 'lg:pb-4 lg:px-0' : ''}`}>
       {/* Stepper + título dinâmico */}
       {showStepper && (
         <div className="space-y-3">
@@ -1849,13 +1973,26 @@ export default function BookingFlow({
         <CollapsedStepCard
           label="Serviços"
           summary={
-            selectedServices.length === 1
-              ? `${selectedServices[0].name}${selectedServices[0].price ? ` · ${formatPrice(selectedServices[0].price)}` : ''}`
+            pacoteVale
+              ? `${pacote!.nome} · ${formatDuration(totalDuration)}`
+              : selectedServices.length === 1
+              ? `${servicosComPreco[0].name}${servicosComPreco[0].price ? ` · ${formatPrice(servicosComPreco[0].price)}` : ''}`
               : `${selectedServices.length} serviços · ${formatDuration(totalDuration)}${hasPrice ? ` · ${formatPrice(totalPrice)}` : ''}`
           }
           onEdit={() => setStep('service')}
           C={C}
         />
+      )}
+
+      {/* pacote no celular: o resumo lateral (com o preço) só existe no computador */}
+      {pacoteVale && tema === 'vitrine' && step !== 'service' && (
+        <div className="lg:hidden mb-4 flex items-center justify-between gap-3 rounded-2xl px-4 py-3" style={{ background: C.surfaceHi, border: `1px solid ${C.border}` }}>
+          <span className="text-sm" style={{ color: C.body }}>Preço do pacote</span>
+          <span className="flex items-baseline gap-2 tabular-nums">
+            {somaAvulsa > pacote!.preco && <span className="text-xs line-through" style={{ color: C.mute }}>{formatPrice(somaAvulsa)}</span>}
+            <span className="text-base font-bold" style={{ color: C.text }}>{formatPrice(totalPrice)}</span>
+          </span>
+        </div>
       )}
 
       {/* ETAPA 0 — ESCOLHER SERVIÇOS (múltipla seleção) */}
@@ -1873,12 +2010,25 @@ export default function BookingFlow({
           className="rounded-2xl px-4 py-3 mb-4 flex items-start gap-2.5"
           style={{ background: `${C.surfaceHi}`, border: `1px solid ${C.border}` }}
         >
-          <span className="text-lg leading-none mt-0.5">💳</span>
+          {tema === 'vitrine' ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary, #A47E3B)" strokeWidth="1.6" strokeLinecap="round" className="mt-0.5 flex-shrink-0" aria-hidden="true">
+              <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+              <path d="M3 10h18M7 15h4" />
+            </svg>
+          ) : (
+            <span className="text-lg leading-none mt-0.5">💳</span>
+          )}
+          {tema === 'vitrine' && hasPrice && selectedServices.length > 0 ? (
+            <p className="text-xs leading-relaxed" style={{ color: C.text }}>
+              Sinal de <strong>{formatPrice(valorDoSinal(totalPrice, business))}</strong> no Pix pra confirmar o horário. O restante você paga no dia.
+            </p>
+          ) : (
           <p className="text-xs leading-relaxed" style={{ color: C.text }}>
             Para confirmar o horário, {business.name} pede um sinal de{' '}
             <strong>{textoDoSinal(business)}</strong>, pago no PIX ao fim do
             agendamento. O restante fica para o dia do atendimento.
           </p>
+          )}
         </div>
       )}
 
@@ -1984,12 +2134,27 @@ export default function BookingFlow({
               Profissional
             </h2>
           )}
-          <div className="space-y-2">
-            {professionals.map((prof) => {
-              const isSelected = selectedProfessional?.id === prof.id
+          <div className={tema === 'vitrine' ? 'space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0' : 'space-y-2'}>
+            {sessoes && selectedServices.some((sv) => sessoes[sv.id]) && (
+              <p className="rounded-xl border px-4 py-3.5 text-sm leading-relaxed lg:col-span-2" style={{ background: C.surfaceHi, borderColor: C.borderHi, color: C.body }}>
+                <strong style={{ color: C.text }}>Tratamento de {Math.max(...selectedServices.map((sv) => sessoes[sv.id] ?? 0))} sessões.</strong>{' '}
+                Você marca a 1ª agora, e as próximas a clínica combina com você.
+              </p>
+            )}
+            {equipeDoServico.length === 0 && (
+              <p className="rounded-xl border px-4 py-3.5 text-sm leading-relaxed" style={{ background: C.surface, borderColor: C.border, color: C.body }}>
+                Nenhuma profissional faz todos esses procedimentos no mesmo atendimento. Volte e agende um de cada vez.
+              </p>
+            )}
+            {equipeDoServico.length === 1 && quemFazServico && (
+              <p className="text-xs lg:col-span-2" style={{ color: C.mute }}>Este procedimento é feito por:</p>
+            )}
+            {equipeDoServico.map((prof) => {
+              const isSelected = escolheuProf && selectedProfessional?.id === prof.id
+              const confirmando = confirmaProf?.id === prof.id
               return (
+                <Fragment key={prof.id}>
                 <button
-                  key={prof.id}
                   onClick={() => handleSelectProfessional(prof)}
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-colors"
                   style={
@@ -2038,9 +2203,51 @@ export default function BookingFlow({
                       prof.name.charAt(0).toUpperCase()
                     )}
                   </div>
-                  <span className="font-medium text-sm">{prof.name}</span>
-                  {isSelected && <span className="ml-auto text-xs opacity-70">selecionado</span>}
+                  {papeis?.[prof.id] ? (
+                    <span className="min-w-0">
+                      <span className="block font-medium text-sm">{prof.name}</span>
+                      <span className="block text-xs mt-0.5" style={{ opacity: 0.75 }}>{papeis[prof.id]}</span>
+                    </span>
+                  ) : (
+                    <span className="font-medium text-sm">{prof.name}</span>
+                  )}
+                  {precoVariaPorProf || duracaoVariaPorProf ? (
+                    <span className="ml-auto pl-3 text-right shrink-0">
+                      {precoVariaPorProf && <span className="block text-sm font-semibold tabular-nums">{formatPrice(totalCom(prof.id))}</span>}
+                      {duracaoVariaPorProf && <span className="block text-xs tabular-nums opacity-75">{formatDuration(duracaoTotalCom(prof.id))}</span>}
+                      {isSelected && <span className="block text-xs opacity-70">selecionado</span>}
+                    </span>
+                  ) : (
+                    isSelected && <span className="ml-auto text-xs opacity-70">selecionado</span>
+                  )}
                 </button>
+                {confirmando && (
+                  <div className="rounded-xl border px-4 py-3.5 space-y-3 lg:col-span-2" style={{ background: C.surfaceHi, borderColor: C.borderHi }}>
+                    <p className="text-sm leading-relaxed" style={{ color: C.body }}>
+                      Com <strong style={{ color: C.text }}>{prof.name.split(' ')[0]}</strong> este atendimento custa{' '}
+                      <strong style={{ color: C.text }}>{formatPrice(acrescimoCom(prof.id))} a mais</strong>: {formatPrice(totalCom(prof.id))} no total.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectProfessional(prof, true)}
+                        className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+                        style={{ background: 'var(--brand-primary, #111827)', color: '#FFFFFF' }}
+                      >
+                        Continuar com {prof.name.split(' ')[0]}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmaProf(null)}
+                        className="px-4 py-2.5 rounded-xl text-sm font-semibold border"
+                        style={{ borderColor: C.borderHi, color: C.text }}
+                      >
+                        Escolher outra profissional
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </Fragment>
               )
             })}
           </div>
@@ -2171,6 +2378,17 @@ export default function BookingFlow({
                 <p className="text-xs leading-relaxed" style={{ color: C.mute }}>
                   Os horários disponíveis já foram reservados. Tente <strong style={{ color: C.text }}>outro dia</strong> acima.
                 </p>
+                {tema === 'vitrine' && proximoDiaLivre && (
+                  <button
+                    onClick={() => handleSelectDate(proximoDiaLivre)}
+                    className="mt-3 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white inline-flex items-center justify-center gap-2"
+                    style={{ background: 'var(--brand-primary, #111827)' }}
+                  >
+                    Ver o próximo dia livre ·{' '}
+                    {proximoDiaLivre.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '')}
+                    <IconArrowRight size={14} color="#FFFFFF" />
+                  </button>
+                )}
               </div>
             )
           ) : (
@@ -2202,17 +2420,32 @@ export default function BookingFlow({
             {!waitlistDone && !waitlistSlot && slots.some((s) => !s.available) && (
               <div
                 className="mb-3 rounded-xl px-3 py-2.5 text-xs leading-relaxed"
-                style={{
-                  background: isDark ? 'rgba(245,158,11,0.10)' : '#FFFBEB',
-                  border: `1px solid ${isDark ? 'rgba(245,158,11,0.30)' : '#FDE68A'}`,
-                  color: isDark ? '#FCD34D' : '#92400E',
-                }}
+                style={
+                  tema === 'vitrine'
+                    ? { background: C.surfaceHi, border: `1px solid ${C.border}`, color: C.body }
+                    : {
+                        background: isDark ? 'rgba(245,158,11,0.10)' : '#FFFBEB',
+                        border: `1px solid ${isDark ? 'rgba(245,158,11,0.30)' : '#FDE68A'}`,
+                        color: isDark ? '#FCD34D' : '#92400E',
+                      }
+                }
               >
                 <strong>Horário ocupado?</strong> Toque nele pra entrar na lista de espera. Se quem agendou desistir, a gente te avisa — e o horário fica pra você.
               </div>
             )}
-            <div className="grid grid-cols-4 gap-2">
-              {slots.map((slot) => {
+            <div className={tema === 'vitrine' ? `space-y-5 lg:space-y-0 lg:grid lg:gap-5 ${gradePeriodos.length === 3 ? 'lg:grid-cols-3' : gradePeriodos.length === 2 ? 'lg:grid-cols-2' : ''}` : undefined}>
+            {gradePeriodos.map((grupo) => (
+            <div key={grupo.nome ?? 'todos'}>
+            {grupo.nome && (
+              <div className="mb-2 flex items-baseline justify-between gap-2 border-b pb-1.5" style={{ borderColor: C.border }}>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: C.text }}>{grupo.nome}</p>
+                <p className="text-[11px]" style={{ color: C.mute }}>
+                  {grupo.livres} {grupo.livres === 1 ? 'livre' : 'livres'}
+                </p>
+              </div>
+            )}
+            <div className={`grid grid-cols-4 gap-2 ${tema === 'vitrine' && gradePeriodos.length > 1 ? (gradePeriodos.length === 3 ? 'lg:grid-cols-2' : 'lg:grid-cols-3') : tema === 'vitrine' ? 'lg:grid-cols-6' : ''}`}>
+              {grupo.slots.map((slot) => {
                 const isSelected = selectedTime === slot.time
                 return (
                   <button
@@ -2229,7 +2462,12 @@ export default function BookingFlow({
                     }}
                     className="py-3 rounded-xl border text-sm font-semibold transition-colors cursor-pointer"
                     style={
-                      !slot.available
+                      // vitrine da clínica: livre em dourado, ocupado apagado (sem verde/vermelho)
+                      tema === 'vitrine' && !isSelected
+                        ? slot.available
+                          ? { background: '#FFFFFF', color: '#8A6A2E', borderColor: '#E2D6C2' }
+                          : { background: 'transparent', color: '#B9AE9E', borderColor: '#E7DECF', borderStyle: 'dashed' }
+                        : !slot.available
                         ? {
                             // OCUPADO = vermelho (pedido Olímpio 05/06)
                             background: isDark ? 'rgba(239,68,68,0.12)' : '#FEF2F2',
@@ -2259,6 +2497,9 @@ export default function BookingFlow({
                   </button>
                 )
               })}
+            </div>
+            </div>
+            ))}
             </div>
 
             {/* Form de fila — só enquanto o cliente está preenchendo (ao confirmar, vira o banner acima) */}
@@ -2390,15 +2631,20 @@ export default function BookingFlow({
             >
               {selectedServices.length > 0 && (
                 <div className="space-y-0.5">
-                  {selectedServices.map((s) => (
+                  {servicosComPreco.map((s) => (
                     <div key={s.id} className="flex justify-between">
                       <span className="font-medium" style={{ color: C.text }}>{s.name}</span>
-                      {s.price !== null && (
+                      {s.price !== null && !pacoteVale && (
                         <span style={{ color: C.mute }}>{formatPrice(s.price)}</span>
                       )}
                     </div>
                   ))}
-                  {hasPrice && selectedServices.length > 1 && (
+                  {pacoteVale ? (
+                    <div className="flex justify-between pt-1 mt-1" style={{ borderTop: `1px solid ${C.border}` }}>
+                      <span className="font-semibold" style={{ color: C.text }}>{pacote!.nome}</span>
+                      {somaAvulsa > pacote!.preco && <span className="line-through" style={{ color: C.mute }}>{formatPrice(somaAvulsa)}</span>}
+                    </div>
+                  ) : hasPrice && selectedServices.length > 1 && (
                     <div className="flex justify-between pt-1 mt-1" style={{ borderTop: `1px solid ${C.border}` }}>
                       <span className="font-semibold" style={{ color: C.text }}>Subtotal</span>
                       <span className="font-medium" style={{ color: C.text }}>{formatPrice(subtotal)}</span>
@@ -2567,7 +2813,7 @@ export default function BookingFlow({
       {/* Sticky bar — totalizador + Continuar (passo de serviços) */}
       {showStickyBar && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-xl"
+          className={`fixed bottom-0 left-0 right-0 z-40 backdrop-blur-xl ${tema === 'vitrine' ? 'lg:hidden' : ''}`}
           style={{
             background: isDark ? 'rgba(5,7,19,0.92)' : 'rgba(255,255,255,0.92)',
             borderTop: `1px solid ${C.border}`,
@@ -2641,17 +2887,125 @@ export default function BookingFlow({
       )}
     </div>
   )
+
+  if (tema !== 'vitrine') return fluxo
+
+  /* vitrine da clínica · computador em 2 colunas: a etapa à esquerda e o resumo
+     fixo à direita, preenchendo conforme ela escolhe (padrão Fresha/Booksy/Zenoti).
+     No celular o resumo fica escondido: lá a barra fixa e os chips já fazem isso. */
+  const sinalPrevisto = business.sinal_enabled && hasPrice ? valorDoSinal(totalPrice, business) : 0
+  const endereco = enderecoExibido ?? business.address
+  const passoQueFalta: Partial<Record<Step, string>> = {
+    professional: 'Escolha a profissional',
+    date: 'Escolha o dia',
+    time: 'Escolha o horário',
+    form: 'Confirme seus dados ao lado',
+  }
+  return (
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 lg:px-6 lg:pt-6 lg:items-start">
+      {fluxo}
+      <aside className="hidden lg:block sticky top-24">
+        <div className="rounded-2xl border overflow-hidden" style={{ background: C.surface, borderColor: C.border, boxShadow: '0 24px 48px -32px rgba(84,62,25,0.35)' }}>
+          <div className="h-1" style={{ background: 'linear-gradient(120deg, var(--brand-primary) 0%, var(--brand-secondary) 50%, var(--brand-primary) 100%)' }} />
+          <div className="p-5 space-y-4">
+            <div>
+              <p className="text-[13px] font-semibold" style={{ color: C.mute }}>Seu agendamento</p>
+              <p className="mt-1 text-lg font-bold leading-tight" style={{ color: C.text, fontFamily: 'var(--font-vitrine), sans-serif' }}>{business.name}</p>
+              {endereco && <p className="mt-1 text-xs leading-relaxed" style={{ color: C.mute }}>{endereco}</p>}
+            </div>
+
+            <div className="border-t pt-4 space-y-3" style={{ borderColor: C.border }}>
+              {selectedServices.length === 0 ? (
+                <p className="text-sm" style={{ color: C.faded }}>Nenhum procedimento escolhido ainda.</p>
+              ) : (
+                servicosComPreco.map((sv) => (
+                  <div key={sv.id} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-snug" style={{ color: C.text }}>{sv.name}</p>
+                      <p className="text-xs mt-0.5" style={{ color: C.mute }}>{rotuloDuracao(sv.duration_minutes)}</p>
+                    </div>
+                    {!pacoteVale && (
+                    <p className="text-sm font-medium tabular-nums whitespace-nowrap" style={{ color: C.text }}>
+                      {sv.price !== null ? formatPrice(sv.price) : 'sob avaliação'}
+                    </p>
+                    )}
+                  </div>
+                ))
+              )}
+              {/* no pacote o preço é um só: a divisão por serviço é interna (comanda/comissão) */}
+              {pacoteVale && (
+                <div className="flex items-baseline justify-between gap-3 rounded-xl px-3 py-2.5" style={{ background: C.surfaceHi }}>
+                  <span className="text-sm font-semibold" style={{ color: C.text }}>{pacote!.nome}</span>
+                  {somaAvulsa > pacote!.preco && <span className="text-xs line-through tabular-nums" style={{ color: C.mute }}>{formatPrice(somaAvulsa)}</span>}
+                </div>
+              )}
+            </div>
+
+            {(step === 'date' || step === 'time' || step === 'form') && (
+              <div className="border-t pt-4 space-y-2 text-sm" style={{ borderColor: C.border }}>
+                {hasMultipleProfessionals && (
+                  <div className="flex justify-between gap-3">
+                    <span style={{ color: C.mute }}>Profissional</span>
+                    <span className="text-right font-medium" style={{ color: C.text }}>
+                      {selectedProfessional?.name}
+                    </span>
+                  </div>
+                )}
+                {selectedDate && (step === 'time' || step === 'form') && (
+                  <div className="flex justify-between gap-3">
+                    <span style={{ color: C.mute }}>Dia</span>
+                    <span className="text-right font-medium" style={{ color: C.text }}>
+                      {selectedDate.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'long' }).replace('.', '').replace(/^./, (l) => l.toUpperCase())}
+                    </span>
+                  </div>
+                )}
+                {selectedTime && step === 'form' && (
+                  <div className="flex justify-between gap-3">
+                    <span style={{ color: C.mute }}>Horário</span>
+                    <span className="font-medium tabular-nums" style={{ color: C.text }}>{selectedTime}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {hasPrice && selectedServices.length > 0 && (
+              <div className="border-t pt-4 space-y-1.5" style={{ borderColor: C.border }}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm" style={{ color: C.mute }}>Total · {formatDuration(totalDuration)}</span>
+                  <span className="text-xl font-bold tabular-nums" style={{ color: C.text }}>{formatPrice(totalPrice)}</span>
+                </div>
+                {sinalPrevisto > 0 && (
+                  <p className="text-xs leading-relaxed" style={{ color: C.mute }}>
+                    Sinal de <strong style={{ color: C.text }}>{formatPrice(sinalPrevisto)}</strong> no Pix pra confirmar. O restante no dia.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {step === 'service' ? (
+              <button
+                onClick={handleProceedFromServices}
+                disabled={selectedServices.length === 0}
+                className="w-full rounded-xl py-3.5 text-sm font-semibold text-white inline-flex items-center justify-center gap-2 transition-opacity disabled:opacity-40"
+                style={{ background: 'var(--brand-primary, #111827)' }}
+              >
+                Continuar
+                <IconArrowRight size={14} color="#FFFFFF" />
+              </button>
+            ) : (
+              passoQueFalta[step] && (
+                <p className="rounded-xl px-4 py-3 text-center text-xs font-medium uppercase tracking-[0.15em]" style={{ background: C.surfaceHi, color: C.mute, border: `1px dashed ${C.borderHi}` }}>
+                  {passoQueFalta[step]}
+                </p>
+              )
+            )}
+          </div>
+        </div>
+      </aside>
+    </div>
+  )
 }
 
 /* Como o aviso do topo descreve o sinal (v163). No modo fixo diz o valor e,
    se houver, a faixa: "R$ 30 (R$ 100 para atendimentos acima de R$ 500)".
    null = nada a cobrar, e o aviso não aparece. */
-function textoDoSinal(b: Business): string | null {
-  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: Number.isInteger(v) ? 0 : 2 })
-  if (b.sinal_modo !== 'fixo') return Number(b.sinal_percent) > 0 ? `${b.sinal_percent}% do valor` : null
-  const fixo = Number(b.sinal_valor_fixo ?? 0)
-  if (!(fixo > 0)) return null
-  const acima = Number(b.sinal_faixa_acima ?? 0)
-  const faixa = Number(b.sinal_faixa_valor ?? 0)
-  return acima > 0 && faixa > 0 ? `${brl(fixo)} (${brl(faixa)} para atendimentos acima de ${brl(acima)})` : brl(fixo)
-}

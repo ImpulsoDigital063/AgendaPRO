@@ -8,7 +8,10 @@ import {
   getCurrentBusiness,
   getAppointmentsToday,
   getFocoDoDia,
+  getOwnerProfessional,
 } from '@/lib/admin-data'
+import { painelDaClinica, primeiroNomeDe } from '@/lib/vitrine/painel'
+import BoasVindasClinica from '@/components/admin/brand/BoasVindasClinica'
 import GradeTimeline from '@/components/admin/desktop/GradeTimeline'
 import { todayBR, startOfDayBR, addDaysBR } from '@/lib/date-br'
 import { getApptDiscountMap } from '@/lib/commission-discount'
@@ -409,9 +412,24 @@ export default async function AdminInicioPage({
     month: 'long',
   })
 
+  // protótipo · clínica com painel próprio: boas-vindas de quem entrou (painel.ts)
+  const painel = painelDaClinica(business.slug)
+  const eu = painel ? await getOwnerProfessional(user.id, business.id) : null
+  const meuNome = eu?.name ?? business.name
+
   return (
     <main className="relative sm:overflow-hidden" style={{ minHeight: '100svh' }}>
       <div className="max-w-7xl mx-auto px-4 lg:px-6 pt-6 pb-32 lg:pb-12 space-y-6 relative">
+        {painel ? (
+          <BoasVindasClinica
+            nome={meuNome}
+            foto={painel.fotos[primeiroNomeDe(meuNome)] ?? eu?.photo_url ?? null}
+            papel={painel.papeis[primeiroNomeDe(meuNome)] ?? null}
+            clinica={business.name}
+            logo={painel.logo}
+            dia={todayFormatted}
+          />
+        ) : (<>
         {/* Header mobile · simples · sem gradient/logo · isolado de qualquer mudança desktop
             Regra cravada 19/05: mudança no mobile ≠ mudança no desktop · vide AGENTS.md */}
         <header className="sm:hidden">
@@ -463,6 +481,7 @@ export default async function AdminInicioPage({
             )}
           </div>
         </header>
+        </>)}
 
         {/* Ativar notificação de agendamento novo no celular do dono. Some
             sozinha quando já ativou / não suporta / foi dispensada. */}
@@ -471,9 +490,10 @@ export default async function AdminInicioPage({
             41 telas. Início e a casa dos avisos; aqui ele custa a altura
             de uma tela so. Tem que ficar DEPOIS da topbar fixa (30/07),
             senao some atras dela no celular. */}
-        <InstallBanner />
+        {/* painel da clínica: estes avisos moram em Notificações (layout) */}
+        {!painel && <InstallBanner />}
 
-        <PushEnableBanner />
+        {!painel && <PushEnableBanner />}
 
         {/* Novidade do sinal (06/08) · some pra quem ja ligou, pra quem
             dispensou e depois de 31/08. */}
@@ -485,14 +505,14 @@ export default async function AdminInicioPage({
           </div>
         )}
 
-        <NovidadeSinalCard sinalAtivo={business.sinal_enabled === true} />
+        {!painel && <NovidadeSinalCard sinalAtivo={business.sinal_enabled === true} />}
 
         {/* Novidade da aba Sumidos (08/09) · some pra quem ja entrou la,
             pra quem dispensou e depois de 08/10. */}
-        <NovidadeSumidosCard jaEntrou={!!business.tour_sumidos_em} />
+        {!painel && <NovidadeSumidosCard jaEntrou={!!business.tour_sumidos_em} />}
 
         {/* Tour 'Conheça seu sistema' · em revisão, só negócios liberados. */}
-        {tourSistemaLiberado(business, business.owner_id !== user.id) && (
+        {!painel && tourSistemaLiberado(business, business.owner_id !== user.id) && (
           <Suspense fallback={null}><TourSistemaCard businessId={business.id as string} /></Suspense>
         )}
 

@@ -6,6 +6,39 @@ import CancelarConfirm from './CancelarConfirm'
 import { verifyCancelToken } from '@/lib/token'
 import { IconCalendar, IconClock, IconUsers, IconSparkles } from '@/components/ui/Icon'
 import { preverDecisao } from '@/lib/sinal-cancelamento'
+import { Lora, Manrope } from 'next/font/google'
+import { conteudoDaVitrine } from '@/lib/vitrine/conteudo'
+import { TEMA_CLINICA } from '@/lib/vitrine/tema-publico'
+
+// só usadas quando a clínica tem vitrine (mesmas fontes do site e do agendamento dela)
+const serif = Lora({ subsets: ['latin'], weight: ['500', '600'], variable: '--font-vitrine', display: 'swap' })
+const sans = Manrope({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-vitrine-sans', display: 'swap' })
+
+/* Prévia do link no WhatsApp: sem isto puxava a metadata global do site
+   ("AgendaPRO · a partir de R$ 67/mês") em cima da conversa da cliente com o
+   salão. Mesmo cuidado da página do sinal: nome do lugar, nada de cliente. */
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ id?: string; token?: string }> }) {
+  const generico = { title: 'Seu agendamento', robots: { index: false, follow: false } }
+  const { id, token } = await searchParams
+  if (!id || !token || !verifyCancelToken(id, token)) return generico
+  const { data } = await getAdminClient().from('appointments').select('business:businesses(name, slug)').eq('id', id).maybeSingle()
+  const neg = data?.business as unknown as { name: string; slug: string } | null
+  if (!neg?.name) return generico
+  const titulo = `Seu agendamento · ${neg.name}`
+  const og = neg.slug ? conteudoDaVitrine(neg.slug)?.og?.imagem : undefined
+  return {
+    title: titulo,
+    description: 'Confira os detalhes do seu horário.',
+    robots: { index: false, follow: false },
+    openGraph: {
+      title: titulo,
+      description: 'Confira os detalhes do seu horário.',
+      type: 'website',
+      siteName: 'AgendaPRO',
+      ...(og ? { images: [{ url: og }] } : {}),
+    },
+  }
+}
 
 function getAdminClient() {
   return createServiceClient(
@@ -54,8 +87,10 @@ export default async function CancelarPage({
 
   const primary = business?.brand_primary || '#3B82F6'
   const secondary = business?.brand_secondary || '#06B6D4'
+  // clínica com vitrine: a tela tem a cara do site dela (creme, logo dourada)
+  const clinica = business?.slug ? conteudoDaVitrine(business.slug) : null
   const mode = business?.brand_mode || 'light'
-  const isDark = mode === 'dark'
+  const isDark = !clinica && mode === 'dark'
   const cover = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`
 
   // Formata data por extenso (capitaliza depois no estilo PT-BR)
@@ -81,11 +116,12 @@ export default async function CancelarPage({
 
   return (
     <main
-      className="min-h-screen"
+      className={clinica ? `${serif.variable} ${sans.variable} min-h-screen` : 'min-h-screen'}
       style={
         {
-          background: isDark ? '#050713' : '#F8FAFC',
-          color: isDark ? '#F8FAFC' : '#0F172A',
+          background: clinica ? TEMA_CLINICA.fundo : isDark ? '#050713' : '#F8FAFC',
+          ...(clinica ? { fontFamily: 'var(--font-vitrine-sans), sans-serif', fontWeight: 500 } : {}),
+          color: clinica ? TEMA_CLINICA.text : isDark ? '#F8FAFC' : '#0F172A',
           ['--brand-primary' as string]: primary,
           ['--brand-secondary' as string]: secondary,
         } as React.CSSProperties
@@ -93,6 +129,18 @@ export default async function CancelarPage({
     >
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
         {/* HERO branded */}
+        {clinica ? (
+          <div className="rounded-3xl border px-6 py-7 text-center" style={{ background: TEMA_CLINICA.surface, borderColor: TEMA_CLINICA.border }}>
+            {clinica.logoDourada && (
+              <div className="relative mx-auto h-16 w-[140px]">
+                <Image src={clinica.logoDourada} alt={business?.name ?? ''} fill sizes="140px" className="object-contain" priority />
+              </div>
+            )}
+            <p className="mt-4 text-[22px] font-semibold leading-tight" style={{ fontFamily: 'var(--font-vitrine), serif' }}>
+              Confira antes de cancelar
+            </p>
+          </div>
+        ) : (
         <div
           className="relative overflow-hidden rounded-3xl p-6 text-white"
           style={{ background: cover, boxShadow: '0 18px 40px -18px rgba(0,0,0,0.45)' }}
@@ -126,18 +174,19 @@ export default async function CancelarPage({
             </div>
           </div>
         </div>
+        )}
 
         {/* DADOS do agendamento */}
         <div
           className="rounded-2xl p-4 space-y-3"
           style={{
             background: isDark ? 'rgba(255,255,255,0.04)' : '#FFFFFF',
-            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'}`,
+            border: `1px solid ${clinica ? TEMA_CLINICA.border : isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'}`,
           }}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: isDark ? '#64748B' : '#94A3B8' }}>
-              Agendamento
+            <span className={clinica ? 'text-sm font-semibold' : 'text-xs font-semibold uppercase tracking-wider'} style={{ color: clinica ? TEMA_CLINICA.mute : isDark ? '#64748B' : '#94A3B8' }}>
+              {clinica ? 'Seu agendamento' : 'Agendamento'}
             </span>
             <span
               className="text-[11px] font-bold px-2.5 py-1 rounded-full"
@@ -194,9 +243,13 @@ export default async function CancelarPage({
           businessPhone={(appointment.business as unknown as { phone?: string | null })?.phone ?? null}
           decisaoSinal={decisaoSinal}
           isDark={isDark}
+          clinica={!!clinica}
         />
 
-        {/* Rodapé AgendaPRO */}
+        {/* Rodapé AgendaPRO · na clínica, só a linha discreta (igual ao agendamento dela) */}
+        {clinica ? (
+          <p className="pt-8 pb-4 text-center text-[11px]" style={{ color: '#B3A897' }}>Agendamento online · AgendaPRO</p>
+        ) : (
         <div className="text-center space-y-2 pt-6 pb-4">
           <Link href="/" className="inline-flex items-center opacity-70 hover:opacity-100 transition-opacity">
             <Image
@@ -211,6 +264,7 @@ export default async function CancelarPage({
             Agendamento por AgendaPRO · Impulso Digital
           </p>
         </div>
+        )}
       </div>
     </main>
   )
