@@ -374,7 +374,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             {c.logoDourada ? null : <span className={`${SERIF} text-[15px] font-medium`}>{nomeCurto}</span>}
           </a>
           <nav className="hidden items-center gap-8 text-[15px] font-medium lg:flex" style={{ color: TINTA }}>
-            {[['#clinica', 'A clínica'], ['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#equipe', 'Equipe'], ['#onde', 'Onde estamos']].map(([h, t]) => (
+            {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ['#onde', 'Onde estamos']].map(([h, t]) => (
               <a key={h} href={h} className="transition-opacity hover:opacity-60">{t}</a>
             ))}
           </nav>
@@ -469,42 +469,6 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
               <Sublinhado href="#servicos" cor={d.cor}>Ver serviços</Sublinhado>
             </Surge>
           </div>
-        </div>
-      </section>
-
-      {/* A clínica */}
-      <section id="clinica" className="relative scroll-mt-20 px-6 py-24 sm:px-10 lg:py-36">
-        <div className="mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1.1fr_1fr] lg:gap-24">
-          <div>
-            <h2 className={`${SERIF} text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
-              <Revela>{c.proposta.titulo}</Revela>
-              <Revela atraso={120}><span style={destaque}>{c.proposta.destaque}</span></Revela>
-            </h2>
-            <Surge atraso={200}>
-              <p className="mt-8 max-w-lg text-[17px] leading-[1.8]" style={{ color: SUAVE }}><T x={c.proposta.texto} /></p>
-            </Surge>
-            {c.frase && (
-              <Surge atraso={300} className="mt-14">
-                <div style={{ borderColor: d.cor2 }} className="border-l pl-7">
-                  <p className={`${SERIF} text-[26px] leading-snug tracking-[-0.01em] sm:text-[30px]`}>“{c.frase}”</p>
-                  <p className="mt-3 text-[15px] font-semibold" style={{ color: d.cor }}>{d.equipe.find((p) => p.dona)?.nome ?? nomeCurto}</p>
-                </div>
-              </Surge>
-            )}
-          </div>
-          <ol className="lg:pt-24">
-            {c.pilares.map((p, i) => (
-              <Surge key={p.titulo} atraso={i * 140}>
-                <li className="grid grid-cols-[48px_1fr] gap-x-4 border-t py-8" style={{ borderColor: LINHA }}>
-                  <span className={`${SERIF} text-[22px]`} style={{ color: d.cor }}>{ROMANOS[i]}</span>
-                  <div>
-                    <h3 className={`${SERIF} text-[24px] font-medium leading-tight tracking-[-0.01em]`}>{p.titulo}</h3>
-                    <p className="mt-2 text-[15px] leading-[1.75]" style={{ color: SUAVE }}><T x={p.texto} /></p>
-                  </div>
-                </li>
-              </Surge>
-            ))}
-          </ol>
         </div>
       </section>
 
@@ -701,6 +665,42 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           </div>
         </section>
       )}
+
+      {/* A clínica · desceu pra depois dos vídeos (24/10): quem chega pela bio do Instagram já conhece a Ivna; primeiro o que ela faz, depois por que confiar */}
+      <section id="clinica" className="relative scroll-mt-20 px-6 py-24 sm:px-10 lg:py-36">
+        <div className="mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1.1fr_1fr] lg:gap-24">
+          <div>
+            <h2 className={`${SERIF} text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+              <Revela>{c.proposta.titulo}</Revela>
+              <Revela atraso={120}><span style={destaque}>{c.proposta.destaque}</span></Revela>
+            </h2>
+            <Surge atraso={200}>
+              <p className="mt-8 max-w-lg text-[17px] leading-[1.8]" style={{ color: SUAVE }}><T x={c.proposta.texto} /></p>
+            </Surge>
+            {c.frase && (
+              <Surge atraso={300} className="mt-14">
+                <div style={{ borderColor: d.cor2 }} className="border-l pl-7">
+                  <p className={`${SERIF} text-[26px] leading-snug tracking-[-0.01em] sm:text-[30px]`}>“{c.frase}”</p>
+                  <p className="mt-3 text-[15px] font-semibold" style={{ color: d.cor }}>{d.equipe.find((p) => p.dona)?.nome ?? nomeCurto}</p>
+                </div>
+              </Surge>
+            )}
+          </div>
+          <ol className="lg:pt-24">
+            {c.pilares.map((p, i) => (
+              <Surge key={p.titulo} atraso={i * 140}>
+                <li className="grid grid-cols-[48px_1fr] gap-x-4 border-t py-8" style={{ borderColor: LINHA }}>
+                  <span className={`${SERIF} text-[22px]`} style={{ color: d.cor }}>{ROMANOS[i]}</span>
+                  <div>
+                    <h3 className={`${SERIF} text-[24px] font-medium leading-tight tracking-[-0.01em]`}>{p.titulo}</h3>
+                    <p className="mt-2 text-[15px] leading-[1.75]" style={{ color: SUAVE }}><T x={p.texto} /></p>
+                  </div>
+                </li>
+              </Surge>
+            ))}
+          </ol>
+        </div>
+      </section>
 
       {/* Equipe */}
       <section id="equipe" className="scroll-mt-20 border-t px-6 py-24 sm:px-10 lg:py-36" style={{ borderColor: LINHA, backgroundColor: '#FDFBF8' }}>

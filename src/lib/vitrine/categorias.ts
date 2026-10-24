@@ -4,11 +4,12 @@
    arquivo some. */
 
 export const CATEGORIAS = [
-  'Harmonização facial',
-  'Estética facial',
+  // ordem = demanda (banco 24/10): micro mais fatura, cílios mais agenda
   'Micropigmentação',
   'Alongamento de cílios',
   'Sobrancelhas',
+  'Estética facial',
+  'Harmonização facial',
   'Spa e bem-estar',
   'Outros serviços',
 ] as const
