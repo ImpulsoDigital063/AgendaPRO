@@ -28,3 +28,13 @@ export const PACOTE_ENABLED = true
  * que o pacote Padrão inteiro que cobre a régua mensal dela.
  */
 export const SUMIDOS_ENVIO_AUTOMATICO = false
+
+/**
+ * GOOGLE_AGENDA_LIBERADOS · quem vê o cartão "Conectar Google Agenda" (v175).
+ *
+ * Começa só com a Ivna (Eduardo 24/10/2026: "vamos começar conectando só a
+ * dela"). O app do Google ainda não é verificado: quem conecta vê a tela de
+ * aviso e o limite é 100 contas. Abrir pra mais negócios só depois da
+ * verificação sair.
+ */
+export const GOOGLE_AGENDA_LIBERADOS: string[] = ['ivna-loyola-beauty-clinic']

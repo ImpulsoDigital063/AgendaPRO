@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/fechar-dia",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/google-agenda",
+      "schedule": "0 9 * * *"
     }
   ]
 }
