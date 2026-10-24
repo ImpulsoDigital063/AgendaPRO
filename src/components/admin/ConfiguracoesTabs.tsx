@@ -21,6 +21,7 @@ import MaquininhasTab from './MaquininhasTab'
 import BloqueiosTab from './BloqueiosTab'
 import FichasModeloTab from './FichasModeloTab'
 import NotificacoesTab from './NotificacoesTab'
+import GoogleAgendaCard from './GoogleAgendaCard'
 import { podeAbrir } from '@/lib/permissoes-gerente'
 
 type Tab = 'negocio' | 'profissionais' | 'servicos' | 'horarios' | 'qr-code' | 'fidelidade' | 'aparencia' | 'divulgacao' | 'plano' | 'importar' | 'maquininhas' | 'bloqueios' | 'fichas-modelo' | 'mensagens' | 'notificacoes'
@@ -144,7 +145,11 @@ export default function ConfiguracoesTabs({
 
       {/* Tab content */}
       {activeTab === 'negocio' && (
-        <NegocioTab business={business} />
+        <>
+          <NegocioTab business={business} />
+          {/* v175 · só a dona de negócio liberado vê (o cartão se esconde sozinho) */}
+          {!ehGerente && <GoogleAgendaCard />}
+        </>
       )}
 
       {activeTab === 'profissionais' && (
