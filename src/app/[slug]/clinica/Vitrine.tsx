@@ -275,9 +275,9 @@ function VideoAbertura({ mp4, poster }: { mp4?: string; poster: string }) {
   const [pronto, setPronto] = useState(false)
   return (
     <>
-      <Image src={poster} alt="" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" priority />
+      <Image src={poster} alt="" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover object-[50%_32%] sm:object-center" priority />
       {mp4 && (
-        <video className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1500ms] ${pronto ? 'opacity-100' : 'opacity-0'}`} src={mp4} poster={poster} muted loop playsInline autoPlay preload="metadata" onCanPlay={() => setPronto(true)} />
+        <video className={`absolute inset-0 h-full w-full object-cover object-[50%_32%] sm:object-center transition-opacity duration-[1500ms] ${pronto ? 'opacity-100' : 'opacity-0'}`} src={mp4} poster={poster} muted loop playsInline autoPlay preload="metadata" onCanPlay={() => setPronto(true)} />
       )}
     </>
   )
@@ -407,7 +407,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             </div>
           )}
           <div className="relative mx-auto max-w-xl sm:mx-0">
-            {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mx-auto mb-5 h-[clamp(52px,9svh,72px)] w-[clamp(118px,20svh,160px)] sm:mx-0 sm:mb-10 sm:h-[110px] sm:w-[240px]" />}
+            {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mx-auto mb-4 h-[clamp(44px,7.6svh,64px)] w-[clamp(100px,17svh,142px)] sm:mx-0 sm:mb-10 sm:h-[110px] sm:w-[240px]" />}
             {/* cidade: identifica onde fica, sem virar o assunto do título */}
             {c.local && (
               <p className="-mt-1 mb-4 flex items-center justify-center gap-1.5 text-[13px] font-semibold sm:-mt-4 sm:mb-7 sm:justify-start sm:text-[14px]" style={{ color: SUAVE }}>
@@ -427,10 +427,12 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             {/* provas curtas: por que confiar, já na primeira tela */}
             {c.selos && c.selos.length > 0 && (
               <Surge atraso={580}>
-                <ul className="mt-4 flex flex-col items-center gap-1.5 sm:mt-7 sm:items-start sm:gap-2.5">
+                {/* celular: duas linhas pequenas, sem ícone, cara de assinatura (lista com ✓
+                    parecia funcionalidade de app e roubava altura do vídeo) */}
+                <ul className="mt-3 flex flex-col items-center gap-0.5 sm:mt-7 sm:items-start sm:gap-2.5">
                   {c.selos.map((s) => (
-                    <li key={s} className="flex items-center gap-2 text-[13.5px] font-semibold sm:text-[15px]" style={{ color: TINTA }}>
-                      <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke={d.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                    <li key={s} className="flex items-center gap-2 text-[12.5px] font-semibold sm:text-[15px] sm:!text-[#2A2520]" style={{ color: d.cor }}>
+                      <svg aria-hidden viewBox="0 0 24 24" className="hidden h-4 w-4 shrink-0 sm:block" fill="none" stroke={d.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                       {s}
                     </li>
                   ))}
