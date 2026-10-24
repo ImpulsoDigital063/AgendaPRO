@@ -37,6 +37,7 @@ import crypto from 'node:crypto'
 import { normalizarTelefone, credencialDoSistema, enviarTexto } from '@/lib/mensagens/canal-cloud'
 import { todayBR } from '@/lib/date-br'
 import { avisarDona } from '@/lib/avisar-dona'
+import { avisarRecepcao, sinalConferidoPelaRecepcao } from '@/lib/sinal-conferencia'
 import { sendAlert } from '@/lib/alert'
 import { explicarFalha } from '@/lib/mensagens/motivo-falha'
 import { rotuloDoAviso } from '@/lib/mensagens/rotulos'
@@ -519,23 +520,44 @@ async function tratarMensagem(db: Db, m: MsgMeta): Promise<string> {
        Guardas: só sobe de `pending` (não ressuscita cancelado nem mexe em
        quem já está confirmado) e só grava a PRIMEIRA declaração — reenviar
        "paguei" não reabre nada. */
+    /* v174 · com a conferência pela recepção (Ivna), a declaração só segura o
+       horário: quem confirma é o "Recebi o sinal", depois do comprovante. */
+    const conferencia = await sinalConferidoPelaRecepcao(db, alvo.business_id)
     await db
       .from('appointments')
-      .update({ sinal_declarado_em: new Date().toISOString(), status: 'confirmed' })
+      .update(conferencia
+        ? { sinal_declarado_em: new Date().toISOString() }
+        : { sinal_declarado_em: new Date().toISOString(), status: 'confirmed' })
       .eq('id', alvo.id)
       .eq('status', 'pending')
       .is('sinal_pago_at', null)
       .is('sinal_declarado_em', null)
 
+    const textoAviso = `${alvo.client_name ?? 'Uma cliente'} disse que pagou o sinal do horário de ${String(alvo.start_time).slice(0, 5)}. Confira e marque como recebido.`
     await avisarDona(
       db,
       alvo.business_id,
       negocio?.owner_id ?? null,
       alvo.client_name ?? 'Uma cliente',
-      `${alvo.client_name ?? 'Uma cliente'} disse que pagou o sinal do horário de ${String(alvo.start_time).slice(0, 5)}. Confira e marque como recebido.`,
+      textoAviso,
       '/admin/financeiro/sinal',
       'Sinal: confira o pagamento',
     )
+    if (conferencia) {
+      await avisarRecepcao(db, alvo.business_id, negocio?.owner_id ?? null, textoAviso).catch(() => null)
+      /* Texto aprovado pelo Eduardo em 24/10: sem "confirmado" (ainda não
+         está) e sem "pagamento confirmado" (ninguém viu o extrato). Leva pro
+         WhatsApp da clínica, onde a recepção recebe o comprovante. */
+      const zap = String(negocio?.phone ?? '').replace(/\D/g, '')
+      const primeiroNome = (alvo.client_name ?? '').trim().split(/\s+/)[0]
+      await responder(
+        zap
+          ? `Obrigada${primeiroNome ? `, ${primeiroNome}` : ''}! Manda o comprovante pro WhatsApp da clínica: wa.me/${zap.startsWith('55') ? zap : '55' + zap}. Assim que a recepção conferir, seu horário fica confirmado.`
+          : `Obrigada${primeiroNome ? `, ${primeiroNome}` : ''}! Manda o comprovante pro WhatsApp da clínica. Assim que a recepção conferir, seu horário fica confirmado.`,
+        { tipo: 'resposta_ja_paguei' },
+      )
+      return 'japaguei'
+    }
     /* Texto aprovado pelo Eduardo em 04/09, depois de o "Já paguei" passar a
        confirmar o horário. O anterior dizia que o salão "vai confirmar seu
        horário" — virou o oposto da verdade no mesmo commit que mudou o

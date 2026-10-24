@@ -86,7 +86,9 @@ const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', curren
 
 const dataCurta = (ymd: string) => ymd.split('-').reverse().slice(0, 2).join('/')
 
-export default function SinalView() {
+/** soLista (v174 · recepção): só a lista pra conferir e marcar "Recebi". A
+    configuração tem a chave PIX e fica com a dona. */
+export default function SinalView({ soLista = false }: { soLista?: boolean } = {}) {
   const [cfg, setCfg] = useState<Config | null>(null)
   const [pendentes, setPendentes] = useState<Pendente[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -227,7 +229,7 @@ export default function SinalView() {
 
           Fica no topo e só aparece quando falta. Aviso que some sozinho ao ser
           resolvido não vira paisagem. */}
-      {!(cfg.telefoneNegocio || '').replace(/\D/g, '') && (
+      {!soLista && !(cfg.telefoneNegocio || '').replace(/\D/g, '') && (
         <div
           className="rounded-xl px-4 py-3"
           style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.34)' }}
@@ -256,7 +258,7 @@ export default function SinalView() {
           celular em 27/08. Notificação é isca; o conteúdo tem que estar do
           outro lado. O card de lançamento (NovidadeSinalCard) não serve: ele
           aparece só pra quem NÃO ligou o sinal, o público oposto deste aqui. */}
-      {mostrarNovidade && (
+      {!soLista && mostrarNovidade && (
         <section
           className="rounded-2xl p-4 mb-4 relative"
           style={{
@@ -424,6 +426,7 @@ export default function SinalView() {
       </section>
 
       {/* ── Configuração: preenche uma vez e esquece ── */}
+      {!soLista && (
       <section>
         <h2 className="text-sm font-bold mb-3" style={{ color: 'var(--admin-text)' }}>
           Como funciona o seu sinal
@@ -725,6 +728,7 @@ export default function SinalView() {
           </p>
         </div>
       </section>
+      )}
     </div>
   )
 }

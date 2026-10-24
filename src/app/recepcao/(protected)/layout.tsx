@@ -13,6 +13,7 @@ import { painelDaClinica } from '@/lib/vitrine/painel'
 import { classesDoPainel, FundoDaClinica } from '@/components/admin/brand/PainelClinica'
 import CentralNotificacoes from '@/components/notificacoes/CentralNotificacoes'
 import PushEnableBanner from '@/components/admin/PushEnableBanner'
+import { sinalConferidoPelaRecepcao } from '@/lib/sinal-conferencia'
 
 export default async function RecepcaoLayout({
   children,
@@ -77,6 +78,8 @@ export default async function RecepcaoLayout({
 
   // protótipo · clínica com vitrine veste a identidade dela no painel (painel.ts)
   const painel = painelDaClinica(businessSlug)
+  // v174 · a recepção confere o comprovante do sinal: item "Sinais a conferir"
+  const conferirSinal = await sinalConferidoPelaRecepcao(supabase, professional.business_id as string)
 
   return (
     <AdminThemeProvider initial={initialTheme}>
@@ -104,6 +107,7 @@ export default async function RecepcaoLayout({
           tambemAtende={professional.does_appointments === true}
           pessoaNome={professional.name as string}
           notificacoesBase={painel ? '/recepcao' : undefined}
+          conferirSinal={conferirSinal}
           vendeProduto={(business as { vendas_balcao_enabled?: boolean | null }).vendas_balcao_enabled !== false}
         />
         <RecepcaoDesktopSidebar
@@ -117,6 +121,7 @@ export default async function RecepcaoLayout({
           }}
           marcaClinica={painel}
           notificacoesBase={painel ? '/recepcao' : undefined}
+          conferirSinal={conferirSinal}
         />
 
         {/* Main area · padding-bottom pra tabbar mobile · padding-left pra sidebar tablet+ */}

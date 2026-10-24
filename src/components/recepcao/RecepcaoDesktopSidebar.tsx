@@ -69,8 +69,11 @@ export default function RecepcaoDesktopSidebar({
   pessoaNome,
   marcaClinica = null,
   notificacoesBase,
+  conferirSinal = false,
 }: {
   brand: Brand
+  /** v174 · negócio em que a recepção confere o comprovante do sinal */
+  conferirSinal?: boolean
   /** protótipo · clínica com painel próprio: logo dourada + nome de quem está logada */
   marcaClinica?: { logo: string; monograma: string } | null
   /** protótipo · item Notificações com o número (base da rota do layout) */
@@ -95,6 +98,7 @@ export default function RecepcaoDesktopSidebar({
     ...(notificacoesBase
       ? [{ label: 'Notificações', href: `${notificacoesBase}/notificacoes`, Icon: ({ size = 18 }: { size?: number }) => <SinoIcone style={{ width: size, height: size }} />, contagem: true }]
       : []),
+    ...(conferirSinal ? [{ label: 'Sinais a conferir', href: '/recepcao/sinal', Icon: IconWallet }] : []),
     ...base.slice(1),
     ...(tambemAtende
       ? [

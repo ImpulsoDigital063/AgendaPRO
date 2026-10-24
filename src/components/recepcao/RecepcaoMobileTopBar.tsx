@@ -44,6 +44,8 @@ type Props = {
   pessoaNome?: string | null
   /** protótipo · sininho de Notificações ('/recepcao' ou '/profissional'); sem ele, slot vazio */
   notificacoesBase?: string
+  /** v174 · negócio em que a recepção confere o comprovante do sinal */
+  conferirSinal?: boolean
 }
 
 type NavItem = {
@@ -62,6 +64,7 @@ export default function RecepcaoMobileTopBar({
   vendeProduto = true,
   pessoaNome,
   notificacoesBase,
+  conferirSinal = false,
 }: Props) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -100,7 +103,10 @@ export default function RecepcaoMobileTopBar({
     },
     {
       label: 'Dinheiro',
-      items: [{ label: 'Caixa', href: '/recepcao/caixa', Icon: IconWallet }],
+      items: [
+        ...(conferirSinal ? [{ label: 'Sinais a conferir', href: '/recepcao/sinal', Icon: IconWallet }] : []),
+        { label: 'Caixa', href: '/recepcao/caixa', Icon: IconWallet },
+      ],
     },
     /* v146 · o grupo "Meu" passa a existir SEMPRE, por causa da Conta: era o
        único jeito de a pessoa trocar a própria senha, e ela só chegava lá

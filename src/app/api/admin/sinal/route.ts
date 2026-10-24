@@ -27,6 +27,9 @@ import { SITE_URL } from '@/lib/site-url'
 import { todayBR } from '@/lib/date-br'
 import { minutosRestantes, podeSoltarHorario, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 import { creditoAplicadoEmLote, rotuloLimite } from '@/lib/sinal-saldo'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { confirmarAgendamento } from '@/lib/mensagens/confirmar'
+import { sinalConferidoPelaRecepcao } from '@/lib/sinal-conferencia'
 
 export async function GET() {
   const supabase = await createClient()
@@ -184,6 +187,17 @@ export async function PUT(req: NextRequest) {
   const businessId = await resolveBusinessIdOperacao(supabase)
   if (!businessId) return NextResponse.json({ error: 'sem_acesso' }, { status: 403 })
 
+  /* 24/10 · a configuração tem a CHAVE PIX: só dona e gerente salvam. Antes a
+     recepção passava pelo mesmo gate de operação (que serve pra marcar
+     "Recebi") e podia trocar a chave pra onde o dinheiro das clientes cai.
+     A tela da recepção nunca mostrou a configuração; o buraco era a rota. */
+  const { data: { user } } = await supabase.auth.getUser()
+  const [{ data: dona }, { data: gerente }] = await Promise.all([
+    supabase.from('businesses').select('id').eq('id', businessId).eq('owner_id', user?.id ?? '').maybeSingle(),
+    supabase.from('professionals').select('id').eq('business_id', businessId).eq('auth_user_id', user?.id ?? '').eq('active', true).eq('is_manager', true).maybeSingle(),
+  ])
+  if (!dona && !gerente) return NextResponse.json({ error: 'so_dona_configura' }, { status: 403 })
+
   const body = await req.json().catch(() => ({}))
   // v114 · normaliza ANTES de gravar. Celular vai pro banco em E.164 (+55…),
   // que e o formato do DICT — sem isso o BR Code sai com uma chave que nao
@@ -338,6 +352,17 @@ export async function POST(req: NextRequest) {
   // esperando pra abater da comanda.
   if (acao === 'dispensar' && salvo.sinal_valor !== null) {
     return NextResponse.json({ error: 'nao_dispensou_pelo_banco' }, { status: 500 })
+  }
+
+  /* v174 · com a conferência pela recepção, o "Já paguei" não confirmou nada:
+     é aqui, depois de ver o comprovante, que a cliente recebe a confirmação
+     (a função escolhe sozinha a mensagem e respeita pacote e regra ligada).
+     Falha no envio não desfaz o "Recebi": o dinheiro já foi registrado. */
+  if (acao === 'recebi') {
+    const db = createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
+    if (await sinalConferidoPelaRecepcao(db, businessId)) {
+      await confirmarAgendamento(db, id).catch(() => null)
+    }
   }
 
   return NextResponse.json({ ok: true, status: salvo.status })
