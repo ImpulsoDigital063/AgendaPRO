@@ -43,6 +43,8 @@ export type ConteudoVitrine = {
   catalogo?: { servico: string; foto?: string; texto?: string }[]
   /** pasta das fotos do catálogo (em public/) */
   catalogoPasta?: string
+  /** fotos do catálogo com miniatura recortada em catalogoPasta/mini (montagens de antes/depois) */
+  catalogoMini?: string[]
 }
 
 /* Textos da Ivna tirados do Instagram dela (estudo 22/10/2026, com o post de
@@ -139,6 +141,8 @@ const IVNA: ConteudoVitrine = {
   // cidade deduzida (#EsteticaFortaleza, DDD 85): confirmar com ela
   // pin mandado pela Ivna no WhatsApp em 23/10
   catalogoPasta: '/vitrine/ivna-loyola/catalogo',
+  // montagens antes/depois: no quadradinho só a metade do resultado (24/10)
+  catalogoMini: ['lash-lifting', 'limpeza-pele', 'peeling-manchas', 'preenchimento-labial', 'preenchimento-mento', 'remocao-laser-sobrancelha', 'remocao-laser', 'remocao-sinais', 'toxina', 'depilacao-axila'],
   catalogo: [
     { servico: 'brasileiro', foto: 'cilios-brasileiro', texto: 'Feito com fios em formato de Y, pra quem gosta de um volume delicado. Manutenção de 15 a 20 dias.' },
     { servico: 'russo', foto: 'cilios-russo', texto: 'Feito com fans e preenchimento de 80% dos fios, pra quem é despojada e gosta de volume. Manutenção de 15 a 20 dias.' },

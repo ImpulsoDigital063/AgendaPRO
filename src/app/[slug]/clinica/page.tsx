@@ -9,6 +9,18 @@ import { Lora, Manrope } from 'next/font/google'
 import { CATEGORIAS, categoriaDoServico, nomeLimpo } from '@/lib/vitrine/categorias'
 import { conteudoDaVitrine, doCatalogo, primeiroNome } from '@/lib/vitrine/conteudo'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
+
+/* 24/10 · foto do catálogo que é montagem de antes/depois virava duas metades
+   no quadradinho do serviço. As listadas em `catalogoMini` têm uma versão em
+   `catalogo/mini/` (só a metade do resultado, quadrada); o cartão do serviço
+   usa ela, os pacotes seguem com a imagem inteira. Lista fixa e não fs: na
+   Vercel a pasta public não vai junto com a função. */
+function miniaturaDe(mini: string[] | undefined) {
+  return (foto: string) => {
+    const nome = foto.match(/([^/]+)\.jpg$/)?.[1]
+    return nome && mini?.includes(nome) ? foto.replace(/\/([^/]+)$/, '/mini/$1') : foto
+  }
+}
 import Vitrine, { type Chegada, type DadosVitrine } from './Vitrine'
 
 // Fonte escolhida pelo Eduardo (22/10) a partir do estudo de clínicas
@@ -111,6 +123,7 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
       .map((s) => {
         // catálogo do WhatsApp: foto sempre; texto só onde o cadastro não tem descrição
         const cat = doCatalogo(conteudo, s.name)
+        if (cat.foto) cat.foto = miniaturaDe(conteudo.catalogoMini)(cat.foto)
         // dentro da aba de cílios o prefixo repetia em todo cartão; o cadastro (e o agendamento) seguem com o nome completo
         const nome = nomeLimpo(s.name).replace(/^alongamento de c[ií]lios\s*-\s*/i, '')
         return { id: s.id, nome: nome.charAt(0).toUpperCase() + nome.slice(1), descricao: s.description?.trim() || cat.texto, preco: s.price ? Number(s.price) : null, duracao: s.duration_minutes, foto: cat.foto, avaliacao: /^avalia/i.test(s.name.trim()), ordem: ordemNaAba(s.name) }
