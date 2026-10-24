@@ -385,40 +385,41 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       </header>
 
       {/* Abertura: vídeo do espaço em tela cheia (celular) / painel ao lado (computador) */}
-      {/* Celular: a abertura inteira cabe na tela (Eduardo 24/10, print do
-          navegador do WhatsApp cortando o título atrás da barra fixa). Altura =
-          tela menos a barra de baixo; o vídeo cede espaço e o texto não corta.
-          sm: em diante volta ao de antes (tablet e computador intactos). */}
+      {/* Celular (Eduardo 24/10, versão B "texto primeiro"): a abertura inteira
+          cabe na tela, sem rolar. Mármore no fundo, logo grande centralizada
+          (sobe pro topo ao rolar, igual ao computador), título e subtítulo
+          centrados e o vídeo num quadro com fio branco por dentro, ocupando o
+          que sobra. sm: em diante volta ao de antes (tablet e computador). */}
       <section id="topo" className={`relative flex flex-col sm:block lg:grid lg:min-h-[100svh] lg:grid-cols-2 ${chegada?.cupom ? 'h-[calc(100svh-110px)]' : 'h-[calc(100svh-84px)]'} sm:h-auto`}>
-        <div className="relative min-h-0 flex-1 sm:h-[58svh] sm:flex-none lg:order-2 lg:h-auto">
+        <div aria-hidden className="absolute inset-0 sm:hidden" style={{ backgroundImage: MARMORE }} />
+        <div className="relative order-2 mx-5 mb-5 min-h-0 flex-1 overflow-hidden rounded-[28px] shadow-[0_24px_48px_-28px_rgba(42,37,32,0.45)] sm:order-none sm:mx-0 sm:mb-0 sm:h-[58svh] sm:flex-none sm:overflow-visible sm:rounded-none sm:shadow-none lg:order-2 lg:h-auto">
           {poster && <VideoAbertura mp4={c.teaser?.mp4} poster={poster} />}
-          {/* faixa creme no alto do vídeo: a logo dourada some na parede clara do espaço */}
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 sm:hidden" style={{ background: `linear-gradient(to bottom, ${CREME} 0%, ${CREME}B3 40%, transparent 100%)` }} />
+          <div aria-hidden className="pointer-events-none absolute inset-3 rounded-[20px] border sm:hidden" style={{ borderColor: '#ffffffa6' }} />
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ background: `linear-gradient(to right, ${CREME} 0%, transparent 22%)` }} />
           <div aria-hidden className="pointer-events-none absolute inset-5 hidden border lg:block" style={{ borderColor: '#ffffff80' }} />
         </div>
 
-        <div className="relative shrink-0 px-6 pb-5 pt-6 sm:pb-16 sm:pt-10 lg:mt-0 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
+        <div className="relative order-1 shrink-0 px-6 pb-5 pt-[72px] text-center sm:order-none sm:pb-16 sm:pt-10 sm:text-left lg:mt-0 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ backgroundImage: MARMORE }} />
           {c.monograma && (
             <div aria-hidden className="pointer-events-none absolute -left-10 top-1/2 hidden h-[78%] w-[62%] -translate-y-1/2 opacity-[0.07] lg:block">
               <Image src={c.monograma} alt="" fill sizes="40vw" className="object-contain" />
             </div>
           )}
-          <div className="relative max-w-xl">
-            {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mb-10 hidden h-[84px] sm:block w-[182px] sm:h-[110px] sm:w-[240px]" />}
-            <h1 className={`${SERIF} text-[clamp(30px,5.4svh,42px)] font-medium leading-[1.05] tracking-[-0.025em] sm:text-[58px] xl:text-[68px]`}>
+          <div className="relative mx-auto max-w-xl sm:mx-0">
+            {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mx-auto mb-5 h-[clamp(52px,9svh,72px)] w-[clamp(118px,20svh,160px)] sm:mx-0 sm:mb-10 sm:h-[110px] sm:w-[240px]" />}
+            <h1 className={`${SERIF} text-[clamp(28px,4.9svh,40px)] font-medium leading-[1.06] [text-wrap:balance] sm:[text-wrap:wrap] tracking-[-0.025em] sm:text-[58px] xl:text-[68px]`}>
               <Revela atraso={150}>{c.titulo.antes}</Revela>
               <Revela atraso={300}><span style={destaque}>{c.titulo.destaque}</span>{c.titulo.depois ? ` ${c.titulo.depois}` : ''}{c.titulo.ex && <Selo />}</Revela>
             </h1>
             <Surge atraso={500}>
-              <p className="mt-3 max-w-md text-[15px] leading-[1.6] sm:mt-6 sm:text-[17px] sm:leading-[1.75]" style={{ color: SUAVE }}>
+              <p className="mx-auto mt-3 max-w-md text-[15px] leading-[1.6] sm:mx-0 sm:mt-6 sm:text-[17px] sm:leading-[1.75]" style={{ color: SUAVE }}>
                 <T x={c.subtitulo} />
               </p>
             </Surge>
             {(chegada?.cupom || chegada?.indicacao) && (
               <Surge atraso={580}>
-                <div className="mt-7 flex items-start gap-3.5 rounded-2xl border px-4 py-3.5" style={{ background: '#FFFFFF', borderColor: d.cor }}>
+                <div className="mt-5 flex items-start gap-3.5 rounded-2xl border px-4 py-3.5 text-left sm:mt-7" style={{ background: '#FFFFFF', borderColor: d.cor }}>
                   <svg aria-hidden viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke={d.cor} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                     {chegada.cupom
                       ? <><path d="M20 12v8H4v-8" /><path d="M2 7h20v5H2z" /><path d="M12 22V7" /><path d="M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z" /></>
@@ -440,11 +441,9 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                 </div>
               </Surge>
             )}
-            {/* no celular o Agendar é o da barra fixa de baixo; aqui fica só o Ver serviços */}
-            <Surge atraso={650} className="mt-4 flex flex-col items-start gap-6 sm:mt-9 sm:flex-row sm:items-center sm:gap-10">
-              <div className="hidden sm:block">
-                <BotaoAgendar href={agendar} />
-              </div>
+            {/* no celular o Agendar é o da barra fixa e a abertura respira sem o Ver serviços */}
+            <Surge atraso={650} className="mt-9 hidden items-start gap-6 sm:flex sm:flex-row sm:items-center sm:gap-10">
+              <BotaoAgendar href={agendar} className="w-full sm:w-auto" />
               <Sublinhado href="#servicos" cor={d.cor}>Ver serviços</Sublinhado>
             </Surge>
           </div>
