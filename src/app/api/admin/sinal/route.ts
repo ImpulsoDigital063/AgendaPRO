@@ -184,6 +184,17 @@ export async function PUT(req: NextRequest) {
   const businessId = await resolveBusinessIdOperacao(supabase)
   if (!businessId) return NextResponse.json({ error: 'sem_acesso' }, { status: 403 })
 
+  /* 24/10 · a configuração tem a CHAVE PIX: só dona e gerente salvam. Antes a
+     recepção passava pelo mesmo gate de operação (que serve pra marcar
+     "Recebi") e podia trocar a chave pra onde o dinheiro das clientes cai.
+     A tela da recepção nunca mostrou a configuração; o buraco era a rota. */
+  const { data: { user } } = await supabase.auth.getUser()
+  const [{ data: dona }, { data: gerente }] = await Promise.all([
+    supabase.from('businesses').select('id').eq('id', businessId).eq('owner_id', user?.id ?? '').maybeSingle(),
+    supabase.from('professionals').select('id').eq('business_id', businessId).eq('auth_user_id', user?.id ?? '').eq('active', true).eq('is_manager', true).maybeSingle(),
+  ])
+  if (!dona && !gerente) return NextResponse.json({ error: 'so_dona_configura' }, { status: 403 })
+
   const body = await req.json().catch(() => ({}))
   // v114 · normaliza ANTES de gravar. Celular vai pro banco em E.164 (+55…),
   // que e o formato do DICT — sem isso o BR Code sai com uma chave que nao
