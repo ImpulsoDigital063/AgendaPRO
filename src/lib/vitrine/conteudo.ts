@@ -10,6 +10,8 @@ export type ConteudoVitrine = {
   selo: string
   titulo: { antes: string; destaque: string; depois?: string; ex?: boolean }
   subtitulo: Texto
+  /** provas curtas na abertura (só o que é verdade e publicado) */
+  selos?: string[]
   /** prévia do link no WhatsApp/Instagram: imagem 1200x630 (em public/) e o texto embaixo do nome */
   og?: { imagem: string; descricao: string }
   frase?: string
@@ -45,9 +47,15 @@ export type ConteudoVitrine = {
    origem em segundo-cerebro/2-PROCESSAMENTO/agendapro/ivna-loyola/ESTUDO-INSTAGRAM.md). */
 const IVNA: ConteudoVitrine = {
   selo: 'Beauty Clinic',
-  // abertura aprovada pelo Eduardo em 23/10 (frase dela, DerN4J1St1i); a bio "alta performance" puxava só pra harmonização
-  titulo: { antes: 'Seu momento de beleza e', destaque: 'autocuidado', depois: 'começa aqui.' },
-  subtitulo: { t: 'Estética avançada e micropigmentação.' }, // descrição do catálogo do WhatsApp dela
+  /* 24/10 (carta branca do Eduardo pro hero): abre com a ESPECIALIDADE dela
+     em vez de frase que serve pra qualquer salão. A anterior, aprovada em
+     23/10, era "Seu momento de beleza e autocuidado começa aqui" (DerN4J1St1i).
+     Provas só com o que é verdade e está publicado: ela dá curso (DY7gcStO4_D,
+     CywgzmVx4-c, Cw5aaLquzvz) e repete a avaliação antes (Dce6N0DJv3B). A nota
+     do Google (5,0 com 2 avaliações em 24/10) ainda é pouca pra vitrine. */
+  titulo: { antes: 'Micropigmentação e laser com a', destaque: 'naturalidade', depois: 'que você procura.' },
+  subtitulo: { t: 'Com Ivna Loyola, em Fortaleza.' },
+  selos: ['Especialista que forma profissionais', 'Avaliação antes de todo procedimento'],
   og: {
     imagem: '/vitrine/ivna-loyola/og.jpg', // logo dourada original + frase aprovada (24/10)
     descricao: 'Seu momento de beleza e autocuidado começa aqui. Estética avançada e micropigmentação. Agende online.',
@@ -105,9 +113,11 @@ const IVNA: ConteudoVitrine = {
     texto: 'Lábios com contorno definido e cor suave. Autoestima renovada.',
     botao: 'Agendar minha avaliação',
   },
-  // Recortes dos Reels dela (DZXwgAsu7P4, Ddj0mJ2J_Lp, DbTUxPgubYH), sem som e sem rosto de cliente.
-  // Protótipo: trocar pelos originais que ela mandar.
-  teaser: { mp4: '/vitrine/ivna-loyola/abertura-alta.mp4', poster: '/vitrine/ivna-loyola/abertura-alta.jpg' },
+  /* 24/10 · procedimentos em vez da recepção: Brow Lamination (DZIG-bGOYL4),
+     micropigmentação labial (Dcl9_N9yXY0), laser (DdHGEivO_LU) e o lábio
+     cicatrizado no fim, só trechos SEM legenda. Tem rosto de cliente: pedir a
+     autorização à Ivna antes de publicar, ou trocar pelos originais dela. */
+  teaser: { mp4: '/vitrine/ivna-loyola/abertura-procedimentos.mp4', poster: '/vitrine/ivna-loyola/abertura-procedimentos.jpg' },
   monograma: '/vitrine/ivna-loyola/monograma.png',
   logoDourada: '/vitrine/ivna-loyola/logo-dourada.png',
   videos: [

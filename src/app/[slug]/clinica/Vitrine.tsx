@@ -408,7 +408,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           )}
           <div className="relative mx-auto max-w-xl sm:mx-0">
             {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mx-auto mb-5 h-[clamp(52px,9svh,72px)] w-[clamp(118px,20svh,160px)] sm:mx-0 sm:mb-10 sm:h-[110px] sm:w-[240px]" />}
-            <h1 className={`${SERIF} text-[clamp(28px,4.9svh,40px)] font-medium leading-[1.06] [text-wrap:balance] sm:[text-wrap:wrap] tracking-[-0.025em] sm:text-[58px] xl:text-[68px]`}>
+            <h1 className={`${SERIF} text-[clamp(28px,4.9svh,40px)] font-medium leading-[1.06] [text-wrap:balance] sm:[text-wrap:wrap] tracking-[-0.025em] sm:text-[58px] lg:text-[50px] lg:[text-wrap:balance] xl:text-[58px]`}>
               <Revela atraso={150}>{c.titulo.antes}</Revela>
               <Revela atraso={300}><span style={destaque}>{c.titulo.destaque}</span>{c.titulo.depois ? ` ${c.titulo.depois}` : ''}{c.titulo.ex && <Selo />}</Revela>
             </h1>
@@ -417,6 +417,19 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                 <T x={c.subtitulo} />
               </p>
             </Surge>
+            {/* provas curtas: por que confiar, já na primeira tela */}
+            {c.selos && c.selos.length > 0 && (
+              <Surge atraso={580}>
+                <ul className="mt-4 flex flex-col items-center gap-1.5 sm:mt-7 sm:items-start sm:gap-2.5">
+                  {c.selos.map((s) => (
+                    <li key={s} className="flex items-center gap-2 text-[13.5px] font-semibold sm:text-[15px]" style={{ color: TINTA }}>
+                      <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke={d.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </Surge>
+            )}
             {(chegada?.cupom || chegada?.indicacao) && (
               <Surge atraso={580}>
                 <div className="mt-5 flex items-start gap-3.5 rounded-2xl border px-4 py-3.5 text-left sm:mt-7" style={{ background: '#FFFFFF', borderColor: d.cor }}>
