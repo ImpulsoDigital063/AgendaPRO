@@ -47,15 +47,18 @@ export type ConteudoVitrine = {
    origem em segundo-cerebro/2-PROCESSAMENTO/agendapro/ivna-loyola/ESTUDO-INSTAGRAM.md). */
 const IVNA: ConteudoVitrine = {
   selo: 'Beauty Clinic',
-  /* 24/10 (carta branca do Eduardo pro hero): abre com a ESPECIALIDADE dela
+  /* 24/10 (carta branca do Eduardo pro hero): vende a CLÍNICA (equipe) com a
+     palavra que ela mais repete; 1ª versão do dia ("Micropigmentação e laser…",
+     "Com Ivna Loyola") apagava a equipe e promovia o laser, que quase não
+     agenda (banco 24/10: cílios 19, micro 13, laser 2). Antes: abria com a ESPECIALIDADE dela
      em vez de frase que serve pra qualquer salão. A anterior, aprovada em
      23/10, era "Seu momento de beleza e autocuidado começa aqui" (DerN4J1St1i).
      Provas só com o que é verdade e está publicado: ela dá curso (DY7gcStO4_D,
      CywgzmVx4-c, Cw5aaLquzvz) e repete a avaliação antes (Dce6N0DJv3B). A nota
      do Google (5,0 com 2 avaliações em 24/10) ainda é pouca pra vitrine. */
-  titulo: { antes: 'Micropigmentação e laser com a', destaque: 'naturalidade', depois: 'que você procura.' },
-  subtitulo: { t: 'Com Ivna Loyola, em Fortaleza.' },
-  selos: ['Especialista que forma profissionais', 'Avaliação antes de todo procedimento'],
+  titulo: { antes: 'A clínica da', destaque: 'naturalidade', depois: 'em Fortaleza.' },
+  subtitulo: { t: 'Micropigmentação, cílios, estética facial e spa, com uma especialista em cada procedimento.' },
+  selos: ['Fundada por especialista que forma profissionais', 'Avaliação antes de todo procedimento'],
   og: {
     imagem: '/vitrine/ivna-loyola/og.jpg', // logo dourada original + frase aprovada (24/10)
     descricao: 'Seu momento de beleza e autocuidado começa aqui. Estética avançada e micropigmentação. Agende online.',
