@@ -313,7 +313,7 @@ function CartaoVideo({ v, cor, ativo, onAtivar }: { v: { src: string; poster: st
 function Mapa({ consulta, cor }: { consulta: string; cor: string }) {
   const [aberto, setAberto] = useState(false)
   return (
-    <div className="relative aspect-[4/3] overflow-hidden border sm:aspect-auto sm:h-full sm:min-h-[360px]" style={{ borderColor: LINHA, background: '#F2ECE2' }}>
+    <div className="relative aspect-[16/10] overflow-hidden border sm:aspect-auto sm:h-full sm:min-h-[360px]" style={{ borderColor: LINHA, background: '#F2ECE2' }}>
       {aberto ? (
         <iframe title="Mapa da clínica" src={`https://www.google.com/maps?q=${encodeURIComponent(consulta)}&output=embed`} className="absolute inset-0 h-full w-full grayscale-[.35] sepia-[.15]" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
       ) : (
@@ -473,9 +473,9 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       </section>
 
       {/* Serviços: carta de spa */}
-      <section id="servicos" className="relative scroll-mt-20 border-y px-6 py-14 sm:px-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
+      <section id="servicos" className="relative scroll-mt-20 border-y px-6 py-10 sm:px-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
         <div className="mx-auto max-w-4xl">
-          <h2 className={`${SERIF} text-center text-[32px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+          <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
             <Revela>O que você <span style={destaque}>procura hoje?</span></Revela>
           </h2>
 
@@ -595,27 +595,28 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           Combo se fecha com a clínica (WhatsApp); tratamento de várias sessões
           de um serviço só dá pra agendar a 1ª direto. */}
       {d.pacotes.length > 0 && (
-        <section id="pacotes" className="scroll-mt-20 border-b px-6 py-24 sm:px-10 lg:py-32" style={{ borderColor: LINHA }}>
+        <section id="pacotes" className="scroll-mt-20 border-b px-6 py-10 sm:px-10 sm:py-24 lg:py-32" style={{ borderColor: LINHA }}>
           <div className="mx-auto max-w-6xl">
-            <h2 className={`${SERIF} text-center text-[36px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+            <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
               <Revela>Pacotes e <span style={destaque}>tratamentos</span></Revela>
             </h2>
-            <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {/* celular: carrossel (5 cartões empilhados davam 3.500 px) */}
+            <div className="-mx-6 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-3 [scrollbar-width:none] sm:mx-0 sm:mt-14 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
               {d.pacotes.map((p, i) => (
-                <Surge key={p.id} atraso={i * 90} className="h-full">
+                <Surge key={p.id} atraso={i * 90} className="h-full w-[82%] shrink-0 snap-center sm:w-auto">
                   <article className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-white transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:shadow-[0_22px_44px_-24px_rgba(74,58,32,.38)]" style={{ borderColor: LINHA }}>
                     {/* faixa do procedimento: desenho dourado sobre a pedra creme, etiqueta e economia */}
-                    <div className={`relative flex items-center justify-center overflow-hidden ${p.foto ? 'h-52' : 'h-36'}`} style={{ background: '#F6F0E6', backgroundImage: MARMORE }}>
+                    <div className={`relative flex items-center justify-center overflow-hidden ${p.foto ? 'h-40 sm:h-52' : 'h-28 sm:h-36'}`} style={{ background: '#F6F0E6', backgroundImage: MARMORE }}>
                       {p.foto && (
                         <>
                           <Image src={p.foto} alt={p.nome} fill sizes="(min-width:1024px) 380px, (min-width:640px) 50vw, 100vw" className="object-cover transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-105" />
                         </>
                       )}
-                      <span className="absolute left-5 top-4 z-10 rounded-full bg-white/90 px-3 py-1 text-[12px] font-semibold" style={{ color: TINTA }}>
+                      <span className="absolute left-3 top-3 z-10 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold sm:left-5 sm:top-4 sm:px-3 sm:text-[12px]" style={{ color: TINTA }}>
                         {p.sessoes ? `Tratamento · ${p.sessoes.qtd} sessões` : `Pacote · ${p.itens.length} ${p.itens.length === 1 ? 'procedimento' : 'procedimentos'}`}
                       </span>
                       {p.separado && p.separado > p.preco && (
-                        <span className="absolute right-5 top-4 z-10 rounded-full px-3 py-1 text-[12px] font-bold text-white" style={{ background: d.cor }}>
+                        <span className="absolute bottom-3 right-3 z-10 rounded-full px-2.5 py-1 text-[11px] font-bold text-white sm:bottom-auto sm:right-5 sm:top-4 sm:px-3 sm:text-[12px]" style={{ background: d.cor }}>
                           Economize {brl(p.separado - p.preco)}
                         </span>
                       )}
@@ -623,13 +624,13 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                         <Icone nome={iconeDoProcedimento(p.nome, ...p.itens.map((it) => it.nome))} cor={d.cor} className="h-10 w-10" />
                       </span>}
                     </div>
-                    <div className="flex flex-1 flex-col p-7 pt-6">
-                    <h3 className={`${SERIF} text-[23px] font-medium leading-tight tracking-[-0.01em]`}>{p.nome}</h3>
-                    {p.descricao && <p className="mt-3 line-clamp-5 text-[14px] leading-relaxed" style={{ color: SUAVE }}>{p.descricao}</p>}
+                    <div className="flex flex-1 flex-col p-5 sm:p-7 sm:pt-6">
+                    <h3 className={`${SERIF} text-[20px] sm:text-[23px] font-medium leading-tight tracking-[-0.01em]`}>{p.nome}</h3>
+                    {p.descricao && <p className="mt-2 line-clamp-3 text-[13.5px] leading-relaxed sm:mt-3 sm:line-clamp-5 sm:text-[14px]" style={{ color: SUAVE }}>{p.descricao}</p>}
                     {!p.sessoes && (
-                      <ul className="mt-5 space-y-3">
+                      <ul className="mt-4 space-y-2 sm:mt-5 sm:space-y-3">
                         {p.itens.map((it) => (
-                          <li key={it.nome} className="flex items-start gap-3 text-[15px] leading-snug">
+                          <li key={it.nome} className="flex items-start gap-3 text-[14px] leading-snug sm:text-[15px]">
                             <span className="mt-[1px] flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: '#F6F0E6' }}>
                               <Icone nome={iconeDoProcedimento(it.nome)} cor={d.cor} className="h-3.5 w-3.5" />
                             </span>
@@ -638,10 +639,10 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                         ))}
                       </ul>
                     )}
-                    <div className="mt-auto pt-7">
+                    <div className="mt-auto pt-5 sm:pt-7">
                       {p.separado && <p className="text-[14px]" style={{ color: SUAVE }}>de <span className="line-through">{brl(p.separado)}</span> por</p>}
-                      <p className="text-[30px] font-bold tracking-[-0.02em]">{brl(p.preco)}</p>
-                      <div className="mt-5 flex flex-col gap-3">
+                      <p className="text-[26px] font-bold tracking-[-0.02em] sm:text-[30px]">{brl(p.preco)}</p>
+                      <div className="mt-4 flex flex-col gap-3 sm:mt-5">
                         {/* tudo leva pro agendamento: tratamento marca a 1ª sessão; combo marca
                             os serviços juntos pelo preço do pacote (o servidor confere) */}
                         <Link
@@ -663,6 +664,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                 </Surge>
               ))}
             </div>
+            {d.pacotes.length > 1 && <p className="mt-3 text-center text-[13px] sm:hidden" style={{ color: SUAVE }}>Deslize pro lado pra ver os {d.pacotes.length} pacotes</p>}
           </div>
         </section>
       )}
@@ -670,32 +672,32 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       {/* Destaque: foto grande */}
       {c.destaque && (
         <section className="relative lg:grid lg:min-h-[92svh] lg:grid-cols-2">
-          <div className="relative h-[78svh] overflow-hidden lg:h-auto">
+          <div className="relative h-[46svh] overflow-hidden sm:h-[78svh] lg:h-auto">
             <Profundidade forca={60}>
               <Image src={c.destaque.foto} alt={c.destaque.sobre} fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
             </Profundidade>
             <div aria-hidden className="pointer-events-none absolute inset-5 border" style={{ borderColor: '#ffffff70' }} />
           </div>
-          <div className="flex flex-col justify-center px-6 py-20 sm:px-10 lg:px-20 xl:px-28">
-            <h2 className={`${SERIF} text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[52px]`}>
+          <div className="flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-20 lg:px-20 xl:px-28">
+            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[52px]`}>
               <Revela>{c.destaque.titulo}</Revela>
               <Revela atraso={120}><span style={destaque}>{c.destaque.destaque}</span></Revela>
             </h2>
-            <Surge atraso={200}><p className="mt-7 max-w-md text-[17px] leading-[1.8]" style={{ color: SUAVE }}>{c.destaque.texto}</p></Surge>
-            <Surge atraso={300} className="mt-10"><BotaoAgendar href={agendar}>{c.destaque.botao}</BotaoAgendar></Surge>
+            <Surge atraso={200}><p className="mt-4 max-w-md text-[15px] leading-[1.7] sm:mt-7 sm:text-[17px] sm:leading-[1.8]" style={{ color: SUAVE }}>{c.destaque.texto}</p></Surge>
+            <Surge atraso={300} className="mt-7 sm:mt-10"><BotaoAgendar href={agendar}>{c.destaque.botao}</BotaoAgendar></Surge>
           </div>
         </section>
       )}
 
       {/* Vídeos */}
       {c.videos.length > 0 && (
-        <section id="videos" className="scroll-mt-20 border-t py-24 lg:py-36" style={{ borderColor: LINHA }}>
+        <section id="videos" className="scroll-mt-20 border-t py-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA }}>
           <div className="px-6">
-            <h2 className={`${SERIF} text-center text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+            <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
               <Revela>Veja de perto <span style={destaque}>o nosso trabalho</span></Revela>
             </h2>
           </div>
-          <div className="mt-16 flex snap-x snap-mandatory gap-6 overflow-x-auto px-[18vw] pb-2 [scrollbar-width:none] sm:justify-center sm:gap-8 sm:px-10">
+          <div className="mt-7 sm:mt-16 flex snap-x snap-mandatory gap-6 overflow-x-auto px-[18vw] pb-2 [scrollbar-width:none] sm:justify-center sm:gap-8 sm:px-10">
             {c.videos.map((v, i) => (
               <Surge key={v.src} atraso={i * 120}>
                 <CartaoVideo v={v} cor={d.cor} ativo={videoAtivo === i} onAtivar={() => setVideoAtivo(i)} />
@@ -706,18 +708,18 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       )}
 
       {/* A clínica · desceu pra depois dos vídeos (24/10): quem chega pela bio do Instagram já conhece a Ivna; primeiro o que ela faz, depois por que confiar */}
-      <section id="clinica" className="relative scroll-mt-20 px-6 py-24 sm:px-10 lg:py-36">
-        <div className="mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1.1fr_1fr] lg:gap-24">
+      <section id="clinica" className="relative scroll-mt-20 px-6 py-10 sm:px-10 sm:py-24 lg:py-36">
+        <div className="mx-auto grid max-w-6xl gap-8 sm:gap-16 lg:grid-cols-[1.1fr_1fr] lg:gap-24">
           <div>
-            <h2 className={`${SERIF} text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
               <Revela>{c.proposta.titulo}</Revela>
               <Revela atraso={120}><span style={destaque}>{c.proposta.destaque}</span></Revela>
             </h2>
             <Surge atraso={200}>
-              <p className="mt-8 max-w-lg text-[17px] leading-[1.8]" style={{ color: SUAVE }}><T x={c.proposta.texto} /></p>
+              <p className="mt-5 max-w-lg text-[15px] leading-[1.7] sm:mt-8 sm:text-[17px] sm:leading-[1.8]" style={{ color: SUAVE }}><T x={c.proposta.texto} /></p>
             </Surge>
             {c.frase && (
-              <Surge atraso={300} className="mt-14">
+              <Surge atraso={300} className="mt-8 sm:mt-14">
                 <div style={{ borderColor: d.cor2 }} className="border-l pl-7">
                   <p className={`${SERIF} text-[26px] leading-snug tracking-[-0.01em] sm:text-[30px]`}>“{c.frase}”</p>
                   <p className="mt-3 text-[15px] font-semibold" style={{ color: d.cor }}>{d.equipe.find((p) => p.dona)?.nome ?? nomeCurto}</p>
@@ -728,7 +730,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           <ol className="lg:pt-24">
             {c.pilares.map((p, i) => (
               <Surge key={p.titulo} atraso={i * 140}>
-                <li className="grid grid-cols-[48px_1fr] gap-x-4 border-t py-8" style={{ borderColor: LINHA }}>
+                <li className="grid grid-cols-[40px_1fr] gap-x-3 border-t py-5 sm:grid-cols-[48px_1fr] sm:gap-x-4 sm:py-8" style={{ borderColor: LINHA }}>
                   <span className={`${SERIF} text-[22px]`} style={{ color: d.cor }}>{ROMANOS[i]}</span>
                   <div>
                     <h3 className={`${SERIF} text-[24px] font-medium leading-tight tracking-[-0.01em]`}>{p.titulo}</h3>
@@ -742,20 +744,21 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       </section>
 
       {/* Equipe */}
-      <section id="equipe" className="scroll-mt-20 border-t px-6 py-24 sm:px-10 lg:py-36" style={{ borderColor: LINHA, backgroundColor: '#FDFBF8' }}>
+      <section id="equipe" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA, backgroundColor: '#FDFBF8' }}>
         <div className="mx-auto max-w-6xl">
-          <h2 className={`${SERIF} text-center text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+          <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
             <Revela>Quem vai <span style={destaque}>cuidar de você</span></Revela>
           </h2>
-          <div className="mt-20 grid gap-16 sm:grid-cols-2 lg:grid-cols-3 lg:gap-12">
+          {/* celular: foto pequena ao lado do nome (3 fotos de 224px empilhadas davam 1.800 px) */}
+          <div className="mt-8 grid gap-7 sm:mt-20 sm:grid-cols-2 sm:gap-16 lg:grid-cols-3 lg:gap-12">
             {d.equipe.map((p, i) => {
               const bio = c.bios[p.nome] ?? c.bios[p.nome.trim().split(/\s+/)[0]]
               return (
                 <Surge key={p.id} atraso={i * 150}>
-                  <article className="group text-center">
-                    <div className="relative mx-auto h-56 w-56">
-                      <span aria-hidden className="absolute -inset-3 rounded-full border transition-transform duration-[1200ms] group-hover:rotate-45" style={{ borderColor: `${d.cor2}99`, borderStyle: 'solid' }} />
-                      <span aria-hidden className="absolute -inset-3 rounded-full border-t" style={{ borderColor: d.cor }} />
+                  <article className="group flex items-start gap-4 text-left sm:block sm:text-center">
+                    <div className="relative h-20 w-20 shrink-0 sm:mx-auto sm:h-56 sm:w-56">
+                      <span aria-hidden className="absolute -inset-1.5 rounded-full border transition-transform duration-[1200ms] group-hover:rotate-45 sm:-inset-3" style={{ borderColor: `${d.cor2}99`, borderStyle: 'solid' }} />
+                      <span aria-hidden className="absolute -inset-1.5 rounded-full border-t sm:-inset-3" style={{ borderColor: d.cor }} />
                       <div className="relative h-full w-full overflow-hidden rounded-full bg-[#EFE8DC]">
                         {p.foto ? (
                           <Image src={p.foto} alt={p.nome} fill sizes="224px" className="object-cover transition-transform duration-[1500ms] group-hover:scale-105" />
@@ -764,11 +767,13 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                         )}
                       </div>
                     </div>
-                    <h3 className={`${SERIF} mt-9 text-[26px] font-medium leading-tight tracking-[-0.01em]`}>{p.nome}</h3>
-                    <p className="mt-2 text-[15px] font-semibold" style={{ color: d.cor }}>{bio?.papel ?? (p.dona ? 'Fundadora' : 'Especialista')}</p>
-                    <p className="mx-auto mt-4 max-w-xs text-[14px] leading-[1.75]" style={{ color: SUAVE }}>
+                    <div className="min-w-0 sm:contents">
+                    <h3 className={`${SERIF} text-[20px] font-medium leading-tight tracking-[-0.01em] sm:mt-9 sm:text-[26px]`}>{p.nome}</h3>
+                    <p className="mt-0.5 text-[13px] font-semibold sm:mt-2 sm:text-[15px]" style={{ color: d.cor }}>{bio?.papel ?? (p.dona ? 'Fundadora' : 'Especialista')}</p>
+                    <p className="mt-1.5 line-clamp-4 text-[13.5px] leading-[1.6] sm:mx-auto sm:mt-4 sm:line-clamp-none sm:max-w-xs sm:text-[14px] sm:leading-[1.75]" style={{ color: SUAVE }}>
                       <T x={bio?.texto ?? { t: 'Formação, especialidades e o jeito de atender entram aqui, a partir do áudio que ela mandar.', ex: true }} />
                     </p>
+                    </div>
                   </article>
                 </Surge>
               )
@@ -780,12 +785,12 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       {/* Avaliação no Google + pontos: o mesmo componente da página pública
           (grava pelo /api/claim-review), só com a cor da clínica */}
       {d.avaliacao && (
-        <section id="avaliacoes" className="scroll-mt-20 border-t px-6 py-24 sm:px-10 lg:py-32" style={{ borderColor: LINHA }}>
+        <section id="avaliacoes" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-32" style={{ borderColor: LINHA }}>
           <div className="mx-auto max-w-xl">
-            <h2 className={`${SERIF} text-center text-[36px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[46px]`}>
+            <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[46px]`}>
               <Revela>{d.avaliacao.pontos > 0 ? <>Avalie e ganhe <span style={destaque}>{d.avaliacao.pontos} pontos</span></> : <>Conte como foi <span style={destaque}>sua experiência</span></>}</Revela>
             </h2>
-            <Surge atraso={150} className="mt-12">
+            <Surge atraso={150} className="mt-7 sm:mt-12">
               <div style={{ ['--brand-primary' as string]: d.cor } as CSSProperties}>
                 <GoogleReviewSection
                   businessId={d.avaliacao.businessId}
@@ -805,10 +810,10 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       )}
 
       {/* Onde estamos + Instagram */}
-      <section id="onde" className="scroll-mt-20 border-t px-6 py-24 sm:px-10 lg:py-36" style={{ borderColor: LINHA }}>
-        <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
+      <section id="onde" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA }}>
+        <div className="mx-auto grid max-w-6xl gap-8 sm:gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
           <div>
-            <h2 className={`${SERIF} text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
               <Revela>Venha nos <span style={destaque}>visitar</span></Revela>
             </h2>
             <Surge atraso={150}>
@@ -832,23 +837,23 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       </section>
 
       {/* Fecho */}
-      <section className="relative overflow-hidden border-t px-6 py-28 text-center sm:px-10 lg:py-40" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
+      <section className="relative overflow-hidden border-t px-6 py-12 text-center sm:px-10 sm:py-28 lg:py-40" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
         {c.monograma && (
           <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[120%] w-[70%] -translate-x-1/2 -translate-y-1/2 opacity-[0.06]">
             <Image src={c.monograma} alt="" fill sizes="70vw" className="object-contain" />
           </div>
         )}
         <div className="relative mx-auto max-w-3xl">
-          <h2 className={`${SERIF} text-[42px] font-medium leading-[1.06] tracking-[-0.025em] sm:text-[62px]`}>
+          <h2 className={`${SERIF} text-[34px] font-medium leading-[1.06] tracking-[-0.025em] sm:text-[62px]`}>
             <Revela>Seu horário</Revela>
             <Revela atraso={120}><span style={destaque}>está te esperando</span></Revela>
           </h2>
           <Surge atraso={200}><p className="mx-auto mt-6 max-w-md text-[16px] leading-[1.75]" style={{ color: SUAVE }}>Escolha o procedimento, a profissional e o melhor horário pra você.</p></Surge>
-          <Surge atraso={300} className="mt-11"><BotaoAgendar href={agendar} /></Surge>
+          <Surge atraso={300} className="mt-7 sm:mt-11"><BotaoAgendar href={agendar} /></Surge>
         </div>
       </section>
 
-      <footer className="border-t px-6 py-12 text-center sm:px-10" style={{ borderColor: LINHA }}>
+      <footer className="border-t px-6 py-8 sm:py-12 text-center sm:px-10" style={{ borderColor: LINHA }}>
         {c.logoDourada && <div className="relative mx-auto h-14 w-[120px]"><Image src={c.logoDourada} alt={d.nome} fill sizes="120px" className="object-contain" /></div>}
         <p className="mt-6 text-[13px]" style={{ color: '#B3A897' }}>Agendamento online · AgendaPRO</p>
       </footer>
