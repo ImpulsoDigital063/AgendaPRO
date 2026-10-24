@@ -275,9 +275,9 @@ function VideoAbertura({ mp4, poster }: { mp4?: string; poster: string }) {
   const [pronto, setPronto] = useState(false)
   return (
     <>
-      <Image src={poster} alt="" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover object-[50%_32%] sm:object-center" priority />
+      <Image src={poster} alt="" fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover object-[50%_32%] lg:object-center" priority />
       {mp4 && (
-        <video className={`absolute inset-0 h-full w-full object-cover object-[50%_32%] sm:object-center transition-opacity duration-[1500ms] ${pronto ? 'opacity-100' : 'opacity-0'}`} src={mp4} poster={poster} muted loop playsInline autoPlay preload="metadata" onCanPlay={() => setPronto(true)} />
+        <video className={`absolute inset-0 h-full w-full object-cover object-[50%_32%] lg:object-center transition-opacity duration-[1500ms] ${pronto ? 'opacity-100' : 'opacity-0'}`} src={mp4} poster={poster} muted loop playsInline autoPlay preload="metadata" onCanPlay={() => setPronto(true)} />
       )}
     </>
   )
@@ -389,38 +389,38 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           cabe na tela, sem rolar. Mármore no fundo, logo grande centralizada
           (sobe pro topo ao rolar, igual ao computador), título e subtítulo
           centrados e o vídeo num quadro com fio branco por dentro, ocupando o
-          que sobra. sm: em diante volta ao de antes (tablet e computador). */}
-      <section id="topo" className={`relative flex flex-col sm:block lg:grid lg:min-h-[100svh] lg:grid-cols-2 ${chegada?.cupom ? 'h-[calc(100svh-110px)]' : 'h-[calc(100svh-84px)]'} sm:h-auto`}>
-        <div aria-hidden className="absolute inset-0 sm:hidden" style={{ backgroundImage: MARMORE }} />
-        <div className="relative order-2 mx-5 mb-5 min-h-0 flex-1 overflow-hidden rounded-[28px] shadow-[0_24px_48px_-28px_rgba(42,37,32,0.45)] sm:order-none sm:mx-0 sm:mb-0 sm:h-[58svh] sm:flex-none sm:overflow-visible sm:rounded-none sm:shadow-none lg:order-2 lg:h-auto">
+          que sobra. O tablet (sm) usa a mesma versão, maior; lg: é o computador. */}
+      <section id="topo" className={`relative flex flex-col lg:grid lg:min-h-[100svh] lg:grid-cols-2 ${chegada?.cupom ? 'h-[calc(100svh-110px)]' : 'h-[calc(100svh-84px)]'} sm:h-[100svh] lg:h-auto`}>
+        <div aria-hidden className="absolute inset-0 lg:hidden" style={{ backgroundImage: MARMORE }} />
+        <div className="relative order-2 mx-5 mb-5 min-h-0 flex-1 overflow-hidden rounded-[28px] shadow-[0_24px_48px_-28px_rgba(42,37,32,0.45)] sm:mx-10 sm:mb-10 sm:rounded-[36px] lg:order-2 lg:mx-0 lg:mb-0 lg:h-auto lg:flex-none lg:overflow-visible lg:rounded-none lg:shadow-none">
           {poster && <VideoAbertura mp4={c.teaser?.mp4} poster={poster} />}
-          <div aria-hidden className="pointer-events-none absolute inset-3 rounded-[20px] border sm:hidden" style={{ borderColor: '#ffffffa6' }} />
+          <div aria-hidden className="pointer-events-none absolute inset-3 rounded-[20px] border sm:inset-4 sm:rounded-[26px] lg:hidden" style={{ borderColor: '#ffffffa6' }} />
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ background: `linear-gradient(to right, ${CREME} 0%, transparent 22%)` }} />
           <div aria-hidden className="pointer-events-none absolute inset-5 hidden border lg:block" style={{ borderColor: '#ffffff80' }} />
         </div>
 
-        <div className="relative order-1 shrink-0 px-6 pb-5 pt-[72px] text-center sm:order-none sm:pb-16 sm:pt-10 sm:text-left lg:mt-0 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
+        <div className="relative order-1 shrink-0 px-6 pb-5 pt-[72px] text-center sm:px-12 sm:pb-8 sm:pt-[104px] lg:mt-0 lg:text-left lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ backgroundImage: MARMORE }} />
           {c.monograma && (
             <div aria-hidden className="pointer-events-none absolute -left-10 top-1/2 hidden h-[78%] w-[62%] -translate-y-1/2 opacity-[0.07] lg:block">
               <Image src={c.monograma} alt="" fill sizes="40vw" className="object-contain" />
             </div>
           )}
-          <div className="relative mx-auto max-w-xl sm:mx-0">
-            {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mx-auto mb-4 h-[clamp(44px,7.6svh,64px)] w-[clamp(100px,17svh,142px)] sm:mx-0 sm:mb-10 sm:h-[110px] sm:w-[240px]" />}
+          <div className="relative mx-auto max-w-xl lg:mx-0">
+            {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mx-auto mb-4 h-[clamp(44px,7.6svh,64px)] w-[clamp(100px,17svh,142px)] sm:mb-5 sm:h-[84px] sm:w-[186px] lg:mx-0 lg:mb-10 lg:h-[110px] lg:w-[240px]" />}
             {/* cidade: identifica onde fica, sem virar o assunto do título */}
             {c.local && (
-              <p className="-mt-1 mb-4 flex items-center justify-center gap-1.5 text-[13px] font-semibold sm:-mt-4 sm:mb-7 sm:justify-start sm:text-[14px]" style={{ color: SUAVE }}>
+              <p className="-mt-1 mb-4 flex items-center justify-center gap-1.5 text-[13px] font-semibold sm:mb-6 sm:text-[14px] lg:-mt-4 lg:mb-7 lg:justify-start" style={{ color: SUAVE }}>
                 <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke={d.cor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 1 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
                 {c.local}
               </p>
             )}
-            <h1 className={`${SERIF} text-[clamp(28px,4.9svh,40px)] font-medium leading-[1.06] [text-wrap:balance] sm:[text-wrap:wrap] tracking-[-0.025em] sm:text-[58px] lg:text-[50px] lg:[text-wrap:balance] xl:text-[58px]`}>
+            <h1 className={`${SERIF} text-[clamp(28px,4.9svh,40px)] font-medium leading-[1.06] [text-wrap:balance] tracking-[-0.025em] sm:text-[50px] xl:text-[58px]`}>
               <Revela atraso={150}>{c.titulo.antes}</Revela>
               <Revela atraso={300}><span style={destaque}>{c.titulo.destaque}</span>{c.titulo.depois ? ` ${c.titulo.depois}` : ''}{c.titulo.ex && <Selo />}</Revela>
             </h1>
             <Surge atraso={500}>
-              <p className="mx-auto mt-3 max-w-md text-[15px] leading-[1.6] [text-wrap:balance] sm:[text-wrap:wrap] sm:mx-0 sm:mt-6 sm:text-[17px] sm:leading-[1.75]" style={{ color: SUAVE }}>
+              <p className="mx-auto mt-3 max-w-md text-[15px] leading-[1.6] [text-wrap:balance] sm:mt-5 sm:max-w-lg sm:text-[17px] sm:leading-[1.7] lg:mx-0 lg:mt-6 lg:leading-[1.75]" style={{ color: SUAVE }}>
                 <T x={c.subtitulo} />
               </p>
             </Surge>
@@ -429,10 +429,10 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
               <Surge atraso={580}>
                 {/* celular: duas linhas pequenas, sem ícone, cara de assinatura (lista com ✓
                     parecia funcionalidade de app e roubava altura do vídeo) */}
-                <ul className="mt-3 flex flex-col items-center gap-0.5 sm:mt-7 sm:items-start sm:gap-2.5">
+                <ul className="mt-3 flex flex-col items-center gap-0.5 sm:mt-5 sm:gap-1 lg:mt-7 lg:items-start lg:gap-2.5">
                   {c.selos.map((s) => (
-                    <li key={s} className="flex items-center gap-2 text-[12.5px] font-semibold sm:text-[15px] sm:!text-[#2A2520]" style={{ color: d.cor }}>
-                      <svg aria-hidden viewBox="0 0 24 24" className="hidden h-4 w-4 shrink-0 sm:block" fill="none" stroke={d.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                    <li key={s} className="flex items-center gap-2 text-[12.5px] font-semibold sm:text-[14px] lg:text-[15px] lg:!text-[#2A2520]" style={{ color: d.cor }}>
+                      <svg aria-hidden viewBox="0 0 24 24" className="hidden h-4 w-4 shrink-0 lg:block" fill="none" stroke={d.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                       {s}
                     </li>
                   ))}
@@ -464,7 +464,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
               </Surge>
             )}
             {/* no celular o Agendar é o da barra fixa e a abertura respira sem o Ver serviços */}
-            <Surge atraso={650} className="mt-9 hidden items-start gap-6 sm:flex sm:flex-row sm:items-center sm:gap-10">
+            <Surge atraso={650} className="mt-9 hidden items-start gap-6 sm:mt-7 sm:flex sm:flex-row sm:items-center sm:justify-center sm:gap-10 lg:mt-9 lg:justify-start">
               <BotaoAgendar href={agendar} className="w-full sm:w-auto" />
               <Sublinhado href="#servicos" cor={d.cor}>Ver serviços</Sublinhado>
             </Surge>
