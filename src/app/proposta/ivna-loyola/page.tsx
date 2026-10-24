@@ -42,9 +42,10 @@ const SITE = [
   'Painel com a sua marca, pra você e a equipe',
   'Cupom de influencer abrindo o seu site',
   'Vídeo de apresentação do seu sistema',
+  'Integração com o Google Agenda: seus agendamentos aparecem na hora no seu Google',
 ]
 
-const ADICIONAIS = ['Integração com a Agenda Google', '1 Reels por mês feito pra clínica', 'Suporte prioritário no WhatsApp']
+const ADICIONAIS = ['1 Reels por mês feito pra clínica', 'Suporte prioritário no WhatsApp']
 
 function Check({ cor = DOURADO }: { cor?: string }) {
   return (
