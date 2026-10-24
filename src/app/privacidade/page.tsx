@@ -14,7 +14,7 @@ export default function PrivacidadePage() {
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Política de Privacidade</h1>
-        <p className="text-xs text-gray-400 mb-8">Última atualização: abril de 2026</p>
+        <p className="text-xs text-gray-400 mb-8">Última atualização: outubro de 2026</p>
 
         <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-6 text-sm text-gray-700 leading-relaxed">
 
@@ -69,6 +69,7 @@ export default function PrivacidadePage() {
               <li><strong>Resend</strong> — serviço de envio de e-mails transacionais</li>
               <li><strong>Vercel</strong> — hospedagem da plataforma</li>
               <li><strong>Google Analytics</strong> — medição de audiência das páginas públicas</li>
+              <li><strong>Google Agenda</strong> — somente quando o estabelecimento conecta a própria agenda (ver item 5.2)</li>
             </ul>
             <p className="mt-2">Não vendemos, alugamos ou comercializamos seus dados com terceiros.</p>
           </section>
@@ -89,6 +90,47 @@ export default function PrivacidadePage() {
             <p className="mt-2">
               Você pode bloquear esses cookies nas configurações do seu navegador ou instalar o complemento oficial
               de desativação do Google Analytics. Nenhuma funcionalidade do sistema deixa de funcionar por isso.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-semibold text-gray-900 mb-2">5.2. Integração com o Google Agenda</h2>
+            <p>
+              O estabelecimento pode, se quiser, conectar a própria conta Google à AgendaPRO para que os
+              agendamentos apareçam no Google Agenda dele. A conexão é feita pelo próprio dono da conta, na tela de
+              permissão do Google, e pode ser desfeita a qualquer momento no painel da AgendaPRO ou em
+              myaccount.google.com/permissions.
+            </p>
+            <p className="mt-2">Com essa permissão, a AgendaPRO:</p>
+            <ul className="list-disc list-inside space-y-1 mt-1">
+              <li>
+                <strong>cria, altera e apaga eventos</strong> no Google Agenda do estabelecimento, somente os que
+                correspondem a agendamentos feitos na AgendaPRO (nome do cliente, serviço, profissional, horário,
+                WhatsApp e observações do agendamento)
+              </li>
+              <li>
+                <strong>lê o e-mail da conta Google</strong> conectada, apenas para mostrar no painel qual conta está
+                ligada
+              </li>
+            </ul>
+            <p className="mt-2">
+              A AgendaPRO <strong>não lê</strong> os outros eventos da agenda, não acessa e-mails, contatos ou arquivos
+              do Google e não usa nenhum dado do Google para publicidade, venda a terceiros ou treinamento de
+              inteligência artificial. A credencial de acesso fica guardada cifrada e é apagada quando o
+              estabelecimento desconecta.
+            </p>
+            <p className="mt-2">
+              O uso e a transferência, para qualquer outro aplicativo, de informações recebidas das APIs do Google
+              seguem a{' '}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                className="underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Política de Dados do Usuário dos Serviços de API do Google
+              </a>
+              , incluindo os requisitos de Uso Limitado.
             </p>
           </section>
 
