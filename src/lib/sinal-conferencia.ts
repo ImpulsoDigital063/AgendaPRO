@@ -1,15 +1,16 @@
 /* v174 · Sinal conferido pela recepção (Ivna Loyola, 24/10/2026).
 
    Na clínica da Ivna a cliente manda o comprovante do PIX pro WhatsApp da
-   clínica, e quem confere é a recepção (ou a dona). Com a opção ligada:
+   clínica, que fica com a recepção. O "Já paguei" confirma o horário igual
+   em todo negócio (modelo da Wanessa, v146: quem diz que pagou tem o horário).
+   O que a opção muda é QUEM confere o dinheiro:
 
-     · "Já paguei" (página ou WhatsApp) só grava a declaração. O horário fica
-       reservado (o prazo para de correr, v146) mas NÃO confirma.
-     · O aviso de "disse que pagou" vai pro celular da recepção também.
-     · "Recebi o sinal" é que confirma o horário e manda a confirmação.
+     · o aviso de "disse que pagou" vai pro celular da recepção também;
+     · a recepção tem "Sinais a conferir" (/recepcao/sinal) pra ver o
+       comprovante e tocar em "Recebi o sinal".
 
-   Sem a opção, tudo segue como sempre: "Já paguei" confirma o horário e o
-   aviso vai só pra dona. */
+   Eduardo cogitou segurar o horário até a conferência e voltou atrás no mesmo
+   dia (24/10): o modelo da Wanessa funciona há semanas sem reclamação. */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendWebPush } from '@/lib/notify-push'
 

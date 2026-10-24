@@ -27,9 +27,6 @@ import { SITE_URL } from '@/lib/site-url'
 import { todayBR } from '@/lib/date-br'
 import { minutosRestantes, podeSoltarHorario, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
 import { creditoAplicadoEmLote, rotuloLimite } from '@/lib/sinal-saldo'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { confirmarAgendamento } from '@/lib/mensagens/confirmar'
-import { sinalConferidoPelaRecepcao } from '@/lib/sinal-conferencia'
 
 export async function GET() {
   const supabase = await createClient()
@@ -352,17 +349,6 @@ export async function POST(req: NextRequest) {
   // esperando pra abater da comanda.
   if (acao === 'dispensar' && salvo.sinal_valor !== null) {
     return NextResponse.json({ error: 'nao_dispensou_pelo_banco' }, { status: 500 })
-  }
-
-  /* v174 · com a conferência pela recepção, o "Já paguei" não confirmou nada:
-     é aqui, depois de ver o comprovante, que a cliente recebe a confirmação
-     (a função escolhe sozinha a mensagem e respeita pacote e regra ligada).
-     Falha no envio não desfaz o "Recebi": o dinheiro já foi registrado. */
-  if (acao === 'recebi') {
-    const db = createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
-    if (await sinalConferidoPelaRecepcao(db, businessId)) {
-      await confirmarAgendamento(db, id).catch(() => null)
-    }
   }
 
   return NextResponse.json({ ok: true, status: salvo.status })

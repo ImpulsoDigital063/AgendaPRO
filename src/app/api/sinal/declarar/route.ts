@@ -54,19 +54,12 @@ export async function POST(req: NextRequest) {
     { auth: { persistSession: false } },
   )
 
-  /* v174 · com a conferência pela recepção, a declaração só segura o horário:
-     quem confirma é o "Recebi o sinal", depois de ver o comprovante. */
-  const { data: dono0 } = await db.from('appointments').select('business_id').eq('id', id).maybeSingle()
-  const conferencia = dono0?.business_id ? await sinalConferidoPelaRecepcao(db, dono0.business_id as string) : false
-
   /* Guardas iguais às do webhook: só sobe de `pending`, só a PRIMEIRA
      declaração, e nunca em cima de sinal já registrado. Tocar duas vezes
      não reabre nada nem move a data. */
   const { data, error } = await db
     .from('appointments')
-    .update(conferencia
-      ? { sinal_declarado_em: new Date().toISOString() }
-      : { sinal_declarado_em: new Date().toISOString(), status: 'confirmed' })
+    .update({ sinal_declarado_em: new Date().toISOString(), status: 'confirmed' })
     .eq('id', id)
     .eq('status', 'pending')
     .is('sinal_pago_at', null)
@@ -97,7 +90,10 @@ export async function POST(req: NextRequest) {
       const quem = (ap.client_name as string | null) ?? 'Uma cliente'
       const texto = `${quem} disse que pagou o sinal do horário de ${String(ap.start_time).slice(0, 5)}. Confira e marque como recebido.`
       await avisarDona(db, ap.business_id as string, dono, quem, texto, '/admin/financeiro/sinal', 'Sinal: confira o pagamento').catch(() => null)
-      if (conferencia) await avisarRecepcao(db, ap.business_id as string, dono, texto).catch(() => null)
+      // v174 · onde a recepção confere o comprovante, ela também é avisada
+      if (await sinalConferidoPelaRecepcao(db, ap.business_id as string)) {
+        await avisarRecepcao(db, ap.business_id as string, dono, texto).catch(() => null)
+      }
     }
   }
 
