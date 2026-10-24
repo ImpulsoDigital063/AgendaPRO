@@ -100,6 +100,10 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
   })
   const urlAvaliar = extractGoogleReviewUrl(b.google_place_id)
 
+  /* posição dentro da aba: principal → correção/remoção → combo → retorno/manutenção → avaliação */
+  const ordemNaAba = (nome: string) =>
+    /^avalia/i.test(nome.trim()) ? 9 : /retorno|manuten/i.test(nome) ? 4 : /combo/i.test(nome) ? 3 : /remo[cç][aã]o|microagulhamento de micro/i.test(nome) ? 2 : 0
+
   const porCategoria = CATEGORIAS.map((c) => ({
     nome: c,
     servicos: (servicos ?? [])
@@ -107,10 +111,14 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
       .map((s) => {
         // catálogo do WhatsApp: foto sempre; texto só onde o cadastro não tem descrição
         const cat = doCatalogo(conteudo, s.name)
-        return { id: s.id, nome: nomeLimpo(s.name), descricao: s.description?.trim() || cat.texto, preco: s.price ? Number(s.price) : null, duracao: s.duration_minutes, foto: cat.foto }
+        // dentro da aba de cílios o prefixo repetia em todo cartão; o cadastro (e o agendamento) seguem com o nome completo
+        const nome = nomeLimpo(s.name).replace(/^alongamento de c[ií]lios\s*-\s*/i, '')
+        return { id: s.id, nome: nome.charAt(0).toUpperCase() + nome.slice(1), descricao: s.description?.trim() || cat.texto, preco: s.price ? Number(s.price) : null, duracao: s.duration_minutes, foto: cat.foto, avaliacao: /^avalia/i.test(s.name.trim()), ordem: ordemNaAba(s.name) }
       })
-      // avaliação (sem preço) fecha a lista: o procedimento vem primeiro
-      .sort((x, y) => Number(x.preco === null) - Number(y.preco === null)),
+      /* 24/10 · o principal primeiro (Eduardo: a aba de micro abria no Combo
+         Diva e no pigmento laranja). Avaliação sai da lista e vira o cartão
+         "A avaliação é indispensável" no fim da aba. */
+      .sort((x, y) => x.ordem - y.ordem),
   })).filter((c) => c.servicos.length)
 
   return {

@@ -24,7 +24,7 @@ export type DadosVitrine = {
   instagram: string | null
   cor: string
   cor2: string
-  categorias: { nome: string; servicos: { id: string; nome: string; descricao: string | null; preco: number | null; duracao: number | null; foto: string | null }[] }[]
+  categorias: { nome: string; servicos: { id: string; nome: string; descricao: string | null; preco: number | null; duracao: number | null; foto: string | null; avaliacao: boolean; ordem: number }[] }[]
   equipe: { id: string; nome: string; foto: string | null; dona: boolean }[]
   pacotes: {
     id: string
@@ -473,15 +473,15 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       </section>
 
       {/* Serviços: carta de spa */}
-      <section id="servicos" className="relative scroll-mt-20 border-y px-6 py-24 sm:px-10 lg:py-36" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
+      <section id="servicos" className="relative scroll-mt-20 border-y px-6 py-14 sm:px-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
         <div className="mx-auto max-w-4xl">
-          <h2 className={`${SERIF} text-center text-[40px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+          <h2 className={`${SERIF} text-center text-[32px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
             <Revela>O que você <span style={destaque}>procura hoje?</span></Revela>
           </h2>
 
           {/* Categorias em pílula: são botões de ação, precisam parecer clicáveis
               (Eduardo 22/10). Escolhida = marrom cheio, igual ao Agendar. */}
-          <div className="-mx-6 mt-12 overflow-x-auto px-6 py-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
+          <div className="-mx-6 mt-7 overflow-x-auto px-6 py-1 [scrollbar-width:none] sm:mx-0 sm:mt-12 sm:px-0">
             <div className="flex w-max gap-2.5 sm:w-full sm:flex-wrap sm:justify-center sm:gap-3">
               {d.categorias.map((x) => {
                 const ativa = x.nome === aba
@@ -501,18 +501,23 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           </div>
 
           {c.categorias?.[aba] && (
-            <div key={`f-${aba}`} className="mx-auto mt-14 max-w-2xl animate-[entra_.8s_cubic-bezier(.16,1,.3,1)_both] text-center">
-              <p className={`${SERIF} text-[24px] leading-snug tracking-[-0.01em] sm:text-[28px]`}>“{c.categorias[aba].frase}”</p>
-              {c.categorias[aba].texto && <p className="mt-3 text-[15px] leading-relaxed" style={{ color: SUAVE }}>{c.categorias[aba].texto}</p>}
+            <div key={`f-${aba}`} className="mx-auto mt-7 max-w-2xl animate-[entra_.8s_cubic-bezier(.16,1,.3,1)_both] text-center sm:mt-14">
+              <p className={`${SERIF} text-[20px] leading-snug tracking-[-0.01em] [text-wrap:balance] sm:text-[28px]`}>“{c.categorias[aba].frase}”</p>
+              {/* celular: só a frase; o parágrafo empurrava o 1º serviço pra 2ª tela */}
+              {c.categorias[aba].texto && <p className="mt-3 hidden text-[15px] leading-relaxed sm:block" style={{ color: SUAVE }}>{c.categorias[aba].texto}</p>}
             </div>
           )}
 
-          <ul key={aba} className="mt-12">
-            {categoria?.servicos.map((s, i) => (
+          {/* 24/10 · celular: cartão em 2 andares (foto + nome na largura toda,
+              descrição em 2 linhas, e "tempo · a partir de R$ X →" embaixo). A
+              coluna fixa de preço espremia nome e descrição em ~150 px: nome
+              longo virava 7 linhas e a aba de micro passava de 3.600 px. */}
+          <ul key={aba} className="mt-5 sm:mt-12">
+            {categoria?.servicos.filter((s) => !s.avaliacao).map((s, i) => (
               <li key={s.id} className="animate-[entra_.7s_cubic-bezier(.16,1,.3,1)_both]" style={{ animationDelay: `${i * 50}ms` }}>
-                <Link href={comChegada(`/${d.slug}/agendar?servicos=${s.id}`)} className="group flex items-center gap-4 border-b py-5" style={{ borderColor: LINHA }}>
+                <Link href={comChegada(`/${d.slug}/agendar?servicos=${s.id}`)} className="group flex items-start gap-3.5 border-b py-4 sm:items-center sm:gap-4 sm:py-5" style={{ borderColor: LINHA }}>
                   {/* foto do catálogo dela; sem foto, o monograma no lugar (a coluna não pula) */}
-                  <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl sm:h-20 sm:w-20" style={{ background: '#F6F0E6' }}>
+                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl sm:h-20 sm:w-20 sm:rounded-2xl" style={{ background: '#F6F0E6' }}>
                     {s.foto ? (
                       <Image src={s.foto} alt={s.nome} fill sizes="80px" className="object-cover transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-110" />
                     ) : c.monograma ? (
@@ -520,11 +525,23 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                     ) : null}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className={`${SERIF} block text-[19px] font-medium leading-snug tracking-[-0.01em] sm:text-[21px]`}>{s.nome}</span>
-                    {s.descricao && <span className="mt-1 block max-w-xl text-[14px] leading-relaxed" style={{ color: SUAVE }}>{s.descricao}</span>}
-                    {s.duracao ? <span className="mt-1 block text-[13px]" style={{ color: '#A39886' }}>{tempo(s.duracao)}</span> : null}
+                    <span className={`${SERIF} line-clamp-2 text-[17px] font-medium leading-snug tracking-[-0.01em] sm:line-clamp-none sm:text-[21px]`}>{s.nome}</span>
+                    {s.descricao && <span className="mt-1 line-clamp-2 max-w-xl text-[13.5px] leading-relaxed sm:line-clamp-none sm:text-[14px]" style={{ color: SUAVE }}>{s.descricao}</span>}
+                    {s.duracao ? <span className="mt-1 hidden text-[13px] sm:block" style={{ color: '#A39886' }}>{tempo(s.duracao)}</span> : null}
+                    {/* celular: tempo e preço numa linha, com a seta */}
+                    <span className="mt-2 flex items-center justify-between gap-3 sm:hidden">
+                      <span className="text-[13px]" style={{ color: '#A39886' }}>
+                        {s.duracao ? `${tempo(s.duracao)} · ` : ''}
+                        {!s.preco && pacoteDoServico[s.id]
+                          ? <span className="font-semibold" style={{ color: TINTA }}>{pacoteDoServico[s.id].sessoes!.qtd} sessões · {brl(pacoteDoServico[s.id].preco)}</span>
+                          : s.preco
+                            ? <>a partir de <span className="text-[15px] font-semibold" style={{ color: TINTA }}>{brl(s.preco)}</span></>
+                            : 'Sob avaliação'}
+                      </span>
+                      <Icone nome="seta" cor={TINTA} className="h-4 w-4 shrink-0" />
+                    </span>
                   </span>
-                  <span className="shrink-0 text-right">
+                  <span className="hidden shrink-0 text-right sm:block">
                     {!s.preco && pacoteDoServico[s.id] ? (
                       <>
                         <span className="block text-[12px]" style={{ color: SUAVE }}>{pacoteDoServico[s.id].sessoes!.qtd} sessões</span>
@@ -540,15 +557,37 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                     )}
                   </span>
                   <span className="hidden shrink-0 rounded-full border px-4 py-2 text-[14px] font-semibold transition-colors group-hover:bg-[#2A2520] group-hover:text-white sm:inline-block" style={{ borderColor: TINTA }}>Agendar</span>
-                  <Icone nome="seta" cor={TINTA} className="h-4 w-4 shrink-0 sm:hidden" />
                 </Link>
               </li>
             ))}
           </ul>
-          <p className="mt-8 text-center text-[13px]" style={{ color: SUAVE }}>
-            <T x={{ t: 'Em alguns procedimentos o valor muda conforme a profissional. Você vê o valor de cada uma na hora de agendar.', ex: true }} />
+
+          {/* Avaliação: porta de entrada, não "serviço sem preço" no meio da
+              lista. Texto dela (Dce6N0DJv3B). */}
+          {categoria && categoria.servicos.some((s) => s.avaliacao) && (
+            <div key={`av-${aba}`} className="mt-7 animate-[entra_.8s_cubic-bezier(.16,1,.3,1)_both] rounded-3xl border bg-white p-5 sm:mt-10 sm:p-7" style={{ borderColor: LINHA }}>
+              <p className={`${SERIF} text-[21px] leading-snug sm:text-[24px]`}>A avaliação é indispensável</p>
+              <p className="mt-1.5 text-[14px] leading-relaxed sm:text-[15px]" style={{ color: SUAVE }}>
+                Antes de qualquer procedimento, avaliamos sua expectativa para entregar um resultado seguro e perfeito pra você.
+              </p>
+              <ul className="mt-3">
+                {categoria.servicos.filter((s) => s.avaliacao).map((s) => (
+                  <li key={s.id}>
+                    <Link href={comChegada(`/${d.slug}/agendar?servicos=${s.id}`)} className="group flex items-center justify-between gap-3 border-t py-3 text-[14px] font-semibold sm:text-[15px]" style={{ borderColor: LINHA }}>
+                      <span className="min-w-0">{s.nome}{s.duracao ? <span className="ml-1.5 font-normal" style={{ color: '#A39886' }}>· {tempo(s.duracao)}</span> : null}</span>
+                      <span className="flex shrink-0 items-center gap-1.5" style={{ color: d.cor }}>Agendar <Icone nome="seta" cor={d.cor} className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" /></span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <p className="mt-7 text-center text-[13px] [text-wrap:balance] sm:mt-8" style={{ color: SUAVE }}>
+            Em alguns procedimentos o valor muda conforme a profissional. Você vê o valor de cada uma na hora de agendar.
           </p>
-          <Surge className="mt-14 text-center"><BotaoAgendar href={agendar} /></Surge>
+          {/* celular: o Agendar é o da barra fixa */}
+          <Surge className="mt-14 hidden text-center sm:block"><BotaoAgendar href={agendar} /></Surge>
         </div>
       </section>
 
