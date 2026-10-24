@@ -385,14 +385,20 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       </header>
 
       {/* Abertura: vídeo do espaço em tela cheia (celular) / painel ao lado (computador) */}
-      <section id="topo" className="relative lg:grid lg:min-h-[100svh] lg:grid-cols-2">
-        <div className="relative h-[58svh] lg:order-2 lg:h-auto">
+      {/* Celular: a abertura inteira cabe na tela (Eduardo 24/10, print do
+          navegador do WhatsApp cortando o título atrás da barra fixa). Altura =
+          tela menos a barra de baixo; o vídeo cede espaço e o texto não corta.
+          sm: em diante volta ao de antes (tablet e computador intactos). */}
+      <section id="topo" className={`relative flex flex-col sm:block lg:grid lg:min-h-[100svh] lg:grid-cols-2 ${chegada?.cupom ? 'h-[calc(100svh-110px)]' : 'h-[calc(100svh-84px)]'} sm:h-auto`}>
+        <div className="relative min-h-0 flex-1 sm:h-[58svh] sm:flex-none lg:order-2 lg:h-auto">
           {poster && <VideoAbertura mp4={c.teaser?.mp4} poster={poster} />}
+          {/* faixa creme no alto do vídeo: a logo dourada some na parede clara do espaço */}
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 sm:hidden" style={{ background: `linear-gradient(to bottom, ${CREME} 0%, ${CREME}B3 40%, transparent 100%)` }} />
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ background: `linear-gradient(to right, ${CREME} 0%, transparent 22%)` }} />
           <div aria-hidden className="pointer-events-none absolute inset-5 hidden border lg:block" style={{ borderColor: '#ffffff80' }} />
         </div>
 
-        <div className="relative px-6 pb-16 pt-10 lg:mt-0 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
+        <div className="relative shrink-0 px-6 pb-5 pt-6 sm:pb-16 sm:pt-10 lg:mt-0 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ backgroundImage: MARMORE }} />
           {c.monograma && (
             <div aria-hidden className="pointer-events-none absolute -left-10 top-1/2 hidden h-[78%] w-[62%] -translate-y-1/2 opacity-[0.07] lg:block">
@@ -401,12 +407,12 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           )}
           <div className="relative max-w-xl">
             {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mb-10 hidden h-[84px] sm:block w-[182px] sm:h-[110px] sm:w-[240px]" />}
-            <h1 className={`${SERIF} text-[42px] font-medium leading-[1.05] tracking-[-0.025em] sm:text-[58px] xl:text-[68px]`}>
+            <h1 className={`${SERIF} text-[clamp(30px,5.4svh,42px)] font-medium leading-[1.05] tracking-[-0.025em] sm:text-[58px] xl:text-[68px]`}>
               <Revela atraso={150}>{c.titulo.antes}</Revela>
               <Revela atraso={300}><span style={destaque}>{c.titulo.destaque}</span>{c.titulo.depois ? ` ${c.titulo.depois}` : ''}{c.titulo.ex && <Selo />}</Revela>
             </h1>
             <Surge atraso={500}>
-              <p className="mt-6 max-w-md text-[16px] leading-[1.75] sm:text-[17px]" style={{ color: SUAVE }}>
+              <p className="mt-3 max-w-md text-[15px] leading-[1.6] sm:mt-6 sm:text-[17px] sm:leading-[1.75]" style={{ color: SUAVE }}>
                 <T x={c.subtitulo} />
               </p>
             </Surge>
@@ -434,8 +440,11 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                 </div>
               </Surge>
             )}
-            <Surge atraso={650} className="mt-9 flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-10">
-              <BotaoAgendar href={agendar} className="w-full sm:w-auto" />
+            {/* no celular o Agendar é o da barra fixa de baixo; aqui fica só o Ver serviços */}
+            <Surge atraso={650} className="mt-4 flex flex-col items-start gap-6 sm:mt-9 sm:flex-row sm:items-center sm:gap-10">
+              <div className="hidden sm:block">
+                <BotaoAgendar href={agendar} />
+              </div>
               <Sublinhado href="#servicos" cor={d.cor}>Ver serviços</Sublinhado>
             </Surge>
           </div>
