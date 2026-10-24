@@ -68,8 +68,8 @@ const IVNA: ConteudoVitrine = {
   subtitulo: { t: 'Micropigmentação, cílios, estética facial e spa, do jeitinho que você merece.' }, // Ddj0mJ2J_Lp
   selos: ['A avaliação é indispensável', 'Higiene, técnica e atenção em cada detalhe'], // Dce6N0DJv3B · DeK7ORmG_0j (voz dela, aprovado 24/10)
   og: {
-    imagem: '/vitrine/ivna-loyola/og.jpg', // logo dourada original + frase aprovada (24/10)
-    descricao: 'Seu momento de beleza e autocuidado começa aqui. Estética avançada e micropigmentação. Agende online.',
+    imagem: '/vitrine/ivna-loyola/og.jpg', // logo dourada + título aprovado do hero (24/10, refeita)
+    descricao: 'Harmonizamos sua beleza com técnicas de alta performance. Micropigmentação, cílios, estética facial e spa em Fortaleza. Agende online.',
   },
   frase: 'Autocuidado não é luxo, é necessidade.', // DdtqNMlSsvl
   proposta: {
