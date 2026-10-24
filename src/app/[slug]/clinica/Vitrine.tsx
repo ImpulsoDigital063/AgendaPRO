@@ -408,12 +408,19 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           )}
           <div className="relative mx-auto max-w-xl sm:mx-0">
             {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mx-auto mb-5 h-[clamp(52px,9svh,72px)] w-[clamp(118px,20svh,160px)] sm:mx-0 sm:mb-10 sm:h-[110px] sm:w-[240px]" />}
+            {/* cidade: identifica onde fica, sem virar o assunto do título */}
+            {c.local && (
+              <p className="-mt-1 mb-4 flex items-center justify-center gap-1.5 text-[13px] font-semibold sm:-mt-4 sm:mb-7 sm:justify-start sm:text-[14px]" style={{ color: SUAVE }}>
+                <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke={d.cor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 1 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+                {c.local}
+              </p>
+            )}
             <h1 className={`${SERIF} text-[clamp(28px,4.9svh,40px)] font-medium leading-[1.06] [text-wrap:balance] sm:[text-wrap:wrap] tracking-[-0.025em] sm:text-[58px] lg:text-[50px] lg:[text-wrap:balance] xl:text-[58px]`}>
               <Revela atraso={150}>{c.titulo.antes}</Revela>
               <Revela atraso={300}><span style={destaque}>{c.titulo.destaque}</span>{c.titulo.depois ? ` ${c.titulo.depois}` : ''}{c.titulo.ex && <Selo />}</Revela>
             </h1>
             <Surge atraso={500}>
-              <p className="mx-auto mt-3 max-w-md text-[15px] leading-[1.6] sm:mx-0 sm:mt-6 sm:text-[17px] sm:leading-[1.75]" style={{ color: SUAVE }}>
+              <p className="mx-auto mt-3 max-w-md text-[15px] leading-[1.6] [text-wrap:balance] sm:[text-wrap:wrap] sm:mx-0 sm:mt-6 sm:text-[17px] sm:leading-[1.75]" style={{ color: SUAVE }}>
                 <T x={c.subtitulo} />
               </p>
             </Surge>

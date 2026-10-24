@@ -12,6 +12,8 @@ export type ConteudoVitrine = {
   subtitulo: Texto
   /** provas curtas na abertura (só o que é verdade e publicado) */
   selos?: string[]
+  /** cidade em etiqueta pequena na abertura (identifica onde fica, sem virar o assunto) */
+  local?: string
   /** prévia do link no WhatsApp/Instagram: imagem 1200x630 (em public/) e o texto embaixo do nome */
   og?: { imagem: string; descricao: string }
   frase?: string
@@ -47,7 +49,10 @@ export type ConteudoVitrine = {
    origem em segundo-cerebro/2-PROCESSAMENTO/agendapro/ivna-loyola/ESTUDO-INSTAGRAM.md). */
 const IVNA: ConteudoVitrine = {
   selo: 'Beauty Clinic',
-  /* 24/10 (carta branca do Eduardo pro hero): vende a CLÍNICA (equipe) com a
+  /* 24/10 · Eduardo escolheu entre 4 frases dela: a BIO ("Harmonizamos sua
+     beleza com técnicas de alta performance"); Fortaleza vira etiqueta (local).
+     "A clínica da naturalidade em Fortaleza" reprovada ("frase tosca").
+     Antes (carta branca): vende a CLÍNICA (equipe) com a
      palavra que ela mais repete; 1ª versão do dia ("Micropigmentação e laser…",
      "Com Ivna Loyola") apagava a equipe e promovia o laser, que quase não
      agenda (banco 24/10: cílios 19, micro 13, laser 2). Antes: abria com a ESPECIALIDADE dela
@@ -56,9 +61,10 @@ const IVNA: ConteudoVitrine = {
      Provas só com o que é verdade e está publicado: ela dá curso (DY7gcStO4_D,
      CywgzmVx4-c, Cw5aaLquzvz) e repete a avaliação antes (Dce6N0DJv3B). A nota
      do Google (5,0 com 2 avaliações em 24/10) ainda é pouca pra vitrine. */
-  titulo: { antes: 'A clínica da', destaque: 'naturalidade', depois: 'em Fortaleza.' },
-  subtitulo: { t: 'Micropigmentação, cílios, estética facial e spa, com uma especialista em cada procedimento.' },
-  selos: ['Fundada por especialista que forma profissionais', 'Avaliação antes de todo procedimento'],
+  titulo: { antes: 'Harmonizamos sua beleza com técnicas de', destaque: 'alta performance.' },
+  local: 'Fortaleza · CE',
+  subtitulo: { t: 'Micropigmentação, cílios, estética facial e spa, do jeitinho que você merece.' }, // Ddj0mJ2J_Lp
+  selos: ['A avaliação é indispensável', 'Higiene, técnica e atenção em cada detalhe'], // Dce6N0DJv3B · DeK7ORmG_0j (voz dela, aprovado 24/10)
   og: {
     imagem: '/vitrine/ivna-loyola/og.jpg', // logo dourada original + frase aprovada (24/10)
     descricao: 'Seu momento de beleza e autocuidado começa aqui. Estética avançada e micropigmentação. Agende online.',
