@@ -392,25 +392,25 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           que sobra. O tablet (sm) usa a mesma versão, maior; lg: é o computador. */}
       <section id="topo" className={`relative flex flex-col lg:grid lg:min-h-[100svh] lg:grid-cols-2 ${chegada?.cupom ? 'h-[calc(100svh-110px)]' : 'h-[calc(100svh-84px)]'} sm:h-[100svh] lg:h-auto`}>
         <div aria-hidden className="absolute inset-0 lg:hidden" style={{ backgroundImage: MARMORE }} />
-        <div className="relative order-2 mx-5 mb-5 min-h-0 flex-1 overflow-hidden rounded-[28px] shadow-[0_24px_48px_-28px_rgba(42,37,32,0.45)] sm:mx-10 sm:mb-10 sm:rounded-[36px] lg:order-2 lg:mx-0 lg:mb-0 lg:h-auto lg:flex-none lg:overflow-visible lg:rounded-none lg:shadow-none">
+        <div className="relative order-2 mb-5 ml-12 min-h-0 flex-1 overflow-hidden rounded-l-[28px] shadow-[0_24px_48px_-28px_rgba(42,37,32,0.45)] sm:mb-10 sm:ml-32 sm:rounded-l-[40px] lg:order-2 lg:mx-0 lg:mb-0 lg:h-auto lg:flex-none lg:overflow-visible lg:rounded-none lg:shadow-none">
           {poster && <VideoAbertura mp4={c.teaser?.mp4} poster={poster} />}
-          <div aria-hidden className="pointer-events-none absolute inset-3 rounded-[20px] border sm:inset-4 sm:rounded-[26px] lg:hidden" style={{ borderColor: '#ffffffa6' }} />
+          <div aria-hidden className="pointer-events-none absolute -right-px bottom-3 left-3 top-3 rounded-l-[20px] border sm:bottom-4 sm:left-4 sm:top-4 sm:rounded-l-[30px] lg:hidden" style={{ borderColor: '#ffffffa6' }} />
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ background: `linear-gradient(to right, ${CREME} 0%, transparent 22%)` }} />
           <div aria-hidden className="pointer-events-none absolute inset-5 hidden border lg:block" style={{ borderColor: '#ffffff80' }} />
         </div>
 
-        <div className="relative order-1 shrink-0 px-6 pb-5 pt-[72px] text-center sm:px-12 sm:pb-8 sm:pt-[104px] lg:mt-0 lg:text-left lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
+        <div className="relative order-1 shrink-0 px-6 pb-5 pt-[72px] sm:px-12 sm:pb-8 sm:pt-[104px] lg:mt-0 lg:text-left lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ backgroundImage: MARMORE }} />
           {c.monograma && (
             <div aria-hidden className="pointer-events-none absolute -left-10 top-1/2 hidden h-[78%] w-[62%] -translate-y-1/2 opacity-[0.07] lg:block">
               <Image src={c.monograma} alt="" fill sizes="40vw" className="object-contain" />
             </div>
           )}
-          <div className="relative mx-auto max-w-xl lg:mx-0">
-            {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mx-auto mb-4 h-[clamp(44px,7.6svh,64px)] w-[clamp(100px,17svh,142px)] sm:mb-5 sm:h-[84px] sm:w-[186px] lg:mx-0 lg:mb-10 lg:h-[110px] lg:w-[240px]" />}
+          <div className="relative max-w-xl">
+            {c.logoDourada && <div ref={vagaAbertura} aria-hidden className="mb-4 h-[clamp(44px,7.6svh,64px)] w-[clamp(100px,17svh,142px)] sm:mb-5 sm:h-[84px] sm:w-[186px] lg:mb-10 lg:h-[110px] lg:w-[240px]" />}
             {/* cidade: identifica onde fica, sem virar o assunto do título */}
             {c.local && (
-              <p className="-mt-1 mb-4 flex items-center justify-center gap-1.5 text-[13px] font-semibold sm:mb-6 sm:text-[14px] lg:-mt-4 lg:mb-7 lg:justify-start" style={{ color: SUAVE }}>
+              <p className="-mt-1 mb-4 flex items-center gap-1.5 text-[13px] font-semibold sm:mb-6 sm:text-[14px] lg:-mt-4 lg:mb-7" style={{ color: SUAVE }}>
                 <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke={d.cor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 1 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
                 {c.local}
               </p>
@@ -420,7 +420,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
               <Revela atraso={300}><span style={destaque}>{c.titulo.destaque}</span>{c.titulo.depois ? ` ${c.titulo.depois}` : ''}{c.titulo.ex && <Selo />}</Revela>
             </h1>
             <Surge atraso={500}>
-              <p className="mx-auto mt-3 max-w-md text-[15px] leading-[1.6] [text-wrap:balance] sm:mt-5 sm:max-w-lg sm:text-[17px] sm:leading-[1.7] lg:mx-0 lg:mt-6 lg:leading-[1.75]" style={{ color: SUAVE }}>
+              <p className="mt-3 max-w-md text-[15px] leading-[1.6] [text-wrap:balance] sm:mt-5 sm:max-w-lg sm:text-[17px] sm:leading-[1.7] lg:mt-6 lg:leading-[1.75]" style={{ color: SUAVE }}>
                 <T x={c.subtitulo} />
               </p>
             </Surge>
@@ -429,7 +429,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
               <Surge atraso={580}>
                 {/* celular: duas linhas pequenas, sem ícone, cara de assinatura (lista com ✓
                     parecia funcionalidade de app e roubava altura do vídeo) */}
-                <ul className="mt-3 flex flex-col items-center gap-0.5 sm:mt-5 sm:gap-1 lg:mt-7 lg:items-start lg:gap-2.5">
+                <ul className="mt-3 flex flex-col items-start gap-0.5 sm:mt-5 sm:gap-1 lg:mt-7 lg:gap-2.5">
                   {c.selos.map((s) => (
                     <li key={s} className="flex items-center gap-2 text-[12.5px] font-semibold sm:text-[14px] lg:text-[15px] lg:!text-[#2A2520]" style={{ color: d.cor }}>
                       <svg aria-hidden viewBox="0 0 24 24" className="hidden h-4 w-4 shrink-0 lg:block" fill="none" stroke={d.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
@@ -464,7 +464,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
               </Surge>
             )}
             {/* no celular o Agendar é o da barra fixa e a abertura respira sem o Ver serviços */}
-            <Surge atraso={650} className="mt-9 hidden items-start gap-6 sm:mt-7 sm:flex sm:flex-row sm:items-center sm:justify-center sm:gap-10 lg:mt-9 lg:justify-start">
+            <Surge atraso={650} className="mt-9 hidden items-start gap-6 sm:mt-7 sm:flex sm:flex-row sm:items-center sm:gap-10 lg:mt-9">
               <BotaoAgendar href={agendar} className="w-full sm:w-auto" />
               <Sublinhado href="#servicos" cor={d.cor}>Ver serviços</Sublinhado>
             </Surge>
@@ -474,15 +474,15 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
 
       {/* Serviços: carta de spa */}
       <section id="servicos" className="relative scroll-mt-20 border-y px-6 py-10 sm:px-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
-        <div className="mx-auto max-w-4xl">
-          <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+        <div className="max-w-4xl lg:ml-[9%] xl:ml-[12%]">
+          <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
             <Revela>O que você <span style={destaque}>procura hoje?</span></Revela>
           </h2>
 
           {/* Categorias em pílula: são botões de ação, precisam parecer clicáveis
               (Eduardo 22/10). Escolhida = marrom cheio, igual ao Agendar. */}
           <div className="-mx-6 mt-7 overflow-x-auto px-6 py-1 [scrollbar-width:none] sm:mx-0 sm:mt-12 sm:px-0">
-            <div className="flex w-max gap-2.5 sm:w-full sm:flex-wrap sm:justify-center sm:gap-3">
+            <div className="flex w-max gap-2.5 sm:w-full sm:flex-wrap sm:gap-3">
               {d.categorias.map((x) => {
                 const ativa = x.nome === aba
                 return (
@@ -501,7 +501,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           </div>
 
           {c.categorias?.[aba] && (
-            <div key={`f-${aba}`} className="mx-auto mt-7 max-w-2xl animate-[entra_.8s_cubic-bezier(.16,1,.3,1)_both] text-center sm:mt-14">
+            <div key={`f-${aba}`} className="mt-7 max-w-2xl animate-[entra_.8s_cubic-bezier(.16,1,.3,1)_both] sm:mt-14">
               <p className={`${SERIF} text-[20px] leading-snug tracking-[-0.01em] [text-wrap:balance] sm:text-[28px]`}>“{c.categorias[aba].frase}”</p>
               {/* celular: só a frase; o parágrafo empurrava o 1º serviço pra 2ª tela */}
               {c.categorias[aba].texto && <p className="mt-3 hidden text-[15px] leading-relaxed sm:block" style={{ color: SUAVE }}>{c.categorias[aba].texto}</p>}
@@ -583,11 +583,11 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             </div>
           )}
 
-          <p className="mt-7 text-center text-[13px] [text-wrap:balance] sm:mt-8" style={{ color: SUAVE }}>
+          <p className="mt-7 max-w-xl text-[13px] [text-wrap:balance] sm:mt-8" style={{ color: SUAVE }}>
             Em alguns procedimentos o valor muda conforme a profissional. Você vê o valor de cada uma na hora de agendar.
           </p>
           {/* celular: o Agendar é o da barra fixa */}
-          <Surge className="mt-14 hidden text-center sm:block"><BotaoAgendar href={agendar} /></Surge>
+          <Surge className="mt-14 hidden sm:block"><BotaoAgendar href={agendar} /></Surge>
         </div>
       </section>
 
@@ -597,11 +597,11 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       {d.pacotes.length > 0 && (
         <section id="pacotes" className="scroll-mt-20 border-b px-6 py-10 sm:px-10 sm:py-24 lg:py-32" style={{ borderColor: LINHA }}>
           <div className="mx-auto max-w-6xl">
-            <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
               <Revela>Pacotes e <span style={destaque}>tratamentos</span></Revela>
             </h2>
             {/* celular: carrossel (5 cartões empilhados davam 3.500 px) */}
-            <div className="-mx-6 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-3 [scrollbar-width:none] sm:mx-0 sm:mt-14 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
+            <div className="-mx-6 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-3 [scrollbar-width:none] sm:mx-0 sm:mt-14 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 sm:[&>*:nth-child(2n)]:mt-10 lg:[&>*:nth-child(2n)]:mt-0 lg:[&>*:nth-child(3n+2)]:mt-12">
               {d.pacotes.map((p, i) => (
                 <Surge key={p.id} atraso={i * 90} className="h-full w-[82%] shrink-0 snap-center sm:w-auto">
                   <article className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-white transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:shadow-[0_22px_44px_-24px_rgba(74,58,32,.38)]" style={{ borderColor: LINHA }}>
@@ -664,7 +664,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                 </Surge>
               ))}
             </div>
-            {d.pacotes.length > 1 && <p className="mt-3 text-center text-[13px] sm:hidden" style={{ color: SUAVE }}>Deslize pro lado pra ver os {d.pacotes.length} pacotes</p>}
+            {d.pacotes.length > 1 && <p className="mt-3 text-[13px] sm:hidden" style={{ color: SUAVE }}>Deslize pro lado pra ver os {d.pacotes.length} pacotes</p>}
           </div>
         </section>
       )}
@@ -672,7 +672,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       {/* Destaque: foto grande */}
       {c.destaque && (
         <section className="relative lg:grid lg:min-h-[92svh] lg:grid-cols-2">
-          <div className="relative h-[46svh] overflow-hidden sm:h-[78svh] lg:h-auto">
+          <div className="relative mr-14 h-[46svh] overflow-hidden rounded-r-[28px] sm:mr-0 sm:h-[78svh] sm:rounded-none lg:h-auto">
             <Profundidade forca={60}>
               <Image src={c.destaque.foto} alt={c.destaque.sobre} fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
             </Profundidade>
@@ -692,12 +692,12 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       {/* Vídeos */}
       {c.videos.length > 0 && (
         <section id="videos" className="scroll-mt-20 border-t py-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA }}>
-          <div className="px-6">
-            <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+          <div className="px-6 sm:px-10 lg:px-16">
+            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
               <Revela>Veja de perto <span style={destaque}>o nosso trabalho</span></Revela>
             </h2>
           </div>
-          <div className="mt-7 sm:mt-16 flex snap-x snap-mandatory gap-6 overflow-x-auto px-[18vw] pb-2 [scrollbar-width:none] sm:justify-center sm:gap-8 sm:px-10">
+          <div className="mt-7 sm:mt-16 flex snap-x snap-mandatory scroll-pl-6 gap-5 overflow-x-auto px-6 pb-2 [scrollbar-width:none] sm:scroll-pl-10 sm:gap-8 sm:px-10 lg:px-16">
             {c.videos.map((v, i) => (
               <Surge key={v.src} atraso={i * 120}>
                 <CartaoVideo v={v} cor={d.cor} ativo={videoAtivo === i} onAtivar={() => setVideoAtivo(i)} />
@@ -746,17 +746,17 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       {/* Equipe */}
       <section id="equipe" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA, backgroundColor: '#FDFBF8' }}>
         <div className="mx-auto max-w-6xl">
-          <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
+          <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
             <Revela>Quem vai <span style={destaque}>cuidar de você</span></Revela>
           </h2>
           {/* celular: foto pequena ao lado do nome (3 fotos de 224px empilhadas davam 1.800 px) */}
-          <div className="mt-8 grid gap-7 sm:mt-20 sm:grid-cols-2 sm:gap-16 lg:grid-cols-3 lg:gap-12">
+          <div className="mt-8 grid gap-7 sm:mt-20 sm:grid-cols-2 sm:gap-16 lg:grid-cols-3 lg:gap-12 lg:[&>*:nth-child(2)]:mt-20 sm:[&>*:nth-child(2)]:mt-14 lg:[&>*:nth-child(3)]:mt-6">
             {d.equipe.map((p, i) => {
               const bio = c.bios[p.nome] ?? c.bios[p.nome.trim().split(/\s+/)[0]]
               return (
                 <Surge key={p.id} atraso={i * 150}>
-                  <article className="group flex items-start gap-4 text-left sm:block sm:text-center">
-                    <div className="relative h-20 w-20 shrink-0 sm:mx-auto sm:h-56 sm:w-56">
+                  <article className="group flex items-start gap-4 text-left sm:block">
+                    <div className="relative h-20 w-20 shrink-0 sm:h-56 sm:w-56">
                       <span aria-hidden className="absolute -inset-1.5 rounded-full border transition-transform duration-[1200ms] group-hover:rotate-45 sm:-inset-3" style={{ borderColor: `${d.cor2}99`, borderStyle: 'solid' }} />
                       <span aria-hidden className="absolute -inset-1.5 rounded-full border-t sm:-inset-3" style={{ borderColor: d.cor }} />
                       <div className="relative h-full w-full overflow-hidden rounded-full bg-[#EFE8DC]">
@@ -770,7 +770,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                     <div className="min-w-0 sm:contents">
                     <h3 className={`${SERIF} text-[20px] font-medium leading-tight tracking-[-0.01em] sm:mt-9 sm:text-[26px]`}>{p.nome}</h3>
                     <p className="mt-0.5 text-[13px] font-semibold sm:mt-2 sm:text-[15px]" style={{ color: d.cor }}>{bio?.papel ?? (p.dona ? 'Fundadora' : 'Especialista')}</p>
-                    <p className="mt-1.5 line-clamp-4 text-[13.5px] leading-[1.6] sm:mx-auto sm:mt-4 sm:line-clamp-none sm:max-w-xs sm:text-[14px] sm:leading-[1.75]" style={{ color: SUAVE }}>
+                    <p className="mt-1.5 line-clamp-4 text-[13.5px] leading-[1.6] sm:mt-4 sm:line-clamp-none sm:max-w-xs sm:text-[14px] sm:leading-[1.75]" style={{ color: SUAVE }}>
                       <T x={bio?.texto ?? { t: 'Formação, especialidades e o jeito de atender entram aqui, a partir do áudio que ela mandar.', ex: true }} />
                     </p>
                     </div>
@@ -786,8 +786,8 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           (grava pelo /api/claim-review), só com a cor da clínica */}
       {d.avaliacao && (
         <section id="avaliacoes" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-32" style={{ borderColor: LINHA }}>
-          <div className="mx-auto max-w-xl">
-            <h2 className={`${SERIF} text-center text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[46px]`}>
+          <div className="max-w-xl lg:ml-[14%]">
+            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[46px]`}>
               <Revela>{d.avaliacao.pontos > 0 ? <>Avalie e ganhe <span style={destaque}>{d.avaliacao.pontos} pontos</span></> : <>Conte como foi <span style={destaque}>sua experiência</span></>}</Revela>
             </h2>
             <Surge atraso={150} className="mt-7 sm:mt-12">
@@ -837,24 +837,24 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       </section>
 
       {/* Fecho */}
-      <section className="relative overflow-hidden border-t px-6 py-12 text-center sm:px-10 sm:py-28 lg:py-40" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
+      <section className="relative overflow-hidden border-t px-6 py-12 sm:px-10 sm:py-28 lg:py-40" style={{ borderColor: LINHA, backgroundImage: MARMORE, backgroundColor: '#FDFBF8' }}>
         {c.monograma && (
-          <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[120%] w-[70%] -translate-x-1/2 -translate-y-1/2 opacity-[0.06]">
+          <div aria-hidden className="pointer-events-none absolute -right-[18%] top-1/2 h-[120%] w-[78%] -translate-y-1/2 opacity-[0.07] sm:-right-[8%] sm:w-[60%]">
             <Image src={c.monograma} alt="" fill sizes="70vw" className="object-contain" />
           </div>
         )}
-        <div className="relative mx-auto max-w-3xl">
+        <div className="relative max-w-3xl lg:ml-[8%]">
           <h2 className={`${SERIF} text-[34px] font-medium leading-[1.06] tracking-[-0.025em] sm:text-[62px]`}>
             <Revela>Seu horário</Revela>
             <Revela atraso={120}><span style={destaque}>está te esperando</span></Revela>
           </h2>
-          <Surge atraso={200}><p className="mx-auto mt-6 max-w-md text-[16px] leading-[1.75]" style={{ color: SUAVE }}>Escolha o procedimento, a profissional e o melhor horário pra você.</p></Surge>
+          <Surge atraso={200}><p className="mt-6 max-w-md text-[16px] leading-[1.75]" style={{ color: SUAVE }}>Escolha o procedimento, a profissional e o melhor horário pra você.</p></Surge>
           <Surge atraso={300} className="mt-7 sm:mt-11"><BotaoAgendar href={agendar} /></Surge>
         </div>
       </section>
 
-      <footer className="border-t px-6 py-8 sm:py-12 text-center sm:px-10" style={{ borderColor: LINHA }}>
-        {c.logoDourada && <div className="relative mx-auto h-14 w-[120px]"><Image src={c.logoDourada} alt={d.nome} fill sizes="120px" className="object-contain" /></div>}
+      <footer className="border-t px-6 py-8 sm:px-10 sm:py-12 lg:pl-[9%]" style={{ borderColor: LINHA }}>
+        {c.logoDourada && <div className="relative h-14 w-[120px]"><Image src={c.logoDourada} alt={d.nome} fill sizes="120px" className="object-contain object-left" /></div>}
         <p className="mt-6 text-[13px]" style={{ color: '#B3A897' }}>Agendamento online · AgendaPRO</p>
       </footer>
 
