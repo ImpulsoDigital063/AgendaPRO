@@ -3,6 +3,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/admin/ThemeToggle'
 import Greeting from '@/components/admin/Greeting'
@@ -54,7 +55,7 @@ export default async function RecepcaoAgendaPage({
 
   const { data: recep } = await supabase
     .from('professionals')
-    .select('id, name, photo_url, business:businesses(id, name, slug, brand_logo_url)')
+    .select('id, name, photo_url, does_appointments, business:businesses(id, name, slug, brand_logo_url)')
     .eq('auth_user_id', user.id)
     .eq('is_receptionist', true)
     .single()
@@ -121,6 +122,23 @@ export default async function RecepcaoAgendaPage({
   // protótipo · clínica com painel próprio: boas-vindas de quem entrou (painel.ts)
   const painel = painelDaClinica(business.slug)
 
+  /* 24/10 · quem é recepção E atende (Ilana): a parte dela de profissional no
+     topo do balcão, sem trocar de tela. Próxima cliente dela, quantas hoje,
+     atalhos pra agenda e ganhos dela, e os sinais esperando conferência. */
+  const tambemAtende = recep.does_appointments === true
+  const minhasHoje = active.filter((a) => (a.professional as { id?: string } | null)?.id === recep.id)
+  const agoraHHMM = new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+  const minhaProxima = minhasHoje.find((a) => a.status !== 'completed' && String(a.end_time).slice(0, 5) > agoraHHMM) ?? null
+  const { count: sinaisAConferir } = painel
+    ? await sbRecepAdmin
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('business_id', business.id)
+        .not('sinal_declarado_em', 'is', null)
+        .is('sinal_pago_at', null)
+        .in('status', ['pending', 'confirmed'])
+    : { count: 0 }
+
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -157,6 +175,59 @@ export default async function RecepcaoAgendaPage({
             logo={painel.logo}
             dia={todayFormatted}
           />
+        </div>
+      )}
+
+      {/* Balcão + atendimento no mesmo lugar (só na clínica com painel) */}
+      {painel && (tambemAtende || (sinaisAConferir ?? 0) > 0) && (
+        <div className="relative px-4 md:px-6 pt-4 grid gap-3 md:grid-cols-[1.4fr_1fr]">
+          {tambemAtende && (
+            <section className="admin-card p-4">
+              <p className="text-[12px] font-semibold" style={{ color: 'var(--admin-text-mute)' }}>
+                Sua agenda hoje · {minhasHoje.length} {minhasHoje.length === 1 ? 'atendimento' : 'atendimentos'}
+              </p>
+              {minhaProxima ? (
+                <div className="mt-2 flex items-center gap-3">
+                  <span className="shrink-0 rounded-xl px-2.5 py-1.5 text-[15px] font-bold tabular-nums" style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>
+                    {String(minhaProxima.start_time).slice(0, 5)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[15px] font-semibold" style={{ color: 'var(--admin-text)' }}>
+                      Próxima: {String(minhaProxima.client_name ?? 'Cliente').split(' ')[0]}
+                    </span>
+                    <span className="block truncate text-[13px]" style={{ color: 'var(--admin-text-mute)' }}>
+                      {minhaProxima.service_name}{minhaProxima.status === 'pending' ? ' · aguardando confirmação' : ''}
+                    </span>
+                  </span>
+                </div>
+              ) : (
+                <p className="mt-2 text-[14px]" style={{ color: 'var(--admin-text-2)' }}>
+                  {minhasHoje.length ? 'Seus atendimentos de hoje já passaram.' : 'Nenhum atendimento seu hoje.'}
+                </p>
+              )}
+              <div className="mt-3 flex gap-2">
+                <Link href="/recepcao/eu" className="flex-1 rounded-xl py-2.5 text-center text-[13px] font-semibold" style={{ background: 'var(--admin-accent)', color: '#fff' }}>
+                  Minha agenda
+                </Link>
+                <Link href="/profissional/financeiro" className="flex-1 rounded-xl border py-2.5 text-center text-[13px] font-semibold" style={{ borderColor: 'var(--admin-border)', color: 'var(--admin-text)' }}>
+                  Meus ganhos
+                </Link>
+              </div>
+            </section>
+          )}
+          {(sinaisAConferir ?? 0) > 0 && (
+            <Link href="/recepcao/sinal" className="admin-card flex items-center justify-between gap-3 p-4" style={{ border: '1.5px solid var(--admin-accent)' }}>
+              <span>
+                <span className="block text-[15px] font-semibold" style={{ color: 'var(--admin-text)' }}>
+                  {sinaisAConferir} {sinaisAConferir === 1 ? 'sinal a conferir' : 'sinais a conferir'}
+                </span>
+                <span className="block text-[13px]" style={{ color: 'var(--admin-text-mute)' }}>
+                  Cliente disse que pagou. Confira o comprovante no WhatsApp da clínica.
+                </span>
+              </span>
+              <span aria-hidden className="text-[18px]" style={{ color: 'var(--admin-accent)' }}>→</span>
+            </Link>
+          )}
         </div>
       )}
 
@@ -264,7 +335,24 @@ export default async function RecepcaoAgendaPage({
             </section>
 
             {/* Próximos dias */}
-            {upcoming && upcoming.length > 0 && (
+            {/* clínica com painel: recolhido (26 cartões grandes deixavam o
+                início com 6.000+ px no celular); abre num toque */}
+            {painel && upcoming && upcoming.length > 0 && (
+              <details className="admin-card group">
+                <summary className="flex cursor-pointer list-none items-center justify-between p-4">
+                  <span className="text-[14px] font-semibold" style={{ color: 'var(--admin-text)' }}>
+                    Próximos 7 dias · {upcoming.length} {upcoming.length === 1 ? 'agendamento' : 'agendamentos'}
+                  </span>
+                  <span aria-hidden className="text-[13px] font-semibold transition-transform group-open:rotate-90" style={{ color: 'var(--admin-accent)' }}>▸</span>
+                </summary>
+                <div className="space-y-3.5 px-3 pb-3">
+                  {upcoming.map((a) => (
+                    <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} showDate />
+                  ))}
+                </div>
+              </details>
+            )}
+            {!painel && upcoming && upcoming.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
