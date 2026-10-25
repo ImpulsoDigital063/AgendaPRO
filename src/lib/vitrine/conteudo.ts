@@ -30,6 +30,8 @@ export type ConteudoVitrine = {
   /* recortes da logo oficial (só o dourado, fundo transparente); nunca redesenhar */
   monograma?: string
   logoDourada?: string
+  /** app instalado da equipe (PWA): nome embaixo do ícone e pasta com icone-192/512, maskable-192/512, apple-180 */
+  app?: { nome: string; pasta: string }
   videos: { src: string; poster: string; titulo: string }[]
   instagram?: { usuario: string; posts: { img: string; url: string; alt: string }[] }
   /** coords = pin que a clínica mandou ("lat,lng"); quando existe, o mapa e o
@@ -131,6 +133,7 @@ const IVNA: ConteudoVitrine = {
   teaser: { mp4: '/vitrine/ivna-loyola/abertura-procedimentos.mp4', poster: '/vitrine/ivna-loyola/abertura-procedimentos.jpg' },
   monograma: '/vitrine/ivna-loyola/monograma.png',
   logoDourada: '/vitrine/ivna-loyola/logo-dourada.png',
+  app: { nome: 'Ivna Loyola', pasta: '/vitrine/ivna-loyola/app' },
   videos: [
     { src: '/vitrine/ivna-loyola/video-labios.mp4', poster: '/vitrine/ivna-loyola/video-labios.jpg', titulo: 'Micropigmentação labial' },
     { src: '/vitrine/ivna-loyola/video-espaco.mp4', poster: '/vitrine/ivna-loyola/video-espaco.jpg', titulo: 'Conheça o nosso espaço' },

@@ -17,6 +17,12 @@ import CentralNotificacoes from '@/components/notificacoes/CentralNotificacoes'
 import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import WelcomeCard from '@/components/profissional/WelcomeCard'
 import { todayBR } from '@/lib/date-br'
+import { metadataDoApp } from '@/lib/vitrine/app-instalado'
+
+// app instalado com nome, ícone e abertura da clínica (só quem tem `app` na vitrine)
+export async function generateMetadata() {
+  return metadataDoApp()
+}
 
 export default async function ProfissionalLayout({
   children,

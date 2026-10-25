@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { NextRequest } from 'next/server'
+import { appDaClinica } from '@/lib/vitrine/app-instalado'
 
 export const runtime = 'edge'
 
@@ -26,6 +27,23 @@ export async function GET(req: NextRequest) {
   const iconSize = Math.round(Math.min(width, height) * 0.22)
   const iconRadius = Math.round(iconSize * 0.22)
   const fontSize = Math.round(iconSize * 0.32)
+
+  /* 25/10 · app da clínica (?c=slug, vem de metadataDoApp): creme com a logo
+     dourada dela, igual à abertura da vitrine */
+  const app = appDaClinica(searchParams.get('c'))
+  const logo = app?.logo
+  if (logo) {
+    const largura = Math.round(Math.min(width, height) * 0.56)
+    return new ImageResponse(
+      (
+        <div style={{ width: '100%', height: '100%', background: '#FAF7F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={new URL(logo, req.url).toString()} width={largura} height={Math.round(largura * 620 / 1272)} alt="" />
+        </div>
+      ),
+      { width, height, headers: { 'Cache-Control': 'public, max-age=31536000, immutable', 'CDN-Cache-Control': 'public, max-age=31536000, immutable', 'Vercel-CDN-Cache-Control': 'public, max-age=31536000, immutable' } },
+    )
+  }
 
   return new ImageResponse(
     (

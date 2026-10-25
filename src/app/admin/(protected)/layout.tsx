@@ -34,6 +34,12 @@ import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import NovidadeSinalCard from '@/components/admin/NovidadeSinalCard'
 import NovidadeSumidosCard from '@/components/admin/NovidadeSumidosCard'
 import TourSistemaCard from '@/components/admin/tour/TourSistemaCard'
+import { metadataDoApp } from '@/lib/vitrine/app-instalado'
+
+// app instalado com nome, ícone e abertura da clínica (só quem tem `app` na vitrine)
+export async function generateMetadata() {
+  return metadataDoApp()
+}
 
 export default async function AdminLayout({
   children,
