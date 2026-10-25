@@ -2,7 +2,7 @@
 
 // Configurações → Negócio → Google Agenda (v175 · Ivna, 24/10/2026).
 //
-// Um sentido só: o que é marcado/remarcado/cancelado no AgendaPRO aparece no
+// Ida (v175): o que é marcado/remarcado/cancelado no AgendaPRO aparece no
 // Google Agenda da dona, na hora. O texto deixa isso claro pra ela não mexer no
 // Google achando que volta pro sistema.
 //
@@ -106,9 +106,22 @@ export default function GoogleAgendaCard() {
       <p className="text-sm font-semibold" style={{ color: 'var(--admin-text)' }}>
         Google Agenda
       </p>
-      <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-        Todo agendamento marcado, remarcado ou cancelado aqui aparece no seu Google Agenda na hora. Mexer nesses
-        eventos direto no Google não muda o agendamento no AgendaPRO.
+      {/* 25/10: o texto falava só da ida e o Eduardo não achou onde ligar a
+          volta. As duas direções ficam escritas logo no topo. */}
+      <ul className="text-xs mt-2 space-y-1.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+        <li>
+          <strong style={{ color: 'var(--admin-text)' }}>Daqui pro Google:</strong> todo agendamento marcado, remarcado
+          ou cancelado aqui aparece no seu Google Agenda na hora.
+        </li>
+        {s.bloqueio_liberado && (
+          <li>
+            <strong style={{ color: 'var(--admin-text)' }}>Do Google pra cá:</strong> compromisso que você marcar no
+            Google (médico, viagem, reunião) fecha o horário no link de agendamento.
+          </li>
+        )}
+      </ul>
+      <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+        Editar um agendamento direto no Google não muda o agendamento no AgendaPRO.
       </p>
 
       {!s.conectado || revogado ? (
@@ -137,8 +150,48 @@ export default function GoogleAgendaCard() {
           <p className="text-xs mt-3" style={{ color: 'var(--admin-text)' }}>
             Conectado{s.email ? ` como ${s.email}` : ''}.
           </p>
+          {s.bloqueio_liberado && (
+            /* Passo da volta em destaque enquanto ninguém foi escolhido: sem
+               ele a volta fica desligada e nada avisa. Vem antes do filtro da
+               ida porque responde a pergunta de base, de quem é a agenda. */
+            <div
+              className="mt-3 rounded-lg p-3"
+              style={{
+                border: `1px solid ${s.bloqueio_professional_id ? 'var(--admin-border)' : 'var(--admin-accent)'}`,
+              }}
+            >
+              <label className="block text-xs font-semibold" style={{ color: 'var(--admin-text)' }}>
+                De quem é essa agenda do Google?
+                <select
+                  className="mt-1.5 block w-full rounded-lg px-3 py-2 text-sm font-normal"
+                  style={{ border: '1px solid var(--admin-border)', color: 'var(--admin-text)', background: 'transparent' }}
+                  value={s.bloqueio_professional_id ?? ''}
+                  disabled={salvando}
+                  onChange={(e) => trocarBloqueio(e.target.value)}
+                >
+                  <option value="">{s.bloqueio_professional_id ? 'Ninguém (não bloquear horário)' : 'Escolha a profissional'}</option>
+                  {(s.profissionais ?? []).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {s.bloqueio_professional_id ? (
+                <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                  {s.bloqueios === 1 ? '1 horário fechado' : `${s.bloqueios ?? 0} horários fechados`}{' '}pelo Google nos
+                  próximos 60 dias. Compromissos marcados como &quot;Disponível&quot; no Google não fecham horário, e a
+                  equipe vê só &quot;Ocupado (Google Agenda)&quot;, nunca o título.
+                </p>
+              ) : (
+                <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-accent)' }}>
+                  Falta este passo: sem ele, o que você marca no Google não fecha horário no link.
+                </p>
+              )}
+            </div>
+          )}
           <label className="block text-xs mt-3" style={{ color: 'var(--admin-text-mute)' }}>
-            Quais atendimentos vão pro Google
+            Quais atendimentos vão pro seu Google
             <select
               className="mt-1 block w-full rounded-lg px-3 py-2 text-sm"
               style={{ border: '1px solid var(--admin-border)', color: 'var(--admin-text)', background: 'transparent' }}
@@ -159,38 +212,6 @@ export default function GoogleAgendaCard() {
               {s.pendentes} {s.pendentes === 1 ? 'agendamento ainda não foi' : 'agendamentos ainda não foram'} pro
               Google. O sistema tenta de novo sozinho.
             </p>
-          )}
-          {s.bloqueio_liberado && (
-            <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--admin-border)' }}>
-              <label className="block text-xs" style={{ color: 'var(--admin-text-mute)' }}>
-                Compromissos do Google bloqueiam a agenda de
-                <select
-                  className="mt-1 block w-full rounded-lg px-3 py-2 text-sm"
-                  style={{ border: '1px solid var(--admin-border)', color: 'var(--admin-text)', background: 'transparent' }}
-                  value={s.bloqueio_professional_id ?? ''}
-                  disabled={salvando}
-                  onChange={(e) => trocarBloqueio(e.target.value)}
-                >
-                  <option value="">Ninguém (desligado)</option>
-                  {(s.profissionais ?? []).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-                Marcou médico, reunião ou viagem no Google? O horário fica fechado no link e no painel, só pra essa
-                profissional. Eventos marcados como &quot;Disponível&quot; no Google não bloqueiam. A equipe vê só
-                &quot;Ocupado (Google Agenda)&quot;, nunca o título.
-              </p>
-              {!!s.bloqueio_professional_id && (
-                <p className="text-xs mt-2" style={{ color: 'var(--admin-text)' }}>
-                  {s.bloqueios === 1 ? '1 horário bloqueado' : `${s.bloqueios ?? 0} horários bloqueados`} pelo Google
-                  nos próximos 60 dias.
-                </p>
-              )}
-            </div>
           )}
           <button
             type="button"
