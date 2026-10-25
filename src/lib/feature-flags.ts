@@ -37,7 +37,7 @@ export const SUMIDOS_ENVIO_AUTOMATICO = false
  * aviso e o limite é 100 contas. Abrir pra mais negócios só depois da
  * verificação sair.
  */
-export const GOOGLE_AGENDA_LIBERADOS: string[] = ['ivna-loyola-beauty-clinic']
+export const GOOGLE_AGENDA_LIBERADOS: string[] = ['ivna-loyola-beauty-clinic', 'studio-marcela'] // studio-marcela = conta de teste (E2E)
 
 /**
  * GOOGLE_AGENDA_BLOQUEIO_LIBERADOS · a VOLTA do Google Agenda (v176):
@@ -46,4 +46,4 @@ export const GOOGLE_AGENDA_LIBERADOS: string[] = ['ivna-loyola-beauty-clinic']
  * Adicional PAGO (Eduardo 24/10: "podemos vender isso pra ela"). Fica vazio
  * até a Ivna contratar; aí entra o slug dela aqui.
  */
-export const GOOGLE_AGENDA_BLOQUEIO_LIBERADOS: string[] = []
+export const GOOGLE_AGENDA_BLOQUEIO_LIBERADOS: string[] = ['studio-marcela'] // só a conta de teste até a Ivna comprar
