@@ -436,6 +436,8 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       </header>
 
       {/* Abertura: vídeo do espaço em tela cheia (celular) / painel ao lado (computador) */}
+      {/* 25/10 · Eduardo: no celular o quadro do vídeo fica CENTRALIZADO (margem dos
+          dois lados, 4 cantos redondos); tablet segue vazando à direita. */}
       {/* Celular (Eduardo 24/10, versão B "texto primeiro"): a abertura inteira
           cabe na tela, sem rolar. Mármore no fundo, logo grande centralizada
           (sobe pro topo ao rolar, igual ao computador), título e subtítulo
@@ -443,7 +445,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           que sobra. O tablet (sm) usa a mesma versão, maior; lg: é o computador. */}
       <section id="topo" className={`relative flex flex-col lg:grid lg:min-h-[100svh] lg:grid-cols-2 ${chegada?.cupom ? 'h-[calc(100svh-110px)]' : 'h-[calc(100svh-84px)]'} sm:h-[100svh] lg:h-auto`}>
         <div aria-hidden className="absolute inset-0 lg:hidden" style={{ backgroundImage: MARMORE }} />
-        <div className="relative order-2 mb-5 ml-12 min-h-0 flex-1 overflow-hidden rounded-l-[28px] shadow-[0_24px_48px_-28px_rgba(42,37,32,0.45)] sm:mb-10 sm:ml-32 sm:rounded-l-[40px] lg:order-2 lg:mx-0 lg:mb-0 lg:h-auto lg:flex-none lg:overflow-visible lg:rounded-none lg:shadow-none">
+        <div className="relative order-2 mx-6 mb-5 min-h-0 flex-1 overflow-hidden rounded-[28px] shadow-[0_24px_48px_-28px_rgba(42,37,32,0.45)] sm:mx-0 sm:mb-10 sm:ml-32 sm:rounded-none sm:rounded-l-[40px] lg:order-2 lg:mx-0 lg:mb-0 lg:h-auto lg:flex-none lg:overflow-visible lg:rounded-none lg:shadow-none">
           {poster && <VideoAbertura mp4={c.teaser?.mp4} poster={poster} />}
           <div aria-hidden className="pointer-events-none absolute -right-px bottom-3 left-3 top-3 hidden rounded-l-[20px] border sm:block sm:bottom-4 sm:left-4 sm:top-4 sm:rounded-l-[30px] lg:hidden" style={{ borderColor: '#ffffffa6' }} />
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ background: `linear-gradient(to right, ${CREME} 0%, transparent 22%)` }} />
