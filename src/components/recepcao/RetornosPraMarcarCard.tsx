@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import type { RetornoPraMarcar } from '@/lib/retornos-pra-marcar'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { retornosPraMarcar, type RetornoPraMarcar } from '@/lib/retornos-pra-marcar'
 
 /* v177 · camada 1 do retorno: a recepção marca a volta enquanto a cliente
    ainda está no balcão. "Marcar" abre o agendamento com cliente, serviço da
@@ -42,4 +43,11 @@ export default function RetornosPraMarcarCard({ lista, base = '/recepcao/marcar'
       </ul>
     </section>
   )
+}
+
+/** Início da dona (/admin/inicio): busca sozinho e some quando não há nada. */
+export async function RetornosPraMarcarSection({ businessId }: { businessId: string }) {
+  const db = createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
+  const lista = await retornosPraMarcar(db, businessId)
+  return <RetornosPraMarcarCard lista={lista} base="/admin/marcar" />
 }

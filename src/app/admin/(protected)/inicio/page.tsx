@@ -1,5 +1,6 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { Suspense } from 'react'
+import { RetornosPraMarcarSection } from '@/components/recepcao/RetornosPraMarcarCard'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -521,6 +522,11 @@ export default async function AdminInicioPage({
             (Eduardo 03/07). Some sozinho quando a fila zera. */}
         <Suspense fallback={null}>
           <ReviewClaimsSection businessId={business.id} />
+        </Suspense>
+
+        {/* v177 · quem concluiu procedimento com retorno e ainda não marcou a volta */}
+        <Suspense fallback={null}>
+          <RetornosPraMarcarSection businessId={business.id as string} />
         </Suspense>
 
         {/* Atalhos rápidos */}

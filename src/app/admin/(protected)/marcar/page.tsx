@@ -17,7 +17,8 @@ export const dynamic = 'force-dynamic'
 export default async function AdminMarcarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ prof?: string; date?: string; time?: string }>
+  // v177 · cliente/servico/data vêm de "Retornos pra marcar" (data = date)
+  searchParams: Promise<{ prof?: string; date?: string; time?: string; cliente?: string; servico?: string; data?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -58,7 +59,9 @@ export default async function AdminMarcarPage({
       professionals={profs ?? []}
       services={services ?? []}
       defaultProfId={sp.prof ?? null}
-      defaultDate={sp.date ?? null}
+      defaultDate={sp.date ?? sp.data ?? null}
+      defaultCustomerId={sp.cliente ?? null}
+      defaultServiceId={sp.servico ?? null}
       defaultTime={sp.time ?? null}
       area="admin"
     />
