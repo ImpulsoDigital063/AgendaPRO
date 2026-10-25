@@ -197,6 +197,8 @@ export default function BloqueiosTab({ businessId, professionals }: Props) {
       .select('*')
       .eq('business_id', businessId)
       .eq('active', true)
+      // v176 · bloqueio vindo do Google Agenda é mantido pelo Google: não lista aqui
+      .is('google_event_id', null)
       .order('created_at', { ascending: false })
     if (error) setError(error.message)
     else setBlocks((data ?? []) as Block[])

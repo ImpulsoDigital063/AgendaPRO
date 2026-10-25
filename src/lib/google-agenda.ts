@@ -14,13 +14,18 @@
  */
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, timingSafeEqual } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { GOOGLE_AGENDA_LIBERADOS } from '@/lib/feature-flags'
+import { GOOGLE_AGENDA_BLOQUEIO_LIBERADOS, GOOGLE_AGENDA_LIBERADOS } from '@/lib/feature-flags'
 
 const ESCOPOS = ['openid', 'email', 'https://www.googleapis.com/auth/calendar.events']
 const FUSO = 'America/Sao_Paulo'
 
 export function googleAgendaLiberado(slug: string | null | undefined) {
   return !!slug && GOOGLE_AGENDA_LIBERADOS.includes(slug)
+}
+
+/** A volta (v176, adicional pago): compromisso do Google bloqueia horário */
+export function googleBloqueioLiberado(slug: string | null | undefined) {
+  return !!slug && GOOGLE_AGENDA_BLOQUEIO_LIBERADOS.includes(slug)
 }
 
 /* ── cofre do refresh token ─────────────────────────────────────────── */
@@ -183,11 +188,13 @@ export async function sincronizarAgendamento(db: SupabaseClient, businessId: str
   }
 }
 
+async function tokenDeAcesso(refreshCifrado: string) {
+  const { access_token } = await pedirToken({ refresh_token: decifrar(refreshCifrado), grant_type: 'refresh_token' })
+  return access_token
+}
+
 async function aplicar(db: SupabaseClient, conexao: Conexao, appointmentId: string) {
-  const { access_token } = await pedirToken({
-    refresh_token: decifrar(conexao.refresh_token_cifrado),
-    grant_type: 'refresh_token',
-  })
+  const access_token = await tokenDeAcesso(conexao.refresh_token_cifrado)
   const base = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(conexao.calendar_id)}/events`
   const eventId = idDoEvento(appointmentId)
   const auth = { Authorization: `Bearer ${access_token}`, 'Content-Type': 'application/json' }
@@ -231,6 +238,8 @@ async function aplicar(db: SupabaseClient, conexao: Conexao, appointmentId: stri
     end: { dateTime: `${a.appointment_date}T${String(a.end_time).slice(0, 8)}`, timeZone: FUSO },
     // status explícito: um evento apagado antes (cancelou e remarcou) volta à vida no PUT
     status: 'confirmed',
+    // marca de origem: a volta (v176) ignora o que o próprio AgendaPRO criou
+    extendedProperties: { private: { agendapro: '1' } },
   }
 
   const put = await fetch(`${base}/${eventId}`, { method: 'PUT', headers: auth, body: JSON.stringify(evento) })
@@ -269,4 +278,204 @@ export async function sincronizarFuturos(db: SupabaseClient, businessId: string,
     }
   }
   return { total: ids.length, enviados, falhas }
+}
+
+/* ── A VOLTA (v176): compromisso do Google vira bloqueio ────────────── */
+
+const JANELA_DIAS = 60
+const TRAVA_MS = 2 * 60 * 1000
+// a recepção e a equipe veem a grade: o título do compromisso é assunto dela
+const MOTIVO = 'Ocupado (Google Agenda)'
+
+export type EventoGoogle = {
+  id: string
+  status?: string
+  transparency?: string
+  eventType?: string
+  start?: { date?: string; dateTime?: string }
+  end?: { date?: string; dateTime?: string }
+  attendees?: { self?: boolean; responseStatus?: string }[]
+  extendedProperties?: { private?: Record<string, string> }
+}
+
+export type PedacoDeBloqueio = { chave: string; data: string; inicio: string; fim: string }
+
+const DATA_HORA_BR = new Intl.DateTimeFormat('en-CA', {
+  timeZone: FUSO,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+/** instante → { data 'YYYY-MM-DD', hora 'HH:MM:00' } no fuso de Brasília */
+function noFusoBR(iso: string) {
+  const p = Object.fromEntries(DATA_HORA_BR.formatToParts(new Date(iso)).map((x) => [x.type, x.value]))
+  return { data: `${p.year}-${p.month}-${p.day}`, hora: `${p.hour}:${p.minute}:00` }
+}
+
+function somarDia(data: string, n: number) {
+  const d = new Date(`${data}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Um evento do Google → os pedaços de bloqueio, um por dia (evento que vira a
+ * noite ou de vários dias é cortado por dia, que é como business_blocks guarda).
+ * Lista vazia = esse evento não bloqueia nada. Função pura (o E2E testa direto).
+ */
+export function eventoParaBloqueios(ev: EventoGoogle): PedacoDeBloqueio[] {
+  if (ev.status === 'cancelled') return []
+  // "Disponível" no Google = não ocupa (padrão de evento de dia inteiro e lembrete)
+  if (ev.transparency === 'transparent') return []
+  if (ev.eventType === 'workingLocation' || ev.eventType === 'birthday') return []
+  // evento que o próprio AgendaPRO criou (ida, v175): já é agendamento aqui
+  if (ev.extendedProperties?.private?.agendapro === '1' || /^[0-9a-f]{32}$/.test(ev.id)) return []
+  if (ev.attendees?.some((a) => a.self && a.responseStatus === 'declined')) return []
+
+  const pedacos: PedacoDeBloqueio[] = []
+  const DIA_FIM = '23:59:00'
+
+  if (ev.start?.date && ev.end?.date) {
+    // dia inteiro: end.date é exclusivo
+    for (let d = ev.start.date; d < ev.end.date && pedacos.length <= JANELA_DIAS; d = somarDia(d, 1)) {
+      pedacos.push({ chave: `${ev.id}:${d}`, data: d, inicio: '00:00:00', fim: DIA_FIM })
+    }
+    return pedacos
+  }
+  if (!ev.start?.dateTime || !ev.end?.dateTime) return []
+
+  const ini = noFusoBR(ev.start.dateTime)
+  const fim = noFusoBR(ev.end.dateTime)
+  for (let d = ini.data; d <= fim.data && pedacos.length <= JANELA_DIAS; d = somarDia(d, 1)) {
+    const inicio = d === ini.data ? ini.hora : '00:00:00'
+    const termino = d === fim.data ? fim.hora : DIA_FIM
+    if (termino <= inicio) continue // termina 00:00 do dia seguinte: nada a bloquear nesse dia
+    pedacos.push({ chave: `${ev.id}:${d}`, data: d, inicio, fim: termino })
+  }
+  return pedacos
+}
+
+async function listarEventos(accessToken: string, calendarId: string, de: string, ate: string) {
+  const eventos: EventoGoogle[] = []
+  let pageToken: string | undefined
+  do {
+    const p = new URLSearchParams({
+      timeMin: `${de}T00:00:00-03:00`,
+      timeMax: `${ate}T23:59:59-03:00`,
+      singleEvents: 'true',
+      showDeleted: 'false',
+      maxResults: '2500',
+      fields:
+        'nextPageToken,items(id,status,transparency,eventType,start,end,attendees(self,responseStatus),extendedProperties)',
+    })
+    if (pageToken) p.set('pageToken', pageToken)
+    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${p}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!r.ok) throw new ErroGoogle(`list ${r.status}`, r.status)
+    const j = await r.json()
+    eventos.push(...((j.items ?? []) as EventoGoogle[]))
+    pageToken = j.nextPageToken
+  } while (pageToken)
+  return eventos
+}
+
+/**
+ * Deixa os bloqueios vindos do Google iguais à agenda dela, de hoje até
+ * +60 dias. Lê a janela inteira e reconcilia (insere, ajusta, apaga): sem
+ * syncToken, sem estado pra corromper.
+ *
+ * forcar=false respeita a trava de 2 min (o link público chama a cada troca
+ * de dia; não pode virar uma leitura do Google por clique). A trava é tomada
+ * no próprio UPDATE, então duas chamadas juntas não leem duas vezes.
+ * Retorna null quando não leu (volta desligada, trava, acesso revogado).
+ */
+export async function puxarDoGoogle(db: SupabaseClient, businessId: string, hoje: string, forcar = false) {
+  let q = db
+    .from('google_agenda_conexoes')
+    .update({ puxado_em: new Date().toISOString() })
+    .eq('business_id', businessId)
+    .not('bloqueio_professional_id', 'is', null)
+    .is('erro', null)
+  if (!forcar) q = q.or(`puxado_em.is.null,puxado_em.lt.${new Date(Date.now() - TRAVA_MS).toISOString()}`)
+  const { data: conexao } = await q.select('refresh_token_cifrado, calendar_id, bloqueio_professional_id').maybeSingle()
+  if (!conexao) return null
+
+  const ate = somarDia(hoje, JANELA_DIAS)
+  let eventos: EventoGoogle[]
+  try {
+    eventos = await listarEventos(await tokenDeAcesso(conexao.refresh_token_cifrado), conexao.calendar_id, hoje, ate)
+  } catch (e) {
+    if (e instanceof ErroGoogle && e.message === 'invalid_grant') {
+      await db
+        .from('google_agenda_conexoes')
+        .update({ erro: 'acesso_revogado', erro_em: new Date().toISOString() })
+        .eq('business_id', businessId)
+    }
+    throw e
+  }
+
+  const desejados = new Map<string, PedacoDeBloqueio>()
+  for (const ev of eventos) {
+    for (const p of eventoParaBloqueios(ev)) if (p.data >= hoje && p.data <= ate) desejados.set(p.chave, p)
+  }
+
+  const { data: atuais } = await db
+    .from('business_blocks')
+    .select('id, google_event_id, professional_id, block_date, start_time, end_time')
+    .eq('business_id', businessId)
+    .not('google_event_id', 'is', null)
+  const prof = conexao.bloqueio_professional_id as string
+
+  const apagar: string[] = []
+  const vistos = new Set<string>()
+  let ajustados = 0
+  for (const b of atuais ?? []) {
+    const d = desejados.get(b.google_event_id as string)
+    if (!d) {
+      apagar.push(b.id as string)
+      continue
+    }
+    vistos.add(d.chave)
+    const igual =
+      b.professional_id === prof &&
+      b.block_date === d.data &&
+      String(b.start_time).slice(0, 8) === d.inicio &&
+      String(b.end_time).slice(0, 8) === d.fim
+    if (!igual) {
+      await db
+        .from('business_blocks')
+        .update({ professional_id: prof, block_date: d.data, start_time: d.inicio, end_time: d.fim, active: true })
+        .eq('id', b.id)
+      ajustados++
+    }
+  }
+  if (apagar.length) await db.from('business_blocks').delete().in('id', apagar)
+
+  const novos = [...desejados.values()]
+    .filter((d) => !vistos.has(d.chave))
+    .map((d) => ({
+      business_id: businessId,
+      professional_id: prof,
+      block_type: 'specific',
+      block_date: d.data,
+      start_time: d.inicio,
+      end_time: d.fim,
+      reason: MOTIVO,
+      google_event_id: d.chave,
+    }))
+  if (novos.length) {
+    const { error } = await db.from('business_blocks').insert(novos)
+    if (error) throw new Error(`inserir bloqueios: ${error.message}`)
+  }
+  return { eventos: eventos.length, novos: novos.length, ajustados, apagados: apagar.length }
+}
+
+/** Some com todos os bloqueios vindos do Google (desligar a volta ou desconectar) */
+export async function apagarBloqueiosDoGoogle(db: SupabaseClient, businessId: string) {
+  await db.from('business_blocks').delete().eq('business_id', businessId).not('google_event_id', 'is', null)
 }

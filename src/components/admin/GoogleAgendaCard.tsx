@@ -16,6 +16,9 @@ type Status = {
   conectado?: boolean
   email?: string | null
   professional_id?: string | null
+  bloqueio_liberado?: boolean
+  bloqueio_professional_id?: string | null
+  bloqueios?: number
   erro?: string | null
   pendentes?: number
   profissionais?: { id: string; name: string }[]
@@ -61,6 +64,25 @@ export default function GoogleAgendaCard() {
     })
     setSalvando(false)
     setMsg(r.ok ? 'Salvo. A agenda do Google já foi atualizada.' : 'Não deu pra salvar. Tente de novo.')
+    carregar()
+  }
+
+  async function trocarBloqueio(valor: string) {
+    setSalvando(true)
+    setMsg(null)
+    const r = await fetch('/api/admin/google-agenda', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bloqueio_professional_id: valor || null }),
+    })
+    setSalvando(false)
+    setMsg(
+      r.ok
+        ? valor
+          ? 'Ligado. Os compromissos do Google já estão bloqueando a agenda.'
+          : 'Desligado. Os bloqueios que vinham do Google saíram da agenda.'
+        : 'Não deu pra ler o Google agora. Tente de novo em alguns minutos.',
+    )
     carregar()
   }
 
@@ -137,6 +159,38 @@ export default function GoogleAgendaCard() {
               {s.pendentes} {s.pendentes === 1 ? 'agendamento ainda não foi' : 'agendamentos ainda não foram'} pro
               Google. O sistema tenta de novo sozinho.
             </p>
+          )}
+          {s.bloqueio_liberado && (
+            <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--admin-border)' }}>
+              <label className="block text-xs" style={{ color: 'var(--admin-text-mute)' }}>
+                Compromissos do Google bloqueiam a agenda de
+                <select
+                  className="mt-1 block w-full rounded-lg px-3 py-2 text-sm"
+                  style={{ border: '1px solid var(--admin-border)', color: 'var(--admin-text)', background: 'transparent' }}
+                  value={s.bloqueio_professional_id ?? ''}
+                  disabled={salvando}
+                  onChange={(e) => trocarBloqueio(e.target.value)}
+                >
+                  <option value="">Ninguém (desligado)</option>
+                  {(s.profissionais ?? []).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
+                Marcou médico, reunião ou viagem no Google? O horário fica fechado no link e no painel, só pra essa
+                profissional. Eventos marcados como &quot;Disponível&quot; no Google não bloqueiam. A equipe vê só
+                &quot;Ocupado (Google Agenda)&quot;, nunca o título.
+              </p>
+              {!!s.bloqueio_professional_id && (
+                <p className="text-xs mt-2" style={{ color: 'var(--admin-text)' }}>
+                  {s.bloqueios === 1 ? '1 horário bloqueado' : `${s.bloqueios ?? 0} horários bloqueados`} pelo Google
+                  nos próximos 60 dias.
+                </p>
+              )}
+            </div>
           )}
           <button
             type="button"
