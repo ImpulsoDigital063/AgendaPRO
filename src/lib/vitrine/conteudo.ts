@@ -75,11 +75,14 @@ const IVNA: ConteudoVitrine = {
   },
   frase: 'Autocuidado não é luxo, é necessidade.', // DdtqNMlSsvl
   proposta: {
-    titulo: 'Um atendimento',
-    destaque: 'do jeitinho que você merece',
+    /* 25/10: "do jeitinho que você merece" saía 3 vezes seguidas (subtítulo
+       da abertura, este título e o fim do texto). Fica só na abertura; o
+       título vem do começo do próprio texto dela. */
+    titulo: 'Um espaço feito',
+    destaque: 'pra você',
     texto: {
       // DerN4J1St1i + Ddj0mJ2J_Lp
-      t: 'Um espaço feito pra você, mulher, que ama se cuidar e ter aquele momento só seu. Aqui o atendimento é diferenciado, do jeitinho que você merece!',
+      t: 'Pra mulher que ama se cuidar e ter aquele momento só seu. Aqui o atendimento é diferenciado.',
     },
   },
   pilares: [
@@ -118,19 +121,13 @@ const IVNA: ConteudoVitrine = {
     'Spa e bem-estar': { frase: 'Fecha os olhos. Respira.', texto: 'A massagem relaxante é isso: um convite pra voltar pra você.' }, // Da5dqO0uCjl
     'Outros serviços': { frase: 'Às vezes, remover é o começo da transformação mais bonita.', texto: 'Laser Day: remoção de tatuagem, despigmentação, manchas e melasma.' }, // DaVlfP8SD3m + DerN4J1St1i
   },
-  destaque: {
-    foto: '/vitrine/ivna-loyola/labios.jpg', // fim do Reels Dcl9_N9yXY0
-    sobre: 'Micropigmentação labial',
-    titulo: 'Naturalidade é o nosso',
-    destaque: 'efeito favorito',
-    texto: 'Lábios com contorno definido e cor suave. Autoestima renovada.',
-    botao: 'Agendar minha avaliação',
-  },
+  /* destaque (foto do lábio vermelho) SAIU 25/10, Eduardo: "foto exagerada".
+     O texto dele repetia o pilar Naturalidade. */
   /* 24/10 · procedimentos em vez da recepção: Brow Lamination (DZIG-bGOYL4),
-     micropigmentação labial (Dcl9_N9yXY0), laser (DdHGEivO_LU) e o lábio
-     cicatrizado no fim, só trechos SEM legenda. Tem rosto de cliente: pedir a
+     micropigmentação labial (Dcl9_N9yXY0) e laser (DdHGEivO_LU), só trechos SEM
+     legenda. 25/10: os 2,8 s do lábio vermelho do começo foram cortados. Tem rosto de cliente: pedir a
      autorização à Ivna antes de publicar, ou trocar pelos originais dela. */
-  teaser: { mp4: '/vitrine/ivna-loyola/abertura-procedimentos.mp4', poster: '/vitrine/ivna-loyola/abertura-procedimentos.jpg' },
+  teaser: { mp4: '/vitrine/ivna-loyola/abertura-v2.mp4', poster: '/vitrine/ivna-loyola/abertura-v2.jpg' },
   monograma: '/vitrine/ivna-loyola/monograma.png',
   logoDourada: '/vitrine/ivna-loyola/logo-dourada.png',
   app: { nome: 'Ivna Loyola', pasta: '/vitrine/ivna-loyola/app' },
