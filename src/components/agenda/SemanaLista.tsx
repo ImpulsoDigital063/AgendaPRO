@@ -22,9 +22,27 @@ function tituloDoDia(data: string, i: number) {
 function Situacao({ l }: { l: LinhaSemana }) {
   const [cor, texto] = l.aprovar ? ['#B45309', 'Aguardando aprovação'] : l.confirmou ? ['#15803D', 'Confirmou'] : ['var(--admin-text-faded)', 'Não confirmou']
   return (
-    <span className="mt-0.5 inline-flex items-center gap-1.5 text-[11.5px] font-semibold whitespace-nowrap" style={{ color: cor }}>
+    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold whitespace-nowrap" style={{ color: cor }}>
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: cor }} />
       {texto}
+    </span>
+  )
+}
+
+const TOM = { ok: '#15803D', atencao: '#B45309', alerta: '#DC2626', neutro: 'var(--admin-text-faded)' } as const
+
+/* Status + comunicação numa faixa que quebra linha (25/10, Eduardo: "mostrar a
+   comunicação, se foi enviado, respondido, sinal pago"). */
+function Faixa({ l }: { l: LinhaSemana }) {
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <Situacao l={l} />
+      {l.comunicacao.map((c) => (
+        <span key={c.texto} className="inline-flex items-center gap-1.5 text-[11.5px] font-medium whitespace-nowrap" style={{ color: TOM[c.tom] }}>
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: TOM[c.tom] }} />
+          {c.texto}
+        </span>
+      ))}
     </span>
   )
 }
@@ -104,7 +122,7 @@ export default function SemanaLista({
                           {mostrarProfissional && l.profissional ? <strong className="font-semibold" style={{ color: 'var(--admin-text-2)' }}>{l.profissional.split(' ')[0]} · </strong> : null}
                           {l.servico}
                         </span>
-                        <Situacao l={l} />
+                        <Faixa l={l} />
                       </span>
                     </button>
                     {!l.confirmou && !l.aprovar && (

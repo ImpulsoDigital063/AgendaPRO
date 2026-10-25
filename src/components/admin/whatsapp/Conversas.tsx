@@ -32,7 +32,7 @@ export type ItemConversa = {
   de: 'negocio' | 'cliente'
   texto: string
   rotulo?: string
-  situacao?: 'lida' | 'entregue' | 'enviada' | 'falhou' | 'processando'
+  situacao?: 'lida' | 'entregue' | 'enviada' | 'falhou' | 'processando' | 'nao_enviada'
   quando: string
 }
 
@@ -80,6 +80,13 @@ function Selo({ situacao }: { situacao: ItemConversa['situacao'] }) {
     return (
       <span className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: 'var(--admin-danger)' }}>
         não chegou
+      </span>
+    )
+  }
+  if (situacao === 'nao_enviada') {
+    return (
+      <span className="text-[10.5px]" style={{ color: 'var(--admin-text-faded)' }}>
+        não enviada
       </span>
     )
   }

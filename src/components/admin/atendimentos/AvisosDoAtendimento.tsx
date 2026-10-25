@@ -29,7 +29,7 @@ import { useEffect, useState } from 'react'
 type Aviso = {
   id: string
   rotulo: string
-  situacao: 'lida' | 'entregue' | 'enviada' | 'falhou' | 'processando'
+  situacao: 'lida' | 'entregue' | 'enviada' | 'falhou' | 'processando' | 'nao_enviada'
   resposta: boolean
   quando: string
   entregueEm: string | null
@@ -43,6 +43,7 @@ const CORES: Record<Aviso['situacao'], { fg: string; bg: string; bd: string }> =
   enviada: { fg: 'var(--admin-text-mute)', bg: 'var(--admin-input-bg)', bd: 'var(--admin-border)' },
   processando: { fg: 'var(--admin-text-mute)', bg: 'var(--admin-input-bg)', bd: 'var(--admin-border)' },
   falhou: { fg: 'var(--admin-danger)', bg: 'rgba(220,38,38,0.10)', bd: 'rgba(220,38,38,0.22)' },
+  nao_enviada: { fg: 'var(--admin-text-faded)', bg: 'transparent', bd: 'var(--admin-border)' },
 }
 
 const TEXTO: Record<Aviso['situacao'], string> = {
@@ -51,6 +52,7 @@ const TEXTO: Record<Aviso['situacao'], string> = {
   enviada: 'Enviada',
   processando: 'Saindo',
   falhou: 'Não chegou',
+  nao_enviada: 'Não enviada',
 }
 
 /** "hoje 14:32" · "ontem 09:05" · "18/09 13:14" */
@@ -116,7 +118,9 @@ export default function AvisosDoAtendimento({ appointmentId }: { appointmentId: 
                 <p className="text-[11px]" style={{ color: 'var(--admin-text-faded)' }}>
                   {/* A hora que interessa é a da ENTREGA quando chegou, e a do
                       envio quando não chegou. */}
-                  {a.situacao === 'lida' && a.lidoEm
+                  {a.situacao === 'nao_enviada'
+                    ? `não saiu · ${quando(a.quando)}`
+                    : a.situacao === 'lida' && a.lidoEm
                     ? `enviada ${quando(a.quando)} · lida ${quando(a.lidoEm)}`
                     : a.entregueEm
                       ? `enviada ${quando(a.quando)} · entregue ${quando(a.entregueEm)}`

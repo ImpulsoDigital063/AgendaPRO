@@ -62,7 +62,10 @@ export function ehResposta(tipo: string): boolean {
      não chegou · falhou, e é o único que pede ação
    ═══════════════════════════════════════════════════════════════ */
 
-export type SituacaoAviso = 'lida' | 'entregue' | 'enviada' | 'falhou' | 'processando'
+/* 25/10 · 'nao_enviada' = status 'ignorado' (o motor decidiu NÃO mandar: sem pacote,
+   regra desligada…). Antes caía no 'enviada' do fim e a tela dizia que tinha saído
+   (76 avisos da Ivna, nenhum enviado). */
+export type SituacaoAviso = 'lida' | 'entregue' | 'enviada' | 'falhou' | 'processando' | 'nao_enviada'
 
 export function situacaoDoAviso(m: {
   status: string | null
@@ -70,6 +73,7 @@ export function situacaoDoAviso(m: {
   lido_em: string | null
 }): SituacaoAviso {
   if (m.status === 'falhou') return 'falhou'
+  if (m.status === 'ignorado') return 'nao_enviada'
   if (m.lido_em) return 'lida'
   if (m.entregue_em) return 'entregue'
   if (m.status === 'processando') return 'processando'
@@ -82,4 +86,5 @@ export const TEXTO_SITUACAO: Record<SituacaoAviso, string> = {
   enviada: 'Enviada',
   falhou: 'Não chegou',
   processando: 'Saindo agora',
+  nao_enviada: 'Não enviada',
 }

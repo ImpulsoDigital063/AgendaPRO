@@ -130,7 +130,8 @@ export async function GET(req: NextRequest) {
   const nomePorAtend = new Map((atends ?? []).map((a) => [a.id, a.client_name]))
 
   const mes = (doMes ?? []) as Pick<Linha, 'tipo' | 'status' | 'entregue_em' | 'lido_em'>[]
-  const avisosDoMes = mes.filter((m) => !ehResposta(m.tipo))
+  // 25/10 · 'ignorado' não saiu: fora do placar de enviados (contava como enviado)
+  const avisosDoMes = mes.filter((m) => !ehResposta(m.tipo) && m.status !== 'ignorado')
 
   return NextResponse.json({
     avisos: linhas.map((m) =>
