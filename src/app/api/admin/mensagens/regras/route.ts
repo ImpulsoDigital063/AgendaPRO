@@ -8,7 +8,7 @@ import { resolveBusinessIdOperacao } from '@/lib/api-business-access'
 import { corpoEditavel } from '@/lib/mensagens/textos'
 import { PADRAO, type TipoMensagem } from '@/lib/mensagens/tipos'
 import { credencialDoSistema } from '@/lib/mensagens/canal-cloud'
-import { unidadesDaFranquia } from '@/lib/mensagens/templates-cloud'
+import { unidadesDaFranquia, categoriaDoRetoque } from '@/lib/mensagens/templates-cloud'
 import { consumoDoMes } from '@/lib/mensagens/franquia'
 import { ehModoBotao } from '@/lib/mensagens/botao-confirmar'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
@@ -50,6 +50,24 @@ export async function GET() {
 
   const porTipo = new Map((data ?? []).map((r) => [r.tipo, r]))
 
+  /* v178 · "Prazo do retoque" só aparece pra quem tem serviço com retoque
+     incluso (v177): pra barbearia seria um interruptor que não faz nada. E
+     vem com o motivo quando a trava segurou (Meta ainda analisando, ou
+     reclassificou pra marketing). */
+  const { count: comRetoque } = await admin()
+    .from('services')
+    .select('id', { count: 'exact', head: true })
+    .eq('business_id', businessId)
+    .eq('retorno_tipo', 'retoque')
+  const lista: TipoMensagem[] = (comRetoque ?? 0) > 0 ? [...DISPONIVEIS, 'retoque'] : DISPONIVEIS
+  const meta = (comRetoque ?? 0) > 0 ? await categoriaDoRetoque() : null
+  const pausaRetoque =
+    !meta || meta.status !== 'APPROVED'
+      ? 'Pausado: o texto deste aviso ainda está em aprovação na Meta. Nada é enviado até aprovar.'
+      : meta.categoria !== 'UTILITY'
+        ? 'Pausado: a Meta passou a cobrar este aviso como marketing (cerca de 7 vezes mais caro). Paramos pra não gastar o seu pacote.'
+        : null
+
   /* QUANTO CADA AVISO CUSTA DO PACOTE DELA.
      ─────────────────────────────────────────────────────────────
      Sem este número, ela liga o aniversário sem saber que cada mensagem
@@ -72,7 +90,7 @@ export async function GET() {
 
   const unidadesDoAviso = (tipo: TipoMensagem) => {
     const peso = unidadesDaFranquia(tipo)
-    const quantas = tipo === 'aniversario' || tipo === 'retorno' ? porClienteMes : atendimentosMes
+    const quantas = tipo === 'aniversario' || tipo === 'retorno' || tipo === 'retoque' ? porClienteMes : atendimentosMes
     return quantas * peso
   }
 
@@ -90,7 +108,7 @@ export async function GET() {
     modoBotao: ehModoBotao((neg as { botao_confirmar?: unknown } | null)?.botao_confirmar)
       ? (neg as { botao_confirmar: string }).botao_confirmar
       : 'sempre',
-    regras: DISPONIVEIS.map((tipo) => {
+    regras: lista.map((tipo) => {
       const r = porTipo.get(tipo)
       return {
         tipo,
@@ -108,6 +126,7 @@ export async function GET() {
            movimento real dela. Marketing já vem multiplicado por 7. */
         unidadesPorMes: unidadesDoAviso(tipo),
         gasta7: unidadesDaFranquia(tipo) > 1,
+        pausado: tipo === 'retoque' ? pausaRetoque : null,
       }
     }),
   })
@@ -145,7 +164,7 @@ export async function PUT(req: NextRequest) {
   }
 
   const tipo = body?.tipo as TipoMensagem
-  if (!DISPONIVEIS.includes(tipo)) {
+  if (!DISPONIVEIS.includes(tipo) && tipo !== 'retoque') {
     return NextResponse.json({ error: 'tipo_invalido' }, { status: 400 })
   }
 

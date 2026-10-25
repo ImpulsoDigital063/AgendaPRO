@@ -20,6 +20,10 @@ export type TipoMensagem =
   | 'lembrete_dia'
   | 'aniversario'
   | 'retorno'
+  /* v178 · retoque que faz parte do procedimento (services.retorno_tipo =
+     'retoque'). Utilidade na Meta, não marketing: informa o prazo de algo que
+     a cliente já comprou. Interruptor separado do 'retorno'. */
+  | 'retoque'
   | 'dono_novo_agendamento'
   | 'dono_cancelamento'
 
@@ -46,6 +50,7 @@ export const DESTINATARIO: Record<TipoMensagem, 'cliente' | 'dono'> = {
   lembrete_dia: 'cliente',
   aniversario: 'cliente',
   retorno: 'cliente',
+  retoque: 'cliente',
   dono_novo_agendamento: 'dono',
   dono_cancelamento: 'dono',
 }
@@ -68,6 +73,8 @@ export const EH_PROMOCIONAL: Record<TipoMensagem, boolean> = {
   lembrete_dia: false,
   aniversario: true,
   retorno: true,
+  /* prazo de um procedimento que ela já fez: informação, não convite */
+  retoque: false,
   dono_novo_agendamento: false,
   dono_cancelamento: false,
 }
@@ -112,6 +119,11 @@ export const PADRAO: Record<TipoMensagem, Regra> = {
        Fica configurável porque clínica trabalha em outra escala. */
     tipo: 'retorno', enabled: false, offsetMinutos: 0,
     horaDoDia: '10:00', retornoDias: 45, template: null,
+  },
+  retoque: {
+    // o prazo mora no serviço (retorno_dias / retorno_janela_dias, v177)
+    tipo: 'retoque', enabled: false, offsetMinutos: 0,
+    horaDoDia: '10:00', retornoDias: null, template: null,
   },
   dono_novo_agendamento: {
     tipo: 'dono_novo_agendamento', enabled: false, offsetMinutos: 0,

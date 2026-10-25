@@ -387,7 +387,7 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
          único tipo que mistura link com resposta rápida — o índice de cada
          botão depende dos dois tipos juntos, então não dá pra derivar de
          uma lista só de payloads. */
-      botoes: botoesDoTipo(p.tipo, p.appointmentId),
+      botoes: botoesDoTipo(p.tipo, p.appointmentId, p.variaveis),
     })
 
     if (r.ok) {

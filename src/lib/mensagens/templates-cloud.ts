@@ -24,6 +24,29 @@ import type { TipoMensagem } from './tipos'
 import { formatarTelefone, nomeCurto, type Variaveis } from './textos'
 import { generateSinalToken } from '@/lib/token'
 
+/** v178 · nome do template do retoque na conta (aprovação pedida em 25/10) */
+export const NOME_TEMPLATE_RETOQUE = 'agendapro_retoque_prazo'
+
+/** v178 · TRAVA do retoque. A Meta pode reclassificar um template de utilidade
+ *  pra marketing depois de aprovado (~7× mais caro). Antes de mandar, a
+ *  varredura pergunta a categoria e o status; só segue com UTILITY + APPROVED.
+ *  null = não deu pra perguntar (sem credencial ou erro): também não manda. */
+export async function categoriaDoRetoque(): Promise<{ status: string; categoria: string } | null> {
+  const waba = process.env.WHATSAPP_WABA_ID, token = process.env.WHATSAPP_TOKEN
+  if (!waba || !token) return null
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${waba}/message_templates?name=${NOME_TEMPLATE_RETOQUE}&fields=name,status,category`, {
+      headers: { Authorization: `Bearer ${token}` },
+      next: { revalidate: 600 },
+    })
+    const j = (await r.json()) as { data?: { name: string; status: string; category: string }[] }
+    const t = j.data?.find((x) => x.name === NOME_TEMPLATE_RETOQUE)
+    return t ? { status: t.status, categoria: t.category } : null
+  } catch {
+    return null
+  }
+}
+
 export type DefTemplate = {
   /** Nome exato aprovado na conta. Prefixo agendapro_ pra não colidir. */
   nome: string
@@ -212,6 +235,29 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
     categoria: 'MARKETING', // 🔴 ~7x mais caro, e consome 7 da franquia
     params: (v) => [nome(v.cliente), t(v.servico, 'procedimento'), t(v.salao), t(v.data), fone(v)],
   },
+  /* v178 · RETOQUE (camada 2 do retorno). UTILIDADE: informa o prazo de um
+     procedimento que a cliente já fez, sem convite nem palavra de venda — é o
+     que a Meta aceita como utilidade. Neutro de gênero de propósito: serve
+     pra "Studio X" e pra "Clínica Y", pra "Alongamento" e pra "Micro".
+     Se a Meta reclassificar pra MARKETING, a varredura pausa sozinha
+     (categoriaDoRetoque) e a tela de Mensagens mostra por quê. */
+  retoque: {
+    nome: NOME_TEMPLATE_RETOQUE,
+    campos: ['nome da cliente', 'nome do seu negócio', 'procedimento', 'data do procedimento', 'prazo do retoque'],
+    idioma: 'pt_BR',
+    corpo:
+      'Oi {{1}}, tudo bem? Aviso de {{2}}.\n\nSeu procedimento de {{3}} foi feito em {{4}}, e o prazo do retoque vai até {{5}}.\n\nToque no botão abaixo pra escolher o seu horário.',
+    categoria: 'UTILITY',
+    params: (v) => [nome(v.cliente), t(v.salao), t(v.servico, 'procedimento'), t(v.data), t(v.prazo)],
+    botoesMeta: [
+      {
+        type: 'URL',
+        text: 'Escolher horário',
+        url: 'https://www.agendapro.net.br/{{1}}',
+        example: ['https://www.agendapro.net.br/ivna-loyola-beauty-clinic/agendar?servicos=00000000-0000-0000-0000-000000000000'],
+      },
+    ],
+  },
   dono_novo_agendamento: {
     nome: 'agendapro_dono_novo_agendamento',
     campos: ['nome do seu negócio', 'nome da cliente', 'data', 'horário', 'serviço'],
@@ -257,9 +303,12 @@ export function unidadesDaFranquia(tipo: TipoMensagem): number {
 export function botoesDoTipo(
   tipo: TipoMensagem,
   appointmentId: string | null | undefined,
+  variaveis?: Variaveis,
 ):
   | Array<{ tipo: 'quick_reply'; payload: string } | { tipo: 'url'; sufixo: string }>
   | undefined {
+  // v178 · retoque: só o link pro agendamento, já no serviço da volta
+  if (tipo === 'retoque') return variaveis?.link ? [{ tipo: 'url', sufixo: variaveis.link }] : undefined
   if (tipo !== 'sinal_pendente' || !appointmentId) return undefined
   /* O `?` VAI NO SUFIXO, não na base. A URL aprovada em 03/09 é
      `https://www.agendapro.net.br/sinal{{1}}` — sem query string — e o

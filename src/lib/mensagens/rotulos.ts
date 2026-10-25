@@ -20,6 +20,7 @@ export const ROTULO_AVISO: Record<string, string> = {
   lembrete_dia: 'Lembrete do dia',
   aniversario: 'Aniversário',
   retorno: 'Hora de voltar',
+  retoque: 'Prazo do retoque',
   dono_novo_agendamento: 'Aviso de agendamento novo',
   dono_cancelamento: 'Aviso de cancelamento',
   auto_resposta: 'Resposta automática',
@@ -41,6 +42,7 @@ export const TIPOS_PROGRAMADOS: TipoMensagem[] = [
   'lembrete_dia',
   'aniversario',
   'retorno',
+  'retoque',
 ]
 
 /** É resposta do robô dentro da conversa, não aviso disparado. */

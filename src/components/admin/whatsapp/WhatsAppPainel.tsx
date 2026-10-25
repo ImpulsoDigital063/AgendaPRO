@@ -127,6 +127,12 @@ const infoDe = (
     porque: `Avisa ${t.art} ${t.s} que já deu o prazo de repetir o procedimento.`,
     icone: <IconSparkles size={19} />,
   },
+  retoque: {
+    rotulo: 'Prazo do retoque',
+    quando: 'Quando abre o prazo',
+    porque: `Pra quem saiu sem marcar o retoque: manda o prazo e um botão pra ${t.s} escolher o horário.`,
+    icone: <IconSparkles size={19} />,
+  },
 })
 
 /** 556392846765 → (63) 9284-6765 */
@@ -324,7 +330,8 @@ export default function WhatsAppPainel({
           return {
             tipo,
             rotulo: info.rotulo,
-            porque: info.porque,
+            porque: r.pausado ? String(r.pausado) : info.porque,
+            pausado: r.pausado ? String(r.pausado) : null,
             quando: tipo === 'lembrete_dia' ? `${horas}h antes` : info.quando,
             enabled: r.enabled === true,
             temBotao: tipo === 'confirmacao' || tipo === 'lembrete_vespera' || tipo === 'lembrete_dia',
@@ -664,6 +671,7 @@ export default function WhatsAppPainel({
                 </span>
                 {a.status === 'PENDING' && <Chip tom="atencao">em análise</Chip>}
                 {a.status === 'REJECTED' && <Chip tom="erro">reprovado</Chip>}
+                {a.pausado && <Chip tom="atencao">pausado</Chip>}
               </>
             }
             /* A descrição, não o começo do texto: as mensagens começam todas

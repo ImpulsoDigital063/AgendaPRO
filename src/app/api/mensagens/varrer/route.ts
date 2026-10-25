@@ -30,6 +30,7 @@ import { confirmarAgendamento } from '@/lib/mensagens/confirmar'
 import { chaveIdempotencia, PADRAO, type Regra, type TipoMensagem } from '@/lib/mensagens/tipos'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import { dataCurta } from '@/lib/mensagens/textos'
+import { categoriaDoRetoque } from '@/lib/mensagens/templates-cloud'
 import { sendAlert } from '@/lib/alert'
 
 export const runtime = 'nodejs'
@@ -381,11 +382,13 @@ export async function GET(req: NextRequest) {
   if (negRetorno.length > 0) {
     const { data: servicos } = await db
       .from('services')
-      .select('id, business_id, name, retorno_dias')
+      .select('id, business_id, name, retorno_dias, retorno_tipo')
       .in('business_id', negRetorno)
       .not('retorno_dias', 'is', null)
 
-    const prazos = (servicos ?? []).filter((s) => Number(s.retorno_dias) > 0)
+    /* v178 · retoque incluso tem aviso próprio, de utilidade (seção abaixo):
+       aqui ele nunca vira "hora de voltar", que é marketing */
+    const prazos = (servicos ?? []).filter((s) => Number(s.retorno_dias) > 0 && s.retorno_tipo !== 'retoque')
     if (prazos.length > 0) {
       // (serviço, data em que o intervalo fecha hoje)
       const alvoPorServico = new Map<string, string>()
@@ -458,6 +461,111 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  /* ── PRAZO DO RETOQUE (v178 · camada 2 do retorno) ─────────────
+     Quem fez um procedimento com retoque incluso (services.retorno_tipo =
+     'retoque', v177) e saiu sem marcar: no dia em que a janela abre, recebe o
+     prazo e um botão pro agendamento já no serviço da volta. Quem marcou na
+     saída (camada 1, "Retornos pra marcar") não recebe nada daqui.
+
+     TRAVA: o template é de UTILIDADE. Se a Meta reclassificar pra marketing
+     (ou ainda não tiver aprovado), nada sai — o aviso fica pausado e a tela de
+     Mensagens da dona mostra o motivo. Mandar marketing pelo preço errado sem
+     ela saber é o que esta seção existe pra evitar.
+
+     Só serviço com janela (retorno_janela_dias): o texto diz "vai até", e
+     sem fim de prazo ele mentiria. */
+  const negRetoque = negociosCom('retoque').filter((b) => {
+    const r = regras.get(`${b}:retoque`)!
+    return Number(r.horaDoDia.slice(0, 2)) === horaBR
+  })
+  if (negRetoque.length > 0) {
+    const meta = await categoriaDoRetoque()
+    const liberado = meta?.status === 'APPROVED' && meta.categoria === 'UTILITY'
+    const { data: svs } = liberado
+      ? await db
+          .from('services')
+          .select('id, business_id, name, retorno_dias, retorno_janela_dias, retorno_servico_id')
+          .in('business_id', negRetoque)
+          .eq('retorno_tipo', 'retoque')
+          .not('retorno_dias', 'is', null)
+          .not('retorno_janela_dias', 'is', null)
+      : { data: [] }
+    const comPrazo = (svs ?? []).filter((s) => Number(s.retorno_dias) > 0 && Number(s.retorno_janela_dias) > Number(s.retorno_dias))
+    if (comPrazo.length > 0) {
+      // (serviço, dia do procedimento cuja janela abre hoje)
+      const feitoEm = new Map(comPrazo.map((s) => [s.id as string, addDaysBR(hoje, -Number(s.retorno_dias))]))
+      const porId = new Map(comPrazo.map((s) => [s.id as string, s]))
+      const { data: feitos } = await db
+        .from('appointments')
+        .select(`id, business_id, appointment_date, client_name, client_phone, client_email,
+                 service_id, customer_id, business:businesses(name, phone, slug),
+                 appointment_services(service_id)`)
+        .in('business_id', [...new Set(comPrazo.map((s) => s.business_id as string))])
+        .in('appointment_date', [...new Set(feitoEm.values())])
+        .eq('status', 'completed')
+
+      type Feito = { id: string; business_id: string; appointment_date: string; client_name: string | null; client_phone: string | null; client_email: string | null; service_id: string | null; customer_id: string | null; business: unknown; appointment_services: { service_id: string | null }[] | null }
+      const candidatos: { a: Feito; s: (typeof comPrazo)[number]; volta: string }[] = []
+      for (const a of (feitos ?? []) as Feito[]) {
+        // micro costuma vir junto com outro serviço: lê os dois lugares
+        const ids = new Set([a.service_id, ...(a.appointment_services ?? []).map((x) => x.service_id)].filter(Boolean) as string[])
+        for (const id of ids) {
+          const s = porId.get(id)
+          if (s && feitoEm.get(id) === a.appointment_date) candidatos.push({ a, s, volta: (s.retorno_servico_id as string | null) ?? id })
+        }
+      }
+
+      // já marcou a volta? (uma consulta só; mesma regra do cartão da recepção)
+      const marcou = new Set<string>()
+      const clientes = [...new Set(candidatos.map((c) => c.a.customer_id).filter(Boolean))] as string[]
+      if (clientes.length > 0) {
+        const { data: depois } = await db
+          .from('appointments')
+          .select('customer_id, service_id, appointment_date, appointment_services(service_id)')
+          .in('customer_id', clientes)
+          .in('status', ['pending', 'confirmed', 'completed'])
+          .gt('appointment_date', [...feitoEm.values()].sort()[0])
+        for (const d of (depois ?? []) as { customer_id: string; service_id: string | null; appointment_date: string; appointment_services: { service_id: string | null }[] | null }[]) {
+          for (const sid of [d.service_id, ...(d.appointment_services ?? []).map((x) => x.service_id)]) {
+            if (sid) marcou.add(`${d.customer_id}:${sid}:${d.appointment_date}`)
+          }
+        }
+      }
+      const jaMarcou = (cliente: string | null, volta: string, desde: string) =>
+        !!cliente && [...marcou].some((k) => {
+          const [c, sid, dia] = k.split(':')
+          return c === cliente && sid === volta && dia > desde
+        })
+
+      for (const { a, s, volta } of candidatos) {
+        if (jaMarcou(a.customer_id, volta, a.appointment_date)) continue
+        const negocio = a.business as { name: string; phone: string | null; slug: string } | null
+        if (!negocio?.slug) continue
+        const ate = addDaysBR(a.appointment_date, Number(s.retorno_janela_dias))
+        fila.push({
+          tipo: 'retoque',
+          businessId: a.business_id,
+          // um aviso por procedimento feito — nunca repete
+          chave: chaveIdempotencia('retoque', `${a.id}:${s.id}`),
+          telefone: a.client_phone,
+          email: a.client_email,
+          appointmentId: a.id,
+          customerId: a.customer_id ?? undefined,
+          variaveis: {
+            cliente: a.client_name || 'Cliente',
+            salao: negocio.name,
+            data: `${a.appointment_date.slice(8, 10)}/${a.appointment_date.slice(5, 7)}`,
+            hora: '',
+            servico: s.name as string,
+            telefoneSalao: negocio.phone ?? null,
+            prazo: `${ate.slice(8, 10)}/${ate.slice(5, 7)}`,
+            link: `${negocio.slug}/agendar?servicos=${volta}`,
+          },
+        })
+      }
+    }
+  }
+
   /* ═══ UMA MENSAGEM POR PESSOA A CADA 30 MINUTOS ═══════════════
      Regra cravada por Eduardo em 01/09: "nao faz sentido disparar duas msg
      assim uma atras da outra".
@@ -496,6 +604,8 @@ export async function GET(req: NextRequest) {
     lembrete_vespera: 3,
     lembrete_dia: 4,
     retorno: 5,
+    // v178 · prazo do retoque: pode esperar um dia, mas vem antes dos convites
+    retoque: 5,
     aniversario: 6,
   }
   const SILENCIO = 30 * 60 * 1000

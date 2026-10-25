@@ -35,6 +35,8 @@ function mostraBotao(modo: ModoBotao, tipo: string): boolean {
 import TelaWhatsApp from './TelaWhatsApp'
 
 export type Aviso = {
+  /** v178 · trava do retoque: motivo quando o aviso está segurado */
+  pausado?: string | null
   tipo: string
   rotulo: string
   porque: string

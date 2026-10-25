@@ -29,8 +29,11 @@ export type Variaveis = {
   profissional?: string
   /** Valor do sinal já formatado ("R$ 40,00"). Só no tipo sinal_pendente. */
   sinal?: string
-  /** Até quando pagar, como a cliente lê ("as 12:30" ou "amanhã as 09:00"). */
+  /** Até quando pagar, como a cliente lê ("as 12:30" ou "amanhã as 09:00").
+   *  No retoque (v178): até quando vale o retoque ("24/12"). */
   prazo?: string
+  /** v178 · o que vem depois da base aprovada no botão de link ("<slug>/agendar?servicos=<id>") */
+  link?: string
 }
 
 /* O telefone sai formatado na HORA DE MONTAR, nao como foi salvo. No banco
@@ -130,6 +133,13 @@ const CORPO: Record<TipoMensagem, (v: Variaveis) => string> = {
     `${v.salao}\n\n` +
     `Oi ${primeiroNome(v.cliente)}! Seu último ${v.servico} foi em ${v.data}.\n` +
     `Já deu o intervalo para repetir — se quiser agendar, é só chamar.`,
+
+  /* v178 · e-mail de reserva do aviso de retoque (o WhatsApp é o template) */
+  retoque: (v) =>
+    `${v.salao}\n\n` +
+    `Oi ${primeiroNome(v.cliente)}! Seu procedimento de ${v.servico} foi feito em ${v.data}, ` +
+    `e o prazo do retoque vai até ${v.prazo ?? '-'}.\n` +
+    `Pra escolher o horário: https://www.agendapro.net.br/${v.link ?? ''}`,
 
   dono_novo_agendamento: (v) =>
     `Novo agendamento em ${v.salao}\n\n` +
