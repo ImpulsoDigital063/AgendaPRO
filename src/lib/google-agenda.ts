@@ -193,6 +193,25 @@ async function tokenDeAcesso(refreshCifrado: string) {
   return access_token
 }
 
+/**
+ * fetch na API da agenda com nova tentativa quando o Google segura por taxa
+ * (403 rateLimitExceeded/userRateLimitExceeded ou 429). Acontece quando chegam
+ * muitos avisos juntos, ex.: importação. Espera crescente com sorteio pra os
+ * avisos simultâneos não baterem de novo no mesmo instante; cabe nos 15 s do
+ * pg_net. Erro que sobra leva o motivo (ex.: "insert 403 rateLimitExceeded").
+ */
+async function chamarAgenda(url: string, init: RequestInit) {
+  for (let tentativa = 0; ; tentativa++) {
+    const r = await fetch(url, init)
+    if (r.status !== 403 && r.status !== 429) return { r, motivo: '' }
+    const j = await r.clone().json().catch(() => ({}))
+    const motivo: string = j?.error?.errors?.[0]?.reason ?? ''
+    const deTaxa = r.status === 429 || /rateLimit/i.test(motivo)
+    if (!deTaxa || tentativa === 3) return { r, motivo }
+    await new Promise((ok) => setTimeout(ok, 1000 * 2 ** tentativa + Math.random() * 1000))
+  }
+}
+
 async function aplicar(db: SupabaseClient, conexao: Conexao, appointmentId: string) {
   const access_token = await tokenDeAcesso(conexao.refresh_token_cifrado)
   const base = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(conexao.calendar_id)}/events`
@@ -209,9 +228,9 @@ async function aplicar(db: SupabaseClient, conexao: Conexao, appointmentId: stri
 
   const foraDoFiltro = !!a && !!conexao.professional_id && a.professional_id !== conexao.professional_id
   if (!a || a.status === 'cancelled' || foraDoFiltro) {
-    const r = await fetch(`${base}/${eventId}`, { method: 'DELETE', headers: auth })
+    const { r, motivo } = await chamarAgenda(`${base}/${eventId}`, { method: 'DELETE', headers: auth })
     // 404/410 = nunca existiu ou já apagado: é o estado que a gente quer
-    if (!r.ok && r.status !== 404 && r.status !== 410) throw new ErroGoogle(`delete ${r.status}`, r.status)
+    if (!r.ok && r.status !== 404 && r.status !== 410) throw new ErroGoogle(`delete ${r.status} ${motivo}`.trim(), r.status)
     return 'apagado' as const
   }
 
@@ -242,15 +261,19 @@ async function aplicar(db: SupabaseClient, conexao: Conexao, appointmentId: stri
     extendedProperties: { private: { agendapro: '1' } },
   }
 
-  const put = await fetch(`${base}/${eventId}`, { method: 'PUT', headers: auth, body: JSON.stringify(evento) })
+  const { r: put, motivo: mPut } = await chamarAgenda(`${base}/${eventId}`, {
+    method: 'PUT',
+    headers: auth,
+    body: JSON.stringify(evento),
+  })
   if (put.ok) return 'atualizado' as const
-  if (put.status !== 404) throw new ErroGoogle(`update ${put.status}`, put.status)
+  if (put.status !== 404) throw new ErroGoogle(`update ${put.status} ${mPut}`.trim(), put.status)
 
-  const post = await fetch(base, { method: 'POST', headers: auth, body: JSON.stringify(evento) })
+  const { r: post, motivo: mPost } = await chamarAgenda(base, { method: 'POST', headers: auth, body: JSON.stringify(evento) })
   if (post.ok) return 'criado' as const
   // 409 = outro aviso criou no meio do caminho: o evento existe, tá certo
   if (post.status === 409) return 'atualizado' as const
-  throw new ErroGoogle(`insert ${post.status}`, post.status)
+  throw new ErroGoogle(`insert ${post.status} ${mPost}`.trim(), post.status)
 }
 
 /**
