@@ -48,6 +48,8 @@ export default async function BloqueiosProfissionalPage() {
     .select('id, block_type, block_date, day_of_week, start_time, end_time, reason, professional_id, active')
     .eq('business_id', prof.business_id)
     .eq('active', true)
+    // v176 · bloqueio vindo do Google Agenda é mantido pelo Google: não lista aqui
+    .is('google_event_id', null)
     .or(`professional_id.eq.${prof.id},professional_id.is.null`)
     .order('block_date', { ascending: true })
 

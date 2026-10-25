@@ -3,7 +3,7 @@
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { negocioDoPainel } from '@/lib/admin-data'
-import { googleAgendaLiberado } from '@/lib/google-agenda'
+import { googleAgendaLiberado, googleBloqueioLiberado } from '@/lib/google-agenda'
 
 export function dbServico() {
   return createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -21,5 +21,5 @@ export async function donaDoNegocioLiberado() {
   const db = dbServico()
   const { data: b } = await db.from('businesses').select('id, slug, owner_id').eq('id', businessId).maybeSingle()
   if (!b || b.owner_id !== user.id || !googleAgendaLiberado(b.slug)) return null
-  return { userId: user.id, businessId: b.id as string, db }
+  return { userId: user.id, businessId: b.id as string, db, bloqueioLiberado: googleBloqueioLiberado(b.slug) }
 }

@@ -38,3 +38,12 @@ export const SUMIDOS_ENVIO_AUTOMATICO = false
  * verificação sair.
  */
 export const GOOGLE_AGENDA_LIBERADOS: string[] = ['ivna-loyola-beauty-clinic']
+
+/**
+ * GOOGLE_AGENDA_BLOQUEIO_LIBERADOS · a VOLTA do Google Agenda (v176):
+ * compromisso marcado no Google da dona bloqueia o horário dela no AgendaPRO.
+ *
+ * Adicional PAGO (Eduardo 24/10: "podemos vender isso pra ela"). Fica vazio
+ * até a Ivna contratar; aí entra o slug dela aqui.
+ */
+export const GOOGLE_AGENDA_BLOQUEIO_LIBERADOS: string[] = []

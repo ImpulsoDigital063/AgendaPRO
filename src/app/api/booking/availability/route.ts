@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { podeSoltarHorario, SINAL_EXPIRA_PADRAO_MIN } from '@/lib/sinal-expira'
+import { puxarDoGoogle } from '@/lib/google-agenda'
+import { todayBR } from '@/lib/date-br'
 
 /**
  * GET /api/booking/availability?business=<id>&professional=<id>&date=YYYY-MM-DD
@@ -50,6 +52,16 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } }
   )
+
+  /* v176 · Google Agenda (volta): antes de ler os bloqueios, traz os
+     compromissos novos do Google da dona. Só lê de fato quem ligou a volta, e
+     no máximo 1 vez a cada 2 min por negócio (trava no banco); pros outros é
+     um UPDATE que não acha linha. Teto de 2,5 s: se o Google demorar, a
+     cliente vê os bloqueios da última leitura em vez de esperar. */
+  await Promise.race([
+    puxarDoGoogle(db, businessId, todayBR()).catch((e) => console.error('availability · google:', e)),
+    new Promise((ok) => setTimeout(ok, 2500)),
+  ])
 
   // No modo intervalo o appointment_date volta junto — o client precisa saber
   // a qual dia cada agendamento pertence pra montar o mapa de dias lotados.

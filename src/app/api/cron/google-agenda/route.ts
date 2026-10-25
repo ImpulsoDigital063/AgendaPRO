@@ -7,7 +7,7 @@
  * não dá pra ser o caminho principal.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { sincronizarAgendamento } from '@/lib/google-agenda'
+import { puxarDoGoogle, sincronizarAgendamento } from '@/lib/google-agenda'
 import { dbServico } from '@/lib/google-agenda-acesso'
 import { todayBR } from '@/lib/date-br'
 
@@ -52,6 +52,14 @@ export async function GET(req: NextRequest) {
       }
     }
     resumo[business_id] = { reenviados, falhas }
+
+    // volta (v176): leitura forçada 1x por dia, mesmo sem ninguém abrir o link.
+    // Também tira os bloqueios de dias que já passaram.
+    try {
+      await puxarDoGoogle(db, business_id, hoje, true)
+    } catch (e) {
+      console.error('cron google-agenda · volta:', business_id, e)
+    }
   }
   return NextResponse.json({ ok: true, resumo })
 }
