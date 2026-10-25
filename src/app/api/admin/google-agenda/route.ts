@@ -26,7 +26,7 @@ export async function GET() {
       .select('google_email, professional_id, bloqueio_professional_id, puxado_em, conectado_em, erro')
       .eq('business_id', businessId)
       .maybeSingle(),
-    db.from('professionals').select('id, name').eq('business_id', businessId).eq('active', true).order('name'),
+    db.from('professionals').select('id, name').eq('business_id', businessId).eq('active', true).or('is_receptionist.eq.false,does_appointments.eq.true').order('name'),
     db
       .from('google_agenda_eventos')
       .select('appointment_id', { count: 'exact', head: true })
@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest) {
   const profId = body[campo] === null ? null : String(body[campo] ?? '')
 
   if (profId) {
-    const { data: p } = await db.from('professionals').select('id').eq('id', profId).eq('business_id', businessId).maybeSingle()
+    const { data: p } = await db.from('professionals').select('id').eq('id', profId).eq('business_id', businessId).or('is_receptionist.eq.false,does_appointments.eq.true').maybeSingle()
     if (!p) return NextResponse.json({ error: 'profissional' }, { status: 400 })
   }
   const { data: gravado, error } = await db
