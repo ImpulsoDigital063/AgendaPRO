@@ -107,8 +107,8 @@ export default function GoogleAgendaCard() {
         Google Agenda
       </p>
       <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--admin-text-mute)' }}>
-        Todo agendamento marcado, remarcado ou cancelado aqui aparece no seu Google Agenda na hora. Mudanças feitas
-        direto no Google não voltam pro AgendaPRO.
+        Todo agendamento marcado, remarcado ou cancelado aqui aparece no seu Google Agenda na hora. Mexer nesses
+        eventos direto no Google não muda o agendamento no AgendaPRO.
       </p>
 
       {!s.conectado || revogado ? (
