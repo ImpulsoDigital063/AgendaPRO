@@ -246,7 +246,7 @@ export const TEMPLATES: Partial<Record<TipoMensagem, DefTemplate>> = {
     campos: ['nome da cliente', 'nome do seu negócio', 'procedimento', 'data do procedimento', 'prazo do retoque'],
     idioma: 'pt_BR',
     corpo:
-      'Oi {{1}}, tudo bem? Aviso de {{2}}.\n\nSeu procedimento de {{3}} foi feito em {{4}}, e o prazo do retoque vai até {{5}}.\n\nToque no botão abaixo pra escolher o seu horário.',
+      'Oi {{1}}, tudo bem? Aqui é a equipe {{2}}. Esperamos que você esteja amando o resultado!\n\nPassando pra lembrar que o retoque do seu procedimento de {{3}}, feito em {{4}}, pode ser feito até {{5}}. É nessa etapa que o resultado fica completo e mais duradouro.\n\nToque no botão abaixo e escolha o melhor horário pra você.',
     categoria: 'UTILITY',
     params: (v) => [nome(v.cliente), t(v.salao), t(v.servico, 'procedimento'), t(v.data), t(v.prazo)],
     botoesMeta: [

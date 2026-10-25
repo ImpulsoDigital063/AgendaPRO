@@ -137,8 +137,8 @@ const CORPO: Record<TipoMensagem, (v: Variaveis) => string> = {
   /* v178 · e-mail de reserva do aviso de retoque (o WhatsApp é o template) */
   retoque: (v) =>
     `${v.salao}\n\n` +
-    `Oi ${primeiroNome(v.cliente)}! Seu procedimento de ${v.servico} foi feito em ${v.data}, ` +
-    `e o prazo do retoque vai até ${v.prazo ?? '-'}.\n` +
+    `Oi ${primeiroNome(v.cliente)}, tudo bem? Esperamos que você esteja amando o resultado!\n` +
+    `O retoque do seu procedimento de ${v.servico}, feito em ${v.data}, pode ser feito até ${v.prazo ?? '-'}.\n` +
     `Pra escolher o horário: https://www.agendapro.net.br/${v.link ?? ''}`,
 
   dono_novo_agendamento: (v) =>

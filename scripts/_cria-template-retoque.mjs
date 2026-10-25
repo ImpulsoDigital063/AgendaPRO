@@ -25,7 +25,7 @@ const env = Object.fromEntries(
 
 const NOME = 'agendapro_retoque_prazo'
 const TEXTO =
-  'Oi {{1}}, tudo bem? Aviso de {{2}}.\n\nSeu procedimento de {{3}} foi feito em {{4}}, e o prazo do retoque vai até {{5}}.\n\nToque no botão abaixo pra escolher o seu horário.'
+  'Oi {{1}}, tudo bem? Aqui é a equipe {{2}}. Esperamos que você esteja amando o resultado!\n\nPassando pra lembrar que o retoque do seu procedimento de {{3}}, feito em {{4}}, pode ser feito até {{5}}. É nessa etapa que o resultado fica completo e mais duradouro.\n\nToque no botão abaixo e escolha o melhor horário pra você.'
 
 const componentes = [
   { type: 'BODY', text: TEXTO, example: { body_text: [['Ana', 'Ivna Loyola Beauty Clinic', 'Micropigmentação labial', '12/10', '11/12']] } },
