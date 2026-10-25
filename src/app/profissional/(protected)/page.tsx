@@ -12,6 +12,9 @@ import ProfAppointmentCard from '@/components/profissional/ProfAppointmentCard'
 import ProfTodayList from '@/components/profissional/ProfTodayList'
 import WelcomeCard from '@/components/profissional/WelcomeCard'
 import { painelDaClinica, primeiroNomeDe } from '@/lib/vitrine/painel'
+import { SEMANA_NEGOCIOS } from '@/lib/feature-flags'
+import { carregarSemana } from '@/lib/semana'
+import SemanaLista from '@/components/agenda/SemanaLista'
 import BoasVindasClinica from '@/components/admin/brand/BoasVindasClinica'
 import { SinoNotificacoes } from '@/components/notificacoes/CentralNotificacoes'
 import Link from 'next/link'
@@ -110,6 +113,12 @@ export default async function ProfissionalPage({
   // λ.fuso · servidor da Vercel roda em UTC · depois das 21h no Brasil o
   // toISOString cru já estava no dia seguinte e a lista dela pulava um dia
   const today = todayBR()
+  /* 25/10 · "A semana" embaixo da grade (SEMANA_NEGOCIOS): com a grade na home
+     os próximos dias tinham sumido; voltam compactos, só os dela. */
+  const diasDaSemana =
+    homeEhGrade && SEMANA_NEGOCIOS.includes(business.id)
+      ? await carregarSemana({ businessId: business.id, hoje: today, professionalId: professional.id })
+      : null
 
   // v98o · TUDO em paralelo, e só o que a tela vai desenhar.
   //
@@ -422,6 +431,8 @@ export default async function ProfissionalPage({
             />
           </Suspense>
         )}
+
+        {diasDaSemana && <SemanaLista businessId={business.id} dias={diasDaSemana} mostrarProfissional={false} />}
 
         {/* Hoje · só quando a home NÃO é a grade (senão é o mesmo dia duas vezes) */}
         {!homeEhGrade && (

@@ -5,6 +5,8 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { SEMANA_NEGOCIOS } from '@/lib/feature-flags'
+import { notifyWaitlistForCancelledSlot } from '@/lib/waitlist'
 
 /**
  * POST /api/admin/appointments/[id]/cancel
@@ -32,7 +34,7 @@ export async function POST(
   // Validação: appointment + business
   const { data: appt } = await supabase
     .from('appointments')
-    .select('id, business_id, professional_id, status, invoice_item_id, paid_at')
+    .select('id, business_id, professional_id, status, invoice_item_id, paid_at, appointment_date, start_time')
     .eq('id', id)
     .single()
   if (!appt) return NextResponse.json({ error: 'not_found' }, { status: 404 })
@@ -269,6 +271,21 @@ export async function POST(
       { error: 'verification_failed', actual_status: after?.status ?? null },
       { status: 500 },
     )
+  }
+
+  /* 25/10 · lista de espera: o cartão antigo avisava a fila ao cancelar e a
+     gaveta da grade (esta rota) não. Por ora só em SEMANA_NEGOCIOS (Ivna);
+     aguardado e sem derrubar o cancelamento se a fila falhar. */
+  if (SEMANA_NEGOCIOS.includes(appt.business_id) && appt.status !== 'cancelled') {
+    try {
+      await notifyWaitlistForCancelledSlot({
+        professional_id: appt.professional_id,
+        appointment_date: appt.appointment_date,
+        start_time: appt.start_time,
+      })
+    } catch (e) {
+      console.error('[cancel] aviso da lista de espera falhou', e)
+    }
   }
 
   revalidatePath('/admin')

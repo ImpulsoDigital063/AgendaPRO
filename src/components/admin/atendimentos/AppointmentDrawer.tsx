@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { IconClose, IconCalendar, IconClock, IconDollar, IconUser, IconExternalLink } from '@/components/ui/Icon'
 import AppointmentActions from './AppointmentActions'
 import AvisosDoAtendimento from './AvisosDoAtendimento'
+import PunicaoDaFalta from './PunicaoDaFalta'
+import { SEMANA_NEGOCIOS } from '@/lib/feature-flags'
 import ClientFichaSection from '../clientes/ClientFichaSection'
 import ResgatePontos from '@/components/admin/fidelidade/ResgatePontos'
 import Link from 'next/link'
@@ -531,6 +533,10 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                   da Wanessa). Some sozinho quando não houve aviso nenhum. */}
               <AvisosDoAtendimento appointmentId={data.id} />
 
+              {/* 25/10 · falta marcada: mostra o desconto de pontos e deixa devolver
+                  (antes só o cartão antigo fazia). Só em SEMANA_NEGOCIOS. */}
+              {status === 'no_show' && SEMANA_NEGOCIOS.includes(businessId) && <PunicaoDaFalta appointmentId={data.id} />}
+
               {/* Ações · sem mostrar pra cancelados */}
               {!isCancelled && (
                 <AppointmentActions
@@ -549,6 +555,7 @@ export default function AppointmentDrawer({ appointmentId, businessId, onClose, 
                   // cobrança é da empresa, no extrato, nunca no balcão.
                   convenioNome={empresaConvenio?.name ?? null}
                   jaAtendido={status === 'completed'}
+                  podeMarcarFalta={SEMANA_NEGOCIOS.includes(businessId) && (status === 'pending' || status === 'confirmed')}
                   // Pagamento: avisa a grade e fecha SEM recarregar a pagina.
                   // Cancelar/remarcar mudam a posicao do card, entao esses
                   // continuam pedindo os dados do servidor (onDone padrao).

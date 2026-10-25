@@ -66,6 +66,9 @@ type Props = {
   convenioNome?: string | null
   /** Já marcado como concluído · troca o texto do botão de atendido. */
   jaAtendido?: boolean
+  /** "Não compareceu" na gaveta (25/10, "A semana"): antes só o cartão antigo
+   *  tinha. Liga só em SEMANA_NEGOCIOS e quando ainda cabe (não pago). */
+  podeMarcarFalta?: boolean
 }
 
 export default function AppointmentActions({
@@ -90,11 +93,13 @@ export default function AppointmentActions({
   onPago,
   convenioNome,
   jaAtendido = false,
+  podeMarcarFalta = false,
 }: Props) {
   const ehConvenio = !!convenioNome
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [confirmFalta, setConfirmFalta] = useState(false)
   const [remarcarOpen, setRemarcarOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [faturarOpen, setFaturarOpen] = useState(false)
@@ -178,6 +183,22 @@ export default function AppointmentActions({
       return
     }
 
+    if (onDone) onDone()
+    else router.refresh()
+  }
+
+  async function marcarFalta() {
+    setLoading(true)
+    setError(null)
+    const res = await fetch(`/api/admin/appointments/${appointmentId}/falta`, { method: 'POST' })
+    setLoading(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error === 'status_invalido' ? 'Esse atendimento já foi concluído ou pago.' : 'Não deu pra marcar a falta. Tente de novo.')
+      setConfirmFalta(false)
+      return
+    }
+    setConfirmFalta(false)
     if (onDone) onDone()
     else router.refresh()
   }
@@ -396,6 +417,35 @@ export default function AppointmentActions({
           <IconCalendar size={15} /> Remarcar
         </button>
       )}
+
+      {/* Não compareceu (25/10) · fica entre remarcar e cancelar: é o "a cliente
+          não veio" do dia, que antes só o cartão antigo marcava. */}
+      {podeMarcarFalta && !isPaid && !jaAtendido && (
+        <button
+          type="button"
+          onClick={() => setConfirmFalta(true)}
+          disabled={loading}
+          className="w-full py-3 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+          style={{
+            background: 'var(--admin-surface)',
+            color: 'var(--admin-text-mute)',
+            border: '1px solid var(--admin-border)',
+          }}
+        >
+          <IconClose size={14} /> Não compareceu
+        </button>
+      )}
+      <ConfirmActionModal
+        open={confirmFalta}
+        title="A cliente não veio?"
+        message="O horário fica marcado como não compareceu. Se o seu programa de pontos desconta falta, os pontos saem da ficha dela, e dá pra devolver depois aqui mesmo."
+        confirmLabel="Sim, não veio"
+        cancelLabel="Voltar"
+        tone="danger"
+        loading={loading}
+        onConfirm={() => marcarFalta()}
+        onClose={() => setConfirmFalta(false)}
+      />
 
       {/* Cancelar atendimento · ação destrutiva separada.
           Some quando não é da pessoa logada (profissional na agenda da colega). */}

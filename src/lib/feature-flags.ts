@@ -48,3 +48,17 @@ export const GOOGLE_AGENDA_LIBERADOS: string[] = ['ivna-loyola-beauty-clinic', '
  * como adicional.
  */
 export const GOOGLE_AGENDA_BLOQUEIO_LIBERADOS: string[] = ['ivna-loyola-beauty-clinic', 'studio-marcela'] // studio-marcela = conta de teste (E2E)
+
+/**
+ * SEMANA_NEGOCIOS · "A semana" no lugar dos cartões grandes (25/10/2026).
+ *
+ * Eduardo: o cartão antigo ("Atendi e recebi", lembrete, pontualidade) não é
+ * mais o modelo; vira a lista compacta "A semana" que abre a MESMA gaveta da
+ * grade, e a gaveta ganha o que só o cartão tinha: "Não compareceu" (com a
+ * devolução dos pontos) e o aviso pra lista de espera ao cancelar.
+ *
+ * Por business_id porque a gaveta é client e só conhece o id. Começa só na
+ * Ivna ("isole só pra Ivna, os outros e os futuros continuam como estão");
+ * depois de aprovada vira o padrão do sistema todo e esta lista some.
+ */
+export const SEMANA_NEGOCIOS: string[] = ['571797bd-ed99-4937-b528-994d451b8953'] // Ivna Loyola Beauty Clinic

@@ -23,6 +23,9 @@ import { painelDaClinica, primeiroNomeDe } from '@/lib/vitrine/painel'
 import BoasVindasClinica from '@/components/admin/brand/BoasVindasClinica'
 import RetornosPraMarcarCard from '@/components/recepcao/RetornosPraMarcarCard'
 import { retornosPraMarcar } from '@/lib/retornos-pra-marcar'
+import { SEMANA_NEGOCIOS } from '@/lib/feature-flags'
+import { carregarSemana } from '@/lib/semana'
+import SemanaLista from '@/components/agenda/SemanaLista'
 import {
   IconCalendar,
   IconClock,
@@ -123,6 +126,8 @@ export default async function RecepcaoAgendaPage({
 
   // protótipo · clínica com painel próprio: boas-vindas de quem entrou (painel.ts)
   const painel = painelDaClinica(business.slug)
+  const semana = SEMANA_NEGOCIOS.includes(business.id)
+  const diasDaSemana = semana ? await carregarSemana({ businessId: business.id, hoje: today }) : []
 
   /* 24/10 · quem é recepção E atende (Ilana): a parte dela de profissional no
      topo do balcão, sem trocar de tela. Próxima cliente dela, quantas hoje,
@@ -300,84 +305,93 @@ export default async function RecepcaoAgendaPage({
               </section>
             )}
 
+            {/* 25/10 · "A semana" (SEMANA_NEGOCIOS): o "Hoje" em cartões repetia a
+                grade logo acima e os próximos dias viravam 26 cartões grandes.
+                Fica a lista compacta da semana, que abre a gaveta da grade. */}
+            {semana ? (
+              <SemanaLista businessId={business.id} dias={diasDaSemana} mostrarProfissional />
+            ) : (
+            <>
             {/* Hoje */}
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-                  Hoje
-                </p>
-                {active.length > 0 && (
-                  <span
-                    className="text-[11px] font-semibold tabular-nums px-2.5 py-0.5 rounded-full"
-                    style={{
-                      background: 'var(--admin-accent-bg)',
-                      color: 'var(--admin-accent)',
-                      border: '1px solid var(--admin-accent-border)',
-                    }}
-                  >
-                    {active.length} agendamento{active.length > 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-
-              {active.length === 0 ? (
-                <div className="admin-card p-8 text-center">
-                  <div
-                    className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
-                    style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}
-                  >
-                    <IconInbox size={26} />
-                  </div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--admin-text-2)' }}>
-                    Nenhum agendamento hoje
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
-                    Toque em &quot;Marcar novo&quot; pra começar
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3.5">
-                  {active.filter((a) => a.status !== 'pending').map((a) => (
-                    <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} />
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {/* Próximos dias */}
-            {/* clínica com painel: recolhido (26 cartões grandes deixavam o
-                início com 6.000+ px no celular); abre num toque */}
-            {painel && upcoming && upcoming.length > 0 && (
-              <details className="admin-card group">
-                <summary className="flex cursor-pointer list-none items-center justify-between p-4">
-                  <span className="text-[14px] font-semibold" style={{ color: 'var(--admin-text)' }}>
-                    Próximos 7 dias · {upcoming.length} {upcoming.length === 1 ? 'agendamento' : 'agendamentos'}
-                  </span>
-                  <span aria-hidden className="text-[13px] font-semibold transition-transform group-open:rotate-90" style={{ color: 'var(--admin-accent)' }}>▸</span>
-                </summary>
-                <div className="space-y-3.5 px-3 pb-3">
-                  {upcoming.map((a) => (
-                    <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} showDate />
-                  ))}
-                </div>
-              </details>
-            )}
-            {!painel && upcoming && upcoming.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
-                    Próximos dias
+                    Hoje
                   </p>
-                  <span className="text-[11px] tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
-                    7 dias
-                  </span>
+                  {active.length > 0 && (
+                    <span
+                      className="text-[11px] font-semibold tabular-nums px-2.5 py-0.5 rounded-full"
+                      style={{
+                        background: 'var(--admin-accent-bg)',
+                        color: 'var(--admin-accent)',
+                        border: '1px solid var(--admin-accent-border)',
+                      }}
+                    >
+                      {active.length} agendamento{active.length > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
-                <div className="space-y-3.5">
-                  {upcoming.map((a) => (
-                    <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} showDate />
-                  ))}
-                </div>
+  
+                {active.length === 0 ? (
+                  <div className="admin-card p-8 text-center">
+                    <div
+                      className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3"
+                      style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}
+                    >
+                      <IconInbox size={26} />
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--admin-text-2)' }}>
+                      Nenhum agendamento hoje
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--admin-text-faded)' }}>
+                      Toque em &quot;Marcar novo&quot; pra começar
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3.5">
+                    {active.filter((a) => a.status !== 'pending').map((a) => (
+                      <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} />
+                    ))}
+                  </div>
+                )}
               </section>
+  
+              {/* Próximos dias */}
+              {/* clínica com painel: recolhido (26 cartões grandes deixavam o
+                  início com 6.000+ px no celular); abre num toque */}
+              {painel && upcoming && upcoming.length > 0 && (
+                <details className="admin-card group">
+                  <summary className="flex cursor-pointer list-none items-center justify-between p-4">
+                    <span className="text-[14px] font-semibold" style={{ color: 'var(--admin-text)' }}>
+                      Próximos 7 dias · {upcoming.length} {upcoming.length === 1 ? 'agendamento' : 'agendamentos'}
+                    </span>
+                    <span aria-hidden className="text-[13px] font-semibold transition-transform group-open:rotate-90" style={{ color: 'var(--admin-accent)' }}>▸</span>
+                  </summary>
+                  <div className="space-y-3.5 px-3 pb-3">
+                    {upcoming.map((a) => (
+                      <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} showDate />
+                    ))}
+                  </div>
+                </details>
+              )}
+              {!painel && upcoming && upcoming.length > 0 && (
+                <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--admin-text-mute)' }}>
+                      Próximos dias
+                    </p>
+                    <span className="text-[11px] tabular-nums" style={{ color: 'var(--admin-text-faded)' }}>
+                      7 dias
+                    </span>
+                  </div>
+                  <div className="space-y-3.5">
+                    {upcoming.map((a) => (
+                      <RecepAppointmentCard key={a.id} appointment={a} businessId={business.id} showDate />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
             )}
           </div>
         </div>

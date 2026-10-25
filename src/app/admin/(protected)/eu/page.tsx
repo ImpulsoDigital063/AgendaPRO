@@ -26,6 +26,9 @@ import {
 import OwnerPhotoCard from '@/components/admin/eu/OwnerPhotoCard'
 import ProfFinanceiroView from '@/components/profissional/ProfFinanceiroView'
 import { carregarExtratoProfissional } from '@/lib/extrato-profissional'
+import { SEMANA_NEGOCIOS } from '@/lib/feature-flags'
+import { carregarSemana } from '@/lib/semana'
+import SemanaLista from '@/components/agenda/SemanaLista'
 
 /**
  * /admin/eu — Agenda pessoal do dono que também atende.
@@ -215,20 +218,30 @@ function KPICard({
 async function PersonalTodaySection({
   business,
   owner,
+  date,
 }: {
   business: Business
   owner: OwnerProf
+  /** 25/10 · em SEMANA_NEGOCIOS a grade navega entre dias (?date=); no resto, hoje */
+  date?: string
 }) {
-  const today = todayBR()
+  const today = date ?? todayBR()
   return (
     <section>
       <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--admin-text-mute)' }}>
-        Seus atendimentos hoje
+        {date ? 'Sua agenda' : 'Seus atendimentos hoje'}
       </p>
       {/* Grid premium · só a coluna do dono (onlyProfessionalId); KPIs próprios já acima */}
       <GradeTimeline businessId={business.id} date={today} onlyProfessionalId={owner.id} hideKpis />
     </section>
   )
+}
+
+/* 25/10 · "A semana" no lugar dos cartões grandes de "Seus próximos dias"
+   (Eduardo: "modelo antigo, não usamos mais"). Só em SEMANA_NEGOCIOS. */
+async function SemanaSection({ business, owner }: { business: Business; owner: OwnerProf }) {
+  const dias = await carregarSemana({ businessId: business.id, hoje: todayBR(), professionalId: owner.id })
+  return <SemanaLista businessId={business.id} dias={dias} mostrarProfissional={false} />
 }
 
 async function PersonalUpcomingSection({
@@ -275,7 +288,7 @@ async function PersonalUpcomingSection({
 export default async function AdminEuPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string; de?: string; ate?: string }>
+  searchParams: Promise<{ periodo?: string; de?: string; ate?: string; date?: string }>
 }) {
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
@@ -293,6 +306,10 @@ export default async function AdminEuPage({
     ehGerente && (owner.employment_type ?? 'commissioned') !== 'employed'
       ? await carregarExtratoProfissional(await createClient(), owner.id, await searchParams)
       : null
+
+  const semana = SEMANA_NEGOCIOS.includes(business.id)
+  const sp = await searchParams
+  const gradeDate = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayBR()
 
   const todayFormatted = new Date().toLocaleDateString('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -400,11 +417,11 @@ export default async function AdminEuPage({
 
       <div className="relative max-w-lg mx-auto px-4 pb-10 space-y-6">
         <Suspense fallback={null}>
-          <PersonalTodaySection business={business} owner={owner} />
+          <PersonalTodaySection business={business} owner={owner} date={semana ? gradeDate : undefined} />
         </Suspense>
 
         <Suspense fallback={null}>
-          <PersonalUpcomingSection business={business} owner={owner} />
+          {semana ? <SemanaSection business={business} owner={owner} /> : <PersonalUpcomingSection business={business} owner={owner} />}
         </Suspense>
       </div>
     </main>
