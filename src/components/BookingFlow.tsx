@@ -2005,7 +2005,9 @@ export default function BookingFlow({
           Diz QUEM pede (o salão, não o AgendaPRO), QUANTO antes de ela investir
           tempo, e que o restante fica pro dia — senão ela pode achar que é o
           valor inteiro adiantado. */}
-      {business.sinal_enabled && textoDoSinal(business) && (
+      {/* vitrine: serviço sem preço (R$0, ex.: blefaroplastia da Ivna) dá sinal 0 no
+          servidor também; o aviso saía "Sinal de  no Pix", sem valor. Some. */}
+      {business.sinal_enabled && textoDoSinal(business) && !(tema === 'vitrine' && hasPrice && selectedServices.length > 0 && !valorDoSinal(totalPrice, business)) && (
         <div
           className="rounded-2xl px-4 py-3 mb-4 flex items-start gap-2.5"
           style={{ background: `${C.surfaceHi}`, border: `1px solid ${C.border}` }}
