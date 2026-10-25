@@ -986,6 +986,14 @@ export default function MarcarAgendamentoForm({
         {/* STEP HORÁRIO */}
         {step === 'horario' && (
           <>
+            {/* v177 · vindo de "Retornos pra marcar" o form abre aqui direto: sem
+                esta linha a recepção não via pra quem nem o quê estava marcando */}
+            {cliente && service && (
+              <p className="admin-card px-3 py-2.5 text-[13px]" style={{ color: 'var(--admin-text)' }}>
+                <span className="font-semibold">{cliente.name}</span>
+                <span style={{ color: 'var(--admin-text-mute)' }}> · {service.name}{prof ? ` · com ${prof.name.split(' ')[0]}` : ''}</span>
+              </p>
+            )}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--admin-text-mute)' }}>
                 Data
