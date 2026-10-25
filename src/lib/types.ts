@@ -210,6 +210,10 @@ export type Service = {
    *  Nasceu de intervalo clínico (toxina 4 meses, peeling 21 dias), mas vale
    *  igual pra corte de cabelo e retoque de cílios. */
   retorno_dias?: number | null
+  /** v177 · tipo do retorno (null = sem), fim da janela e serviço da volta (null = o mesmo) */
+  retorno_tipo?: 'retoque' | 'manutencao' | 'sessao' | null
+  retorno_janela_dias?: number | null
+  retorno_servico_id?: string | null
 }
 
 export type Customer = {

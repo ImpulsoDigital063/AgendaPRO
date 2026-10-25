@@ -4,7 +4,13 @@ import MarcarAgendamentoForm from '@/components/recepcao/MarcarAgendamentoForm'
 
 export const dynamic = 'force-dynamic'
 
-export default async function RecepcaoMarcarPage() {
+// v177 · "Retornos pra marcar" abre aqui com ?cliente=&servico=&prof=&data=
+export default async function RecepcaoMarcarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cliente?: string; servico?: string; prof?: string; data?: string }>
+}) {
+  const sp = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/profissional/login')
@@ -44,6 +50,10 @@ export default async function RecepcaoMarcarPage() {
       businessSlug={business.slug}
       professionals={profs ?? []}
       services={services ?? []}
+      defaultCustomerId={sp.cliente ?? null}
+      defaultServiceId={sp.servico ?? null}
+      defaultProfId={sp.prof ?? null}
+      defaultDate={sp.data ?? null}
     />
   )
 }

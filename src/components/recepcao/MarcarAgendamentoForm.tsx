@@ -43,6 +43,9 @@ type Props = {
   defaultDate?: string | null
   /** Horário pré-selecionado (HH:MM) */
   defaultTime?: string | null
+  /** v177 · "Retornos pra marcar": a cliente e o serviço da volta já vêm escolhidos */
+  defaultCustomerId?: string | null
+  defaultServiceId?: string | null
   /**
    * Área que abriu o form · controla label header + rota de redirect pós-save.
    * 'profissional' (v92) = a própria profissional marcando pra si: recebe só
@@ -62,6 +65,8 @@ export default function MarcarAgendamentoForm({
   defaultProfId = null,
   defaultDate = null,
   defaultTime = null,
+  defaultCustomerId = null,
+  defaultServiceId = null,
   area = 'recepcao',
 }: Props) {
   const router = useRouter()
@@ -192,6 +197,30 @@ export default function MarcarAgendamentoForm({
     carregarConvenio(c)
     setStep(lockProf ? 'servico' : 'profissional')
   }
+
+  /* v177 · veio de "Retornos pra marcar": cliente, profissional e serviço da
+     volta prontos, abre direto no horário. O que faltar (ex.: profissional
+     que saiu) cai no passo certo, e o Voltar segue funcionando. */
+  useEffect(() => {
+    if (!defaultCustomerId) return
+    let vivo = true
+    supabase
+      .from('customers')
+      .select('id, name, phone, total_points, company_id')
+      .eq('id', defaultCustomerId)
+      .eq('business_id', businessId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!vivo || !data) return
+        selectCliente(data as Customer)
+        const sv = defaultServiceId ? services.find((s) => s.id === defaultServiceId) : null
+        if (sv) setService(sv)
+        if (!prof && !lockProf) return
+        setStep(sv ? 'horario' : 'servico')
+      })
+    return () => { vivo = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultCustomerId])
 
   /** Descobre a empresa do paciente e quem atende por ela. */
   async function carregarConvenio(c: Customer) {

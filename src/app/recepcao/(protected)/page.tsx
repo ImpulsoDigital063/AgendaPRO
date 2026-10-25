@@ -21,6 +21,8 @@ import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import { Suspense } from 'react'
 import { painelDaClinica, primeiroNomeDe } from '@/lib/vitrine/painel'
 import BoasVindasClinica from '@/components/admin/brand/BoasVindasClinica'
+import RetornosPraMarcarCard from '@/components/recepcao/RetornosPraMarcarCard'
+import { retornosPraMarcar } from '@/lib/retornos-pra-marcar'
 import {
   IconCalendar,
   IconClock,
@@ -138,6 +140,8 @@ export default async function RecepcaoAgendaPage({
         .is('sinal_pago_at', null)
         .in('status', ['pending', 'confirmed'])
     : { count: 0 }
+  // v177 · quem concluiu procedimento com retorno e ainda não marcou a volta
+  const retornos = await retornosPraMarcar(sbRecepAdmin, business.id)
 
   return (
     <main className="relative overflow-x-hidden" style={{ minHeight: '100svh' }}>
@@ -228,6 +232,12 @@ export default async function RecepcaoAgendaPage({
               <span aria-hidden className="text-[18px]" style={{ color: 'var(--admin-accent)' }}>→</span>
             </Link>
           )}
+        </div>
+      )}
+
+      {retornos.length > 0 && (
+        <div className="relative px-4 md:px-6 pt-3">
+          <RetornosPraMarcarCard lista={retornos} />
         </div>
       )}
 

@@ -19,6 +19,7 @@ import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
 import ServicoUsoProdutosModal from '@/components/admin/produtos/ServicoUsoProdutosModal'
 import { SELECT_SERVICO_PROF } from '@/lib/servico-por-profissional'
+import RetornoDoServico, { colunasDoRetorno, retornoDoServico, type RetornoForm } from '@/components/admin/RetornoDoServico'
 
 type Props = {
   businessId: string
@@ -87,7 +88,7 @@ type FormState = {
   price: string
   duration_minutes: number
   points: string
-  retorno_dias: string
+  retorno: RetornoForm
   /* CAF · 21/08. Só aparecem com as chaves do negócio ligadas:
      comissaoFixa → quanto o profissional recebe (R$, não %)
      convenio     → preço praticado no convênio + a comissão daquele atendimento
@@ -98,7 +99,7 @@ type FormState = {
   convenio_commission_amount: string
 }
 
-const emptyForm: FormState = { name: '', description: '', price: '', duration_minutes: 30, points: '', retorno_dias: '', commission_amount: '', commission_percent: '', convenio_price: '', convenio_commission_amount: '' }
+const emptyForm: FormState = { name: '', description: '', price: '', duration_minutes: 30, points: '', retorno: retornoDoServico(null), commission_amount: '', commission_percent: '', convenio_price: '', convenio_commission_amount: '' }
 
 const DESCRIPTION_MAX = 400
 
@@ -232,9 +233,8 @@ export default function ServicosTab({ businessId, initialServices, category, com
         convenio_commission_amount: convenios && comissaoFixa ? num(form.convenio_commission_amount) : null,
         duration_minutes: form.duration_minutes,
         points: form.points ? parseInt(form.points) : 0,
-        /* vazio = sem aviso de retorno. Zero nao serve como "desligado":
-           zero dia significaria avisar no mesmo dia do atendimento. */
-        retorno_dias: form.retorno_dias ? parseInt(form.retorno_dias) : null,
+        // v177 · tipo, janela e serviço da volta (vazio = null; zero avisaria no mesmo dia)
+        ...colunasDoRetorno(form.retorno),
         active: true,
       })
       .select()
@@ -260,7 +260,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
       convenio_commission_amount: service.convenio_commission_amount != null ? String(service.convenio_commission_amount) : '',
       duration_minutes: service.duration_minutes,
       points: service.points ? String(service.points) : '',
-      retorno_dias: service.retorno_dias ? String(service.retorno_dias) : '',
+      retorno: retornoDoServico(service),
     })
     setEditShowCustom(isCustomDuration(service.duration_minutes))
     const atual = porProf[service.id] ?? {}
@@ -329,7 +329,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
         convenio_commission_amount: convenios && comissaoFixa ? num(editForm.convenio_commission_amount) : null,
         duration_minutes: editForm.duration_minutes,
         points: editForm.points ? parseInt(editForm.points) : 0,
-        retorno_dias: editForm.retorno_dias ? parseInt(editForm.retorno_dias) : null,
+        ...colunasDoRetorno(editForm.retorno),
       })
       .eq('id', id)
 
@@ -344,7 +344,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
                 price: priceValue,
                 duration_minutes: editForm.duration_minutes,
                 points: editForm.points ? parseInt(editForm.points) : 0,
-                retorno_dias: editForm.retorno_dias ? parseInt(editForm.retorno_dias) : null,
+                ...colunasDoRetorno(editForm.retorno),
               }
             : s
         )
@@ -542,6 +542,7 @@ export default function ServicosTab({ businessId, initialServices, category, com
             editPorProf={editPorProf}
             setEditPorProf={setEditPorProf}
             erroPrecos={erroPrecos}
+            todosServicos={services}
           />
         ))
       )}
@@ -770,43 +771,8 @@ export default function ServicosTab({ businessId, initialServices, category, com
           </p>
         </div>
 
-        {/* QUANDO O CLIENTE PODE REPETIR ESTE SERVICO.
-            Nasceu de uma clinica de estetica, onde o intervalo e clinico:
-            toxina so depois de 4 meses, peeling depois de 21 dias. Mas serve
-            igual pra barbearia (corte a cada 21 dias) e pra salao (retoque de
-            cilios a cada 20) - por isso o campo e do sistema, nao dela. */}
-        <div>
-          <label className="admin-label flex items-center gap-2">
-            Dias para poder repetir
-            {/* O prazo JA e guardado e a varredura ja funciona, mas o canal so
-                entrega quando o template de "retorno" estiver aprovado pela
-                Meta E o negocio tiver pacote contratado.
-                Sem este aviso a dona configura, espera o disparo e conclui que
-                o sistema falhou. Ja temos LP prometendo WhatsApp inexistente -
-                nao repetir isso dentro do produto.
-                TIRAR o "em breve" quando o retorno estiver no ar. */}
-            <span
-              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-              style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
-            >
-              em breve
-            </span>
-          </label>
-          <input
-            type="number"
-            value={form.retorno_dias}
-            onChange={(e) => setForm({ ...form, retorno_dias: e.target.value })}
-            placeholder="deixe vazio para nao avisar"
-            min="1"
-            max="1095"
-            className="admin-input w-full px-3 py-2.5 text-sm"
-          />
-          <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-            Passado esse tempo, o cliente recebe um aviso de que já pode fazer de novo. Vazio = sem aviso.
-            <br />
-            O disparo automático está em teste final — por enquanto o prazo fica guardado e nada é enviado.
-          </p>
-        </div>
+        {/* v177 · retorno do procedimento (tipo, janela, serviço da volta) */}
+        <RetornoDoServico valor={form.retorno} onChange={(retorno) => setForm({ ...form, retorno })} servicos={services} />
 
         {/*
           Validacao de preco — bloqueia se preco estiver VAZIO. Permite
@@ -923,6 +889,7 @@ function ServiceCard({
   editPorProf = {},
   setEditPorProf,
   erroPrecos = null,
+  todosServicos = [],
 }: {
   service: Service
   isEditing: boolean
@@ -947,6 +914,8 @@ function ServiceCard({
   editPorProf?: EditPorProf
   setEditPorProf?: (p: EditPorProf) => void
   erroPrecos?: string | null
+  /** v177 · lista pro "Na volta, a cliente marca" */
+  todosServicos?: { id: string; name: string }[]
 }) {
   const isLoading = loadingId === service.id
 
@@ -1214,43 +1183,8 @@ function ServiceCard({
           />
         </div>
 
-        {/* QUANDO O CLIENTE PODE REPETIR ESTE SERVICO.
-            Nasceu de uma clinica de estetica, onde o intervalo e clinico:
-            toxina so depois de 4 meses, peeling depois de 21 dias. Mas serve
-            igual pra barbearia (corte a cada 21 dias) e pra salao (retoque de
-            cilios a cada 20) - por isso o campo e do sistema, nao dela. */}
-        <div>
-          <label className="admin-label flex items-center gap-2">
-            Dias para poder repetir
-            {/* O prazo JA e guardado e a varredura ja funciona, mas o canal so
-                entrega quando o template de "retorno" estiver aprovado pela
-                Meta E o negocio tiver pacote contratado.
-                Sem este aviso a dona configura, espera o disparo e conclui que
-                o sistema falhou. Ja temos LP prometendo WhatsApp inexistente -
-                nao repetir isso dentro do produto.
-                TIRAR o "em breve" quando o retorno estiver no ar. */}
-            <span
-              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-              style={{ background: 'var(--admin-surface-hi)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }}
-            >
-              em breve
-            </span>
-          </label>
-          <input
-            type="number"
-            value={editForm.retorno_dias}
-            onChange={(e) => setEditForm({ ...editForm, retorno_dias: e.target.value })}
-            placeholder="deixe vazio para nao avisar"
-            min="1"
-            max="1095"
-            className="admin-input w-full px-3 py-2.5 text-sm"
-          />
-          <p className="text-[11px] mt-1.5" style={{ color: 'var(--admin-text-mute)' }}>
-            Passado esse tempo, o cliente recebe um aviso de que já pode fazer de novo. Vazio = sem aviso.
-            <br />
-            O disparo automático está em teste final — por enquanto o prazo fica guardado e nada é enviado.
-          </p>
-        </div>
+        {/* v177 · retorno do procedimento (tipo, janela, serviço da volta) */}
+        <RetornoDoServico valor={editForm.retorno} onChange={(retorno) => setEditForm({ ...editForm, retorno })} servicos={todosServicos} servicoAtualId={service.id} />
         <div className="flex gap-2">
           <button
             onClick={onSaveEdit}
