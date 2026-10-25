@@ -258,15 +258,15 @@ export async function sincronizarFuturos(db: SupabaseClient, businessId: string,
     .neq('status', 'cancelled')
     .order('appointment_date')
     .limit(500)
-  let ok = 0
+  let enviados = 0
   let falhas = 0
   const ids = (data ?? []).map((r) => r.id as string)
   for (let i = 0; i < ids.length; i += 4) {
     const lote = await Promise.allSettled(ids.slice(i, i + 4).map((id) => sincronizarAgendamento(db, businessId, id)))
     for (const r of lote) {
-      if (r.status === 'fulfilled') ok++
+      if (r.status === 'fulfilled') enviados++
       else falhas++
     }
   }
-  return { total: ids.length, ok, falhas }
+  return { total: ids.length, enviados, falhas }
 }
