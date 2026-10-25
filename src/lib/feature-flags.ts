@@ -37,8 +37,8 @@ export const SUMIDOS_ENVIO_AUTOMATICO = false
  * aviso e o limite é 100 contas. Abrir pra mais negócios só depois da
  * verificação sair.
  */
-// ivna-loyola-beauty-clinic entra quando o Google aprovar a verificação (Eduardo 25/10: sem a tela de "app não verificado" pra cliente)
-export const GOOGLE_AGENDA_LIBERADOS: string[] = ['studio-marcela'] // conta de teste: vídeo da verificação
+// Eduardo 25/10: Ivna liberada já, mesmo com o aviso de "app não verificado" (verificação enviada ao Google, 4–6 semanas)
+export const GOOGLE_AGENDA_LIBERADOS: string[] = ['ivna-loyola-beauty-clinic', 'studio-marcela'] // studio-marcela = conta de teste
 
 /**
  * GOOGLE_AGENDA_BLOQUEIO_LIBERADOS · a VOLTA do Google Agenda (v176):
