@@ -51,7 +51,15 @@ export async function appDoAparelho() {
 }
 
 // mesmas telas do layout raiz (iOS escolhe pela media query)
+/* 25/10 · abertura saía BRANCA no iPhone do Eduardo (vídeo da instalação): a
+   lista parava no iPhone 15. O iOS só usa a imagem cujo media bate exato com a
+   tela; sem par, fica branco. Entraram 16 Pro/17/17 Pro (402x874), 16/17 Pro
+   Max (440x956), Air (420x912) e mini (360x780). */
 const TELAS: [number, number, string][] = [
+  [1320, 2868, '(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3)'],
+  [1260, 2736, '(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3)'],
+  [1206, 2622, '(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3)'],
+  [1080, 2340, '(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3)'],
   [1290, 2796, '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)'],
   [1284, 2778, '(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)'],
   [1179, 2556, '(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)'],
