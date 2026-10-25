@@ -17,6 +17,7 @@
 // (não é cacheado) e o CSS novo do deploy morreu no caminho. O fetch abaixo
 // não tinha .catch(), então qualquer oscilação de rede matava o recurso em vez
 // de tentar o cache. Mesmo sintoma de 03/06, que na época pegou o JS.
+// v206 (25/10): app da clínica com nome e ícone certos já na 1ª visita (marca pela conta logada).
 // v205 (25/10): hero da vitrine da Ivna com o vídeo centralizado no celular.
 // v204 (25/10): vitrine da Ivna com perguntas frequentes (SEO/AEO).
 // v203 (25/10): vitrine da Ivna no celular (assimetria, sem o lábio, WhatsApp oficial mais embaixo), fichas dela e cartão do Google mais claro. Acima da v202 da master.
@@ -92,7 +93,7 @@
 // v146 (02/10): Horarios celular — 'todo domingo', 'os outros sabados' (genero certo).
 // v176 (16/10): cartao da ficha sem 'ela' (serve pra homem) + presets de esmalteria so pra Nail designer.
 // v177 (16/10): texto da ficha no WhatsApp com nome maiusculo, do/da, horario do atendimento + link anterior cancelado.
-const STATIC_CACHE_VERSION = 'agendapro-static-v205'
+const STATIC_CACHE_VERSION = 'agendapro-static-v206'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

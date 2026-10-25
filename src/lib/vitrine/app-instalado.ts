@@ -6,6 +6,8 @@
 import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import { conteudoDaVitrine } from './conteudo'
+import { getCurrentBusiness, getCurrentUser } from '@/lib/admin-data'
+import { createClient } from '@/lib/supabase/server'
 
 export const COOKIE_SLUG = 'agendapro-slug'
 
@@ -17,8 +19,35 @@ export function appDaClinica(slug: string | null | undefined) {
   return c?.app ? { ...c.app, slug, logo: c.logoDourada ?? null } : null
 }
 
+/* 25/10 · a clínica sai da CONTA LOGADA, não só do cookie. O cookie é gravado
+   pelo SlugCacher no navegador DEPOIS que a página carrega: na 1ª visita o
+   servidor ainda não sabia que era a Ivna e o "Adicionar à Tela de Início" saía
+   com nome e ícone do AgendaPRO (Eduardo instalou e viu isso). Dona/gerente =
+   negócio do painel; recepção/profissional = negócio do cadastro dela. O
+   cookie fica de reserva (manifest pedido sem sessão). */
+async function slugDaConta(): Promise<string | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+    const negocio = await getCurrentBusiness(user.id)
+    if (negocio?.slug) return negocio.slug as string
+    const supabase = await createClient()
+    const { data: prof } = await supabase
+      .from('professionals')
+      .select('businesses(slug)')
+      .eq('auth_user_id', user.id)
+      .eq('active', true)
+      .limit(1)
+      .maybeSingle()
+    const b = prof?.businesses as { slug?: string } | { slug?: string }[] | null | undefined
+    return (Array.isArray(b) ? b[0]?.slug : b?.slug) ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function appDoAparelho() {
-  return appDaClinica((await cookies()).get(COOKIE_SLUG)?.value)
+  return appDaClinica((await slugDaConta()) ?? (await cookies()).get(COOKIE_SLUG)?.value)
 }
 
 // mesmas telas do layout raiz (iOS escolhe pela media query)
