@@ -195,6 +195,39 @@ function Sublinhado({ href, children, cor, externo = false }: { href: string; ch
   return externo ? <a href={href} target="_blank" rel="noopener" className={cls} style={{ color: TINTA }}>{conteudo}</a> : <a href={href} className={cls} style={{ color: TINTA }}>{conteudo}</a>
 }
 
+/* 25/10 · Eduardo: "Como chegar" deixa a cliente escolher o app (Google Maps,
+   Waze ou o Mapas da Apple, esse só no iPhone/Mac). Abre a lista ali embaixo. */
+function ComoChegar({ lugar, nome, cor }: { lugar: string; nome: string; cor: string }) {
+  const [aberto, setAberto] = useState(false)
+  const [apple, setApple] = useState(false)
+  useEffect(() => setApple(/iPhone|iPad|Macintosh/.test(navigator.userAgent)), [])
+  const ll = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(lugar) ? lugar : null
+  const q = encodeURIComponent(lugar)
+  const apps = [
+    { nome: 'Google Maps', href: `https://www.google.com/maps/dir/?api=1&destination=${q}` },
+    { nome: 'Waze', href: ll ? `https://waze.com/ul?ll=${ll}&navigate=yes` : `https://waze.com/ul?q=${q}&navigate=yes` },
+    ...(apple ? [{ nome: 'Mapas da Apple', href: `https://maps.apple.com/?daddr=${q}&q=${encodeURIComponent(nome)}` }] : []),
+  ]
+  return (
+    <div>
+      <button type="button" onClick={() => setAberto((a) => !a)} aria-expanded={aberto} className={`${SANS} group relative inline-flex w-fit items-center gap-2 whitespace-nowrap pb-1 text-[15px] font-semibold`} style={{ color: TINTA }}>
+        Como chegar
+        <Icone nome="seta" cor={cor} className={`h-3.5 w-3.5 transition-transform duration-500 ${aberto ? 'rotate-90' : 'group-hover:translate-x-1'}`} />
+        <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-100 transition-transform duration-700 sm:scale-x-[.35] sm:group-hover:scale-x-100" style={{ background: cor }} />
+      </button>
+      {aberto && (
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          {apps.map((a) => (
+            <a key={a.nome} href={a.href} target="_blank" rel="noopener" className={`${SANS} rounded-full border px-4 py-2.5 text-[14px] font-semibold transition-colors hover:bg-white`} style={{ borderColor: `${cor}66`, color: TINTA }}>
+              {a.nome}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function BotaoAgendar({ href, children = 'Agendar atendimento', className = '' }: { href: string; children?: ReactNode; className?: string }) {
   return (
     <Link href={href} className={`${SANS} group relative inline-flex items-center justify-center gap-3 whitespace-nowrap rounded-full px-8 py-4 text-[16px] font-semibold text-white transition-[transform,background] duration-300 hover:-translate-y-0.5 hover:bg-black ${className}`} style={{ background: TINTA }}>
@@ -358,7 +391,6 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
   const whats = d.telefone ? `https://wa.me/55${d.telefone.replace(/\D/g, '')}` : null
   const nomeCurto = d.nome.replace(/beauty clinic/i, '').trim()
   const lugar = c.mapa ? c.mapa.coords ?? `${c.mapa.consulta}${c.mapa.cidade ? `, ${c.mapa.cidade}` : ''}` : ''
-  const destino = encodeURIComponent(lugar)
   const poster = c.teaser?.poster ?? d.capa ?? ''
 
   return (
@@ -826,7 +858,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
               )}
               {c.horario && <p className="mt-3 pl-9 text-[16px]" style={{ color: SUAVE }}><T x={c.horario} /></p>}
               <div className="mt-10 flex flex-col gap-5">
-                {c.mapa && <Sublinhado href={`https://www.google.com/maps/dir/?api=1&destination=${destino}`} cor={d.cor} externo>Como chegar</Sublinhado>}
+                {c.mapa && <ComoChegar lugar={lugar} nome={d.nome} cor={d.cor} />}
                 {whats && <Sublinhado href={whats} cor={d.cor} externo>Falar no WhatsApp</Sublinhado>}
                 {d.instagram && <Sublinhado href={d.instagram} cor={d.cor} externo>@{c.instagram?.usuario ?? 'instagram'}</Sublinhado>}
               </div>
