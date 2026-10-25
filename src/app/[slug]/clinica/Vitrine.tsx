@@ -184,12 +184,12 @@ function Profundidade({ children, forca = 50, className = '' }: { children: Reac
 
 /* Link secundário: texto com sublinhado dourado que cresce. */
 function Sublinhado({ href, children, cor, externo = false }: { href: string; children: ReactNode; cor: string; externo?: boolean }) {
-  const cls = `${SANS} group relative inline-flex items-center gap-2 whitespace-nowrap pb-1 text-[15px] font-semibold`
+  const cls = `${SANS} group relative inline-flex w-fit items-center gap-2 whitespace-nowrap pb-1 text-[15px] font-semibold`
   const conteudo = (
     <>
       {children}
       <Icone nome="seta" cor={cor} className="h-3.5 w-3.5 transition-transform duration-500 group-hover:translate-x-1" />
-      <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-[.35] transition-transform duration-700 group-hover:scale-x-100" style={{ background: cor }} />
+      <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-100 transition-transform sm:scale-x-[.35] duration-700 group-hover:scale-x-100" style={{ background: cor }} />
     </>
   )
   return externo ? <a href={href} target="_blank" rel="noopener" className={cls} style={{ color: TINTA }}>{conteudo}</a> : <a href={href} className={cls} style={{ color: TINTA }}>{conteudo}</a>
@@ -368,7 +368,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
 
       {/* Topo fixo: o Agendar nunca some */}
       <header className={`fixed inset-x-0 top-0 z-40 transition-[background,box-shadow,border-color] duration-700 ${rolou ? 'border-b backdrop-blur-xl' : 'border-b border-transparent'}`} style={rolou ? { background: '#FAF7F2E6', borderColor: LINHA } : undefined}>
-        <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between px-5 sm:h-20 sm:px-10">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-5 sm:h-20 sm:px-10">
           <a ref={vagaTopo} href="#topo" className="relative block h-9 w-[78px] sm:h-11 sm:w-[96px]" aria-label={d.nome}>
             {/* com logo, a imagem é a do LogoQueSobe; aqui fica só a vaga */}
             {c.logoDourada ? null : <span className={`${SERIF} text-[15px] font-medium`}>{nomeCurto}</span>}
@@ -399,7 +399,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           <div aria-hidden className="pointer-events-none absolute inset-5 hidden border lg:block" style={{ borderColor: '#ffffff80' }} />
         </div>
 
-        <div className="relative order-1 shrink-0 px-6 pb-5 pt-[72px] sm:px-12 sm:pb-8 sm:pt-[104px] lg:mt-0 lg:text-left lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
+        <div className="relative order-1 shrink-0 px-6 pb-5 pt-12 sm:px-12 sm:pb-8 sm:pt-[104px] lg:mt-0 lg:text-left lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-16 lg:pb-0 lg:pt-20 xl:px-24">
           <div aria-hidden className="absolute inset-0 hidden lg:block" style={{ backgroundImage: MARMORE }} />
           {c.monograma && (
             <div aria-hidden className="pointer-events-none absolute -left-10 top-1/2 hidden h-[78%] w-[62%] -translate-y-1/2 opacity-[0.07] lg:block">
@@ -427,9 +427,9 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             {/* provas curtas: por que confiar, já na primeira tela */}
             {c.selos && c.selos.length > 0 && (
               <Surge atraso={580}>
-                {/* celular: duas linhas pequenas, sem ícone, cara de assinatura (lista com ✓
-                    parecia funcionalidade de app e roubava altura do vídeo) */}
-                <ul className="mt-3 flex flex-col items-start gap-0.5 sm:mt-5 sm:gap-1 lg:mt-7 lg:gap-2.5">
+                {/* 25/10 · celular sem selos: no iPhone o vídeo virava uma faixa de 144px, e
+                    "A avaliação é indispensável" já abre a seção A clínica. Tablet/computador seguem. */}
+                <ul className="mt-3 hidden flex-col items-start gap-0.5 sm:mt-5 sm:flex sm:gap-1 lg:mt-7 lg:gap-2.5">
                   {c.selos.map((s) => (
                     <li key={s} className="flex items-center gap-2 text-[12.5px] font-semibold sm:text-[14px] lg:text-[15px] lg:!text-[#2A2520]" style={{ color: d.cor }}>
                       <svg aria-hidden viewBox="0 0 24 24" className="hidden h-4 w-4 shrink-0 lg:block" fill="none" stroke={d.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
@@ -832,7 +832,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
               </div>
             </Surge>
           </div>
-          {c.mapa && <Surge atraso={150} className="h-full"><Mapa consulta={lugar} cor={d.cor} /></Surge>}
+          {c.mapa && <Surge atraso={150} className="hidden h-full sm:block"><Mapa consulta={lugar} cor={d.cor} /></Surge>}
         </div>
       </section>
 
@@ -866,7 +866,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           target="_blank"
           rel="noopener"
           aria-label="Falar no WhatsApp"
-          className={`fixed bottom-[104px] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-[0_10px_28px_-8px_rgba(0,0,0,.35)] transition-[opacity,transform] duration-300 hover:scale-105 sm:pointer-events-auto sm:bottom-6 sm:right-6 sm:translate-y-0 sm:opacity-100 ${passouAbertura ? '' : 'pointer-events-none translate-y-3 opacity-0'}`}
+          className={`fixed bottom-[104px] right-4 z-40 hidden h-14 w-14 sm:flex items-center justify-center rounded-full shadow-[0_10px_28px_-8px_rgba(0,0,0,.35)] transition-[opacity,transform] duration-300 hover:scale-105 sm:pointer-events-auto sm:bottom-6 sm:right-6 sm:translate-y-0 sm:opacity-100 ${passouAbertura ? '' : 'pointer-events-none translate-y-3 opacity-0'}`}
           style={{ background: '#25D366' }}
         >
           <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden>
@@ -884,9 +884,19 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             Cupom {chegada.cupom.code} · {chegada.cupom.texto} aplicado
           </p>
         )}
-        <Link href={agendar} className="flex items-center justify-center gap-3 rounded-full py-4 text-[16px] font-semibold text-white" style={{ background: TINTA }}>
-          Agendar atendimento <Icone nome="seta" cor="#fff" className="h-4 w-4" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href={agendar} className="flex flex-1 items-center justify-center gap-3 rounded-full py-4 text-[16px] font-semibold text-white" style={{ background: TINTA }}>
+            Agendar atendimento <Icone nome="seta" cor="#fff" className="h-4 w-4" />
+          </Link>
+          {whats && (
+            <a href={`${whats}?text=${encodeURIComponent('Olá! Vim pelo site e queria tirar uma dúvida.')}`} target="_blank" rel="noopener" aria-label="Falar no WhatsApp" className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-full" style={{ background: '#25D366' }}>
+              <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden>
+                <path d="M4 20l1.3-3.9A8 8 0 1 1 8 19l-4 1Z" stroke="#fff" strokeWidth={1.6} strokeLinejoin="round" />
+                <path d="M9.2 8.2c-.4.5-.5 1.2-.1 2.1.7 1.6 2 2.9 3.6 3.6.9.4 1.6.3 2.1-.1l.4-.5c.2-.3.1-.6-.2-.8l-1.2-.7c-.3-.2-.6-.1-.8.1l-.3.4c-.9-.4-1.6-1.1-2-2l.4-.3c.2-.2.3-.5.1-.8l-.7-1.2c-.2-.3-.5-.4-.8-.2l-.5.4Z" fill="#fff" />
+              </svg>
+            </a>
+          )}
+        </div>
       </div>
     </main>
   )
