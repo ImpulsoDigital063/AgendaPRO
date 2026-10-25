@@ -17,6 +17,8 @@ import { USO_DE_IMAGEM_FICHA } from './uso-de-imagem'
 import { CONTRATO_SERVICOS_FICHA } from './contrato-servicos'
 import { WANESSA_ANAMNESE_FEMININA, WANESSA_ANAMNESE_MASCULINA } from './wanessa-anamnese'
 import { WANESSA_PLANO_TRATAMENTO } from './wanessa-plano-tratamento'
+import { IVNA_MICROPIGMENTACAO_FICHA } from './ivna-micropigmentacao'
+import { IVNA_REMOCAO_LASER_FICHA } from './ivna-remocao-laser'
 
 /**
  * Registro de todas as fichas de nicho. Pra adicionar um nicho novo: cria a
@@ -52,4 +54,8 @@ export const NICHE_FICHAS: Record<string, NicheFicha> = {
   'wanessa-anamnese-feminina': WANESSA_ANAMNESE_FEMININA,
   'wanessa-anamnese-masculina': WANESSA_ANAMNESE_MASCULINA,
   'wanessa-plano-tratamento': WANESSA_PLANO_TRATAMENTO,
+  /* Exclusivas da Ivna Loyola (25/10): micropigmentação e remoção a laser,
+     os dois serviços dela que o pacote de clínica não cobria. */
+  'ivna-micropigmentacao': IVNA_MICROPIGMENTACAO_FICHA,
+  'ivna-remocao-laser': IVNA_REMOCAO_LASER_FICHA,
 }
