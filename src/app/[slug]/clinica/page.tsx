@@ -9,6 +9,7 @@ import { Lora, Manrope } from 'next/font/google'
 import { CATEGORIAS, categoriaDoServico, nomeLimpo } from '@/lib/vitrine/categorias'
 import { conteudoDaVitrine, doCatalogo, primeiroNome } from '@/lib/vitrine/conteudo'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
+import { JsonLd, SITE_URL, faqJsonLd, localBusinessJsonLd } from '@/lib/jsonld'
 
 /* 24/10 · foto do catálogo que é montagem de antes/depois virava duas metades
    no quadradinho do serviço. As listadas em `catalogoMini` têm uma versão em
@@ -134,6 +135,29 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
       .sort((x, y) => x.ordem - y.ordem),
   })).filter((c) => c.servicos.length)
 
+  /* 25/10 · AEO: "quanto custa" é a pergunta que mais chega no motor de
+     resposta. O preço sai do cadastro na hora (nunca escrito à mão), e só
+     entra o que tem preço. */
+  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
+  const menorPreco = (cat: string, re?: RegExp) => {
+    const ps = porCategoria.find((c) => c.nome === cat)?.servicos.filter((s) => s.preco && !s.avaliacao && s.ordem === 0 && (!re || re.test(s.nome))).map((s) => s.preco as number) ?? []
+    return ps.length ? Math.min(...ps) : null
+  }
+  const precos = ([
+    ['micropigmentação de sobrancelhas', menorPreco('Micropigmentação', /sobrancelha/i)],
+    ['micropigmentação labial', menorPreco('Micropigmentação', /labial/i)],
+    ['alongamento de cílios', menorPreco('Alongamento de cílios')],
+  ] as const).filter(([, v]) => v !== null)
+  const perguntas = [...(conteudo.perguntas ?? [])]
+  if (precos.length) {
+    const lista = precos.map(([nome, v]) => `${nome} a partir de ${brl(v as number)}`)
+    const frase = lista.length > 1 ? `${lista.slice(0, -1).join(', ')} e ${lista[lista.length - 1]}` : lista[0]
+    perguntas.splice(1, 0, {
+      q: 'Quanto custam os procedimentos?',
+      a: `${frase.charAt(0).toUpperCase()}${frase.slice(1)}. Em alguns procedimentos o valor muda conforme a profissional, e você vê o valor de cada uma na hora de agendar.`,
+    })
+  }
+
   return {
     nome: b.name,
     slug: b.slug,
@@ -148,6 +172,7 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
     categorias: porCategoria,
     pacotes,
     conteudo,
+    perguntas,
     // mesmo bloco de avaliação/pontos da página pública (GoogleReviewSection + /api/claim-review)
     avaliacao: urlAvaliar
       ? {
@@ -218,6 +243,42 @@ async function lerChegada(slug: string, cupom?: string, ref?: string): Promise<C
   return chegada.query ? chegada : null
 }
 
+/* 25/10 · SEO/AEO: a página padrão do AgendaPRO entregava o negócio em
+   JSON-LD e a vitrine tinha deixado de entregar (zero blocos no HTML). Aqui
+   volta mais completo: endereço com cidade, pino do mapa, Instagram, serviços
+   com preço, nota do Google e as perguntas frequentes da própria página. */
+function dadosEstruturados(d: NonNullable<Awaited<ReturnType<typeof carregar>>>) {
+  const c = d.conteudo
+  const url = `${SITE_URL}/${d.slug}`
+  const absoluto = (cam?: string | null) => (cam ? (cam.startsWith('http') ? cam : `${SITE_URL}${cam}`) : null)
+  const negocio: Record<string, unknown> = localBusinessJsonLd({
+    name: d.nome,
+    slug: d.slug,
+    description: c.og?.descricao ?? d.descricao,
+    phone: d.telefone ? `+55${d.telefone.replace(/\D/g, '')}` : null,
+    logo: absoluto(c.logoDourada ?? d.logo),
+    cover: absoluto(c.og?.imagem ?? d.capa),
+    rating: d.avaliacao?.nota,
+    reviews: d.avaliacao?.total,
+    services: d.categorias.flatMap((cat) => cat.servicos.filter((s) => !s.avaliacao).map((s) => ({ name: s.nome, price: s.preco }))),
+  })
+  if (c.mapa) {
+    const [cidade, uf] = (c.mapa.cidade ?? '').split(/\s*-\s*/)
+    negocio.address = {
+      '@type': 'PostalAddress',
+      streetAddress: c.mapa.consulta,
+      ...(cidade ? { addressLocality: cidade } : {}),
+      ...(uf ? { addressRegion: uf } : {}),
+      addressCountry: 'BR',
+    }
+    const [lat, lng] = (c.mapa.coords ?? '').split(',').map(Number)
+    if (Number.isFinite(lat) && Number.isFinite(lng) && c.mapa.coords) negocio.geo = { '@type': 'GeoCoordinates', latitude: lat, longitude: lng }
+    if (cidade) negocio.areaServed = { '@type': 'City', name: cidade }
+  }
+  if (d.instagram) negocio.sameAs = [d.instagram.split('?')[0]]
+  return d.perguntas.length ? [negocio, faqJsonLd(d.perguntas, url)] : [negocio]
+}
+
 export default async function PaginaClinica({
   params,
   cupom,
@@ -232,6 +293,7 @@ export default async function PaginaClinica({
   if (!dados) notFound()
   return (
     <div className={`${serif.variable} ${sans.variable}`}>
+      <JsonLd data={dadosEstruturados(dados)} />
       <Vitrine d={dados} chegada={chegada} />
     </div>
   )

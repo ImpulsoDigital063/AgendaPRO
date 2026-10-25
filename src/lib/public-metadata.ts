@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { conteudoDaVitrine } from '@/lib/vitrine/conteudo'
+import { SITE_URL } from '@/lib/site-url'
 
 /**
  * Prévia (og:) das páginas públicas — a que o WhatsApp mostra quando alguém
@@ -72,9 +73,14 @@ export async function buildBusinessMetadata(
   const og = conteudoDaVitrine(slug)?.og
   const imagem = og ? og.imagem : fotoServe ? (foto as string) : `/${slug}/opengraph-image`
   if (og && variante !== 'pontos') descricao = og.descricao
+  /* 25/10 · vitrine: o nome sozinho não diz o que ela faz nem a cidade, e é o
+     que aparece na busca. Canônico com www (SITE_URL) pra não contar duas
+     páginas. Só na vitrine: as outras páginas seguem como estavam. */
+  const tituloVitrine = og?.titulo && variante === 'home' ? og.titulo : null
 
   return {
-    title: titulo,
+    ...(og && variante === 'home' ? { alternates: { canonical: `${SITE_URL}/${slug}` } } : {}),
+    title: tituloVitrine ?? titulo,
     description: descricao,
     openGraph: {
       title: titulo,

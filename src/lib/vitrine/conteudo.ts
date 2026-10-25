@@ -15,7 +15,11 @@ export type ConteudoVitrine = {
   /** cidade em etiqueta pequena na abertura (identifica onde fica, sem virar o assunto) */
   local?: string
   /** prévia do link no WhatsApp/Instagram: imagem 1200x630 (em public/) e o texto embaixo do nome */
-  og?: { imagem: string; descricao: string }
+  /** titulo = o da aba e da busca (o nome sozinho não diz o que ela faz nem onde) */
+  og?: { imagem: string; descricao: string; titulo?: string }
+  /** perguntas frequentes: aparecem na página e vão pro FAQPage (motor de resposta / IA).
+      Só fato confirmado; preço sai do banco na hora (ver clinica/page.tsx). */
+  perguntas?: { q: string; a: string }[]
   frase?: string
   proposta: { titulo: string; destaque: string; texto: Texto; foto?: string }
   pilares: { titulo: string; texto: Texto; icone: 'coracao' | 'estrela' | 'casa' | 'folha' | 'brilho' }[]
@@ -71,9 +75,19 @@ const IVNA: ConteudoVitrine = {
   selos: ['A avaliação é indispensável', 'Higiene, técnica e atenção em cada detalhe'], // Dce6N0DJv3B · DeK7ORmG_0j (voz dela, aprovado 24/10)
   og: {
     imagem: '/vitrine/ivna-loyola/og.jpg', // logo dourada + título aprovado do hero (24/10, refeita)
+    titulo: 'Ivna Loyola Beauty Clinic · Micropigmentação, cílios e estética em Fortaleza',
     descricao: 'Harmonizamos sua beleza com técnicas de alta performance. Micropigmentação, cílios, estética facial e spa em Fortaleza. Agende online.',
   },
   frase: 'Autocuidado não é luxo, é necessidade.', // DdtqNMlSsvl
+  /* 25/10 · SEO/AEO: só o que já está confirmado (cadastro, serviços e textos
+     dela). Textos aguardam ok do Eduardo. */
+  perguntas: [
+    { q: 'Onde fica a Ivna Loyola Beauty Clinic?', a: 'Na Rua Joaquim dos Anjos, 899 (altos), no Planalto Ayrton Senna, em Fortaleza - CE.' },
+    { q: 'Precisa de avaliação antes do procedimento?', a: 'Sim. Antes de qualquer procedimento, avaliamos sua expectativa para entregar um resultado seguro e perfeito pra você. A avaliação pode ser agendada pelo site.' }, // Dce6N0DJv3B
+    { q: 'Quando fazer o retoque da micropigmentação?', a: 'Entre 30 e 60 dias depois da micropigmentação. É no retoque que a cor e o desenho ficam completos.' }, // serviço "Retorno micropigmentação"
+    { q: 'A clínica remove micropigmentação e tatuagem?', a: 'Sim. A remoção de micropigmentação e de tatuagem é feita a laser, sempre com avaliação antes. Para micropigmentação que ficou alaranjada também existe o microagulhamento de remoção.' },
+    { q: 'Como agendar um horário?', a: 'Pelo próprio site, a qualquer hora: escolha o procedimento, a profissional e o melhor horário. Se tiver dúvida, é só chamar a clínica no WhatsApp.' },
+  ],
   proposta: {
     /* 25/10: "do jeitinho que você merece" saía 3 vezes seguidas (subtítulo
        da abertura, este título e o fim do texto). Fica só na abertura; o

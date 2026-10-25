@@ -37,6 +37,8 @@ export type DadosVitrine = {
     foto: string | null
   }[]
   conteudo: ConteudoVitrine
+  /** perguntas do conteúdo + a de preço montada do banco; a mesma lista vira o FAQPage */
+  perguntas: { q: string; a: string }[]
   avaliacao: {
     businessId: string
     url: string
@@ -860,6 +862,33 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
                 />
               </div>
             </Surge>
+          </div>
+        </section>
+      )}
+
+      {/* Perguntas frequentes (25/10, SEO/AEO): a mesma lista vira o FAQPage do
+          JSON-LD. <details> deixa a resposta no HTML mesmo fechada, que é o
+          que o robô lê. Celular: título recuado; computador: título ao lado. */}
+      {d.perguntas.length > 0 && (
+        <section id="perguntas" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-32" style={{ borderColor: LINHA, backgroundColor: '#FDFBF8' }}>
+          <div className="mx-auto grid max-w-6xl gap-7 sm:gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
+            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] max-sm:pl-[16%] sm:text-[50px] lg:sticky lg:top-28 lg:self-start`}>
+              <Revela>Perguntas</Revela>
+              <Revela atraso={120}><span style={destaque}>frequentes</span></Revela>
+            </h2>
+            <div>
+              {d.perguntas.map((f, i) => (
+                <Surge key={f.q} atraso={i * 70}>
+                  <details className="group border-t py-5 sm:py-6" style={{ borderColor: LINHA }}>
+                    <summary className="flex cursor-pointer list-none items-start justify-between gap-4 [&::-webkit-details-marker]:hidden">
+                      <h3 className={`${SERIF} text-[19px] font-medium leading-snug tracking-[-0.01em] sm:text-[22px]`}>{f.q}</h3>
+                      <span aria-hidden className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[18px] leading-none transition-transform duration-300 group-open:rotate-45" style={{ borderColor: `${d.cor}66`, color: d.cor }}>+</span>
+                    </summary>
+                    <p className="mt-3 max-w-xl pr-10 text-[15px] leading-[1.7]" style={{ color: SUAVE }}>{f.a}</p>
+                  </details>
+                </Surge>
+              ))}
+            </div>
           </div>
         </section>
       )}
