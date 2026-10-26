@@ -17,6 +17,7 @@
 // (não é cacheado) e o CSS novo do deploy morreu no caminho. O fetch abaixo
 // não tinha .catch(), então qualquer oscilação de rede matava o recurso em vez
 // de tentar o cache. Mesmo sintoma de 03/06, que na época pegou o JS.
+// v210 (26/10): vitrine da Ivna com contato novo (mapa bege OpenFreeMap + horário do expediente) e rodapé escuro.
 // v209 (25/10): abertura do app da clínica nos iPhones 16 Pro/17/Pro Max/Air/mini (saía branca).
 // v208 (25/10): comunicação na "A semana" (sinal, respostas, último aviso) + aviso não enviado deixa de aparecer como enviado.
 // v207 (25/10): "A semana" no lugar dos cartões grandes (Ivna) + falta e lista de espera na gaveta.

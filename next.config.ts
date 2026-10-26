@@ -59,7 +59,8 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https://*.supabase.co https://*.google-analytics.com https://*.googletagmanager.com",
               "font-src 'self'",
               // Sentry: cliente envia eventos pra ingest do projeto (*.sentry.io e *.ingest.sentry.io)
-              "connect-src 'self' https://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
+              // Mapa da vitrine da clínica (26/10/2026): estilo, tiles, fontes e ícones vêm do OpenFreeMap (grátis, sem chave)
+              "connect-src 'self' https://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://tiles.openfreemap.org",
               // Web Worker via blob: pra compressImage (upload de foto de produto/perfil)
               // Sem isso, navegador bloqueia o worker e a compressão trava silenciosa.
               "worker-src 'self' blob:",

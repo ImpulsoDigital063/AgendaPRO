@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import type { ConteudoVitrine, Texto } from '@/lib/vitrine/conteudo'
 import GoogleReviewSection from '@/components/GoogleReviewSection'
 
@@ -37,6 +38,8 @@ export type DadosVitrine = {
     foto: string | null
   }[]
   conteudo: ConteudoVitrine
+  /** horário de funcionamento montado do expediente da equipe (dias seguidos com a mesma faixa juntos) */
+  horarios: { dias: string; faixa: string }[]
   /** perguntas do conteúdo + a de preço montada do banco; a mesma lista vira o FAQPage */
   perguntas: { q: string; a: string }[]
   avaliacao: {
@@ -66,6 +69,10 @@ const MARMORE = [
 ].join(',')
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
+const fone = (t: string) => {
+  const n = t.replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '')
+  return n.length === 11 ? `(${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7)}` : n.length === 10 ? `(${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}` : t
+}
 const tempo = (m: number | null) => (!m ? '' : m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, '0') : ''}`)
 
 const ICONES = {
@@ -352,6 +359,43 @@ function CartaoVideo({ v, cor, ativo, onAtivar }: { v: { src: string; poster: st
         <span style={{ color: cor }}>—</span> {v.titulo}
       </figcaption>
     </figure>
+  )
+}
+
+/* 26/10 · com o pino da clínica (coords), o mapa já aparece pintado na cor da
+   marca, sem toque (referência Marisa Vaz). Só baixa quando a seção chega perto
+   da tela. Sem coords, segue o mapa do Google no toque. */
+const MapaBege = dynamic(() => import('./MapaBege'), { ssr: false })
+
+function MapaDaClinica({ coords, nome, rua, cor }: { coords: string; nome: string; rua: string; cor: string }) {
+  const caixa = useRef<HTMLDivElement>(null)
+  const [perto, setPerto] = useState(false)
+  useEffect(() => {
+    const el = caixa.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && (setPerto(true), io.disconnect()), { rootMargin: '600px 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  const [lat, lng] = coords.split(',').map(Number)
+  return (
+    <div ref={caixa} className="relative aspect-[4/3] overflow-hidden rounded-[24px] border shadow-[0_30px_60px_-36px_rgba(42,37,32,.45)] sm:aspect-auto sm:h-full sm:min-h-[420px] sm:rounded-[28px]" style={{ borderColor: LINHA, background: '#F3EDE3' }}>
+      {perto && <MapaBege lat={lat} lng={lng} cor={cor} />}
+      <a
+        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}`}
+        target="_blank"
+        rel="noopener"
+        className="group absolute inset-x-3 bottom-3 flex items-center justify-between gap-4 rounded-2xl bg-white/95 px-5 py-4 shadow-[0_12px_30px_-16px_rgba(42,37,32,.4)] backdrop-blur sm:inset-x-4 sm:bottom-4"
+      >
+        <span className="min-w-0">
+          <span className={`${SERIF} block truncate text-[17px] font-medium`} style={{ color: TINTA }}>{nome}</span>
+          <span className="mt-0.5 block truncate text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: SUAVE }}>{rua}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2 text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: cor }}>
+          Abrir <Icone nome="seta" cor={cor} className="h-3.5 w-3.5 transition-transform duration-500 group-hover:translate-x-1" />
+        </span>
+      </a>
+    </div>
   )
 }
 
@@ -897,6 +941,55 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
 
       {/* Onde estamos + Instagram */}
       <section id="onde" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA }}>
+        {c.mapa?.coords ? (
+          /* 26/10 · contato no padrão da Marisa Vaz: rótulo, título grande,
+             blocos com etiqueta (endereço, horário, telefone) e o mapa na cor da marca */
+          <div className="mx-auto grid max-w-6xl gap-9 sm:gap-14 lg:grid-cols-[1fr_1.15fr] lg:items-center lg:gap-20">
+            <div>
+              <p className="flex items-center gap-4 text-[12px] font-semibold uppercase tracking-[0.28em]" style={{ color: SUAVE }}>
+                <span className="h-px w-10" style={{ background: d.cor }} />
+                Contato
+              </p>
+              <h2 className={`${SERIF} mt-5 text-[34px] font-medium leading-[1.05] tracking-[-0.02em] sm:mt-7 sm:text-[58px]`}>
+                <Revela>Venha nos visitar</Revela>
+                <Revela atraso={120}><span style={destaque}>em {c.mapa.cidade?.split(' - ')[0] ?? 'nosso espaço'}.</span></Revela>
+              </h2>
+              <Surge atraso={150}>
+                <dl className="mt-8 grid gap-6 sm:mt-11 sm:gap-7">
+                  <div>
+                    <dt className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: SUAVE }}>Endereço</dt>
+                    <dd className="mt-1.5 text-[16px] leading-[1.6] sm:text-[17px]">{c.mapa.consulta}{c.mapa.cidade ? `, ${c.mapa.cidade}` : ''}</dd>
+                  </div>
+                  {d.horarios.length > 0 && (
+                    <div>
+                      <dt className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: SUAVE }}>Horário</dt>
+                      {d.horarios.map((h) => (
+                        <dd key={h.dias} className="mt-1.5 text-[16px] leading-[1.6] sm:text-[17px]">{h.dias} · {h.faixa}</dd>
+                      ))}
+                    </div>
+                  )}
+                  {d.telefone && (
+                    <div>
+                      <dt className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: SUAVE }}>Telefone</dt>
+                      <dd className="mt-1.5 text-[16px] leading-[1.6] sm:text-[17px]"><a href={`tel:+55${d.telefone.replace(/\D/g, '')}`}>{fone(d.telefone)}</a></dd>
+                    </div>
+                  )}
+                </dl>
+                <div className="mt-9 flex flex-wrap items-center gap-x-8 gap-y-5 sm:mt-12">
+                  {whats && (
+                    <a href={whats} target="_blank" rel="noopener" className="rounded-full px-7 py-4 text-[14px] font-bold uppercase tracking-[0.12em] text-white transition-transform duration-300 hover:-translate-y-0.5" style={{ background: d.cor }}>
+                      Falar no WhatsApp
+                    </a>
+                  )}
+                  <ComoChegar lugar={lugar} nome={d.nome} cor={d.cor} />
+                </div>
+              </Surge>
+            </div>
+            <Surge atraso={150} className="h-full">
+              <MapaDaClinica coords={c.mapa.coords} nome={d.nome} rua={c.mapa.consulta} cor={d.cor} />
+            </Surge>
+          </div>
+        ) : (
         <div className="mx-auto grid max-w-6xl gap-8 sm:gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
           <div>
             <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
@@ -920,6 +1013,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           </div>
           {c.mapa && <Surge atraso={150} className="hidden h-full sm:block"><Mapa consulta={lugar} cor={d.cor} /></Surge>}
         </div>
+        )}
       </section>
 
       {/* Fecho */}
@@ -939,9 +1033,61 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
         </div>
       </section>
 
-      <footer className="border-t px-6 py-8 sm:px-10 sm:py-12 lg:pl-[9%]" style={{ borderColor: LINHA }}>
-        {c.logoDourada && <div className="relative h-14 w-[120px]"><Image src={c.logoDourada} alt={d.nome} fill sizes="120px" className="object-contain object-left" /></div>}
-        <p className="mt-6 text-[13px]" style={{ color: '#B3A897' }}>Agendamento online · AgendaPRO</p>
+      {/* 26/10 · rodapé no padrão da Marisa Vaz: fundo escuro (o mesmo tom dos
+          botões), o nome gigante em marca d'água e as colunas de marca,
+          navegação, contato e horário. */}
+      <footer className="relative overflow-hidden px-6 pb-[calc(28px+env(safe-area-inset-bottom))] pt-16 sm:px-10 sm:pb-10 sm:pt-28" style={{ background: TINTA, color: '#EDE6DA' }}>
+        <p aria-hidden className={`${SERIF} pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 select-none whitespace-nowrap text-[23vw] font-medium leading-none tracking-[-0.03em] sm:top-0 sm:text-[15vw]`} style={{ color: 'rgba(255,255,255,.045)' }}>
+          {nomeCurto}
+        </p>
+        <div className="relative mx-auto grid max-w-6xl gap-11 sm:grid-cols-2 sm:gap-14 lg:grid-cols-[1.4fr_.8fr_1fr_1fr] lg:gap-10">
+          <div>
+            {c.logoDourada ? (
+              <div className="relative h-16 w-[150px]"><Image src={c.logoDourada} alt={d.nome} fill sizes="150px" className="object-contain object-left" /></div>
+            ) : (
+              <p className={`${SERIF} text-[26px]`}>{nomeCurto}</p>
+            )}
+            <p className="mt-6 max-w-xs text-[15px] leading-[1.7]" style={{ color: '#B9AE9C' }}>
+              {c.subtitulo.t}{c.local ? ` ${c.local}.` : ''}
+            </p>
+            <Link href={agendar} className="mt-8 inline-flex rounded-full px-7 py-3.5 text-[15px] font-semibold transition-transform duration-300 hover:-translate-y-0.5" style={{ background: d.cor2, color: TINTA }}>
+              Agendar atendimento
+            </Link>
+          </div>
+          <nav aria-label="Rodapé">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: d.cor2 }}>Navegação</p>
+            <ul className="mt-5 grid gap-3 text-[15px]">
+              {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ...(d.perguntas.length ? [['#perguntas', 'Perguntas frequentes']] : []), ['#onde', 'Contato']].map(([h, t]) => (
+                <li key={h}><a href={h} className="transition-opacity hover:opacity-60">{t}</a></li>
+              ))}
+            </ul>
+          </nav>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: d.cor2 }}>Contato</p>
+            <ul className="mt-5 grid gap-3 text-[15px] leading-[1.6]">
+              {c.mapa && <li>{c.mapa.consulta}{c.mapa.cidade ? `, ${c.mapa.cidade}` : ''}</li>}
+              {d.telefone && <li><a href={`tel:+55${d.telefone.replace(/\D/g, '')}`} className="transition-opacity hover:opacity-60">{fone(d.telefone)}</a></li>}
+            </ul>
+          </div>
+          <div>
+            {d.horarios.length > 0 && (
+              <>
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: d.cor2 }}>Horário</p>
+                <ul className="mt-5 grid gap-3 text-[15px]">
+                  {d.horarios.map((h) => <li key={h.dias}>{h.dias} · {h.faixa}</li>)}
+                </ul>
+              </>
+            )}
+            <div className="mt-7 flex gap-6 text-[15px] font-semibold">
+              {d.instagram && <a href={d.instagram} target="_blank" rel="noopener" className="transition-opacity hover:opacity-60">Instagram</a>}
+              {whats && <a href={whats} target="_blank" rel="noopener" className="transition-opacity hover:opacity-60">WhatsApp</a>}
+            </div>
+          </div>
+        </div>
+        <div className="relative mx-auto mt-14 flex max-w-6xl flex-col gap-2 border-t pt-6 text-[11px] font-semibold uppercase tracking-[0.18em] sm:mt-20 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'rgba(255,255,255,.1)', color: '#8A8070' }}>
+          <span>© {new Date().getFullYear()} {d.nome}</span>
+          <span>{c.local ? `${c.local} · ` : ''}Agendamento online · AgendaPRO</span>
+        </div>
       </footer>
 
       {/* WhatsApp flutuante (padrão das clínicas brasileiras do estudo). No

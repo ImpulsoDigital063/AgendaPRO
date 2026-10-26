@@ -42,6 +42,35 @@ function limparTexto(t: string | null): string | null {
   return limpo || null
 }
 
+/* 26/10 · horário da clínica = do 1º começo ao último fim de quem atende,
+   dia a dia; dias seguidos com a mesma faixa viram "Segunda a sábado". */
+const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+function horarioDaClinica(linhas: { day_of_week: number; start_time: string; end_time: string }[]) {
+  const hm = (t: string) => t.slice(0, 5).replace(':', 'h')
+  const porDia = new Map<number, { ini: string; fim: string }>()
+  for (const l of linhas) {
+    const atual = porDia.get(l.day_of_week)
+    porDia.set(l.day_of_week, {
+      ini: !atual || l.start_time < atual.ini ? l.start_time : atual.ini,
+      fim: !atual || l.end_time > atual.fim ? l.end_time : atual.fim,
+    })
+  }
+  const grupos: { de: number; ate: number; faixa: string }[] = []
+  for (const dia of [1, 2, 3, 4, 5, 6, 0]) {
+    const h = porDia.get(dia)
+    if (!h) continue
+    const faixa = `${hm(h.ini)} — ${hm(h.fim)}`
+    const ultimo = grupos[grupos.length - 1]
+    const seguido = ultimo && (ultimo.ate + 1) % 7 === dia && ultimo.faixa === faixa
+    if (seguido) ultimo.ate = dia
+    else grupos.push({ de: dia, ate: dia, faixa })
+  }
+  return grupos.map((g) => ({
+    dias: g.de === g.ate ? DIAS[g.de] : `${DIAS[g.de]} a ${DIAS[g.ate].toLowerCase()}`,
+    faixa: g.faixa,
+  }))
+}
+
 function db() {
   return createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
@@ -59,7 +88,7 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
     .maybeSingle()
   if (!b) return null
 
-  const [{ data: servicos }, { data: equipe }, { data: premio }, { data: pacotesDb }] = await Promise.all([
+  const [{ data: servicos }, { data: equipe }, { data: premio }, { data: pacotesDb }, { data: expediente }] = await Promise.all([
     supabase
       .from('services')
       .select('id, name, price, duration_minutes, description')
@@ -88,6 +117,12 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
       .eq('business_id', b.id)
       .eq('active', true)
       .order('price', { ascending: true }),
+    supabase
+      .from('working_hours')
+      .select('day_of_week, start_time, end_time, professionals!inner(business_id, active, does_appointments)')
+      .eq('professionals.business_id', b.id)
+      .eq('professionals.active', true)
+      .eq('professionals.does_appointments', true),
   ])
   type ItemDb = { service_id: string | null; quantity: number; services: { name: string; price: number | null } | { name: string; price: number | null }[] | null }
   const pacotes = (pacotesDb ?? []).map((p) => {
@@ -172,6 +207,7 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
     categorias: porCategoria,
     pacotes,
     conteudo,
+    horarios: horarioDaClinica(expediente ?? []),
     perguntas,
     // mesmo bloco de avaliação/pontos da página pública (GoogleReviewSection + /api/claim-review)
     avaliacao: urlAvaliar
