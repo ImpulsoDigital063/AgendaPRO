@@ -16,7 +16,11 @@ const nextConfig: NextConfig = {
 
   // /estetica virou /clinicas (18/10/2026): 301 pra levar o ranking e os links antigos
   async redirects() {
-    return [{ source: '/estetica', destination: '/clinicas', statusCode: 301 }]
+    return [
+      { source: '/estetica', destination: '/clinicas', statusCode: 301 },
+      // 26/10: link curto da prévia da Ivna (alias ivnaloyola.vercel.app) abre direto na vitrine
+      { source: '/', has: [{ type: 'host', value: 'ivnaloyola.vercel.app' }], destination: '/ivna-loyola-beauty-clinic', permanent: false },
+    ]
   },
 
   async headers() {
