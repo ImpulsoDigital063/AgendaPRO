@@ -13,8 +13,6 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { ConteudoVitrine, Texto } from '@/lib/vitrine/conteudo'
 import GoogleReviewSection from '@/components/GoogleReviewSection'
-import type { ServicoPorProf } from '@/lib/servico-por-profissional'
-import AgendaAoVivo from './AgendaAoVivo'
 
 export type DadosVitrine = {
   nome: string
@@ -43,12 +41,6 @@ export type DadosVitrine = {
   /** horário de funcionamento montado do expediente da equipe (dias seguidos com a mesma faixa juntos) */
   horarios: { dias: string; faixa: string }[]
   businessId: string
-  /** agenda ao vivo: expediente semanal, horários por data e quem faz/quanto dura cada serviço com cada uma */
-  agenda: {
-    semanal: { professional_id: string; day_of_week: number; start_time: string; end_time: string; slot_duration: number }[]
-    datas: { professional_id: string; date: string; start_time: string; end_time: string; slot_duration: number }[]
-    porProf: ServicoPorProf
-  }
   /** perguntas do conteúdo + a de preço montada do banco; a mesma lista vira o FAQPage */
   perguntas: { q: string; a: string }[]
   avaliacao: {
@@ -478,7 +470,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             {c.logoDourada ? null : <span className={`${SERIF} text-[15px] font-medium`}>{nomeCurto}</span>}
           </a>
           <nav className="hidden items-center gap-8 text-[15px] font-medium lg:flex" style={{ color: TINTA }}>
-            {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ['#horarios', 'Horários'], ['#onde', 'Onde estamos']].map(([h, t]) => (
+            {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ['#onde', 'Onde estamos']].map(([h, t]) => (
               <a key={h} href={h} className="transition-opacity hover:opacity-60">{t}</a>
             ))}
           </nav>
@@ -927,37 +919,6 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
         </div>
       </section>
 
-      {/* 26/10 · agenda ao vivo (referência Marisa Vaz): horário livre de verdade
-          por profissional, um toque e o agendamento abre com tudo escolhido */}
-      <section id="horarios" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-32" style={{ borderColor: LINHA }}>
-        <div className="mx-auto max-w-6xl">
-          <p className="flex items-center gap-4 text-[12px] font-semibold uppercase tracking-[0.28em]" style={{ color: SUAVE }}>
-            <span className="h-px w-10" style={{ background: d.cor }} />
-            Agenda ao vivo
-          </p>
-          <h2 className={`${SERIF} mt-5 text-[34px] font-medium leading-[1.05] tracking-[-0.02em] sm:mt-7 sm:text-[58px]`}>
-            <Revela>Escolha o seu</Revela>
-            <Revela atraso={120}><span style={destaque}>horário.</span></Revela>
-          </h2>
-          <Surge atraso={150}>
-            <p className="mt-5 max-w-xl text-[15px] leading-[1.7] sm:mt-7 sm:text-[17px]" style={{ color: SUAVE }}>
-              Direto da agenda da clínica. Escolha o procedimento, o dia e toque no horário.
-            </p>
-          </Surge>
-          <Surge atraso={250} className="mt-8 sm:mt-14">
-            <AgendaAoVivo
-              equipe={d.equipe}
-              servicos={d.categorias.flatMap((x) => x.servicos.map((s) => ({ id: s.id, nome: s.nome, duracao: s.duracao, avaliacao: s.avaliacao })))}
-              agenda={d.agenda}
-              businessId={d.businessId}
-              slug={d.slug}
-              chegada={chegada?.query ?? ''}
-              cor={d.cor}
-            />
-          </Surge>
-        </div>
-      </section>
-
       {/* Avaliação no Google + pontos: o mesmo componente da página pública
           (grava pelo /api/claim-review), só com a cor da clínica */}
       {d.avaliacao && (
@@ -1109,35 +1070,35 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       {/* 26/10 · rodapé no padrão da Marisa Vaz: fundo escuro (o mesmo tom dos
           botões), o nome gigante em marca d'água e as colunas de marca,
           navegação, contato e horário. */}
-      <footer className="relative overflow-hidden px-6 pb-[calc(28px+env(safe-area-inset-bottom))] pt-16 sm:px-10 sm:pb-10 sm:pt-28" style={{ background: TINTA, color: '#EDE6DA' }}>
+      <footer className="relative overflow-hidden px-6 pb-[calc(112px+env(safe-area-inset-bottom))] pt-12 sm:px-10 sm:pb-10 sm:pt-28" style={{ background: TINTA, color: '#EDE6DA' }}>
         <p aria-hidden className={`${SERIF} pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 select-none whitespace-nowrap text-[23vw] font-medium leading-none tracking-[-0.03em] sm:top-0 sm:text-[15vw]`} style={{ color: 'rgba(255,255,255,.045)' }}>
           {nomeCurto}
         </p>
-        <div className="relative mx-auto grid max-w-6xl gap-11 sm:grid-cols-2 sm:gap-14 lg:grid-cols-[1.4fr_.8fr_1fr_1fr] lg:gap-10">
-          <div>
+        <div className="relative mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-8 sm:gap-14 lg:grid-cols-[1.4fr_.8fr_1fr_1fr] lg:gap-10">
+          <div className="col-span-2 sm:col-span-1">
             {c.logoDourada ? (
               <div className="relative h-16 w-[150px]"><Image src={c.logoDourada} alt={d.nome} fill sizes="150px" className="object-contain object-left" /></div>
             ) : (
               <p className={`${SERIF} text-[26px]`}>{nomeCurto}</p>
             )}
-            <p className="mt-6 max-w-xs text-[15px] leading-[1.7]" style={{ color: '#B9AE9C' }}>
+            <p className="mt-4 max-w-xs text-[14px] leading-[1.65] sm:mt-6 sm:text-[15px] sm:leading-[1.7]" style={{ color: '#B9AE9C' }}>
               {c.subtitulo.t}{c.local ? ` ${c.local}.` : ''}
             </p>
-            <Link href={agendar} className="mt-8 inline-flex rounded-full px-7 py-3.5 text-[15px] font-semibold transition-transform duration-300 hover:-translate-y-0.5" style={{ background: d.cor2, color: TINTA }}>
+            <Link href={agendar} className="mt-8 hidden rounded-full px-7 py-3.5 sm:inline-flex text-[15px] font-semibold transition-transform duration-300 hover:-translate-y-0.5" style={{ background: d.cor2, color: TINTA }}>
               Agendar atendimento
             </Link>
           </div>
-          <nav aria-label="Rodapé">
+          <nav aria-label="Rodapé" className="max-sm:hidden">
             <p className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: d.cor2 }}>Navegação</p>
             <ul className="mt-5 grid gap-3 text-[15px]">
-              {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ['#horarios', 'Horários'], ...(d.perguntas.length ? [['#perguntas', 'Perguntas frequentes']] : []), ['#onde', 'Contato']].map(([h, t]) => (
+              {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ...(d.perguntas.length ? [['#perguntas', 'Perguntas frequentes']] : []), ['#onde', 'Contato']].map(([h, t]) => (
                 <li key={h}><a href={h} className="transition-opacity hover:opacity-60">{t}</a></li>
               ))}
             </ul>
           </nav>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: d.cor2 }}>Contato</p>
-            <ul className="mt-5 grid gap-3 text-[15px] leading-[1.6]">
+            <ul className="mt-3 grid gap-2 text-[13.5px] leading-[1.55] sm:mt-5 sm:gap-3 sm:text-[15px] sm:leading-[1.6]">
               {c.mapa && <li>{c.mapa.consulta}{c.mapa.cidade ? `, ${c.mapa.cidade}` : ''}</li>}
               {d.telefone && <li><a href={`tel:+55${d.telefone.replace(/\D/g, '')}`} className="transition-opacity hover:opacity-60">{fone(d.telefone)}</a></li>}
             </ul>
@@ -1146,18 +1107,18 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             {d.horarios.length > 0 && (
               <>
                 <p className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: d.cor2 }}>Horário</p>
-                <ul className="mt-5 grid gap-3 text-[15px]">
+                <ul className="mt-3 grid gap-2 text-[13.5px] leading-[1.55] sm:mt-5 sm:gap-3 sm:text-[15px]">
                   {d.horarios.map((h) => <li key={h.dias}>{h.dias} · {h.faixa}</li>)}
                 </ul>
               </>
             )}
-            <div className="mt-7 flex gap-6 text-[15px] font-semibold">
+            <div className="mt-5 flex gap-5 text-[14px] font-semibold sm:mt-7 sm:gap-6 sm:text-[15px]">
               {d.instagram && <a href={d.instagram} target="_blank" rel="noopener" className="transition-opacity hover:opacity-60">Instagram</a>}
               {whats && <a href={whats} target="_blank" rel="noopener" className="transition-opacity hover:opacity-60">WhatsApp</a>}
             </div>
           </div>
         </div>
-        <div className="relative mx-auto mt-14 flex max-w-6xl flex-col gap-2 border-t pt-6 text-[11px] font-semibold uppercase tracking-[0.18em] sm:mt-20 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'rgba(255,255,255,.1)', color: '#8A8070' }}>
+        <div className="relative mx-auto mt-9 flex max-w-6xl flex-col gap-1.5 border-t pt-5 sm:mt-20 sm:gap-2 sm:pt-6 text-[11px] font-semibold uppercase tracking-[0.18em] sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'rgba(255,255,255,.1)', color: '#8A8070' }}>
           <span>© {new Date().getFullYear()} {d.nome}</span>
           <span>{c.local ? `${c.local} · ` : ''}Agendamento online · AgendaPRO</span>
         </div>

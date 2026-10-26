@@ -9,8 +9,6 @@ import { Lora, Manrope } from 'next/font/google'
 import { CATEGORIAS, categoriaDoServico, nomeLimpo } from '@/lib/vitrine/categorias'
 import { conteudoDaVitrine, doCatalogo, primeiroNome } from '@/lib/vitrine/conteudo'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
-import { carregarServicoPorProf } from '@/lib/servico-por-profissional'
-import { addDaysBR, todayBR } from '@/lib/date-br'
 import { JsonLd, SITE_URL, faqJsonLd, localBusinessJsonLd } from '@/lib/jsonld'
 
 /* 24/10 · foto do catálogo que é montagem de antes/depois virava duas metades
@@ -127,21 +125,6 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
       .eq('professionals.does_appointments', true),
   ])
   type ItemDb = { service_id: string | null; quantity: number; services: { name: string; price: number | null } | { name: string; price: number | null }[] | null }
-  /* 26/10 · agenda ao vivo (referência Marisa Vaz): expediente de quem atende,
-     horários por data dos próximos 14 dias e quem faz cada serviço. Os
-     ocupados vêm da mesma rota pública do agendamento, no navegador. */
-  const idsEquipe = (equipe ?? []).map((p) => p.id)
-  const hoje = todayBR()
-  const [{ data: semanal }, { data: datas }, porProf] = await Promise.all([
-    idsEquipe.length
-      ? supabase.from('working_hours').select('professional_id, day_of_week, start_time, end_time, slot_duration').in('professional_id', idsEquipe)
-      : Promise.resolve({ data: [] }),
-    idsEquipe.length
-      ? supabase.from('working_hours_dates').select('professional_id, date, start_time, end_time, slot_duration').in('professional_id', idsEquipe).gte('date', hoje).lte('date', addDaysBR(hoje, 14))
-      : Promise.resolve({ data: [] }),
-    carregarServicoPorProf(supabase, b.id),
-  ])
-
   const pacotes = (pacotesDb ?? []).map((p) => {
     const itens = ((p.package_items ?? []) as ItemDb[]).map((i) => {
       const sv = Array.isArray(i.services) ? i.services[0] : i.services
@@ -226,7 +209,6 @@ async function carregar(slug: string): Promise<DadosVitrine | null> {
     conteudo,
     horarios: horarioDaClinica(expediente ?? []),
     businessId: b.id,
-    agenda: { semanal: semanal ?? [], datas: datas ?? [], porProf },
     perguntas,
     // mesmo bloco de avaliação/pontos da página pública (GoogleReviewSection + /api/claim-review)
     avaliacao: urlAvaliar
