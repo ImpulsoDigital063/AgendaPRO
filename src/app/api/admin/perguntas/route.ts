@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (!acesso) return NextResponse.json({ error: 'business_not_found' }, { status: 404 })
 
   const body = (await req.json().catch(() => ({}))) as {
-    id?: string; periodo?: string; profissionalId?: string; dias?: number; texto?: string; origem?: string; naoEntendeu?: boolean
+    id?: string; periodo?: string; profissionalId?: string; dias?: number; texto?: string; origem?: string; naoEntendeu?: boolean; atalhoId?: string
   }
   const texto = typeof body.texto === 'string' ? body.texto.slice(0, 300) : null
   const origem = body.origem === 'busca' ? 'busca' : 'botao'
@@ -37,6 +37,11 @@ export async function POST(req: NextRequest) {
 
   if (body.naoEntendeu) {
     await registrar(null, false)
+    return NextResponse.json({ ok: true })
+  }
+  // Atalho "como faço" (26/10): só registra, a tela já sabe pra onde levar.
+  if (typeof body.atalhoId === 'string' && /^[a-z_]{1,40}$/.test(body.atalhoId)) {
+    await registrar(`atalho:${body.atalhoId}`, true)
     return NextResponse.json({ ok: true })
   }
 

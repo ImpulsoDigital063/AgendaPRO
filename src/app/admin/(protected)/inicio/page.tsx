@@ -33,6 +33,7 @@ import PushEnableBanner from '@/components/admin/PushEnableBanner'
 import NovidadeSinalCard from '@/components/admin/NovidadeSinalCard'
 import NovidadeSumidosCard from '@/components/admin/NovidadeSumidosCard'
 import TourSistemaCard from '@/components/admin/tour/TourSistemaCard'
+import PerguntasInicioCard from '@/components/admin/perguntas/PerguntasInicioCard'
 import { tourSistemaLiberado } from '@/lib/tour-sistema'
 import Image from 'next/image'
 
@@ -509,6 +510,12 @@ export default async function AdminInicioPage({
         {/* KPIs */}
         <Suspense fallback={<KPIsSkeleton />}>
           <KPIsRow business={business} />
+        </Suspense>
+
+        {/* Pergunte ao seu negócio (26/10) · 3 respostas prontas + busca,
+            pra dona achar a função sem procurar no menu. Celular e computador. */}
+        <Suspense fallback={null}>
+          <PerguntasInicioCard userId={user.id} />
         </Suspense>
 
         {/* Grid principal · 2 colunas em desktop */}

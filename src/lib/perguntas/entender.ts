@@ -1,4 +1,5 @@
 import { PERGUNTAS, PERGUNTA_POR_ID, type Pergunta, type PeriodoId } from './catalogo'
+import { ATALHOS, VERBO_DE_ACAO, type Atalho } from './atalhos'
 
 /* Entende a pergunta digitada SEM IA (21/10/2026): palavras-chave do
    catálogo + período, profissional e dias reconhecidos no texto.
@@ -52,6 +53,8 @@ export function profissionalDoTexto(t: string, profs: Profissional[]): Profissio
 
 export type Entendimento = {
   pergunta: Pergunta | null
+  /** Pedido de ação ("como faço", "quero mudar"): leva pra tela certa. */
+  atalho: Atalho | null
   periodo: PeriodoId | null
   profissional: Profissional | null
   dias: number | null
@@ -67,14 +70,24 @@ export function entender(texto: string, profs: Profissional[], hoje: string): En
 
   // Pontua cada pergunta: trecho achado vale pelo tamanho (trecho longo e
   // específico ganha de palavra solta).
-  const pontos = PERGUNTAS.map((p) => {
+  const pontuar = (palavras: string[]) => {
     let s = 0
-    for (const w of p.palavras) {
+    for (const w of palavras) {
       const k = normalizar(w)
       if (t.includes(k)) s += k.trim().split(' ').length * 2 + k.length / 20
     }
-    return { p, s }
-  }).sort((a, b) => b.s - a.s)
+    return s
+  }
+  const pontos = PERGUNTAS.map((p) => ({ p, s: pontuar(p.palavras) })).sort((a, b) => b.s - a.s)
+
+  // Atalho só ganha da pergunta com verbo de ação ("quero mudar", "como
+  // faço") ou quando nenhuma pergunta casou. "Comissão da colaboradora"
+  // continua sendo pergunta de número. Sem verbo, só trecho de 2+ palavras
+  // ("meu link" sim, "serviço" solto não).
+  const melhorAtalho = ATALHOS.map((a) => ({ a, s: pontuar(a.palavras) })).sort((x, y) => y.s - x.s)[0]
+  if (melhorAtalho.s > 0 && (VERBO_DE_ACAO.test(t) || (pontos[0].s === 0 && !profissional && melhorAtalho.s >= 4))) {
+    return { pergunta: null, atalho: melhorAtalho.a, periodo, profissional, dias, sugestoes: [] }
+  }
 
   let pergunta = pontos[0].s > 0 ? pontos[0].p : null
   // Nome de profissional sem outra pista = quanto ela faturou.
@@ -83,7 +96,7 @@ export function entender(texto: string, profs: Profissional[], hoje: string): En
   // 90 dias" pega os dias acima.
 
   const sugestoes = pergunta ? [] : sugerir(t)
-  return { pergunta, periodo, profissional, dias, sugestoes }
+  return { pergunta, atalho: null, periodo, profissional, dias, sugestoes }
 }
 
 /** As 3 perguntas com mais palavras em comum com o texto. */

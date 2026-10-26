@@ -15,7 +15,8 @@ import { AREA_DO_GRUPO } from '@/lib/perguntas/areas'
  * As respostas saem das mesmas contas das telas (lib/perguntas/responder).
  * Gerente só vê as perguntas das áreas liberadas pra ela.
  */
-export default async function PerguntasPage() {
+export default async function PerguntasPage({ searchParams }: { searchParams: Promise<{ q?: string; p?: string }> }) {
+  const sp = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
@@ -43,6 +44,7 @@ export default async function PerguntasPage() {
             profissionais={(profs ?? []).map((p) => ({ id: p.id as string, name: (p.name as string) ?? '' }))}
             liberadas={liberadas}
             hoje={todayBR()}
+            inicial={{ q: typeof sp.q === 'string' ? sp.q.slice(0, 300) : undefined, p: typeof sp.p === 'string' ? sp.p : undefined }}
           />
         </div>
       </div>

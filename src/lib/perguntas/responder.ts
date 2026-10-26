@@ -148,7 +148,20 @@ async function nomesDeClientes(sb: SupabaseClient, businessId: string, ids: stri
   return out
 }
 
-type ResumoCliente = { client_id: string; visitas: number; primeira: string | null; ultima: string | null; total_gasto: number }
+/** Sem despesa paga no período, lucro e gasto saem inflados/zerados. Avisa
+ *  (26/10, print do Eduardo: lucro = faturamento porque nada foi lançado).
+ *  Despesa lançada e ainda não paga também não entra: diz quantas são. */
+async function avisoSemDespesa(sb: SupabaseClient, businessId: string, d: Datas): Promise<Resposta['aviso']> {
+  const { count } = await sb.from('expenses').select('id', { count: 'exact', head: true })
+    .eq('business_id', businessId).neq('status', 'paid').gte('occurred_at', d.de).lte('occurred_at', d.ate)
+  const link = { href: '/admin/financeiro/despesas', rotulo: count ? 'Ver despesas' : 'Lançar despesa' }
+  if (count) {
+    return { texto: `${plural(count, 'despesa lançada', 'despesas lançadas')} ${d.rotulo} ainda não ${count === 1 ? 'está marcada' : 'estão marcadas'} como paga. Só despesa paga entra na conta.`, link }
+  }
+  return { texto: `Nenhuma despesa lançada ${d.rotulo}. Se teve gasto (aluguel, produto, contas), lance pra ver o número de verdade.`, link }
+}
+
+type ResumoCliente ={ client_id: string; visitas: number; primeira: string | null; ultima: string | null; total_gasto: number }
 async function resumoClientes(sb: SupabaseClient, businessId: string): Promise<ResumoCliente[]> {
   const { data } = await sb.rpc('resumo_clientes', { p_business_id: businessId, p_hoje: todayBR() })
   return ((data ?? []) as ResumoCliente[]).map((r) => ({ ...r, visitas: Number(r.visitas ?? 0), total_gasto: Number(r.total_gasto ?? 0) }))
@@ -336,10 +349,11 @@ export async function responder(sb: SupabaseClient, negocio: Negocio, pedido: Pe
           itens: top(m, (x) => x, 10).map(([k, v]) => ({ rotulo: k, valor: brl(v) })),
           link: { href: '/admin/financeiro/despesas', rotulo: 'Ver despesas' },
           nota: 'Só despesas marcadas como pagas, igual ao card "Despesas pagas" do Financeiro.',
+          aviso: cur.despesasPagas === 0 ? await avisoSemDespesa(sb, bid, d) : undefined,
         }
       }
       const lista = [...cur.expenses].sort((a, b) => Number(b.amount ?? 0) - Number(a.amount ?? 0)).slice(0, 5)
-      if (lista.length === 0) return { titulo: def.texto, frase: `Nenhuma despesa paga ${d.rotulo}.` }
+      if (lista.length === 0) return { titulo: def.texto, frase: `Nenhuma despesa paga ${d.rotulo}.`, aviso: await avisoSemDespesa(sb, bid, d) }
       return {
         titulo: def.texto,
         frase: `Sua maior despesa ${d.rotulo} foi ${lista[0].name ?? 'sem nome'}: ${brl(Number(lista[0].amount ?? 0))}.`,
@@ -367,6 +381,7 @@ export async function responder(sb: SupabaseClient, negocio: Negocio, pedido: Pe
         ],
         link: { href: `/admin/financeiro?de=${d.de}&ate=${d.ate}`, rotulo: 'Ver no Financeiro' },
         nota: 'Mesmo número do card "Lucro líquido" do Financeiro.',
+        aviso: dc.despesasPagas === 0 ? await avisoSemDespesa(sb, bid, d) : undefined,
       }
     }
 

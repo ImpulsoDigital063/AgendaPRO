@@ -55,7 +55,7 @@ export const PERGUNTAS: Pergunta[] = [
   { id: 'ticket', grupo: 'faturamento', texto: 'Qual meu ticket médio?', periodo: 'mes',
     palavras: ['ticket', 'tiket', 'media por cliente', 'gasta em media', 'valor medio', 'media por atendimento'] },
   { id: 'servico_fatura', grupo: 'faturamento', texto: 'Qual serviço mais fatura?', periodo: 'mes',
-    palavras: ['servico que mais fatura', 'servico mais lucrativo', 'servico que mais da dinheiro', 'servico que mais rende', 'melhor servico', 'servicos que mais faturam'] },
+    palavras: ['servico que mais fatura', 'servico mais fatura', 'servicos mais faturam', 'servico fatura mais', 'servico mais lucrativo', 'servico que mais da dinheiro', 'servico que mais rende', 'melhor servico', 'servicos que mais faturam'] },
   { id: 'servico_qtd', grupo: 'faturamento', texto: 'Qual serviço mais vendido?', periodo: 'mes',
     palavras: ['servico mais vendido', 'servico mais procurado', 'servico mais feito', 'mais pedido', 'servico favorito', 'servicos mais vendidos', 'servico mais vende', 'servico que mais vende', 'servicos que mais vendem', 'procedimento mais feito'] },
   { id: 'produtos', grupo: 'faturamento', texto: 'Quanto vendi de produtos?', periodo: 'mes',
@@ -79,7 +79,7 @@ export const PERGUNTAS: Pergunta[] = [
   { id: 'lucro', grupo: 'despesas', texto: 'Quanto sobrou? (lucro)', periodo: 'mes',
     palavras: ['lucro', 'lucrei', 'sobrou', 'sobra', 'resultado', 'liquido', 'no bolso', 'ganhei de verdade', 'prejuizo'] },
   { id: 'sinal', grupo: 'despesas', texto: 'Quanto entrou de sinal?', periodo: 'mes',
-    palavras: ['sinal', 'sinais', 'adiantamento', 'entrada', 'reserva'] },
+    palavras: ['entrou de sinal', 'recebi de sinal', 'sinal', 'sinais', 'adiantamento', 'entrada', 'reserva'] },
 
   // ── Equipe ───────────────────────────────────────────────────
   { id: 'prof_top', grupo: 'equipe', texto: 'Quem mais faturou na equipe?', periodo: 'mes',
@@ -89,11 +89,11 @@ export const PERGUNTAS: Pergunta[] = [
   { id: 'prof_atend', grupo: 'equipe', texto: 'Quantos atendimentos cada uma fez?', periodo: 'mes',
     palavras: ['atendimentos cada', 'quantos atendimentos', 'quantas clientes atendeu', 'quem mais atendeu', 'produtividade'] },
   { id: 'prof_ticket', grupo: 'equipe', texto: 'Qual o ticket médio de cada profissional?', periodo: 'mes',
-    palavras: ['ticket de cada', 'ticket por profissional', 'media de cada profissional'] },
+    palavras: ['ticket medio de cada', 'ticket de cada', 'ticket por profissional', 'media de cada profissional'] },
   { id: 'prof_fieis', grupo: 'equipe', texto: 'Quem tem mais clientes que voltam?',
     palavras: ['clientes que voltam', 'fidelidade da equipe', 'clientes fieis', 'quem fideliza', 'retorno de cada'] },
   { id: 'prof_faltas', grupo: 'equipe', texto: 'Quem tem mais faltas e cancelamentos na agenda?', periodo: 'mes',
-    palavras: ['falta por profissional', 'cancelamento por profissional', 'agenda de quem cancela', 'quem perde mais'] },
+    palavras: ['faltas e cancelamentos', 'mais faltas', 'falta por profissional', 'cancelamento por profissional', 'agenda de quem cancela', 'quem perde mais'] },
 
   // ── Clientes ─────────────────────────────────────────────────
   { id: 'novas', grupo: 'clientes', texto: 'Quantas clientes novas vieram?', periodo: 'mes',
@@ -107,7 +107,7 @@ export const PERGUNTAS: Pergunta[] = [
   { id: 'aniversario', grupo: 'clientes', texto: 'Quem faz aniversário este mês?',
     palavras: ['aniversario', 'aniversariante', 'aniversariantes', 'niver', 'faz anos', 'parabens'] },
   { id: 'voltaram', grupo: 'clientes', texto: 'Quantas clientes voltaram depois da primeira vez?',
-    palavras: ['voltaram', 'retorno', 'retornaram', 'voltar', 'segunda vez', 'retencao', 'fidelizei'] },
+    palavras: ['clientes voltaram', 'voltaram depois', 'voltaram', 'retorno', 'retornaram', 'voltar', 'segunda vez', 'retencao', 'fidelizei'] },
   { id: 'pontos', grupo: 'clientes', texto: 'Quem tem mais pontos de fidelidade?',
     palavras: ['pontos', 'ponto', 'fidelidade', 'clube', 'recompensa', 'resgate'] },
 
@@ -126,6 +126,44 @@ export const PERGUNTAS: Pergunta[] = [
 
 export const PERGUNTA_POR_ID: Record<string, Pergunta> = Object.fromEntries(PERGUNTAS.map((p) => [p.id, p]))
 
+/** "Pergunte também" embaixo da resposta (26/10): o próximo passo natural
+ *  de quem fez essa pergunta. Mostra só as liberadas pra pessoa. */
+export const RELACIONADAS: Record<string, string[]> = {
+  faturei: ['comparar', 'servico_fatura', 'prof_top'],
+  comparar: ['faturei', 'ticket', 'novas'],
+  ticket: ['prof_ticket', 'servico_fatura', 'faturei'],
+  servico_fatura: ['servico_qtd', 'prof_top', 'ticket'],
+  servico_qtd: ['servico_fatura', 'horario_cheio', 'dia_cheio'],
+  produtos: ['produto_top', 'faturei', 'melhores'],
+  produto_top: ['produtos', 'melhores', 'faturei'],
+  formas: ['taxas', 'a_receber', 'faturei'],
+  taxas: ['formas', 'gastei', 'lucro'],
+  a_receber: ['faturei', 'formas', 'sinal'],
+  melhor_dia: ['dia_cheio', 'horario_cheio', 'faturei'],
+  gastei: ['maior_despesa', 'lucro', 'faturei'],
+  maior_despesa: ['gastei', 'lucro', 'taxas'],
+  lucro: ['gastei', 'faturei', 'comissao'],
+  sinal: ['faltas', 'a_receber', 'faturei'],
+  prof_top: ['comissao', 'prof_atend', 'prof_ticket'],
+  comissao: ['prof_top', 'prof_atend', 'lucro'],
+  prof_atend: ['prof_top', 'prof_fieis', 'prof_faltas'],
+  prof_ticket: ['prof_top', 'ticket', 'prof_fieis'],
+  prof_fieis: ['voltaram', 'prof_top', 'sumidas'],
+  prof_faltas: ['faltas', 'cancelamentos', 'sinal'],
+  novas: ['voltaram', 'melhores', 'sumidas'],
+  melhores: ['frequentes', 'sumidas', 'pontos'],
+  frequentes: ['melhores', 'sumidas', 'pontos'],
+  sumidas: ['melhores', 'voltaram', 'aniversario'],
+  aniversario: ['sumidas', 'melhores', 'pontos'],
+  voltaram: ['novas', 'sumidas', 'prof_fieis'],
+  pontos: ['melhores', 'frequentes', 'aniversario'],
+  dia_cheio: ['horario_cheio', 'proxima_semana', 'melhor_dia'],
+  horario_cheio: ['dia_cheio', 'proxima_semana', 'faltas'],
+  faltas: ['cancelamentos', 'prof_faltas', 'sinal'],
+  cancelamentos: ['faltas', 'prof_faltas', 'proxima_semana'],
+  proxima_semana: ['dia_cheio', 'horario_cheio', 'faltas'],
+}
+
 export type Resposta = {
   titulo: string
   /** Frase principal, já com o número. */
@@ -134,4 +172,6 @@ export type Resposta = {
   link?: { href: string; rotulo: string }
   /** Nota pequena (de onde vem o número, regra usada). */
   nota?: string
+  /** Dado que falta e muda o número (ex.: nenhuma despesa lançada). */
+  aviso?: { texto: string; link?: { href: string; rotulo: string } }
 }
