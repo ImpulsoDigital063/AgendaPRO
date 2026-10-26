@@ -25,7 +25,14 @@ export const metadata: Metadata = {
   // metadataBase (29/07/2026): sem ela o Next emite og:image em caminho
   // relativo, e WhatsApp/Telegram nao resolvem — a previa cai pro favicon.
   // A imagem em si vem de src/app/opengraph-image.tsx (convencao de arquivo).
-  metadataBase: new URL('https://agendapro.net.br'),
+  // 26/10: na PRÉVIA da Vercel a base é o próprio link da branch — imagem
+  // que só existe na branch (ex.: og da vitrine da Ivna) dava 307 na produção
+  // e o link chegava no WhatsApp sem foto. Produção segue igual.
+  metadataBase: new URL(
+    process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_BRANCH_URL
+      ? `https://${process.env.VERCEL_BRANCH_URL}`
+      : 'https://agendapro.net.br',
+  ),
   title: 'AgendaPRO — Sua agenda virou o turno da noite do seu negócio',
   description:
     'Agendamento online com fidelidade, lista de espera automática, indicação e reputação Google. Enquanto você vive, o AgendaPRO agenda, lembra, cobra e traz cliente de volta. A partir de R$67/mês com garantia de 7 dias.',
