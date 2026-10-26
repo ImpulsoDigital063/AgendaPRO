@@ -31,6 +31,8 @@ type Prefill = {
   professionalId: string
   serviceIds: string[]
   otherAppointment: { id: string; start_time: string; cancel_token: string } | null
+  /** 26/10 · veio da agenda ao vivo da vitrine (a cliente tocou num horário na página da clínica) */
+  vitrine?: boolean
 } | null
 
 const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -362,7 +364,7 @@ export default function BookingFlow({
     ? professionals.filter((p) => selectedServices.every((sv) => !quemFazServico[sv.id] || quemFazServico[sv.id].includes(p.id)))
     : professionals
   // vitrine: ninguém aparece marcado antes de ela escolher (o 1º da lista parecia pré-escolhido)
-  const [escolheuProf, setEscolheuProf] = useState(tema !== 'vitrine')
+  const [escolheuProf, setEscolheuProf] = useState(tema !== 'vitrine' || profMatchesPrefill)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   // v112 · sinal: o server devolve o PIX pronto quando o negocio exige
@@ -1949,8 +1951,22 @@ export default function BookingFlow({
         </div>
       )}
 
+      {/* 26/10 · horário escolhido na agenda ao vivo da vitrine: sem tom de fila, na cor do tema */}
+      {prefill?.vitrine && (
+        <div className="rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: C.border, background: C.surface, color: C.text }}>
+          <p className="font-bold">Horário escolhido: {prefill.time} ({prefillDateLabel}){prefillProfName ? ` com ${prefillProfName.split(' ')[0]}` : ''}</p>
+          <p className="text-xs mt-1" style={{ color: C.mute }}>
+            {selectedTime === prefill.time
+              ? 'Agora é só preencher seus dados abaixo.'
+              : step === 'time' && !loadingSlots
+              ? 'Esse horário acabou de ser ocupado. Escolha outro abaixo.'
+              : 'Conferindo o horário…'}
+          </p>
+        </div>
+      )}
+
       {/* Banner de fila — quando vem do email com prefill */}
-      {prefill && (
+      {prefill && !prefill.vitrine && (
         <div
           className="rounded-2xl px-4 py-3 text-sm"
           style={{

@@ -136,6 +136,7 @@ export default async function AgendarPage({
     professionalId: string
     serviceIds: string[]
     otherAppointment: { id: string; start_time: string; cancel_token: string } | null
+    vitrine?: boolean
   } | null
 
   let prefill: Prefill = null
@@ -178,6 +179,24 @@ export default async function AgendarPage({
             }
           : null,
       }
+    }
+  }
+
+  /* 26/10 · agenda ao vivo da vitrine (só quem tem vitrine, hoje a Ivna): a
+     cliente tocou num horário na página da clínica. O fluxo abre com serviço,
+     profissional e dia escolhidos e só marca o horário se ele estiver livre
+     de verdade (mesma conferência da fila de espera); senão ela escolhe outro. */
+  if (!prefill && vitrine && servicosIniciais?.length && prefillProf && /^\d{4}-\d{2}-\d{2}$/.test(prefillDate ?? '') && /^\d{2}:\d{2}$/.test(prefillTime ?? '')) {
+    prefill = {
+      name: '',
+      phone: '',
+      email: '',
+      date: prefillDate as string,
+      time: prefillTime as string,
+      professionalId: prefillProf,
+      serviceIds: servicosIniciais,
+      otherAppointment: null,
+      vitrine: true,
     }
   }
 

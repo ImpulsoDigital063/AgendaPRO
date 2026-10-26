@@ -13,6 +13,8 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { ConteudoVitrine, Texto } from '@/lib/vitrine/conteudo'
 import GoogleReviewSection from '@/components/GoogleReviewSection'
+import type { ServicoPorProf } from '@/lib/servico-por-profissional'
+import AgendaAoVivo from './AgendaAoVivo'
 
 export type DadosVitrine = {
   nome: string
@@ -40,6 +42,13 @@ export type DadosVitrine = {
   conteudo: ConteudoVitrine
   /** horário de funcionamento montado do expediente da equipe (dias seguidos com a mesma faixa juntos) */
   horarios: { dias: string; faixa: string }[]
+  businessId: string
+  /** agenda ao vivo: expediente semanal, horários por data e quem faz/quanto dura cada serviço com cada uma */
+  agenda: {
+    semanal: { professional_id: string; day_of_week: number; start_time: string; end_time: string; slot_duration: number }[]
+    datas: { professional_id: string; date: string; start_time: string; end_time: string; slot_duration: number }[]
+    porProf: ServicoPorProf
+  }
   /** perguntas do conteúdo + a de preço montada do banco; a mesma lista vira o FAQPage */
   perguntas: { q: string; a: string }[]
   avaliacao: {
@@ -469,7 +478,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             {c.logoDourada ? null : <span className={`${SERIF} text-[15px] font-medium`}>{nomeCurto}</span>}
           </a>
           <nav className="hidden items-center gap-8 text-[15px] font-medium lg:flex" style={{ color: TINTA }}>
-            {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ['#onde', 'Onde estamos']].map(([h, t]) => (
+            {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ['#horarios', 'Horários'], ['#onde', 'Onde estamos']].map(([h, t]) => (
               <a key={h} href={h} className="transition-opacity hover:opacity-60">{t}</a>
             ))}
           </nav>
@@ -885,6 +894,37 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
         </div>
       </section>
 
+      {/* 26/10 · agenda ao vivo (referência Marisa Vaz): horário livre de verdade
+          por profissional, um toque e o agendamento abre com tudo escolhido */}
+      <section id="horarios" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-32" style={{ borderColor: LINHA }}>
+        <div className="mx-auto max-w-6xl">
+          <p className="flex items-center gap-4 text-[12px] font-semibold uppercase tracking-[0.28em]" style={{ color: SUAVE }}>
+            <span className="h-px w-10" style={{ background: d.cor }} />
+            Agenda ao vivo
+          </p>
+          <h2 className={`${SERIF} mt-5 text-[34px] font-medium leading-[1.05] tracking-[-0.02em] sm:mt-7 sm:text-[58px]`}>
+            <Revela>Escolha o seu</Revela>
+            <Revela atraso={120}><span style={destaque}>horário.</span></Revela>
+          </h2>
+          <Surge atraso={150}>
+            <p className="mt-5 max-w-xl text-[15px] leading-[1.7] sm:mt-7 sm:text-[17px]" style={{ color: SUAVE }}>
+              Os horários livres de verdade, direto da agenda da clínica. Escolha a profissional e o procedimento, veja os horários e toque pra marcar.
+            </p>
+          </Surge>
+          <Surge atraso={250} className="mt-8 sm:mt-14">
+            <AgendaAoVivo
+              equipe={d.equipe}
+              servicos={d.categorias.flatMap((x) => x.servicos.map((s) => ({ id: s.id, nome: s.nome, duracao: s.duracao, avaliacao: s.avaliacao })))}
+              agenda={d.agenda}
+              businessId={d.businessId}
+              slug={d.slug}
+              chegada={chegada?.query ?? ''}
+              cor={d.cor}
+            />
+          </Surge>
+        </div>
+      </section>
+
       {/* Avaliação no Google + pontos: o mesmo componente da página pública
           (grava pelo /api/claim-review), só com a cor da clínica */}
       {d.avaliacao && (
@@ -1057,7 +1097,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           <nav aria-label="Rodapé">
             <p className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: d.cor2 }}>Navegação</p>
             <ul className="mt-5 grid gap-3 text-[15px]">
-              {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ...(d.perguntas.length ? [['#perguntas', 'Perguntas frequentes']] : []), ['#onde', 'Contato']].map(([h, t]) => (
+              {[['#servicos', 'Serviços'], ['#videos', 'Vídeos'], ['#clinica', 'A clínica'], ['#equipe', 'Equipe'], ['#horarios', 'Horários'], ...(d.perguntas.length ? [['#perguntas', 'Perguntas frequentes']] : []), ['#onde', 'Contato']].map(([h, t]) => (
                 <li key={h}><a href={h} className="transition-opacity hover:opacity-60">{t}</a></li>
               ))}
             </ul>

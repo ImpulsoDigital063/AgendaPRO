@@ -17,6 +17,7 @@
 // (não é cacheado) e o CSS novo do deploy morreu no caminho. O fetch abaixo
 // não tinha .catch(), então qualquer oscilação de rede matava o recurso em vez
 // de tentar o cache. Mesmo sintoma de 03/06, que na época pegou o JS.
+// v211 (26/10): agenda ao vivo na vitrine da Ivna + agendamento abre com o horário tocado.
 // v210 (26/10): vitrine da Ivna com contato novo (mapa bege OpenFreeMap + horário do expediente) e rodapé escuro.
 // v209 (25/10): abertura do app da clínica nos iPhones 16 Pro/17/Pro Max/Air/mini (saía branca).
 // v208 (25/10): comunicação na "A semana" (sinal, respostas, último aviso) + aviso não enviado deixa de aparecer como enviado.
@@ -97,7 +98,7 @@
 // v146 (02/10): Horarios celular — 'todo domingo', 'os outros sabados' (genero certo).
 // v176 (16/10): cartao da ficha sem 'ela' (serve pra homem) + presets de esmalteria so pra Nail designer.
 // v177 (16/10): texto da ficha no WhatsApp com nome maiusculo, do/da, horario do atendimento + link anterior cancelado.
-const STATIC_CACHE_VERSION = 'agendapro-static-v210'
+const STATIC_CACHE_VERSION = 'agendapro-static-v211'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
