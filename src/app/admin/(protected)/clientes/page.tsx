@@ -98,13 +98,34 @@ export default async function ClientesPage() {
     if (key) customerByPhone.set(key, { id: cust.id, total_points: cust.total_points ?? 0 })
   }
 
+  // Venda de produto (26/10/2026 · achado no pedido da Wanessa): o
+  // resumo_clientes devolve a parte de produto com o id da FICHA do negócio
+  // (sales.customer_id → customers), não com o de clients. Como os ids
+  // nunca batiam, o "Total gasto" da lista ignorava produto. Aqui a soma
+  // volta pra ficha certa; cada ficha soma uma vez só, mesmo se dois
+  // clients dividirem o telefone. O responder.ts (Pergunte ao negócio) já
+  // trata essa mistura do lado dele, por isso a função não mudou.
+  const produtoPorCustomer = new Map<string, number>()
+  for (const cust of customers) {
+    const st = statsMap[cust.id]
+    if (st) produtoPorCustomer.set(cust.id, st.totalSpent)
+  }
+  const produtoJaSomado = new Set<string>()
+  const somaProduto = (customerId: string | undefined) => {
+    if (!customerId || produtoJaSomado.has(customerId)) return 0
+    produtoJaSomado.add(customerId)
+    return produtoPorCustomer.get(customerId) ?? 0
+  }
+
   // Mapa de clients que JA tem appointment (vindos de statsMap)
   const clientsWithStats = clients.map((c) => {
     const phoneKey = (c.phone || '').replace(/\D/g, '')
     const cust = customerByPhone.get(phoneKey)
+    const st = statsMap[c.id] || { count: 0, firstDate: '', lastDate: '', totalSpent: 0 }
     return {
       ...c,
-      ...(statsMap[c.id] || { count: 0, firstDate: '', lastDate: '', totalSpent: 0 }),
+      ...st,
+      totalSpent: st.totalSpent + somaProduto(cust?.id),
       customer_id: cust?.id ?? null,
       total_points: cust?.total_points ?? 0,
     }
@@ -128,7 +149,7 @@ export default async function ClientesPage() {
       count: 0,
       firstDate: '',
       lastDate: '',
-      totalSpent: 0,
+      totalSpent: somaProduto(cust.id),
       customer_id: cust.id,
       total_points: cust.total_points ?? 0,
     }))
