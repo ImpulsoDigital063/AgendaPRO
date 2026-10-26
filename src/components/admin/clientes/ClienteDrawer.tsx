@@ -14,6 +14,8 @@ import ConfigClienteTab from './ConfigClienteTab'
 import GaleriaTab from './GaleriaTab'
 import FichasTab from './FichasTab'
 import PacotesClienteTab from './PacotesClienteTab'
+import ProdutosCompradosSection from './ProdutosCompradosSection'
+import PdvModal from '@/components/admin/pdv/PdvModal'
 
 type Customer = {
   id: string
@@ -53,7 +55,7 @@ type Counts = {
   lastDate: string | null
 }
 
-type TabKey = 'perfil' | 'configuracoes' | 'atividades' | 'galeria' | 'fichas' | 'pacotes' | 'saldo' | 'fidelidade'
+type TabKey = 'perfil' | 'configuracoes' | 'atividades' | 'galeria' | 'fichas' | 'produtos' | 'pacotes' | 'saldo' | 'fidelidade'
 
 type Props = {
   customerId: string
@@ -66,6 +68,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'atividades', label: 'Atividades' },
   { key: 'galeria', label: 'Galeria' },
   { key: 'fichas', label: 'Fichas' },
+  { key: 'produtos', label: 'Produtos' },
   { key: 'pacotes', label: 'Pacotes' },
   { key: 'saldo', label: 'Saldo' },
   { key: 'fidelidade', label: 'Fidelidade' },
@@ -88,6 +91,9 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
   const [fabOpen, setFabOpen] = useState(false)
   const [showAddCredito, setShowAddCredito] = useState(false)
   const [showHistorico, setShowHistorico] = useState(false)
+  const [venderProduto, setVenderProduto] = useState(false)
+  // Remonta a lista da aba Produtos depois de uma venda feita pelo FAB
+  const [produtosKey, setProdutosKey] = useState(0)
   // Vindos da MESMA rota que alimenta a ficha do celular — até 20/08/2026
   // cupom ativo e isenção de sinal só existiam lá.
   const [activeCoupon, setActiveCoupon] = useState<{
@@ -127,7 +133,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
     const sb = createClient()
     async function load() {
       setLoading(true)
-      const [{ data: cust }, { data: appts }] = await Promise.all([
+      const [{ data: cust }, { data: appts }, { count: compras }] = await Promise.all([
         sb
           .from('customers')
           .select('*')
@@ -138,6 +144,13 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
           .select('appointment_date, paid_at, total_price, status')
           .eq('customer_id', customerId)
           .order('appointment_date', { ascending: false }),
+        // Produtos comprados (mesma fonte da aba Produtos · Wanessa 23/10)
+        sb
+          .from('sales')
+          .select('id', { count: 'exact', head: true })
+          .eq('customer_id', customerId)
+          .eq('type', 'product_sale')
+          .neq('status', 'cancelled'),
       ])
       if (cust) setCustomer(cust as Customer)
       // Não bloqueia a ficha: se a rota falhar, o resto da tela abre igual.
@@ -178,7 +191,7 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
       const lastRealizado = realizados[0]
       setCounts({
         atendimentos: realizados.length,
-        produtos: 0, // não temos ainda
+        produtos: compras ?? 0,
         pacotes: 0, // não temos ainda
         lastDate: lastRealizado?.appointment_date ?? null,
       })
@@ -287,15 +300,18 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                         </p>
                       )}
                     </div>
+                    {counts.produtos > 0 && (
+                      <KPI label="Produtos comprados" value={counts.produtos} />
+                    )}
                   </>
                 ) : (
                   <>
                     <KPI label="Atendimentos" value={0} />
-                    {/* Produtos e Pacotes ainda sao placeholder fixo em 0 (a
-                        contagem nao existe). No computador passam batido; em
-                        390px custavam duas linhas da primeira dobra pra dizer
-                        zero. Somem no celular ate terem dado real. */}
-                    <div className="hidden sm:block"><KPI label="Produtos Vendidos" value={0} /></div>
+                    {/* Pacotes ainda e placeholder fixo em 0 (a contagem nao
+                        existe). Em 390px custava linha da primeira dobra pra
+                        dizer zero: some no celular. Produtos ja tem dado real
+                        (26/10) e aparece no celular quando tem compra. */}
+                    <div className={counts.produtos > 0 ? '' : 'hidden sm:block'}><KPI label="Produtos comprados" value={counts.produtos} /></div>
                     <div className="hidden sm:block"><KPI label="Pacotes Vendidos" value={0} /></div>
                   </>
                 )}
@@ -332,12 +348,17 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
                   >
                     Novo Atendimento
                   </button>
+                  {/* Wanessa 23/10/2026 · venda sem atendimento já com a
+                      cliente: abre a aba Produtos e o PDV com ela escolhida */}
                   <button
                     type="button"
-                    disabled
-                    className="w-full text-left px-4 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setFabOpen(false)
+                      setTab('produtos')
+                      setVenderProduto(true)
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-[var(--admin-surface-hi)]"
                     style={{ color: 'var(--admin-text)' }}
-                    title="Em breve (módulo Produtos)"
                   >
                     Venda de Produto
                   </button>
@@ -567,6 +588,18 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
               )}
               {tab === 'galeria' && <GaleriaTab customerId={customer.id} />}
               {tab === 'fichas' && <FichasTab customerId={customer.id} />}
+              {tab === 'produtos' && (
+                <ProdutosCompradosSection
+                  key={produtosKey}
+                  customerId={customer.id}
+                  customerName={customer.name}
+                  customerPhone={customer.phone}
+                  businessId={customer.business_id}
+                  // Só o contador: recarregar a ficha desmontaria a aba (e o
+                  // "Venda registrada" do PDV) no meio da tela
+                  onVendido={() => setCounts((c) => ({ ...c, produtos: c.produtos + 1 }))}
+                />
+              )}
               {tab === 'pacotes' && (
                 <PacotesClienteTab customerId={customer.id} customerName={customer.name} />
               )}
@@ -584,6 +617,21 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {/* Venda de Produto (do FAB) · PDV com a cliente já escolhida */}
+      {customer && (
+        <PdvModal
+          open={venderProduto}
+          businessId={customer.business_id}
+          abaInicial="produtos"
+          prefillCliente={{ id: customer.id, name: customer.name, phone: customer.phone }}
+          onClose={() => setVenderProduto(false)}
+          onVendido={() => {
+            setCounts((c) => ({ ...c, produtos: c.produtos + 1 }))
+            setProdutosKey((k) => k + 1)
+          }}
+        />
+      )}
 
       {/* Modal Atendimento Antigo (do FAB) · v121 */}
       {showHistorico && customer && (

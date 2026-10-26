@@ -44,6 +44,9 @@ type Props = {
   abaInicial?: Aba
   /** Já abre com este produto no carrinho ("Vender agora" da ficha do produto). */
   prefillProdutoId?: string | null
+  /** Já abre com a cliente escolhida ("Vender produto" da ficha da cliente ·
+      Wanessa 23/10/2026: produto comprado sem atendimento entra no histórico dela). */
+  prefillCliente?: Cliente | null
   onClose: () => void
   /** Chamado depois de uma venda registrada (pra quem chamou atualizar a tela). */
   onVendido?: () => void
@@ -53,7 +56,7 @@ function brl(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-export default function PdvModal({ open, businessId, abaInicial = 'servicos', prefillProdutoId = null, onClose, onVendido }: Props) {
+export default function PdvModal({ open, businessId, abaInicial = 'servicos', prefillProdutoId = null, prefillCliente = null, onClose, onVendido }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
@@ -92,7 +95,7 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
   const enviandoRef = useRef(false)
 
   function zerar() {
-    setCarrinho([]); setCliente(null); setBusca(''); setErro(null); setAviso(null)
+    setCarrinho([]); setCliente(prefillCliente); setBusca(''); setErro(null); setAviso(null)
     setFeito(null); setBuscandoCliente(false); setTermoCliente(''); setEditandoPreco(null)
     setComboAberto(null); setEscolhas({}); setDataVenda(todayBR()); setNovoServico(null)
     setProfId(profs.length === 1 ? profs[0].id : null)

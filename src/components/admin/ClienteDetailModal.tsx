@@ -7,6 +7,7 @@ import { initialsFor, avatarGradient, maskPhone } from '@/lib/client-display'
 import { IconClose, IconWhatsapp, IconSparkles, IconStar, IconUsers } from '@/components/ui/Icon'
 import FichasTab from './clientes/FichasTab'
 import AtendimentoHistoricoModal from './clientes/AtendimentoHistoricoModal'
+import ProdutosCompradosSection from './clientes/ProdutosCompradosSection'
 
 type Customer = {
   id: string
@@ -1022,6 +1023,16 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                   </ul>
                 )}
               </div>
+
+              {/* Produtos comprados · venda sem atendimento entra no
+                  histórico da cliente (Wanessa 23/10/2026) · mesmo
+                  componente da aba Produtos do desktop (ClienteDrawer) */}
+              <ProdutosCompradosSection
+                customerId={customer.id}
+                customerName={customer.name}
+                customerPhone={customer.phone}
+                businessId={customer.business_id}
+              />
 
               {/* Histórico de pontos — extrato auditavel (CIC #3) */}
               <div className="space-y-2">
