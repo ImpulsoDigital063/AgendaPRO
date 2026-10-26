@@ -99,7 +99,9 @@ function Cartao({
       .catch(() => setFalhou(true))
   }, [aberto, oc, businessId, pessoa.id])
 
+  const [dia, setDia] = useState<string | null>(null)
   const dias = oc && servico ? diasLivres(agenda, oc, pessoa.id, servico) : null
+  const diaAtual = dias?.find((x) => x.data === dia) ?? dias?.[0]
   const dur = servico ? duracaoComProf(agenda.porProf, { id: servico.id, duration_minutes: servico.duracao }, pessoa.id) : null
   const primeiro = pessoa.nome.trim().split(/\s+/)[0]
   const link = (data: string, h: string) =>
@@ -122,68 +124,81 @@ function Cartao({
         <svg aria-hidden viewBox="0 0 24 24" className={`h-5 w-5 shrink-0 transition-transform duration-500 ${aberto ? 'rotate-180' : ''}`} fill="none" stroke={SUAVE} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
       </button>
 
+      {/* 26/10 · Eduardo achou a grade de 6 dias + 34 botões confusa: agora é
+          um passo de cada vez (procedimento numa lista, dia numa faixa, horários
+          só daquele dia) */}
       {aberto && servico && (
-        <div className="border-t px-5 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-6" style={{ borderColor: LINHA }}>
-          {/* celular: uma linha que rola de lado; computador: quebra em até 3 linhas e rola por dentro */}
-          <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:max-h-[132px] sm:flex-wrap sm:overflow-y-auto sm:overflow-x-visible sm:px-0 sm:pb-0 sm:[scrollbar-width:thin]">
-            {servicos.map((s) => {
-              const ativo = s.id === servico.id
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setEscolhido(s.id)}
-                  title={s.nome}
-                  className="max-w-[260px] shrink-0 truncate whitespace-nowrap rounded-full border px-4 py-2 text-[13.5px] font-semibold transition-colors sm:max-w-[360px]"
-                  style={ativo ? { background: TINTA, borderColor: TINTA, color: '#fff' } : { borderColor: LINHA, color: TINTA }}
-                >
-                  {s.nome}
-                </button>
-              )
-            })}
+        <div className="border-t px-5 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-7" style={{ borderColor: LINHA }}>
+          <label className="block text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: SUAVE }} htmlFor={`proc-${pessoa.id}`}>
+            O que você quer fazer
+          </label>
+          <div className="relative mt-2.5 sm:max-w-md">
+            <select
+              id={`proc-${pessoa.id}`}
+              value={servico.id}
+              onChange={(e) => { setEscolhido(e.target.value); setDia(null) }}
+              className="w-full appearance-none truncate rounded-2xl border bg-white py-3.5 pl-4 pr-11 text-[15px] font-semibold outline-none focus:border-[#2A2520]"
+              style={{ borderColor: LINHA, color: TINTA }}
+            >
+              {servicos.map((s) => (
+                <option key={s.id} value={s.id}>{s.nome}</option>
+              ))}
+            </select>
+            <svg aria-hidden viewBox="0 0 24 24" className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2" fill="none" stroke={SUAVE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
           </div>
+          {dur ? <p className="mt-2 text-[13px]" style={{ color: SUAVE }}>Duração: {tempo(dur)}</p> : null}
 
           <div className="mt-6 sm:mt-7">
             {falhou ? (
               <p className="text-[14px]" style={{ color: SUAVE }}>Não deu pra carregar os horários agora. Toque em Agendar atendimento pra ver a agenda completa.</p>
             ) : !dias ? (
-              <div className="flex gap-3" aria-label="Carregando horários">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="w-[84px] shrink-0 sm:w-[96px]">
-                    <div className="mx-auto h-3 w-14 animate-pulse rounded bg-[#EFE8DC]" />
-                    <div className="mt-3 h-10 animate-pulse rounded-xl bg-[#F4EFE7]" />
-                    <div className="mt-2 h-10 animate-pulse rounded-xl bg-[#F4EFE7]" />
-                  </div>
+              <div className="flex gap-2" aria-label="Carregando horários">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="h-[62px] w-[64px] shrink-0 animate-pulse rounded-2xl bg-[#F4EFE7]" />
                 ))}
               </div>
             ) : dias.length === 0 ? (
               <p className="text-[14px]" style={{ color: SUAVE }}>Sem horário livre com {primeiro} nos próximos {JANELA_DIAS} dias pra esse procedimento.</p>
             ) : (
-              <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-6 sm:overflow-visible sm:px-0">
-                {dias.map((d) => (
-                  <div key={d.data} className="w-[84px] shrink-0 sm:w-auto">
-                    <p className="text-center text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: SUAVE }}>{d.rotulo}</p>
-                    <div className="mt-3 grid gap-2">
-                      {d.horas.slice(0, 5).map((h) => (
-                        <Link key={h} href={link(d.data, h)} className="rounded-xl border border-[#E7DECF] py-2.5 text-center text-[14px] font-semibold tabular-nums text-[#2A2520] transition-colors hover:border-[#2A2520] hover:bg-[#2A2520] hover:text-white">
-                          {h}
-                        </Link>
-                      ))}
-                      {d.horas.length > 5 && (
-                        <Link href={link(d.data, d.horas[5])} className="py-1 text-center text-[12px] font-semibold" style={{ color: cor }}>
-                          +{d.horas.length - 5}
-                        </Link>
-                      )}
-                    </div>
+              <>
+                {/* faixa de dias: rola de lado no celular */}
+                <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+                  {dias.map((x) => {
+                    const ativo = x.data === diaAtual?.data
+                    const [sem, dm] = x.rotulo.includes(' ') ? x.rotulo.split(' ') : [x.rotulo, `${x.data.slice(8, 10)}/${x.data.slice(5, 7)}`]
+                    return (
+                      <button
+                        key={x.data}
+                        type="button"
+                        onClick={() => setDia(x.data)}
+                        aria-pressed={ativo}
+                        className="flex w-[64px] shrink-0 flex-col items-center rounded-2xl border py-2.5 transition-colors"
+                        style={ativo ? { background: TINTA, borderColor: TINTA, color: '#fff' } : { borderColor: LINHA, color: TINTA }}
+                      >
+                        <span className="text-[11px] font-bold uppercase tracking-[0.12em] opacity-75">{sem}</span>
+                        <span className="mt-0.5 text-[15px] font-semibold tabular-nums">{dm}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {diaAtual && (
+                  <div className="mt-5 grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
+                    {diaAtual.horas.slice(0, 8).map((h) => (
+                      <Link key={h} href={link(diaAtual.data, h)} className="rounded-xl border border-[#E7DECF] py-2.5 text-center text-[14px] font-semibold tabular-nums text-[#2A2520] transition-colors hover:border-[#2A2520] hover:bg-[#2A2520] hover:text-white sm:w-[84px]">
+                        {h}
+                      </Link>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+                {diaAtual && diaAtual.horas.length > 8 && (
+                  <Link href={`/${slug}/agendar?servicos=${servico.id}&prof=${pessoa.id}${chegada ? `&${chegada}` : ''}`} className="mt-4 inline-block text-[13.5px] font-semibold underline underline-offset-4" style={{ color: cor }}>
+                    Ver todos os horários
+                  </Link>
+                )}
+              </>
             )}
           </div>
-
-          <p className="mt-6 text-[12.5px] leading-relaxed sm:mt-7 sm:text-[13px]" style={{ color: SUAVE }}>
-            Toque num horário pra marcar online <span style={{ color: TINTA }}>({servico.nome}{dur ? ` · ${tempo(dur)}` : ''} · {primeiro})</span>.
-          </p>
         </div>
       )}
     </article>

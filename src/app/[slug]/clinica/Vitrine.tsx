@@ -703,74 +703,89 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
       {d.pacotes.length > 0 && (
         <section id="pacotes" className="scroll-mt-20 border-b px-6 py-10 sm:px-10 sm:py-24 lg:py-32" style={{ borderColor: LINHA }}>
           <div className="mx-auto max-w-6xl">
-            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] max-sm:pl-[16%] sm:text-[50px]`}>
+            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
               <Revela>Pacotes e <span style={destaque}>tratamentos</span></Revela>
             </h2>
-            {/* celular: carrossel (5 cartões empilhados davam 3.500 px) */}
-            <div className="-mx-6 mt-8 flex snap-x snap-mandatory scroll-pl-6 gap-4 overflow-x-auto px-6 pb-3 [scrollbar-width:none] after:w-2 after:shrink-0 sm:mx-0 sm:after:hidden sm:mt-14 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 sm:[&>*:nth-child(2n)]:mt-10 lg:[&>*:nth-child(2n)]:mt-0 lg:[&>*:nth-child(3n+2)]:mt-12">
-              {d.pacotes.map((p, i) => (
-                <Surge key={p.id} atraso={i * 90} className="w-[80%] shrink-0 snap-start sm:h-full sm:w-auto sm:snap-center">
-                  <article className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-white transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:shadow-[0_22px_44px_-24px_rgba(74,58,32,.38)]" style={{ borderColor: LINHA }}>
-                    {/* faixa do procedimento: desenho dourado sobre a pedra creme, etiqueta e economia */}
-                    <div className={`relative flex items-center justify-center overflow-hidden ${p.foto ? 'h-40 sm:h-52' : 'h-40 sm:h-36'}`} style={{ background: '#F6F0E6', backgroundImage: MARMORE }}>
-                      {p.foto && (
+            {/* 26/10 · Eduardo: "melhorar a apresentação, principalmente no mobile".
+                Celular: lista de cartões compactos (foto ao lado, tudo à vista, sem
+                carrossel e sem cartão de 800 px). Tablet/computador: o 1º pacote em
+                destaque deitado ocupando 2 colunas (assimetria), os outros alinhados
+                na grade, sem escada. Selo "Economize" saiu de cima da foto (cobria a
+                etiqueta) e foi pro lado do preço. */}
+            <div className="mt-8 grid gap-3 sm:mt-14 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+              {d.pacotes.map((p, i) => {
+                const grande = i === 0 && d.pacotes.length > 2
+                const etiqueta = p.sessoes ? `Tratamento · ${p.sessoes.qtd} sessões` : `Pacote · ${p.itens.length} ${p.itens.length === 1 ? 'procedimento' : 'procedimentos'}`
+                const economia = p.separado && p.separado > p.preco ? p.separado - p.preco : 0
+                return (
+                <Surge key={p.id} atraso={i * 90} className={`h-full ${grande ? 'sm:col-span-2' : ''}`}>
+                  <article className={`group flex h-full overflow-hidden rounded-2xl border bg-white transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-1 hover:shadow-[0_22px_44px_-24px_rgba(74,58,32,.38)] ${grande ? 'sm:flex-row' : 'sm:flex-col'}`} style={{ borderColor: LINHA }}>
+                    {/* foto: miniatura ao lado no celular; em cima (ou metade, no destaque) no computador */}
+                    <div
+                      className={`relative w-[104px] shrink-0 overflow-hidden ${grande ? 'sm:w-[46%]' : 'sm:h-52 sm:w-full'} ${p.foto ? '' : 'flex items-center justify-center sm:hidden'}`}
+                      style={{ background: '#F6F0E6', backgroundImage: MARMORE }}
+                    >
+                      {p.foto ? (
+                        <Image src={p.foto} alt={p.nome} fill sizes="(min-width:1024px) 520px, (min-width:640px) 50vw, 104px" className="object-cover transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-105" />
+                      ) : (
+                        <Icone nome={iconeDoProcedimento(p.nome, ...p.itens.map((it) => it.nome))} cor={d.cor} className="h-9 w-9" />
+                      )}
+                    </div>
+                    <div className={`flex min-w-0 flex-1 flex-col p-4 sm:p-7 ${grande ? 'lg:p-10' : 'sm:pt-6'}`}>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.14em] sm:text-[12px]" style={{ color: d.cor }}>{etiqueta}</p>
+                      <h3 className={`${SERIF} mt-1.5 font-medium leading-tight tracking-[-0.01em] sm:mt-3 ${grande ? 'text-[19px] sm:text-[30px]' : 'text-[19px] sm:text-[23px]'}`}>{p.sessoes ? p.nome.replace(/\s*[-–—]\s*\d+\s*sess(ões|oes)\s*$/i, '') : p.nome}</h3>
+                      {p.descricao && <p className={`mt-1.5 line-clamp-2 text-[13px] leading-relaxed sm:mt-3 sm:line-clamp-4 sm:text-[14px] ${p.sessoes ? '' : 'max-sm:hidden'}`} style={{ color: SUAVE }}>{p.descricao}</p>}
+                      {!p.sessoes && (
                         <>
-                          <Image src={p.foto} alt={p.nome} fill sizes="(min-width:1024px) 380px, (min-width:640px) 50vw, 100vw" className="object-cover transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-105" />
+                          {/* celular: os itens numa linha só */}
+                          <p className="mt-1.5 line-clamp-2 text-[13px] leading-snug sm:hidden" style={{ color: SUAVE }}>
+                            {p.itens.map((it) => `${it.qtd > 1 ? `${it.qtd}x ` : ''}${it.nome}`).join(' + ')}
+                          </p>
+                          <ul className="mt-5 hidden space-y-3 sm:block">
+                            {p.itens.map((it) => (
+                              <li key={it.nome} className="flex items-start gap-3 text-[15px] leading-snug">
+                                <span className="mt-[1px] flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: '#F6F0E6' }}>
+                                  <Icone nome={iconeDoProcedimento(it.nome)} cor={d.cor} className="h-3.5 w-3.5" />
+                                </span>
+                                <span>{it.qtd > 1 ? `${it.qtd}x ` : ''}{it.nome}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </>
                       )}
-                      <span className="absolute left-3 top-3 z-10 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold sm:left-5 sm:top-4 sm:px-3 sm:text-[12px]" style={{ color: TINTA }}>
-                        {p.sessoes ? `Tratamento · ${p.sessoes.qtd} sessões` : `Pacote · ${p.itens.length} ${p.itens.length === 1 ? 'procedimento' : 'procedimentos'}`}
-                      </span>
-                      {p.separado && p.separado > p.preco && (
-                        <span className="absolute bottom-3 right-3 z-10 rounded-full px-2.5 py-1 text-[11px] font-bold text-white sm:bottom-auto sm:right-5 sm:top-4 sm:px-3 sm:text-[12px]" style={{ background: d.cor }}>
-                          Economize {brl(p.separado - p.preco)}
-                        </span>
-                      )}
-                      {!p.foto && <span className="flex h-20 w-20 sm:mt-7 items-center justify-center rounded-full border bg-white/70 transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover:scale-110" style={{ borderColor: `${d.cor}55` }}>
-                        <Icone nome={iconeDoProcedimento(p.nome, ...p.itens.map((it) => it.nome))} cor={d.cor} className="h-10 w-10" />
-                      </span>}
-                    </div>
-                    <div className="flex flex-1 flex-col p-5 sm:p-7 sm:pt-6">
-                    <h3 className={`${SERIF} text-[20px] sm:text-[23px] font-medium leading-tight tracking-[-0.01em]`}>{p.sessoes ? p.nome.replace(/\s*[-–—]\s*\d+\s*sess(ões|oes)\s*$/i, '') : p.nome}</h3>
-                    {p.descricao && <p className="mt-2 line-clamp-3 text-[13.5px] leading-relaxed sm:mt-3 sm:line-clamp-5 sm:text-[14px]" style={{ color: SUAVE }}>{p.descricao}</p>}
-                    {!p.sessoes && (
-                      <ul className="mt-4 space-y-2 sm:mt-5 sm:space-y-3">
-                        {p.itens.map((it) => (
-                          <li key={it.nome} className="flex items-start gap-3 text-[14px] leading-snug sm:text-[15px]">
-                            <span className="mt-[1px] flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ background: '#F6F0E6' }}>
-                              <Icone nome={iconeDoProcedimento(it.nome)} cor={d.cor} className="h-3.5 w-3.5" />
+                      <div className="mt-auto pt-3 sm:pt-7">
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          {economia > 0 && <span className="text-[13px] line-through sm:text-[14px]" style={{ color: SUAVE }}>{brl(p.separado!)}</span>}
+                          <span className="text-[20px] font-bold tracking-[-0.02em] sm:text-[30px]">{brl(p.preco)}</span>
+                          {economia > 0 && (
+                            <span className="rounded-full px-2 py-0.5 text-[11px] font-bold text-white sm:px-2.5 sm:text-[12px]" style={{ background: d.cor }}>
+                              Economize {brl(economia)}
                             </span>
-                            <span>{it.qtd > 1 ? `${it.qtd}x ` : ''}{it.nome}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <div className="mt-auto pt-5 sm:pt-7">
-                      {p.separado && <p className="text-[14px]" style={{ color: SUAVE }}>de <span className="line-through">{brl(p.separado)}</span> por</p>}
-                      <p className="text-[26px] font-bold tracking-[-0.02em] sm:text-[30px]">{brl(p.preco)}</p>
-                      <div className="mt-4 flex flex-col gap-3 sm:mt-5">
-                        {/* tudo leva pro agendamento: tratamento marca a 1ª sessão; combo marca
-                            os serviços juntos pelo preço do pacote (o servidor confere) */}
-                        <Link
-                          href={comChegada(p.sessoes?.servico ? `/${d.slug}/agendar?servicos=${p.sessoes.servico}` : `/${d.slug}/agendar?pacote=${p.id}`)}
-                          className="rounded-full py-3 text-center text-[15px] font-semibold text-white transition-colors hover:bg-black"
-                          style={{ background: TINTA }}
-                        >
-                          {p.sessoes?.servico ? 'Agendar a 1ª sessão' : 'Agendar este pacote'}
-                        </Link>
-                        {whats && (
-                          <a href={`${whats}?text=${encodeURIComponent(`Olá! Tenho uma dúvida sobre o pacote ${p.nome}.`)}`} target="_blank" rel="noopener" className="text-center text-[14px] font-medium underline-offset-4 hover:underline" style={{ color: SUAVE }}>
-                            Dúvidas? Fale no WhatsApp
-                          </a>
-                        )}
+                          )}
+                        </div>
+                        <div className={`mt-3 flex items-center gap-4 sm:mt-5 ${grande ? 'sm:flex-row' : 'sm:flex-col sm:items-stretch sm:gap-3'}`}>
+                          {/* tudo leva pro agendamento: tratamento marca a 1ª sessão; combo marca
+                              os serviços juntos pelo preço do pacote (o servidor confere) */}
+                          <Link
+                            href={comChegada(p.sessoes?.servico ? `/${d.slug}/agendar?servicos=${p.sessoes.servico}` : `/${d.slug}/agendar?pacote=${p.id}`)}
+                            className={`whitespace-nowrap rounded-full px-5 py-2.5 text-center text-[14px] font-semibold text-white transition-colors hover:bg-black sm:py-3 sm:text-[15px] ${grande ? 'sm:px-8' : ''}`}
+                            style={{ background: TINTA }}
+                          >
+                            {p.sessoes?.servico ? 'Agendar a 1ª sessão' : 'Agendar este pacote'}
+                          </Link>
+                          {whats && (
+                            <a href={`${whats}?text=${encodeURIComponent(`Olá! Tenho uma dúvida sobre o pacote ${p.nome}.`)}`} target="_blank" rel="noopener" className="hidden text-center text-[14px] font-medium underline-offset-4 hover:underline sm:block" style={{ color: SUAVE }}>
+                              Dúvidas? Fale no WhatsApp
+                            </a>
+                          )}
+                        </div>
                       </div>
-                    </div>
                     </div>
                   </article>
                 </Surge>
-              ))}
+                )
+              })}
             </div>
-            {d.pacotes.length > 1 && <p className="mt-3 text-[13px] sm:hidden" style={{ color: SUAVE }}>Deslize pro lado pra ver os {d.pacotes.length} pacotes</p>}
           </div>
         </section>
       )}
@@ -821,25 +836,29 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             <Image src={c.monograma} alt="" fill sizes="80vw" className="object-contain" />
           </div>
         )}
-        <div className="relative mx-auto grid max-w-6xl gap-8 sm:gap-16 lg:grid-cols-[1.1fr_1fr] lg:gap-24">
+        {/* 26/10 · assimetria alinhada: título sozinho em cima; embaixo duas colunas
+            de larguras diferentes que começam na MESMA linha (antes os pilares
+            flutuavam soltos). Celular: um recuo só (12%) pra frase e pilares */}
+        <div className="relative mx-auto max-w-6xl">
+          <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px] lg:text-[64px]`}>
+            <Revela>{c.proposta.titulo}</Revela>
+            <Revela atraso={120}><span style={destaque}>{c.proposta.destaque}</span></Revela>
+          </h2>
+        <div className="mt-5 grid gap-8 sm:mt-10 sm:gap-16 lg:mt-16 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24">
           <div>
-            <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
-              <Revela>{c.proposta.titulo}</Revela>
-              <Revela atraso={120}><span style={destaque}>{c.proposta.destaque}</span></Revela>
-            </h2>
             <Surge atraso={200}>
-              <p className="mt-5 max-w-lg text-[15px] leading-[1.7] max-sm:max-w-[86%] sm:mt-8 sm:text-[17px] sm:leading-[1.8]" style={{ color: SUAVE }}><T x={c.proposta.texto} /></p>
+              <p className="max-w-lg text-[15px] leading-[1.7] max-sm:max-w-[86%] sm:text-[17px] sm:leading-[1.8]" style={{ color: SUAVE }}><T x={c.proposta.texto} /></p>
             </Surge>
             {c.frase && (
               <Surge atraso={300} className="mt-8 sm:mt-14">
-                <div style={{ borderColor: d.cor2 }} className="border-l pl-7 max-sm:ml-[14%] max-sm:pl-5">
+                <div style={{ borderColor: d.cor2 }} className="border-l pl-7 max-sm:ml-[12%] max-sm:pl-5">
                   <p className={`${SERIF} text-[26px] leading-snug tracking-[-0.01em] sm:text-[30px]`}>“{c.frase}”</p>
                   <p className="mt-3 text-[15px] font-semibold" style={{ color: d.cor }}>{d.equipe.find((p) => p.dona)?.nome ?? nomeCurto}</p>
                 </div>
               </Surge>
             )}
           </div>
-          <ol className="max-sm:ml-[7%] lg:pt-24">
+          <ol className="max-sm:ml-[12%] [&>*:first-child>li]:border-t-0 [&>*:first-child>li]:pt-0">
             {c.pilares.map((p, i) => (
               <Surge key={p.titulo} atraso={i * 140}>
                 <li className="grid grid-cols-[40px_1fr] gap-x-3 border-t py-5 sm:grid-cols-[48px_1fr] sm:gap-x-4 sm:py-8" style={{ borderColor: LINHA }}>
@@ -853,43 +872,57 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
             ))}
           </ol>
         </div>
+        </div>
       </section>
 
       {/* Equipe */}
       <section id="equipe" className="scroll-mt-20 border-t px-6 py-10 sm:px-10 sm:py-24 lg:py-36" style={{ borderColor: LINHA, backgroundColor: '#FDFBF8' }}>
         <div className="mx-auto max-w-6xl">
           <h2 className={`${SERIF} text-[30px] font-medium leading-[1.08] tracking-[-0.02em] sm:text-[50px]`}>
-            <Revela className="max-sm:pl-[16%]">Quem vai <span style={destaque}>cuidar de você</span></Revela>
+            <Revela>Quem vai <span style={destaque}>cuidar de você</span></Revela>
           </h2>
-          {/* celular: foto pequena ao lado do nome (3 fotos de 224px empilhadas davam 1.800 px) */}
-          <div className="mt-8 grid gap-7 max-sm:[&>*:nth-child(2)]:ml-10 max-sm:[&>*:nth-child(3)]:ml-4 sm:mt-20 sm:grid-cols-2 sm:gap-16 lg:grid-cols-3 lg:gap-12 lg:[&>*:nth-child(2)]:mt-20 sm:[&>*:nth-child(2)]:mt-14 lg:[&>*:nth-child(3)]:mt-6">
-            {d.equipe.map((p, i) => {
+          {/* 26/10 · assimetria alinhada (a escada 0/80/24 px parecia desalinhada):
+              a dona em destaque à esquerda, foto grande; as outras numa coluna
+              mais estreita, em linha (foto ao lado do texto), todas no mesmo recuo.
+              Celular: dona grande em cima, as outras recuadas 12% */}
+          <div className="mt-8 grid gap-10 sm:mt-16 sm:grid-cols-[1fr_1.1fr] sm:items-start sm:gap-12 lg:mt-20 lg:grid-cols-[1.05fr_1fr] lg:gap-20">
+            {(() => {
+              const ordem = [...d.equipe].sort((a, b) => Number(b.dona) - Number(a.dona))
+              const cartao = (p: (typeof ordem)[number], i: number) => {
               const bio = c.bios[p.nome] ?? c.bios[p.nome.trim().split(/\s+/)[0]]
+              const destaqueDona = i === 0
               return (
-                <Surge key={p.id} atraso={i * 150}>
-                  <article className="group flex items-start gap-4 text-left sm:block">
-                    <div className="relative h-20 w-20 shrink-0 sm:h-56 sm:w-56">
+                <Surge key={p.id} atraso={i * 150} className={destaqueDona ? '' : 'max-sm:ml-[12%]'}>
+                  <article className={`group text-left ${destaqueDona ? '' : 'flex items-start gap-4 sm:gap-6'}`}>
+                    <div className={`relative shrink-0 ${destaqueDona ? 'h-52 w-52 sm:h-72 sm:w-72 lg:h-80 lg:w-80' : 'h-20 w-20 sm:h-28 sm:w-28'}`}>
                       <span aria-hidden className="absolute -inset-1.5 rounded-full border transition-transform duration-[1200ms] group-hover:rotate-45 sm:-inset-3" style={{ borderColor: `${d.cor2}99`, borderStyle: 'solid' }} />
                       <span aria-hidden className="absolute -inset-1.5 rounded-full border-t sm:-inset-3" style={{ borderColor: d.cor }} />
                       <div className="relative h-full w-full overflow-hidden rounded-full bg-[#EFE8DC]">
                         {p.foto ? (
-                          <Image src={p.foto} alt={p.nome} fill sizes="224px" className="object-cover transition-transform duration-[1500ms] group-hover:scale-105" />
+                          <Image src={p.foto} alt={p.nome} fill sizes="320px" className="object-cover transition-transform duration-[1500ms] group-hover:scale-105" />
                         ) : (
                           <span className={`${SERIF} flex h-full items-center justify-center text-[56px]`} style={{ color: d.cor }}>{p.nome[0]}</span>
                         )}
                       </div>
                     </div>
-                    <div className="min-w-0 sm:contents">
-                    <h3 className={`${SERIF} text-[20px] font-medium leading-tight tracking-[-0.01em] sm:mt-9 sm:text-[26px]`}>{p.nome}</h3>
+                    <div className={`min-w-0 ${destaqueDona ? 'mt-7 sm:mt-10' : ''}`}>
+                    <h3 className={`${SERIF} font-medium leading-tight tracking-[-0.01em] ${destaqueDona ? 'text-[28px] sm:text-[36px]' : 'text-[20px] sm:text-[24px]'}`}>{p.nome}</h3>
                     <p className="mt-0.5 text-[13px] font-semibold sm:mt-2 sm:text-[15px]" style={{ color: d.cor }}>{bio?.papel ?? (p.dona ? 'Fundadora' : 'Especialista')}</p>
-                    <p className="mt-1.5 line-clamp-4 text-[13.5px] leading-[1.6] sm:mt-4 sm:line-clamp-none sm:max-w-xs sm:text-[14px] sm:leading-[1.75]" style={{ color: SUAVE }}>
+                    <p className={`mt-1.5 text-[13.5px] leading-[1.6] sm:mt-3 sm:text-[14px] sm:leading-[1.75] ${destaqueDona ? 'sm:mt-4 sm:max-w-md sm:text-[15px]' : 'line-clamp-4 sm:line-clamp-none sm:max-w-sm'}`} style={{ color: SUAVE }}>
                       <T x={bio?.texto ?? { t: 'Formação, especialidades e o jeito de atender entram aqui, a partir do áudio que ela mandar.', ex: true }} />
                     </p>
                     </div>
                   </article>
                 </Surge>
               )
-            })}
+              }
+              return (
+                <>
+                  {ordem.slice(0, 1).map((p) => cartao(p, 0))}
+                  <div className="grid gap-10 sm:gap-12 sm:pt-6 lg:pt-10">{ordem.slice(1).map((p, i) => cartao(p, i + 1))}</div>
+                </>
+              )
+            })()}
           </div>
         </div>
       </section>
@@ -908,7 +941,7 @@ export default function Vitrine({ d, chegada }: { d: DadosVitrine; chegada?: Che
           </h2>
           <Surge atraso={150}>
             <p className="mt-5 max-w-xl text-[15px] leading-[1.7] sm:mt-7 sm:text-[17px]" style={{ color: SUAVE }}>
-              Os horários livres de verdade, direto da agenda da clínica. Escolha a profissional e o procedimento, veja os horários e toque pra marcar.
+              Direto da agenda da clínica. Escolha o procedimento, o dia e toque no horário.
             </p>
           </Surge>
           <Surge atraso={250} className="mt-8 sm:mt-14">
