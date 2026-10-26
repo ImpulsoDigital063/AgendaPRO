@@ -209,24 +209,74 @@ export async function POST(req: NextRequest) {
   // cliente final + protege admin de queimar 2 cupons pra mesma pessoa).
   // Defense-in-depth: UI já oculta o card, mas API também valida.
   const nowIso = new Date().toISOString()
-  const { data: activeCoupons } = await supabase
+  const { data: activeCouponsRaw } = await supabase
     .from('coupons')
-    .select('customer_id')
+    .select('id, customer_id, code, discount_type, discount_value, expires_at, whatsapp_message, sent_at, used_at, created_at')
     .eq('business_id', business.id)
     .is('used_at', null)
     .gt('expires_at', nowIso)
+  let activeCoupons = (activeCouponsRaw || []) as Array<{
+    id: string; customer_id: string | null; code: string; discount_type: 'fixed' | 'percent'; discount_value: number
+    expires_at: string; whatsapp_message: string | null; sent_at: string | null; used_at: string | null; created_at: string
+  }>
 
-  const activeCustomerIds = new Set(
-    (activeCoupons || []).map((c: { customer_id: string | null }) => c.customer_id).filter(Boolean) as string[]
-  )
+  /* 26/10/2026 · Wanessa gerou 220 cupons em 14/10, nunca mandou, e no dia
+     26 nao conseguia gerar outro: "todos os 183 já têm cupom ativo". Cupom
+     que NUNCA foi enviado ninguem viu — a dona pode trocar por um novo
+     (outro desconto/prazo). Ele vence agora (fica no historico como
+     expirado); cupom ja enviado continua valendo e continua bloqueando. */
+  const alvoIds = new Set(targetCustomersAll.map((c) => c.id))
+  if (body.substituir_nao_enviados === true) {
+    const trocar = activeCoupons.filter((c) => c.customer_id && alvoIds.has(c.customer_id) && !c.sent_at).map((c) => c.id)
+    for (let i = 0; i < trocar.length; i += 150) {
+      const { error: trocaErr } = await supabase
+        .from('coupons')
+        .update({ expires_at: nowIso })
+        .eq('business_id', business.id)
+        .is('sent_at', null)
+        .is('used_at', null)
+        .in('id', trocar.slice(i, i + 150))
+      if (trocaErr) {
+        return NextResponse.json({ error: 'não deu pra trocar os cupons antigos — tente de novo' }, { status: 500 })
+      }
+    }
+    const trocados = new Set(trocar)
+    activeCoupons = activeCoupons.filter((c) => !trocados.has(c.id))
+  }
+
+  const activeCustomerIds = new Set(activeCoupons.map((c) => c.customer_id).filter(Boolean) as string[])
 
   const targetCustomers = targetCustomersAll.filter((c) => !activeCustomerIds.has(c.id))
 
   if (targetCustomers.length === 0) {
-    const reason = targetCustomersAll.length > 0
-      ? `todos os ${targetCustomersAll.length} candidato(s) já têm cupom ativo. Aguarde expirar ou usar.`
-      : emptyMsgEspecifico
-    return NextResponse.json({ error: reason, sumidoDays }, { status: 400 })
+    if (targetCustomersAll.length === 0) {
+      return NextResponse.json({ error: emptyMsgEspecifico, sumidoDays }, { status: 400 })
+    }
+    /* Todas ja tem cupom valendo. Diz QUAIS cupons (gerado quando, quanto,
+       ate quando, enviado ou nao) e devolve os nao enviados no mesmo formato
+       da campanha nova, pra tela abrir a lista de envio direto. */
+    const bloqueando = activeCoupons.filter((c) => c.customer_id && alvoIds.has(c.customer_id))
+    const naoEnviados = bloqueando.filter((c) => !c.sent_at)
+    const grupos = new Map<string, { gerado_em: string; discount_type: string; discount_value: number; expires_at: string; n: number; enviados: number }>()
+    for (const c of bloqueando) {
+      const k = `${c.created_at.slice(0, 10)}|${c.discount_type}|${c.discount_value}`
+      const g = grupos.get(k) ?? { gerado_em: c.created_at, discount_type: c.discount_type, discount_value: Number(c.discount_value), expires_at: c.expires_at, n: 0, enviados: 0 }
+      g.n++
+      if (c.sent_at) g.enviados++
+      if (c.expires_at > g.expires_at) g.expires_at = c.expires_at
+      grupos.set(k, g)
+    }
+    const customerById = new Map(targetCustomersAll.map((c) => [c.id, c]))
+    return NextResponse.json({
+      error: `todos os ${targetCustomersAll.length} candidato(s) já têm cupom valendo.`,
+      sumidoDays,
+      bloqueio: {
+        total: bloqueando.length,
+        nao_enviados: naoEnviados.length,
+        grupos: [...grupos.values()].sort((a, b) => b.n - a.n),
+        pendentes: naoEnviados.map((c) => ({ coupon: c, customer: customerById.get(c.customer_id as string) })),
+      },
+    }, { status: 400 })
   }
 
   // 2. Gerar cupons. Code via DB function (gera unico).

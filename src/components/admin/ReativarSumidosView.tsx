@@ -69,6 +69,16 @@ type CouponWithCustomer = {
   customer: Customer | undefined
 }
 
+/** Resposta da campanha quando todas da faixa ja tem cupom valendo (26/10). */
+type Bloqueio = {
+  total: number
+  nao_enviados: number
+  grupos: { gerado_em: string; discount_type: 'fixed' | 'percent'; discount_value: number; expires_at: string; n: number; enviados: number }[]
+  pendentes: CouponWithCustomer[]
+}
+
+const diaMes = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+
 export default function ReativarSumidosView({
   businessSlug,
   businessName,
@@ -110,6 +120,13 @@ export default function ReativarSumidosView({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [campaignResult, setCampaignResult] = useState<CouponWithCustomer[] | null>(null)
+  /* Wanessa 26/10: gerou 220 cupons em 14/10, nao mandou, e a tela so dizia
+     "todos já têm cupom ativo". Agora mostra quais sao e deixa enviar os
+     que ja existem ou trocar os nunca enviados pelo desconto novo. */
+  const [bloqueio, setBloqueio] = useState<Bloqueio | null>(null)
+  const [envioDeAntes, setEnvioDeAntes] = useState(false)
+  // Trocou a faixa de dias: o aviso era da faixa anterior.
+  useEffect(() => { setBloqueio(null) }, [dias])
   const [sentMap, setSentMap] = useState<Record<string, boolean>>({})
   // Paginação da lista de cupons gerados — campanha pode ter 50+ sumidos.
   const [showAllCoupons, setShowAllCoupons] = useState(false)
@@ -178,7 +195,7 @@ export default function ReativarSumidosView({
     return { active, used, expired, sent, total: existingCoupons.length }
   }, [existingCoupons])
 
-  async function gerarCampanha() {
+  async function gerarCampanha(substituir = false) {
     setError(null)
     const v = Number(discountValue)
     if (!Number.isFinite(v) || v <= 0) {
@@ -209,16 +226,29 @@ export default function ReativarSumidosView({
         validity_days: days,
         message_template: customMessage,
         dias,
+        substituir_nao_enviados: substituir,
       }),
     })
     setSubmitting(false)
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
+      if (data.bloqueio) { setBloqueio(data.bloqueio as Bloqueio); return }
       setError(data.error || 'Erro')
       return
     }
     const data = await res.json()
+    setBloqueio(null)
+    setEnvioDeAntes(false)
     setCampaignResult(data.coupons || [])
+    setStep('send')
+  }
+
+  /** Abre a lista de envio com os cupons que ja existiam e nunca foram mandados. */
+  function enviarOsQueJaExistem() {
+    if (!bloqueio) return
+    setEnvioDeAntes(true)
+    setCampaignResult(bloqueio.pendentes)
+    setBloqueio(null)
     setStep('send')
   }
 
@@ -276,7 +306,7 @@ export default function ReativarSumidosView({
           }}
         >
           <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--admin-text-faded)' }}>
-            Campanha criada
+            {envioDeAntes ? 'Cupons que já estavam gerados' : 'Campanha criada'}
           </p>
           <p className="text-xl font-extrabold mt-1 leading-tight" style={{ color: 'var(--admin-text)' }}>
             {campaignResult.length} {campaignResult.length === 1 ? 'cupom pronto' : 'cupons prontos'}
@@ -561,7 +591,7 @@ export default function ReativarSumidosView({
                           className="text-[11px] font-semibold px-2 py-1 rounded-lg"
                           style={{ color: 'var(--admin-accent)', border: '1px solid var(--admin-border)' }}
                         >
-                          Reenviar
+                          {c.sent_at ? 'Reenviar' : 'Enviar'}
                         </button>
                       )}
                     </div>
@@ -796,9 +826,62 @@ export default function ReativarSumidosView({
           </p>
         )}
 
+        {bloqueio && (
+          <div
+            className="rounded-xl p-3 space-y-2.5"
+            style={{ background: 'color-mix(in srgb, var(--admin-warn) 10%, var(--admin-surface))', border: '1px solid color-mix(in srgb, var(--admin-warn) 35%, transparent)' }}
+          >
+            <p className="text-sm font-bold" style={{ color: 'var(--admin-text)' }}>
+              {bloqueio.total === 1 ? 'Essa cliente já tem cupom valendo' : `Essas ${bloqueio.total} clientes já têm cupom valendo`}
+            </p>
+            <ul className="space-y-1">
+              {bloqueio.grupos.map((g, i) => (
+                <li key={i} className="text-xs leading-relaxed" style={{ color: 'var(--admin-text-2)' }}>
+                  <strong>{g.n}</strong> {g.n === 1 ? 'cupom' : 'cupons'} de <strong>{formatDiscount(g.discount_type, g.discount_value)}</strong>, gerados em {diaMes(g.gerado_em)}, valem até {diaMes(g.expires_at)}
+                  {' · '}
+                  {g.enviados === 0 ? 'nenhum enviado' : g.enviados === g.n ? 'todos enviados' : `${g.enviados} ${g.enviados === 1 ? 'enviado' : 'enviados'}`}
+                </li>
+              ))}
+            </ul>
+            {bloqueio.nao_enviados > 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={enviarOsQueJaExistem}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold"
+                  style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                >
+                  Enviar os {bloqueio.nao_enviados} {bloqueio.nao_enviados === 1 ? 'cupom que já existe' : 'cupons que já existem'} →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => gerarCampanha(true)}
+                  disabled={submitting}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold disabled:opacity-60"
+                  style={{ background: 'var(--admin-surface)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)' }}
+                >
+                  {submitting
+                    ? 'Trocando...'
+                    : `Trocar ${bloqueio.nao_enviados === 1 ? 'o não enviado' : `os ${bloqueio.nao_enviados} não enviados`} por ${formatDiscount(discountType, Number(discountValue) || 0)}`}
+                </button>
+                <p className="text-[11px]" style={{ color: 'var(--admin-text-mute)' }}>
+                  Trocar vence os cupons que nunca foram mandados e gera novos com o desconto e o prazo escolhidos acima.
+                  {bloqueio.total > bloqueio.nao_enviados && (bloqueio.total - bloqueio.nao_enviados === 1
+                    ? ' O 1 já enviado continua valendo.'
+                    : ` Os ${bloqueio.total - bloqueio.nao_enviados} já enviados continuam valendo.`)}
+                </p>
+              </>
+            ) : (
+              <p className="text-xs" style={{ color: 'var(--admin-text-2)' }}>
+                Todos já foram enviados. Dá pra gerar de novo quando vencerem ou forem usados.
+              </p>
+            )}
+          </div>
+        )}
+
         <button
           type="button"
-          onClick={gerarCampanha}
+          onClick={() => gerarCampanha()}
           disabled={submitting}
           className="w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-60"
           style={{

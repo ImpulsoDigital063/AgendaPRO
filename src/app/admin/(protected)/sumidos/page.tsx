@@ -11,6 +11,7 @@
  */
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAll } from '@/lib/fetch-all'
 import { redirect } from 'next/navigation'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import SumidosPanel from '@/components/admin/SumidosPanel'
@@ -45,25 +46,35 @@ export default async function SumidosPage({
   if (!business) redirect(await destinoSemNegocio())
 
   // Lista cupons ativos pra mostrar dashboard mini
-  const { data: existingCoupons } = await supabase
-    .from('coupons')
-    .select('id, code, sent_at, used_at, expires_at, customer_id, discount_type, discount_value, whatsapp_message')
-    .eq('business_id', business.id)
-    .order('created_at', { ascending: false })
-    .limit(50)
+  /* Era .limit(50): a Wanessa tem 234 cupons valendo (26/10) e a tela
+     contava e listava so os 50 mais novos. Agora vem tudo. */
+  const existingCoupons = await fetchAll<{
+    id: string; code: string; sent_at: string | null; used_at: string | null; expires_at: string
+    customer_id: string | null; discount_type: string | null; discount_value: number | null; whatsapp_message: string | null
+  }>(() =>
+    supabase
+      .from('coupons')
+      .select('id, code, sent_at, used_at, expires_at, customer_id, discount_type, discount_value, whatsapp_message')
+      .eq('business_id', business.id)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true }) as never,
+  )
 
   /* Nome e telefone de quem tem cada cupom, pra lista "ver lista" do painel
      (08/09). Sem isso a lista mostraria so o codigo, que nao diz nada. */
   const cupomCustomerIds = Array.from(
     new Set((existingCoupons || []).map((c) => c.customer_id).filter(Boolean) as string[]),
   )
-  const { data: cupomCustomers } = cupomCustomerIds.length
-    ? await supabase
-        .from('customers')
-        .select('id, name, phone')
-        .eq('business_id', business.id)
-        .in('id', cupomCustomerIds)
-    : { data: [] }
+  // Em lotes: .in() com centenas de ids estoura a URL e volta 400 calado.
+  const cupomCustomers: { id: string; name: string; phone: string }[] = []
+  for (let i = 0; i < cupomCustomerIds.length; i += 150) {
+    const { data: lote } = await supabase
+      .from('customers')
+      .select('id, name, phone')
+      .eq('business_id', business.id)
+      .in('id', cupomCustomerIds.slice(i, i + 150))
+    cupomCustomers.push(...((lote ?? []) as { id: string; name: string; phone: string }[]))
+  }
   const donoDoCupom = new Map(
     (cupomCustomers || []).map((c) => [c.id as string, { name: c.name as string, phone: c.phone as string }]),
   )

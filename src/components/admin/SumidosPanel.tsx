@@ -798,13 +798,13 @@ export default function SumidosPanel({ diasFixo, mostrarLinkCampanha = false, po
                           <button
                             type="button"
                             onClick={() => reenviarCupom(c)}
-                            aria-label={`Reenviar cupom para ${c.name}`}
+                            aria-label={`${c.cupom.sent_at ? 'Reenviar' : 'Enviar'} cupom para ${c.name}`}
                             title={`Já tem o cupom ${c.cupom.code} — reenviar em vez de criar outro`}
                             className="px-2.5 py-2 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5"
                             style={vazio}
                           >
                             <IconGift size={15} />
-                            <span className="hidden sm:inline">Reenviar</span>
+                            <span className="hidden sm:inline">{c.cupom.sent_at ? 'Reenviar' : 'Enviar'}</span>
                           </button>
                         ) : (
                           <button

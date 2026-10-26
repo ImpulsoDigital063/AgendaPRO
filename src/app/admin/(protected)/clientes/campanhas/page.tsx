@@ -1,5 +1,6 @@
 import { destinoSemNegocio } from '@/lib/destino-sem-negocio'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAll } from '@/lib/fetch-all'
 import { redirect } from 'next/navigation'
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import SubPageHeader from '@/components/admin/SubPageHeader'
@@ -45,12 +46,17 @@ export default async function CampanhasPage({
 
   // Cupons ativos (compartilhado entre as duas abas pra contar quem já tem)
   const nowIso = new Date().toISOString()
-  const { data: existingCoupons } = await supabase
-    .from('coupons')
-    .select('id, code, sent_at, used_at, expires_at, customer_id')
-    .eq('business_id', business.id)
-    .order('created_at', { ascending: false })
-    .limit(200)
+  // Era .limit(200): quem passa disso (Wanessa, 26/10) via contagem errada.
+  const existingCoupons = await fetchAll<{
+    id: string; code: string; sent_at: string | null; used_at: string | null; expires_at: string; customer_id: string | null
+  }>(() =>
+    supabase
+      .from('coupons')
+      .select('id, code, sent_at, used_at, expires_at, customer_id')
+      .eq('business_id', business.id)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true }) as never,
+  )
 
   const customerIdsWithActiveCoupon = new Set(
     (existingCoupons || [])
