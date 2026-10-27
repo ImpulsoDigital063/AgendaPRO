@@ -13,7 +13,7 @@
    não gasta função nenhuma. */
 
 import Link from 'next/link'
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 
 type Extras = {
   cupom: { code: string; discount_type: 'fixed' | 'percent'; discount_value: number } | null
@@ -22,9 +22,16 @@ type Extras = {
 
 type Busca = { ref: string | null; cupom: string | null; preview: string | null }
 
-function lerBusca(): Busca {
-  const p = new URLSearchParams(window.location.search)
+function lerBusca(search: string): Busca {
+  const p = new URLSearchParams(search)
   return { ref: p.get('ref'), cupom: p.get('cupom'), preview: p.get('preview') }
+}
+
+/* A URL de quem abriu. No servidor (página em cache) é sempre vazia; no
+   navegador o React troca pela real logo depois de hidratar. */
+const nadaMuda = () => () => {}
+function useSearch(): string {
+  return useSyncExternalStore(nadaMuda, () => window.location.search, () => '')
 }
 
 /* Uma consulta por página, mesmo com vários componentes pedindo. */
@@ -42,21 +49,18 @@ function buscarExtras(businessId: string, busca: Busca): Promise<Extras> {
 }
 
 function useExtras(businessId: string) {
-  const [busca, setBusca] = useState<Busca | null>(null)
+  const busca = lerBusca(useSearch())
   const [extras, setExtras] = useState<Extras | null>(null)
+  const { cupom, ref } = busca
   useEffect(() => {
-    const b = lerBusca()
-    setBusca(b)
-    if (b.cupom || b.ref) void buscarExtras(businessId, b).then(setExtras)
-  }, [businessId])
+    if (cupom || ref) void buscarExtras(businessId, { cupom, ref, preview: null }).then(setExtras)
+  }, [businessId, cupom, ref])
   return { busca, extras }
 }
 
 /** Faixa "Voltar pra Aparência" — quando o dono abre via "Ver minha página real". */
 export function BannerPreviewAdmin() {
-  const [ativo, setAtivo] = useState(false)
-  useEffect(() => setAtivo(lerBusca().preview === 'admin'), [])
-  if (!ativo) return null
+  if (lerBusca(useSearch()).preview !== 'admin') return null
   return (
     <Link
       href="/admin/configuracoes?tab=aparencia"
@@ -165,8 +169,8 @@ export function LinkAgendar({
 }) {
   const { busca, extras } = useExtras(businessId)
   const q = new URLSearchParams()
-  if (busca?.ref) q.set('ref', busca.ref)
-  if (busca?.cupom) q.set('cupom', busca.cupom)
+  if (busca.ref) q.set('ref', busca.ref)
+  if (busca.cupom) q.set('cupom', busca.cupom)
   const href = q.toString() ? `/${slug}/agendar?${q}` : `/${slug}/agendar`
   return (
     <Link href={href} className={className} style={style}>
