@@ -15,7 +15,6 @@ import { ImageResponse } from 'next/og'
  * Visual espelha o /splash pra manter uma identidade so: fundo #030510 e
  * quadrado com gradiente azul->roxo.
  */
-export const runtime = 'edge'
 export const alt = 'AgendaPRO — agenda inteligente pro seu negócio crescer sozinho'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'

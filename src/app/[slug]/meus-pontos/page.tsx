@@ -1,6 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/publico'
 import { notFound } from 'next/navigation'
-import { seguirAtalho } from '@/lib/atalho-slug'
+import { destinoDoAtalho } from '@/lib/atalho-slug'
+import { SeguirAtalho } from '../ExtrasDoLink'
 import Link from 'next/link'
 import Image from 'next/image'
 import { IconArrowLeft } from '@/components/ui/Icon'
@@ -8,8 +9,12 @@ import MeusPontosClient from './MeusPontosClient'
 import type { Business } from '@/lib/types'
 import { buildBusinessMetadata } from '@/lib/public-metadata'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+/* Em cache desde 27/10/2026 (era force-dynamic): aqui só tem dado público do
+   negócio; o saldo da cliente é buscado no navegador pelo MeusPontosClient. */
+export const revalidate = 60
+export async function generateStaticParams() {
+  return []
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -22,7 +27,7 @@ export default async function MeusPontosPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const { data: business } = await supabase
     .from('businesses')
@@ -31,7 +36,8 @@ export default async function MeusPontosPage({
     .single()
 
   if (!business) {
-    await seguirAtalho(supabase, slug, '/meus-pontos', undefined)
+    const destino = await destinoDoAtalho(supabase, slug)
+    if (destino) return <SeguirAtalho destino={`/${destino}/meus-pontos`} />
     notFound()
   }
 

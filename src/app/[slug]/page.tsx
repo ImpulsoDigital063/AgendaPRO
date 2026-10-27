@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { createPublicClient } from '@/lib/supabase/publico'
 import { extractGoogleReviewUrl } from '@/lib/google-review'
 import { notFound } from 'next/navigation'
-import { seguirAtalho } from '@/lib/atalho-slug'
+import { destinoDoAtalho } from '@/lib/atalho-slug'
+import { BannerPreviewAdmin, BannersDoLink, LinkAgendar, SeguirAtalho } from './ExtrasDoLink'
 import { JsonLd, localBusinessJsonLd } from '@/lib/jsonld'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -23,8 +23,15 @@ import {
 import PointsTrailModal from '@/components/PointsTrailModal'
 import { buildBusinessMetadata } from '@/lib/public-metadata'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+/* EM CACHE desde 27/10/2026 (era force-dynamic): remonta no máximo 1x por
+   minuto por negócio. Mudança do dono (serviço, foto, cor) aparece em até
+   ~1 min. Cupom/indicação/preview do link vivem em ./ExtrasDoLink. Lista
+   vazia = nenhum negócio pré-montado no build; cada um entra no cache na
+   primeira visita. */
+export const revalidate = 60
+export async function generateStaticParams() {
+  return []
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -40,25 +47,11 @@ function hexToRgba(hex: string, a: number) {
 
 export default async function BusinessPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ ref?: string; preview?: string; cupom?: string }>
 }) {
   const { slug } = await params
-  const { ref, preview, cupom } = await searchParams
-  // Propaga ref e cupom pro link de agendar — sem isso o cliente
-  // perde o cupom ao clicar "Agendar horário" daqui.
-  const agendarParams = new URLSearchParams()
-  if (ref) agendarParams.set('ref', ref)
-  if (cupom) agendarParams.set('cupom', cupom)
-  const agendarQuery = agendarParams.toString()
-  const agendarHref = agendarQuery ? `/${slug}/agendar?${agendarQuery}` : `/${slug}/agendar`
-  // Quando admin clica "Ver minha pagina real" na aba Aparencia, abre
-  // a pagina publica com ?preview=admin pra mostrar banner sticky de
-  // voltar (sem isso o admin ficava sem caminho de retorno).
-  const isAdminPreview = preview === 'admin'
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const { data: business } = await supabase
     .from('businesses')
@@ -67,53 +60,9 @@ export default async function BusinessPage({
     .single()
 
   if (!business) {
-    await seguirAtalho(supabase, slug, '', await searchParams)
+    const destino = await destinoDoAtalho(supabase, slug)
+    if (destino) return <SeguirAtalho destino={`/${destino}`} />
     notFound()
-  }
-
-  // Valida cupom (se vier ?cupom=X) — server-side, sem expor lógica
-  let appliedCoupon: { code: string; discount_type: 'fixed' | 'percent'; discount_value: number } | null = null
-  if (cupom) {
-    const { data: coupon } = await supabase
-      .from('coupons')
-      .select('code, discount_type, discount_value, expires_at, used_at')
-      .eq('code', cupom.toUpperCase())
-      .eq('business_id', business.id)
-      .maybeSingle()
-    if (coupon && !coupon.used_at && new Date(coupon.expires_at) > new Date()) {
-      appliedCoupon = {
-        code: coupon.code,
-        discount_type: coupon.discount_type as 'fixed' | 'percent',
-        discount_value: Number(coupon.discount_value),
-      }
-    }
-  }
-
-  // Valida ref (se vier ?ref=X) e busca nome do indicador.
-  // CIC rodada 6 reportou: ref era silencioso, indicado nao sabia que
-  // tinha sido indicado. Banner simetrico ao cupom da feedback ao
-  // indicado E confirma pro indicador que o link "vale".
-  let referrer: { name: string; pointsForReferral: number } | null = null
-  if (ref) {
-    // customers tem RLS travado (fix Fase 1) — lookup de indicador via
-    // service_role (página pública = role anon, não enxergaria a row).
-    const svc = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    )
-    const { data: refCustomer } = await svc
-      .from('customers')
-      .select('name, business_id')
-      .eq('referral_code', ref)
-      .eq('business_id', business.id)
-      .maybeSingle()
-    if (refCustomer) {
-      referrer = {
-        name: refCustomer.name,
-        pointsForReferral: business.points_for_referral ?? 0,
-      }
-    }
   }
 
   const [{ data: services }, { data: professionals }, { data: cheapestReward }] = await Promise.all([
@@ -195,27 +144,8 @@ export default async function BusinessPage({
     >
       <JsonLd data={negocioJsonLd} />
 
-      {/* Banner sticky pra admin que abriu via "Ver minha página real"
-          na aba Aparencia. Sem isso, admin ficava preso na pagina
-          publica sem caminho de retorno (especialmente em PWA standalone). */}
-      {isAdminPreview && (
-        <Link
-          href="/admin/configuracoes?tab=aparencia"
-          className="sticky top-0 z-50 w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{
-            background: 'linear-gradient(135deg, #0F172A, #1E293B)',
-            color: '#FFFFFF',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 4px 12px -4px rgba(0,0,0,0.4)',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-          Voltar pra Aparência
-        </Link>
-      )}
+      {/* Faixa "Voltar pra Aparência" (?preview=admin) — ver ./ExtrasDoLink. */}
+      <BannerPreviewAdmin />
       {/* Orbs decorativos em dark */}
       {isDark && (
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -477,63 +407,9 @@ export default async function BusinessPage({
           )}
         </div>
 
-        {/* Banner de indicacao — quando vier ?ref=X valido. Simetrico
-            ao cupom: laranja (em vez de verde) pra distinguir visualmente.
-            CIC rodada 6 #3: feedback que faltava pro indicado/indicador. */}
-        {referrer && (
-          <div
-            className="rounded-2xl p-4 mb-3 flex items-center gap-3"
-            style={{
-              background: 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06))',
-              border: '1px solid rgba(245,158,11,0.40)',
-            }}
-          >
-            <span
-              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl"
-              style={{ background: 'rgba(245,158,11,0.20)' }}
-            >
-              👋
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold leading-tight" style={{ color: '#F59E0B' }}>
-                Indicação de {referrer.name}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: muted }}>
-                {referrer.pointsForReferral > 0
-                  ? `Agende seu primeiro horário e ${referrer.name} ganha +${referrer.pointsForReferral} pts. Você também acumula pontos a partir do primeiro corte.`
-                  : `Agende seu horário — você acumula pontos pelos serviços daqui em diante.`}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Banner de cupom — quando vier ?cupom=X e for válido */}
-        {appliedCoupon && (
-          <div
-            className="rounded-2xl p-4 mb-3 flex items-center gap-3"
-            style={{
-              background: 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))',
-              border: '1px solid rgba(16,185,129,0.4)',
-            }}
-          >
-            <span
-              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl"
-              style={{ background: 'rgba(16,185,129,0.2)' }}
-            >
-              🎁
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold leading-tight" style={{ color: '#10B981' }}>
-                Cupom {appliedCoupon.code} aplicado
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: muted }}>
-                {appliedCoupon.discount_type === 'percent'
-                  ? `${appliedCoupon.discount_value}% de desconto na sua próxima visita`
-                  : `R$ ${appliedCoupon.discount_value.toFixed(2).replace('.', ',')} de desconto na sua próxima visita`}
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Banners de indicação (?ref) e cupom (?cupom) — lidos no navegador
+            pra página poder ficar em cache. Ver ./ExtrasDoLink. */}
+        <BannersDoLink businessId={b.id} muted={muted} />
 
         {/* Popup "Como funciona os pontos" — abre toda vez (Eduardo 05/06).
             Mesmo gate da trilha inline: só se o negócio usa pontos. */}
@@ -561,19 +437,23 @@ export default async function BusinessPage({
             com cara de botão colado por cima da marca (Eduardo 08/08).
             Coluna, e não regra automática: 11 dos 24 negócios têm cor própria, e
             trocar todos de uma vez desfaria a decisão de junho sem ninguém pedir. */}
-        <Link
-          href={agendarHref}
+        <LinkAgendar
+          slug={slug}
+          businessId={b.id}
           className="cta-pulse-green group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-[1.02] active:scale-[0.98] mb-3"
           style={{
             background: ctaFundo,
             color: 'white',
           }}
+          textoComCupom="Agendar e usar cupom"
+          seta={
+            <span className="transition-transform group-hover:translate-x-1">
+              <IconArrowRight size={20} />
+            </span>
+          }
         >
-          {appliedCoupon ? 'Agendar e usar cupom' : 'Agendar horário'}
-          <span className="transition-transform group-hover:translate-x-1">
-            <IconArrowRight size={20} />
-          </span>
-        </Link>
+          Agendar horário
+        </LinkAgendar>
 
         {/* Secundário com mais destaque: meus pontos + agendamentos (acento
             âmbar = pontos, elevado, ícone + seta · pedido Eduardo 05/06) */}
@@ -793,19 +673,22 @@ export default async function BusinessPage({
             cliente rolou até aqui e a repetição volta a fazer sentido — Olímpio,
             Studio Marcela e cia. continuam vendo igual. */}
         {(services?.length ?? 0) > 3 && (
-        <Link
-          href={agendarHref}
+        <LinkAgendar
+          slug={slug}
+          businessId={b.id}
           className="cta-pulse-green group w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] mb-6"
           style={{
             background: ctaFundo,
             color: 'white',
           }}
+          seta={
+            <span className="transition-transform group-hover:translate-x-1">
+              <IconArrowRight size={18} />
+            </span>
+          }
         >
           Agendar agora
-          <span className="transition-transform group-hover:translate-x-1">
-            <IconArrowRight size={18} />
-          </span>
-        </Link>
+        </LinkAgendar>
         )}
 
         {/* Footer */}

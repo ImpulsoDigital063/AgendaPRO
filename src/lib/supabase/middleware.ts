@@ -114,8 +114,9 @@ export async function updateSession(request: NextRequest) {
      Continua renovando quando não dá pra ter certeza (cookie ilegível,
      formato novo) — a dúvida sempre pende pro lado de manter a sessão
      viva. Sem isso o dono desloga em ~1h, bug real da demo de 11/05. */
+  const ehLanding = LANDINGS.has(request.nextUrl.pathname)
   const restam = segundosAteVencer(request)
-  if (restam !== null && restam > MARGEM_RENOVACAO_SEGUNDOS) {
+  if (!ehLanding && restam !== null && restam > MARGEM_RENOVACAO_SEGUNDOS) {
     return supabaseResponse
   }
 
@@ -147,7 +148,33 @@ export async function updateSession(request: NextRequest) {
   // se o access token expirou. Apenas chamar é suficiente — não usamos o
   // return aqui, mas o efeito colateral (refresh + set cookies) é o que
   // mantém a sessão viva.
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  /* DONO LOGADO NA LANDING VAI PRO PAINEL (27/10/2026)
+     ─────────────────────────────────────────────────────────────────
+     Antes isso era o `redirectIfLoggedIn()` dentro de cada landing — e só
+     de ler o cookie a página inteira virava função renderizada a cada
+     visita. A `/` sozinha era a rota que mais gastava CPU do projeto,
+     e o AgendaPRO era 97,9% das 4h do plano Hobby (Vercel avisou 90%).
+     Aqui no middleware (borda, fora da conta de CPU das funções) a
+     landing volta a ser estática e o comportamento é o mesmo: dono ou
+     gerente com negócio vai pro /admin; visitante nem chega neste ponto. */
+  if (ehLanding && user) {
+    const { data: dono } = await supabase
+      .from('businesses').select('id').eq('owner_id', user.id).limit(1).maybeSingle()
+    const { data: gerente } = dono ? { data: null } : await supabase
+      .from('professionals').select('business_id')
+      .eq('auth_user_id', user.id).eq('active', true).eq('is_manager', true)
+      .limit(1).maybeSingle()
+    if (dono || gerente) {
+      const destino = NextResponse.redirect(new URL('/admin', request.url))
+      supabaseResponse.cookies.getAll().forEach((c) => destino.cookies.set(c))
+      return destino
+    }
+  }
 
   return supabaseResponse
 }
+
+/** Landings de venda: estáticas, mas quem já é cliente vai direto pro painel. */
+const LANDINGS = new Set(['/', '/barbearia', '/salao', '/estetica', '/nail', '/lash'])

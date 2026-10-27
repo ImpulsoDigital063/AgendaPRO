@@ -13,7 +13,12 @@ import { ImageResponse } from 'next/og'
  * Quando o negócio TEM capa ou logo, `buildBusinessMetadata` declara aquela
  * imagem e ela ganha desta — a foto real é sempre melhor que texto.
  */
-export const runtime = 'edge'
+// Era edge (gerava a imagem a cada pedido). Agora fica em cache e refaz no
+// máximo 1x por hora por negócio · 27/10/2026, Vercel avisou 90% da CPU.
+export const revalidate = 3600
+export async function generateStaticParams() {
+  return []
+}
 export const alt = 'Agende seu horário'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
@@ -34,7 +39,7 @@ export default async function Image({ params }: { params: Promise<Params> | Para
     try {
       const r = await fetch(
         `${url}/rest/v1/businesses?select=name,category,description,brand_primary,brand_secondary&slug=eq.${encodeURIComponent(slug)}&limit=1`,
-        { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+        { headers: { apikey: key, Authorization: `Bearer ${key}` }, next: { revalidate: 3600 } }
       )
       const [b] = (await r.json()) as Array<{
         name: string

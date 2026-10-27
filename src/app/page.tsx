@@ -3,7 +3,6 @@ import Image from 'next/image'
 import FAQ from '@/components/FAQ'
 import { DEFAULT_FAQS } from '@/lib/faq-home'
 import { JsonLd, faqJsonLd, softwareApplicationJsonLd, organizationJsonLd, SITE_URL } from '@/lib/jsonld'
-import { redirectIfLoggedIn } from '@/lib/auth-guard'
 import AgendaDesktopMockup from '@/components/AgendaDesktopMockup'
 import IPhoneMockup from '@/components/IPhoneMockup'
 import { MechanismCard } from '@/components/MechanismCard'
@@ -100,7 +99,6 @@ const STEPS: { n: '01' | '02' | '03'; title: string; desc: string }[] = [
 ═══════════════════════════════════════════════════════════ */
 
 export default async function HomePage() {
-  await redirectIfLoggedIn()
 
   const dados = [
     organizationJsonLd(),

@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import FAQ from '@/components/FAQ'
 import { JsonLd, faqJsonLd, breadcrumbJsonLd, softwareApplicationJsonLd, organizationJsonLd, SITE_URL } from '@/lib/jsonld'
-import { redirectIfLoggedIn } from '@/lib/auth-guard'
 
 export const metadata: Metadata = {
   title: 'AgendaPRO para Barbearias — Agenda Online com Lembrete Automático',
@@ -190,7 +189,6 @@ function CTAInline({ titulo, sub }: { titulo: string; sub: string }) {
 }
 
 export default async function BarbeariaPage() {
-  await redirectIfLoggedIn()
   const dados = [
     organizationJsonLd(),
     softwareApplicationJsonLd(),

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/publico'
 
 /**
  * Prévia (og:) das páginas públicas — a que o WhatsApp mostra quando alguém
@@ -21,7 +21,7 @@ export async function buildBusinessMetadata(
   slug: string,
   variante: Variante = 'home'
 ): Promise<Metadata> {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const { data: b } = await supabase
     .from('businesses')
     .select('name, category, description, address, logo_url, cover_url')

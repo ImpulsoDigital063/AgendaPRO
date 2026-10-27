@@ -1,16 +1,16 @@
 import type { MetadataRoute } from 'next'
-import { headers } from 'next/headers'
 
-export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  const headersList = await headers()
-  const referer = headersList.get('referer') || ''
-  const isProfessional = referer.includes('/profissional')
-
+/* Estático desde 27/10/2026. Antes lia o referer com headers() pra trocar o
+   start_url do profissional, e isso fazia o manifest virar função a cada
+   pedido. O app do profissional agora aponta pro dele
+   (public/manifest-profissional.webmanifest, declarado em
+   src/app/profissional/layout.tsx). */
+export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'AgendaPRO',
     short_name: 'AgendaPRO',
     description: 'Sistema de agendamento online',
-    start_url: isProfessional ? '/profissional' : '/admin',
+    start_url: '/admin',
     display: 'standalone',
     // Background escuro casa com o admin (--admin-bg-deep) — splash do
     // Android usa essa cor durante o load, em vez de tela branca

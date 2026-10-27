@@ -13,19 +13,27 @@ export async function seguirAtalho(
   resto = '',
   busca?: Record<string, string | string[] | undefined>,
 ): Promise<void> {
+  const destino = await destinoDoAtalho(supabase, atalho)
+  if (!destino) return
+  const qs = new URLSearchParams(
+    Object.entries(busca ?? {}).filter((e): e is [string, string] => typeof e[1] === 'string'),
+  ).toString()
+  redirect(`/${destino}${resto}${qs ? `?${qs}` : ''}`)
+}
+
+/** Slug de verdade por trás de um atalho, ou null. A /[slug] (em cache desde
+ *  27/10) usa direto e redireciona no navegador pra não perder ?cupom/?ref. */
+export async function destinoDoAtalho(supabase: SupabaseClient, atalho: string): Promise<string | null> {
   const limpo = atalho.trim().toLowerCase()
-  if (!/^[a-z0-9-]{3,50}$/.test(limpo)) return
+  if (!/^[a-z0-9-]{3,50}$/.test(limpo)) return null
   const { data } = await supabase
     .from('businesses')
     .select('slug')
     .contains('slug_atalhos', [limpo])
     .limit(1)
     .maybeSingle()
-  if (!data?.slug || data.slug === limpo) return
-  const qs = new URLSearchParams(
-    Object.entries(busca ?? {}).filter((e): e is [string, string] => typeof e[1] === 'string'),
-  ).toString()
-  redirect(`/${data.slug}${resto}${qs ? `?${qs}` : ''}`)
+  if (!data?.slug || data.slug === limpo) return null
+  return data.slug as string
 }
 
 /** true se o endereço já é atalho de algum negócio (cadastro não pode pegar). */
