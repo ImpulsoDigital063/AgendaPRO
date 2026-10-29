@@ -8,6 +8,7 @@ import { IconClose, IconWhatsapp, IconSparkles, IconStar, IconUsers } from '@/co
 import FichasTab from './clientes/FichasTab'
 import AtendimentoHistoricoModal from './clientes/AtendimentoHistoricoModal'
 import ProdutosCompradosSection from './clientes/ProdutosCompradosSection'
+import { linkPedirAvaliacao } from '@/lib/google-review'
 
 type Customer = {
   id: string
@@ -622,9 +623,18 @@ export default function ClienteDetailModal({ customerId, onClose }: Props) {
                   negocio.slug && customer.referral_code
                     ? `${origem}/${negocio.slug}?ref=${customer.referral_code}`
                     : null
+                const linkAvaliacao = negocio.googleReviewUrl
+                  ? linkPedirAvaliacao({
+                      slug: negocio.slug,
+                      customerId: customer.id,
+                      googleReviewUrl: negocio.googleReviewUrl,
+                      pontosAvaliacao: negocio.pontosAvaliacao,
+                    })
+                  : null
                 const textoAvaliacao =
-                  `Oi ${primeiro}! Se puder deixar uma avaliação no Google, leva 30 segundos e ajuda muito: ${negocio.googleReviewUrl}` +
-                  (negocio.pontosAvaliacao > 0 ? ` Você ainda ganha ${negocio.pontosAvaliacao} pontos no programa de fidelidade.` : '')
+                  negocio.pontosAvaliacao > 0
+                    ? `Oi ${primeiro}! Se puder deixar uma avaliação no Google, leva 30 segundos e ajuda muito. Avaliando por este link você ainda ganha ${negocio.pontosAvaliacao} pontos no programa de fidelidade: ${linkAvaliacao}`
+                    : `Oi ${primeiro}! Se puder deixar uma avaliação no Google, leva 30 segundos e ajuda muito: ${linkAvaliacao}`
                 const textoIndicacao = linkIndicacao
                   ? `Oi ${primeiro}! Esse é o seu link de indicação: ${linkIndicacao}` +
                     (negocio.pontosIndicacao > 0

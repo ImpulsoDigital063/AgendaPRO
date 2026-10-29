@@ -16,6 +16,7 @@ import FichasTab from './FichasTab'
 import PacotesClienteTab from './PacotesClienteTab'
 import ProdutosCompradosSection from './ProdutosCompradosSection'
 import PdvModal from '@/components/admin/pdv/PdvModal'
+import { linkPedirAvaliacao } from '@/lib/google-review'
 
 type Customer = {
   id: string
@@ -436,9 +437,18 @@ export default function ClienteDrawer({ customerId, onClose }: Props) {
             const origem = typeof window !== 'undefined' ? window.location.origin : 'https://www.agendapro.net.br'
             const linkIndicacao =
               negocio.slug && referralCode ? `${origem}/${negocio.slug}?ref=${referralCode}` : null
+            const linkAvaliacao = negocio.googleReviewUrl
+              ? linkPedirAvaliacao({
+                  slug: negocio.slug,
+                  customerId,
+                  googleReviewUrl: negocio.googleReviewUrl,
+                  pontosAvaliacao: negocio.pontosAvaliacao,
+                })
+              : null
             const textoAvaliacao =
-              `Oi ${primeiro}! Se puder deixar uma avaliação no Google, leva 30 segundos e ajuda muito: ${negocio.googleReviewUrl}` +
-              (negocio.pontosAvaliacao > 0 ? ` Você ainda ganha ${negocio.pontosAvaliacao} pontos no programa de fidelidade.` : '')
+              negocio.pontosAvaliacao > 0
+                ? `Oi ${primeiro}! Se puder deixar uma avaliação no Google, leva 30 segundos e ajuda muito. Avaliando por este link você ainda ganha ${negocio.pontosAvaliacao} pontos no programa de fidelidade: ${linkAvaliacao}`
+                : `Oi ${primeiro}! Se puder deixar uma avaliação no Google, leva 30 segundos e ajuda muito: ${linkAvaliacao}`
             const textoIndicacao = linkIndicacao
               ? `Oi ${primeiro}! Esse é o seu link de indicação: ${linkIndicacao}` +
                 (negocio.pontosIndicacao > 0

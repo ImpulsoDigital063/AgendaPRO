@@ -15,7 +15,7 @@ import { createPublicClient } from '@/lib/supabase/publico'
  * Imagem: capa > logo > a imagem gerada em `[slug]/opengraph-image.tsx` (nome
  * do negócio na cor da marca). Nunca a arte do AgendaPRO.
  */
-type Variante = 'home' | 'agendar' | 'pontos'
+type Variante = 'home' | 'agendar' | 'pontos' | 'avaliar'
 
 export async function buildBusinessMetadata(
   slug: string,
@@ -42,6 +42,7 @@ export async function buildBusinessMetadata(
   const titulo =
     variante === 'agendar' ? `Agendar horário · ${nome}`
     : variante === 'pontos' ? `Meus pontos · ${nome}`
+    : variante === 'avaliar' ? `Avaliar no Google · ${nome}`
     : nome
 
   /* Endereço entra só quando é curto: muita ficha guarda a rua inteira com
@@ -50,7 +51,9 @@ export async function buildBusinessMetadata(
     .filter(Boolean)
     .join(' · ')
   const descricao =
-    variante === 'pontos'
+    variante === 'avaliar'
+      ? `Deixe sua avaliação no Google e ganhe pontos no programa de fidelidade. ${partes}`.trim()
+      : variante === 'pontos'
       ? `Consulte seu saldo de pontos e suas recompensas. ${partes}`.trim()
       : `Escolha o serviço, veja os horários livres e agende online.${partes ? ` ${partes}.` : ''}`
 

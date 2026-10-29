@@ -1,3 +1,5 @@
+import { SITE_URL } from '@/lib/site-url'
+
 /**
  * O link de avaliação do Google é digitado à mão pelo dono (campo único, salvo
  * em businesses.google_place_id). Donos colam de tudo: a URL com o nome junto
@@ -20,4 +22,24 @@ export function extractGoogleReviewUrl(raw: string | null | undefined): string |
     return `https://${s.replace(/^\/+/, '')}`
   }
   return null
+}
+
+/**
+ * Link que a dona manda pela ficha pra pedir avaliação (bug Wanessa 29/10/2026).
+ * O botão mandava o g.page cru: a cliente avaliava no Google, o AgendaPRO nunca
+ * sabia, não nascia pendência e os pontos não entravam (7 avaliações, 1 pedido).
+ * Com programa de pontos, passa pela página /avaliar, que registra o pedido na
+ * ficha da cliente e só então abre o Google. Sem programa, segue o link direto.
+ */
+export function linkPedirAvaliacao(opts: {
+
+  slug: string | null
+  customerId: string
+  googleReviewUrl: string
+  pontosAvaliacao: number
+}): string {
+  if (opts.pontosAvaliacao > 0 && opts.slug) {
+    return `${SITE_URL}/${opts.slug}/avaliar?c=${opts.customerId}`
+  }
+  return opts.googleReviewUrl
 }

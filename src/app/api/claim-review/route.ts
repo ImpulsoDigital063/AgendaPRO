@@ -18,9 +18,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Muitas tentativas. Aguarde 1 hora.' }, { status: 429 })
   }
 
-  const { businessId, phone, googleReviewName } = await req.json()
+  const { businessId, phone, googleReviewName, customerId } = await req.json()
 
-  if (!businessId || !phone || typeof phone !== 'string') {
+  // customerId vem do link que a dona manda pela ficha (/avaliar?c=…): o
+  // pedido cai direto na ficha certa, sem a cliente digitar telefone.
+  const idDaFicha =
+    typeof customerId === 'string' && /^[0-9a-f-]{36}$/i.test(customerId) ? customerId : null
+
+  if (!businessId || (!idDaFicha && (!phone || typeof phone !== 'string'))) {
     return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
   }
 
@@ -49,14 +54,28 @@ export async function POST(req: NextRequest) {
   // Procura em todos os formatos do número: a ficha do link tem máscara e
   // aqui chega só dígito. Com .eq exato a Kamilly (Wanessa, 21/10) virou duas
   // fichas, e a avaliação caiu na ficha nova, sem os pontos dos atendimentos.
-  const { data: achadas } = await adminClient
-    .from('customers')
-    .select('id, name, phone')
-    .eq('business_id', businessId)
-    .eq('fone', telefoneCanonico(phone))
-    .order('created_at', { ascending: true })
-    .limit(1)
-  let customer = achadas?.[0] ?? null
+  let customer: { id: string; name: string; phone: string } | null = null
+  if (idDaFicha) {
+    const { data } = await adminClient
+      .from('customers')
+      .select('id, name, phone')
+      .eq('business_id', businessId)
+      .eq('id', idDaFicha)
+      .maybeSingle()
+    if (!data) {
+      return NextResponse.json({ error: 'Link inválido. Peça um novo ao estabelecimento.' }, { status: 404 })
+    }
+    customer = data
+  } else {
+    const { data: achadas } = await adminClient
+      .from('customers')
+      .select('id, name, phone')
+      .eq('business_id', businessId)
+      .eq('fone', telefoneCanonico(phone))
+      .order('created_at', { ascending: true })
+      .limit(1)
+    customer = achadas?.[0] ?? null
+  }
 
   if (!customer) {
     const { data: created, error: createErr } = await adminClient

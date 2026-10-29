@@ -12,6 +12,8 @@ type Props = {
   brandMode?: 'dark' | 'light'
   slug?: string
   cheapestReward?: { name: string; pointsRequired: number } | null
+  /** Ficha da cliente (link /avaliar?c= que a dona manda): dispensa o telefone. */
+  customerId?: string | null
 }
 
 function ratingLabel(r: number): string | null {
@@ -53,6 +55,7 @@ export default function GoogleReviewSection({
   pointsForReview,
   slug,
   cheapestReward,
+  customerId,
 }: Props) {
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
@@ -64,7 +67,7 @@ export default function GoogleReviewSection({
   const isDark = false
   const hasProgram = pointsForReview > 0
   const phoneDigits = phone.replace(/\D/g, '').length
-  const isReady = phoneDigits >= 10
+  const isReady = !!customerId || phoneDigits >= 10
   const canSubmit = isReady && !loading
 
   const C = {
@@ -106,7 +109,7 @@ export default function GoogleReviewSection({
     const res = await fetch('/api/claim-review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessId, phone: phone.trim() }),
+      body: JSON.stringify(customerId ? { businessId, customerId } : { businessId, phone: phone.trim() }),
     })
     const data = await res.json()
     setLoading(false)
@@ -260,18 +263,20 @@ export default function GoogleReviewSection({
               </div>
             )}
 
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Seu WhatsApp — (99) 99999-9999"
-              className="w-full rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 transition-shadow"
-              style={{
-                background: C.inputBg,
-                border: `1px solid ${C.inputBorder}`,
-                color: C.text,
-              }}
-            />
+            {!customerId && (
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Seu WhatsApp — (99) 99999-9999"
+                className="w-full rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 transition-shadow"
+                style={{
+                  background: C.inputBg,
+                  border: `1px solid ${C.inputBorder}`,
+                  color: C.text,
+                }}
+              />
+            )}
 
             <button
               onClick={handleAvaliarComPontos}
