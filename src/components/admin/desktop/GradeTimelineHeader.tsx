@@ -343,19 +343,26 @@ export default function GradeTimelineHeader({
           {/* Calendário do MÊS com a quantidade de atendimentos por dia
               (Wanessa, 28/09/2026 · mobile e desktop). Era o seletor de data
               nativo: pulava pro dia, mas não mostrava onde tinha movimento —
-              ela entrava dia por dia pra descobrir. */}
+              ela entrava dia por dia pra descobrir.
+              31/10/2026 · ganhou nome e a cor do negócio: só o ícone cinza,
+              igual às setas, ninguém descobria que abria o mês. "Mês" no
+              celular (linha apertada), "Agenda do mês" do sm: em diante. */}
           <button
             type="button"
             onClick={() => setMesAberto(true)}
             aria-label="Ver agenda do mês"
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
+            className="h-9 px-2.5 rounded-lg flex items-center justify-center gap-1.5 shrink-0 text-xs font-bold transition-all hover:-translate-y-px"
             style={{
-              background: 'var(--admin-surface)',
-              color: 'var(--admin-text-mute)',
-              border: '1px solid var(--admin-border)',
+              background: 'color-mix(in srgb, var(--brand-primary, #1AA9A8) 12%, var(--admin-surface))',
+              color: 'var(--admin-text)',
+              border: '1px solid color-mix(in srgb, var(--brand-primary, #1AA9A8) 45%, var(--admin-border))',
             }}
           >
-            <IconCalendar size={16} />
+            <span className="flex" style={{ color: 'var(--brand-primary, #1AA9A8)' }}>
+              <IconCalendar size={16} />
+            </span>
+            <span className="sm:hidden">Mês</span>
+            <span className="hidden sm:inline">Agenda do mês</span>
           </button>
           <CalendarioMesModal
             open={mesAberto}
