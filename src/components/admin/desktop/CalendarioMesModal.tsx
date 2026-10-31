@@ -43,6 +43,8 @@ export default function CalendarioMesModal({
 }: Props) {
   const [mes, setMes] = useState(date.slice(0, 7))
   const [dias, setDias] = useState<Record<string, number> | null>(null)
+  const [itens, setItens] = useState<Record<string, string[]>>({})
+  const [bloqueios, setBloqueios] = useState<Record<string, string[]>>({})
   const [erro, setErro] = useState(false)
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => { setPortalReady(true) }, [])
@@ -61,7 +63,12 @@ export default function CalendarioMesModal({
     if (excludeKey) qs.set('exclude', excludeKey)
     fetch(`/api/admin/agenda/mes?${qs.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((j) => { if (vivo) setDias(j.dias ?? {}) })
+      .then((j) => {
+        if (!vivo) return
+        setDias(j.dias ?? {})
+        setItens(j.itens ?? {})
+        setBloqueios(j.bloqueios ?? {})
+      })
       .catch(() => { if (vivo) setErro(true) })
     return () => { vivo = false }
   }, [open, mes, onlyProfessionalId, excludeKey])
@@ -95,7 +102,7 @@ export default function CalendarioMesModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-4 pb-6 sm:pb-4"
+        className="w-full sm:max-w-5xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-3 sm:p-4 pb-6 sm:pb-4"
         style={{
           background: 'var(--admin-popover-bg, #FFFFFF)',
           border: '1px solid var(--admin-popover-border, #E2E8F0)',
@@ -146,25 +153,29 @@ export default function CalendarioMesModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-1 mb-1">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1">
           {SEMANA.map((d, i) => (
             <p key={i} className="text-center text-[10px] font-bold uppercase" style={{ color: 'var(--admin-text-faded)' }}>{d}</p>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
           {celulas.map((dia, i) => {
             if (dia === null) return <div key={i} />
             const iso = `${mes}-${String(dia).padStart(2, '0')}`
             const n = dias?.[iso] ?? 0
             const aberto = iso === date
             const hoje = iso === today
+            const servicos = itens[iso] ?? []
+            const bloqueados = bloqueios[iso] ?? []
+            const linhas = [...bloqueados.map((t) => ({ t, bloqueio: true })), ...servicos.map((t) => ({ t, bloqueio: false }))]
+            const corTexto = aberto ? 'rgba(255,255,255,0.92)' : 'var(--admin-text-2)'
             return (
               <button
                 key={i}
                 type="button"
                 onClick={() => onPick(iso)}
-                className="aspect-square rounded-xl flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95"
+                className="min-w-0 min-h-[76px] sm:min-h-[104px] rounded-lg sm:rounded-xl p-1 sm:p-1.5 flex flex-col gap-0.5 text-left transition-transform active:scale-95"
                 style={{
                   background: aberto
                     ? 'var(--brand-primary, #1AA9A8)'
@@ -176,13 +187,30 @@ export default function CalendarioMesModal({
                 }}
                 aria-label={`${dia}, ${n} ${n === 1 ? 'agendamento' : 'agendamentos'}`}
               >
-                <span className="text-sm font-semibold tabular-nums leading-none">{dia}</span>
-                <span
-                  className="text-[10px] font-bold tabular-nums leading-none"
-                  style={{ color: aberto ? 'rgba(255,255,255,0.9)' : 'var(--brand-primary, #1AA9A8)', visibility: n > 0 ? 'visible' : 'hidden' }}
-                >
-                  {n}
+                <span className="flex items-center justify-between gap-1">
+                  <span className="text-sm font-semibold tabular-nums leading-none">{dia}</span>
+                  <span
+                    className="text-[10px] font-bold tabular-nums leading-none"
+                    style={{ color: aberto ? 'rgba(255,255,255,0.9)' : 'var(--brand-primary, #1AA9A8)', visibility: n > 0 ? 'visible' : 'hidden' }}
+                  >
+                    {n}
+                  </span>
                 </span>
+                {linhas.slice(0, 3).map((l, j) => (
+                  <span
+                    key={j}
+                    className={`${j === 2 ? 'hidden sm:block' : 'block'} truncate text-[9px] sm:text-[11px] leading-tight`}
+                    style={{ color: l.bloqueio ? (aberto ? '#fff' : 'var(--admin-danger, #DC2626)') : corTexto, fontWeight: l.bloqueio ? 700 : 500 }}
+                  >
+                    <span className="sm:hidden">{l.bloqueio ? l.t.split(': ').pop() : l.t}</span>
+                    <span className="hidden sm:inline">{l.t}</span>
+                  </span>
+                ))}
+                {linhas.length > 3 && (
+                  <span className="hidden sm:block text-[10px] font-semibold leading-tight" style={{ color: corTexto }}>
+                    +{linhas.length - 3}
+                  </span>
+                )}
               </button>
             )
           })}
