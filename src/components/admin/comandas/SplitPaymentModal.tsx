@@ -82,6 +82,8 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
   const [error, setError] = useState<string | null>(null)
   const [devices, setDevices] = useState<MerchantDevice[]>([])
   const [fees, setFees] = useState<MerchantDeviceFee[]>([])
+  // Confirmar antes de as maquininhas chegarem gravava a parte do cartão com 0%.
+  const [taxasProntas, setTaxasProntas] = useState(false)
 
   useEffect(() => { setPortalReady(true) }, [])
 
@@ -95,6 +97,7 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
   useEffect(() => {
     if (!open || !businessId) return
     let vivo = true
+    setTaxasProntas(false)
     const supabase = createClient()
     async function carregar() {
       const { data: devs } = await supabase
@@ -106,13 +109,15 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
       const lista = (devs ?? []) as MerchantDevice[]
       if (!vivo) return
       setDevices(lista)
-      if (lista.length === 0) return
+      if (lista.length === 0) { setTaxasProntas(true); return }
       const { data: f } = await supabase
         .from('merchant_device_fees')
         .select('*')
         .in('device_id', lista.map((d) => d.id))
         .eq('active', true)
-      if (vivo) setFees((f ?? []) as MerchantDeviceFee[])
+      if (!vivo) return
+      setFees((f ?? []) as MerchantDeviceFee[])
+      setTaxasProntas(true)
     }
     carregar()
     return () => { vivo = false }
@@ -432,7 +437,7 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
           <button
             type="button"
             onClick={submit}
-            disabled={loading || !balanced}
+            disabled={loading || !balanced || (!!businessId && !taxasProntas && lines.some((l) => l.method === 'card'))}
             className="w-full py-3 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
             style={{
               background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',

@@ -60,7 +60,7 @@ export default async function AppointmentDetailPage({
     .from('appointments')
     .select(`
       id, appointment_date, start_time, end_time, status, paid_at,
-      payment_method, total_price, notes,
+      payment_method, total_price, notes, sinal_valor, sinal_pago_at,
       client_name, client_phone, customer_id,
       service_name, service_id,
       appointment_services(service_name, price),
@@ -244,6 +244,7 @@ export default async function AppointmentDetailPage({
             businessId={business.id}
             startTime={appt.start_time as string}
             totalPrice={valorCobrado}
+            sinalPago={appt.sinal_pago_at ? Number(appt.sinal_valor ?? 0) : 0}
             serviceName={appt.service_name as string | null}
             professionalId={prof?.id ?? null}
             convenioNome={empresaConvenio?.name ?? null}
