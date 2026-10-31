@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import type { AlvoDesconto } from '@/lib/desconto-geral'
 import { descontoDaRecompensa, type Recompensa } from '@/lib/resgate-pontos'
 import { createClient } from '@/lib/supabase/client'
+import { taxaDaParcela } from '@/lib/taxa-parcela'
 import { IconClose, IconCheck, IconArrowLeft } from '@/components/ui/Icon'
 import {
   CARD_BRANDS,
@@ -744,13 +745,7 @@ function CardStep({
   const currentFee = fees.find(
     (f) => f.device_id === deviceId && f.brand === brand && f.card_type === cardType,
   )
-  const isParcelado = installments > 1
-  const rate =
-    currentFee == null
-      ? null
-      : isParcelado && currentFee.installment_rate_percent != null
-        ? currentFee.installment_rate_percent
-        : currentFee.rate_percent
+  const rate = currentFee == null ? null : taxaDaParcela(currentFee, installments)
   const allowsInstallments = currentFee?.allows_installments && cardType === 'credit'
   const maxInstallments = allowsInstallments ? (currentFee?.installments_max ?? 1) : 1
 

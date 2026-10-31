@@ -173,6 +173,8 @@ export type MerchantDeviceFee = {
   allows_installments?: boolean
   installments_max?: number
   installment_rate_percent?: number | null
+  // v152 · taxa por número de parcelas, ex { "2": 5.39, "3": 6.1 }
+  installment_rates?: Record<string, number> | null
 }
 
 export type Client = {

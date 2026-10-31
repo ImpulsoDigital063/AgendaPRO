@@ -4,6 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
 import {
+  formatarTaxa,
+  lerTabelaDeParcelas,
+  lerTaxaDigitada,
+  tabelaParaDigitar,
+  type TabelaDigitada,
+} from '@/lib/taxa-parcela'
+import {
   CARD_BRANDS,
   CARD_BRAND_LABEL,
   type CardBrand,
@@ -12,6 +19,7 @@ import {
   type MerchantDeviceFee,
 } from '@/lib/types'
 import {
+  IconPencil,
   IconPlus,
   IconTrash,
   IconChevronRight,
@@ -122,6 +130,145 @@ function formatBRL(cents: number) {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+type ParcelasForm = {
+  allows_installments: boolean
+  installments_max: string
+  installment_rates: TabelaDigitada
+}
+
+const PARCELAS_VAZIO: ParcelasForm = {
+  allows_installments: false,
+  // O select de "Máx parcelas" começa em 2x: com '1' (que não existe nas
+  // opções) a tela mostrava 2x e gravava 1x (Wanessa 31/10).
+  installments_max: '2',
+  installment_rates: {},
+}
+
+// Texto curto das parcelas cadastradas: "2x 5,39% · 3x 6,1%"
+function resumoParcelas(fee: MerchantDeviceFee): string | null {
+  const taxas = fee.installment_rates ?? {}
+  const parcelas = Object.keys(taxas)
+    .map(Number)
+    .filter((n) => n <= (fee.installments_max ?? 1))
+    .sort((a, b) => a - b)
+  if (parcelas.length === 0) return null
+  return parcelas.map((n) => `${n}x ${formatarTaxa(taxas[String(n)])}%`).join(' · ')
+}
+
+// Colunas de parcelamento gravadas no banco, ou o erro para mostrar na tela.
+function colunasDeParcelamento(
+  form: ParcelasForm,
+  cardType: CardType,
+):
+  | {
+      colunas: {
+        allows_installments: boolean
+        installments_max: number
+        installment_rate_percent: number | null
+        installment_rates: Record<string, number>
+      }
+    }
+  | { erro: string } {
+  if (!form.allows_installments || cardType !== 'credit') {
+    return {
+      colunas: {
+        allows_installments: false,
+        installments_max: 1,
+        installment_rate_percent: null,
+        installment_rates: {},
+      },
+    }
+  }
+  const maximo = Math.min(12, Math.max(2, parseInt(form.installments_max || '2', 10)))
+  const tabela = lerTabelaDeParcelas(maximo, form.installment_rates)
+  if ('erro' in tabela) return tabela
+  return {
+    colunas: {
+      allows_installments: true,
+      installments_max: maximo,
+      installment_rate_percent: tabela.taxas['2'],
+      installment_rates: tabela.taxas,
+    },
+  }
+}
+
+function CamposParcelas({
+  valor,
+  onChange,
+}: {
+  valor: ParcelasForm
+  onChange: (v: ParcelasForm) => void
+}) {
+  const maximo = parseInt(valor.installments_max, 10)
+  const parcelas = Array.from({ length: Math.max(0, maximo - 1) }, (_, i) => i + 2)
+  return (
+    <div
+      className="rounded-lg p-2.5 space-y-2"
+      style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
+    >
+      <label className="flex items-center gap-2 text-xs cursor-pointer">
+        <input
+          type="checkbox"
+          checked={valor.allows_installments}
+          onChange={(e) => onChange({ ...valor, allows_installments: e.target.checked })}
+        />
+        <span style={{ color: 'var(--admin-text)' }}>Permite parcelar</span>
+      </label>
+      {valor.allows_installments && (
+        <>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+              Máx parcelas
+            </p>
+            <select
+              value={valor.installments_max}
+              onChange={(e) => onChange({ ...valor, installments_max: e.target.value })}
+              className="admin-input w-full text-sm py-1.5 px-1.5"
+            >
+              {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                <option key={n} value={n}>
+                  {n}x
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--admin-text-mute)' }}>
+              Taxa de cada parcela (%)
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {parcelas.map((n) => (
+                <label key={n} className="relative block">
+                  <span
+                    className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold"
+                    style={{ color: 'var(--admin-text-mute)' }}
+                  >
+                    {n}x
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    aria-label={`Taxa de ${n}x`}
+                    value={valor.installment_rates[String(n)] ?? ''}
+                    onChange={(e) =>
+                      onChange({
+                        ...valor,
+                        installment_rates: { ...valor.installment_rates, [String(n)]: e.target.value },
+                      })
+                    }
+                    placeholder="0,00"
+                    className="admin-input w-full text-sm py-1.5 pl-8 pr-1.5"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function MaquininhasTab({ businessId }: Props) {
   const supabase = createClient()
   const [devices, setDevices] = useState<MerchantDevice[]>([])
@@ -150,20 +297,19 @@ export default function MaquininhasTab({ businessId }: Props) {
     brand: CardBrand
     card_type: CardType
     rate_percent: string
-    allows_installments: boolean
-    installments_max: string
-    installment_rate_percent: string
-  }>({
+  } & ParcelasForm>({
     brand: 'visa',
     card_type: 'credit',
     rate_percent: '',
-    allows_installments: false,
-    // O select de "Máx parcelas" começa em 2x: com '1' (que não existe nas
-    // opções) a tela mostrava 2x e gravava 1x (Wanessa 31/10).
-    installments_max: '2',
-    installment_rate_percent: '',
+    ...PARCELAS_VAZIO,
   })
   const [addingFee, setAddingFee] = useState(false)
+
+  // Edição de uma taxa já cadastrada
+  const [editingFee, setEditingFee] = useState<
+    ({ id: string; card_type: CardType; rate_percent: string } & ParcelasForm) | null
+  >(null)
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const [confirmDelete, setConfirmDelete] = useState<MerchantDevice | null>(null)
 
@@ -348,13 +494,9 @@ export default function MaquininhasTab({ businessId }: Props) {
       setError('Taxa precisa estar entre 0 e 99,99%')
       return
     }
-    const allowsInstall = newFee.allows_installments && newFee.card_type === 'credit'
-    const installMax = allowsInstall ? Math.min(12, Math.max(2, parseInt(newFee.installments_max || '2', 10))) : 1
-    const installRate = allowsInstall && newFee.installment_rate_percent
-      ? parseFloat(newFee.installment_rate_percent.replace(',', '.'))
-      : null
-    if (allowsInstall && installRate != null && (isNaN(installRate) || installRate < 0 || installRate >= 100)) {
-      setError('Taxa parcelada precisa estar entre 0 e 99,99%')
+    const parcelamento = colunasDeParcelamento(newFee, newFee.card_type)
+    if ('erro' in parcelamento) {
+      setError(parcelamento.erro)
       return
     }
     setAddingFee(true)
@@ -367,9 +509,7 @@ export default function MaquininhasTab({ businessId }: Props) {
         brand: newFee.brand,
         card_type: newFee.card_type,
         rate_percent: rate,
-        allows_installments: allowsInstall,
-        installments_max: installMax,
-        installment_rate_percent: installRate,
+        ...parcelamento.colunas,
         active: true,
       })
       .select()
@@ -393,10 +533,57 @@ export default function MaquininhasTab({ businessId }: Props) {
       brand: 'visa',
       card_type: 'credit',
       rate_percent: '',
-      allows_installments: false,
-      installments_max: '2',
-      installment_rate_percent: '',
+      ...PARCELAS_VAZIO,
     })
+  }
+
+  function startEditFee(fee: MerchantDeviceFee) {
+    setError(null)
+    setEditingFee({
+      id: fee.id,
+      card_type: fee.card_type,
+      rate_percent: formatarTaxa(fee.rate_percent),
+      allows_installments: fee.allows_installments ?? false,
+      installments_max: String(Math.max(2, fee.installments_max ?? 2)),
+      installment_rates: tabelaParaDigitar(fee),
+    })
+  }
+
+  async function handleSaveEdit(deviceId: string) {
+    if (!editingFee) return
+    const rate = lerTaxaDigitada(editingFee.rate_percent)
+    if (rate == null) {
+      setError('Taxa precisa estar entre 0 e 99,99%')
+      return
+    }
+    const parcelamento = colunasDeParcelamento(editingFee, editingFee.card_type)
+    if ('erro' in parcelamento) {
+      setError(parcelamento.erro)
+      return
+    }
+    setSavingEdit(true)
+    setError(null)
+
+    // .select().single() devolve a linha gravada: sem ela, cai no erro.
+    const { data, error: e } = await supabase
+      .from('merchant_device_fees')
+      .update({ rate_percent: rate, ...parcelamento.colunas })
+      .eq('id', editingFee.id)
+      .select()
+      .single()
+
+    setSavingEdit(false)
+    if (e || !data) {
+      setError(`Erro ao salvar: ${e?.message ?? 'taxa não encontrada'}`)
+      return
+    }
+    setFeesByDevice((prev) => ({
+      ...prev,
+      [deviceId]: (prev[deviceId] ?? []).map((f) =>
+        f.id === editingFee.id ? (data as MerchantDeviceFee) : f,
+      ),
+    }))
+    setEditingFee(null)
   }
 
   async function handleDeleteFee(deviceId: string, feeId: string) {
@@ -685,37 +872,115 @@ export default function MaquininhasTab({ businessId }: Props) {
 
                     {fees.length > 0 && (
                       <div className="space-y-1.5">
-                        {fees.map((f) => (
-                          <div
-                            key={f.id}
-                            className="flex items-center justify-between text-sm px-3 py-2 rounded-lg"
-                            style={{ background: 'var(--admin-surface-hi)' }}
-                          >
-                            <span style={{ color: 'var(--admin-text)' }}>
-                              <strong>{CARD_BRAND_LABEL[f.brand]}</strong>
-                              <span style={{ color: 'var(--admin-text-mute)' }}>
-                                {' '} · {f.card_type === 'credit' ? 'Crédito' : 'Débito'}
-                              </span>
-                              {f.allows_installments && f.installment_rate_percent != null && (
-                                <span className="ml-2 text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
-                                  parcelado até {f.installments_max}x ({f.installment_rate_percent.toString().replace('.', ',')}%)
-                                </span>
-                              )}
-                            </span>
-                            <div className="flex items-center gap-3">
-                              <span className="tabular-nums font-bold" style={{ color: 'var(--admin-accent)' }}>
-                                {f.rate_percent.toString().replace('.', ',')}%
-                              </span>
-                              <button
-                                onClick={() => handleDeleteFee(d.id, f.id)}
-                                aria-label="Remover"
-                                style={{ color: 'var(--admin-text-faded)' }}
+                        {fees.map((f) => {
+                          const resumo = resumoParcelas(f)
+                          if (editingFee?.id === f.id) {
+                            return (
+                              <div
+                                key={f.id}
+                                className="text-sm px-3 py-2.5 rounded-lg space-y-2"
+                                style={{ background: 'var(--admin-surface-hi)', border: '1px solid var(--admin-border-hi)' }}
                               >
-                                <IconTrash size={14} />
-                              </button>
+                                <div className="flex items-center justify-between gap-3">
+                                  <span style={{ color: 'var(--admin-text)' }}>
+                                    <strong>{CARD_BRAND_LABEL[f.brand]}</strong>
+                                    <span style={{ color: 'var(--admin-text-mute)' }}>
+                                      {' '} · {f.card_type === 'credit' ? 'Crédito' : 'Débito'}
+                                    </span>
+                                  </span>
+                                  <div className="relative w-24 shrink-0">
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      aria-label="Taxa à vista"
+                                      value={editingFee.rate_percent}
+                                      onChange={(e) => setEditingFee({ ...editingFee, rate_percent: e.target.value })}
+                                      className="admin-input text-sm py-1.5 px-2 pr-6 w-full"
+                                    />
+                                    <span
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs"
+                                      style={{ color: 'var(--admin-text-faded)' }}
+                                    >
+                                      %
+                                    </span>
+                                  </div>
+                                </div>
+                                {f.card_type === 'credit' && (
+                                  <CamposParcelas
+                                    valor={editingFee}
+                                    onChange={(v) => setEditingFee({ ...editingFee, ...v })}
+                                  />
+                                )}
+                                {error && (
+                                  <p className="text-xs" style={{ color: 'var(--admin-danger,#EF4444)' }}>
+                                    {error}
+                                  </p>
+                                )}
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button
+                                    onClick={() => setEditingFee(null)}
+                                    disabled={savingEdit}
+                                    className="py-2 rounded-lg text-xs font-semibold"
+                                    style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)' }}
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    onClick={() => handleSaveEdit(d.id)}
+                                    disabled={savingEdit}
+                                    className="py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
+                                    style={{ background: 'var(--admin-accent)', color: '#fff' }}
+                                  >
+                                    {savingEdit ? 'Salvando…' : 'Salvar'}
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          }
+                          return (
+                            <div
+                              key={f.id}
+                              className="flex items-center justify-between gap-3 text-sm px-3 py-2 rounded-lg"
+                              style={{ background: 'var(--admin-surface-hi)' }}
+                            >
+                              <div className="min-w-0" style={{ color: 'var(--admin-text)' }}>
+                                <strong>{CARD_BRAND_LABEL[f.brand]}</strong>
+                                <span style={{ color: 'var(--admin-text-mute)' }}>
+                                  {' '} · {f.card_type === 'credit' ? 'Crédito' : 'Débito'}
+                                </span>
+                                {f.allows_installments && !resumo && f.installment_rate_percent != null && (
+                                  <span className="ml-2 text-[10px]" style={{ color: 'var(--admin-text-faded)' }}>
+                                    parcelado até {f.installments_max}x ({formatarTaxa(f.installment_rate_percent)}%)
+                                  </span>
+                                )}
+                                {f.allows_installments && resumo && (
+                                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--admin-text-faded)' }}>
+                                    {resumo}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className="tabular-nums font-bold" style={{ color: 'var(--admin-accent)' }}>
+                                  {formatarTaxa(f.rate_percent)}%
+                                </span>
+                                <button
+                                  onClick={() => startEditFee(f)}
+                                  aria-label="Editar"
+                                  style={{ color: 'var(--admin-text-faded)' }}
+                                >
+                                  <IconPencil size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteFee(d.id, f.id)}
+                                  aria-label="Remover"
+                                  style={{ color: 'var(--admin-text-faded)' }}
+                                >
+                                  <IconTrash size={14} />
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
 
@@ -766,52 +1031,15 @@ export default function MaquininhasTab({ businessId }: Props) {
                       </div>
                       {/* Parcelamento · só faz sentido pra crédito */}
                       {newFee.card_type === 'credit' && (
-                        <div
-                          className="rounded-lg p-2.5 space-y-2"
-                          style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
-                        >
-                          <label className="flex items-center gap-2 text-xs cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={newFee.allows_installments}
-                              onChange={(e) => setNewFee({ ...newFee, allows_installments: e.target.checked })}
-                            />
-                            <span style={{ color: 'var(--admin-text)' }}>Permite parcelar</span>
-                          </label>
-                          {newFee.allows_installments && (
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                                  Máx parcelas
-                                </p>
-                                <select
-                                  value={newFee.installments_max}
-                                  onChange={(e) => setNewFee({ ...newFee, installments_max: e.target.value })}
-                                  className="admin-input w-full text-sm py-1.5 px-1.5"
-                                >
-                                  {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                                    <option key={n} value={n}>
-                                      {n}x
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--admin-text-mute)' }}>
-                                  Taxa parcelado (%)
-                                </p>
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={newFee.installment_rate_percent}
-                                  onChange={(e) => setNewFee({ ...newFee, installment_rate_percent: e.target.value })}
-                                  placeholder="4,50"
-                                  className="admin-input w-full text-sm py-1.5 px-1.5"
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <CamposParcelas
+                          valor={newFee}
+                          onChange={(v) => setNewFee({ ...newFee, ...v })}
+                        />
+                      )}
+                      {error && !editingFee && (
+                        <p className="text-xs" style={{ color: 'var(--admin-danger,#EF4444)' }}>
+                          {error}
+                        </p>
                       )}
                       <button
                         onClick={() => handleAddFee(d.id)}
