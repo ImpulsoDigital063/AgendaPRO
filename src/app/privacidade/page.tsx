@@ -109,15 +109,20 @@ export default function PrivacidadePage() {
                 WhatsApp e observações do agendamento)
               </li>
               <li>
+                <strong>consulta os horários ocupados</strong>, somente se o estabelecimento ligar a opção de bloquear
+                a agenda: lê início, fim e status dos eventos do Google Agenda conectado, nos próximos 60 dias, para
+                marcar esses horários como &ldquo;Ocupado (Google Agenda)&rdquo; na agenda do profissional escolhido
+              </li>
+              <li>
                 <strong>lê o e-mail da conta Google</strong> conectada, apenas para mostrar no painel qual conta está
                 ligada
               </li>
             </ul>
             <p className="mt-2">
-              A AgendaPRO <strong>não lê</strong> os outros eventos da agenda, não acessa e-mails, contatos ou arquivos
-              do Google e não usa nenhum dado do Google para publicidade, venda a terceiros ou treinamento de
-              inteligência artificial. A credencial de acesso fica guardada cifrada e é apagada quando o
-              estabelecimento desconecta.
+              A AgendaPRO <strong>não lê</strong> título, descrição, local ou lista de convidados dos eventos, não
+              acessa e-mails, contatos ou arquivos do Google e não usa nenhum dado do Google para publicidade, venda a
+              terceiros ou treinamento de inteligência artificial. A credencial de acesso fica guardada cifrada. Ao
+              desconectar, a AgendaPRO revoga o acesso e apaga a credencial e os bloqueios vindos do Google.
             </p>
             <p className="mt-2">
               O uso e a transferência, para qualquer outro aplicativo, de informações recebidas das APIs do Google
