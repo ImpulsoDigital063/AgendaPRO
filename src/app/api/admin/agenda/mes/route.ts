@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { negocioDoPainel } from '@/lib/admin-data'
 
 /**
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('appointments')
-    .select('appointment_date, professional_id, status, service_name, start_time')
+    .select('id, appointment_date, professional_id, status, service_name, start_time, client_name')
     .order('start_time')
     .eq('business_id', businessId)
     .gte('appointment_date', de)
@@ -66,26 +67,36 @@ export async function GET(req: NextRequest) {
     .range(0, 4999)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const dias: Record<string, number> = {}
-  const itens: Record<string, string[]> = {}
-  for (const a of data ?? []) {
-    if (only && a.professional_id !== only) continue
-    if (exclude.has(a.professional_id as string)) continue
-    const d = a.appointment_date as string
-    dias[d] = (dias[d] ?? 0) + 1
-    ;(itens[d] ??= []).push((a.service_name as string | null) ?? 'Atendimento')
-  }
-
   // Bloqueios do mês: recorrente vale em todo aquele dia da semana.
-  const [{ data: blocos }, { data: equipe }] = await Promise.all([
+  const [{ data: blocos }, { data: equipe }, { count: conexoesGoogle }] = await Promise.all([
     supabase
       .from('business_blocks')
       .select('professional_id, block_type, day_of_week, block_date, reason')
       .eq('business_id', businessId)
       .eq('active', true),
     supabase.from('professionals').select('id, name').eq('business_id', businessId),
+    // Tabela guarda o token e não abre pra sessão: aqui só sai sim ou não.
+    createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
+      .from('google_agenda_conexoes').select('business_id', { count: 'exact', head: true }).eq('business_id', businessId),
   ])
   const nomes = new Map((equipe ?? []).map((p) => [p.id as string, (p.name as string).split(' ')[0]]))
+
+  const dias: Record<string, number> = {}
+  const itens: Record<string, { id: string; hora: string; servico: string; cliente: string; prof: string | null }[]> = {}
+  for (const a of data ?? []) {
+    if (only && a.professional_id !== only) continue
+    if (exclude.has(a.professional_id as string)) continue
+    const d = a.appointment_date as string
+    dias[d] = (dias[d] ?? 0) + 1
+    ;(itens[d] ??= []).push({
+      id: a.id as string,
+      hora: String(a.start_time).slice(0, 5),
+      servico: (a.service_name as string | null) ?? 'Atendimento',
+      cliente: (a.client_name as string | null) ?? 'Cliente',
+      prof: nomes.get(a.professional_id as string) ?? null,
+    })
+  }
+
   const bloqueios: Record<string, string[]> = {}
   for (const b of blocos ?? []) {
     const prof = b.professional_id as string | null
@@ -98,5 +109,5 @@ export async function GET(req: NextRequest) {
       if (vale && !bloqueios[iso]?.includes(rotulo)) (bloqueios[iso] ??= []).push(rotulo)
     }
   }
-  return NextResponse.json({ dias, itens, bloqueios })
+  return NextResponse.json({ dias, itens, bloqueios, google: (conexoesGoogle ?? 0) > 0 })
 }

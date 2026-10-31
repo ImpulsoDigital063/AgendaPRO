@@ -244,6 +244,7 @@ async function aplicar(db: SupabaseClient, conexao: Conexao, appointmentId: stri
     a.client_phone && `WhatsApp: ${a.client_phone}`,
     a.notes && `Obs.: ${a.notes}`,
     '',
+    `Abrir no AgendaPRO: ${process.env.NEXT_PUBLIC_APP_URL ?? 'https://agendapro.net.br'}/admin/atendimentos/${appointmentId}`,
     'Marcado pelo AgendaPRO. Mudanças feitas aqui no Google não voltam pro sistema.',
   ]
     .filter((l) => l !== null && l !== undefined && l !== false)
