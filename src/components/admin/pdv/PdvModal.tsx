@@ -20,6 +20,7 @@ import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { IconClose } from '@/components/ui/Icon'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
+import SplitPaymentModal, { type LinhaPagamento } from '@/components/admin/comandas/SplitPaymentModal'
 import type { AlvoDesconto } from '@/lib/desconto-geral'
 import { parseValorBR, valorParaCampo } from '@/lib/valor-br'
 import { todayBR } from '@/lib/date-br'
@@ -88,6 +89,7 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
   const [precoTexto, setPrecoTexto] = useState('')
 
   const [pagando, setPagando] = useState(false)
+  const [divisao, setDivisao] = useState<{ valor: number; desconto?: number; origem?: AlvoDesconto } | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -264,18 +266,18 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
     setPagando(true)
   }
 
-  async function registrar(method: PaymentMethodChoice, card?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto) {
+  async function registrar(method: PaymentMethodChoice, card?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, linhas?: LinhaPagamento[]) {
     // Toque duplo criava 2 vendas (2 comandas) · a ref barra na hora (M5)
     if (enviandoRef.current) return
     enviandoRef.current = true
     try {
-      await registrarVenda(method, card, desconto, origem)
+      await registrarVenda(method, card, desconto, origem, linhas)
     } finally {
       enviandoRef.current = false
     }
   }
 
-  async function registrarVenda(method: PaymentMethodChoice, card?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto) {
+  async function registrarVenda(method: PaymentMethodChoice, card?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, linhas?: LinhaPagamento[]) {
     setSalvando(true)
     setErro(null)
     const body: Record<string, unknown> = {
@@ -311,6 +313,7 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
         pay.fee_percent = card.fee_percent; pay.installments = card.installments
       }
       body.payment = pay
+      if (linhas) body.payments = linhas
       if (typeof desconto === 'number' && desconto > 0) {
         body.manual_discount = desconto
         if (origem) body.discount_target = origem
@@ -324,6 +327,7 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
     const d = await r.json().catch(() => ({}))
     setSalvando(false)
     setPagando(false)
+    setDivisao(null)
     if (!r.ok) {
       setErro(d.detail ?? (d.error === 'insufficient_stock' ? 'Estoque insuficiente pra um dos produtos.' : d.error) ?? 'Não foi possível registrar a venda')
       return
@@ -726,7 +730,23 @@ export default function PdvModal({ open, businessId, abaInicial = 'servicos', pr
         heading="Como vai pagar?"
         eyebrow="Registrar venda"
         onChoose={(method, card, _v, desconto, origem) => registrar(method, card, desconto, origem)}
+        onDividir={setDivisao}
         onClose={() => setPagando(false)}
+      />
+
+      <SplitPaymentModal
+        open={divisao !== null}
+        clientName={cliente?.name ?? 'Cliente avulso'}
+        totalPrice={divisao?.valor ?? 0}
+        businessId={businessId}
+        comecarDividido
+        loading={salvando}
+        onConfirm={(linhas) => {
+          if (!divisao) return
+          const maior = [...linhas].sort((a, b) => b.amount - a.amount)[0]
+          registrar(maior.method as PaymentMethodChoice, undefined, divisao.desconto, divisao.origem, linhas)
+        }}
+        onClose={() => setDivisao(null)}
       />
     </>,
     document.body,

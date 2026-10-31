@@ -86,6 +86,9 @@ type Props = {
   /** Valor dos atendimentos da comanda (21/10). Recompensa grátis paga só
    *  isso; o resto (produto, serviço extra) pede um método (7º do onChoose). */
   valorAtendimento?: number | null
+  /** Izanara 31/10: cliente paga parte no Pix e parte no cartão. Opt-in: só
+   *  quem grava a divisão (POST /invoices com payments) mostra o botão. */
+  onDividir?: (ctx: { valor: number; desconto?: number; origem?: AlvoDesconto; rewardId?: string }) => void
   onClose: () => void
 }
 
@@ -131,6 +134,7 @@ export default function PaymentMethodModal({
   loading = false,
   deferLabel,
   onChoose,
+  onDividir,
   onClose,
 }: Props) {
   // Step 2 — abre quando escolhe 'card' e businessId existe
@@ -640,6 +644,24 @@ export default function PaymentMethodModal({
                 </button>
               ))}
             </div>
+
+            {onDividir && aReceberAgora != null && aReceberAgora > 0 && (
+              <div className="px-5 pb-3">
+                <button
+                  type="button"
+                  onClick={() => onDividir({ valor: aReceberAgora, desconto: descontoEnviado, origem: origemEnviada, rewardId: recompensaDesconto?.id })}
+                  disabled={loading || descontoMaiorQueValor}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold disabled:opacity-40"
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--admin-accent, #7C3AED)',
+                    border: '1px dashed color-mix(in srgb, var(--admin-accent, #7C3AED) 50%, transparent)',
+                  }}
+                >
+                  Dividir em duas formas de pagamento
+                </button>
+              </div>
+            )}
 
             {/* Opção explícita de NÃO receber agora (opt-in via deferLabel).
                 Ex: "Manter comanda aberta" (balcão) · "Pagar depois" (venda). */}

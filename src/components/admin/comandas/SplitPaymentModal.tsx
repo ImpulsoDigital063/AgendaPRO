@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconClose, IconPlus, IconTrash, IconCheck } from '@/components/ui/Icon'
+import { createClient } from '@/lib/supabase/client'
+import { formatarTaxa, taxaDaParcela } from '@/lib/taxa-parcela'
+import { CARD_BRANDS, CARD_BRAND_LABEL, type CardBrand, type MerchantDevice, type MerchantDeviceFee } from '@/lib/types'
 
 // Split aceita dinheiro real (Pix/Dinheiro/Cartão) + Crédito do cliente (saldo já depositado).
 // Pontos = caminho separado (troca total · sistema de fidelidade opt-in).
@@ -14,6 +17,22 @@ type PaymentLine = {
   method: Method
   amount: string
   card_type?: 'credit' | 'debit' | null
+  device_id?: string | null
+  card_brand?: CardBrand
+  installments?: number
+  /** Valor digitado por quem está no balcão: o complemento automático não mexe. */
+  digitado?: boolean
+}
+
+/** Linha enviada à rota. Os campos de cartão só vêm com businessId. */
+export type LinhaPagamento = {
+  method: Method
+  amount: number
+  card_type?: 'credit' | 'debit' | null
+  device_id?: string | null
+  card_brand?: CardBrand | null
+  installments?: number
+  fee_percent?: number
 }
 
 const METHODS: { id: Method; label: string; symbol: string; color: string }[] = [
@@ -44,25 +63,60 @@ type Props = {
   /** Saldo de crédito do cliente · se > 0 habilita o chip "Crédito" */
   availableCredit?: number
   loading?: boolean
-  onConfirm: (payments: { method: Method; amount: number; card_type?: 'credit' | 'debit' | null }[]) => void
+  /** Com o negócio, a linha de cartão pede maquininha, bandeira e parcelas e
+   *  grava a taxa, como o pagamento numa forma só (Izanara 31/10). */
+  businessId?: string
+  /** Abre com Pix + Cartão vazios: quem chegou aqui já decidiu dividir. */
+  comecarDividido?: boolean
+  /** Erro da rota mostrado dentro do modal, senão fica atrás do overlay. */
+  erro?: string | null
+  onConfirm: (payments: LinhaPagamento[]) => void
   onClose: () => void
 }
 
-export default function SplitPaymentModal({ open, clientName, totalPrice, availableCredit = 0, loading = false, onConfirm, onClose }: Props) {
+export default function SplitPaymentModal({ open, clientName, totalPrice, availableCredit = 0, loading = false, businessId, comecarDividido = false, erro = null, onConfirm, onClose }: Props) {
   // Lista de métodos visível · filtra "Crédito" se o cliente não tem saldo
   const visibleMethods = METHODS.filter((m) => m.id !== 'credit' || availableCredit > 0)
   const [portalReady, setPortalReady] = useState(false)
   const [lines, setLines] = useState<PaymentLine[]>(() => [newLine('pix', String(totalPrice))])
   const [error, setError] = useState<string | null>(null)
+  const [devices, setDevices] = useState<MerchantDevice[]>([])
+  const [fees, setFees] = useState<MerchantDeviceFee[]>([])
 
   useEffect(() => { setPortalReady(true) }, [])
 
   useEffect(() => {
     if (!open) return
     // Reset ao abrir
-    setLines([newLine('pix', String(totalPrice))])
+    setLines(comecarDividido ? [newLine('pix'), newLine('card')] : [newLine('pix', String(totalPrice))])
     setError(null)
-  }, [open, totalPrice])
+  }, [open, totalPrice, comecarDividido])
+
+  useEffect(() => {
+    if (!open || !businessId) return
+    let vivo = true
+    const supabase = createClient()
+    async function carregar() {
+      const { data: devs } = await supabase
+        .from('merchant_devices')
+        .select('*')
+        .eq('business_id', businessId)
+        .eq('active', true)
+        .order('name')
+      const lista = (devs ?? []) as MerchantDevice[]
+      if (!vivo) return
+      setDevices(lista)
+      if (lista.length === 0) return
+      const { data: f } = await supabase
+        .from('merchant_device_fees')
+        .select('*')
+        .in('device_id', lista.map((d) => d.id))
+        .eq('active', true)
+      if (vivo) setFees((f ?? []) as MerchantDeviceFee[])
+    }
+    carregar()
+    return () => { vivo = false }
+  }, [open, businessId])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && !loading) onClose() }
@@ -86,6 +140,34 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
   }
   function updateLine(uid: string, patch: Partial<PaymentLine>) {
     setLines((prev) => prev.map((l) => (l.uid === uid ? { ...l, ...patch } : l)))
+  }
+  /* Com duas linhas, digitar uma completa a outra: a conta do balcão é "R$ 100
+     no Pix, o resto no cartão". Linha que a pessoa digitou não muda sozinha. */
+  function digitarValor(uid: string, amount: string) {
+    setLines((prev) => {
+      // Linha que saiu da lista (reset ao abrir) não pode preencher as outras.
+      if (!prev.some((l) => l.uid === uid)) return prev
+      const next = prev.map((l) => (l.uid === uid ? { ...l, amount, digitado: true } : l))
+      if (next.length !== 2) return next
+      const resto = Math.max(0, totalPrice - (Number(amount) || 0)).toFixed(2)
+      return next.map((l) => (l.uid === uid || l.digitado ? l : { ...l, amount: resto }))
+    })
+  }
+  function taxaCadastrada(l: PaymentLine) {
+    return fees.find((f) => f.device_id === (l.device_id ?? devices[0]?.id) && f.brand === (l.card_brand ?? 'visa') && f.card_type === l.card_type)
+  }
+  function taxaDaLinha(l: PaymentLine): number | null {
+    const fee = taxaCadastrada(l)
+    return fee ? taxaDaParcela(fee, l.installments ?? 1) : null
+  }
+  function maxParcelas(l: PaymentLine): number {
+    const fee = taxaCadastrada(l)
+    return fee?.allows_installments && l.card_type === 'credit' ? (fee.installments_max ?? 1) : 1
+  }
+  // Trocar bandeira ou tipo pode deixar a parcela acima do permitido: volta a 1x.
+  function updateCartao(line: PaymentLine, patch: Partial<PaymentLine>) {
+    const nova = { ...line, ...patch }
+    updateLine(line.uid, { ...patch, installments: (nova.installments ?? 1) > maxParcelas(nova) ? 1 : nova.installments })
   }
   function removeLine(uid: string) {
     setLines((prev) => prev.length > 1 ? prev.filter((l) => l.uid !== uid) : prev)
@@ -114,11 +196,21 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
       return
     }
     setError(null)
-    onConfirm(lines.map((l) => ({
-      method: l.method,
-      amount: Number(l.amount),
-      card_type: l.method === 'card' ? (l.card_type ?? null) : null,
-    })))
+    onConfirm(lines.map((l) => {
+      const base: LinhaPagamento = {
+        method: l.method,
+        amount: Number(l.amount),
+        card_type: l.method === 'card' ? (l.card_type ?? null) : null,
+      }
+      if (l.method !== 'card' || !businessId) return base
+      return {
+        ...base,
+        device_id: l.device_id ?? devices[0]?.id ?? null,
+        card_brand: l.card_brand ?? 'visa',
+        installments: l.installments ?? 1,
+        fee_percent: taxaDaLinha(l) ?? 0,
+      }
+    }))
   }
 
   return createPortal(
@@ -237,6 +329,41 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
                 </div>
               )}
 
+              {/* Maquininha, bandeira e parcelas · sem isso a parte no cartão
+                  entrava com taxa 0% e o líquido saía maior que o real. */}
+              {line.method === 'card' && businessId && devices.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    aria-label="Maquininha"
+                    value={line.device_id ?? devices[0].id}
+                    onChange={(e) => updateCartao(line, { device_id: e.target.value })}
+                    className="admin-input w-full text-sm py-2 px-2"
+                  >
+                    {devices.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                  <select
+                    aria-label="Bandeira"
+                    value={line.card_brand ?? 'visa'}
+                    onChange={(e) => updateCartao(line, { card_brand: e.target.value as CardBrand })}
+                    className="admin-input w-full text-sm py-2 px-2"
+                  >
+                    {CARD_BRANDS.map((b) => <option key={b} value={b}>{CARD_BRAND_LABEL[b]}</option>)}
+                  </select>
+                  {maxParcelas(line) > 1 && (
+                    <select
+                      aria-label="Parcelas"
+                      value={line.installments ?? 1}
+                      onChange={(e) => updateLine(line.uid, { installments: parseInt(e.target.value, 10) })}
+                      className="admin-input col-span-2 w-full text-sm py-2 px-2"
+                    >
+                      {Array.from({ length: maxParcelas(line) }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
               {/* Valor */}
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold" style={{ color: 'var(--admin-text-faded)' }}>R$</span>
@@ -245,7 +372,7 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
                   min={0}
                   step={0.01}
                   value={line.amount}
-                  onChange={(e) => updateLine(line.uid, { amount: e.target.value })}
+                  onChange={(e) => digitarValor(line.uid, e.target.value)}
                   placeholder="0,00"
                   className="admin-input flex-1 px-3 py-2 rounded-lg text-base font-bold tabular-nums"
                 />
@@ -258,6 +385,19 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
                   Restante
                 </button>
               </div>
+
+              {line.method === 'card' && businessId && devices.length > 0 && line.card_type && (() => {
+                const taxa = taxaDaLinha(line)
+                if (taxa == null) {
+                  return <p className="text-[11px]" style={{ color: 'var(--admin-warn,#F59E0B)' }}>Sem taxa cadastrada pra essa combinação. Será salvo como 0%.</p>
+                }
+                const bruto = Number(line.amount) || 0
+                return (
+                  <p className="text-[11px] tabular-nums" style={{ color: 'var(--admin-text-mute)' }}>
+                    Taxa {formatarTaxa(taxa)}%{bruto > 0 && <> · você recebe <strong style={{ color: 'var(--admin-success,#10B981)' }}>{brl(bruto - (bruto * taxa) / 100)}</strong></>}
+                  </p>
+                )
+              })()}
             </div>
           ))}
 
@@ -284,9 +424,9 @@ export default function SplitPaymentModal({ open, clientName, totalPrice, availa
               {brl(sum)} {balanced ? '✓' : `· falta ${brl(Math.abs(diff))}`}
             </span>
           </div>
-          {error && (
+          {(error ?? erro) && (
             <div className="rounded-lg px-3 py-2 text-xs" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.3)', color: '#DC2626' }}>
-              {error}
+              {error ?? erro}
             </div>
           )}
           <button

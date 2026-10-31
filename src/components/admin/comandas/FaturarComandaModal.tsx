@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter, usePathname } from 'next/navigation'
 import { IconClose, IconPlus, IconTrash, IconSearch } from '@/components/ui/Icon'
 import PaymentMethodModal, { type PaymentMethodChoice, type CardPaymentDetails } from '@/components/admin/PaymentMethodModal'
+import SplitPaymentModal, { type LinhaPagamento } from './SplitPaymentModal'
 import type { AlvoDesconto } from '@/lib/desconto-geral'
 import { getAreaPrefix, areaSemTelasInternas } from '@/lib/area-prefix'
 import { createClient } from '@/lib/supabase/client'
@@ -149,6 +150,8 @@ export default function FaturarComandaModal({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
+  // Pagamento em duas formas: guarda o valor e o desconto do passo do método.
+  const [divisao, setDivisao] = useState<{ valor: number; desconto?: number; origem?: AlvoDesconto; rewardId?: string } | null>(null)
   /* Sinal declarado que a dona acabou de registrar SEM sair da comanda. O
      valor vem por prop do pai, que nao remonta enquanto o modal esta aberto —
      entao o registro precisa valer na hora aqui, senao ela clica, nada muda
@@ -296,19 +299,19 @@ export default function FaturarComandaModal({
     return null
   }
 
-  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string, restMethod?: 'pix' | 'cash' | 'card') {
+  async function submitInvoice(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string, restMethod?: 'pix' | 'cash' | 'card', linhas?: LinhaPagamento[]) {
     // Toque duplo: o estado `submitting` só vale no próximo render; a ref
     // barra na hora (auditoria 29/09 · M5 · a rota também reserva a comanda).
     if (enviandoRef.current) return
     enviandoRef.current = true
     try {
-      await enviarFatura(payment, cardDetails, desconto, origem, rewardId, restMethod)
+      await enviarFatura(payment, cardDetails, desconto, origem, rewardId, restMethod, linhas)
     } finally {
       enviandoRef.current = false
     }
   }
 
-  async function enviarFatura(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string, restMethod?: 'pix' | 'cash' | 'card') {
+  async function enviarFatura(payment: PaymentMethodChoice | 'leave_open', cardDetails?: CardPaymentDetails, desconto?: number, origem?: AlvoDesconto, rewardId?: string, restMethod?: 'pix' | 'cash' | 'card', linhas?: LinhaPagamento[]) {
     const v = validateBeforeSubmit()
     if (v) { setError(v); return }
     setError(null)
@@ -345,6 +348,7 @@ export default function FaturarComandaModal({
         pay.installments = cardDetails.installments
       }
       body.payment = pay
+      if (linhas) body.payments = linhas
       // Desconto só existe junto com o pagamento (vem do passo do método).
       if (typeof desconto === 'number' && desconto > 0) {
         body.manual_discount = desconto
@@ -359,6 +363,7 @@ export default function FaturarComandaModal({
     })
     setSubmitting(false)
     setPaymentOpen(false)
+    setDivisao(null)
     if (!r.ok) {
       const d = await r.json().catch(() => ({}))
       setError(friendlyError(d))
@@ -930,7 +935,25 @@ export default function FaturarComandaModal({
           if (method === null) { setPaymentOpen(false); return }
           submitInvoice(method, card, desconto, origem, rewardId, restMethod)
         }}
+        onDividir={setDivisao}
         onClose={() => setPaymentOpen(false)}
+      />
+
+      <SplitPaymentModal
+        open={divisao !== null}
+        clientName={customerName}
+        totalPrice={divisao?.valor ?? 0}
+        businessId={businessId}
+        comecarDividido
+        loading={submitting}
+        onConfirm={(linhas) => {
+          if (!divisao) return
+          // Appointment e venda guardam um método só: vale o da maior parte,
+          // mesma regra do "Receber pagamento" (/invoices/[id]/pay).
+          const maior = [...linhas].sort((a, b) => b.amount - a.amount)[0]
+          submitInvoice(maior.method as PaymentMethodChoice, undefined, divisao.desconto, divisao.origem, divisao.rewardId, undefined, linhas)
+        }}
+        onClose={() => setDivisao(null)}
       />
     </>,
     document.body,

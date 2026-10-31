@@ -8,7 +8,7 @@ import { IconChevronLeft, IconTrash, IconCheck, IconPlus, IconStar, IconFile, Ic
 import { getAreaPrefix } from '@/lib/area-prefix'
 import AdicionarServicoComandaModal from './AdicionarServicoComandaModal'
 import AdicionarProdutoComandaModal from './AdicionarProdutoComandaModal'
-import SplitPaymentModal from './SplitPaymentModal'
+import SplitPaymentModal, { type LinhaPagamento } from './SplitPaymentModal'
 import ConfirmActionModal from '@/components/admin/ConfirmActionModal'
 import MoreActionsMenu, { type MoreAction } from '@/components/admin/MoreActionsMenu'
 import { downloadComandaPdf, shareComandaPdf } from './useComandaPdf'
@@ -132,7 +132,7 @@ export default function ComandaDetalhe({
   const canReceivePayment = invoice.status === 'open' && invoice.items.length > 0
   const customerName = invoice.customer?.name ?? 'Cliente'
 
-  async function receberPagamento(payments: { method: 'cash' | 'pix' | 'card' | 'courtesy' | 'points' | 'credit'; amount: number; card_type?: 'credit' | 'debit' | null }[]) {
+  async function receberPagamento(payments: LinhaPagamento[]) {
     setPaying(true)
     setError(null)
     const r = await fetch(`/api/admin/invoices/${invoice.id}/pay`, {
@@ -706,6 +706,7 @@ export default function ComandaDetalhe({
         totalPrice={Math.max(0, Math.round((invoice.total - invoice.sinal_pago) * 100) / 100)}
         availableCredit={availableCredit}
         loading={paying}
+        businessId={businessId}
         onConfirm={receberPagamento}
         onClose={() => setPaymentOpen(false)}
       />

@@ -267,6 +267,43 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
     ? body.payment
     : null
   const willClose = payment !== null
+
+  /* Pagamento em duas formas (Izanara 31/10: parte no Pix, parte no cartão).
+     `payment.method` segue valendo como o método da maior parte, que é o que
+     appointment e venda guardam; o dinheiro de verdade fica nas linhas. */
+  type LinhaIn = { method: 'cash'|'pix'|'card'; amount: number; device_id: string|null; card_brand: string|null; card_type: string|null; installments: number; fee_percent: number }
+  let linhasDivididas: LinhaIn[] | null = null
+  if (Array.isArray(body.payments) && body.payments.length > 0) {
+    if (!payment || !['cash', 'pix', 'card'].includes(payment.method)) {
+      return NextResponse.json({ error: 'invalid_payments' }, { status: 400 })
+    }
+    const entrada = body.payments as Partial<LinhaIn>[]
+    const valida = (l: Partial<LinhaIn>) => ['cash', 'pix', 'card'].includes(l.method ?? '')
+      && Number.isFinite(l.amount) && Number(l.amount) > 0
+      && Number(l.fee_percent ?? 0) >= 0 && Number(l.fee_percent ?? 0) < 100
+    if (!entrada.every(valida)) return NextResponse.json({ error: 'invalid_payments' }, { status: 400 })
+    linhasDivididas = entrada.map((l) => {
+      const cartao = l.method === 'card'
+      const parcelas = Number(l.installments ?? 1)
+      return {
+        method: l.method as LinhaIn['method'],
+        amount: Math.round(Number(l.amount) * 100) / 100,
+        device_id: cartao ? l.device_id ?? null : null,
+        card_brand: cartao ? l.card_brand ?? null : null,
+        card_type: cartao ? l.card_type ?? null : null,
+        installments: cartao && parcelas >= 1 && parcelas <= 12 ? parcelas : 1,
+        fee_percent: cartao ? Number(l.fee_percent ?? 0) : 0,
+      }
+    })
+    const maquininhas = Array.from(new Set(linhasDivididas.map((l) => l.device_id).filter((x): x is string => !!x)))
+    if (maquininhas.length > 0) {
+      const { data: minhas } = await admin.from('merchant_devices').select('id').eq('business_id', businessId).in('id', maquininhas)
+      if ((minhas ?? []).length !== maquininhas.length) {
+        return NextResponse.json({ error: 'invalid_payments', detail: 'Maquininha não pertence a este negócio.' }, { status: 400 })
+      }
+    }
+  }
+
   // Produto e serviço extra: com recompensa grátis, ficam no método do resto (21/10).
   const metodoDoResto = payment?.method === 'points' && payment.rest_method ? payment.rest_method : payment?.method ?? null
 
@@ -448,6 +485,23 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
       return NextResponse.json({
         error: 'discount_exceeds_total',
         detail: `O desconto de R$ ${manualDiscount.toFixed(2).replace('.', ',')} é maior que o total de R$ ${totalPrevisto.toFixed(2).replace('.', ',')}.`,
+      }, { status: 400 })
+    }
+  }
+
+  // 6c. Soma das formas tem que fechar o que falta receber. Mesmo motivo do 6b:
+  // depois do passo 7 o estoque já baixou.
+  if (linhasDivididas) {
+    const { data: itensAgora } = await admin.from('invoice_items').select('total').eq('invoice_id', invoice.id)
+    const totalPrevisto = (itensAgora ?? []).reduce((s, r) => s + Number(r.total ?? 0), 0) + subtotalProds + subtotalExtraSvcs
+    const { total: sinalPrevisto } = await linhasDoSinal(admin, appts.map((a) => a.id))
+    const aReceber = Math.max(0, Math.round((totalPrevisto - manualDiscount - sinalPrevisto) * 100) / 100)
+    const soma = linhasDivididas.reduce((s, l) => s + l.amount, 0)
+    if (Math.abs(soma - aReceber) > 0.01) {
+      await rollback()
+      return NextResponse.json({
+        error: 'amounts_dont_sum_total',
+        detail: `A soma das formas de pagamento (R$ ${soma.toFixed(2).replace('.', ',')}) não fecha com o que falta receber (R$ ${aReceber.toFixed(2).replace('.', ',')}).`,
       }, { status: 400 })
     }
   }
@@ -663,17 +717,19 @@ async function postFaturar(request: Request, ctxReserva: { reservada?: string })
     }
     const { error: payErr } = await admin
       .from('invoice_payments')
-      .insert({
-        invoice_id: invoice.id,
-        payment_method: metodoDaLinha,
-        amount: restante,
-        device_id: payment.device_id ?? null,
-        card_brand: payment.card_brand ?? null,
-        card_type: payment.card_type ?? null,
-        installments: payment.installments ?? 1,
-        fee_percent: payment.fee_percent ?? 0,
-        paid_at: quandoIso,
-      })
+      .insert(linhasDivididas
+        ? linhasDivididas.map(({ method, ...linha }) => ({ invoice_id: invoice!.id, payment_method: method, ...linha, paid_at: quandoIso }))
+        : {
+            invoice_id: invoice.id,
+            payment_method: metodoDaLinha,
+            amount: restante,
+            device_id: payment.device_id ?? null,
+            card_brand: payment.card_brand ?? null,
+            card_type: payment.card_type ?? null,
+            installments: payment.installments ?? 1,
+            fee_percent: payment.fee_percent ?? 0,
+            paid_at: quandoIso,
+          })
     if (payErr) { await rollback(); return NextResponse.json({ error: payErr.message }, { status: 500 }) }
   }
 
