@@ -40,6 +40,10 @@ export const SUMIDOS_ENVIO_AUTOMATICO = false
 // Ivna entra quando aceitar a proposta, junto com o sistema novo dela (Eduardo 25/10). Pode conectar mesmo antes da verificação do Google sair.
 export const GOOGLE_AGENDA_LIBERADOS: string[] = ['studio-marcela'] // conta de teste
 
+// "Abrir no Google Agenda" no calendário do mês. Eduardo 31/10/2026: fica escondido
+// até o Google verificar o app. Ligar junto com a liberação para clientes.
+export const GOOGLE_BOTAO_NO_CALENDARIO = false
+
 /**
  * GOOGLE_AGENDA_BLOQUEIO_LIBERADOS · a VOLTA do Google Agenda (v176):
  * compromisso marcado no Google da dona bloqueia o horário dela no AgendaPRO.

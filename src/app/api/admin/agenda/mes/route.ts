@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { GOOGLE_BOTAO_NO_CALENDARIO } from '@/lib/feature-flags'
 
 /**
  * GET /api/admin/agenda/mes?mes=YYYY-MM[&only=profId][&exclude=id,id]
@@ -117,5 +118,5 @@ export async function GET(req: NextRequest) {
       if (vale && !bloqueios[iso]?.includes(rotulo)) (bloqueios[iso] ??= []).push(rotulo)
     }
   }
-  return NextResponse.json({ dias, itens, bloqueios, equipe: filtro, google: (conexoesGoogle ?? 0) > 0 })
+  return NextResponse.json({ dias, itens, bloqueios, equipe: filtro, google: GOOGLE_BOTAO_NO_CALENDARIO && (conexoesGoogle ?? 0) > 0 })
 }
