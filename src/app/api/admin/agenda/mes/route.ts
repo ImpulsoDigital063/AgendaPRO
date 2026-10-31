@@ -74,12 +74,20 @@ export async function GET(req: NextRequest) {
       .select('professional_id, block_type, day_of_week, block_date, reason')
       .eq('business_id', businessId)
       .eq('active', true),
-    supabase.from('professionals').select('id, name').eq('business_id', businessId),
+    supabase.from('professionals').select('id, name, active, does_appointments').eq('business_id', businessId),
     // Tabela guarda o token e não abre pra sessão: aqui só sai sim ou não.
     createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
       .from('google_agenda_conexoes').select('business_id', { count: 'exact', head: true }).eq('business_id', businessId),
   ])
   const nomes = new Map((equipe ?? []).map((p) => [p.id as string, (p.name as string).split(' ')[0]]))
+
+  // Quem aparece no filtro do calendário. Duas Anas: nome completo pra não confundir.
+  const atende = (equipe ?? []).filter((p) => p.active && p.does_appointments && !exclude.has(p.id as string))
+  const primeiros = atende.map((p) => (p.name as string).split(' ')[0])
+  const filtro = atende.map((p, i) => ({
+    id: p.id as string,
+    nome: primeiros.filter((n) => n === primeiros[i]).length > 1 ? (p.name as string) : primeiros[i],
+  }))
 
   const dias: Record<string, number> = {}
   const itens: Record<string, { id: string; hora: string; servico: string; cliente: string; prof: string | null }[]> = {}
@@ -109,5 +117,5 @@ export async function GET(req: NextRequest) {
       if (vale && !bloqueios[iso]?.includes(rotulo)) (bloqueios[iso] ??= []).push(rotulo)
     }
   }
-  return NextResponse.json({ dias, itens, bloqueios, google: (conexoesGoogle ?? 0) > 0 })
+  return NextResponse.json({ dias, itens, bloqueios, equipe: filtro, google: (conexoesGoogle ?? 0) > 0 })
 }

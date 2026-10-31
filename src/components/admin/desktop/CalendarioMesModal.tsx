@@ -47,15 +47,28 @@ function nomeDia(iso: string): string {
   return nome[0].toUpperCase() + nome.slice(1)
 }
 
-// Serviço repetido no dia vira uma linha só: "2x Hidratação", no horário do primeiro.
+// Serviço repetido no dia vira uma linha só: "2x Hidratação".
 function agrupar(itens: ItemDia[]) {
-  const grupos = new Map<string, { servico: string; hora: string; n: number }>()
+  const grupos = new Map<string, { servico: string; n: number }>()
   for (const i of itens) {
     const g = grupos.get(i.servico)
     if (g) g.n += 1
-    else grupos.set(i.servico, { servico: i.servico, hora: i.hora, n: 1 })
+    else grupos.set(i.servico, { servico: i.servico, n: 1 })
   }
   return [...grupos.values()]
+}
+
+// A partir daqui a célula do celular mostra só o número: nome cortado não informa.
+const DIA_CHEIO = 5
+
+// Lista do dia por profissional, cada uma em ordem de horário.
+function porProfissional(itens: ItemDia[]) {
+  const grupos = new Map<string, ItemDia[]>()
+  for (const i of itens) {
+    const k = i.prof ?? ''
+    grupos.set(k, [...(grupos.get(k) ?? []), i])
+  }
+  return [...grupos.entries()].map(([prof, lista]) => ({ prof, lista }))
 }
 
 export default function CalendarioMesModal({
@@ -66,6 +79,9 @@ export default function CalendarioMesModal({
   const [itens, setItens] = useState<Record<string, ItemDia[]>>({})
   const [bloqueios, setBloqueios] = useState<Record<string, string[]>>({})
   const [google, setGoogle] = useState(false)
+  const [equipe, setEquipe] = useState<{ id: string; nome: string }[]>([])
+  // Com a equipe junta, o mês não responde "quando a Bia está livre?".
+  const [profFiltro, setProfFiltro] = useState<string | null>(null)
   // Tocar no dia mostra a lista aqui mesmo (Eduardo 31/10): sair do mês pra
   // saber o que tem no dia era o motivo de a Izanara seguir no Google.
   const [selecionado, setSelecionado] = useState<string | null>(date)
@@ -75,7 +91,7 @@ export default function CalendarioMesModal({
   useEffect(() => { setPortalReady(true) }, [])
 
   // Toda vez que abre, volta pro mês do dia que está na grade.
-  useEffect(() => { if (open) { setMes(date.slice(0, 7)); setSelecionado(date) } }, [open, date])
+  useEffect(() => { if (open) { setMes(date.slice(0, 7)); setSelecionado(date); setProfFiltro(null) } }, [open, date])
 
   const excludeKey = (excludeProfessionalIds ?? []).join(',')
   useEffect(() => {
@@ -84,7 +100,8 @@ export default function CalendarioMesModal({
     setDias(null)
     setErro(false)
     const qs = new URLSearchParams({ mes })
-    if (onlyProfessionalId) qs.set('only', onlyProfessionalId)
+    const only = onlyProfessionalId ?? profFiltro
+    if (only) qs.set('only', only)
     if (excludeKey) qs.set('exclude', excludeKey)
     fetch(`/api/admin/agenda/mes?${qs.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
@@ -94,10 +111,11 @@ export default function CalendarioMesModal({
         setItens(j.itens ?? {})
         setBloqueios(j.bloqueios ?? {})
         setGoogle(j.google === true)
+        setEquipe(j.equipe ?? [])
       })
       .catch(() => { if (vivo) setErro(true) })
     return () => { vivo = false }
-  }, [open, mes, onlyProfessionalId, excludeKey])
+  }, [open, mes, onlyProfessionalId, profFiltro, excludeKey])
 
   useEffect(() => {
     if (!open) return
@@ -119,6 +137,8 @@ export default function CalendarioMesModal({
   const diaDaLista = selecionado?.startsWith(mes) ? selecionado : null
   const itensDaLista = diaDaLista ? itens[diaDaLista] ?? [] : []
   const bloqueiosDaLista = diaDaLista ? bloqueios[diaDaLista] ?? [] : []
+  const gruposDaLista = porProfissional(itensDaLista)
+  const separarPorProf = !profFiltro && !onlyProfessionalId && gruposDaLista.length > 1
   const refGoogle = (diaDaLista ?? `${mes}-01`).split('-').map(Number)
   const urlGoogle = `https://calendar.google.com/calendar/r/month/${refGoogle[0]}/${refGoogle[1]}/${refGoogle[2]}`
 
@@ -190,6 +210,28 @@ export default function CalendarioMesModal({
           </div>
         </div>
 
+        {!onlyProfessionalId && equipe.length > 1 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-2" role="group" aria-label="Filtrar por profissional">
+            {[{ id: null as string | null, nome: 'Todas' }, ...equipe].map((p) => {
+              const ativo = profFiltro === p.id
+              return (
+                <button
+                  key={p.id ?? 'todas'}
+                  type="button"
+                  onClick={() => setProfFiltro(p.id)}
+                  aria-pressed={ativo}
+                  className="flex-none px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={ativo
+                    ? { background: 'var(--brand-primary, #1AA9A8)', color: '#fff', border: '1px solid transparent' }
+                    : { background: 'var(--admin-surface)', color: 'var(--admin-text-2)', border: '1px solid var(--admin-border)' }}
+                >
+                  {p.nome}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-3 lg:gap-4">
         <div className="min-w-0">
         <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1">
@@ -209,9 +251,10 @@ export default function CalendarioMesModal({
               ...(bloqueios[iso] ?? []).map((t) => ({ pc: t, cel: t.split(': ').pop() ?? t, bloqueio: true })),
               ...agrupar(itens[iso] ?? []).map((g) => {
                 const nome = `${g.n > 1 ? `${g.n}x ` : ''}${g.servico}`
-                return { pc: `${g.hora} ${nome}`, cel: nome, bloqueio: false }
+                return { pc: nome, cel: nome, bloqueio: false }
               }),
             ]
+            const cheio = n >= DIA_CHEIO
             return (
               <button
                 key={i}
@@ -234,7 +277,7 @@ export default function CalendarioMesModal({
                     {dia}
                   </span>
                   <span
-                    className="text-[10px] font-bold tabular-nums leading-none"
+                    className={`${cheio ? 'hidden sm:inline' : ''} text-[10px] font-bold tabular-nums leading-none`}
                     style={{ color: 'var(--brand-primary, #1AA9A8)', visibility: n > 0 ? 'visible' : 'hidden' }}
                   >
                     {n}
@@ -243,13 +286,18 @@ export default function CalendarioMesModal({
                 {linhas.slice(0, 3).map((l, j) => (
                   <span
                     key={j}
-                    className={`${j === 2 ? 'hidden sm:block' : 'block'} truncate text-[9px] sm:text-[11px] leading-tight`}
+                    className={`${j === 2 || (cheio && !l.bloqueio) ? 'hidden sm:block' : 'block'} truncate text-[9px] sm:text-[11px] leading-tight`}
                     style={{ color: l.bloqueio ? 'var(--admin-danger, #DC2626)' : 'var(--admin-text-2)', fontWeight: l.bloqueio ? 700 : 500 }}
                   >
                     <span className="sm:hidden">{l.cel}</span>
                     <span className="hidden sm:inline">{l.pc}</span>
                   </span>
                 ))}
+                {cheio && (
+                  <span className="sm:hidden mt-auto text-center text-lg font-bold tabular-nums leading-tight" style={{ color: 'var(--brand-primary, #1AA9A8)' }}>
+                    {n}
+                  </span>
+                )}
                 {linhas.length > 3 && (
                   <span className="hidden sm:block text-[10px] font-semibold leading-tight" style={{ color: 'var(--admin-text-2)' }}>
                     +{linhas.length - 3}
@@ -265,22 +313,6 @@ export default function CalendarioMesModal({
           {diaDaLista ? (
             <>
               <p className="text-sm font-bold leading-tight" style={{ color: 'var(--admin-text)' }}>{nomeDia(diaDaLista)}</p>
-              {bloqueiosDaLista.map((t) => (
-                <p key={t} className="text-xs font-bold" style={{ color: 'var(--admin-danger, #DC2626)' }}>{t}</p>
-              ))}
-              {itensDaLista.length === 0 && bloqueiosDaLista.length === 0 && (
-                <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>Nenhum atendimento neste dia.</p>
-              )}
-              {itensDaLista.map((i) => (
-                <div key={i.id} className="rounded-xl px-3 py-2" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
-                  <p className="text-sm font-semibold break-words" style={{ color: 'var(--admin-text)' }}>
-                    <span className="tabular-nums">{i.hora}</span> · {i.servico}
-                  </p>
-                  <p className="text-xs break-words" style={{ color: 'var(--admin-text-mute)' }}>
-                    {i.cliente}{i.prof ? ` · ${i.prof}` : ''}
-                  </p>
-                </div>
-              ))}
               <button
                 type="button"
                 onClick={() => onPick(diaDaLista)}
@@ -304,6 +336,29 @@ export default function CalendarioMesModal({
               Abrir no Google Agenda
             </a>
           )}
+          {bloqueiosDaLista.map((t) => (
+            <p key={t} className="text-xs font-bold" style={{ color: 'var(--admin-danger, #DC2626)' }}>{t}</p>
+          ))}
+          {diaDaLista && itensDaLista.length === 0 && bloqueiosDaLista.length === 0 && (
+            <p className="text-xs" style={{ color: 'var(--admin-text-mute)' }}>Nenhum atendimento neste dia.</p>
+          )}
+          {gruposDaLista.map((g) => (
+            <div key={g.prof} className="flex flex-col gap-1.5">
+              {separarPorProf && (
+                <p className="text-[11px] font-bold uppercase tracking-wider mt-1" style={{ color: 'var(--admin-text-faded)' }}>{g.prof || 'Sem profissional'}</p>
+              )}
+              {g.lista.map((i) => (
+                <div key={i.id} className="rounded-xl px-3 py-2" style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}>
+                  <p className="text-sm font-semibold break-words" style={{ color: 'var(--admin-text)' }}>
+                    <span className="tabular-nums">{i.hora}</span> · {i.servico}
+                  </p>
+                  <p className="text-xs break-words" style={{ color: 'var(--admin-text-mute)' }}>
+                    {i.cliente}{i.prof && !separarPorProf ? ` · ${i.prof}` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
         </div>
       </div>
