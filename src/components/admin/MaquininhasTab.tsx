@@ -158,7 +158,9 @@ export default function MaquininhasTab({ businessId }: Props) {
     card_type: 'credit',
     rate_percent: '',
     allows_installments: false,
-    installments_max: '1',
+    // O select de "Máx parcelas" começa em 2x: com '1' (que não existe nas
+    // opções) a tela mostrava 2x e gravava 1x (Wanessa 31/10).
+    installments_max: '2',
     installment_rate_percent: '',
   })
   const [addingFee, setAddingFee] = useState(false)
@@ -347,7 +349,7 @@ export default function MaquininhasTab({ businessId }: Props) {
       return
     }
     const allowsInstall = newFee.allows_installments && newFee.card_type === 'credit'
-    const installMax = allowsInstall ? Math.min(12, Math.max(1, parseInt(newFee.installments_max || '1', 10))) : 1
+    const installMax = allowsInstall ? Math.min(12, Math.max(2, parseInt(newFee.installments_max || '2', 10))) : 1
     const installRate = allowsInstall && newFee.installment_rate_percent
       ? parseFloat(newFee.installment_rate_percent.replace(',', '.'))
       : null
@@ -392,7 +394,7 @@ export default function MaquininhasTab({ businessId }: Props) {
       card_type: 'credit',
       rate_percent: '',
       allows_installments: false,
-      installments_max: '1',
+      installments_max: '2',
       installment_rate_percent: '',
     })
   }
