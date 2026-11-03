@@ -6,6 +6,49 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { negocioDoPainel } from '@/lib/admin-data'
 
+/* DELETE /api/admin/commission-payments?id=<pagamento> — DESFAZER ACERTO (03/11/2026)
+   Desde a v181 o banco recusa cancelar, trocar profissional, mudar valor ou
+   desmarcar pagamento de atendimento que já entrou num acerto (antes isso
+   passava calado e a diferença sumia). Pra não prender o atendimento, o dono
+   (ou gerente) desfaz o acerto: os atendimentos voltam ao Pendente, os vales
+   descontados voltam a "em aberto" e o registro do pagamento sai do histórico.
+   Recepção cria acerto, mas não desfaz. */
+export async function DELETE(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const businessId = await negocioDoPainel(user.id)
+  if (!businessId) return NextResponse.json({ error: 'no_business' }, { status: 403 })
+
+  const id = new URL(request.url).searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'invalid_id' }, { status: 400 })
+
+  const admin = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+  const { data: pg } = await admin
+    .from('commission_payments')
+    .select('id, business_id')
+    .eq('id', id)
+    .maybeSingle()
+  if (!pg || pg.business_id !== businessId) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+
+  // ordem: solta atendimentos e vales primeiro; o pagamento só sai se os dois deram certo
+  const { error: e1 } = await admin.from('appointments').update({ commission_payment_id: null }).eq('commission_payment_id', id)
+  if (e1) return NextResponse.json({ error: e1.message }, { status: 500 })
+  const { error: e2 } = await admin.from('professional_vouchers').update({ used_in_payment_id: null }).eq('used_in_payment_id', id)
+  if (e2) return NextResponse.json({ error: e2.message }, { status: 500 })
+  const { error: e3 } = await admin.from('commission_payments').delete().eq('id', id)
+  if (e3) return NextResponse.json({ error: e3.message }, { status: 500 })
+
+  // prova na fonte: nada pode continuar apontando pra ele
+  const { count } = await admin.from('appointments').select('id', { count: 'exact', head: true }).eq('commission_payment_id', id)
+  if (count) return NextResponse.json({ error: 'sobrou_vinculo', restantes: count }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
 // POST /api/admin/commission-payments
 // Body: { professionalId, appointmentIds, periodStart, periodEnd, paidAmount, notes? }
 // Cria 1 commission_payment + vincula appointments via commission_payment_id

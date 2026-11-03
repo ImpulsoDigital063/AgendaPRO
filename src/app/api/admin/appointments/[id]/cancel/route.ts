@@ -32,10 +32,21 @@ export async function POST(
   // Validação: appointment + business
   const { data: appt } = await supabase
     .from('appointments')
-    .select('id, business_id, professional_id, status, invoice_item_id, paid_at')
+    .select('id, business_id, professional_id, status, invoice_item_id, paid_at, commission_payment_id')
     .eq('id', id)
     .single()
   if (!appt) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+
+  /* 03/11/2026 · atendimento que já entrou num acerto de comissão não cancela
+     calado (o acerto ficava com o valor dele e a diferença sumia). Recusa
+     AQUI, antes de qualquer gravação (crédito de sinal, vendas, comanda) — a
+     trava do banco (v181) pega os outros caminhos. */
+  if (appt.commission_payment_id) {
+    return NextResponse.json({
+      error: 'em_acerto',
+      detail: 'Este atendimento já entrou num acerto de comissão. Desfaça o acerto em Financeiro › Remunerações › Histórico antes de cancelar.',
+    }, { status: 409 })
+  }
 
   // Autorização: dono, recepcionista OU profissional (v98 · 30/07/2026).
   //

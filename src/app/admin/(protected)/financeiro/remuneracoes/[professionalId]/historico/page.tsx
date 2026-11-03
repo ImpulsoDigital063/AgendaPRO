@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getCurrentUser, getCurrentBusiness } from '@/lib/admin-data'
 import SubPageHeader from '@/components/admin/SubPageHeader'
+import DesfazerAcertoBotao from '@/components/admin/remuneracoes/DesfazerAcertoBotao'
 
 export const dynamic = 'force-dynamic'
 
@@ -147,6 +148,7 @@ export default async function HistoricoPagamentosPage({
                       <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Total Comissão</th>
                       <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Valor Pago</th>
                       <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--admin-text-mute)' }}>Observações</th>
+                      <th className="px-4 py-3" />
                     </tr>
                   </thead>
                   <tbody>
@@ -193,6 +195,9 @@ export default async function HistoricoPagamentosPage({
                           </td>
                           <td className="px-4 py-3 text-xs" style={{ color: 'var(--admin-text-mute)' }}>
                             {p.notes ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <DesfazerAcertoBotao paymentId={p.id} />
                           </td>
                         </tr>
                       )
