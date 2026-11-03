@@ -88,23 +88,36 @@ export async function POST(request: Request) {
   if (hasCommission) {
   const { data: appts } = await admin
     .from('appointments')
-    .select('id, business_id, professional_id, total_price, commission_payment_id, commission_amount, commission_percent, invoice_item_id')
+    .select('id, business_id, professional_id, total_price, commission_payment_id, commission_amount, commission_percent, invoice_item_id, status, paid_at, payment_method, company_id')
     .in('id', body.appointmentIds)
 
   if (!appts || appts.length === 0) {
     return NextResponse.json({ error: 'no_appointments' }, { status: 404 })
   }
+  if (appts.length !== new Set(appointmentIds).size) {
+    return NextResponse.json({ error: 'appointment_not_found' }, { status: 404 })
+  }
 
-  const invalid = appts.find(
-    (a) => a.business_id !== businessId || a.professional_id !== body.professionalId || a.commission_payment_id !== null,
-  )
+  /* 03/11/2026 · o servidor confere o que entra no acerto, com a MESMA regra
+     da tela de Remunerações (remuneracoes/page.tsx): atendimento comum só
+     se PAGO e não cortesia/crédito; convênio pelo atendimento, sem cancelado.
+     Antes só conferia negócio/profissional — a auditoria achou atendimento
+     cancelado e não pago dentro de acerto quitado (Ivna, R$80). */
+  const motivo = (a: (typeof appts)[number]): string | null => {
+    if (a.business_id !== businessId) return 'wrong_business'
+    if (a.professional_id !== body.professionalId) return 'wrong_professional'
+    if (a.commission_payment_id !== null) return 'already_paid'
+    if (a.status === 'cancelled') return 'cancelled'
+    if (a.company_id) return null // convênio: comissão pelo atendimento (tela faz igual)
+    if (!a.paid_at) return 'not_paid'
+    // vazio também: o `not in` da tela exclui NULL (regra do SQL), então não aparece lá
+    if (!a.payment_method || a.payment_method === 'courtesy' || a.payment_method === 'credit') return 'no_commission_method'
+    return null
+  }
+  const invalid = appts.find((a) => motivo(a) !== null)
   if (invalid) {
     return NextResponse.json(
-      {
-        error: 'invalid_appointment',
-        appointment_id: invalid.id,
-        reason: invalid.commission_payment_id ? 'already_paid' : invalid.professional_id !== body.professionalId ? 'wrong_professional' : 'wrong_business',
-      },
+      { error: 'invalid_appointment', appointment_id: invalid.id, reason: motivo(invalid) },
       { status: 400 },
     )
   }
@@ -175,15 +188,23 @@ export async function POST(request: Request) {
 
   // Vincula appointments ao pagamento · bônus avulso não tem o que vincular
   if (appointmentIds.length > 0) {
-    const { error: linkErr } = await admin
+    /* Só vincula quem AINDA não tem acerto, e confere quantos vincularam: dois
+       cliques (ou duas abas) passavam pela checagem acima ao mesmo tempo e
+       criavam dois acertos para os mesmos atendimentos. Quem perde a corrida
+       desfaz o próprio e recebe 409. */
+    const { error: linkErr, count: vinculados } = await admin
       .from('appointments')
-      .update({ commission_payment_id: payment.id })
+      .update({ commission_payment_id: payment.id }, { count: 'exact' })
       .in('id', appointmentIds)
+      .is('commission_payment_id', null)
 
-    if (linkErr) {
-      // Rollback
+    if (linkErr || vinculados !== new Set(appointmentIds).size) {
+      // Rollback: solta o que este pagamento chegou a pegar e apaga o pagamento
+      await admin.from('appointments').update({ commission_payment_id: null }).eq('commission_payment_id', payment.id)
       await admin.from('commission_payments').delete().eq('id', payment.id)
-      return NextResponse.json({ error: linkErr.message }, { status: 500 })
+      return linkErr
+        ? NextResponse.json({ error: linkErr.message }, { status: 500 })
+        : NextResponse.json({ error: 'already_paid_concurrently' }, { status: 409 })
     }
   }
 

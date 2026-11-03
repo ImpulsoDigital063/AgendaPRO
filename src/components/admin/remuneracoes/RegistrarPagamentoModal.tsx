@@ -89,6 +89,10 @@ export default function RegistrarPagamentoModal({
         .lt('paid_at', toEnd.toISOString())
         .is('commission_payment_id', null)
         .not('paid_at', 'is', null)
+        /* 03/11/2026 · mesma regra da tela de Remunerações: cortesia e crédito
+           não geram comissão. Sem isto o modal sugeria pagar acima do Pendente. */
+        .not('payment_method', 'in', '(courtesy,credit)')
+        .neq('status', 'cancelled')
         .order('paid_at', { ascending: false })
 
       if (err) {

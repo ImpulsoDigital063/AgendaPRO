@@ -91,7 +91,9 @@ export async function POST(req: NextRequest) {
       event === 'PAYMENT_RECEIVED' ||
       event === 'PAYMENT_RECEIVED_IN_CASH'
     ) {
-      await handlePaymentConfirmed(admin, body.payment)
+      await processarUmaVez(admin, body.payment?.id, event, () =>
+        handlePaymentConfirmed(admin, body.payment),
+      )
     } else if (event === 'PAYMENT_REFUNDED') {
       await handlePaymentRefunded(admin, body.payment)
     } else if (event === 'PAYMENT_OVERDUE') {
@@ -119,6 +121,41 @@ export async function POST(req: NextRequest) {
 // ─────────────────────────────────────────────────────────────────
 
 type AdminClient = ReturnType<typeof getAdminClient>
+
+/* ── UM PAGAMENTO, UMA RENOVAÇÃO (03/11/2026, v180) ─────────────────
+   O Asaas manda MAIS DE UM evento pro mesmo pagamento: no cartão, CONFIRMED
+   quando aprova e RECEIVED quando o dinheiro cai, dias depois; e repete o
+   mesmo evento quando não recebe 200. Os três caíam no mesmo handler, que
+   renova `pago_ate` a partir do vencimento ATUAL — então o segundo evento
+   empurrava mais um mês, de graça (e somava saldo de avisos de novo).
+
+   Agora o id do pagamento é gravado com UNIQUE antes de processar. Já existe
+   → este pagamento já renovou, sai sem fazer nada. Falhou no meio → apaga a
+   marca e relança, pra a retentativa do Asaas processar de verdade.
+   Falha ABERTA: se a tabela não existir ou o banco recusar por outro motivo,
+   processa como antes — melhor arriscar o mês em dobro que travar renovação. */
+async function processarUmaVez(
+  admin: AdminClient,
+  paymentId: string | undefined,
+  evento: string,
+  processar: () => Promise<void>,
+) {
+  if (!paymentId) return processar()
+  const { error: marca } = await admin
+    .from('asaas_pagamentos_processados')
+    .insert({ payment_id: paymentId, evento })
+  if (marca && marca.code === '23505') {
+    console.log(`[Asaas Webhook] ${evento} de ${paymentId} já processado — ignorado`)
+    return
+  }
+  if (marca) console.error('[Asaas Webhook] marca de idempotência falhou, processando assim mesmo:', marca.message)
+  try {
+    await processar()
+  } catch (err) {
+    if (!marca) await admin.from('asaas_pagamentos_processados').delete().eq('payment_id', paymentId)
+    throw err
+  }
+}
 
 async function handlePaymentConfirmed(
   admin: AdminClient,
