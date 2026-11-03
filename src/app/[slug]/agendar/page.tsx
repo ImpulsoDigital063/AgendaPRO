@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/publico'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { generateCancelToken } from '@/lib/token'
 import { notFound } from 'next/navigation'
@@ -29,11 +29,14 @@ export default async function AgendarPage({
 }) {
   const { slug } = await params
   const { ref: referralCode, date: prefillDate, time: prefillTime, prof: prefillProf, w: waitlistId, cupom: couponCode } = await searchParams
-  const supabase = await createClient()
+  /* Segurança (v177): página pública lê como visitante (anon), mesmo se quem
+     abriu estiver logado em outro negócio. A sessão só enxerga o PRÓPRIO
+     negócio, e o anon só as colunas públicas. */
+  const supabase = createPublicClient()
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, slug, description, phone, address, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url, whatsapp_instance_id, whatsapp_token, slot_interval_minutes, max_daily_appointments, no_show_punishment_enabled, no_show_penalty_mode, no_show_fixed_points, booking_days_with_service, servico_longo_atravessa_intervalo, sinal_enabled, sinal_percent, sinal_modo, sinal_valor_fixo, sinal_faixa_acima, sinal_faixa_valor, sinal_cancel_horas, sinal_credito_dias')
+    .select('id, name, slug, description, phone, address, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url, slot_interval_minutes, max_daily_appointments, no_show_punishment_enabled, no_show_penalty_mode, no_show_fixed_points, booking_days_with_service, servico_longo_atravessa_intervalo, sinal_enabled, sinal_percent, sinal_modo, sinal_valor_fixo, sinal_faixa_acima, sinal_faixa_valor, sinal_cancel_horas, sinal_credito_dias')
     .eq('slug', slug)
     .single()
 
@@ -148,7 +151,13 @@ export default async function AgendarPage({
   // Valida cupom server-side se vier ?cupom=X
   let appliedCoupon: { id: string; code: string; discount_type: 'fixed' | 'percent'; discount_value: number; expires_at: string } | null = null
   if (couponCode) {
-    const { data: coupon } = await supabase
+    // Cupom deixou de ser legível pelo público (v178): busca no servidor, por código + negócio.
+    const svc = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } },
+    )
+    const { data: coupon } = await svc
       .from('coupons')
       .select('id, code, discount_type, discount_value, expires_at, used_at')
       .eq('code', couponCode.toUpperCase())

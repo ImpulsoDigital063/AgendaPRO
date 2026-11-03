@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 
 /**
@@ -34,13 +33,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 })
   }
 
-  // Lookup com cliente regular (RLS público de SELECT)
-  const supabase = await createClient()
+  /* Segurança (v178): leitura pelo servidor. Antes lia com a chave anon:
+     o cupom vinha pela policy pública (fechada agora) e o atendimento NUNCA
+     vinha (appointments não é público), então esta rota respondia
+     appointment_not_found em todo uso e o cupom não queimava. */
+  const supabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+
+  // Atendimento primeiro: o código só é único DENTRO do negócio.
+  const { data: appointment } = await supabase
+    .from('appointments')
+    .select('id, business_id, client_phone')
+    .eq('id', appointmentId)
+    .maybeSingle()
+
+  if (!appointment) {
+    return NextResponse.json({ error: 'appointment_not_found' }, { status: 404 })
+  }
 
   const { data: coupon } = await supabase
     .from('coupons')
     .select('id, business_id, used_at, expires_at, is_standalone')
     .eq('code', code)
+    .eq('business_id', appointment.business_id)
     .maybeSingle()
 
   if (!coupon) {
@@ -55,21 +73,6 @@ export async function POST(req: NextRequest) {
 
   if (new Date(coupon.expires_at) < new Date()) {
     return NextResponse.json({ error: 'coupon_expired' }, { status: 400 })
-  }
-
-  // Valida que appointment é do mesmo business (anti-cross-business)
-  const { data: appointment } = await supabase
-    .from('appointments')
-    .select('id, business_id, client_phone')
-    .eq('id', appointmentId)
-    .maybeSingle()
-
-  if (!appointment) {
-    return NextResponse.json({ error: 'appointment_not_found' }, { status: 404 })
-  }
-
-  if (appointment.business_id !== coupon.business_id) {
-    return NextResponse.json({ error: 'business_mismatch' }, { status: 403 })
   }
 
   // Service-role pra escrever (RLS de UPDATE/INSERT só permite owner —

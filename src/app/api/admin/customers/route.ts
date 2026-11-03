@@ -128,36 +128,20 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Cria/atualiza em `clients` (universal)
-  const { data: clientesAchados } = await supabase
-    .from('clients')
-    .select('id, phone')
-    .eq('fone', telefoneCanonico(phone))
-  const existingClient = (clientesAchados ?? []).find((c) => mesmoTelefone(c.phone, phone)) ?? null
-
-  let clientId: string | null = existingClient?.id ?? null
-
-  if (!clientId) {
-    const { data: created, error: clientErr } = await supabase
-      .from('clients')
-      .insert({
-        name,
-        phone: phoneFormatted,
-        email: email || null,
-      })
-      .select('id')
-      .single()
-    if (clientErr) {
-      console.error('clients insert error:', clientErr)
-      return NextResponse.json({ error: 'Erro ao criar cliente' }, { status: 500 })
-    }
-    clientId = created?.id ?? null
-  } else {
-    // Atualiza dados defensivamente (cliente pode ter mudado nome/email)
-    await supabase
-      .from('clients')
-      .update({ name, email: email || null })
-      .eq('id', clientId)
+  /* Segurança (v177): acha-ou-cria no banco, que devolve só o id. A tabela
+     `clients` é global e deixou de ser legível/gravável por qualquer login.
+     O update de nome/email que vinha aqui saiu: ele sobrescrevia o cadastro
+     universal visto pelos OUTROS negócios desse telefone. */
+  const { data: clientIdRpc, error: clientErr } = await supabase.rpc('resolver_cliente', {
+    p_nome: name,
+    p_telefone: phoneFormatted,
+    p_email: email || null,
+  })
+  if (clientErr) {
+    console.error('resolver_cliente error:', clientErr)
+    return NextResponse.json({ error: 'Erro ao criar cliente' }, { status: 500 })
   }
+  const clientId: string | null = (clientIdRpc as string | null) ?? null
 
   // 3. Cria customer no business · inclui campos extras do v56
   const { data: customer, error: custErr } = await supabase

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rate-limit-api'
 import { telefoneCanonico } from '@/lib/phone-variants'
 
@@ -31,7 +31,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ valid: false, reason: 'invalid_params' }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  /* Segurança (v178): `coupons` e `coupon_redemptions` deixaram de ter leitura
+     pública (qualquer um baixava os 640 códigos com a chave anon). A rota
+     consulta pelo servidor e devolve só o resultado da validação, sempre
+     filtrando por código + negócio. */
+  const supabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
   const { data: coupon } = await supabase
     .from('coupons')
     .select('id, code, business_id, customer_id, discount_type, discount_value, expires_at, used_at, is_standalone, professional_id')

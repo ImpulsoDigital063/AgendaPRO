@@ -496,20 +496,13 @@ export async function PATCH(
     await supabase.from('gift_cards').update({ buyer_phone: phoneNovo }).eq('business_id', biz).in('buyer_phone', antigas)
     await supabase.from('message_optout').update({ telefone: phoneNovo }).eq('business_id', biz).eq('fone', foneAntigo)
 
-    const { data: cliUniv } = await supabase.from('clients').select('id').eq('fone', telefoneCanonico(phoneNovo)).order('created_at', { ascending: true }).limit(1)
-    let clientIdNovo = cliUniv?.[0]?.id ?? null
-    if (!clientIdNovo) {
-      const { data: criado } = await supabase
-        .from('clients')
-        .insert({
-          name: (updates.name as string | undefined) ?? customer.name,
-          phone: phoneNovo,
-          email: customer.email,
-        })
-        .select('id')
-        .single()
-      clientIdNovo = criado?.id ?? null
-    }
+    // Segurança (v177): acha-ou-cria no banco, devolve só o id.
+    const { data: clientIdRpc } = await supabase.rpc('resolver_cliente', {
+      p_nome: (updates.name as string | undefined) ?? customer.name,
+      p_telefone: phoneNovo,
+      p_email: customer.email ?? null,
+    })
+    const clientIdNovo = (clientIdRpc as string | null) ?? null
     if (clientIdNovo) {
       await supabase.from('appointments').update({ client_id: clientIdNovo }).eq('business_id', biz).eq('customer_id', id)
     }

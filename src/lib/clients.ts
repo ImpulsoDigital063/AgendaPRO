@@ -1,8 +1,3 @@
-import type { createClient } from '@/lib/supabase/client'
-import { telefoneCanonico } from '@/lib/phone-variants'
-
-type Supa = ReturnType<typeof createClient>
-
 /**
  * Acha-ou-cria o cliente universal (tabela `clients`, global por telefone) e
  * devolve o client_id pra linkar no appointment.
@@ -12,31 +7,36 @@ type Supa = ReturnType<typeof createClient>
  * A tela /admin/clientes conta atendimento + valor gasto por client_id — sem ele,
  * o cliente aparecia só com pontuação, sem histórico (bug Rosy 23/06).
  *
- * RLS: dono/recep autenticado pode inserir em clients — mesmo caminho que o
- * /api/admin/customers já usa com a sessão do usuário (find-or-create por phone).
+ * Segurança (v177, 03/11/2026): `clients` é GLOBAL — uma linha por telefone,
+ * compartilhada entre todos os negócios. Até aqui qualquer login lia e alterava
+ * a tabela inteira pela API (policy `true`), e este find-or-create dependia
+ * disso. Agora o acha-ou-cria roda no banco (`resolver_cliente`, SECURITY
+ * DEFINER) e devolve SÓ o id: nem nome, nem telefone de cliente de outro negócio
+ * sai pra quem chama. Casa por `fone` (fone_canon), o mesmo critério de antes.
  * Retorna null se telefone vazio (avulso) — appointment fica sem vínculo, ok.
- *
- * Match por phone EXATO (string como gravada), igual ao backfill-palace e ao
- * /api/admin/customers — não normaliza, pra não casar com formato divergente.
  */
 export async function resolveClientId(
-  supabase: Supa,
+  supabase: RpcCapaz,
   name: string,
   phone: string,
 ): Promise<string | null> {
   const p = (phone || '').trim()
   if (!p) return null
-  const { data: achados } = await supabase
-    .from('clients')
-    .select('id')
-    .eq('fone', telefoneCanonico(p))
-    .order('created_at', { ascending: true })
-    .limit(1)
-  if (achados?.[0]) return achados[0].id
-  const { data: created } = await supabase
-    .from('clients')
-    .insert({ name: (name || '').trim() || 'Cliente', phone: p, email: null })
-    .select('id')
-    .single()
-  return created?.id ?? null
+  const { data, error } = await supabase.rpc('resolver_cliente', {
+    p_nome: (name || '').trim() || 'Cliente',
+    p_telefone: p,
+  })
+  if (error) {
+    console.error('resolver_cliente:', error.message)
+    return null
+  }
+  return (data as string | null) ?? null
+}
+
+/** Qualquer cliente supabase-js (navegador ou servidor) — só precisa de .rpc. */
+type RpcCapaz = {
+  rpc: (fn: 'resolver_cliente', args: { p_nome: string; p_telefone: string; p_email?: string | null }) => PromiseLike<{
+    data: unknown
+    error: { message: string } | null
+  }>
 }
