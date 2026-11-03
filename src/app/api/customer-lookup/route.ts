@@ -2,7 +2,6 @@ import { todayBR } from '@/lib/date-br'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
-import { generateCancelToken } from '@/lib/token'
 import { telefoneCanonico } from '@/lib/phone-variants'
 
 function getAdminClient() {
@@ -149,7 +148,8 @@ export async function POST(req: NextRequest) {
       end_time: a.end_time,
       service_name: a.service_name,
       professional_name: prof?.name || null,
-      cancel_token: generateCancelToken(a.id),
+      /* Sem cancel_token (03/11/2026): esta rota abre só com o telefone.
+         Cancelar segue pelo link da confirmação, que só a cliente recebe. */
     }
   })
 

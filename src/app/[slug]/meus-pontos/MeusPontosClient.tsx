@@ -35,7 +35,6 @@ type UpcomingAppointment = {
   end_time: string
   service_name: string | null
   professional_name: string | null
-  cancel_token: string
 }
 
 type ProfessionalPoints = {
@@ -95,7 +94,6 @@ export default function MeusPontosClient({
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<LookupResult | null>(null)
   const [copied, setCopied] = useState(false)
-  const [cancelTarget, setCancelTarget] = useState<UpcomingAppointment | null>(null)
 
   async function handleSearch() {
     const digits = phone.replace(/\D/g, '')
@@ -396,21 +394,17 @@ export default function MeusPontosClient({
                           </p>
                         )}
                       </div>
-                      <button
-                        onClick={() => setCancelTarget(appt)}
-                        className="text-xs font-medium px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
-                        style={{
-                          background: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2',
-                          color: isDark ? '#FCA5A5' : '#B91C1C',
-                          border: isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid #FECACA',
-                        }}
-                      >
-                        Cancelar
-                      </button>
                     </div>
                   )
                 })}
               </div>
+              {/* Segurança (03/11/2026): sem botão de cancelar aqui. Esta tela
+                  abre só com o telefone, e quem soubesse o número de alguém
+                  cancelava os horários dela. O cancelamento segue pelo link
+                  da confirmação, que só a própria cliente recebe. */}
+              <p className="text-xs" style={{ color: textMute }}>
+                Precisa cancelar? Use o link que chegou na confirmação do agendamento.
+              </p>
             </div>
           )}
 
@@ -627,74 +621,6 @@ export default function MeusPontosClient({
         </>
       )}
 
-      {/* Modal de confirmação — evita cancelamento acidental no mobile */}
-      {cancelTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.55)' }}
-          onClick={() => setCancelTarget(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl p-5 space-y-4"
-            style={{
-              background: isDark ? '#0B1023' : '#FFFFFF',
-              border: cardBorder,
-              boxShadow: '0 24px 48px -12px rgba(0,0,0,0.4)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{
-                  background: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2',
-                  color: isDark ? '#FCA5A5' : '#B91C1C',
-                }}
-              >
-                <IconClose size={18} color="currentColor" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                  Cancelar agendamento?
-                </p>
-                <p className="text-xs mt-1" style={{ color: textMute }}>
-                  {(() => {
-                    const [y, m, d] = cancelTarget.appointment_date.split('-')
-                    return `${d}/${m}/${y} · ${cancelTarget.start_time.slice(0, 5)}`
-                  })()}
-                  {cancelTarget.service_name && ` — ${cancelTarget.service_name}`}
-                </p>
-              </div>
-            </div>
-            <p className="text-xs" style={{ color: textMute }}>
-              Você libera o horário pra outra pessoa. Essa ação não pode ser desfeita por aqui.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setCancelTarget(null)}
-                className="px-3 py-2.5 text-xs font-semibold rounded-xl transition-colors"
-                style={{
-                  background: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
-                  color: isDark ? '#F8FAFC' : '#0F172A',
-                  border: cardBorder,
-                }}
-              >
-                Voltar
-              </button>
-              <a
-                href={`/cancelar?id=${cancelTarget.id}&token=${cancelTarget.cancel_token}`}
-                className="px-3 py-2.5 text-xs font-semibold text-white rounded-xl text-center"
-                style={{
-                  background: '#DC2626',
-                  boxShadow: '0 6px 16px -6px rgba(220,38,38,0.5)',
-                }}
-              >
-                Sim, cancelar
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

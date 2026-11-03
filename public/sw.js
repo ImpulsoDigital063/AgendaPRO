@@ -89,7 +89,8 @@
 // v146 (02/10): Horarios celular — 'todo domingo', 'os outros sabados' (genero certo).
 // v176 (16/10): cartao da ficha sem 'ela' (serve pra homem) + presets de esmalteria so pra Nail designer.
 // v177 (16/10): texto da ficha no WhatsApp com nome maiusculo, do/da, horario do atendimento + link anterior cancelado.
-const STATIC_CACHE_VERSION = 'agendapro-static-v214'
+// v215 (03/11): seguranca · Meus Pontos sem botao de cancelar (cancela pelo link da confirmacao).
+const STATIC_CACHE_VERSION = 'agendapro-static-v215'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
