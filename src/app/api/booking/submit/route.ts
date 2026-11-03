@@ -373,7 +373,7 @@ export async function POST(req: NextRequest) {
     !!totalComDesconto &&
     totalComDesconto > 0
   const sinalCheio = exigeSinal
-    ? valorDoSinal(totalComDesconto as number, negocio)
+    ? valorDoSinal(totalComDesconto as number, negocio, appointmentDate)
     : null
 
   /* CRÉDITO ABATE O SINAL (v113 · decisão do Eduardo, 05/08).

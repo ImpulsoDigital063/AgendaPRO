@@ -1065,9 +1065,10 @@ export default function AgendarModal({
       !clienteIsenta &&
       valorTotal > 0 &&
       sinalDecisao
-    const valorSinal = cobraSinal
-      ? valorDoSinal(valorTotal, cfgSinal)
-      : null
+    /* v184 · o sinal pode mudar pela DATA (período da Ivna em dezembro): cada
+       atendimento da série leva o da própria data. valorSinal = o do 1º. */
+    const sinalDaData = (d: string) => (cobraSinal ? valorDoSinal(valorTotal, cfgSinal, d) : null)
+    const valorSinal = sinalDaData(allDates[0] ?? date)
 
     // Insert TODOS os appointments da série em batch
     const appointmentRows = allDates.map((d, idx) => ({
@@ -1084,8 +1085,8 @@ export default function AgendarModal({
       service_id: first.serviceId,
       service_name: displayName,
       total_price: valorTotal,
-      status: valorSinal ? 'pending' : 'confirmed',
-      sinal_valor: valorSinal,
+      status: sinalDaData(d) ? 'pending' : 'confirmed',
+      sinal_valor: sinalDaData(d),
       sinal_cobrar: sinalDecisao,
       notes: notes.trim() || null,
       recurring_group_id: recurringGroupId,
@@ -2311,7 +2312,7 @@ export default function AgendarModal({
                   }}
                 >
                   Cobrar{' '}
-                  {valorDoSinal(valorTotal, sinalCfg.regra).toLocaleString('pt-BR', {
+                  {valorDoSinal(valorTotal, sinalCfg.regra, date).toLocaleString('pt-BR', {
                     style: 'currency',
                     currency: 'BRL',
                   })}

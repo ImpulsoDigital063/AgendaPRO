@@ -433,9 +433,11 @@ export default function MarcarAgendamentoForm({
       !jaAtendi &&
       Number(valorDoAtendimento ?? 0) > 0 &&
       sinalDecisao
-    const valorSinal = cobraSinal
-      ? valorDoSinal(Number(valorDoAtendimento ?? 0), sinalCfg?.regra)
-      : null
+    /* v184 · o sinal pode mudar pela DATA (período da Ivna em dezembro): cada
+       atendimento da série leva o da própria data. valorSinal = o do 1º. */
+    const sinalDaData = (d: string) =>
+      cobraSinal ? valorDoSinal(Number(valorDoAtendimento ?? 0), sinalCfg?.regra, d) : null
+    const valorSinal = sinalDaData(datas[0] ?? date)
 
     const linhas = datas.map((d, idx) => ({
       business_id: businessId,
@@ -458,8 +460,8 @@ export default function MarcarAgendamentoForm({
          conclusão vem logo abaixo, no update. */
       /* Com sinal a receber nasce 'pending', como no desktop: é o que segura o
          horário até a cliente pagar. Sem sinal, segue 'confirmed' como sempre. */
-      status: valorSinal ? 'pending' : 'confirmed',
-      sinal_valor: valorSinal,
+      status: sinalDaData(d) ? 'pending' : 'confirmed',
+      sinal_valor: sinalDaData(d),
       sinal_cobrar: sinalDecisao,
       notes: area === 'profissional' ? 'Marcado pela profissional' : 'Marcado pela recepção',
       company_id: empresa && peloConvenio ? empresa.id : null,
@@ -1047,7 +1049,7 @@ export default function MarcarAgendamentoForm({
                       }}
                     >
                       Cobrar{' '}
-                      {valorDoSinal(Number(valorDoAtendimento ?? 0), sinalCfg.regra).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {valorDoSinal(Number(valorDoAtendimento ?? 0), sinalCfg.regra, date).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </button>
                     <button
                       type="button"

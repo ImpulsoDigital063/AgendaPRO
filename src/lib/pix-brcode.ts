@@ -184,17 +184,32 @@ export type RegraSinal = {
   sinal_valor_fixo?: number | null
   sinal_faixa_acima?: number | null
   sinal_faixa_valor?: number | null
+  /* v184 · período com sinal diferente (Ivna, dezembro). Datas 'YYYY-MM-DD'. */
+  sinal_periodo_inicio?: string | null
+  sinal_periodo_fim?: string | null
+  sinal_periodo_valor?: number | string | null
 }
 
 /** Colunas de `businesses` que `valorDoSinal` precisa. */
-export const COLUNAS_REGRA_SINAL = 'sinal_modo, sinal_percent, sinal_valor_fixo, sinal_faixa_acima, sinal_faixa_valor'
+export const COLUNAS_REGRA_SINAL = 'sinal_modo, sinal_percent, sinal_valor_fixo, sinal_faixa_acima, sinal_faixa_valor, sinal_periodo_inicio, sinal_periodo_fim, sinal_periodo_valor'
 
-export function valorDoSinal(precoTotal: number, regra: RegraSinal | null | undefined): number {
+/** Valor do sinal do período (v184) quando a data do atendimento cai nele; senão null. */
+export function sinalDoPeriodo(regra: RegraSinal | null | undefined, data?: string | null): number | null {
+  if (!regra || !data || !regra.sinal_periodo_inicio || !regra.sinal_periodo_fim) return null
+  const v = Number(regra.sinal_periodo_valor ?? 0)
+  if (!(v > 0)) return null
+  const dia = data.slice(0, 10)
+  return dia >= regra.sinal_periodo_inicio.slice(0, 10) && dia <= regra.sinal_periodo_fim.slice(0, 10) ? v : null
+}
+
+/** `data` = dia do atendimento ('YYYY-MM-DD'). Sem data, ignora o período (v184). */
+export function valorDoSinal(precoTotal: number, regra: RegraSinal | null | undefined, data?: string | null): number {
   if (!precoTotal || precoTotal <= 0 || !regra) return 0
   if (regra.sinal_modo !== 'fixo') return calcularSinal(precoTotal, Number(regra.sinal_percent ?? 0))
   const acima = regra.sinal_faixa_acima == null ? null : Number(regra.sinal_faixa_acima)
   const valorFaixa = Number(regra.sinal_faixa_valor ?? 0)
-  const fixo = acima != null && valorFaixa > 0 && precoTotal > acima ? valorFaixa : Number(regra.sinal_valor_fixo ?? 0)
+  const base = sinalDoPeriodo(regra, data) ?? Number(regra.sinal_valor_fixo ?? 0)
+  const fixo = acima != null && valorFaixa > 0 && precoTotal > acima ? valorFaixa : base
   if (!fixo || fixo <= 0) return 0
   return Math.round(Math.min(fixo, precoTotal) * 100) / 100
 }

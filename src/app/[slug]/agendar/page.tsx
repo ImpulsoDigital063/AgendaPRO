@@ -36,7 +36,7 @@ export default async function AgendarPage({
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, name, slug, description, phone, address, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url, slot_interval_minutes, max_daily_appointments, no_show_punishment_enabled, no_show_penalty_mode, no_show_fixed_points, booking_days_with_service, servico_longo_atravessa_intervalo, sinal_enabled, sinal_percent, sinal_modo, sinal_valor_fixo, sinal_faixa_acima, sinal_faixa_valor, sinal_cancel_horas, sinal_credito_dias')
+    .select('id, name, slug, description, phone, address, logo_url, owner_id, created_at, brand_primary, brand_secondary, brand_mode, category, google_place_id, google_rating, google_reviews_count, points_for_review, points_for_referral, instagram_url, facebook_url, tiktok_url, website_url, slot_interval_minutes, max_daily_appointments, no_show_punishment_enabled, no_show_penalty_mode, no_show_fixed_points, booking_days_with_service, servico_longo_atravessa_intervalo, sinal_enabled, sinal_percent, sinal_modo, sinal_valor_fixo, sinal_faixa_acima, sinal_faixa_valor, sinal_periodo_inicio, sinal_periodo_fim, sinal_periodo_valor, booking_estende_ate, sinal_cancel_horas, sinal_credito_dias')
     .eq('slug', slug)
     .single()
 

@@ -473,6 +473,9 @@ export default function BookingFlow({
       ? Math.floor(rawWindow)
       : BOOKING_DEFAULT_DAYS_WITH_SERVICE
   const scanLimit = BOOKING_SCAN_CAP_DAYS
+  const estendeAte = business.booking_estende_ate ? business.booking_estende_ate.slice(0, 10) : null
+  const isoDoDia = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   const availableDates: Date[] = []
   // Flag: quando hoje seria valido (profissional trabalha) mas expediente
   // ja encerrou. Cliente que abre a pagina à noite ve "Hoje sumiu" e
@@ -492,8 +495,10 @@ export default function BookingFlow({
       }
     }
     availableDates.push(d)
-    // Para assim que junta os N dias atendíveis da janela.
-    if (availableDates.length >= daysWithService) break
+    // Para assim que junta os N dias atendíveis da janela — e, com
+    // booking_estende_ate (v184, Ivna: "até o fim de dezembro"), não antes
+    // dessa data. Data já passada não estende nada.
+    if (availableDates.length >= daysWithService && (!estendeAte || isoDoDia(d) >= estendeAte)) break
   }
 
   // Agrupa por mês. A lista agora cruza 2-3 meses em qualquer negócio e
@@ -2653,5 +2658,18 @@ function textoDoSinal(b: Business): string | null {
   if (!(fixo > 0)) return null
   const acima = Number(b.sinal_faixa_acima ?? 0)
   const faixa = Number(b.sinal_faixa_valor ?? 0)
-  return acima > 0 && faixa > 0 ? `${brl(fixo)} (${brl(faixa)} para atendimentos acima de ${brl(acima)})` : brl(fixo)
+  const extras: string[] = []
+  // v184 · período com outro valor ("R$ 50 para atendimentos de 10/12 a 31/12").
+  // Some sozinho do aviso depois que o período acaba.
+  const pv = Number(b.sinal_periodo_valor ?? 0)
+  const ini = b.sinal_periodo_inicio?.slice(0, 10)
+  const fim = b.sinal_periodo_fim?.slice(0, 10)
+  const hoje = new Date()
+  const hojeIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+  if (pv > 0 && ini && fim && fim >= hojeIso) {
+    const dm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
+    extras.push(`${brl(pv)} para atendimentos de ${dm(ini)} a ${dm(fim)}`)
+  }
+  if (acima > 0 && faixa > 0) extras.push(`${brl(faixa)} para atendimentos acima de ${brl(acima)}`)
+  return extras.length ? `${brl(fixo)} (${extras.join('; ')})` : brl(fixo)
 }

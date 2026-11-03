@@ -48,6 +48,10 @@ export type Business = {
   sinal_valor_fixo?: number | null
   sinal_faixa_acima?: number | null
   sinal_faixa_valor?: number | null
+  /* v184 · sinal diferente num período (datas 'YYYY-MM-DD'). Ver valorDoSinal(). */
+  sinal_periodo_inicio?: string | null
+  sinal_periodo_fim?: string | null
+  sinal_periodo_valor?: number | null
   /* v113 · usados no aviso de política de cancelamento da página pública.
      Regra ditada pela Wanessa (05/08): cancelou com folga vira crédito com
      validade; em cima da hora, perde. Ver src/lib/sinal-cancelamento.ts */
@@ -79,6 +83,8 @@ export type Business = {
   // juntar N dias atendíveis, limitado por BOOKING_SCAN_CAP_DAYS.
   // Fica NULL em todo mundo; só quem pedir recebe valor.
   booking_days_with_service?: number | null
+  // v184 · o link mostra os dias pelo menos ATÉ esta data ('YYYY-MM-DD').
+  booking_estende_ate?: string | null
   servico_longo_atravessa_intervalo?: boolean | null
   // Punição por no-show (v45 · 14/05/2026)
   no_show_punishment_enabled?: boolean | null
