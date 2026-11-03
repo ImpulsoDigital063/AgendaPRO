@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendReminderEmail } from '@/lib/email'
-import { sendReminderWhatsApp } from '@/lib/whatsapp'
+import { negociosQueDecidiramNaRegua } from '@/lib/mensagens/lembrete-legado'
 
 function getAdminClient() {
   return createServiceClient(
@@ -47,29 +47,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, sent: 0 })
   }
 
+  // 03/11/2026 · respeita a régua (ver lib/mensagens/lembrete-legado.ts)
+  const decidiram = await negociosQueDecidiramNaRegua(
+    supabase, appointments.map((a) => a.business_id as string), 'lembrete_vespera',
+  )
+
   let sent = 0
 
   for (const appt of appointments) {
+    if (decidiram.has(appt.business_id)) continue
     const businessName = appt.business?.name || 'estabelecimento'
 
     try {
-      // Email
+      // Só e-mail. WhatsApp é da régua (Cloud API), não deste cron.
       if (appt.client_email) {
         await sendReminderEmail({
           clientEmail: appt.client_email,
-          clientName: appt.client_name,
-          businessName,
-          date: appt.appointment_date,
-          startTime: appt.start_time.slice(0, 5),
-          serviceName: appt.service_name,
-          type: '1d',
-        })
-      }
-
-      // WhatsApp
-      if (appt.client_phone) {
-        await sendReminderWhatsApp({
-          clientPhone: appt.client_phone,
           clientName: appt.client_name,
           businessName,
           date: appt.appointment_date,
