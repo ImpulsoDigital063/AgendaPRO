@@ -36,30 +36,26 @@ export default async function AgendaDoDiaBloqueado({ businessId }: { businessId:
   )
 
   const hoje = todayBR()
-  const inicio = `${hoje}T00:00:00`
-  const fim = `${hoje}T23:59:59`
 
-  const { data } = await admin
+  /* 03/11/2026: a versão anterior consultava `starts_at`, coluna que NUNCA
+     existiu em appointments. O banco respondia erro, o erro era ignorado e
+     esta lista saía SEMPRE vazia — a promessa de cima não valia. Data e hora
+     moram em `appointment_date` (dia em BRT) e `start_time` (hora local),
+     então não há conta de fuso a fazer. */
+  const { data, error } = await admin
     .from('appointments')
-    .select(`
-      starts_at, status,
-      customers ( name ),
-      professionals ( name ),
-      appointment_services ( services ( name ) )
-    `)
+    .select('start_time, status, client_name, service_name, professionals ( name )')
     .eq('business_id', businessId)
-    .gte('starts_at', inicio)
-    .lte('starts_at', fim)
-    .neq('status', 'cancelled')
-    .order('starts_at', { ascending: true })
+    .eq('appointment_date', hoje)
+    .in('status', ['pending', 'confirmed', 'completed'])
+    .order('start_time', { ascending: true })
+  if (error) console.error('AgendaDoDiaBloqueado:', error.message)
 
-  const itens: Item[] = (data ?? []).map((a: any) => ({
-    hora: new Date(a.starts_at).toLocaleTimeString('pt-BR', {
-      hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
-    }),
-    cliente: a.customers?.name ?? 'Cliente',
-    servico: a.appointment_services?.[0]?.services?.name ?? 'Atendimento',
-    profissional: a.professionals?.name ?? null,
+  const itens: Item[] = (data ?? []).map((a) => ({
+    hora: String(a.start_time).slice(0, 5),
+    cliente: (a.client_name as string | null) || 'Cliente',
+    servico: (a.service_name as string | null) || 'Atendimento',
+    profissional: (a.professionals as unknown as { name: string } | null)?.name ?? null,
   }))
 
   return (

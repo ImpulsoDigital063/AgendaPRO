@@ -71,6 +71,9 @@ type Tarefa = {
   tipo: TipoMensagem
   businessId: string
   chave: string
+  /* Formato antigo da chave, só nos lembretes, durante a transição (03/11).
+     Ver "JÁ SAIU?" mais abaixo. */
+  chaveAntiga?: string
   telefone: string | null
   email: string | null
   appointmentId?: string
@@ -194,7 +197,14 @@ export async function GET(req: NextRequest) {
 
         fila.push({
           tipo, businessId: a.business_id as string,
-          chave: chaveIdempotencia(tipo, a.id as string),
+          /* A chave carrega DATA E HORA (03/11/2026). Só com o id, remarcar
+             não gerava lembrete novo: a chave do horário antigo já existia e
+             o UNIQUE barrava o aviso do horário novo. */
+          chave: chaveIdempotencia(
+            tipo, a.id as string,
+            `${a.appointment_date as string}T${String(a.start_time).slice(0, 5)}`,
+          ),
+          chaveAntiga: chaveIdempotencia(tipo, a.id as string),
           telefone: a.client_phone as string | null,
           email: a.client_email as string | null,
           appointmentId: a.id as string,
@@ -328,10 +338,19 @@ export async function GET(req: NextRequest) {
   }
 
   // ── ANIVERSÁRIO ───────────────────────────────────────────────
-  const negAniversario = negociosCom('aniversario').filter((b) => {
-    const r = regras.get(`${b}:aniversario`)!
-    return Number(r.horaDoDia.slice(0, 2)) === horaBR
-  })
+  /* A PARTIR da hora marcada, não SÓ nela (03/11/2026). O workflow do
+     GitHub promete rodar de hora em hora e roda ~6,7 vezes por dia, com
+     buracos de 4 a 5 horas: em 31 dias só 3 tiveram rodada às 9h. Com `===`
+     a hora casava quase nunca — Wanessa teve 27 aniversariantes e 2 envios,
+     Viva 9 e 0. Agora a primeira rodada depois da hora manda, até as 21h; a
+     chave com o ano (e o "JÁ SAIU?" abaixo) garante uma vez só por ano. */
+  const passouDaHora = (hora: string) => {
+    const h = Number(hora.slice(0, 2))
+    return horaBR === h || (horaBR > h && horaBR < HORA_FIM)
+  }
+  const negAniversario = negociosCom('aniversario').filter((b) =>
+    passouDaHora(regras.get(`${b}:aniversario`)!.horaDoDia),
+  )
   if (negAniversario.length > 0) {
     const [, mes, dia] = hoje.split('-')
     const ano = hoje.slice(0, 4)
@@ -374,10 +393,9 @@ export async function GET(req: NextRequest) {
         "já pode repetir" de um procedimento que não aconteceu;
      2. some se a cliente JÁ voltou pra esse mesmo procedimento depois — nada
         pior que cobrar retorno de quem acabou de sair de lá. */
-  const negRetorno = negociosCom('retorno').filter((b) => {
-    const r = regras.get(`${b}:retorno`)!
-    return Number(r.horaDoDia.slice(0, 2)) === horaBR
-  })
+  const negRetorno = negociosCom('retorno').filter((b) =>
+    passouDaHora(regras.get(`${b}:retorno`)!.horaDoDia),
+  )
   if (negRetorno.length > 0) {
     const { data: servicos } = await db
       .from('services')
@@ -458,6 +476,39 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  /* ═══ JÁ SAIU? ═════════════════════════════════════════════════
+     (03/11/2026) Tarefa cuja chave já está no message_log — em QUALQUER
+     status — o `enviar` recusa no UNIQUE. Antes ela entrava na fila assim
+     mesmo: ocupava vaga no lote de 20 (o workflow repetia as mesmas até a
+     10ª volta) e, pior, marcava a pessoa em `vistos`, segurando o lembrete
+     dela atrás de uma confirmação que já tinha saído. Sai da fila aqui.
+
+     Lotes de 100 chaves: `.in()` com lista longa estoura a URL e volta erro
+     (medido: 300 ids passam, 400 não).
+
+     TRANSIÇÃO do formato do lembrete: quem recebeu lembrete pela chave
+     antiga (sem data) nas últimas 36h já foi avisado deste horário — não
+     manda de novo só porque a chave mudou. Depois de 2 dias isto não pega
+     mais nada e pode sair. */
+  const chavesFila = [...new Set(fila.flatMap((t) => (t.chaveAntiga ? [t.chave, t.chaveAntiga] : [t.chave])))]
+  const jaNoLog = new Map<string, number>() // chave → criada em (ms)
+  for (let i = 0; i < chavesFila.length; i += 100) {
+    const { data: doLog, error: errLog } = await db
+      .from('message_log')
+      .select('chave, created_at')
+      .in('chave', chavesFila.slice(i, i + 100))
+    if (errLog) return NextResponse.json({ error: 'message_log: ' + errLog.message }, { status: 500 })
+    for (const m of doLog ?? []) jaNoLog.set(m.chave as string, new Date(m.created_at as string).getTime())
+  }
+  const TRANSICAO = 36 * 60 * 60 * 1000
+  const filaNova = fila.filter((t) => {
+    if (jaNoLog.has(t.chave)) return false
+    const antiga = t.chaveAntiga ? jaNoLog.get(t.chaveAntiga) : undefined
+    if (antiga !== undefined && agora - antiga < TRANSICAO) return false
+    return true
+  })
+  const jaSaiu = fila.length - filaNova.length
+
   /* ═══ UMA MENSAGEM POR PESSOA A CADA 30 MINUTOS ═══════════════
      Regra cravada por Eduardo em 01/09: "nao faz sentido disparar duas msg
      assim uma atras da outra".
@@ -484,7 +535,8 @@ export async function GET(req: NextRequest) {
      dois lembretes ganha o da VESPERA — se os dois vencem juntos e' porque o
      "do dia" esta configurado em 24h, e o texto dele afirma "e hoje", que
      seria falso. Aniversario e retorno cedem: sao os unicos que podem
-     esperar um dia sem prejuizo. */
+     esperar a proxima rodada do mesmo dia (desde 03/11 saem "a partir da
+     hora", entao adiar nao perde mais o dia). */
   const PRIORIDADE: Partial<Record<TipoMensagem, number>> = {
     /* Acima de tudo: e' a unica com PRAZO. O horario cai sozinho quando o
        sinal vence, entao adiar essa mensagem em meia hora pode custar a
@@ -501,7 +553,7 @@ export async function GET(req: NextRequest) {
   const SILENCIO = 30 * 60 * 1000
 
   /* Uma consulta so pra toda a fila, nao uma por tarefa. */
-  const telefones = [...new Set(fila.map((t) => t.telefone).filter(Boolean))] as string[]
+  const telefones = [...new Set(filaNova.map((t) => t.telefone).filter(Boolean))] as string[]
   const recentes = new Set<string>()
   if (telefones.length > 0) {
     const { data: jaFoi } = await db
@@ -519,7 +571,7 @@ export async function GET(req: NextRequest) {
   }
 
   const vistos = new Set<string>()
-  const filaLimpa = fila
+  const filaLimpa = filaNova
     .slice()
     .sort((x, y) => (PRIORIDADE[x.tipo] ?? 9) - (PRIORIDADE[y.tipo] ?? 9))
     .filter((t) => {
@@ -535,7 +587,7 @@ export async function GET(req: NextRequest) {
     ? filaLimpa.filter((t) => t.businessId === soNegocio)
     : filaLimpa
 
-  const adiados = fila.length - filaLimpa.length
+  const adiados = filaNova.length - filaLimpa.length
 
   // ── ENVIO (lote) ──────────────────────────────────────────────
   const lote = filaDoNegocio.slice(0, LOTE)
@@ -616,6 +668,7 @@ Falharam agora: ${falhas} de ${lote.length}.`,
     hora_br: new Date(agora - 3 * 3600_000).toISOString().slice(0, 16).replace('T', ' '),
     regras_ligadas: regras.size,
     candidatos: fila.length,
+    ja_saiu: jaSaiu,
     adiados_por_silencio: adiados,
     processados: lote.length,
     enviados, ignorados, falhas,
