@@ -48,7 +48,11 @@ export async function POST(req: NextRequest) {
   const createdAt = new Date(appointment.created_at).getTime()
   const age = Date.now() - createdAt
   if (age > 10 * 60 * 1000) {
-    return NextResponse.json({ ok: false, reason: 'agendamento antigo', cancelUrl })
+    /* Segurança (03/11/2026): SEM cancelUrl aqui. Antes o link de cancelar
+       saía para qualquer um que soubesse o id de um agendamento antigo —
+       e ids vazavam pela leitura pública de cupons. Quem acabou de agendar
+       chama esta rota no mesmo segundo (BookingFlow), dentro da janela. */
+    return NextResponse.json({ ok: false, reason: 'agendamento antigo' })
   }
 
   /* Idempotência de verdade (v114) · antes a única trava era a janela de 10
