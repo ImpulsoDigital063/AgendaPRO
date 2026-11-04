@@ -32,6 +32,7 @@ import {
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import { ehNovidade } from '@/lib/novidades'
 import { podeAbrir } from '@/lib/permissoes-gerente'
+import SininhoNotificacoes from '@/components/admin/SininhoNotificacoes'
 
 type Brand = {
   business_name?: string | null
@@ -99,6 +100,12 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
      - Cartaz de agendamento (QR): virou seção dentro de Negócio
        (?tab=qr-code e ?tab=whatsapp abrem Negócio rolando até ela)
      - Notas Fiscais "em breve" (placeholder sem tela). */
+  // Sininho (04/11/2026) no topo da sidebar, ao lado do nome. Recolhida: some
+  // (os badges do menu também somem nesse modo); expandir mostra de novo.
+  const sino = (
+    <SininhoNotificacoes pendingAppointments={pendingAppointments} pendingClaims={pendingClaims} alinhar="esquerda" />
+  )
+
   const groups: SidebarGroup[] = [
     {
       label: 'Dia a dia',
@@ -246,7 +253,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
         style={{ borderBottom: '1px solid var(--admin-divider)' }}
       >
         {brand.business_slug === 'palace-nail-spa' ? (
-          <PalaceBrandArea collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+          <PalaceBrandArea collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} sino={sino} />
         ) : (
           <div className="flex items-center gap-2">
             {brand.brand_logo_url ? (
@@ -269,18 +276,19 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
             )}
             {!collapsed && (
               <span
-                className="text-sm font-bold truncate"
+                className="text-sm font-bold truncate min-w-0"
                 style={{ color: 'var(--admin-text)' }}
                 title={brand.business_name ?? 'AgendaPRO'}
               >
                 {brand.business_name ?? 'AgendaPRO'}
               </span>
             )}
+            {!collapsed && <span className="ml-auto">{sino}</span>}
             <button
               type="button"
               onClick={() => setCollapsed((c) => !c)}
               aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-              className="ml-auto p-1.5 rounded-lg flex-shrink-0"
+              className={`${collapsed ? 'ml-auto ' : ''}p-1.5 rounded-lg flex-shrink-0`}
               style={{ color: 'var(--admin-text-mute)' }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -470,7 +478,7 @@ function IconChart({ size = 20 }: { size?: number }) {
  * Exclusiva Palace (cravado por Eduardo 20/05). Outros businesses usam
  * o padrão default (BrandHeaderLogo).
  */
-function PalaceBrandArea({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+function PalaceBrandArea({ collapsed, onToggle, sino }: { collapsed: boolean; onToggle: () => void; sino?: ReactNode }) {
   // Logo TRADICIONAL/PRINCIPAL: fundo turquesa #1AA9A8 com símbolo dourado
   // e wordmark PALACE branco. É a versão oficial cravada por Marko.
   // Variações com fundo creme/nude aparecem em OUTRAS telas (não na principal).
@@ -527,11 +535,12 @@ function PalaceBrandArea({ collapsed, onToggle }: { collapsed: boolean; onToggle
           priority
         />
       </div>
+      <span className="ml-auto">{sino}</span>
       <button
         type="button"
         onClick={onToggle}
         aria-label="Recolher menu"
-        className="ml-auto p-1.5 rounded-lg flex-shrink-0"
+        className="p-1.5 rounded-lg flex-shrink-0"
         style={{ color: 'var(--admin-text-mute)' }}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

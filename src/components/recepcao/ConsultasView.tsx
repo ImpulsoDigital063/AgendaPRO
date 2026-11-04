@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { IconSearch, IconCalendar, IconDollar } from '@/components/ui/Icon'
 import { getApptChargedMap } from '@/lib/queries/appointment-charged-total'
@@ -30,6 +30,9 @@ type Props = {
   /** Link "criar campanha" · só o dono tem /admin/clientes/reativar.
    *  A recepção vê a lista e chama no WhatsApp, mas não monta campanha. */
   mostrarLinkCampanha?: boolean
+  /** 04/11/2026 · sininho do dono: abre já filtrado em "Pendente" (a confirmar),
+   *  sem limite de data curto (pendente pode ser de semana que vem) e busca sozinho. */
+  aConfirmar?: boolean
 }
 
 const STATUS_OPTIONS = [
@@ -46,19 +49,25 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function offsetISO(dias: number) {
+  const d = new Date()
+  d.setDate(d.getDate() + dias)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function monthAgoISO() {
   const d = new Date()
   d.setDate(d.getDate() - 30)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export default function ConsultasView({ businessId, professionals, mostrarLinkCampanha = false }: Props) {
+export default function ConsultasView({ businessId, professionals, mostrarLinkCampanha = false, aConfirmar = false }: Props) {
   const supabase = createClient()
   const [aba, setAba] = useState<'atendimentos' | 'sumidos'>('atendimentos')
-  const [dateFrom, setDateFrom] = useState(monthAgoISO())
-  const [dateTo, setDateTo] = useState(todayISO())
+  const [dateFrom, setDateFrom] = useState(aConfirmar ? offsetISO(-365) : monthAgoISO())
+  const [dateTo, setDateTo] = useState(aConfirmar ? offsetISO(365) : todayISO())
   const [profId, setProfId] = useState('')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState(aConfirmar ? 'pending' : '')
   const [clientQuery, setClientQuery] = useState('')
 
   const [results, setResults] = useState<AppointmentRow[]>([])
@@ -97,6 +106,12 @@ export default function ConsultasView({ businessId, professionals, mostrarLinkCa
     }))
     setLoading(false)
   }
+
+  // sininho: já chega com a lista dos a confirmar na tela
+  useEffect(() => {
+    if (aConfirmar) handleSearch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aConfirmar])
 
   const profMap = new Map(professionals.map((p) => [p.id, p.name]))
   const valorDe = (a: AppointmentRow) => a.charged_total ?? a.total_price ?? 0

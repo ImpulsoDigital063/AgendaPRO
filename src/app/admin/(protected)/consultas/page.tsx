@@ -11,7 +11,13 @@ export const dynamic = 'force-dynamic'
  * Versão Adm de consultas (mesma lógica de /recepcao/consultas).
  * Eduardo cravou: Adm tem permissão total.
  */
-export default async function AdminConsultasPage() {
+export default async function AdminConsultasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
+  // 04/11/2026 · o sininho abre /admin/consultas?status=pending (a confirmar)
+  const { status } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
@@ -47,7 +53,7 @@ export default async function AdminConsultasPage() {
       </header>
 
       <div className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8">
-        <ConsultasView businessId={business.id} professionals={profs ?? []} mostrarLinkCampanha />
+        <ConsultasView businessId={business.id} professionals={profs ?? []} mostrarLinkCampanha aConfirmar={status === 'pending'} />
       </div>
     </main>
   )

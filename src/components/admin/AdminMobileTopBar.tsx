@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useSearchParams } from 'next/navigation'
 import ThemeToggle from './ThemeToggle'
+import SininhoNotificacoes from './SininhoNotificacoes'
 import {
   IconHome,
   IconCalendar,
@@ -276,6 +277,8 @@ export default function AdminMobileTopBar({
             {trial.vencido ? 'Teste acabou' : `${trial.diasRestantes} dias`}
           </Link>
         )}
+        {/* Sininho (04/11/2026): a confirmar + pontos por avaliação */}
+        <SininhoNotificacoes pendingAppointments={pendingAppointments} pendingClaims={pendingClaims} />
         <ThemeToggle compact />
       </header>
 
