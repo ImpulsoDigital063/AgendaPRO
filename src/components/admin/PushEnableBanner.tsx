@@ -147,6 +147,8 @@ export default function PushEnableBanner() {
       setError('Notificações bloqueadas. Reative nas configurações do navegador/celular.')
     } else if (res === 'unsupported') {
       setError('Este aparelho/navegador não suporta notificação.')
+    } else if (res === 'sem-chave') {
+      setError('Este endereço do app não envia notificação. Abra por www.agendapro.net.br.')
     } else {
       setError('Não deu pra ativar agora. Tente de novo.')
     }

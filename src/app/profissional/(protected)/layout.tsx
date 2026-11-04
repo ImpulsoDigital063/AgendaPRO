@@ -11,6 +11,7 @@ import InstallBanner from '@/components/admin/InstallBanner'
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
+import AtualizadorPWA from '@/components/admin/AtualizadorPWA'
 import { todayBR } from '@/lib/date-br'
 
 export default async function ProfissionalLayout({
@@ -102,6 +103,9 @@ export default async function ProfissionalLayout({
       <BrandThemeInjector brand={business} />
       <SlugCacher slug={businessSlug} />
       <div className="admin-shell" data-admin-theme={initialTheme}>
+        {/* 04/11/2026: o app do profissional também se atualiza sozinho e conta a
+            versão dele (antes só o /admin tinha). Ver AtualizadorPWA.tsx. */}
+        <AtualizadorPWA area="profissional" />
         {/* Decor scatter · só Palace · mobile+desktop · profissional opera no celular */}
         {businessSlug === 'palace-nail-spa' && (
           <div aria-hidden className="pointer-events-none fixed inset-0 z-0">

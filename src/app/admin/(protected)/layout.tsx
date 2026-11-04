@@ -227,7 +227,7 @@ export default async function AdminLayout({
         <AppSplash />
         {/* Mantem o PWA na versao publicada sem a dona precisar saber que
             existe service worker. Ver AtualizadorPWA.tsx. */}
-        <AtualizadorPWA />
+        <AtualizadorPWA area="admin" />
         {/* Decoração de marca · só desktop · só Palace · pattern scatter sutil
             atrás de todas as views admin. Mobile (Olímpio/Leticia/Erlane prod)
             NÃO renderiza nada. Regra mobile/desktop isolation cravada 19-20/05. */}

@@ -9,6 +9,7 @@ import RecepcaoDesktopSidebar from '@/components/recepcao/RecepcaoDesktopSidebar
 import BrandThemeInjector from '@/components/admin/BrandThemeInjector'
 import BrandDecorBackground from '@/components/admin/brand/BrandDecorBackground'
 import SlugCacher from '@/components/admin/brand/SlugCacher'
+import AtualizadorPWA from '@/components/admin/AtualizadorPWA'
 
 export default async function RecepcaoLayout({
   children,
@@ -76,6 +77,9 @@ export default async function RecepcaoLayout({
       <BrandThemeInjector brand={brand} />
       <SlugCacher slug={businessSlug} />
       <div className="admin-shell" data-admin-theme={initialTheme}>
+        {/* 04/11/2026: o app do recepcao também se atualiza sozinho e conta a
+            versão dele (antes só o /admin tinha). Ver AtualizadorPWA.tsx. */}
+        <AtualizadorPWA area="recepcao" />
         {/* Decor scatter sutil · só Palace · funciona em mobile+desktop (Leticia opera no celular) */}
         {businessSlug === 'palace-nail-spa' && (
           <div aria-hidden className="pointer-events-none fixed inset-0 z-0">

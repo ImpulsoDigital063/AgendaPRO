@@ -12,7 +12,12 @@ import { createClient } from '@/lib/supabase/client'
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
 
-export type PushResult = 'granted' | 'denied' | 'unsupported' | 'error'
+// 'sem-chave' (04/11/2026): o aparelho SUPORTA, mas este build saiu sem a
+// chave pública VAPID (NEXT_PUBLIC_VAPID_PUBLIC_KEY só existe no ambiente
+// Production da Vercel). Acontece quando o app foi aberto/instalado por um
+// endereço de prévia. Antes caía em 'unsupported' e a tela dizia "este aparelho
+// não suporta notificação" — mentira que mandava procurar defeito no iPhone.
+export type PushResult = 'granted' | 'denied' | 'unsupported' | 'sem-chave' | 'error'
 
 function urlB64ToUint8Array(base64: string): Uint8Array {
   const pad = '='.repeat((4 - (base64.length % 4)) % 4)
@@ -34,7 +39,8 @@ export function pushSupported(): boolean {
 
 export async function registerPush(): Promise<PushResult> {
   try {
-    if (!pushSupported() || !VAPID) return 'unsupported'
+    if (!pushSupported()) return 'unsupported'
+    if (!VAPID) return 'sem-chave'
     if (Notification.permission === 'denied') return 'denied'
 
     const reg = await navigator.serviceWorker.register('/sw.js')
@@ -148,6 +154,7 @@ export type PushDeviceState =
   | 'bloqueado'      // permissão negada — só o dono reativa nos ajustes do aparelho
   | 'ios-sem-app'    // iPhone no Safari: precisa instalar na tela de início antes
   | 'sem-suporte'
+  | 'sem-chave'      // aparelho suporta, mas este build não tem a chave VAPID (endereço de prévia)
 
 export async function pushDeviceState(): Promise<PushDeviceState> {
   if (typeof window === 'undefined') return 'sem-suporte'
@@ -158,6 +165,7 @@ export async function pushDeviceState(): Promise<PushDeviceState> {
     (window.navigator as unknown as { standalone?: boolean }).standalone === true
 
   if (!pushSupported()) return isIOS && !isStandalone ? 'ios-sem-app' : 'sem-suporte'
+  if (!VAPID) return 'sem-chave'
   if (Notification.permission === 'denied') return 'bloqueado'
   if (Notification.permission !== 'granted') return 'desligado'
 

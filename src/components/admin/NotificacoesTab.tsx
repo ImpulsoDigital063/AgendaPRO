@@ -54,6 +54,7 @@ export default function NotificacoesTab() {
     if (res === 'granted') setMsg('Pronto — este aparelho vai ser avisado.')
     else if (res === 'denied') setMsg('Você bloqueou as notificações neste aparelho. Libere nos ajustes dele e volte aqui.')
     else if (res === 'unsupported') setMsg('Este aparelho não suporta notificação.')
+    else if (res === 'sem-chave') setMsg('Este endereço do app não envia notificação. Abra o AgendaPRO por www.agendapro.net.br.')
     else setMsg('Não deu pra ativar agora. Tente de novo.')
     await carregar()
   }
@@ -80,6 +81,7 @@ export default function NotificacoesTab() {
     bloqueado: 'As notificações estão bloqueadas nos ajustes deste aparelho. O sistema não consegue reativar por conta própria: libere em Ajustes → Notificações → AgendaPRO e volte aqui.',
     'ios-sem-app': 'No iPhone a notificação só funciona com o app instalado. No Safari, toque em Compartilhar → "Adicionar à Tela de Início", abra o app por lá e ative aqui.',
     'sem-suporte': 'Este navegador não suporta notificação. Tente pelo celular.',
+    'sem-chave': 'Este endereço do app não envia notificação (é um endereço de teste). Abra o AgendaPRO por www.agendapro.net.br.',
   }
 
   return (

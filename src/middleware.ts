@@ -24,6 +24,8 @@ export const config = {
      * - favicon, manifest, splash, icons
      * - extensões de imagem
      */
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    // api/versao (04/11/2026): o app pergunta a versão a cada 15 min e a
+    // cada volta — não tem sessão pra renovar, não precisa rodar aqui.
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|api/versao|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

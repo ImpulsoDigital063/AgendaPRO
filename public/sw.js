@@ -91,7 +91,9 @@
 // v177 (16/10): texto da ficha no WhatsApp com nome maiusculo, do/da, horario do atendimento + link anterior cancelado.
 // v215 (03/11): seguranca · Meus Pontos sem botao de cancelar (cancela pelo link da confirmacao).
 // v217 (04/11): agenda · botao Tela cheia (so a grade, pra recepcao deixar aberta no balcao).
-const STATIC_CACHE_VERSION = 'agendapro-static-v217'
+// v218 (04/11): app se atualiza pela versao do BUILD (/api/versao), nao so pelo bump deste arquivo;
+//   app instalado por endereco de previa/link fixo vai pro www; presenca por aparelho (v185).
+const STATIC_CACHE_VERSION = 'agendapro-static-v218'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

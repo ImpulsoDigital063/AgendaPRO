@@ -1,7 +1,30 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+/* VERSÃO DO APP (04/11/2026) — um carimbo por build, embutido no JavaScript
+   do cliente E na rota /api/versao do mesmo build. O app instalado compara o
+   que ele carrega com o que está publicado e se atualiza sozinho quando
+   difere (src/components/admin/AtualizadorPWA.tsx). Não depende mais de
+   lembrar de bumpar o sw.js.
+   Deployment id primeiro: muda a cada deploy, inclusive redeploy do mesmo
+   commit com env diferente. Commit e carimbo de hora são as reservas. */
+const APP_COMMIT = (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 12)
+const APP_VERSAO =
+  process.env.VERCEL_DEPLOYMENT_ID || APP_COMMIT || `local-${Date.now().toString(36)}`
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSAO: APP_VERSAO,
+    NEXT_PUBLIC_APP_COMMIT: APP_COMMIT || 'local',
+    // 'production' só no build de produção; preview e local ficam de fora do
+    // redirecionamento pra origem oficial (ver AtualizadorPWA).
+    NEXT_PUBLIC_APP_AMBIENTE: process.env.VERCEL_ENV || 'local',
+    // Endereço FIXO deste deploy (agenda-pro-<hash>-impulsodigitals-projects
+    // .vercel.app). Ele nunca recebe código novo: app instalado por ele fica
+    // congelado pra sempre. O AtualizadorPWA tira o app de lá.
+    NEXT_PUBLIC_APP_HOST_FIXO: process.env.VERCEL_URL || '',
+  },
+
   /* Sem isto o next/image RECUSA qualquer imagem de fora e a logo do negocio
      quebra na barra lateral do desktop - vale pra todo negocio que tenha logo,
      nao so pra um. Apareceu em 08/08 na Serenity, primeira conta que ganhou
@@ -32,6 +55,13 @@ const nextConfig: NextConfig = {
           { key: 'CDN-Cache-Control', value: 'no-store' },
           { key: 'Vercel-CDN-Cache-Control', value: 'no-store' },
         ],
+      },
+      // Versão publicada: o navegador nunca guarda (senão o app "acha" que
+      // está em dia). O CDN pode guardar — é estática por deploy e o deploy
+      // novo invalida.
+      {
+        source: '/api/versao',
+        headers: [{ key: 'Cache-Control', value: 'no-cache, no-store, max-age=0, must-revalidate' }],
       },
       {
         source: '/(.*)',

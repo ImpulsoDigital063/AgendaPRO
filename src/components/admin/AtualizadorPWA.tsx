@@ -35,11 +35,59 @@
 
    E procura versão nova de propósito: o navegador só busca `sw.js` sozinho
    de vez em quando. Aqui pergunta a cada 15 minutos e toda vez que ela volta.
+
+   ─── 04/11/2026: versão do BUILD, não do sw.js ─────────────────
+
+   Até aqui só havia atualização se alguém lembrasse de bumpar o sw.js. Agora
+   o app também pergunta /api/versao (no-store) e compara com o carimbo que
+   ele mesmo carrega (NEXT_PUBLIC_APP_VERSAO, next.config.ts). Diferente =
+   versão nova no ar, com ou sem bump. Mesmas regras de quando recarregar:
+   · abrindo o app ou voltando pra ele, sem estar digitando → troca na hora;
+   · escondido → troca na hora;
+   · na frente dela, no meio do uso → pílula, e troca quando ela voltar.
+   Trava contra laço: no máximo 2 recargas pela mesma versão por sessão; a
+   segunda limpa cache e service worker antes. Depois disso, só a pílula.
+
+   E se o app foi instalado por um endereço que nunca recebe código novo
+   (prévia de branch, link fixo de deploy), leva pro www.agendapro.net.br
+   (ver destinoOficial em src/lib/app-versao.ts).
+
+   Cada abertura conta pro banco versão, endereço e modo (app_presenca, v185)
+   — é como a gente prova quem está em qual versão.
    ═══════════════════════════════════════════════════════════════ */
 
 import { useEffect, useRef, useState } from 'react'
+import {
+  VERSAO_APP,
+  destinoOficial,
+  registrarPresenca,
+  versaoPublicada,
+  type AreaApp,
+} from '@/lib/app-versao'
 
-export default function AtualizadorPWA() {
+const CHAVE_TENTATIVAS = 'agendapro:recarga-versao'
+
+/** Quantas vezes esta sessão já recarregou atrás da versão `alvo`. */
+function tentativasPara(alvo: string): number {
+  try {
+    const j = JSON.parse(sessionStorage.getItem(CHAVE_TENTATIVAS) ?? 'null') as
+      | { alvo?: string; n?: number }
+      | null
+    return j && j.alvo === alvo ? j.n ?? 0 : 0
+  } catch {
+    return 0
+  }
+}
+
+function anotarTentativa(alvo: string, n: number) {
+  try {
+    sessionStorage.setItem(CHAVE_TENTATIVAS, JSON.stringify({ alvo, n }))
+  } catch {
+    /* sem sessionStorage: a trava `recarregando` ainda evita laço na sessão */
+  }
+}
+
+export default function AtualizadorPWA({ area = 'admin' }: { area?: AreaApp }) {
   const [temAtualizacao, setTemAtualizacao] = useState(false)
   /* O listener é criado uma vez e não enxerga o estado de renders novos —
      por isso o valor vive também num ref. */
@@ -72,6 +120,26 @@ export default function AtualizadorPWA() {
       return
     }
 
+    /* App instalado num endereço que não acompanha os deploys → oficial.
+       replace: não deixa o endereço velho no "voltar". */
+    const destino = destinoOficial()
+    if (destino) {
+      window.location.replace(destino)
+      return
+    }
+
+    /* Tira o ?_v= da recarga forçada da barra (só cosmético, a página já veio
+       nova). */
+    try {
+      const u = new URL(window.location.href)
+      if (u.searchParams.has('_v')) {
+        u.searchParams.delete('_v')
+        window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash)
+      }
+    } catch {
+      /* ok */
+    }
+
     /* Trava contra laço: `controllerchange` pode disparar mais de uma vez, e
        reload em cima de reload deixa a dona presa numa tela piscando. */
     const recarregar = () => {
@@ -80,7 +148,58 @@ export default function AtualizadorPWA() {
       window.location.reload()
     }
 
+    /* Recarga atrás de uma versão do BUILD. 1ª vez: reload comum (o HTML é
+       no-store e traz os chunks novos). 2ª vez pela mesma versão: limpa os
+       caches do app, desregistra o service worker e navega com ?_v= pra furar
+       qualquer cache de memória do WebKit. 3ª: desiste e deixa a pílula. */
+    const recarregarPara = (alvo: string) => {
+      if (recarregando.current) return
+      const n = tentativasPara(alvo)
+      if (n >= 2) {
+        setTemAtualizacao(true)
+        return
+      }
+      anotarTentativa(alvo, n + 1)
+      recarregando.current = true
+      if (n === 0) {
+        window.location.reload()
+        return
+      }
+      const limpar = async () => {
+        try {
+          const rs = await navigator.serviceWorker.getRegistrations()
+          await Promise.all(rs.map((r) => r.unregister()))
+        } catch {
+          /* ok */
+        }
+        try {
+          if (typeof caches !== 'undefined') {
+            const ks = await caches.keys()
+            await Promise.all(ks.filter((k) => k.startsWith('agendapro-')).map((k) => caches.delete(k)))
+          }
+        } catch {
+          /* ok */
+        }
+      }
+      void limpar().finally(() => {
+        const u = new URL(window.location.href)
+        u.searchParams.set('_v', alvo.slice(-8))
+        window.location.replace(u.toString())
+      })
+    }
+
+    let versaoNova: string | null = null
+
+    /* Página que abriu SEM service worker no controle (primeira visita, ou
+       logo depois da limpeza da 2ª tentativa acima): o primeiro
+       `controllerchange` é só o sw assumindo, não versão nova. Antes isso
+       virava uma recarga a mais na volta seguinte (visto no teste de 04/11). */
+    let ignorarPrimeiraTroca = !navigator.serviceWorker.controller
     const marcar = () => {
+      if (ignorarPrimeiraTroca) {
+        ignorarPrimeiraTroca = false
+        return
+      }
       pendente.current = true
       if (document.visibilityState === 'hidden') recarregar()
       else setTemAtualizacao(true)
@@ -97,10 +216,31 @@ export default function AtualizadorPWA() {
 
     let registro: ServiceWorkerRegistration | null = null
 
+    /* Compara o build carregado com o publicado. `momento`:
+       · 'abertura' / 'volta' — ela acabou de abrir ou voltar: sem digitar,
+         troca na hora (é o caso do iPhone preso na versão velha);
+       · 'intervalo' — ela pode estar no meio de algo: escondido troca,
+         visível só marca e mostra a pílula. */
+    const checarVersao = async (momento: 'abertura' | 'volta' | 'intervalo') => {
+      const publicada = await versaoPublicada()
+      if (!publicada || publicada === VERSAO_APP) return
+      versaoNova = publicada
+      pendente.current = true
+      if (document.visibilityState === 'hidden') recarregarPara(publicada)
+      else if (momento !== 'intervalo' && !digitando()) recarregarPara(publicada)
+      else setTemAtualizacao(true)
+    }
+
     const aoVoltar = () => {
       if (document.visibilityState !== 'visible') return
       void registro?.update().catch(() => null)
-      if (pendente.current && !digitando()) recarregar()
+      void registrarPresenca(area)
+      if (pendente.current && !digitando()) {
+        if (versaoNova) recarregarPara(versaoNova)
+        else recarregar()
+        return
+      }
+      void checarVersao('volta')
     }
 
     /* ── Tela sem estilo: recarrega UMA vez ──────────────────────────
@@ -132,6 +272,10 @@ export default function AtualizadorPWA() {
 
     let intervalo: ReturnType<typeof setInterval> | null = null
 
+    void checarVersao('abertura')
+    void registrarPresenca(area)
+    const intervaloVersao = setInterval(() => void checarVersao('intervalo'), 15 * 60 * 1000)
+
     /* Registra aqui e não só no push: é o que garante que TODO mundo tenha
        service worker, inclusive quem recusou notificação. */
     navigator.serviceWorker
@@ -150,8 +294,9 @@ export default function AtualizadorPWA() {
       navigator.serviceWorker.removeEventListener('message', aoFaltarRecurso)
       document.removeEventListener('visibilitychange', aoVoltar)
       if (intervalo) clearInterval(intervalo)
+      clearInterval(intervaloVersao)
     }
-  }, [])
+  }, [area])
 
   if (!temAtualizacao) return null
 
