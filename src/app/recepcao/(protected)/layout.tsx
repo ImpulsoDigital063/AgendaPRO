@@ -82,6 +82,8 @@ export default async function RecepcaoLayout({
             <BrandDecorBackground pattern="scatter" brand={businessSlug} opacity={0.02} />
           </div>
         )}
+        {/* Tela cheia da agenda (04/11/2026): data-agenda-chrome some com html[data-agenda-cheia]. */}
+        <div data-agenda-chrome className="contents">
         <InstallBanner area="profissional" />
 
         {/* Sidebar tablet+desktop · fixa em ≥md · Letícia opera em iPad */}
@@ -106,6 +108,7 @@ export default async function RecepcaoLayout({
             brand_logo_url: business.brand_logo_url ?? null,
           }}
         />
+        </div>
 
         {/* Main area · padding-bottom pra tabbar mobile · padding-left pra sidebar tablet+ */}
         <div
@@ -116,7 +119,7 @@ export default async function RecepcaoLayout({
         </div>
 
         {/* Tab bar mobile · escondida em ≥md (sidebar substitui) */}
-        <div className="md:hidden">
+        <div data-agenda-chrome className="md:hidden">
           <RecepcaoBottomNav
             tambemAtende={professional.does_appointments === true}
             podeEditarHorario={(business as { recep_edita_horario?: boolean | null }).recep_edita_horario === true}

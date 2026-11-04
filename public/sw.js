@@ -90,7 +90,8 @@
 // v176 (16/10): cartao da ficha sem 'ela' (serve pra homem) + presets de esmalteria so pra Nail designer.
 // v177 (16/10): texto da ficha no WhatsApp com nome maiusculo, do/da, horario do atendimento + link anterior cancelado.
 // v215 (03/11): seguranca · Meus Pontos sem botao de cancelar (cancela pelo link da confirmacao).
-const STATIC_CACHE_VERSION = 'agendapro-static-v215'
+// v217 (04/11): agenda · botao Tela cheia (so a grade, pra recepcao deixar aberta no balcao).
+const STATIC_CACHE_VERSION = 'agendapro-static-v217'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

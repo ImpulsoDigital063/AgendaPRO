@@ -632,11 +632,12 @@ export default function TimelineGridInteractive({
   )
 
   return (
-    <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-start">
+    <div data-agenda-grade-root className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-start">
       {/* Botão Configurações · só <lg · abre drawer
           Tablet/Mobile usa drawer pra liberar a largura inteira pra grade */}
       <button
         type="button"
+        data-agenda-cheia-oculto
         onClick={() => setMobileConfigOpen(true)}
         className="lg:hidden self-start inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
         style={{
@@ -661,6 +662,7 @@ export default function TimelineGridInteractive({
       {/* PAINEL LATERAL CONFIGURAÇÕES · só ≥lg (desktop wide)
           recolhível via botão chevron */}
       <aside
+        data-agenda-cheia-oculto
         className="hidden lg:flex flex-col flex-shrink-0 rounded-2xl overflow-hidden transition-all"
         style={{
           width: collapsed ? 44 : 220,
@@ -729,11 +731,11 @@ export default function TimelineGridInteractive({
 
       {/* Wrapper da área principal (KPIs + GRADE)
           KPIs ficam SEPARADOS do card da grade (cravado 28/05 Eduardo) */}
-      <div className="w-full lg:flex-1 min-w-0 space-y-3">
+      <div data-agenda-grade-main className="w-full lg:flex-1 min-w-0 space-y-3">
         {/* KPIs do dia · só se date === HOJE · cards próprios fora da grade.
             hideKpis: aba "Eu" suprime (tem KPIs próprios do dono acima). */}
         {isToday && !hideKpis && (
-          <div className="grid grid-cols-3 gap-2">
+          <div data-agenda-cheia-oculto className="grid grid-cols-3 gap-2">
             <MiniKPI
               label="Recebido"
               value={formatBRL(recebidoDoServidor + recebidoLocal)}
@@ -761,6 +763,7 @@ export default function TimelineGridInteractive({
 
       {/* GRADE · card branco com legenda + scroll horizontal */}
       <div
+        data-agenda-grade-card
         className="rounded-2xl overflow-hidden"
         style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
       >
@@ -787,6 +790,7 @@ export default function TimelineGridInteractive({
                 mover JUNTO com as marcações · antes eram 2 grids separados,
                 só o body scrollava · header ficava preso. */}
             <div
+              data-agenda-grade-scroll
               className="relative overflow-auto"
               style={{
                 // 03/06: dock removido (R1) liberou espaço vertical no mobile/tablet.

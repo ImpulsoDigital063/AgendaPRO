@@ -11,6 +11,8 @@ type Props = {
   /** Esconde mini-KPIs do header (Recebido/A receber/Pendentes). Útil quando
    *  o componente é embedado em página que já tem KPIs (ex: Início, Eu) */
   hideKpis?: boolean
+  /** Tela cheia (04/11/2026) · botão que deixa só a grade na tela. Só /admin e /recepcao. */
+  permiteTelaCheia?: boolean
   /** Quando setado, mostra só a coluna desse profissional (ex: aba "Eu" do
    *  dono que atende). Default: todos os profs ativos do negócio. */
   onlyProfessionalId?: string
@@ -63,7 +65,7 @@ function hhmmParaMin(t: string | null | undefined): number | null {
   return h * 60 + m
 }
 
-export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds, hideCaixaActions = false, podeAgendar = true, firstProfessionalId }: Props) {
+export default async function GradeTimeline({ businessId, date, hideKpis = false, onlyProfessionalId, excludeProfessionalIds, hideCaixaActions = false, podeAgendar = true, firstProfessionalId, permiteTelaCheia = false }: Props) {
   const excluded = new Set(excludeProfessionalIds ?? [])
   const sb = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -309,6 +311,7 @@ export default async function GradeTimeline({ businessId, date, hideKpis = false
         vendasBalcao={bizFlags?.vendas_balcao_enabled !== false}
         onlyProfessionalId={onlyProfessionalId}
         excludeProfessionalIds={excludeProfessionalIds}
+        permiteTelaCheia={permiteTelaCheia}
       />
 
       <TimelineGridInteractive

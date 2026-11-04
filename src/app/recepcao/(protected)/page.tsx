@@ -149,7 +149,7 @@ export default async function RecepcaoAgendaPage({
           (mobile rola na horizontal); o balcão passa a seguir o mesmo. */}
       <div className="block relative px-4 md:px-6 pt-6 pb-8">
         <Suspense fallback={<div className="h-96 rounded-2xl" style={{ background: 'var(--admin-surface)' }} />}>
-          <GradeTimeline businessId={business.id} date={gradeDate} />
+          <GradeTimeline businessId={business.id} date={gradeDate} permiteTelaCheia />
         </Suspense>
       </div>
 

@@ -239,6 +239,8 @@ export default async function AdminLayout({
             <BrandDecorBackground pattern="scatter" brand={businessSlug} opacity={0.025} />
           </div>
         )}
+        {/* Tela cheia da agenda (04/11/2026): data-agenda-chrome some com html[data-agenda-cheia]. */}
+        <div data-agenda-chrome className="contents">
         <AdminDesktopSidebar
           brand={{ business_name: businessName, business_slug: businessSlug, brand_logo_url: brand.brand_logo_url ?? null }}
           pendingAppointments={pendingAppointments}
@@ -249,8 +251,10 @@ export default async function AdminLayout({
           ehGerente={ehGerente}
           bloqueadas={bloqueadas}
         />
+        </div>
         <div className="admin-shell-content relative z-10">
           {/* Topbar mobile (header + drawer agrupado) · só <lg · coexiste com BottomNav */}
+          <div data-agenda-chrome className="contents">
           <AdminMobileTopBar
             businessName={businessName}
             brandLogoUrl={brand.brand_logo_url ?? null}
@@ -264,6 +268,7 @@ export default async function AdminLayout({
             ehGerente={ehGerente}
             bloqueadas={bloqueadas}
           />
+          </div>
           {/* O InstallBanner SAIU DO LAYOUT (Eduardo, 31/08/2026).
               Montado aqui, ele custava 58px de altura nas 41 telas do admin —
               inclusive na agenda, onde no celular sobravam 34px pro conteúdo.
@@ -275,7 +280,7 @@ export default async function AdminLayout({
               virou pílula dentro da topbar, sem custar altura. Ver
               AdminMobileTopBar. */}
           {trial && (
-            <div className="hidden lg:block">
+            <div data-agenda-chrome className="hidden lg:block">
             <TrialBanner
               diasRestantes={trial.diasRestantes}
               plano={trial.plano}
@@ -286,10 +291,12 @@ export default async function AdminLayout({
             </div>
           )}
           {cobranca && (
+            <div data-agenda-chrome className="contents">
             <BillingDueBanner
               diasAteVencer={cobranca.diasAteVencer}
               status={cobranca.status}
             />
+            </div>
           )}
           {children}
           {/* Tour 'Conheça seu sistema' (13/09/2026) · só negócios liberados. */}

@@ -7,6 +7,7 @@ import { IconChevronLeft, IconChevronRight, IconPlus, IconDollar, IconCheck, Ico
 import { todayBR } from '@/lib/date-br'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import CalendarioMesModal from './CalendarioMesModal'
+import { useAgendaTelaCheia } from './useAgendaTelaCheia'
 
 type Props = {
   date: string // YYYY-MM-DD
@@ -41,6 +42,8 @@ type Props = {
    *  só o que aparece ao abrir o dia (aba Eu / painel da profissional). */
   onlyProfessionalId?: string
   excludeProfessionalIds?: string[]
+  /** Tela cheia (04/11/2026) · mostra o botão "Tela cheia". Só /admin e /recepcao. */
+  permiteTelaCheia?: boolean
 }
 
 function formatBRL(v: number) {
@@ -99,6 +102,7 @@ export default function GradeTimelineHeader({
   vendasBalcao = true,
   onlyProfessionalId,
   excludeProfessionalIds,
+  permiteTelaCheia = false,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -111,6 +115,8 @@ export default function GradeTimelineHeader({
   }, [])
   const isCurrentDay = todayClient !== null && date === todayClient
   const [mesAberto, setMesAberto] = useState(false)
+  const telaCheia = useAgendaTelaCheia(permiteTelaCheia)
+  const cheia = telaCheia.ativo
 
   function navigateTo(newDate: string) {
     const params = new URLSearchParams(searchParams)
@@ -121,10 +127,13 @@ export default function GradeTimelineHeader({
   }
 
   return (
-    <div className="mb-4 space-y-3">
+    <div
+      className={cheia ? 'px-3 py-2' : 'mb-4 space-y-3'}
+      style={cheia ? { background: 'var(--admin-surface)', borderBottom: '1px solid var(--admin-divider)' } : undefined}
+    >
       {/* Mini KPIs do dia · padrão 3D premium · só renderiza se for HOJE
           E não estiver com hideKpis (caso da Home, que já tem KPIsRow em cima) */}
-      {!hideKpis && isCurrentDay && (
+      {!cheia && !hideKpis && isCurrentDay && (
         <div className="grid grid-cols-3 gap-2">
           <MiniKPI
             label="Recebido"
@@ -160,6 +169,8 @@ export default function GradeTimelineHeader({
           ZERO hora visível num aparelho de 794px. A data não sumiu: ela passa
           a viver DENTRO da linha de navegação abaixo, no `lg:hidden`.
           Desktop (≥1024px) continua exatamente como o Eduardo cravou em 28/05. */}
+      {/* Tela cheia: o título grande sai e a data vai pra linha (como no celular). */}
+      {!cheia && (
       <div className="hidden lg:block px-1">
         <p
           className="text-base sm:text-lg font-bold capitalize leading-tight"
@@ -174,6 +185,7 @@ export default function GradeTimelineHeader({
           {totalAppts} {totalAppts === 1 ? 'agendamento' : 'agendamentos'}
         </p>
       </div>
+      )}
 
       {/* Linha de controles · navegação + botão Agendar (data agora vive acima) */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-1">
@@ -257,12 +269,17 @@ export default function GradeTimelineHeader({
               num aparelho de 794px é meia hora de agenda a mais.
               min-w-0 + truncate porque em 363px, depois de Hoje/‹/›/calendário,
               sobram ~150px — sem isso a data empurraria a linha e quebraria. */}
-          <div className="lg:hidden min-w-0 pl-1">
+          <div className={cheia ? 'min-w-0 pl-1' : 'lg:hidden min-w-0 pl-1'}>
             <p
               className="text-sm font-bold capitalize leading-tight truncate"
               style={{ color: 'var(--admin-text)' }}
             >
-              {formatDateCurto(date)}
+              {cheia ? (
+                <>
+                  <span className="sm:hidden">{formatDateCurto(date)}</span>
+                  <span className="hidden sm:inline">{formatDate(date)}</span>
+                </>
+              ) : formatDateCurto(date)}
             </p>
             <p
               className="text-[11px] font-medium tabular-nums leading-tight truncate"
@@ -276,7 +293,46 @@ export default function GradeTimelineHeader({
         {/* Botões de ação · no MOBILE dividem a linha (flex-1 cada · não estoura
             num cel de 390px); no sm+ voltam a auto-width alinhados à direita.
             Registrar venda (balcão · verde) + Agendar (marca). Eduardo 09/06. */}
+        {cheia ? (
+          <button
+            type="button"
+            onClick={telaCheia.desligar}
+            aria-label="Sair da tela cheia"
+            title="Sair da tela cheia (Esc)"
+            className="ml-auto inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-xs font-bold flex-shrink-0"
+            style={{
+              minHeight: 36,
+              background: 'var(--admin-surface)',
+              color: 'var(--admin-text-2)',
+              border: '1px solid var(--admin-border)',
+            }}
+          >
+            <IconTelaCheia sair size={15} />
+            <span className="hidden sm:inline">Sair da tela cheia</span>
+          </button>
+        ) : (
         <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto flex-wrap sm:flex-nowrap justify-end">
+          {/* Tela cheia (04/11/2026) · só a grade, pra recepção deixar aberta no
+              balcão. Celular: só ícone (a linha já tem Registrar venda + Agendar). */}
+          {permiteTelaCheia && (
+            <button
+              type="button"
+              onClick={telaCheia.ligar}
+              aria-label="Tela cheia"
+              title="Tela cheia · só a agenda na tela"
+              className="order-last sm:order-first inline-flex flex-none items-center justify-center gap-1.5 px-3 sm:px-4 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+              style={{
+                minHeight: 44,
+                minWidth: 44,
+                background: 'var(--admin-surface)',
+                color: 'var(--admin-text-2)',
+                border: '1px solid var(--admin-border)',
+              }}
+            >
+              <IconTelaCheia size={16} />
+              <span className="hidden sm:inline">Tela cheia</span>
+            </button>
+          )}
           {/* "Vender produto" SAIU do cabecalho (Eduardo 08/08): eram quatro
               botoes e dois faziam o mesmo verbo. O PDV agora e alcancado de
               dentro do "Registrar venda", que e onde a duvida aparece — e
@@ -338,8 +394,22 @@ export default function GradeTimelineHeader({
           </Link>
           )}
         </div>
+        )}
       </div>
     </div>
+  )
+}
+
+/** Ícone de expandir (4 cantos pra fora) · `sair` = cantos pra dentro. */
+function IconTelaCheia({ size = 16, sair = false }: { size?: number; sair?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {sair ? (
+        <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+      ) : (
+        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+      )}
+    </svg>
   )
 }
 

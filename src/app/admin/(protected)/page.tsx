@@ -110,7 +110,7 @@ export default async function AdminPage({
               ATENÇÃO: prop de servidor, não tem breakpoint — some no desktop
               também. Foi decisão consciente (a mesma regra de aba vale nos dois),
               e volta tirando esta palavra. */}
-          <GradeTimeline businessId={business.id} date={gradeDate} hideKpis />
+          <GradeTimeline businessId={business.id} date={gradeDate} hideKpis permiteTelaCheia />
         </Suspense>
       </div>
     </main>

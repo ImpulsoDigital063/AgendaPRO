@@ -269,6 +269,60 @@ html.admin-theme-switching *::after {
     padding-bottom: 32px;
   }
 }
+/* ============================================================
+   TELA CHEIA DA AGENDA (04/11/2026) · vale em TODOS os breakpoints.
+   Só age com html[data-agenda-cheia], ligado pelo botão "Tela cheia" da
+   grade (useAgendaTelaCheia). Sem o atributo, nenhuma regra abaixo casa:
+   as outras telas do admin/recepção não mudam.
+   Some o chrome (menu, topbar, dock, faixas) e a grade vira uma camada fixa
+   do tamanho da tela. Drawer/modais montam no <body> com z-index maior e
+   continuam abrindo por cima.
+   ============================================================ */
+html[data-agenda-cheia],
+html[data-agenda-cheia] body {
+  overflow: hidden;
+}
+html[data-agenda-cheia] [data-agenda-chrome],
+html[data-agenda-cheia] [data-agenda-cheia-oculto] {
+  display: none !important;
+}
+html[data-agenda-cheia] .grade-timeline {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--admin-bg);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+html[data-agenda-cheia] [data-agenda-grade-root] {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+html[data-agenda-cheia] [data-agenda-grade-main] {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+html[data-agenda-cheia] [data-agenda-grade-card] {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0 !important;
+  border-width: 0 !important;
+}
+html[data-agenda-cheia] [data-agenda-grade-scroll] {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+}
+
 /* Os dois brilhos do accent sairam junto com o resto da decoracao (31/08).
    Em negocio de marca escura — 6 dos 29 — eles pintavam o fundo de cinza
    sujo em vez de dar profundidade. */
