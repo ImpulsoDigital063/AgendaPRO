@@ -21,7 +21,7 @@ import {
   IconDollar,
   IconClock,
   IconStar,
-  IconShare,
+  IconBell,
   IconSearch,
   IconPalette,
   IconUpload,
@@ -70,9 +70,11 @@ type Props = {
   bloqueadas?: string[]
   /** v140 · businesses.cartao_presente_enabled · mostra o Cartão Presente */
   cartaoPresente?: boolean
+  /** Dono que TAMBÉM atende vê "Eu (meus ganhos)" · mesma regra do celular */
+  showOwnerTab?: boolean
 }
 
-export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true, ehGerente = false, bloqueadas = [] }: Props) {
+export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pendingClaims = 0, convenios = false, cartaoPresente = false, vendasBalcao = true, ehGerente = false, bloqueadas = [], showOwnerTab = false }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab')
@@ -87,21 +89,33 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
     window.location.href = '/admin/login'
   }
 
+  /* 04/11/2026 · menu reordenado por USO REAL (Eduardo), mesma ordem da gaveta
+     do celular. Base: registros dos últimos 60 dias em 37 negócios
+     (atendimentos 1.224, comandas 866, mensagens 776, cupons 606, clientes 390,
+     vendas balcão 93, despesas 77, bloqueios 73, produtos 66, pergunte 30,
+     fichas 21, pacotes 2; caixa: 1 fechamento).
+     Saíram do menu (as telas continuam abrindo pelo link):
+     - Divulgação (?tab=divulgacao)
+     - Cartaz de agendamento (QR): virou seção dentro de Negócio
+       (?tab=qr-code e ?tab=whatsapp abrem Negócio rolando até ela)
+     - Notas Fiscais "em breve" (placeholder sem tela). */
   const groups: SidebarGroup[] = [
     {
-      label: 'Painel',
+      label: 'Dia a dia',
       items: [
         { label: 'Início', href: '/admin/inicio', exact: true, Icon: IconHome },
-        // 21/10/2026 · perguntas prontas sobre o negócio, sem IA (mesma entrada no celular)
-        { label: 'Pergunte ao negócio', href: '/admin/perguntas', Icon: IconSparkles },
         { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
+        // histórico de agendamentos com filtros: mora junto da agenda
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
-        // Paridade com o mobile (regra do Eduardo): entrada propria pro Sumidos.
-        { label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock },
-        // Convênio PJ · só existe pra quem tem businesses.convenios_enabled
-        ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
-        { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
+        { label: 'Comandas', href: '/admin/comandas', Icon: IconReceipt },
+        // dono que também atende (mesma regra do celular)
+        ...(showOwnerTab ? [{ label: 'Eu (meus ganhos)', href: '/admin/eu', Icon: IconUser }] : []),
+      ],
+    },
+    {
+      label: 'Clientes e campanhas',
+      items: [
         /* WhatsApp no PAINEL, não em Configurações (Eduardo, 21/08): quando o
            canal cai os avisos param em silêncio, e a dona precisa ver isso na
            tela que ela abre todo dia — não a quatro cliques. */
@@ -118,24 +132,28 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
            lembrete que ela manda na mao. */
         { label: 'Avisos automáticos', href: '/admin/whatsapp', Icon: IconWhatsapp },
         { label: 'Avisos manuais', href: '/admin/avisos-manuais', Icon: IconPencil },
+        { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
+        // entrada própria pro Sumidos (paridade com o celular)
+        { label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock },
+        // 21/10/2026 · perguntas prontas sobre o negócio, sem IA
+        { label: 'Pergunte ao negócio', href: '/admin/perguntas', Icon: IconSparkles },
       ],
     },
     {
       label: 'Financeiro',
       items: [
-        /* Paridade com o mobile (Eduardo, 13/09/2026): entrada propria pro
-           relatorio. No desktop ainda dava pra chegar por Outros > Relatorios,
-           mas em dois cliques e fora do grupo Financeiro. `exact` porque as
-           irmas vivem dentro de /admin/financeiro. */
+        /* `exact` porque as irmas vivem dentro de /admin/financeiro. */
         { label: 'Relatório financeiro', href: '/admin/financeiro', exact: true, Icon: IconTrendingUp },
-        { label: 'Caixa', href: '/admin/caixa', Icon: IconWallet },
+        { label: 'Fluxo de caixa', href: '/admin/financeiro/fluxo-caixa', Icon: IconDollar },
         { label: 'Vendas', href: '/admin/financeiro/vendas', Icon: IconWallet },
         { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconReceipt },
-        { label: 'Comandas', href: '/admin/comandas', Icon: IconReceipt },
-        { label: 'Fluxo de Caixa', href: '/admin/financeiro/fluxo-caixa', Icon: IconDollar },
         { label: 'Sinal', href: '/admin/financeiro/sinal', Icon: IconDollar },
         { label: 'Remunerações', href: '/admin/financeiro/remuneracoes', Icon: IconTrendingUp },
-        { label: 'Notas Fiscais', Icon: IconFile, comingSoon: true },
+        { label: 'Caixa', href: '/admin/caixa', Icon: IconWallet },
+        // Convênio PJ · só existe pra quem tem businesses.convenios_enabled
+        ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
+        // Relatórios (análises) · só no computador; antes ficava sozinho em "Outros"
+        { label: 'Relatórios', href: '/admin/relatorios', Icon: IconChart },
       ],
     },
     {
@@ -164,30 +182,20 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       items: [
         { label: 'Colaboradores', href: '/admin/configuracoes?tab=profissionais', tabMatch: 'profissionais', Icon: IconUser },
         { label: 'Horários', href: '/admin/configuracoes?tab=horarios', tabMatch: 'horarios', Icon: IconClock },
+        { label: 'Bloqueios', href: '/admin/configuracoes?tab=bloqueios', tabMatch: 'bloqueios', Icon: IconClock },
       ],
     },
     {
       label: 'Configurações',
       items: [
         { label: 'Negócio', href: '/admin/configuracoes?tab=negocio', tabMatch: 'negocio', Icon: IconMapPin },
-        { label: 'Fidelidade', href: '/admin/configuracoes?tab=fidelidade', tabMatch: 'fidelidade', Icon: IconStar },
-        { label: 'Maquininhas', href: '/admin/configuracoes?tab=maquininhas', tabMatch: 'maquininhas', Icon: IconWallet },
-        { label: 'Bloqueios', href: '/admin/configuracoes?tab=bloqueios', tabMatch: 'bloqueios', Icon: IconClock },
         { label: 'Aparência', href: '/admin/configuracoes?tab=aparencia', tabMatch: 'aparencia', Icon: IconPalette },
-        { label: 'Fichas Modelo', href: '/admin/configuracoes?tab=fichas-modelo', tabMatch: 'fichas-modelo', Icon: IconFile },
-        /* Isto NUNCA foi conexão de WhatsApp: é o cartaz com QR Code do link
-           de agendamento, pra imprimir e colar no balcão. Com a central de
-           WhatsApp no Painel, manter o nome antigo aqui daria duas abas
-           "WhatsApp" que não têm nada a ver uma com a outra. */
-        { label: 'Cartaz de agendamento', href: '/admin/configuracoes?tab=qr-code', tabMatch: 'qr-code', Icon: IconShare },
-        { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', tabMatch: 'divulgacao', Icon: IconShare },
+        { label: 'Notificações', href: '/admin/configuracoes?tab=notificacoes', tabMatch: 'notificacoes', Icon: IconBell },
+        { label: 'Maquininhas', href: '/admin/configuracoes?tab=maquininhas', tabMatch: 'maquininhas', Icon: IconWallet },
+        { label: 'Fichas modelo', href: '/admin/configuracoes?tab=fichas-modelo', tabMatch: 'fichas-modelo', Icon: IconFile },
+        { label: 'Fidelidade', href: '/admin/configuracoes?tab=fidelidade', tabMatch: 'fidelidade', Icon: IconStar },
         { label: 'Importar', href: '/admin/configuracoes?tab=importar', tabMatch: 'importar', Icon: IconUpload },
-      ],
-    },
-    {
-      label: 'Outros',
-      items: [
-        { label: 'Relatórios', href: '/admin/relatorios', Icon: IconChart },
+        { label: 'Atividades', href: '/admin/atividades', Icon: IconInbox },
       ],
     },
   ]
@@ -197,7 +205,10 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
     const [path] = item.href.split('?')
     // Tab-aware match: rota bate E tab bate (ou item não exige tab)
     if (item.tabMatch) {
-      return pathname === path && currentTab === item.tabMatch
+      if (pathname !== path) return false
+      // o cartaz (QR) virou seção de Negócio: ?tab=qr-code / whatsapp acendem Negócio
+      if (item.tabMatch === 'negocio') return currentTab === 'negocio' || currentTab === 'qr-code' || currentTab === 'whatsapp'
+      return currentTab === item.tabMatch
     }
     if (item.exact) {
       // Sem tab esperada: ativo só se rota bate E não tem tab na URL (ou tab é a default)
@@ -378,14 +389,12 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
             </div>
           </div>
         ))}
-      </nav>
 
-      {/* Footer · Plano · escondido pro Palace (sistema próprio R$2.997 · sem mensalidade) */}
+      {/* Plano + Sair: FIM DA LISTA, rolando junto (04/11/2026). Antes era
+          rodapé fixo e tirava altura da lista o tempo todo.
+          Plano escondido pro Palace (sistema próprio R$2.997 · sem mensalidade). */}
+      <div className="mt-3 pt-3 px-1" style={{ borderTop: '1px solid var(--admin-divider)' }}>
       {brand.business_slug !== 'palace-nail-spa' && !ehGerente && (
-        <div
-          className="px-3 py-3 flex-shrink-0"
-          style={{ borderTop: '1px solid var(--admin-divider)' }}
-        >
           <Link
             href="/admin/configuracoes?tab=plano"
             prefetch={false}
@@ -398,10 +407,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
             </svg>
             {!collapsed && <span className="truncate">Plano e Pagamento</span>}
           </Link>
-        </div>
       )}
-
-      <div className="px-3 pb-3 flex-shrink-0">
         <button
           type="button"
           onClick={sairDaConta}
@@ -417,6 +423,7 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
           {!collapsed && <span className="truncate">Sair da conta</span>}
         </button>
       </div>
+      </nav>
     </aside>
   )
 }

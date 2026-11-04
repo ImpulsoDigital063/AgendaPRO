@@ -106,55 +106,56 @@ export default function AdminMobileTopBar({
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
+  /* 04/11/2026 · menu reordenado por USO REAL (Eduardo). Base: registros dos
+     últimos 60 dias em 37 negócios (atendimentos 1.224, comandas 866,
+     mensagens 776, cupons 606, clientes 390, vendas balcão 93, despesas 77,
+     bloqueios 73, produtos 66, pergunte 30, fichas 21, pacotes 2; caixa: 1
+     fechamento). Mesma ordem na sidebar do computador.
+     Saíram do menu (as telas continuam abrindo pelo link):
+     - Divulgação (?tab=divulgacao)
+     - QR Code: virou a seção "Cartaz e link de agendamento" dentro de Negócio
+       (?tab=qr-code e ?tab=whatsapp abrem Negócio rolando até ela). */
   const groups: { label: string; items: NavItem[] }[] = [
     {
-      label: 'Painel',
+      label: 'Dia a dia',
       items: [
         { label: 'Início', href: '/admin/inicio', Icon: IconHome, exact: true },
-        // 21/10/2026 · perguntas prontas sobre o negócio, sem IA (mesma entrada no desktop)
-        { label: 'Pergunte ao negócio', href: '/admin/perguntas', Icon: IconSparkles },
         { label: 'Atendimentos', href: '/admin', Icon: IconCalendar, badge: pendingAppointments, exact: true },
-        ...(showOwnerTab ? [{ label: 'Eu (meus ganhos)', href: '/admin/eu', Icon: IconUser }] : []),
+        // histórico de agendamentos com filtros: mora junto da agenda
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },
         { label: 'Clientes', href: '/admin/clientes', Icon: IconUsers, badge: pendingClaims },
-        /* Sumidos ganhou entrada propria em 06/09 (Eduardo). Antes so se
-           chegava por dentro de Clientes ou pelo Foco do Dia — quem nao
-           sabia que a funcao existia nunca ia achar. */
-        { label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock },
-        ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
-        // v140 · vale-presente · mesma paridade do desktop (regra do Eduardo, 26/08)
-        ...(cartaoPresente ? [{ label: 'Cartão Presente', href: '/admin/cartao-presente', Icon: IconGift }] : []),
-        { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
-        /* VOLTOU PRO MENU em 31/08. O argumento de 21/08 (a tela so servia
-           pro canal automatico, que nao entregava) deixou de valer: hoje ela
-           tambem hospeda o WhatsApp manual, que sai do numero da propria
-           dona, e' gratis e ja funciona. Era o unico item "Mensagens" do
-           menu e apontava pro tab antigo — foi por ele que o Eduardo caiu na
-           tela velha no celular em 31/08. */
-        /* 07/10/2026: automatico e manual viraram dois itens. Juntos, o manual
-           ficava no fim da tela do automatico e a Rosy nao achou onde editar o
-           lembrete que ela manda na mao. */
+        { label: 'Comandas', href: '/admin/comandas', Icon: IconWallet },
+        ...(showOwnerTab ? [{ label: 'Eu (meus ganhos)', href: '/admin/eu', Icon: IconUser }] : []),
+      ],
+    },
+    {
+      label: 'Clientes e campanhas',
+      items: [
+        /* 07/10/2026: automatico e manual viraram dois itens (a Rosy nao achou
+           onde editar o lembrete que ela manda na mao). */
         { label: 'Avisos automáticos', href: '/admin/whatsapp', Icon: IconWhatsapp },
         { label: 'Avisos manuais', href: '/admin/avisos-manuais', Icon: IconPencil },
+        { label: 'Cupons', href: '/admin/cupons', Icon: IconGift },
+        // entrada própria desde 06/09: quem não sabia que existia nunca achava
+        { label: 'Sumidos', href: '/admin/sumidos', Icon: IconClock },
+        // 21/10/2026 · perguntas prontas sobre o negócio, sem IA
+        { label: 'Pergunte ao negócio', href: '/admin/perguntas', Icon: IconSparkles },
       ],
     },
     {
       label: 'Financeiro',
       items: [
-        /* Entrada propria pro relatorio (Eduardo, 13/09/2026). Ate aqui a tela
-           de /admin/financeiro so era alcancavel pelo "Ver tudo" do cartao da
-           Inicio — a tela que a Leticia (Viva Cacheada) mais usa era a mais
-           escondida do sistema. `exact` porque as irmas (vendas, despesas,
-           fluxo-caixa, sinal, remuneracoes) vivem DENTRO de /admin/financeiro
-           e acenderiam o item junto sem isso. */
+        /* `exact` porque as irmas (vendas, despesas, fluxo-caixa, sinal,
+           remuneracoes) vivem DENTRO de /admin/financeiro. */
         { label: 'Relatório financeiro', href: '/admin/financeiro', Icon: IconTrendingUp, exact: true },
-        { label: 'Caixa', href: '/admin/caixa', Icon: IconWallet },
+        { label: 'Fluxo de caixa', href: '/admin/financeiro/fluxo-caixa', Icon: IconDollar },
         { label: 'Vendas', href: '/admin/financeiro/vendas', Icon: IconWallet },
         { label: 'Despesas', href: '/admin/financeiro/despesas', Icon: IconWallet },
-        { label: 'Comandas', href: '/admin/comandas', Icon: IconWallet },
-        { label: 'Fluxo de Caixa', href: '/admin/financeiro/fluxo-caixa', Icon: IconDollar },
         { label: 'Sinal', href: '/admin/financeiro/sinal', Icon: IconDollar },
         { label: 'Remunerações', href: '/admin/financeiro/remuneracoes', Icon: IconTrendingUp },
+        { label: 'Caixa', href: '/admin/caixa', Icon: IconWallet },
+        // Convênio PJ · só pra quem tem businesses.convenios_enabled
+        ...(convenios ? [{ label: 'Convênios', href: '/admin/convenios', Icon: IconUsers }] : []),
       ],
     },
     {
@@ -162,11 +163,10 @@ export default function AdminMobileTopBar({
       items: [
         { label: 'Serviços', href: '/admin/configuracoes?tab=servicos', Icon: IconSparkles },
         ...(vendasBalcao ? [{ label: 'Produtos', href: '/admin/produtos', Icon: IconGift }] : []),
-        // Combo (serviço + produto) · entrada própria abaixo de Produtos, igual
-        // ao desktop (Eduardo 24/07/2026). Já em produção.
         { label: 'Combos', href: '/admin/combos', Icon: IconLayers },
-        // Pacote (multi-serviço resgatável) · gated pelo PACOTE_ENABLED.
         ...(PACOTE_ENABLED ? [{ label: 'Pacotes', href: '/admin/pacotes', Icon: IconGift }] : []),
+        // v140 · vale-presente · só pra quem contratou
+        ...(cartaoPresente ? [{ label: 'Cartão Presente', href: '/admin/cartao-presente', Icon: IconGift }] : []),
       ],
     },
     {
@@ -174,26 +174,19 @@ export default function AdminMobileTopBar({
       items: [
         { label: 'Colaboradores', href: '/admin/configuracoes?tab=profissionais', Icon: IconUser },
         { label: 'Horários', href: '/admin/configuracoes?tab=horarios', Icon: IconClock },
+        { label: 'Bloqueios', href: '/admin/configuracoes?tab=bloqueios', Icon: IconClock },
       ],
     },
     {
       label: 'Configurações',
       items: [
         { label: 'Negócio', href: '/admin/configuracoes?tab=negocio', Icon: IconSettings },
-        { label: 'Fidelidade', href: '/admin/configuracoes?tab=fidelidade', Icon: IconGift },
-        { label: 'Maquininhas', href: '/admin/configuracoes?tab=maquininhas', Icon: IconWallet },
-        { label: 'Bloqueios', href: '/admin/configuracoes?tab=bloqueios', Icon: IconClock },
-        { label: 'Fichas Modelo', href: '/admin/configuracoes?tab=fichas-modelo', Icon: IconSearch },
         { label: 'Aparência', href: '/admin/configuracoes?tab=aparencia', Icon: IconSparkles },
-        { label: 'QR Code', href: '/admin/configuracoes?tab=qr-code', Icon: IconSettings },
         { label: 'Notificações', href: '/admin/configuracoes?tab=notificacoes', Icon: IconClock },
-        { label: 'Divulgação', href: '/admin/configuracoes?tab=divulgacao', Icon: IconTrendingUp },
+        { label: 'Maquininhas', href: '/admin/configuracoes?tab=maquininhas', Icon: IconWallet },
+        { label: 'Fichas modelo', href: '/admin/configuracoes?tab=fichas-modelo', Icon: IconSearch },
+        { label: 'Fidelidade', href: '/admin/configuracoes?tab=fidelidade', Icon: IconGift },
         { label: 'Importar', href: '/admin/configuracoes?tab=importar', Icon: IconUser },
-      ],
-    },
-    {
-      label: 'Outros',
-      items: [
         { label: 'Atividades', href: '/admin/atividades', Icon: IconClock },
       ],
     },
@@ -204,7 +197,10 @@ export default function AdminMobileTopBar({
     // Itens de Configurações compartilham /admin/configuracoes — distingue pela tab
     if (query?.includes('tab=')) {
       const tab = new URLSearchParams(query).get('tab')
-      return pathname.startsWith('/admin/configuracoes') && currentTab === tab
+      if (!pathname.startsWith('/admin/configuracoes')) return false
+      // o cartaz (QR) virou seção de Negócio: ?tab=qr-code / whatsapp acendem Negócio
+      if (tab === 'negocio') return currentTab === 'negocio' || currentTab === 'qr-code' || currentTab === 'whatsapp'
+      return currentTab === tab
     }
     if (item.exact) return pathname === path
     return pathname.startsWith(path)
@@ -370,11 +366,12 @@ export default function AdminMobileTopBar({
                   </div>
                 </div>
               ))}
-            </div>
 
-            <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--admin-divider)' }}>
-              {/* Plano no rodapé, discreto, igual ao desktop (Eduardo, 15/10): no
-                  meio de Configurações a dona não achava onde pagar a mensalidade. */}
+            {/* Plano + Sair: FIM DA LISTA, rolando junto (04/11/2026). Antes era
+                rodapé fixo e comia ~110px da gaveta o tempo todo.
+                Plano fora de Configurações (Eduardo, 15/10): no meio delas a
+                dona não achava onde pagar a mensalidade. */}
+            <div className="pt-3 px-1" style={{ borderTop: '1px solid var(--admin-divider)' }}>
               {!ehGerente && (
                 <Link
                   href="/admin/configuracoes?tab=plano"
@@ -401,6 +398,7 @@ export default function AdminMobileTopBar({
                 </svg>
                 <span>Sair da conta</span>
               </button>
+            </div>
             </div>
           </nav>
         </div>,

@@ -250,6 +250,7 @@ export default async function AdminLayout({
           vendasBalcao={business?.vendas_balcao_enabled !== false}
           ehGerente={ehGerente}
           bloqueadas={bloqueadas}
+          showOwnerTab={showOwnerTab}
         />
         </div>
         <div className="admin-shell-content relative z-10">

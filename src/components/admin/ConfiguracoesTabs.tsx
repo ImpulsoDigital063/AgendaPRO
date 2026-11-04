@@ -124,6 +124,15 @@ export default function ConfiguracoesTabs({
   }, [safeResolvedTab])
 
 
+  // ?tab=qr-code (ou o alias whatsapp) abre Negócio rolando até o cartaz
+  useEffect(() => {
+    if (activeTab !== 'qr-code') return
+    const t = window.setTimeout(() => {
+      document.getElementById('cartaz-agendamento')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    }, 150)
+    return () => window.clearTimeout(t)
+  }, [activeTab])
+
   // Nicho vem de `category` (lista fechada), com fallback pra descrição só
   // quando ela ainda é literalmente uma categoria antiga. Ver lib/segmento.
   const categoriaDoNegocio = resolveCategoria(business)
@@ -144,11 +153,36 @@ export default function ConfiguracoesTabs({
           desktop usa a sidebar. A barra de abas foi removida daqui (03/06). */}
 
       {/* Tab content */}
-      {activeTab === 'negocio' && (
+      {(activeTab === 'negocio' || activeTab === 'qr-code') && (
         <>
           <NegocioTab business={business} />
           {/* v175 · só a dona de negócio liberado vê (o cartão se esconde sozinho) */}
           {!ehGerente && <GoogleAgendaCard />}
+          {/* 04/11/2026 · o cartaz/QR do link de agendamento saiu do menu e
+              virou seção de Negócio (Eduardo). ?tab=qr-code e ?tab=whatsapp
+              continuam valendo: abrem aqui e rolam até a seção.
+              O marcador do checklist só dispara quando a dona chega PELO link
+              do QR (checklist, tour, link antigo) — abrir Negócio pra mudar o
+              telefone não conta como "compartilhou o link". */}
+          {activeTab === 'qr-code' && (
+            <OnboardingMarker
+              field="qr_code_compartilhado"
+              alreadyMarked={business.qr_code_compartilhado ?? false}
+            />
+          )}
+          <section
+            id="cartaz-agendamento"
+            data-tour="tab-qr-code"
+            className="mt-8 pt-6"
+            style={{ borderTop: '1px solid var(--admin-divider)', scrollMarginTop: 72 }}
+          >
+            <WhatsAppQRTab
+              business={business}
+              onNavigateToNegocio={() => {
+                if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+            />
+          </section>
         </>
       )}
 
@@ -239,24 +273,6 @@ export default function ConfiguracoesTabs({
             if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
         />
-      )}
-
-      {activeTab === 'qr-code' && (
-        <>
-          <OnboardingMarker
-            field="qr_code_compartilhado"
-            alreadyMarked={business.qr_code_compartilhado ?? false}
-          />
-          <div data-tour="tab-qr-code">
-          <WhatsAppQRTab
-            business={business}
-            onNavigateToNegocio={() => {
-              setActiveTab('negocio')
-              if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
-            }}
-          />
-          </div>
-        </>
       )}
 
       {activeTab === 'divulgacao' && <DivulgacaoTab business={business} />}

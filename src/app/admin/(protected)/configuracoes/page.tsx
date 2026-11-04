@@ -16,8 +16,9 @@ const CONFIG_TAB_LABELS: Record<string, string> = {
   bloqueios: 'Bloqueios',
   'fichas-modelo': 'Fichas Modelo',
   aparencia: 'Aparência',
-  'qr-code': 'QR Code',
-  whatsapp: 'QR Code',
+  // 04/11/2026 · o cartaz (QR) virou seção de Negócio; links antigos abrem Negócio
+  'qr-code': 'Negócio',
+  whatsapp: 'Negócio',
   divulgacao: 'Divulgação',
   plano: 'Plano',
   importar: 'Importar',
