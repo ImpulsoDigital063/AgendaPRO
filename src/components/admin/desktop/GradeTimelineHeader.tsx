@@ -392,16 +392,16 @@ export default function GradeTimelineHeader({
         {/* Botões de ação · no MOBILE dividem a linha (flex-1 cada · não estoura
             num cel de 390px); no sm+ voltam a auto-width alinhados à direita.
             Registrar venda (balcão · verde) + Agendar (marca). Eduardo 09/06. */}
-        <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto flex-wrap sm:flex-nowrap justify-end">
+        <div className="flex items-stretch sm:items-center gap-2 w-full sm:w-auto sm:ml-auto flex-nowrap justify-end">
           {/* Tela cheia (04/11/2026) · só a grade, pra recepção deixar aberta no
-              balcão. Celular: só ícone (a linha já tem Registrar venda + Agendar). */}
+              balcão. Celular: os 3 botões (Registrar venda, Agendar, Tela cheia) dividem a linha em partes iguais, mesma altura (Eduardo 04/11). */}
           {permiteTelaCheia && (
             <button
               type="button"
               onClick={telaCheia.ligar}
               aria-label="Tela cheia"
               title="Tela cheia · só a agenda na tela"
-              className="order-last sm:order-first inline-flex flex-none items-center justify-center gap-1.5 px-3 sm:px-4 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+              className="order-last sm:order-first inline-flex flex-1 basis-0 sm:flex-none sm:basis-auto items-center justify-center gap-1.5 px-2 sm:px-4 rounded-xl text-[13px] sm:text-sm leading-tight font-bold transition-all hover:-translate-y-px"
               style={{
                 minHeight: 44,
                 minWidth: 44,
@@ -411,7 +411,7 @@ export default function GradeTimelineHeader({
               }}
             >
               <IconTelaCheia size={16} />
-              <span className="hidden sm:inline">Tela cheia</span>
+              <span>Tela cheia</span>
             </button>
           )}
           {/* "Vender produto" SAIU do cabecalho (Eduardo 08/08): eram quatro
@@ -441,7 +441,7 @@ export default function GradeTimelineHeader({
           <Link
             href={`?balcao=1&date=${date}`}
             data-tour="registrar-venda"
-            className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+            className="inline-flex flex-1 basis-0 sm:flex-none sm:basis-auto items-center justify-center gap-1.5 px-2 sm:px-4 py-2.5 rounded-xl text-[13px] sm:text-sm leading-tight font-bold transition-all hover:-translate-y-px"
             style={{
               minHeight: 44,
               background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
@@ -462,7 +462,7 @@ export default function GradeTimelineHeader({
           <Link
             href={`?agendar=1&date=${date}`}
             data-tour="agendar"
-            className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-px"
+            className="inline-flex flex-1 basis-0 sm:flex-none sm:basis-auto items-center justify-center gap-1.5 px-2 sm:px-4 py-2.5 rounded-xl text-[13px] sm:text-sm leading-tight font-bold transition-all hover:-translate-y-px"
             style={{
               minHeight: 44,
               background: 'linear-gradient(180deg, var(--brand-primary, #1AA9A8) 0%, color-mix(in srgb, var(--brand-primary, #1AA9A8) 70%, black) 100%)',
