@@ -13,16 +13,18 @@
  *   filho: drawer do atendimento, modal de agendar e calendário montam via
  *   portal no <body>; com fullscreen num filho eles sumiriam.
  * - Onde não existe Fullscreen API (iPhone Safari), o modo vale só pelo CSS.
- * - A escolha fica lembrada por aparelho (localStorage). Ao recarregar volta
- *   só o modo CSS: o navegador exige gesto do usuário pra fullscreen.
+ * - NUNCA abre sozinho (Eduardo, 04/11): recarregar ou abrir o app sempre
+ *   começa na agenda normal. Nada é lembrado no aparelho; a chave que a 1ª
+ *   versão de teste gravava é apagada ao montar.
  * - Sair: botão, Esc (quando não há modal aberto) ou saída do fullscreen do
  *   navegador (evento fullscreenchange).
  * ============================================================ */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 
 const ATTR = 'data-agenda-cheia'
-const CHAVE = 'agendapro:agenda-tela-cheia'
+/* Chave da 1ª versão (lembrava por aparelho) · só pra limpar quem testou. */
+const CHAVE_ANTIGA = 'agendapro:agenda-tela-cheia'
 
 /* Estado de módulo: sobrevive a remontagem do cabeçalho (troca de dia). */
 let navegadorEmTelaCheia = false
@@ -65,25 +67,31 @@ function sairFullscreenNavegador() {
   }
 }
 
-function lerSalvo(): boolean {
+function limparChaveAntiga() {
   try {
-    return window.localStorage.getItem(CHAVE) === '1'
+    window.localStorage.removeItem(CHAVE_ANTIGA)
   } catch {
-    return false
-  }
-}
-
-function salvar(on: boolean) {
-  try {
-    if (on) window.localStorage.setItem(CHAVE, '1')
-    else window.localStorage.removeItem(CHAVE)
-  } catch {
-    /* modo privado / storage bloqueado: só não lembra */
+    /* storage bloqueado: nada a limpar */
   }
 }
 
 function temModalAberto(): boolean {
   return !!document.querySelector('[role="dialog"][aria-modal="true"]')
+}
+
+/** Lê se a tela cheia está ligada (atributo no <html>) · pra grade adensar as
+ *  linhas e alargar colunas só nesse modo. Fora dele devolve false. */
+function assinarAtributo(cb: () => void) {
+  const mo = new MutationObserver(cb)
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: [ATTR] })
+  return () => mo.disconnect()
+}
+export function useTelaCheiaAtiva(): boolean {
+  return useSyncExternalStore(
+    assinarAtributo,
+    () => document.documentElement.hasAttribute(ATTR),
+    () => false,
+  )
 }
 
 export function useAgendaTelaCheia(habilitado: boolean) {
@@ -97,13 +105,11 @@ export function useAgendaTelaCheia(habilitado: boolean) {
 
   const desligar = useCallback(() => {
     aplicar(false)
-    salvar(false)
     sairFullscreenNavegador()
   }, [aplicar])
 
   const ligar = useCallback(() => {
     aplicar(true)
-    salvar(true)
     pedirFullscreenNavegador()
   }, [aplicar])
 
@@ -111,7 +117,10 @@ export function useAgendaTelaCheia(habilitado: boolean) {
     if (!habilitado) return
     montados++
 
-    if ((navegadorEmTelaCheia && elementoFullscreen()) || lerSalvo()) aplicar(true)
+    limparChaveAntiga()
+    // Só troca de dia DENTRO da tela cheia (navegador ainda em fullscreen)
+    // remonta já ligado. Abrir/recarregar o app: sempre agenda normal.
+    if (navegadorEmTelaCheia && elementoFullscreen()) aplicar(true)
 
     function onFullscreenChange() {
       const el = elementoFullscreen()

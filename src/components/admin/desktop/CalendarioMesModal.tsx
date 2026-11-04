@@ -29,13 +29,13 @@ type ItemDia = { id: string; hora: string; servico: string; cliente: string; pro
 
 const SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
-function shiftMes(mes: string, delta: number): string {
+export function shiftMes(mes: string, delta: number): string {
   const [a, m] = mes.split('-').map(Number)
   const d = new Date(Date.UTC(a, m - 1 + delta, 1))
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
-function nomeMes(mes: string): string {
+export function nomeMes(mes: string): string {
   const [a, m] = mes.split('-').map(Number)
   const nome = new Date(Date.UTC(a, m - 1, 15)).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
   return nome[0].toUpperCase() + nome.slice(1)
@@ -261,7 +261,7 @@ export default function CalendarioMesModal({
                 type="button"
                 onClick={() => escolherDia(iso)}
                 aria-pressed={escolhido}
-                className="min-w-0 min-h-[76px] sm:min-h-[104px] rounded-lg sm:rounded-xl p-1 sm:p-1.5 flex flex-col gap-0.5 text-left transition-transform active:scale-95"
+                className="min-w-0 min-h-[76px] sm:min-h-[clamp(56px,calc((92vh_-_300px)/6),104px)] lg:min-h-[104px] rounded-lg sm:rounded-xl p-1 sm:p-1.5 flex flex-col gap-0.5 text-left transition-transform active:scale-95"
                 style={{
                   background: n > 0 ? 'color-mix(in srgb, var(--brand-primary, #1AA9A8) 10%, transparent)' : 'transparent',
                   border: `1.5px solid ${escolhido ? 'var(--brand-primary, #1AA9A8)' : 'transparent'}`,

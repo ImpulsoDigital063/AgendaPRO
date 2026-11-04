@@ -7,6 +7,7 @@ import { IconChevronLeft, IconChevronRight, IconPlus, IconDollar, IconCheck, Ico
 import { todayBR } from '@/lib/date-br'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import CalendarioMesModal from './CalendarioMesModal'
+import CalendarioMesLateral from './CalendarioMesLateral'
 import { useAgendaTelaCheia } from './useAgendaTelaCheia'
 
 type Props = {
@@ -85,6 +86,14 @@ function formatDateCurto(date: string): string {
   })
 }
 
+/* Tela cheia no celular (04/11/2026): "qua., 04/11". A linha única tem Hoje,
+   ‹ ›, a data e Sair; "Qua., 04 De Nov." truncava em 390px. */
+function formatDateMini(date: string): string {
+  const d = new Date(date + 'T12:00:00')
+  const dia = d.toLocaleDateString('pt-BR', { weekday: 'short' })
+  return `${dia} ${date.slice(8, 10)}/${date.slice(5, 7)}`
+}
+
 // CIC Onda 5C P0 #1: chamar `new Date()` direto no render causava
 // React #418 (hydration mismatch) quando servidor (UTC) e browser (BR)
 // estavam em dias diferentes na virada da meia-noite. Agora usa state
@@ -126,14 +135,112 @@ export default function GradeTimelineHeader({
     router.push(`${areaBasePath(pathname)}?${params.toString()}`)
   }
 
+  if (cheia) {
+    const btnBase = 'h-11 lg:h-9 rounded-lg flex items-center justify-center flex-shrink-0'
+    const btnNeutro = { background: 'var(--admin-surface)', color: 'var(--admin-text-mute)', border: '1px solid var(--admin-border)' }
+    return (
+      <>
+        {/* TELA CHEIA · cabeçalho de 1 linha (todos os tamanhos). Alvos de 44px
+            abaixo de 1024px (tablet do balcão / celular); 36px no computador. */}
+        <div
+          className="flex flex-nowrap items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5"
+          style={{ background: 'var(--admin-surface)', borderBottom: '1px solid var(--admin-divider)' }}
+        >
+          <button
+            type="button"
+            onClick={() => navigateTo(todayBR())}
+            className={`${btnBase} px-3 text-xs font-bold uppercase tracking-wider`}
+            style={isCurrentDay
+              ? { background: 'var(--brand-primary, #1AA9A8)', color: '#fff' }
+              : btnNeutro}
+          >
+            Hoje
+          </button>
+          <button type="button" onClick={() => navigateTo(shiftDate(date, -1))} aria-label="Dia anterior" className={`${btnBase} w-11 lg:w-9`} style={btnNeutro}>
+            <IconChevronLeft size={18} />
+          </button>
+          <button type="button" onClick={() => navigateTo(shiftDate(date, 1))} aria-label="Próximo dia" className={`${btnBase} w-11 lg:w-9`} style={btnNeutro}>
+            <IconChevronRight size={18} />
+          </button>
+
+          {/* Data = botão do mês (tablet e celular). No computador o mês já
+              está no painel lateral, então aqui é só texto. */}
+          <button
+            type="button"
+            onClick={() => setMesAberto(true)}
+            aria-label={`Ver agenda do mês · ${formatDate(date)}`}
+            className="min-w-0 flex-1 h-11 lg:h-auto lg:pointer-events-none flex items-center gap-2 px-2 rounded-lg text-left"
+          >
+            <span className="lg:hidden flex-shrink-0" style={{ color: 'var(--brand-primary, #1AA9A8)' }}>
+              <IconCalendar size={18} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm sm:text-base font-bold capitalize leading-tight truncate" style={{ color: 'var(--admin-text)' }}>
+                <span className="sm:hidden">{formatDateMini(date)}</span>
+                <span className="hidden sm:inline">{formatDate(date)}</span>
+              </span>
+              <span className="block text-[11px] font-medium tabular-nums leading-tight truncate" style={{ color: 'var(--admin-text-mute)' }}>
+                {totalAppts} {totalAppts === 1 ? 'agendamento' : 'agendamentos'}
+              </span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={telaCheia.desligar}
+            aria-label="Sair da tela cheia"
+            title="Sair da tela cheia (Esc)"
+            className={`${btnBase} min-w-11 lg:min-w-9 gap-1.5 px-2.5 sm:px-3 text-xs font-bold`}
+            style={{ ...btnNeutro, color: 'var(--admin-text-2)' }}
+          >
+            <IconTelaCheia sair size={16} />
+            <span className="sm:hidden">Sair</span>
+            <span className="hidden sm:inline">Sair da tela cheia</span>
+          </button>
+        </div>
+
+        {/* Computador (≥1024px): mês fixo à esquerda; o CSS da tela cheia
+            empurra a grade 264px pra direita. */}
+        <aside
+          className="hidden lg:block overflow-y-auto"
+          style={{
+            position: 'fixed',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: 264,
+            background: 'var(--admin-surface)',
+            borderRight: '1px solid var(--admin-divider)',
+          }}
+          aria-label="Calendário do mês"
+        >
+          <CalendarioMesLateral
+            date={date}
+            today={todayClient}
+            onlyProfessionalId={onlyProfessionalId}
+            excludeProfessionalIds={excludeProfessionalIds}
+            onPick={navigateTo}
+          />
+        </aside>
+
+        <CalendarioMesModal
+          open={mesAberto}
+          date={date}
+          today={todayClient}
+          onlyProfessionalId={onlyProfessionalId}
+          excludeProfessionalIds={excludeProfessionalIds}
+          onPick={(d) => { setMesAberto(false); navigateTo(d) }}
+          onClose={() => setMesAberto(false)}
+        />
+      </>
+    )
+  }
+
   return (
-    <div
-      className={cheia ? 'px-3 py-2' : 'mb-4 space-y-3'}
-      style={cheia ? { background: 'var(--admin-surface)', borderBottom: '1px solid var(--admin-divider)' } : undefined}
-    >
+    <div className="mb-4 space-y-3">
       {/* Mini KPIs do dia · padrão 3D premium · só renderiza se for HOJE
           E não estiver com hideKpis (caso da Home, que já tem KPIsRow em cima) */}
-      {!cheia && !hideKpis && isCurrentDay && (
+      {!hideKpis && isCurrentDay && (
         <div className="grid grid-cols-3 gap-2">
           <MiniKPI
             label="Recebido"
@@ -169,8 +276,6 @@ export default function GradeTimelineHeader({
           ZERO hora visível num aparelho de 794px. A data não sumiu: ela passa
           a viver DENTRO da linha de navegação abaixo, no `lg:hidden`.
           Desktop (≥1024px) continua exatamente como o Eduardo cravou em 28/05. */}
-      {/* Tela cheia: o título grande sai e a data vai pra linha (como no celular). */}
-      {!cheia && (
       <div className="hidden lg:block px-1">
         <p
           className="text-base sm:text-lg font-bold capitalize leading-tight"
@@ -185,7 +290,6 @@ export default function GradeTimelineHeader({
           {totalAppts} {totalAppts === 1 ? 'agendamento' : 'agendamentos'}
         </p>
       </div>
-      )}
 
       {/* Linha de controles · navegação + botão Agendar (data agora vive acima) */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-1">
@@ -269,17 +373,12 @@ export default function GradeTimelineHeader({
               num aparelho de 794px é meia hora de agenda a mais.
               min-w-0 + truncate porque em 363px, depois de Hoje/‹/›/calendário,
               sobram ~150px — sem isso a data empurraria a linha e quebraria. */}
-          <div className={cheia ? 'min-w-0 pl-1' : 'lg:hidden min-w-0 pl-1'}>
+          <div className="lg:hidden min-w-0 pl-1">
             <p
               className="text-sm font-bold capitalize leading-tight truncate"
               style={{ color: 'var(--admin-text)' }}
             >
-              {cheia ? (
-                <>
-                  <span className="sm:hidden">{formatDateCurto(date)}</span>
-                  <span className="hidden sm:inline">{formatDate(date)}</span>
-                </>
-              ) : formatDateCurto(date)}
+              {formatDateCurto(date)}
             </p>
             <p
               className="text-[11px] font-medium tabular-nums leading-tight truncate"
@@ -293,24 +392,6 @@ export default function GradeTimelineHeader({
         {/* Botões de ação · no MOBILE dividem a linha (flex-1 cada · não estoura
             num cel de 390px); no sm+ voltam a auto-width alinhados à direita.
             Registrar venda (balcão · verde) + Agendar (marca). Eduardo 09/06. */}
-        {cheia ? (
-          <button
-            type="button"
-            onClick={telaCheia.desligar}
-            aria-label="Sair da tela cheia"
-            title="Sair da tela cheia (Esc)"
-            className="ml-auto inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-xs font-bold flex-shrink-0"
-            style={{
-              minHeight: 36,
-              background: 'var(--admin-surface)',
-              color: 'var(--admin-text-2)',
-              border: '1px solid var(--admin-border)',
-            }}
-          >
-            <IconTelaCheia sair size={15} />
-            <span className="hidden sm:inline">Sair da tela cheia</span>
-          </button>
-        ) : (
         <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto flex-wrap sm:flex-nowrap justify-end">
           {/* Tela cheia (04/11/2026) · só a grade, pra recepção deixar aberta no
               balcão. Celular: só ícone (a linha já tem Registrar venda + Agendar). */}
@@ -324,9 +405,9 @@ export default function GradeTimelineHeader({
               style={{
                 minHeight: 44,
                 minWidth: 44,
-                background: 'var(--admin-surface)',
-                color: 'var(--admin-text-2)',
-                border: '1px solid var(--admin-border)',
+                background: 'color-mix(in srgb, var(--brand-primary, #1AA9A8) 12%, var(--admin-surface))',
+                color: 'color-mix(in srgb, var(--brand-primary, #1AA9A8) 80%, black)',
+                border: '1.5px solid var(--brand-primary, #1AA9A8)',
               }}
             >
               <IconTelaCheia size={16} />
@@ -394,7 +475,6 @@ export default function GradeTimelineHeader({
           </Link>
           )}
         </div>
-        )}
       </div>
     </div>
   )

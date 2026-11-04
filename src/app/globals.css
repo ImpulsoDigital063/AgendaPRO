@@ -322,6 +322,12 @@ html[data-agenda-cheia] [data-agenda-grade-scroll] {
   min-height: 0;
   max-height: none !important;
 }
+/* Computador: o calendário do mês fica fixo à esquerda (264px). */
+@media (min-width: 1024px) {
+  html[data-agenda-cheia] .grade-timeline {
+    padding-left: calc(264px + env(safe-area-inset-left));
+  }
+}
 
 /* Os dois brilhos do accent sairam junto com o resto da decoracao (31/08).
    Em negocio de marca escura — 6 dos 29 — eles pintavam o fundo de cinza

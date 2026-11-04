@@ -12,6 +12,7 @@ import PdvModal from '@/components/admin/pdv/PdvModal'
 import ResgatarPacoteModal, { type ResgateSelecionado } from '@/components/admin/pacotes/ResgatarPacoteModal'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import { MiniKPI } from './GradeTimelineHeader'
+import { useTelaCheiaAtiva } from './useAgendaTelaCheia'
 import { blockAppliesTo, blockTimeToMinutes, type BlockRow } from '@/lib/blocks'
 import { todayBR } from '@/lib/date-br'
 
@@ -412,6 +413,21 @@ export default function TimelineGridInteractive({
     () => new Set(profs.filter((p) => !hiddenProfIds.has(p.id)).map((p) => p.id)),
     [profs, hiddenProfIds],
   )
+  // Tela cheia da agenda (04/11/2026) · mede a altura útil da grade pra adensar.
+  const telaCheia = useTelaCheiaAtiva()
+  const gradeScrollRef = useRef<HTMLDivElement>(null)
+  const [alturaUtilGrade, setAlturaUtilGrade] = useState<number | null>(null)
+  useEffect(() => {
+    const el = gradeScrollRef.current
+    if (!telaCheia || !el || typeof ResizeObserver === 'undefined') return
+    const medir = () => {
+      const cab = el.firstElementChild as HTMLElement | null
+      setAlturaUtilGrade(el.clientHeight - (cab?.offsetHeight ?? 0))
+    }
+    const ro = new ResizeObserver(medir)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [telaCheia, profs.length, hiddenProfIds])
   const [interval, setInterval] = useState<Interval>(30)
   const [colorMode, setColorMode] = useState<ColorMode>('service')
   const [collapsed, setCollapsed] = useState(false)
@@ -471,7 +487,15 @@ export default function TimelineGridInteractive({
   const visibleProfs = profs.filter((p) => visibleProfIds.has(p.id))
   const slots = buildSlots(hourStart, hourEnd, interval)
   // Altura proporcional ao intervalo · 30min=56 · 15min=28 · 60min=112
-  const SLOT_HEIGHT = (SLOT_HEIGHT_30 * interval) / 30
+  const SLOT_HEIGHT_NORMAL = (SLOT_HEIGHT_30 * interval) / 30
+  // Tela cheia (04/11/2026): as linhas encolhem até o dia caber na altura da
+  // tela (piso de 22px por linha, teto = altura normal). Modo normal intocado.
+  const SLOT_HEIGHT = telaCheia && alturaUtilGrade
+    ? Math.max(22, Math.min(SLOT_HEIGHT_NORMAL, Math.floor(alturaUtilGrade / slots.length)))
+    : SLOT_HEIGHT_NORMAL
+  // Tela cheia: coluna mínima menor (100px) pra caber mais profissionais sem
+  // scroll horizontal (tablet do balcão). Normal segue 140px.
+  const colunaMin = telaCheia ? 100 : 140
   const gridHeight = slots.length * SLOT_HEIGHT
   const dayStartMin = hourStart * 60
 
@@ -791,6 +815,7 @@ export default function TimelineGridInteractive({
                 só o body scrollava · header ficava preso. */}
             <div
               data-agenda-grade-scroll
+              ref={gradeScrollRef}
               className="relative overflow-auto"
               style={{
                 // 03/06: dock removido (R1) liberou espaço vertical no mobile/tablet.
@@ -810,7 +835,7 @@ export default function TimelineGridInteractive({
               <div
                 className="grid"
                 style={{
-                  gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(140px, 1fr))`,
+                  gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(${colunaMin}px, 1fr))`,
                   background: 'var(--admin-surface-hi)',
                   borderBottom: '1px solid var(--admin-border)',
                   position: 'sticky',
@@ -820,9 +845,9 @@ export default function TimelineGridInteractive({
               >
                 <div />
                 {visibleProfs.map((p) => (
-                  <div key={p.id} className="px-3 py-3 flex items-center gap-2 min-w-0">
+                  <div key={p.id} className={telaCheia ? "px-2 py-1.5 flex items-center gap-1.5 min-w-0" : "px-3 py-3 flex items-center gap-2 min-w-0"}>
                     <span
-                      className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
+                      className={`flex-shrink-0 rounded-full items-center justify-center text-xs font-bold overflow-hidden ${telaCheia ? "hidden sm:flex w-7 h-7" : "flex w-8 h-8"}`}
                       style={{ background: colorForProf(p.id), color: '#fff' }}
                     >
                       {p.photo_url ? (
@@ -832,7 +857,15 @@ export default function TimelineGridInteractive({
                         p.name.slice(0, 1).toUpperCase()
                       )}
                     </span>
-                    <span className="text-sm font-semibold truncate" style={{ color: 'var(--admin-text)' }} title={p.name}>
+                    {/* Tela cheia: coluna mais estreita, então o nome quebra em
+                        até 2 linhas em vez de virar "Juliana A…". */}
+                    <span
+                      className={telaCheia
+                        ? 'text-xs sm:text-sm font-semibold leading-tight line-clamp-2 break-words'
+                        : 'text-sm font-semibold truncate'}
+                      style={{ color: 'var(--admin-text)' }}
+                      title={p.name}
+                    >
                       {p.name}
                     </span>
                   </div>
@@ -843,7 +876,7 @@ export default function TimelineGridInteractive({
               <div
                 className="grid relative"
                 style={{
-                  gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(140px, 1fr))`,
+                  gridTemplateColumns: `64px repeat(${visibleProfs.length}, minmax(${colunaMin}px, 1fr))`,
                 }}
               >
               {/* Coluna de horas */}
