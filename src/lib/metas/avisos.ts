@@ -77,7 +77,7 @@ const dias = (n: number) => `${n} ${n === 1 ? 'dia' : 'dias'}`
 /** Frase da ação de hoje pro aviso de ritmo (sempre uma saída, nunca bronca). */
 export function fraseDaAcao(a: AcaoDeHoje | null): string {
   if (!a) return ''
-  if (a.tipo === 'horarios-livres') return ` Dá pra começar hoje: ${a.titulo} (${a.detalhe}).`
+  if (a.tipo === 'horarios-livres') return ` Dá pra começar hoje: ${a.titulo}.`
   if (a.tipo === 'sumidos') return ` Dá pra começar hoje: ${a.titulo}, ${a.detalhe}.`
   if (a.tipo === 'nenhuma' && a.titulo === 'Agenda cheia') return ' Sua agenda está cheia: siga assim.'
   return ''
