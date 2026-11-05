@@ -79,3 +79,78 @@ export function escolherAcao(e: {
     botao: null,
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   AÇÕES DE HOJE · até 3 (05/11/2026)
+
+   Eduardo escolheu "mais ações de hoje": horários livres, gente sumida e
+   aniversariantes da semana, cada uma com botão. Só entra ação que tem dado.
+   Bateu e o mês que vem não tem meta → "Definir a meta" vem primeiro.
+   Nada disso → 1 linha "Agenda cheia · siga assim".
+   ═══════════════════════════════════════════════════════════════ */
+
+export type AcaoItem = {
+  tipo: 'definir-proximo' | 'horarios-livres' | 'sumidos' | 'aniversario' | 'nenhuma'
+  /** número grande à esquerda (null = só ícone) */
+  numero: number | null
+  titulo: string
+  detalhe: string
+  botao: { rotulo: string; href: string } | null
+}
+
+export function escolherAcoes(e: {
+  amanha: string
+  bateu: boolean
+  proximoMesSemMeta: { ym: string; nome: string } | null
+  proximoDia: { ymd: string; livres: string[] } | null
+  sumidos: number | null
+  /** aniversariantes nos próximos 7 dias (null = sem acesso a Clientes) */
+  aniversariantes: number | null
+  nicho: NichoMetas
+}): AcaoItem[] {
+  const { nicho } = e
+  const out: AcaoItem[] = []
+  if (e.bateu && e.proximoMesSemMeta) {
+    out.push({
+      tipo: 'definir-proximo',
+      numero: null,
+      titulo: `Definir a meta de ${e.proximoMesSemMeta.nome}`,
+      detalhe: 'leva 30 segundos',
+      botao: { rotulo: 'Definir', href: `/admin/metas/definir?mes=${e.proximoMesSemMeta.ym}` },
+    })
+  }
+  const livres = e.proximoDia?.livres ?? []
+  if (e.proximoDia && livres.length >= 2) {
+    out.push({
+      tipo: 'horarios-livres',
+      numero: livres.length,
+      titulo: `horários livres ${quandoDia(e.proximoDia.ymd, e.amanha)}`,
+      detalhe: livres.slice(0, 4).join(' · ') + (livres.length > 4 ? ' …' : ''),
+      botao: { rotulo: 'Ver a agenda', href: `/admin?date=${e.proximoDia.ymd}` },
+    })
+  }
+  const n = e.sumidos ?? 0
+  if (n > 0) {
+    out.push({
+      tipo: 'sumidos',
+      numero: n,
+      titulo: `${pessoas(n, nicho.pessoa).replace(/^\d+\s*/, '')} sem voltar`,
+      detalhe: `há mais de ${nicho.diasSumido} dias`,
+      botao: { rotulo: nicho.botaoChamar, href: '/admin/sumidos' },
+    })
+  }
+  const a = e.aniversariantes ?? 0
+  if (a > 0) {
+    out.push({
+      tipo: 'aniversario',
+      numero: a,
+      titulo: a === 1 ? 'aniversário nesta semana' : 'aniversários nesta semana',
+      detalhe: 'um parabéns traz de volta',
+      botao: { rotulo: 'Dar parabéns', href: '/admin/clientes/campanhas?tab=aniversariantes' },
+    })
+  }
+  if (out.length === 0) {
+    out.push({ tipo: 'nenhuma', numero: null, titulo: e.proximoDia ? 'Agenda cheia' : 'Nada pendente hoje', detalhe: 'siga assim', botao: null })
+  }
+  return out.slice(0, 3)
+}
