@@ -24,6 +24,7 @@ import {
   IconWhatsapp,
   IconPencil,
   IconLayers,
+  IconTarget,
 } from '@/components/ui/Icon'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import { ehNovidade } from '@/lib/novidades'
@@ -121,6 +122,8 @@ export default function AdminMobileTopBar({
       label: 'Dia a dia',
       items: [
         { label: 'Início', href: '/admin/inicio', Icon: IconHome, exact: true },
+        // aba Metas (04/11/2026) · logo após o Início; a área é financeiro (gerente bloqueada não vê)
+        { label: 'Metas', href: '/admin/metas', Icon: IconTarget },
         { label: 'Atendimentos', href: '/admin', Icon: IconCalendar, badge: pendingAppointments, exact: true },
         // histórico de agendamentos com filtros: mora junto da agenda
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },

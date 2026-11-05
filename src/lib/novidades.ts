@@ -15,6 +15,8 @@ export const DIAS_COM_SELO = 30
 
 export const NOVIDADES: Readonly<Record<string, string>> = {
   '/admin/sumidos': '2026-09-08',
+  // aba Metas · data prevista de ir ao ar (ajustar no deploy se mudar)
+  '/admin/metas': '2026-11-05',
   /* Sinal não é tela nova — existe há meses. O selo entrou em 08/09 a pedido
      do Eduardo pra chamar atenção de quem ainda não usa: é a tela que segura
      dinheiro de horário furado. Some sozinha em 30 dias, como as outras. */

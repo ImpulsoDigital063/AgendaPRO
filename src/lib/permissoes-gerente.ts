@@ -16,7 +16,7 @@ export const AREAS_GERENTE = [
   { id: 'clientes', label: 'Clientes', desc: 'Clientes, sumidos e importar' },
   { id: 'vendas', label: 'Vendas e caixa', desc: 'Comandas, vendas, caixa, fechar o dia, pacotes e cartão presente' },
   { id: 'estoque', label: 'Produtos e estoque', desc: 'Produtos, entrada de estoque e combos' },
-  { id: 'financeiro', label: 'Financeiro', desc: 'Relatório financeiro, despesas, fluxo de caixa, sinal, análises e relatórios' },
+  { id: 'financeiro', label: 'Financeiro', desc: 'Relatório financeiro, metas, despesas, fluxo de caixa, sinal, análises e relatórios' },
   { id: 'equipe', label: 'Equipe e remunerações', desc: 'Colaboradores, comissões e salários' },
   { id: 'mensagens', label: 'Mensagens e marketing', desc: 'Avisos automáticos e manuais, cupons' },
   { id: 'configuracoes', label: 'Configurações do negócio', desc: 'Serviços, horários, bloqueios, aparência, fidelidade, maquininhas, link e QR' },
@@ -55,6 +55,8 @@ const ROTAS: Array<[string, AreaGerente]> = [
   ['/admin/produtos', 'estoque'],
   ['/admin/combos', 'estoque'],
   ['/admin/financeiro', 'financeiro'],
+  // aba Metas (04/11/2026): o número é o faturamento do Hub
+  ['/admin/metas', 'financeiro'],
   ['/admin/relatorios', 'financeiro'],
   ['/admin/convenios', 'financeiro'],
   ['/admin/clientes/campanhas', 'mensagens'],
@@ -94,6 +96,7 @@ export function podeAbrir(href: string, bloqueadas: readonly string[]): boolean 
    Aniversariantes, niche-fichas nas fichas do atendimento → livres. */
 const API: Array<[string, AreaGerente]> = [
   ['/api/admin/expenses', 'financeiro'],
+  ['/api/admin/metas', 'financeiro'],
   ['/api/admin/sales/export', 'vendas'],
   ['/api/admin/convenios', 'financeiro'],
   ['/api/admin/commission-payments', 'equipe'],

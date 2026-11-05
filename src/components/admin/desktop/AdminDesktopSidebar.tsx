@@ -28,6 +28,7 @@ import {
   IconCamera,
   IconMapPin,
   IconLayers,
+  IconTarget,
 } from '@/components/ui/Icon'
 import { PACOTE_ENABLED } from '@/lib/feature-flags'
 import { ehNovidade } from '@/lib/novidades'
@@ -111,6 +112,8 @@ export default function AdminDesktopSidebar({ brand, pendingAppointments = 0, pe
       label: 'Dia a dia',
       items: [
         { label: 'Início', href: '/admin/inicio', exact: true, Icon: IconHome },
+        // aba Metas (04/11/2026) · mesma posição do menu do celular
+        { label: 'Metas', href: '/admin/metas', Icon: IconTarget },
         { label: 'Atendimentos', href: '/admin', exact: true, Icon: IconCalendar, badge: pendingAppointments },
         // histórico de agendamentos com filtros: mora junto da agenda
         { label: 'Consultas', href: '/admin/consultas', Icon: IconSearch },

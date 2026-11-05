@@ -34,6 +34,7 @@ import NovidadeSinalCard from '@/components/admin/NovidadeSinalCard'
 import NovidadeSumidosCard from '@/components/admin/NovidadeSumidosCard'
 import TourSistemaCard from '@/components/admin/tour/TourSistemaCard'
 import PerguntasInicioCard from '@/components/admin/perguntas/PerguntasInicioCard'
+import MetaInicioCard from '@/components/admin/metas/MetaInicioCard'
 import { tourSistemaLiberado } from '@/lib/tour-sistema'
 import Image from 'next/image'
 
@@ -506,6 +507,12 @@ export default async function AdminInicioPage({
 
         {/* Atalhos rápidos */}
         <AtalhosRapidos />
+
+        {/* Meta do mês (04/11/2026) · cartão pequeno, toque abre a aba Metas.
+            Celular e computador (largura cheia nos dois, ~70 px de altura). */}
+        <Suspense fallback={null}>
+          <MetaInicioCard />
+        </Suspense>
 
         {/* KPIs */}
         <Suspense fallback={<KPIsSkeleton />}>

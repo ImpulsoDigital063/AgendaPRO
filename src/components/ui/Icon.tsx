@@ -342,6 +342,17 @@ export function IconTrendingUp(p: IconProps) {
   )
 }
 
+/** Alvo · aba Metas (04/11/2026) */
+export function IconTarget(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+    </svg>
+  )
+}
+
 export function IconInbox(p: IconProps) {
   return (
     <svg {...base(p)}>
