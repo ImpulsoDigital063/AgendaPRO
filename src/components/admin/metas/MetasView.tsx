@@ -463,7 +463,7 @@ function Comparacao({ agora, antes }: { agora: number; antes: number }) {
   if (Math.abs(dif) < 1) return <span className="text-[12px] font-bold" style={{ color: 'var(--admin-text-mute)' }}>igual a este mês</span>
   return (
     <span className="inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: 'var(--admin-text)' }}>
-      <Seta sobe={dif > 0} /> este mês: {brl(Math.abs(dif))} {dif > 0 ? 'a mais' : 'a menos'}
+      <Seta sobe={dif > 0} /> {brl(Math.abs(dif))} {dif > 0 ? 'acima' : 'abaixo'}
     </span>
   )
 }
