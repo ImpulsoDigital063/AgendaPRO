@@ -103,7 +103,15 @@ export async function ajusteSinalDoPeriodo(
   fimIso: string,
 ): Promise<{ subtrair: Record<string, number>; somar: number }> {
   const subtrair: Record<string, number> = {}
-  const dentro = (iso: string) => iso >= inicioIso && iso < fimIso
+  /* 04/11/2026 · comparar INSTANTES, não texto: inicioIso vem com -03:00 e o
+     sinal_pago_at vira ...Z; por ordem alfabética, sinal pago entre 21h e
+     23h59 do dia anterior à janela caía dentro dela (borda de período). */
+  const ini = Date.parse(inicioIso)
+  const fim = Date.parse(fimIso)
+  const dentro = (iso: string) => {
+    const t = Date.parse(iso)
+    return t >= ini && t < fim
+  }
   // Em lotes de 150 (21/10/2026): .in() gigante estoura a URL e volta 400 calado.
   for (let i = 0; i < apptIdsDoPeriodo.length; i += 150) {
     const { data } = await db
