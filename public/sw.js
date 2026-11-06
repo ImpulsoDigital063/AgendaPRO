@@ -98,7 +98,8 @@
 // v223 (06/11): metas · 3 caminhos de visual em /admin/metas?visual=A|B|C (sem parametro nada muda).
 // v224 (06/11): metas · visual B "Faixa de status" vira a tela padrao (sai o ?visual) + interruptor Avisos no celular (so a dona troca).
 // v225 (06/11): toque na notificacao abre o endereco do aviso (navigate esperado + openWindow de reserva).
-const STATIC_CACHE_VERSION = 'agendapro-static-v225'
+// v226 (06/11): metas · linhas claras no 'O que fazer hoje', sem 'por dia' repetido, ultimo quadrado sozinho ocupa a linha.
+const STATIC_CACHE_VERSION = 'agendapro-static-v226'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

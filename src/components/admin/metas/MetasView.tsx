@@ -239,9 +239,7 @@ function Quadrado({ rotulo, numero, rodape, testid }: { rotulo: string; numero: 
 /** quadrados: por dia, atendimentos, com o agendado, mês passado (somem sem dado) */
 function quadrados(p: Props, d: D): ReactNode[] {
   const out: ReactNode[] = []
-  if (d.temMeta && !d.bateu && d.porDia > 0) {
-    out.push(<Quadrado key="dia" testid="por-dia" rotulo="Por dia, daqui pra frente" numero={brl(d.porDia)} rodape={<span style={COR_FADED}>{d.diasTxt}</span>} />)
-  }
+  /* "por dia" sai daqui: já está na faixa (Eduardo 06/11, não repetir) */
   if (d.atendFaltam) {
     out.push(<Quadrado key="at" testid="faltam-atendimentos" rotulo="Atendimentos pra fechar" numero={`≈ ${d.atendFaltam}`} rodape={<span style={COR_FADED}>no seu ticket médio</span>} />)
   }
@@ -464,7 +462,7 @@ export default function MetasView(p: Props) {
         <h3 className="text-[20px] font-extrabold tracking-tight" style={COR_TXT}>O que fazer hoje</h3>
         <span className="text-[12px] font-bold rounded-full px-2.5 py-1" style={{ background: 'var(--admin-accent-bg)', color: 'var(--admin-accent)' }}>{p.acoes.length}</span>
       </div>
-      <ul className="mt-2 divide-y" style={{ borderColor: 'var(--admin-border)' }}>
+      <ul className="mt-2 divide-y divide-[color:var(--admin-border)]">
         {p.acoes.map((a) => <AcaoLinha key={a.tipo} a={a} />)}
       </ul>
     </Bloco>
@@ -476,7 +474,7 @@ export default function MetasView(p: Props) {
         <div className="grid grid-cols-1 gap-4">
           {faixa}
           <div className="lg:hidden">{hoje}</div>
-          {qs.length > 0 && <div className={`grid grid-cols-2 gap-4 ${qs.length >= 3 ? 'lg:grid-cols-4' : ''}`}>{qs}</div>}
+          {qs.length > 0 && <div className={`grid grid-cols-2 gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 ${qs.length >= 3 ? 'lg:grid-cols-3 lg:[&>*:last-child:nth-child(odd)]:col-span-1' : ''}`}>{qs}</div>}
           {d.temGrafico && (
             <Bloco testid="grafico-mes">
               <p className={KICKER} style={COR_FADED}>O mês dia a dia</p>
