@@ -96,7 +96,8 @@
 // v220 (04/11): menu do dono por uso real · Divulgacao e QR saem do menu (QR vira secao de Negocio) · Plano/Sair rolam com a lista.
 // v222 (05/11): aba Metas completa · ritmo, previsao, mes passado, 3 acoes, grafico, de onde vem, top servicos, meses anteriores.
 // v223 (06/11): metas · 3 caminhos de visual em /admin/metas?visual=A|B|C (sem parametro nada muda).
-const STATIC_CACHE_VERSION = 'agendapro-static-v223'
+// v224 (06/11): metas · visual B "Faixa de status" vira a tela padrao (sai o ?visual) + interruptor Avisos no celular (so a dona troca).
+const STATIC_CACHE_VERSION = 'agendapro-static-v224'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
