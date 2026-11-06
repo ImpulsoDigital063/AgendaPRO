@@ -86,7 +86,7 @@ function mesesEntre(de: string, ate: string): string[] {
   return out
 }
 
-function IconeAcao({ tipo }: { tipo: AcaoItem['tipo'] }) {
+export function IconeAcao({ tipo }: { tipo: AcaoItem['tipo'] }) {
   if (tipo === 'horarios-livres') return <IconClock size={20} />
   if (tipo === 'sumidos') return <IconUsers size={20} />
   if (tipo === 'aniversario') return <IconGift size={20} />
@@ -105,7 +105,7 @@ function Seta({ sobe }: { sobe: boolean }) {
 
 /* Trilha discreta do sonho: pontos por mês, "você está aqui" no mês atual.
    Mais de 8 meses: mostra início, os 2 vizinhos do atual e o fim. */
-function Trilha({ desde, ate, atual }: { desde: string; ate: string; atual: string }) {
+export function Trilha({ desde, ate, atual }: { desde: string; ate: string; atual: string }) {
   const todos = mesesEntre(desde, ate)
   if (todos.length < 2) return null
   let mostrar = todos
@@ -447,7 +447,7 @@ export default function MetasView(p: MetasViewProps & { mesAtual: string }) {
   )
 }
 
-function Fatia({ cor, rotulo, valor }: { cor: string; rotulo: string; valor: number }) {
+export function Fatia({ cor, rotulo, valor }: { cor: string; rotulo: string; valor: number }) {
   return (
     <div>
       <span className="flex items-center gap-1.5 text-[12px] leading-tight" style={{ color: 'var(--admin-text-mute)' }}>
@@ -458,7 +458,7 @@ function Fatia({ cor, rotulo, valor }: { cor: string; rotulo: string; valor: num
   )
 }
 
-function Comparacao({ agora, antes }: { agora: number; antes: number }) {
+export function Comparacao({ agora, antes }: { agora: number; antes: number }) {
   const dif = agora - antes
   if (Math.abs(dif) < 1) return <span className="text-[12px] font-bold" style={{ color: 'var(--admin-text-mute)' }}>igual a este mês</span>
   return (
