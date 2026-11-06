@@ -97,7 +97,8 @@
 // v222 (05/11): aba Metas completa · ritmo, previsao, mes passado, 3 acoes, grafico, de onde vem, top servicos, meses anteriores.
 // v223 (06/11): metas · 3 caminhos de visual em /admin/metas?visual=A|B|C (sem parametro nada muda).
 // v224 (06/11): metas · visual B "Faixa de status" vira a tela padrao (sai o ?visual) + interruptor Avisos no celular (so a dona troca).
-const STATIC_CACHE_VERSION = 'agendapro-static-v224'
+// v225 (06/11): toque na notificacao abre o endereco do aviso (navigate esperado + openWindow de reserva).
+const STATIC_CACHE_VERSION = 'agendapro-static-v225'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
@@ -247,16 +248,24 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/admin'
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const c of list) {
-        if ('focus' in c) {
-          c.navigate(url)
-          return c.focus()
-        }
+  const caminho = (event.notification.data && event.notification.data.url) || '/admin'
+  const url = new URL(caminho, self.location.origin).href
+  /* v225: antes o navigate() nao era esperado e, quando falhava (janela que
+     ainda nao e controlada por ESTE sw, ex.: logo depois de um deploy), o app
+     so ganhava foco e ficava na tela em que estava (Marcela 06/11: push de
+     Metas abriu a agenda). Agora: espera o navigate; se falhar ou devolver
+     null, abre o endereco direto. */
+  event.waitUntil((async () => {
+    const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    const c = list.find((w) => w.url && w.url.startsWith(self.location.origin))
+    if (c) {
+      try {
+        const nav = await c.navigate(url)
+        if (nav) return nav.focus()
+      } catch (e) {
+        /* cai no openWindow */
       }
-      return self.clients.openWindow(url)
-    })
-  )
+    }
+    return self.clients.openWindow(url)
+  })())
 })
