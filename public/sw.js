@@ -95,7 +95,8 @@
 //   app instalado por endereco de previa/link fixo vai pro www; presenca por aparelho (v185).
 // v220 (04/11): menu do dono por uso real · Divulgacao e QR saem do menu (QR vira secao de Negocio) · Plano/Sair rolam com a lista.
 // v222 (05/11): aba Metas completa · ritmo, previsao, mes passado, 3 acoes, grafico, de onde vem, top servicos, meses anteriores.
-const STATIC_CACHE_VERSION = 'agendapro-static-v222'
+// v223 (06/11): metas · 3 caminhos de visual em /admin/metas?visual=A|B|C (sem parametro nada muda).
+const STATIC_CACHE_VERSION = 'agendapro-static-v223'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
