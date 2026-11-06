@@ -99,7 +99,8 @@
 // v224 (06/11): metas · visual B "Faixa de status" vira a tela padrao (sai o ?visual) + interruptor Avisos no celular (so a dona troca).
 // v225 (06/11): toque na notificacao abre o endereco do aviso (navigate esperado + openWindow de reserva).
 // v226 (06/11): metas · linhas claras no 'O que fazer hoje', sem 'por dia' repetido, ultimo quadrado sozinho ocupa a linha.
-const STATIC_CACHE_VERSION = 'agendapro-static-v226'
+// v227 (06/11): toque na notificacao no iPhone · sw guarda o endereco (cache aviso-abrir, fora da limpeza agendapro-*) + postMessage; a tela vai ate ele.
+const STATIC_CACHE_VERSION = 'agendapro-static-v227'
 
 const PRECACHE_URLS = [
   '/icon-192.png',
@@ -257,15 +258,25 @@ self.addEventListener('notificationclick', (event) => {
      Metas abriu a agenda). Agora: espera o navigate; se falhar ou devolver
      null, abre o endereco direto. */
   event.waitUntil((async () => {
+    /* v227: iPhone abre o app instalado na tela de inicio e ignora o
+       navigate/openWindow. Guarda o endereco (a tela le ao abrir) e avisa
+       as janelas abertas por postMessage; navigate/openWindow seguem como
+       caminho principal onde funcionam (Android, Windows). */
+    try {
+      const c = await caches.open('aviso-abrir')
+      await c.put('/__abrir', new Response(JSON.stringify({ url: caminho, em: Date.now() }), { headers: { 'content-type': 'application/json' } }))
+    } catch (e) { /* segue */ }
     const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     const c = list.find((w) => w.url && w.url.startsWith(self.location.origin))
     if (c) {
+      try { c.postMessage({ tipo: 'abrir', url: caminho }) } catch (e) { /* segue */ }
       try {
         const nav = await c.navigate(url)
         if (nav) return nav.focus()
       } catch (e) {
-        /* cai no openWindow */
+        /* cai no focus/openWindow */
       }
+      try { return await c.focus() } catch (e) { /* cai no openWindow */ }
     }
     return self.clients.openWindow(url)
   })())

@@ -266,9 +266,49 @@ export default function AtualizadorPWA({ area = 'admin' }: { area?: AreaApp }) {
       recarregar()
     }
 
+    /* ── Toque na notificação: abrir o endereço do aviso ─────────────
+       No iPhone o app instalado abre pela notificação na tela de início
+       (agenda), ignorando o navigate/openWindow do sw (Marcela 06/11: push
+       de Metas abria a agenda). O sw agora (v227) deixa o endereço guardado
+       no Cache Storage e também manda postMessage; aqui a tela vai até ele.
+       Vale 2 min e é apagado antes de navegar, então não vira laço. */
+    const irPara = (url: string) => {
+      try {
+        const alvo = new URL(url, window.location.origin)
+        if (alvo.origin !== window.location.origin) return
+        if (alvo.pathname + alvo.search === window.location.pathname + window.location.search) return
+        window.location.assign(alvo.pathname + alvo.search + alvo.hash)
+      } catch {
+        /* endereço inválido: fica onde está */
+      }
+    }
+    const abrirPendente = async () => {
+      try {
+        if (typeof caches === 'undefined') return
+        const c = await caches.open('aviso-abrir')
+        const r = await c.match('/__abrir')
+        if (!r) return
+        await c.delete('/__abrir')
+        const { url, em } = (await r.json()) as { url?: string; em?: number }
+        if (url && em && Date.now() - em < 2 * 60 * 1000) irPara(url)
+      } catch {
+        /* sem cache: segue na tela */
+      }
+    }
+    const aoAbrirPeloAviso = (e: MessageEvent) => {
+      const d = e.data as { tipo?: string; url?: string } | null
+      if (d?.tipo !== 'abrir' || !d.url) return
+      void caches?.open('aviso-abrir').then((c) => c.delete('/__abrir')).catch(() => null)
+      irPara(d.url)
+    }
+    const aoVoltarAbrir = () => { if (document.visibilityState === 'visible') void abrirPendente() }
+    void abrirPendente()
+
     navigator.serviceWorker.addEventListener('controllerchange', marcar)
     navigator.serviceWorker.addEventListener('message', aoFaltarRecurso)
+    navigator.serviceWorker.addEventListener('message', aoAbrirPeloAviso)
     document.addEventListener('visibilitychange', aoVoltar)
+    document.addEventListener('visibilitychange', aoVoltarAbrir)
 
     let intervalo: ReturnType<typeof setInterval> | null = null
 
@@ -292,6 +332,8 @@ export default function AtualizadorPWA({ area = 'admin' }: { area?: AreaApp }) {
     return () => {
       navigator.serviceWorker.removeEventListener('controllerchange', marcar)
       navigator.serviceWorker.removeEventListener('message', aoFaltarRecurso)
+      navigator.serviceWorker.removeEventListener('message', aoAbrirPeloAviso)
+      document.removeEventListener('visibilitychange', aoVoltarAbrir)
       document.removeEventListener('visibilitychange', aoVoltar)
       if (intervalo) clearInterval(intervalo)
       clearInterval(intervaloVersao)
