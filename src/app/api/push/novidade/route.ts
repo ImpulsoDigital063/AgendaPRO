@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
     url?: string
     dry_run?: boolean
     somenteSinal?: boolean
+    somenteDonas?: boolean
     slug?: string
   }
   const titulo = body.titulo?.trim()
@@ -94,10 +95,20 @@ export async function POST(req: NextRequest) {
     subs = subs.filter((s: { user_id: string }) => permitidos.has(s.user_id))
   }
 
+  /* `somenteDonas` · novidade que só a dona usa (ex.: Metas, 06/11) não vai
+     pro celular da profissional: ela tocaria e cairia numa tela que não é dela. */
+  if (body.somenteDonas) {
+    const { data: negocios } = await admin.from('businesses').select('owner_id')
+    const donas = new Set(
+      (negocios ?? []).map((n) => n.owner_id as string | null).filter(Boolean) as string[],
+    )
+    subs = subs.filter((s: { user_id: string }) => donas.has(s.user_id))
+  }
+
   const devices = subs?.length ?? 0
   const pessoas = new Set((subs ?? []).map((s: { user_id: string }) => s.user_id)).size
 
-  if (body.dry_run) return NextResponse.json({ dry_run: true, somenteSinal: !!body.somenteSinal, devices, pessoas })
+  if (body.dry_run) return NextResponse.json({ dry_run: true, somenteSinal: !!body.somenteSinal, somenteDonas: !!body.somenteDonas, devices, pessoas })
   if (!subs || subs.length === 0) return NextResponse.json({ enviados: 0, devices: 0, pessoas: 0 })
 
   const results = await Promise.all(

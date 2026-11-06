@@ -23,6 +23,8 @@ const url = (args.find(a => a.startsWith('--url=')) || '').slice(6) || undefined
 // negocios). Novidade de sinal no celular de quem nao cobra sinal e ruido, e
 // ruido ensina a ignorar a proxima notificacao — inclusive a que importa.
 const somenteSinal = args.includes('--sinal')
+// --donas → manda SO pra donas de negocio (novidade que profissional nao usa, ex.: Metas).
+const somenteDonas = args.includes('--donas')
 // --slug=studio-marcela → manda so pra esse negocio. Use pra ver como chega
 // antes de disparar pra base: push nao tem desfazer.
 const slug = (args.find(a => a.startsWith('--slug=')) || '').slice(7) || undefined
@@ -37,7 +39,7 @@ const PROD = 'https://www.agendapro.net.br'
 const res = await fetch(PROD + '/api/push/novidade', {
   method: 'POST',
   headers: { 'content-type': 'application/json', authorization: `Bearer ${env.CRON_SECRET}` },
-  body: JSON.stringify({ titulo, corpo, url, dry_run: !enviar, somenteSinal, slug }),
+  body: JSON.stringify({ titulo, corpo, url, dry_run: !enviar, somenteSinal, somenteDonas, slug }),
 })
 const j = await res.json()
 
