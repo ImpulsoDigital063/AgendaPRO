@@ -100,7 +100,7 @@
 // v225 (06/11): toque na notificacao abre o endereco do aviso (navigate esperado + openWindow de reserva).
 // v226 (06/11): metas · linhas claras no 'O que fazer hoje', sem 'por dia' repetido, ultimo quadrado sozinho ocupa a linha.
 // v227 (06/11): toque na notificacao no iPhone · sw guarda o endereco (cache aviso-abrir, fora da limpeza agendapro-*) + postMessage; a tela vai ate ele.
-const STATIC_CACHE_VERSION = 'agendapro-static-v228'
+const STATIC_CACHE_VERSION = 'agendapro-static-v229'
 
 const PRECACHE_URLS = [
   '/icon-192.png',

@@ -41,8 +41,8 @@ export const SUMIDOS_ENVIO_AUTOMATICO = false
 export const GOOGLE_AGENDA_LIBERADOS: string[] = ['studio-marcela'] // conta de teste
 
 // "Abrir no Google Agenda" no calendário do mês. Eduardo 31/10/2026: fica escondido
-// até o Google verificar o app. Ligar junto com a liberação para clientes.
-export const GOOGLE_BOTAO_NO_CALENDARIO = false
+// até o Google verificar o app. Google aprovou 05/11 (calendar.events); ligado 06/11.
+export const GOOGLE_BOTAO_NO_CALENDARIO = true
 
 /**
  * GOOGLE_AGENDA_BLOQUEIO_LIBERADOS · a VOLTA do Google Agenda (v176):
