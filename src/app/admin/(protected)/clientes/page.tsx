@@ -7,6 +7,7 @@ import ClientesView from '@/components/admin/ClientesView'
 import { IconUpload } from '@/components/ui/Icon'
 import { todayBR } from '@/lib/date-br'
 import { negocioDoPainel } from '@/lib/admin-data'
+import { telefoneCanonico } from '@/lib/phone-variants'
 
 export default async function ClientesPage() {
   const supabase = await createClient()
@@ -91,10 +92,14 @@ export default async function ClientesPage() {
     (couponsRes.data || []).map((c: { customer_id: string | null }) => c.customer_id).filter(Boolean) as string[]
   )
 
-  // Index customers por telefone normalizado (pra match com clients)
+  // Index customers por telefone normalizado (pra match com clients).
+  // 07/11/2026 (Wanessa · Fabiane sem "Detalhes"): comparar só os dígitos
+  // não juntava `(91) 98229-1119` (clients, link público) com
+  // `+5591982291119` (customers, importação) — o card ficava sem ficha e a
+  // ficha aparecia de novo como órfã. Regra única: telefoneCanonico.
   const customerByPhone = new Map<string, { id: string; total_points: number }>()
   for (const cust of customers) {
-    const key = (cust.phone || '').replace(/\D/g, '')
+    const key = telefoneCanonico(cust.phone || '')
     if (key) customerByPhone.set(key, { id: cust.id, total_points: cust.total_points ?? 0 })
   }
 
@@ -119,7 +124,7 @@ export default async function ClientesPage() {
 
   // Mapa de clients que JA tem appointment (vindos de statsMap)
   const clientsWithStats = clients.map((c) => {
-    const phoneKey = (c.phone || '').replace(/\D/g, '')
+    const phoneKey = telefoneCanonico(c.phone || '')
     const cust = customerByPhone.get(phoneKey)
     const st = statsMap[c.id] || { count: 0, firstDate: '', lastDate: '', totalSpent: 0 }
     return {
@@ -134,10 +139,10 @@ export default async function ClientesPage() {
   // Customers cadastrados manualmente (sem agendamento ainda) — só
   // aparecem se NAO existem como client com appointment. Match pelo
   // phone normalizado.
-  const phonesJaListados = new Set(clientsWithStats.map((c) => (c.phone || '').replace(/\D/g, '')))
+  const phonesJaListados = new Set(clientsWithStats.map((c) => telefoneCanonico(c.phone || '')))
   const customersOrfaos = customers
     .filter((cust) => {
-      const phoneKey = (cust.phone || '').replace(/\D/g, '')
+      const phoneKey = telefoneCanonico(cust.phone || '')
       return phoneKey && !phonesJaListados.has(phoneKey)
     })
     .map((cust) => ({
