@@ -171,9 +171,21 @@ export async function confirmarAgendamento(
 
   const tipo = deveSinal ? ('sinal_pendente' as const) : ('confirmacao' as const)
 
+  /* Até quando este aviso faz sentido, se ele tiver sido barrado por
+     motivo passageiro e for tentado de novo (retentar.ts): a confirmação
+     vale até o horário; a cobrança do sinal, até o PRAZO do sinal — "pague
+     até as 14h" chegando às 16h é pior que não chegar. */
+  const horario = new Date(
+    `${a.appointment_date as string}T${String(a.start_time).slice(0, 5)}:00-03:00`,
+  ).getTime()
+  const prazoSinal = new Date(String(a.created_at)).getTime() +
+    Number(negocio?.sinal_expira_minutos ?? SINAL_EXPIRA_PADRAO_MIN) * 60_000
+  const retentarAte = deveSinal ? Math.min(horario, prazoSinal) : horario
+
   const resultado = await enviar(db, {
     businessId: a.business_id as string,
     tipo,
+    retentarAte,
     /* Chave por TIPO: se ela pagar depois, a confirmação tem chave própria
        e sai — a idempotência não pode confundir as duas mensagens. */
     chave: chaveIdempotencia(tipo, a.id as string),

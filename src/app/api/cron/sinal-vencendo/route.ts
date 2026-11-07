@@ -234,6 +234,8 @@ export async function GET(req: NextRequest) {
           businessId: negocio.id,
           tipo: 'sinal_pendente',
           chave: `sinal_vencendo:${appt.id}`,
+          // barrado por saldo e liberado depois: só tenta de novo enquanto o prazo corre
+          retentarAte: agora + faltam * 60_000,
           destino: { telefone: appt.client_phone, email: appt.client_email },
           appointmentId: appt.id,
           customerId: appt.customer_id,

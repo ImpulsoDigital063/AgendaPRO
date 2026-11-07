@@ -22,6 +22,7 @@ import { credencialDoSistema, enviarTemplate, normalizarTelefone } from './canal
 import { TEMPLATES, resolverTemplate, payloadsDosBotoes, botoesDoTipo, unidadesDaFranquia } from './templates-cloud'
 import { decidirBotao } from './botao-confirmar'
 import { podeEnviar } from './franquia'
+import { dentroDaJanela, linhaRetomavel, type LinhaDoLog } from './retentar'
 import { telefoneCanonico } from '@/lib/phone-variants'
 
 
@@ -40,6 +41,13 @@ export type PedidoEnvio = {
   customerId?: string | null
   /** Fallback por email quando o WhatsApp não deu conta. */
   enviarEmail?: () => Promise<boolean>
+  /**
+   * Até quando (ms) este aviso ainda faz sentido. Se ele foi barrado antes
+   * por motivo passageiro (sem saldo, assinatura bloqueada...) e a trava
+   * caiu, uma nova chamada dentro deste prazo tenta de novo. Sem isto, a
+   * chave barrada fica barrada — o comportamento antigo. Ver retentar.ts.
+   */
+  retentarAte?: number | null
 }
 
 export type Saida =
@@ -232,6 +240,58 @@ export function telefoneBrasileiroValido(tel: string | null | undefined): boolea
   return true
 }
 
+/**
+ * A chave bateu no UNIQUE. Dá pra retomar? (retentar.ts explica as travas)
+ *
+ * Ordem importa: o portão é perguntado ANTES de tocar na linha. Se ele
+ * continua fechado (Ivna, sem pacote de propósito), nada é escrito — nem
+ * linha nova, nem update. O log não cresce com a varredura.
+ */
+async function retomarBarrada(
+  db: SupabaseClient,
+  p: PedidoEnvio,
+): Promise<{ tomou: true } | { tomou: false; saida: Saida }> {
+  const jaEnviado = { tomou: false as const, saida: { status: 'ignorado' as const, motivo: 'ja_enviado' } }
+  if (!dentroDaJanela(p.retentarAte)) return jaEnviado
+
+  const { data: linha } = await db
+    .from('message_log')
+    .select('status, erro, created_at')
+    .eq('chave', p.chave)
+    .maybeSingle()
+  const l = linha as LinhaDoLog | null
+  if (!linhaRetomavel(l)) return jaEnviado
+
+  const portao = await podeEnviar(db, p.businessId)
+  if (!portao.pode) {
+    /* Continua barrada. Se o motivo mudou (acabou o saldo → assinatura
+       bloqueou), corrige o texto na MESMA linha, pra a dona ler a verdade. */
+    if (portao.motivo !== l!.erro) {
+      await db.from('message_log').update({ erro: portao.motivo })
+        .eq('chave', p.chave).eq('status', 'ignorado')
+    }
+    return { tomou: false, saida: { status: 'ignorado', motivo: portao.motivo } }
+  }
+
+  /* A TOMADA. `created_at` vai pra agora: é por ele que `consumoDoMes`
+     conta o ciclo, e o aviso que sai depois da renovação tem de pesar no
+     pacote NOVO — não no que acabou. */
+  const { data: tomadas } = await db
+    .from('message_log')
+    .update({
+      status: 'processando', canal: 'pendente', erro: null, provider_id: null,
+      destino: p.destino.telefone ?? p.destino.email ?? '-',
+      unidades: unidadesDaFranquia(p.tipo),
+      created_at: new Date().toISOString(),
+    })
+    .eq('chave', p.chave)
+    .eq('status', 'ignorado')
+    .eq('erro', l!.erro!)
+    .select('chave')
+  if (!tomadas || tomadas.length === 0) return jaEnviado // outra chamada levou
+  return { tomou: true }
+}
+
 export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida> {
   const regra = await regraDe(db, p.businessId, p.tipo)
 
@@ -268,7 +328,12 @@ export async function enviar(db: SupabaseClient, p: PedidoEnvio): Promise<Saida>
   if (jaFoi) {
     // 23505 = unique_violation. Qualquer outro erro também para aqui, de
     // propósito: sem registro garantido, não manda.
-    return { status: 'ignorado', motivo: jaFoi.code === '23505' ? 'ja_enviado' : jaFoi.message }
+    if (jaFoi.code !== '23505') return { status: 'ignorado', motivo: jaFoi.message }
+    /* A chave já existe. Na maioria das vezes é porque saiu — mas pode ser
+       um aviso barrado por motivo passageiro que agora pode sair. Só segue
+       daqui quem TOMOU a linha de volta (UPDATE condicional, atômico). */
+    const r = await retomarBarrada(db, p)
+    if (!r.tomou) return r.saida
   }
 
   const concluir = async (

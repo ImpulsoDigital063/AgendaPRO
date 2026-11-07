@@ -31,6 +31,8 @@ import { chaveIdempotencia, PADRAO, type Regra, type TipoMensagem } from '@/lib/
 import { todayBR, addDaysBR } from '@/lib/date-br'
 import { dataCurta } from '@/lib/mensagens/textos'
 import { sendAlert } from '@/lib/alert'
+import { podeEnviar } from '@/lib/mensagens/franquia'
+import { dentroDaJanela, linhaRetomavel, type LinhaDoLog } from '@/lib/mensagens/retentar'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -79,6 +81,10 @@ type Tarefa = {
   appointmentId?: string
   customerId?: string
   variaveis: Parameters<typeof enviar>[1]['variaveis']
+  /* Até quando este aviso ainda faz sentido (ms). Se ele foi barrado por
+     motivo passageiro e a trava caiu, a varredura tenta de novo só dentro
+     deste prazo — nunca manda lembrete de atendimento que já passou. */
+  retentarAte: number
 }
 
 export async function GET(req: NextRequest) {
@@ -151,6 +157,9 @@ export async function GET(req: NextRequest) {
   const fila: Tarefa[] = []
   const hoje = todayBR()
   const amanha = addDaysBR(hoje, 1)
+  /* Aniversário e retorno valem pro dia: depois das 21h nada automático sai,
+     e amanhã a varredura nem gera mais a tarefa. */
+  const fimDoDia = instanteDo(hoje, `${HORA_FIM}:00`)
 
   // ── LEMBRETES (véspera e do dia) ──────────────────────────────
   const negLembrete = [...new Set([...negociosCom('lembrete_vespera'), ...negociosCom('lembrete_dia')])]
@@ -205,6 +214,8 @@ export async function GET(req: NextRequest) {
             `${a.appointment_date as string}T${String(a.start_time).slice(0, 5)}`,
           ),
           chaveAntiga: chaveIdempotencia(tipo, a.id as string),
+          // a mesma janela que deixou entrar na fila: antes do atendimento e dentro do teto de atraso
+          retentarAte: Math.min(quando, alvo + ATRASO_MAX),
           telefone: a.client_phone as string | null,
           email: a.client_email as string | null,
           appointmentId: a.id as string,
@@ -320,6 +331,7 @@ export async function GET(req: NextRequest) {
           appointmentId: a.id as string,
           customerId: (a.customer_id as string) ?? undefined,
           variaveis: v,
+          retentarAte: instanteDo(a.appointment_date as string, a.start_time as string),
         })
       }
       /* O aviso pro dono vai pro telefone do NEGÓCIO. Quem já ativou o push
@@ -332,6 +344,7 @@ export async function GET(req: NextRequest) {
           telefone: negocio.phone, email: null,
           appointmentId: a.id as string,
           variaveis: v,
+          retentarAte: instanteDo(a.appointment_date as string, a.start_time as string),
         })
       }
     }
@@ -371,6 +384,7 @@ export async function GET(req: NextRequest) {
         telefone: c.phone as string | null,
         email: c.email as string | null,
         customerId: c.id as string,
+        retentarAte: fimDoDia,
         variaveis: {
           cliente: (c.name as string) || 'Cliente',
           salao: negocio?.name ?? 'seu negócio',
@@ -463,6 +477,7 @@ export async function GET(req: NextRequest) {
           email: a.client_email as string | null,
           appointmentId: a.id as string,
           customerId: (a.customer_id as string) ?? undefined,
+          retentarAte: fimDoDia,
           variaveis: {
             cliente: (a.client_name as string) || 'Cliente',
             salao: negocio?.name ?? 'seu negócio',
@@ -492,17 +507,47 @@ export async function GET(req: NextRequest) {
      mais nada e pode sair. */
   const chavesFila = [...new Set(fila.flatMap((t) => (t.chaveAntiga ? [t.chave, t.chaveAntiga] : [t.chave])))]
   const jaNoLog = new Map<string, number>() // chave → criada em (ms)
+  /* BARRADA POR MOTIVO PASSAGEIRO NÃO CONTA COMO "JÁ SAIU" (06/11/2026).
+     Wanessa ficou sem saldo às 11h; liberado às 22h, os avisos barrados
+     continuavam fora da fila pra sempre, porque a chave estava no log.
+     Agora a linha 'ignorado' por saldo/assinatura/pacote/liberação volta
+     pra fila — mas só se (retentar.ts): a linha é nova (pós-corte), o aviso
+     ainda está na janela dele e o portão do negócio JÁ abriu. */
+  const retomaveis = new Set<string>()
   for (let i = 0; i < chavesFila.length; i += 100) {
     const { data: doLog, error: errLog } = await db
       .from('message_log')
-      .select('chave, created_at')
+      .select('chave, created_at, status, erro')
       .in('chave', chavesFila.slice(i, i + 100))
     if (errLog) return NextResponse.json({ error: 'message_log: ' + errLog.message }, { status: 500 })
-    for (const m of doLog ?? []) jaNoLog.set(m.chave as string, new Date(m.created_at as string).getTime())
+    for (const m of doLog ?? []) {
+      jaNoLog.set(m.chave as string, new Date(m.created_at as string).getTime())
+      if (linhaRetomavel(m as LinhaDoLog)) retomaveis.add(m.chave as string)
+    }
   }
+
+  /* O portão é perguntado AQUI, uma vez por negócio, e não no `enviar`: se
+     a tarefa barrada entrasse na fila com o portão fechado, ela ocuparia
+     vaga no lote e somaria em `restam` toda chamada — o workflow repetiria
+     10 vezes por hora à toa (Ivna, sem pacote de propósito, ~14 rodadas/dia). */
+  const portaoAberto = new Map<string, boolean>()
+  for (const t of fila) {
+    if (!retomaveis.has(t.chave) || !dentroDaJanela(t.retentarAte, agora)) continue
+    if (!portaoAberto.has(t.businessId)) {
+      portaoAberto.set(t.businessId, (await podeEnviar(db, t.businessId)).pode)
+    }
+  }
+
   const TRANSICAO = 36 * 60 * 60 * 1000
+  let retomadas = 0
   const filaNova = fila.filter((t) => {
-    if (jaNoLog.has(t.chave)) return false
+    if (jaNoLog.has(t.chave)) {
+      const volta = retomaveis.has(t.chave) && dentroDaJanela(t.retentarAte, agora) &&
+        portaoAberto.get(t.businessId) === true
+      if (!volta) return false
+      retomadas++
+      return true
+    }
     const antiga = t.chaveAntiga ? jaNoLog.get(t.chaveAntiga) : undefined
     if (antiga !== undefined && agora - antiga < TRANSICAO) return false
     return true
@@ -609,6 +654,7 @@ export async function GET(req: NextRequest) {
       appointmentId: t.appointmentId ?? null,
       customerId: t.customerId ?? null,
       variaveis: t.variaveis,
+      retentarAte: t.retentarAte,
     })
     if (r.status === 'enviado') enviados++
     else if (r.status === 'ignorado') { ignorados++; motivos[r.motivo ?? 'sem_motivo'] = (motivos[r.motivo ?? 'sem_motivo'] ?? 0) + 1 }
@@ -669,6 +715,7 @@ Falharam agora: ${falhas} de ${lote.length}.`,
     regras_ligadas: regras.size,
     candidatos: fila.length,
     ja_saiu: jaSaiu,
+    retomadas,
     adiados_por_silencio: adiados,
     processados: lote.length,
     enviados, ignorados, falhas,
